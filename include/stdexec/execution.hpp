@@ -19,11 +19,13 @@
 
 // include these after __execution_fwd.hpp
 #include "__detail/__as_awaitable.hpp"                    // IWYU pragma: export
+#include "__detail/__associate.hpp"                       // IWYU pragma: export
 #include "__detail/__basic_sender.hpp"                    // IWYU pragma: export
 #include "__detail/__bulk.hpp"                            // IWYU pragma: export
 #include "__detail/__completion_signatures.hpp"           // IWYU pragma: export
 #include "__detail/__connect_awaitable.hpp"               // IWYU pragma: export
 #include "__detail/__continues_on.hpp"                    // IWYU pragma: export
+#include "__detail/__counting_scopes.hpp"                 // IWYU pragma: export
 #include "__detail/__cpo.hpp"                             // IWYU pragma: export
 #include "__detail/__debug.hpp"                           // IWYU pragma: export
 #include "__detail/__domain.hpp"                          // IWYU pragma: export
@@ -47,8 +49,11 @@
 #include "__detail/__run_loop.hpp"                        // IWYU pragma: export
 #include "__detail/__schedule_from.hpp"                   // IWYU pragma: export
 #include "__detail/__schedulers.hpp"                      // IWYU pragma: export
+#include "__detail/__scope_concepts.hpp"                  // IWYU pragma: export
 #include "__detail/__senders.hpp"                         // IWYU pragma: export
 #include "__detail/__sender_adaptor_closure.hpp"          // IWYU pragma: export
+#include "__detail/__spawn.hpp"                           // IWYU pragma: export
+#include "__detail/__spawn_future.hpp"                    // IWYU pragma: export
 #include "__detail/__split.hpp"                           // IWYU pragma: export
 #include "__detail/__start_detached.hpp"                  // IWYU pragma: export
 #include "__detail/__starts_on.hpp"                       // IWYU pragma: export
