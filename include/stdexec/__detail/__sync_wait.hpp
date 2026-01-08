@@ -32,6 +32,8 @@
 #include "__run_loop.hpp"
 #include "__type_traits.hpp"
 
+#include "__atomic.hpp"
+
 #include <exception>
 #include <system_error>
 #include <optional>
@@ -89,6 +91,20 @@ namespace stdexec {
     struct __state {
       std::exception_ptr __eptr_;
       run_loop __loop_;
+      stdexec::__std::atomic<bool> __done_{false};
+
+      void finish() noexcept {
+        __loop_.finish();
+        __done_.store(true, stdexec::__std::memory_order_release);
+        __done_.notify_all();
+      }
+
+      void wait() noexcept {
+        // Account for spurios wakeups
+        while (!__done_.load(stdexec::__std::memory_order_acquire)) {
+          __done_.wait(false, stdexec::__std::memory_order_acquire);
+        }
+      }
     };
 
     template <class... _Values>
@@ -108,7 +124,7 @@ namespace stdexec {
           STDEXEC_CATCH_ALL {
             __state_->__eptr_ = std::current_exception();
           }
-          __state_->__loop_.finish();
+          __state_->finish();
         }
 
         template <class _Error>
@@ -121,11 +137,11 @@ namespace stdexec {
           } else {
             __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
           }
-          __state_->__loop_.finish();
+          __state_->finish();
         }
 
         void set_stopped() noexcept {
-          __state_->__loop_.finish();
+          __state_->finish();
         }
 
         [[nodiscard]]
@@ -286,6 +302,7 @@ namespace stdexec {
 
         // Wait for the variant to be filled in.
         __local_state.__loop_.run();
+        __local_state.wait();
 
         if (__local_state.__eptr_) {
           std::rethrow_exception(static_cast<std::exception_ptr&&>(__local_state.__eptr_));
