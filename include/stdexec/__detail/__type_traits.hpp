@@ -28,8 +28,11 @@ namespace stdexec {
   template <class _Tp, bool _Noexcept = true>
   using __declfn_t = auto (*)() noexcept(_Noexcept) -> _Tp;
 
-  template <class _Tp>
+  template <class _Tp, class...>
   extern __declfn_t<_Tp &&> __declval;
+
+  template <class... _NoneSuch>
+  extern __declfn_t<void> __declval<void, _NoneSuch...>;
 
 #if STDEXEC_MSVC()
   template <class _Tp, bool _Noexcept = true>
