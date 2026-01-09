@@ -19,9 +19,9 @@
 
 #include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__senders.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 
 #include "async_scope.hpp"
 
@@ -249,7 +249,7 @@ namespace exec {
         return __storage_t<stdexec::__root_env, _AsyncScope, _Sender...>{
           stdexec::__root_env{}, __scope, static_cast<_Sender&&>(__sndr)...};
       }
-      };
+    };
   } // namespace __start_now_
 
   using __start_now_::start_now_t;

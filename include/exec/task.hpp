@@ -20,10 +20,10 @@
 #include <exception>
 #include <utility>
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/__detail/__variant.hpp"
+#include "../stdexec/execution.hpp"
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"
@@ -343,8 +343,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
-          -> __coro::coroutine_handle<> {
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept
+          -> __std::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
@@ -361,10 +361,10 @@ namespace exec {
         using __id = __promise;
 
         auto get_return_object() noexcept -> basic_task {
-          return basic_task(__coro::coroutine_handle<__promise>::from_promise(*this));
+          return basic_task(__std::coroutine_handle<__promise>::from_promise(*this));
         }
 
-        auto initial_suspend() noexcept -> __coro::suspend_always {
+        auto initial_suspend() noexcept -> __std::suspend_always {
           return {};
         }
 
@@ -392,10 +392,8 @@ namespace exec {
         template <sender _Awaitable>
           requires __scheduler_provider<_Context>
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
-          if constexpr (__completes_where_it_starts<
-                          set_value_t,
-                          env_of_t<_Awaitable>,
-                          __promise_context_t&>) {
+          if constexpr (
+            __completes_where_it_starts<set_value_t, env_of_t<_Awaitable>, __promise_context_t&>) {
             return stdexec::as_awaitable(static_cast<_Awaitable&&>(__awaitable), *this);
           } else {
             return stdexec::as_awaitable(
@@ -415,7 +413,7 @@ namespace exec {
             // Insert the cleanup action into the head of the continuation chain by making
             // direct calls to the cleanup task's awaiter member functions. See type
             // __at_coro_exit::__task in at_coroutine_exit.hpp:
-            __cleanup_task.await_suspend(__coro::coroutine_handle<__promise>::from_promise(*this));
+            __cleanup_task.await_suspend(__std::coroutine_handle<__promise>::from_promise(*this));
             (void) __cleanup_task.await_resume();
           }
           __context_->set_scheduler(__box.__sched_);
@@ -444,7 +442,7 @@ namespace exec {
 
       template <class _ParentPromise = void>
       struct __task_awaitable {
-        __coro::coroutine_handle<__promise> __coro_;
+        __std::coroutine_handle<__promise> __coro_;
         __optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
 
         ~__task_awaitable() {
@@ -457,8 +455,8 @@ namespace exec {
         }
 
         template <class _ParentPromise2>
-        auto await_suspend(__coro::coroutine_handle<_ParentPromise2> __parent) noexcept
-          -> __coro::coroutine_handle<> {
+        auto await_suspend(__std::coroutine_handle<_ParentPromise2> __parent) noexcept
+          -> __std::coroutine_handle<> {
           static_assert(__one_of<_ParentPromise, _ParentPromise2, void>);
           __coro_.promise().__context_.emplace(__parent.promise());
           __context_.emplace(*__coro_.promise().__context_, __parent.promise());
@@ -499,11 +497,11 @@ namespace exec {
         return __task_awaitable<>{std::exchange(__coro_, {})};
       }
 
-      explicit basic_task(__coro::coroutine_handle<promise_type> __coro) noexcept
+      explicit basic_task(__std::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {
       }
 
-      __coro::coroutine_handle<promise_type> __coro_;
+      __std::coroutine_handle<promise_type> __coro_;
     };
   } // namespace __task
 

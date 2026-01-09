@@ -16,13 +16,13 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/execution.hpp"
 
-#include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
+#include "trampoline_scheduler.hpp"
 
 #include <exception>
 #include <type_traits>
@@ -174,7 +174,8 @@ namespace exec {
         std::conditional_t<
           (__compile_time_bool_of<_Args, false> && ...),
           completion_signatures<>,
-          completion_signatures<set_value_t()>>,
+          completion_signatures<set_value_t()>
+        >,
         __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_SENDER_<_Sender>>
       >;
 

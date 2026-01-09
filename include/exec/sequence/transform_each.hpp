@@ -83,10 +83,9 @@ namespace exec {
         subscribe_result_t<_Sender, stdexec::__t<__receiver<_ReceiverId, _Adaptor>>> __op_;
 
         __t(_Sender&& __sndr, _Receiver __rcvr, _Adaptor __adaptor)
-          : __operation_base<
-              _Receiver,
-              _Adaptor
-            >{static_cast<_Receiver&&>(__rcvr), static_cast<_Adaptor&&>(__adaptor)}
+          : __operation_base<_Receiver, _Adaptor>{
+              static_cast<_Receiver&&>(__rcvr),
+              static_cast<_Adaptor&&>(__adaptor)}
           , __op_{exec::subscribe(
               static_cast<_Sender&&>(__sndr),
               stdexec::__t<__receiver<_ReceiverId, _Adaptor>>{this})} {

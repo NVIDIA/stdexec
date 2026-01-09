@@ -17,13 +17,13 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__config.hpp"
-#include "__concepts.hpp"
 #include "__completion_behavior.hpp"
+#include "__completion_signatures_of.hpp"
+#include "__concepts.hpp"
+#include "__config.hpp"
 #include "__execution_fwd.hpp"
-#include "__sender_introspection.hpp"
-#include "__senders_core.hpp"
 #include "__meta.hpp"
+#include "__sender_introspection.hpp"
 
 #include "__utility.hpp"
 

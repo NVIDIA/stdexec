@@ -56,7 +56,7 @@ namespace exec {
       auto operator()(Ts&&... ts) const noexcept -> _error_t<Ts...>;
 
       template <class... Ts>
-        requires stdexec::__sigs::__is_compl_sig<_set_tag_t(Ts...)>
+        requires stdexec::__cmplsigs::__is_compl_sig<_set_tag_t(Ts...)>
       auto operator()(Ts&&...) const noexcept -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
         return {};
       }
@@ -183,7 +183,7 @@ namespace exec {
       if constexpr (stdexec::__callable<Fn, _probe_fn>) {
         using _completions = stdexec::__call_result_t<Fn, _probe_fn>;
         static_assert(
-          stdexec::__sigs::__is_completion_signatures<_completions>,
+          stdexec::__is_instance_of<_completions, stdexec::completion_signatures>,
           "The function passed to just_from, just_error_from, and just_stopped_from must return an "
           "instance of a specialization of stdexec::completion_signatures<>.");
         return _sndr<Fn>{

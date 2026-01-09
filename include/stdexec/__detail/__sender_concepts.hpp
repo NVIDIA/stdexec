@@ -19,11 +19,11 @@
 
 // include these after __execution_fwd.hpp
 #include "__awaitable.hpp"
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
-// #include "__operation_states.hpp"
+#include "__get_completion_signatures.hpp"
+#include "__meta.hpp"
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
 
@@ -31,6 +31,7 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   struct sender_t {
+    // NOT TO SPEC:
     using sender_concept = sender_t;
   };
 
@@ -38,25 +39,27 @@ namespace stdexec {
     template <class _Sender>
     concept __enable_sender = derived_from<typename _Sender::sender_concept, sender_t>
                            || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
-                           || __awaitable<_Sender, __env::__promise<env<>>>;
+                           || __awaitable<_Sender, __detail::__promise<env<>>>;
   } // namespace __detail
 
   template <class _Sender>
   inline constexpr bool enable_sender = __detail::__enable_sender<_Sender>;
 
+  // [exec.snd.concepts]
   template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>       //
                 && environment_provider<__cref_t<_Sender>> //
                 && move_constructible<__decay_t<_Sender>>
                 && constructible_from<__decay_t<_Sender>, _Sender>;
 
+  template <auto _Completions>
+  concept __constant_completion_signatures = __valid_completion_signatures<decltype(_Completions)>;
+
   template <class _Sender, class... _Env>
   concept sender_in =
-    (sizeof...(_Env) <= 1) && sender<_Sender> && requires(_Sender &&__sndr, _Env &&...__env) {
-      {
-        get_completion_signatures(static_cast<_Sender &&>(__sndr), static_cast<_Env &&>(__env)...)
-      } -> __valid_completion_signatures;
-    };
+    (sizeof...(_Env) <= 1) //
+    && sender<_Sender>     //
+    && __constant_completion_signatures<stdexec::get_completion_signatures<_Sender, _Env...>()>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
@@ -71,28 +74,37 @@ namespace stdexec {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
                       };
 
-  template <class _Sender, class _Receiver>
-  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
+  template <class _Sender>
+  concept dependent_sender = sender<_Sender>
+                          && __v<__mbool<stdexec::__is_dependent_sender<_Sender>()>>;
 
-  template <class _Sender, class _Receiver>
-  concept __nothrow_connectable = sender_to<_Sender, _Receiver>
-                               && __nothrow_callable<connect_t, _Sender, _Receiver>;
+  template <class _Sender, class... _Env>
+  using __single_sender_value_t = __value_types_t<
+    __completion_signatures_of_t<_Sender, _Env...>,
+    __qq<__msingle>,
+    __qq<__msingle>
+  >;
+
+  template <class _Sender, class... _Env>
+  using __single_value_variant_sender_t =
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
 
   template <class _Tag, class _Sender, class... _Env>
-  concept __sends = sender_in<_Sender, _Env...> && __v<__count_of<_Tag, _Sender, _Env...>> != 0;
+  concept __sends = sender_in<_Sender, _Env...> //
+                 && __v<__count_of<_Tag, _Sender, _Env...>> != 0;
 
   template <class _Tag, class _Sender, class... _Env>
-  concept __never_sends = sender_in<_Sender, _Env...>
+  concept __never_sends = sender_in<_Sender, _Env...> //
                        && __v<__count_of<_Tag, _Sender, _Env...>> == 0;
 
   template <class _Sender, class... _Env>
-  concept __single_value_sender = sender_in<_Sender, _Env...>
+  concept __single_value_sender = sender_in<_Sender, _Env...> //
                                && requires { typename __single_sender_value_t<_Sender, _Env...>; };
 
   template <class _Sender, class... _Env>
-  concept __single_value_variant_sender = sender_in<_Sender, _Env...> && requires {
-    typename __single_value_variant_sender_t<_Sender, _Env...>;
-  };
+  concept __single_value_variant_sender =
+    sender_in<_Sender, _Env...> //
+    && requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.

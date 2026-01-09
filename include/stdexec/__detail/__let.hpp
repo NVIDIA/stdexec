@@ -18,12 +18,12 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__any_receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
-#include "__any_receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
@@ -232,7 +232,7 @@ namespace stdexec {
         _Fun,
         __result_env_t<__t<_LetTag>, env_of_t<_CvrefSender>, _Env>
       >::template __f,
-      __sigs::__default_completion,
+      __cmplsigs::__default_completion,
       __mtry_q<__concat_completion_signatures>::__f
     >;
 
@@ -262,7 +262,7 @@ namespace stdexec {
 
     // Compute all the domains of all the result senders and make sure they're all the same
     template <class _SetTag, class _Child, class _Fun, class _Env>
-    using __result_domain_t = __gather_completions<
+    using __result_domain_t = __gather_completions_t<
       _SetTag,
       __completion_signatures_of_t<_Child, _Env>,
       __result_sender_fn<_SetTag, _Fun, __result_env_t<_SetTag, env_of_t<_Child>, _Env>>,
@@ -426,7 +426,7 @@ namespace stdexec {
     };
 
     template <class _SetTag, class _Sndr, class _Fn, class _Env>
-    using __has_nothrow_completions = __gather_completions<
+    using __has_nothrow_completions = __gather_completions_t<
       completion_signatures_of_t<_Sndr, _Env>,
       _SetTag,
       __has_nothrow_completions_fn<_SetTag, _Sndr, _Fn, _Env>,
@@ -475,7 +475,7 @@ namespace stdexec {
         using __domain_transform_fn =
           __let::__domain_transform_fn<_SetTag, _Fn, env_of_t<_Sndr>, _Env...>;
         return __minvoke_or_q<
-          __gather_completions,
+          __gather_completions_t,
           indeterminate_domain<>,
           __t<_LetTag>,
           __completion_signatures_of_t<_Sndr, _Env...>,
@@ -550,7 +550,7 @@ namespace stdexec {
 
           constexpr auto __pred_behavior =
             stdexec::get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
-          constexpr auto __result_behavior = __gather_completions<
+          constexpr auto __result_behavior = __gather_completions_t<
             __set_tag_t,
             __completions_t,
             __transform_fn,
@@ -633,7 +633,7 @@ namespace stdexec {
         using _Child = __sender_of<_Sender>;
         using _Fun = __decay_t<__fun_of<_Sender>>;
         using __mk_let_state = __mbind_front_q<__let_state, _SetTag, _Child, _Fun, _Receiver>;
-        using __let_state_t = __gather_completions_of<
+        using __let_state_t = __gather_completions_of_t<
           _SetTag,
           _Child,
           env_of_t<_Receiver>,

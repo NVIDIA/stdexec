@@ -152,7 +152,7 @@ namespace nvexec::_strm {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = __v<__gather_completions_of<
+        static constexpr std::size_t value = __v<__gather_completions_of_t<
           set_value_t,
           Sender,
           env_of_t<Receiver>,

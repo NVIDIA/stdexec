@@ -23,10 +23,10 @@
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__operation_states.hpp"
-#include "__senders.hpp"
-#include "__sender_adaptor_closure.hpp"
-#include "__schedulers.hpp"
 #include "__schedule_from.hpp"
+#include "__schedulers.hpp"
+#include "__sender_adaptor_closure.hpp"
+#include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__variant.hpp" // IWYU pragma: keep for __variant_for
@@ -182,7 +182,8 @@ namespace stdexec {
             return !__value_types_t<
               __completions_t,
               __qq<__nothrow_decay_copyable_t>,
-              __qq<__mand_t>>::value;
+              __qq<__mand_t>
+            >::value;
           }
         }
         return false;
@@ -217,8 +218,8 @@ namespace stdexec {
         requires(__same_as<_SetTag, set_value_t>
                  || __never_sends<_SetTag, _Sender, __fwd_env_t<_Env>...>)
              && (!__has_decay_copy_errors<_SetTag, _Env...>())
-      [[nodiscard]] constexpr auto query(get_completion_scheduler_t<_SetTag>, const _Env&... __env)
-        const noexcept
+      [[nodiscard]]
+      constexpr auto query(get_completion_scheduler_t<_SetTag>, const _Env&... __env) const noexcept
         -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __fwd_env_t<_Env>...> {
         return get_completion_scheduler<_SetTag>(__sch_, __fwd_env(__env)...);
       }
@@ -231,7 +232,8 @@ namespace stdexec {
         -> __call_result_t<
           get_completion_scheduler_t<_SetTag>,
           env_of_t<_Sender>,
-          __fwd_env_t<_Env>...> {
+          __fwd_env_t<_Env>...
+        > {
         return get_completion_scheduler<_SetTag>(get_env(__sndr_), __fwd_env(__env)...);
       }
 
@@ -301,7 +303,8 @@ namespace stdexec {
         constexpr auto cb_sched = stdexec::get_completion_behavior<
           _Tag,
           schedule_result_t<_Scheduler>,
-          __fwd_env_t<_Env>...>();
+          __fwd_env_t<_Env>...
+        >();
         constexpr auto cb_sndr = stdexec::get_completion_behavior<_Tag, _Sender, _Env...>();
         return completion_behavior::weakest(cb_sched, cb_sndr);
       }
@@ -322,7 +325,8 @@ namespace stdexec {
     struct __continues_on_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
       using __scheduler_t = __decay_t<
-        __call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>, _Env...>>;
+        __call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>, _Env...>
+      >;
 
       static constexpr auto get_attrs = [](const auto& __data, const auto& __child) noexcept {
         return __attrs{__data, __child};

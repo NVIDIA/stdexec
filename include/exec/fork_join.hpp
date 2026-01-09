@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__receiver_ref.hpp"
+#include "../stdexec/execution.hpp"
 
 #include <exception>
 

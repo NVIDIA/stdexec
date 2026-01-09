@@ -17,8 +17,8 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
-#include "__senders_core.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 

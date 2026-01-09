@@ -21,15 +21,15 @@
 #else
 #  include <linux/io_uring.h>
 
-#  include "../../stdexec/execution.hpp"
 #  include "../../stdexec/__detail/__atomic.hpp"
+#  include "../../stdexec/execution.hpp"
 #  include "../timed_scheduler.hpp"
 
 #  include "../__detail/__atomic_intrusive_queue.hpp"
 #  include "../__detail/__bit_cast.hpp"
 
-#  include "./safe_file_descriptor.hpp"
 #  include "./memory_mapped_region.hpp"
+#  include "./safe_file_descriptor.hpp"
 
 #  include "../scope.hpp"
 
@@ -49,9 +49,9 @@
 #      define STDEXEC_HAS_IORING_OP_READ
 #    endif
 
-#    include <sys/uio.h>
 #    include <sys/eventfd.h>
 #    include <sys/syscall.h>
+#    include <sys/uio.h>
 
 #    include <algorithm>
 #    include <cstring>
@@ -668,7 +668,7 @@ namespace exec {
     template <class _Op>
     concept __stoppable_task = __io_task<_Op> && requires(_Op& __op) {
       {
-        static_cast<_Op &&>(__op).receiver()
+        static_cast<_Op&&>(__op).receiver()
       } noexcept -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
     };
 

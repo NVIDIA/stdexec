@@ -19,8 +19,8 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__sender_introspection.hpp"
-#include "__senders_core.hpp"
 #include "__type_traits.hpp"
 
 namespace stdexec {

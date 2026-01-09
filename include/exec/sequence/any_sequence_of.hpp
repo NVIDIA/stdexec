@@ -18,8 +18,8 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
-#include "../sequence_senders.hpp"
 #include "../any_sender_of.hpp"
+#include "../sequence_senders.hpp"
 
 namespace exec {
   namespace __any {

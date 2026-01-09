@@ -76,6 +76,7 @@ TEST_CASE("sequence produces a sender", "[sequence]") {
   using env_t = ex::prop<ex::get_allocator_t, std::allocator<void>>;
   auto s1 = exec::sequence(ex::just_error(42), ex::read_env(ex::get_allocator));
   STATIC_REQUIRE(ex::sender<decltype(s1)>);
+  STATIC_REQUIRE(ex::dependent_sender<decltype(s1)>);
   STATIC_REQUIRE(!ex::sender_in<decltype(s1)>);
   STATIC_REQUIRE(ex::sender_in<decltype(s1), env_t>);
   check_val_types<ex::__mset<pack<const std::allocator<void>&>>, env_t>(s1);
@@ -131,11 +132,11 @@ TEST_CASE("sequence with two arguments works", "[sequence]") {
   }
 }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
 TEST_CASE("sequence with sender with throwing connect", "[sequence]") {
   auto err = std::make_exception_ptr(connect_exception{});
   auto sndr = exec::sequence(ex::just(big{}), throwing_connect{}, ex::just(big{}, 42));
   auto op = ex::connect(std::move(sndr), expect_error_receiver{err});
   ex::start(op);
 }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()

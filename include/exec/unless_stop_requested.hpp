@@ -36,7 +36,9 @@ namespace exec {
       std::conditional_t<
         __unstoppable_env<_Env>,
         completion_signatures<>,
-        completion_signatures<set_stopped_t()>>>;
+        completion_signatures<set_stopped_t()>
+      >
+    >;
 
     struct __connect_fn {
       template <class _Sender, class _Receiver>

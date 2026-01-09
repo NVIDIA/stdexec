@@ -18,6 +18,7 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
@@ -25,7 +26,6 @@
 #include "__just.hpp"
 #include "__let.hpp"
 #include "__schedulers.hpp"
-#include "__senders_core.hpp"
 #include "__utility.hpp"
 
 namespace stdexec {
@@ -51,7 +51,8 @@ namespace stdexec {
     struct starts_on_t {
       template <scheduler _Scheduler, sender _Sender>
       auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+        return __make_sexpr<starts_on_t>(
+          static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <__decay_copyable _Sender, class _Env>
@@ -98,7 +99,8 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag>, _Env&&...) const noexcept
         -> _Scheduler
-        requires(__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>) {
+        requires(__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>)
+      {
         // If child completes inline, then starts_on completes on its scheduler
         return __sched_;
       }
@@ -106,13 +108,14 @@ namespace stdexec {
       // Query for completion scheduler - delegates to child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_scheduler_t<_SetTag> __query, _Env&&... __env) const noexcept
-        -> __call_result_t<
-             get_completion_scheduler_t<_SetTag>,
-             env_of_t<_Child>,
-             __env2_t<_Scheduler, _Env>...
-          >
-        requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>) {
+      constexpr auto query(get_completion_scheduler_t<_SetTag> __query, _Env&&... __env)
+        const noexcept -> __call_result_t<
+          get_completion_scheduler_t<_SetTag>,
+          env_of_t<_Child>,
+          __env2_t<_Scheduler, _Env>...
+        >
+        requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>)
+      {
         // If child doesn't complete inline, delegate to child's completion scheduler
         return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
       }
@@ -121,7 +124,11 @@ namespace stdexec {
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...> {
+        -> __call_result_t<
+          get_completion_domain_t<_SetTag>,
+          env_of_t<_Child>,
+          __env2_t<_Scheduler, _Env>...
+        > {
         return {};
       }
 

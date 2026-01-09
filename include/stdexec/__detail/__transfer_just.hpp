@@ -51,8 +51,8 @@ namespace stdexec {
       template <scheduler _Scheduler, __movable_value... _Values>
       auto
         operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
-          return __make_sexpr<transfer_just_t>(
-            __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
+        return __make_sexpr<transfer_just_t>(
+          __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
       }
 
       template <class _Sender, class _Env>

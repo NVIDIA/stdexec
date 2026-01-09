@@ -150,7 +150,7 @@ namespace nvexec::_strm {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = __v<__gather_completions_of<
+        static constexpr std::size_t value = __v<__gather_completions_of_t<
           set_error_t,
           Sender,
           env_of_t<Receiver>,
@@ -171,7 +171,7 @@ namespace nvexec::_strm {
       using completion_signatures = transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
-        __sigs::__default_set_value,
+        __cmplsigs::__default_set_value,
         _set_error_t
       >;
 

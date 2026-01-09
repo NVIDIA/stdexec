@@ -19,13 +19,13 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__continues_on.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__inline_scheduler.hpp"
 #include "__meta.hpp"
 #include "__schedulers.hpp"
-#include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"

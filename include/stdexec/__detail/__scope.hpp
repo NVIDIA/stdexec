@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__config.hpp"
 #include "__utility.hpp"
 
 namespace stdexec {

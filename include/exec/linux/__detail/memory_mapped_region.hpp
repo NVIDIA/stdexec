@@ -18,8 +18,8 @@
 
 #include "../memory_mapped_region.hpp"
 
-#include <utility>
 #include <sys/mman.h>
+#include <utility>
 
 namespace exec {
   inline memory_mapped_region::memory_mapped_region(void* __ptr, std::size_t __size) noexcept

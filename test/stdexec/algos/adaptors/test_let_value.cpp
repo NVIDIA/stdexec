@@ -103,7 +103,7 @@ namespace {
     return true;
   }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
     bool called1{false};
     bool called2{false};
@@ -145,7 +145,7 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
     ex::sender auto snd = ex::just_error(std::string{"err"})

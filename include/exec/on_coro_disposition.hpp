@@ -18,11 +18,11 @@
 
 // The original idea is taken from libunifex and adapted to stdexec.
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/coroutine.hpp"
-#include "task.hpp"
-#include "inline_scheduler.hpp" // IWYU pragma: keep
+#include "../stdexec/execution.hpp"
 #include "any_sender_of.hpp"
+#include "inline_scheduler.hpp" // IWYU pragma: keep
+#include "task.hpp"
 
 #include <exception>
 
@@ -50,7 +50,7 @@ namespace exec {
       }
 
       template <class _Promise>
-      auto await_suspend(__coro::coroutine_handle<_Promise> __h) noexcept -> bool {
+      auto await_suspend(__std::coroutine_handle<_Promise> __h) noexcept -> bool {
         auto& __promise = __h.promise();
         __disposition_ = __promise.__get_disposition_callback_(__promise.__parent_.address());
         return false;
@@ -68,7 +68,7 @@ namespace exec {
      public:
       using promise_type = __promise;
 
-      explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
+      explicit __task(__std::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro) {
       }
 
@@ -82,11 +82,10 @@ namespace exec {
       }
 
       template <__promise_with_disposition _Promise>
-      auto await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept -> bool {
+      auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool {
         __coro_.promise().__parent_ = __parent;
         __coro_.promise().__get_disposition_callback_ = [](void* __parent) noexcept {
-          _Promise& __promise = __coro::coroutine_handle<_Promise>::from_address(__parent)
-                                  .promise();
+          _Promise& __promise = __std::coroutine_handle<_Promise>::from_address(__parent).promise();
           return __promise.disposition();
         };
         __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
@@ -105,8 +104,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
-          -> __coro::coroutine_handle<> {
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept
+          -> __std::coroutine_handle<> {
           __promise& __p = __h.promise();
           auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
                                                     : __p.continuation().handle();
@@ -139,7 +138,7 @@ namespace exec {
         }
 #endif
 
-        auto initial_suspend() noexcept -> __coro::suspend_always {
+        auto initial_suspend() noexcept -> __std::suspend_always {
           return {};
         }
 
@@ -155,13 +154,13 @@ namespace exec {
           std::terminate();
         }
 
-        auto unhandled_stopped() noexcept -> __coro::coroutine_handle<__promise> {
+        auto unhandled_stopped() noexcept -> __std::coroutine_handle<__promise> {
           __is_unhandled_stopped_ = true;
-          return __coro::coroutine_handle<__promise>::from_promise(*this);
+          return __std::coroutine_handle<__promise>::from_promise(*this);
         }
 
         auto get_return_object() noexcept -> __task {
-          return __task(__coro::coroutine_handle<__promise>::from_promise(*this));
+          return __task(__std::coroutine_handle<__promise>::from_promise(*this));
         }
 
         auto await_transform(__get_disposition __awaitable) noexcept -> __get_disposition {
@@ -181,12 +180,12 @@ namespace exec {
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
         using __get_disposition_callback_t = task_disposition (*)(void*) noexcept;
-        __coro::coroutine_handle<> __parent_{};
+        __std::coroutine_handle<> __parent_{};
         __get_disposition_callback_t __get_disposition_callback_{nullptr};
         __any_scheduler __scheduler_{stdexec::inline_scheduler{}};
       };
 
-      __coro::coroutine_handle<__promise> __coro_;
+      __std::coroutine_handle<__promise> __coro_;
     };
 
     template <task_disposition _OnCompletion>

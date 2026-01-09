@@ -20,12 +20,12 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__completion_signatures.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
+#include "__receivers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__receivers.hpp"
-#include "__senders_core.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__type_traits.hpp"
 

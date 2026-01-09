@@ -18,10 +18,10 @@
 #include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
 #include "__queries.hpp"
-#include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 

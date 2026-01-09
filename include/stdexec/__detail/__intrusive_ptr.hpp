@@ -18,8 +18,8 @@
 #include "__concepts.hpp"
 
 #include "__atomic.hpp"
-#include <new> // IWYU pragma: keep for ::new
 #include <cstddef>
+#include <new> // IWYU pragma: keep for ::new
 #include <type_traits>
 #include <utility>
 

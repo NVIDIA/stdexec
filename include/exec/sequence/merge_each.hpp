@@ -22,17 +22,17 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-#include "../__detail/__basic_sequence.hpp"
+#include "../../stdexec/__detail/__completion_signatures_of.hpp"
 #include "../../stdexec/__detail/__concepts.hpp"
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__diagnostics.hpp"
 #include "../../stdexec/__detail/__execution_fwd.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__sender_introspection.hpp"
-#include "../../stdexec/__detail/__senders_core.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
+#include "../__detail/__basic_sequence.hpp"
 
 #include <atomic>
 
@@ -613,7 +613,7 @@ namespace exec {
           -> stdexec::transform_completion_signatures<
             stdexec::completion_signatures_of_t<_NestedValueSender, _Env...>,
             stdexec::completion_signatures<stdexec::set_stopped_t()>,
-            stdexec::__sigs::__default_set_value,
+            stdexec::__cmplsigs::__default_set_value,
             drop
           > {
           return {};

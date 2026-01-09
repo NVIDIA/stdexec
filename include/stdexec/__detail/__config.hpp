@@ -150,14 +150,27 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02 && __cpp_lib_coroutine >= 2019'02
 #  include <coroutine> // IWYU pragma: keep
-#  define STDEXEC_STD_NO_COROUTINES() 0
-namespace __coro = std; // NOLINT(misc-unused-alias-decls)
+#  define STDEXEC_NO_STD_COROUTINES() 0
+namespace stdexec::__std {
+  namespace __coro = std; // NOLINT(misc-unused-alias-decls)
+}
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
 #  include <experimental/coroutine>
-#  define STDEXEC_STD_NO_COROUTINES() 0
-namespace __coro = std::experimental;
+#  define STDEXEC_NO_STD_COROUTINES() 0
+namespace stdexec::__std {
+  namespace __coro = std::experimental; // NOLINT(misc-unused-alias-decls)
+}
 #else
-#  define STDEXEC_STD_NO_COROUTINES() 1
+#  define STDEXEC_NO_STD_COROUTINES() 1
+#endif
+
+#if !STDEXEC_NO_STD_COROUTINES()
+namespace stdexec::__std {
+  using __coro::coroutine_handle;
+  using __coro::suspend_always;
+  using __coro::suspend_never;
+  using __coro::noop_coroutine;
+} // namespace stdexec::__std
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -454,9 +467,9 @@ namespace stdexec {
 // https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
   && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
-#  define STDEXEC_STD_NO_PACK_INDEXING() 0
+#  define STDEXEC_NO_STD_PACK_INDEXING() 0
 #else // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
-#  define STDEXEC_STD_NO_PACK_INDEXING() 1
+#  define STDEXEC_NO_STD_PACK_INDEXING() 1
 #endif // no pack indexing
 
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
@@ -540,11 +553,18 @@ namespace stdexec {
 #endif
 
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
-#  define STDEXEC_STD_NO_EXCEPTIONS() 1
+#  define STDEXEC_NO_STD_EXCEPTIONS() 1
 #elif STDEXEC_MSVC() || STDEXEC_CLANG_CL()
-#  define STDEXEC_STD_NO_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
+#  define STDEXEC_NO_STD_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
 #else
-#  define STDEXEC_STD_NO_EXCEPTIONS() (__EXCEPTIONS == 0)
+#  define STDEXEC_NO_STD_EXCEPTIONS() (__EXCEPTIONS == 0)
+#endif
+
+#if !STDEXEC_NO_STD_EXCEPTIONS() && __cpp_constexpr_exceptions >= 2024'11L
+// https://wg21.link/p3068
+#  define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 0
+#else
+#  define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 1
 #endif
 
 // We need to treat host and device separately
@@ -597,7 +617,7 @@ namespace stdexec {
 //   {
 //     printf("unknown error\n");
 //   }
-#if STDEXEC_STD_NO_EXCEPTIONS()
+#if STDEXEC_NO_STD_EXCEPTIONS()
 #  define STDEXEC_TRY               if constexpr (true) {
 #  define STDEXEC_CATCH(...)        } else if constexpr (__VA_ARGS__ = ::stdexec::__catch_any_lvalue; false) {
 #  define STDEXEC_CATCH_ALL         } else if constexpr (true) {} else

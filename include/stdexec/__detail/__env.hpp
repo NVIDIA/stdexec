@@ -35,45 +35,6 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
   namespace __env {
-    template <class _Tp, class _Promise>
-    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
-      static_cast<_Tp &&>(__t).as_awaitable(__promise);
-    };
-
-    template <class _Promise>
-    struct __with_await_transform {
-      template <class _Ty>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      auto await_transform(_Ty&& __value) noexcept -> _Ty&& {
-        return static_cast<_Ty&&>(__value);
-      }
-
-      template <class _Ty>
-        requires __has_as_awaitable_member<_Ty, _Promise&>
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto await_transform(_Ty&& __value)
-        noexcept(noexcept(__declval<_Ty>().as_awaitable(__declval<_Promise&>())))
-          -> decltype(__declval<_Ty>().as_awaitable(__declval<_Promise&>())) {
-        return static_cast<_Ty&&>(__value).as_awaitable(static_cast<_Promise&>(*this));
-      }
-
-      template <class _Ty>
-        requires(!__has_as_awaitable_member<_Ty, _Promise&>)
-             && tag_invocable<as_awaitable_t, _Ty, _Promise&>
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto await_transform(_Ty&& __value)
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
-        return tag_invoke(as_awaitable, static_cast<_Ty&&>(__value), static_cast<_Promise&>(*this));
-      }
-    };
-
-    template <class _Env>
-    struct __promise : __with_await_transform<__promise<_Env>> {
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto get_env() const noexcept -> const _Env&;
-    };
-
     // A singleton environment from a query/value pair
     template <class _Query, class _Value>
     struct prop {

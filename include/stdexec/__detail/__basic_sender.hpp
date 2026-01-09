@@ -17,20 +17,21 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
+#include "__connect.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
-#include "__senders_core.hpp"
 #include "__sender_introspection.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 
-#include <utility> // for tuple_size/tuple_element
 #include <cstddef>
-#include <new> // IWYU pragma: keep for placement new
+#include <new>         // IWYU pragma: keep for placement new
 #include <type_traits> // IWYU pragma: keep for is_standard_layout
+#include <utility>     // for tuple_size/tuple_element
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -521,7 +522,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
         -> __msecond<
-          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
+          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>
         > {
         return {};
@@ -532,7 +533,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
+          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::connect, _Self, _Receiver>
         > {
         return __impl<_Self>::connect(
@@ -544,7 +545,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)
       static auto submit(_Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to_derived_from<_Self, __sexpr>>,
+          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::submit, _Self, _Receiver>
         > {
         return __impl<_Self>::submit(

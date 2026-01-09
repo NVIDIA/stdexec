@@ -19,10 +19,9 @@
 
 #include <memory>
 
+#include "__env.hpp"
 #include "__meta.hpp"
-#include "__env.hpp"
 #include "__receivers.hpp"
-#include "__env.hpp"
 #include "__scope.hpp"
 #include "__submit.hpp"
 #include "__transform_sender.hpp"

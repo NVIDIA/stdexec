@@ -16,13 +16,13 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/execution.hpp"
 
-#include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
+#include "trampoline_scheduler.hpp"
 
 #include <cstddef>
 #include <exception>
@@ -170,7 +170,7 @@ namespace exec {
       stdexec::transform_completion_signatures<
         __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
         __eptr_completion,
-        __sigs::__default_set_value,
+        __cmplsigs::__default_set_value,
         __error_t
       >,
       __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,

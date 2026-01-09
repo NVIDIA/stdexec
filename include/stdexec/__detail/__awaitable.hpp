@@ -15,19 +15,19 @@
  */
 #pragma once
 
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__config.hpp"
 #include "__utility.hpp"
 
 namespace stdexec {
-#if !STDEXEC_STD_NO_COROUTINES()
+#if !STDEXEC_NO_STD_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
   concept __await_suspend_result = __one_of<_Tp, void, bool>
-                                || __is_instance_of<_Tp, __coro::coroutine_handle>;
+                                || __is_instance_of<_Tp, __std::coroutine_handle>;
 
   template <class _Awaiter, class... _Promise>
-  concept __awaiter = requires(_Awaiter& __awaiter, __coro::coroutine_handle<_Promise...> __h) {
+  concept __awaiter = requires(_Awaiter& __awaiter, __std::coroutine_handle<_Promise...> __h) {
     __awaiter.await_ready() ? 1 : 0;
     { __awaiter.await_suspend(__h) } -> __await_suspend_result;
     __awaiter.await_resume();
@@ -38,16 +38,16 @@ namespace stdexec {
 
   template <class _Awaitable>
   void __co_await_constraint(_Awaitable&& __awaitable)
-    requires requires { operator co_await(static_cast<_Awaitable &&>(__awaitable)); };
+    requires requires { operator co_await(static_cast<_Awaitable&&>(__awaitable)); };
 #  endif
 
   template <class _Awaitable>
   auto __get_awaiter(_Awaitable&& __awaitable, __ignore = {}) -> decltype(auto) {
-    if constexpr (requires { static_cast<_Awaitable &&>(__awaitable).operator co_await(); }) {
+    if constexpr (requires { static_cast<_Awaitable&&>(__awaitable).operator co_await(); }) {
       return static_cast<_Awaitable&&>(__awaitable).operator co_await();
     } else if constexpr (requires {
 #  if STDEXEC_MSVC()
-                           __co_await_constraint(static_cast<_Awaitable &&>(__awaitable));
+                           __co_await_constraint(static_cast<_Awaitable&&>(__awaitable));
 #  else
         operator co_await(static_cast<_Awaitable&&>(__awaitable));
 #  endif
@@ -60,17 +60,17 @@ namespace stdexec {
 
   template <class _Awaitable, class _Promise>
   auto __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise) -> decltype(auto)
-    requires requires { __promise->await_transform(static_cast<_Awaitable &&>(__awaitable)); }
+    requires requires { __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)); }
   {
     if constexpr (requires {
-                    __promise->await_transform(static_cast<_Awaitable &&>(__awaitable))
+                    __promise->await_transform(static_cast<_Awaitable&&>(__awaitable))
                       .operator co_await();
                   }) {
       return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
     } else if constexpr (requires {
 #  if STDEXEC_MSVC()
                            __co_await_constraint(
-                             __promise->await_transform(static_cast<_Awaitable &&>(__awaitable)));
+                             __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
 #  else
         operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
 #  endif
@@ -84,7 +84,7 @@ namespace stdexec {
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable&& __awaitable, _Promise*... __promise) {
     {
-      stdexec::__get_awaiter(static_cast<_Awaitable &&>(__awaitable), __promise...)
+      stdexec::__get_awaiter(static_cast<_Awaitable&&>(__awaitable), __promise...)
     } -> __awaiter<_Promise...>;
   };
 

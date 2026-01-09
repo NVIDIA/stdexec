@@ -17,12 +17,12 @@
 
 #include "__execution_fwd.hpp"
 
-#include "__concepts.hpp"
 #include "__completion_signatures.hpp"
-#include "__diagnostics.hpp"
+#include "__concepts.hpp"
+#include "__env.hpp" // IWYU pragma: keep for env<>
 #include "__meta.hpp"
 #include "__query.hpp"
-#include "__senders_core.hpp"
+#include "__sender_concepts.hpp"
 
 #include <cstdarg>
 #include <cstdio>
@@ -32,45 +32,19 @@
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
-  namespace __debug {
-    struct __is_debug_env_t : __query<__is_debug_env_t> {
+  namespace __queries {
+    struct __debug_env_t : __query<__debug_env_t> {
       static constexpr auto query(forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
+  } // namespace __queries
 
+  namespace __debug {
     template <class _Env>
-    using __debug_env_t = env<prop<__is_debug_env_t, bool>, _Env>;
-
-    template <class _Env>
-    concept __is_debug_env = __callable<__is_debug_env_t, _Env>;
+    using __debug_env_t = env<prop<__queries::__debug_env_t, bool>, _Env>;
 
     struct __completion_signatures { };
-
-#if STDEXEC_MSVC()
-    // MSVCBUG https://developercommunity.visualstudio.com/t/Explicit-variable-template-specialisatio/10360032
-    // MSVCBUG https://developercommunity.visualstudio.com/t/Non-function-type-interpreted-as-functio/10447831
-
-    template <class _Sig>
-    struct __normalize_sig;
-
-    template <class _Tag, class... _Args>
-    struct __normalize_sig<_Tag(_Args...)> {
-      using __type = _Tag (*)(_Args&&...);
-    };
-
-    template <class _Sig>
-    using __normalize_sig_t = __normalize_sig<_Sig>::__type;
-#else
-    template <class _Sig>
-    extern int __normalize_sig;
-
-    template <class _Tag, class... _Args>
-    extern _Tag (*__normalize_sig<_Tag(_Args...)>)(_Args&&...);
-
-    template <class _Sig>
-    using __normalize_sig_t = decltype(__normalize_sig<_Sig>);
-#endif
 
     template <class... _Sigs>
     struct __valid_completions {
@@ -105,7 +79,7 @@ namespace stdexec {
 
     template <class _CvrefSenderId, class _Env, class... _Sigs>
     struct __debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>
-      : __valid_completions<__normalize_sig_t<_Sigs>...> {
+      : __valid_completions<__cmplsigs::__normalize_sig_t<_Sigs>...> {
       using __t = __debug_receiver;
       using __id = __debug_receiver;
       using receiver_concept = receiver_t;
@@ -130,14 +104,16 @@ namespace stdexec {
     [[deprecated(
       "The sender claims to send a particular set of completions,"
       " but in actual fact it completes with a result that is not"
-      " one of the declared completion signatures.")]] STDEXEC_ATTRIBUTE(host, device) void _ATTENTION_() noexcept {
+      " one of the declared completion signatures.")]] //
+    STDEXEC_ATTRIBUTE(host, device)                    //
+      void _ATTENTION_() noexcept {
     }
 
     template <class _Sig>
     struct __invalid_completion {
       struct __t {
         template <class _CvrefSenderId, class _Env, class... _Sigs>
-        // BUGBUG this works around a recently (aug 2023) introduced regression in nvc++
+        // [WAR]: this works around a recently (aug 2023) introduced regression in nvc++
           requires(!__one_of<_Sig, _Sigs...>)
         __t(__debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>&&) noexcept {
           using _SenderId = __decay_t<_CvrefSenderId>;
@@ -243,13 +219,12 @@ namespace stdexec {
             }
           }
         } else {
-          __diagnose_sender_concept_failure<_Sender, _Env>();
+          stdexec::__diagnose_sender_concept_failure<_Sender, _Env>();
         }
       }
     }
   } // namespace __debug
 
-  using __debug::__is_debug_env;
   using __debug::__debug_sender;
 
   inline void __debug_printf(const char* fmt, ...) {

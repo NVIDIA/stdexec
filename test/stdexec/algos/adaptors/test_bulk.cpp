@@ -158,7 +158,7 @@ namespace {
       ex::just_error(n) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) noexcept { }));
-#  if !STDEXEC_STD_NO_EXCEPTIONS()
+#  if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
       ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
 #  endif
@@ -179,7 +179,7 @@ namespace {
       ex::just_error(n) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::transfer_just(sched3) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
       ex::transfer_just(sched3)
       | ex::bulk_chunked(ex::par, n, [](int, int) { throw std::logic_error{"err"}; }));
@@ -200,7 +200,7 @@ namespace {
       ex::just_error(n) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::transfer_just(sched3) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
       ex::transfer_just(sched3)
       | ex::bulk_unchunked(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
@@ -502,7 +502,7 @@ namespace {
     ex::start(op);
   }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("bulk can throw, and set_error will be called", "[adaptors][bulk]") {
     constexpr int n = 2;
 
@@ -528,7 +528,7 @@ namespace {
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   TEST_CASE("bulk function is not called on error", "[adaptors][bulk]") {
     constexpr int n = 2;
@@ -657,7 +657,7 @@ namespace {
       }
     }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       constexpr int n = 9;
       auto snd = ex::transfer_just(sch)
@@ -665,7 +665,7 @@ namespace {
 
       CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
     SECTION("With concurrent enqueueing") {
       constexpr std::size_t n = 4;
@@ -772,7 +772,7 @@ namespace {
       }
     }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       constexpr int n = 9;
       auto snd = ex::transfer_just(sch) | ex::bulk_chunked(ex::par, n, [](int, int) {
@@ -781,7 +781,7 @@ namespace {
 
       CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
     SECTION("With concurrent enqueueing") {
       constexpr std::size_t n = 4;
@@ -882,7 +882,7 @@ namespace {
       }
     }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       auto const n = pool.available_parallelism();
       auto snd = ex::transfer_just(sch) | ex::bulk_unchunked(ex::par, n, [](int) {
@@ -891,7 +891,7 @@ namespace {
 
       CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
     }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
     SECTION("With concurrent enqueueing") {
       auto const n = pool.available_parallelism();

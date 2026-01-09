@@ -19,8 +19,8 @@
 #include "../stdexec/execution.hpp"
 
 #include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__diagnostics.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
@@ -271,7 +271,7 @@ namespace exec {
 
     struct get_item_types_t {
       template <class _Sequence, class _Env>
-      static constexpr auto __get_declfn() noexcept {
+      static consteval auto __get_declfn() noexcept {
         static_assert(sizeof(_Sequence), "Incomplete type used with get_item_types");
         static_assert(sizeof(_Env), "Incomplete type used with get_item_types");
         using __tfx_sequence_t = transform_sender_result_t<_Sequence, _Env>;
@@ -472,7 +472,7 @@ namespace exec {
   using __to_sequence_completions_t = stdexec::__transform_completion_signatures<
     _Completions,
     stdexec::__mconst<stdexec::completion_signatures<stdexec::set_value_t()>>::__f,
-    stdexec::__sigs::__default_set_error,
+    stdexec::__cmplsigs::__default_set_error,
     stdexec::completion_signatures<stdexec::set_stopped_t()>,
     stdexec::__concat_completion_signatures
   >;
@@ -589,7 +589,7 @@ namespace exec {
       }
 
       template <class _Sequence, class _Receiver>
-      static constexpr auto __get_declfn() noexcept {
+      static consteval auto __get_declfn() noexcept {
         constexpr bool __nothrow_tfx_sequence =
           __nothrow_callable<transform_sender_t, _Sequence, env_of_t<_Receiver>>;
         using __tfx_sequence_t = __transform_sender_result_t<_Sequence, _Receiver>;
@@ -879,7 +879,7 @@ namespace exec {
       stdexec::completion_signatures<_Sigs...>,
       item_types<_Items...>
     >
-      : __valid_completions<__normalize_sig_t<_Sigs>...>
+      : __valid_completions<stdexec::__cmplsigs::__normalize_sig_t<_Sigs>...>
       , __valid_next<_Items...> {
       using __t = __debug_sequence_sender_receiver;
       using __id = __debug_sequence_sender_receiver;
@@ -892,7 +892,7 @@ namespace exec {
 
     template <class _Env, class _Sequence>
     void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
-      if constexpr (!__is_debug_env<_Env>) {
+      if constexpr (!stdexec::__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
           using __sigs_t = stdexec::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;
           using __item_types_t = __sequence_sndr::__item_types_of_t<_Sequence, __debug_env_t<_Env>>;

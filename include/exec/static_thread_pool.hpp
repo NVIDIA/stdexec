@@ -17,19 +17,19 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__atomic.hpp"
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/execution.hpp"
 #include "__detail/__atomic_intrusive_queue.hpp"
 #include "__detail/__bwos_lifo_queue.hpp"
-#include "__detail/__xorshift.hpp"
 #include "__detail/__numa.hpp"
+#include "__detail/__xorshift.hpp"
 
-#include "sequence_senders.hpp"
 #include "sequence/iterate.hpp"
+#include "sequence_senders.hpp"
 
 #include <algorithm>
 #include <compare>

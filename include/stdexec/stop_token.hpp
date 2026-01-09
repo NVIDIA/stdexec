@@ -20,10 +20,10 @@
 #include "__detail/__query.hpp"
 #include "__detail/__stop_token.hpp" // IWYU pragma: export
 
-#include <version>
 #include <cstdint>
-#include <utility>
 #include <thread>
+#include <utility>
+#include <version>
 
 #if __has_include(<stop_token>) && __cpp_lib_jthread >= 2019'11L
 #  include <stop_token> // IWYU pragma: export

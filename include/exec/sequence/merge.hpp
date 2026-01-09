@@ -16,17 +16,16 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__completion_signatures_of.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
-#include "../sequence_senders.hpp"
 
 #include "../__detail/__basic_sequence.hpp"
-#include "./transform_each.hpp"
-#include "./ignore_all_values.hpp"
-#include "stdexec/__detail/__execution_fwd.hpp"
-#include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__senders_core.hpp"
-#include "stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../sequence_senders.hpp"
+#include "ignore_all_values.hpp"
+#include "transform_each.hpp"
 
 namespace exec {
   namespace __merge {
@@ -152,11 +151,15 @@ namespace exec {
 
       struct _INVALID_ARGUMENTS_TO_MERGE_ { };
 
-      template <class _Self, class _Env>
-      using __error_t = __mexception<
-        _INVALID_ARGUMENTS_TO_MERGE_,
-        __children_of<_Self, __q<_WITH_SEQUENCES_>>,
-        _WITH_ENVIRONMENT_<_Env>
+      template <class _Self, class... _Env>
+      using __error_t = std::conditional_t<
+        sizeof...(_Env) == 0,
+        __dependent_sender_error<_Self>,
+        __mexception<
+          _INVALID_ARGUMENTS_TO_MERGE_,
+          __children_of<_Self, __q<_WITH_SEQUENCES_>>,
+          _WITH_ENVIRONMENT_<_Env>...
+        >
       >;
 
       template <class... _Env>

@@ -22,11 +22,11 @@
 
 #  include "../../stdexec/concepts.hpp"
 #  include "../../stdexec/execution.hpp"
-#  include "../sequence_senders.hpp"
 #  include "../__detail/__basic_sequence.hpp"
+#  include "../sequence_senders.hpp"
 
-#  include "../trampoline_scheduler.hpp"
 #  include "../sequence.hpp"
+#  include "../trampoline_scheduler.hpp"
 
 #  include <exception>
 #  include <ranges>
