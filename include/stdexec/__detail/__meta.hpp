@@ -18,6 +18,7 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__type_traits.hpp"
+#include "__utility.hpp" // IWYU pragma: keep for __ignore_t
 
 #include <cassert>
 #include <compare>
