@@ -74,32 +74,41 @@ namespace stdexec {
   template <class... _What, class... _Values>
   [[nodiscard]]
   consteval auto __invalid_completion_signature(_Values...) {
-    return __mexception<_What...>{};
+    return __mexception<_What...>();
   }
 
 #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
-  template <class... _What, class... _Values>
+  template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
-  consteval auto __invalid_completion_signature(_Values... __values) -> completion_signatures<> {
-    if constexpr (sizeof...(_Values) == 1) {
-      throw __sender_type_check_failure<_Values..., _What...>(__values...);
+  consteval auto __invalid_completion_signature([[maybe_unused]] _Values... __values)
+    -> completion_signatures<> {
+    if constexpr (__same_as<_What, dependent_sender_error>) {
+      throw __dependent_sender_error<_What, _More...>();
+    } else if constexpr (sizeof...(_Values) == 1) {
+      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
     } else {
-      throw __sender_type_check_failure<__tuple<_Values...>, _What...>(__tuple{__values...});
+      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
     }
   }
 
 #endif // ^^^ constexpr exceptions ^^^
 
+  template <class... _What>
+  [[nodiscard]]
+  consteval auto __invalid_completion_signature(__mexception<_What...>) {
+    return stdexec::__invalid_completion_signature<_What...>();
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_signatures
   STDEXEC_PRAGMA_PUSH()
-  namespace __cmplsigs {
-    // warning C4913: user defined binary operator ',' exists but no overload could convert all operands,
-    // default built-in binary operator ',' used
-    STDEXEC_PRAGMA_IGNORE_MSVC(4913)
+  // warning C4913: user defined binary operator ',' exists but no overload could convert all operands,
+  // default built-in binary operator ',' used
+  STDEXEC_PRAGMA_IGNORE_MSVC(4913)
 
+  namespace __cmplsigs {
 #define STDEXEC_GET_COMPLSIGS(...)                                                                 \
   STDEXEC_REMOVE_REFERENCE(                                                                        \
     STDEXEC_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
@@ -111,6 +120,9 @@ namespace stdexec {
 
     struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION {
     };
+
+    template <class _Ty>
+    concept __non_sender = !enable_sender<__decay_t<_Ty>>;
 
     template <__valid_completion_signatures _Completions>
     consteval auto __checked_complsigs() {
@@ -131,14 +143,11 @@ namespace stdexec {
       }
     }
 
-    template <class _Sender, class... _Env>
-    concept __has_get_completion_signatures = requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env...); };
-
-    template <class _Sender, class... _Env>
+    template <class _Sender, __non_sender... _Env>
     using __member_result_t = //
       decltype(__declval<_Sender>().get_completion_signatures(__declval<_Env>()...));
 
-    template <class _Sender, class... _Env>
+    template <class _Sender, __non_sender... _Env>
     using __static_member_result_t =             //
       decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
                ::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
@@ -150,14 +159,18 @@ namespace stdexec {
     concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Env...>;
 
     template <class _Sender, class... _Env>
+    concept __with_consteval_static_member = (__non_sender<_Env> && ...)
+                                          && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env...); };
+
+    template <class _Sender>
+    using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
+
+    template <class _Sender, class... _Env>
     concept __with_tag_invoke = tag_invocable<get_completion_signatures_t, _Sender, _Env...>;
 
     template <class _Sender, class... _Env>
     concept __with_legacy_tag_invoke = (sizeof...(_Env) == 0)
                                     && tag_invocable<get_completion_signatures_t, _Sender, env<>>;
-
-    template <class _Sender>
-    using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
 
     template <class _Sender>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sender>;
@@ -166,16 +179,16 @@ namespace stdexec {
     [[nodiscard]]
     consteval auto __get_completion_signatures_helper() {
       using namespace __cmplsigs;
-      if constexpr (__has_get_completion_signatures<_Sender, _Env...>) {
-        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
-      } else if constexpr (__has_get_completion_signatures<_Sender>) {
-        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender));
-      } else if constexpr (__with_static_member<_Sender, _Env...>) {
+      if constexpr (__with_static_member<_Sender, _Env...>) {
         return STDEXEC_CHECKED_COMPLSIGS(__static_member_result_t<_Sender, _Env...>());
-      } else if constexpr (__with_member_alias<_Sender>) {
-        return STDEXEC_CHECKED_COMPLSIGS(__member_alias_t<_Sender>());
       } else if constexpr (__with_member<_Sender, _Env...>) {
         return STDEXEC_CHECKED_COMPLSIGS(__member_result_t<_Sender, _Env...>());
+      } else if constexpr (__with_member_alias<_Sender>) {
+        return STDEXEC_CHECKED_COMPLSIGS(__member_alias_t<_Sender>());
+      } else if constexpr (__with_consteval_static_member<_Sender, _Env...>) {
+        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
+      } else if constexpr (__with_consteval_static_member<_Sender>) {
+        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender));
       } else if constexpr (__with_tag_invoke<_Sender, _Env...>) {
         using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env...>;
         return STDEXEC_CHECKED_COMPLSIGS(_Result());
@@ -219,26 +232,29 @@ namespace stdexec {
     };
   } // namespace __cmplsigs
 
+  STDEXEC_PRAGMA_POP()
+
   template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
   [[nodiscard]]
   consteval auto get_completion_signatures() -> __well_formed_completions auto {
-    static_assert(sizeof...(_Env) <= 1, "At most one environment is allowed.");
     if constexpr (0 == sizeof...(_Env)) {
       return __cmplsigs::__get_completion_signatures_helper<_Sender>();
     } else {
       // Apply a lazy sender transform if one exists before computing the completion signatures:
-      using _Result = transform_sender_result_t<_Sender, _Env...>;
-      if constexpr (__merror<_Result>) {
+      using _NewSender = transform_sender_result_t<_Sender, _Env...>;
+      if constexpr (__merror<_NewSender>) {
         // Computing the type of the transformed sender returned an error type. Propagate it.
-        return _Result();
+        return stdexec::__invalid_completion_signature(_NewSender());
       } else {
-        return __cmplsigs::__get_completion_signatures_helper<_Result, _Env...>();
+        return __cmplsigs::__get_completion_signatures_helper<_NewSender, _Env...>();
       }
     }
   }
 
   // Legacy interface:
   template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
   constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
     -> __well_formed_completions auto {
     return stdexec::get_completion_signatures<_Sender, _Env...>();
@@ -247,38 +263,38 @@ namespace stdexec {
   template <class _Sender>
     requires __cmplsigs::__with_legacy_tag_invoke<_Sender>
   [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
-  constexpr auto get_completion_signatures(_Sender&&) noexcept
-    -> tag_invoke_result_t<get_completion_signatures_t, _Sender> {
-    return {};
+  constexpr auto get_completion_signatures(_Sender&&) noexcept //
+    -> __well_formed_completions auto {
+    return tag_invoke_result_t<get_completion_signatures_t, _Sender>();
   }
 
   template <class _Sender, class _Env>
     requires __cmplsigs::__with_legacy_tag_invoke<transform_sender_result_t<_Sender, _Env>, _Env>
   [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
   constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
-    -> tag_invoke_result_t<
+    -> __well_formed_completions auto {
+    return tag_invoke_result_t<
       get_completion_signatures_t,
       transform_sender_result_t<_Sender, _Env>,
       _Env
-    > {
-    return {};
+    >();
   }
 
-  STDEXEC_PRAGMA_POP()
+  // An unconstrained alias for get_completion_signatures:
+  template <class _Sender, class... _Env>
+  using __completion_signatures_of_t =
+    decltype(stdexec::get_completion_signatures<_Sender, _Env...>());
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
-  [[nodiscard]]
-  consteval auto __is_dependent_sender() noexcept -> bool {
-    using _Completions = decltype(stdexec::get_completion_signatures<_Sender>());
-    return STDEXEC_IS_BASE_OF(dependent_sender_error, _Completions);
-  }
+  concept __is_dependent_sender =
+    derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
   // When asked for its completions without an envitonment, a dependent sender
   // will throw an exception of a type derived from `dependent_sender_error`.
   template <class _Sender>
   [[nodiscard]]
-  consteval bool __is_dependent_sender() noexcept try {
+  consteval bool __is_dependent_sender_helper() noexcept try {
     (void) stdexec::get_completion_signatures<_Sender>();
     return false; // didn't throw, not a dependent sender
   } catch (dependent_sender_error&) {
@@ -286,12 +302,10 @@ namespace stdexec {
   } catch (...) {
     return false; // different kind of exception was thrown; not a dependent sender
   }
-#endif // ^^^ constexpr exceptions ^^^
 
-  // An unconstrained alias for get_completion_signatures:
-  template <class _Sender, class... _Env>
-  using __completion_signatures_of_t =
-    decltype(stdexec::get_completion_signatures<_Sender, _Env...>());
+  template <class _Sender>
+  concept __is_dependent_sender = __v<__mbool<__is_dependent_sender_helper<_Sender>()>>;
+#endif // ^^^ constexpr exceptions ^^^
 
   template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>
   using __gather_completions_of_t = __gather_completions_t<

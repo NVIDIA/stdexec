@@ -63,24 +63,17 @@ namespace exec {
       return _Self::__tag().get_env(*this);
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    STDEXEC_EXPLICIT_THIS_BEGIN(
-      auto get_completion_signatures)(this _Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag().get_completion_signatures(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...)) {
-      return {};
-    }
-    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
-
-    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    static auto get_item_types(_Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag()
-                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...)) {
-      return {};
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
+    static consteval auto get_completion_signatures() {
+      return __tag_t::template get_completion_signatures<_Self, _Env...>();
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
+    static consteval auto get_item_types() {
+      return __tag_t::template get_item_types<_Self, _Env...>();
+    }
+
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, stdexec::receiver _Receiver>
     static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> decltype(__self.__tag()

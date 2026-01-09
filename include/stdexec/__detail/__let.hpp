@@ -595,12 +595,16 @@ namespace stdexec {
 
       template <class _Sender>
       auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
-          []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
-            return __make_sexpr<__let_tag<_SetTag>>(
-              __data_t{static_cast<_Child&&>(__child), static_cast<_Fun&&>(__fun)});
-          });
+        if constexpr (!__movable_value<_Sender>) {
+          return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
+        } else {
+          return __sexpr_apply(
+            static_cast<_Sender&&>(__sndr),
+            []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
+              return __make_sexpr<__let_tag<_SetTag>>(
+                __data_t{static_cast<_Child&&>(__child), static_cast<_Fun&&>(__fun)});
+            });
+        }
       }
     };
 

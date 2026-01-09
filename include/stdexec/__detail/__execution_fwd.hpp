@@ -226,10 +226,14 @@ namespace stdexec {
 
   // Legacy interface:
   template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
   constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
     -> __well_formed_completions auto;
 
   template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
   consteval auto get_completion_signatures() -> __well_formed_completions auto;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

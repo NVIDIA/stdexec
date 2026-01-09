@@ -469,32 +469,31 @@ namespace stdexec {
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
-  // Specialization; see above.
-  struct __if_ {
+  namespace __detail {
     template <bool>
-    struct __fn {
+    struct __if_ {
       template <class _Then, class _Else>
       using __f = _Then;
     };
 
-    template <class _Pred, class _Then, class _Else>
-    using __f = __fn<bool(_Pred::value)>::template __f<_Then, _Else>;
-  };
+    template <>
+    struct __if_<false> {
+      template <class _Then, class _Else>
+      using __f = _Else;
+    };
 
-  template <>
-  struct __if_::__fn<false> {
-    template <class _Then, class _Else>
-    using __f = _Else;
-  };
+    template <class _Pred, class _Then, class _Else>
+    using __if_t = __if_<bool(_Pred::value)>::template __f<_Then, _Else>;
+  } // namespace __detail
 
   //! Metafunction selects `_Then` if the bool template is `true`, otherwise the second.
-  //! That is, `__<true>::__f<A, B>` is `A` and `__<false>::__f<A, B>` is B.
-  //! This is similar to `std::conditional_t<Cond, A, B>`.
+  //! This is similar to `std::conditional_t<Pred, Then, Else>` but instantiates fewer
+  //! templates.
   template <class _Pred, class _Then, class _Else>
-  using __if = __meval<__if_::__f, _Pred, _Then, _Else>;
+  using __if = __meval<__detail::__if_t, _Pred, _Then, _Else>;
 
   template <bool _Pred, class _Then, class _Else>
-  using __if_c = __if<__mbool<_Pred>, _Then, _Else>;
+  using __if_c = __minvoke<__detail::__if_<_Pred>, _Then, _Else>;
 
   template <class _Pred, class _Then, class _Else, class... _Args>
   using __minvoke_if = __minvoke<__if<_Pred, _Then, _Else>, _Args...>;
@@ -503,7 +502,7 @@ namespace stdexec {
   using __minvoke_if_c = __minvoke<__if_c<_Pred, _Then, _Else>, _Args...>;
 
   template <bool _Pred, class _Tp = void>
-  using __menable_if = std::enable_if_t<_Pred, _Tp>;
+  using __enable_if = std::enable_if_t<_Pred, _Tp>;
 
   template <class _Tp>
   struct __mconst {

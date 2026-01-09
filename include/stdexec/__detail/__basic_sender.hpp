@@ -519,21 +519,22 @@ namespace stdexec {
       }
 
       template <__decays_to_derived_from<__sexpr> _Self, class... _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-        -> __msecond<
-          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
-          __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>
-        > {
-        return {};
+      static consteval auto get_completion_signatures() {
+        using __impl_t = __mtypeof<__impl<_Self>::get_completion_signatures>;
+        if constexpr (__callable<__impl_t, _Self, _Env...>) {
+          return __call_result_t<__impl_t, _Self, _Env...>();
+        } else if constexpr (sizeof...(_Env) == 0) {
+          return __dependent_sender<_Self>();
+        } else {
+          return __invalid_completion_signature(__unrecognized_sender_error<_Self, _Env...>());
+        }
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <__decays_to_derived_from<__sexpr> _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) -> __msecond<
-          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
+          __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::connect, _Self, _Receiver>
         > {
         return __impl<_Self>::connect(
@@ -545,7 +546,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)
       static auto submit(_Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) -> __msecond<
-          __menable_if<__decays_to_derived_from<_Self, __sexpr>>,
+          __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::submit, _Self, _Receiver>
         > {
         return __impl<_Self>::submit(

@@ -176,8 +176,14 @@ namespace exec {
       using __completions_t = __children_of<_Self, __completions_fn_t<_Env...>>;
 
       template <sender_expr_for<merge_t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
-        return __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>();
+      static consteval auto get_completion_signatures() noexcept {
+        using __result_t =
+          __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>;
+        if constexpr (__ok<__result_t>) {
+          return __result_t();
+        } else {
+          return stdexec::__invalid_completion_signature(__result_t());
+        }
       }
 
       template <class... _Env>
@@ -197,8 +203,13 @@ namespace exec {
       using __items_t = __children_of<_Self, __items_fn_t<_Env...>>;
 
       template <sender_expr_for<merge_t> _Self, class... _Env>
-      static auto get_item_types(_Self&&, _Env&&...) noexcept {
-        return __minvoke<__mtry_catch<__q<__items_t>, __q<__error_t>>, _Self, _Env...>();
+      static consteval auto get_item_types() {
+        using __result_t = __minvoke<__mtry_catch<__q<__items_t>, __q<__error_t>>, _Self, _Env...>;
+        if constexpr (__ok<__result_t>) {
+          return __result_t();
+        } else {
+          return exec::__invalid_item_types(__result_t());
+        }
       }
 
       template <sender_expr_for<merge_t> _Self, receiver _Receiver>

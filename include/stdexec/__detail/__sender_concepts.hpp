@@ -75,8 +75,7 @@ namespace stdexec {
                       };
 
   template <class _Sender>
-  concept dependent_sender = sender<_Sender>
-                          && __v<__mbool<stdexec::__is_dependent_sender<_Sender>()>>;
+  concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
 
   template <class _Sender, class... _Env>
   using __single_sender_value_t = __value_types_t<

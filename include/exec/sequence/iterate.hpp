@@ -195,15 +195,18 @@ namespace exec {
         return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
       }
 
-      static auto get_completion_signatures(__ignore, __ignore = {}) noexcept
-        -> completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()> {
-        return {};
+      template <class, class...>
+      static consteval auto get_completion_signatures() noexcept {
+        return completion_signatures<
+          set_value_t(),
+          set_error_t(std::exception_ptr),
+          set_stopped_t()
+        >();
       }
 
-      template <sender_expr_for<iterate_t> _Sequence>
-      static auto get_item_types(_Sequence&&, __ignore) noexcept //
-        -> item_types<__item_sender_t<_Sequence>> {
-        return {};
+      template <sender_expr_for<iterate_t> _Sequence, class... _Env>
+      static consteval auto get_item_types() noexcept {
+        return item_types<__item_sender_t<_Sequence>>();
       }
 
       static auto get_env(__ignore) noexcept -> env<> {
