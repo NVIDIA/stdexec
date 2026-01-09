@@ -100,10 +100,7 @@ namespace stdexec {
       }
 
       void wait() noexcept {
-        // Account for spurios wakeups
-        while (!__done_.load(stdexec::__std::memory_order_acquire)) {
-          __done_.wait(false, stdexec::__std::memory_order_acquire);
-        }
+        __done_.wait(false, stdexec::__std::memory_order_acquire);
       }
     };
 
