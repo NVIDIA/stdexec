@@ -65,6 +65,8 @@ namespace stdexec {
   template <class _Sig>
   struct _WITH_COMPLETION_SIGNATURE_;
 
+  struct _WITH_COMPLETION_SIGNATURES_;
+
   template <class _Fun>
   struct _WITH_FUNCTION_;
 
@@ -97,11 +99,15 @@ namespace stdexec {
       __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_<_Fun>, _WITH_ARGUMENTS_<_Args...>>;
   };
 
-#if __cpp_lib_constexpr_exceptions >= 202502L // constexpr exception types, https://wg21.link/p3378
+  template <class _Sender, class... _Env>
+  using __unrecognized_sender_error =
+    __mexception<_UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
+
+#if __cpp_lib_constexpr_exceptions >= 2025'02L // constexpr exception types, https://wg21.link/p3378
 
   using __exception = ::std::exception;
 
-#elif __cpp_constexpr >= 202411L // constexpr virtual functions
+#elif __cpp_constexpr >= 2024'11L // constexpr virtual functions
 
   struct __exception {
     constexpr __exception() noexcept = default;
@@ -124,7 +130,7 @@ namespace stdexec {
     }
   };
 
-#endif // __cpp_lib_constexpr_exceptions >= 202502L
+#endif // __cpp_lib_constexpr_exceptions >= 2025'02L
 
   template <class _Derived>
   struct __compile_time_error : __exception {
@@ -176,35 +182,38 @@ namespace stdexec {
     char const * what_;
   };
 
-  template <class _Sender>
-  struct __dependent_sender_error : dependent_sender_error {
-    constexpr __dependent_sender_error() noexcept
+  template <class... _What>
+  struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error {
+    constexpr _ERROR_() noexcept
       : dependent_sender_error{
           "This sender needs to know its execution environment before it can know how it will "
           "complete."} {
     }
 
-    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> __dependent_sender_error;
+    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> _ERROR_;
 
     template <class Ty>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(Ty&) -> __dependent_sender_error&;
+    auto operator,(Ty&) -> _ERROR_&;
 
-    template <class... What>
+    template <class... Other>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(_ERROR_<What...>&) -> _ERROR_<What...>&;
+    auto operator,(_ERROR_<Other...>&) -> _ERROR_<Other...>&;
 
-    using __partitioned = __dependent_sender_error;
-
-    template <class, class>
-    using __value_types = __dependent_sender_error;
+    using __partitioned = _ERROR_;
 
     template <class, class>
-    using __error_types = __dependent_sender_error;
+    using __value_types = _ERROR_;
 
     template <class, class>
-    using __stopped_types = __dependent_sender_error;
+    using __error_types = _ERROR_;
+
+    template <class, class>
+    using __stopped_types = _ERROR_;
   };
+
+  template <class _Sender>
+  using __dependent_sender_error = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
 
   template <class _What, class... _With>
   struct __not_a_sender {
@@ -224,13 +233,7 @@ namespace stdexec {
       return __not_a_sender<_What, _With...>{};
     }
 
-    constexpr bool operator==(__not_a_scheduler) const noexcept {
-      return true;
-    }
-
-    constexpr bool operator!=(__not_a_scheduler) const noexcept {
-      return false;
-    }
+    constexpr bool operator==(const __not_a_scheduler&) const noexcept = default;
   };
 } // namespace stdexec
 

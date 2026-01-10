@@ -15,8 +15,9 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__completion_signatures.hpp"
+#include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__tuple.hpp" // IWYU pragma: keep for stdexec::__tuple
 
 namespace exec {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,31 +80,13 @@ namespace exec {
 
   inline constexpr detail::concat_completion_signatures_t concat_completion_signatures{};
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// invalid_completion_signature
-#if !STDEXEC_STD_NO_EXCEPTIONS()                                                                   \
-  && __cpp_constexpr_exceptions >= 202411L // C++26, https://wg21.link/p3068
-
-  template <class... What, class... Values>
-  [[noreturn, nodiscard]]
-  consteval auto invalid_completion_signature(Values... values) -> completion_signatures<> {
-    if constexpr (sizeof...(Values) == 1) {
-      throw sender_type_check_failure<Values..., What...>(values...);
-    } else {
-      throw sender_type_check_failure<::cuda::std::tuple<Values...>, What...>(
-        ::cuda::std::tuple{values...});
-    }
-  }
-
-#else // ^^^ constexpr exceptions ^^^ / vvv no constexpr exceptions vvv
-
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // invalid_completion_signature
   template <class... What, class... Values>
   [[nodiscard]]
-  consteval auto invalid_completion_signature(Values...) {
-    return stdexec::__mexception<What...>{};
+  consteval auto invalid_completion_signature(Values... vals) {
+    return stdexec::__invalid_completion_signature<What...>(static_cast<Values&&>(vals)...);
   }
-
-#endif // ^^^ no constexpr exceptions ^^^
 
   struct IN_TRANSFORM_COMPLETION_SIGNATURES;
   struct A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION;
@@ -134,11 +117,8 @@ namespace exec {
     [[nodiscard]]
     consteval auto _apply_transform(const Fn& fn) {
       if constexpr (stdexec::__mvalid<_transform_expr_t, Fn, As...>) {
-        using completions = _transform_expr_t<Fn, As...>;
-        if constexpr (
-          stdexec::__valid_completion_signatures<completions>
-          || stdexec::__is_instance_of<completions, stdexec::_ERROR_>
-          || std::is_base_of_v<stdexec::dependent_sender_error, completions>) {
+        using _completions_t = _transform_expr_t<Fn, As...>;
+        if constexpr (stdexec::__well_formed_completions<_completions_t>) {
           return detail::_transform_expr<As...>(fn);
         } else {
           (void) detail::_transform_expr<As...>(fn); // potentially throwing

@@ -168,7 +168,7 @@ namespace exec {
         template <__decays_to<__t> _Self, class... _Env>
         constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
           auto get_completion_signatures)(this _Self&&, _Env&&...)
-          -> completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
+          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
           return {};
         }
         STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)

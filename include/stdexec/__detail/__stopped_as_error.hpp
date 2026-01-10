@@ -19,10 +19,10 @@
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
+#include "__just.hpp"
+#include "__let.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__let.hpp"
-#include "__just.hpp"
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////

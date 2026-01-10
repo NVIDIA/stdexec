@@ -50,10 +50,10 @@ namespace {
     STATIC_REQUIRE(ex::sender<P2300r7_sender_2>);
   }
 
-#if !STDEXEC_STD_NO_COROUTINES()
+#if !STDEXEC_NO_STD_COROUTINES()
   struct an_awaiter {
     auto await_ready() -> bool;
-    void await_suspend(__coro::coroutine_handle<>);
+    void await_suspend(stdexec::__std::coroutine_handle<>);
     void await_resume();
   };
 

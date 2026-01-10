@@ -18,10 +18,10 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__completion_signatures_of.hpp" // IWYU pragma: keep for the sender concept
 #include "__config.hpp"
 #include "__domain.hpp"
 #include "__query.hpp"
-#include "__senders_core.hpp" // IWYU pragma: keep for the sender concept
 
 namespace stdexec {
   // scheduler concept opt-in tag
@@ -191,10 +191,8 @@ namespace stdexec {
               return _Self{}(__read_query_t{}(__sch, __env...), __env...);
             }
           } else {
-            if constexpr (__callable<
-                            __read_query_t,
-                            env_of_t<schedule_result_t<_Sch>>,
-                            const _Env&...>) {
+            if constexpr (
+              __callable<__read_query_t, env_of_t<schedule_result_t<_Sch>>, const _Env&...>) {
               STDEXEC_ASSERT_FN(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
             }
             return __sch;
@@ -205,11 +203,13 @@ namespace stdexec {
       template <class _Attrs, class... _Env, class _Sch>
       static constexpr auto __check_domain(_Sch __sch) noexcept -> _Sch {
         static_assert(scheduler<_Sch>);
-        if constexpr (__callable<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>)
-        {
-          using __domain_t = __call_result_t<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>;
-          static_assert(__same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
-                        "the sender claims to complete on a domain that is not the domain of its completion scheduler");
+        if constexpr (__callable<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>) {
+          using __domain_t =
+            __call_result_t<get_completion_domain_t<_Tag>, const _Attrs&, const _Env&...>;
+          static_assert(
+            __same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, const _Env&...>>,
+            "the sender claims to complete on a domain that is not the domain of its completion "
+            "scheduler");
         }
         return __sch;
       }

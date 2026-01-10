@@ -19,8 +19,8 @@
 
 // include these after __execution_fwd.hpp
 #include "__completion_behavior.hpp"
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__config.hpp"
 #include "__query.hpp"
 
 namespace stdexec {

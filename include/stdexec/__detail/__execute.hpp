@@ -19,8 +19,8 @@
 
 #include "__concepts.hpp"
 #include "__receivers.hpp"
-#include "__senders.hpp"
 #include "__schedulers.hpp"
+#include "__senders.hpp"
 #include "__start_detached.hpp"
 #include "__then.hpp"
 #include "__transform_sender.hpp"

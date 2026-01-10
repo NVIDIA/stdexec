@@ -335,15 +335,19 @@ namespace stdexec {
     };
 
     struct __when_all_impl : __sexpr_defaults {
-      template <class _Self, class _Env>
-      using __error_t = __mexception<
-        _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-        __children_of<_Self, __qq<_WITH_SENDERS_>>,
-        _WITH_ENVIRONMENT_<_Env>
+      template <class _Self, class... _Env>
+      using __error_t = std::conditional_t<
+        sizeof...(_Env) == 0,
+        __dependent_sender_error<_Self>,
+        __mexception<
+          _INVALID_ARGUMENTS_TO_WHEN_ALL_,
+          __children_of<_Self, __qq<_WITH_SENDERS_>>,
+          _WITH_ENVIRONMENT_<_Env>...
+        >
       >;
 
       template <class _Self, class... _Env>
-      using __completions = __children_of<_Self, __completions_t<__env_t<_Env>...>>;
+      using __completions_t = __children_of<_Self, __when_all::__completions_t<__env_t<_Env>...>>;
 
       static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
         return __when_all::__attrs<_Child...>{};
@@ -352,7 +356,7 @@ namespace stdexec {
       static constexpr auto get_completion_signatures =
         []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept {
           static_assert(sender_expr_for<_Self, when_all_t>);
-          return __minvoke<__mtry_catch<__q<__completions>, __q<__error_t>>, _Self, _Env...>();
+          return __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>();
         };
 
       static constexpr auto get_env =
@@ -366,8 +370,7 @@ namespace stdexec {
       static constexpr auto get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver& __rcvr)
         -> __sexpr_apply_result_t<_Self, __mk_state_fn_t<_Receiver>> {
-        return __sexpr_apply(
-          static_cast<_Self&&>(__self), __when_all::__mk_state_fn(__rcvr));
+        return __sexpr_apply(static_cast<_Self&&>(__self), __when_all::__mk_state_fn(__rcvr));
       };
 
       static constexpr auto start = []<class _State, class _Receiver, class... _Operations>(
@@ -376,7 +379,8 @@ namespace stdexec {
                                       _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
         __state.__on_stop_.emplace(
-          get_stop_token(stdexec::get_env(__rcvr)), __forward_stop_request<_State, _Receiver>{&__state, &__rcvr});
+          get_stop_token(stdexec::get_env(__rcvr)),
+          __forward_stop_request<_State, _Receiver>{&__state, &__rcvr});
         (stdexec::start(__child_ops), ...);
         if constexpr (sizeof...(__child_ops) == 0) {
           __state.__complete(__rcvr);

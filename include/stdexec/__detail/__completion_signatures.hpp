@@ -21,13 +21,16 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
+#include "__utility.hpp"
 
 #include <type_traits>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
-  namespace __sigs {
+  namespace __cmplsigs {
+    template <class _Sig>
+    inline constexpr bool __is_compl_sig = false;
     template <class... _Args>
     inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
     template <class _Error>
@@ -35,11 +38,41 @@ namespace stdexec {
     template <>
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
 
-    template <class>
-    inline constexpr bool __is_completion_signatures = false;
-    template <class... _Sigs>
-    inline constexpr bool __is_completion_signatures<completion_signatures<_Sigs...>> = true;
+    // The following code is used to normalize completion signatures. "Normalization" means that
+    // that rvalue-references are stripped from the types in the completion signatures. For example,
+    // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
+    // but `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
+    template <class _Tag, class... _Args>
+    auto __normalize_sig_impl(_Args&&...) -> _Tag (*)(_Args...);
 
+    template <class _Tag, class... _Args>
+    auto __normalize_sig(_Tag (*)(_Args...))
+      -> decltype(__cmplsigs::__normalize_sig_impl<_Tag>(__declval<_Args>()...));
+
+    template <class... _Sigs>
+    auto __repack_completions(_Sigs*...) -> completion_signatures<_Sigs...>;
+
+    template <class... _Sigs>
+    auto __normalize_completions(completion_signatures<_Sigs...>*)
+      -> decltype(__cmplsigs::__repack_completions(
+        __cmplsigs::__normalize_sig(static_cast<_Sigs*>(nullptr))...));
+
+    template <class _Completions>
+    using __normalize_completions_t = decltype(__cmplsigs::__normalize_completions(
+      static_cast<_Completions*>(nullptr)));
+
+    template <class _Sig>
+    using __normalize_sig_t = decltype(__normalize_sig(static_cast<_Sig*>(nullptr)));
+  } // namespace __cmplsigs
+
+  template <class _Sig>
+  concept __completion_signature = __cmplsigs::__is_compl_sig<_Sig>;
+
+  template <class... _SigPtrs>
+  using __completion_signature_ptrs = decltype(__cmplsigs::__repack_completions(
+    static_cast<_SigPtrs>(nullptr)...));
+
+  namespace __cmplsigs {
     // __partitions is a cache of completion signatures for fast
     // access. The completion_signatures<Sigs...>::__partitioned nested struct
     // inherits from __partitions. If the cache is never accessed,
@@ -120,74 +153,34 @@ namespace stdexec {
 
     template <class... _Sigs>
     using __partition_completion_signatures_t = //
-      decltype(__sigs::__unpack_partitioned_completions(
+      decltype(__cmplsigs::__unpack_partitioned_completions(
         (__declval<__undefined<__partitions<>>&>() * ... * static_cast<_Sigs*>(nullptr))));
 
     template <class _Completions>
     using __partitions_of_t = _Completions::__partitioned::__t;
-  } // namespace __sigs
+  } // namespace __cmplsigs
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // completion signatures type traits
-  template <class _Completions>
-  concept __valid_completion_signatures = __ok<_Completions>
-                                       && __sigs::__is_completion_signatures<_Completions>;
-
   template <
     class _Sigs,
     class _Tuple = __qq<__decayed_std_tuple>,
     class _Variant = __qq<__std_variant>
   >
   using __value_types_t =
-    __sigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
-
-  template <
-    class _Sndr,
-    class _Env = env<>,
-    class _Tuple = __qq<__decayed_std_tuple>,
-    class _Variant = __qq<__std_variant>
-  >
-  using __value_types_of_t =
-    __value_types_t<__completion_signatures_of_t<_Sndr, _Env>, _Tuple, _Variant>;
-
-  template <
-    class _Sndr,
-    class _Env = env<>,
-    template <class...> class _Tuple = __decayed_std_tuple,
-    template <class...> class _Variant = __std_variant
-  >
-  using value_types_of_t =
-    __value_types_t<__completion_signatures_of_t<_Sndr, _Env>, __q<_Tuple>, __q<_Variant>>;
+    __cmplsigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
 
   template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
   using __error_types_t =
-    __sigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
-
-  template <
-    class _Sender,
-    class _Env = env<>,
-    class _Variant = __qq<__std_variant>,
-    class _Transform = __q1<__midentity>
-  >
-  using __error_types_of_t =
-    __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant, _Transform>;
-
-  template <class _Sndr, class _Env = env<>, template <class...> class _Variant = __std_variant>
-  using error_types_of_t =
-    __error_types_t<__completion_signatures_of_t<_Sndr, _Env>, __q<_Variant>>;
+    __cmplsigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
 
   template <class _Sigs, class _Variant, class _Type = set_stopped_t()>
   using __stopped_types_t =
-    __sigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
+    __cmplsigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
 
   template <__valid_completion_signatures _Sigs>
   inline constexpr bool __sends_stopped =
-    __v<typename __sigs::__partitions_of_t<_Sigs>::__count_stopped> != 0;
-
-  template <class _Sndr, class... _Env>
-    requires __valid_completion_signatures<__completion_signatures_of_t<_Sndr, _Env...>>
-  inline constexpr bool sends_stopped =
-    __sends_stopped<__completion_signatures_of_t<_Sndr, _Env...>>;
+    __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped> != 0;
 
   template <class... _Sigs>
   using __concat_completion_signatures =
@@ -227,7 +220,7 @@ namespace stdexec {
     struct __partitioned {
       // This is defined in a nested struct to avoid computing these types if they are not
       // needed.
-      using __t = __sigs::__partition_completion_signatures_t<_Sigs...>;
+      using __t = __cmplsigs::__partition_completion_signatures_t<_Sigs...>;
     };
 
     //! @brief Type set view of the completion signatures for set operations.
@@ -362,12 +355,8 @@ namespace stdexec {
   } // namespace __detail
 
   template <class _WantedTag, class _Sigs, class _Tuple, class _Variant>
-  using __gather_completions =
-    typename __detail::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Tuple, _Variant>;
-
-  template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>
-  using __gather_completions_of =
-    __gather_completions<_WantedTag, __completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
+  using __gather_completions_t =
+    __detail::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Tuple, _Variant>;
 
   namespace __detail {
     template <class _Tag, class _Sigs>
@@ -375,35 +364,16 @@ namespace stdexec {
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_value_t, _Sigs> =
-      __v<typename __sigs::__partitions_of_t<_Sigs>::__count_values>;
+      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_values>;
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_error_t, _Sigs> =
-      __v<typename __sigs::__partitions_of_t<_Sigs>::__count_errors>;
+      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_errors>;
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_stopped_t, _Sigs> =
-      __v<typename __sigs::__partitions_of_t<_Sigs>::__count_stopped>;
+      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped>;
   } // namespace __detail
-
-  template <class _Tag, class _Sender, class... _Env>
-  using __count_of =
-    __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
-
-  template <class _Sender, class... _Env>
-  using __single_sender_value_t = __value_types_t<
-    __completion_signatures_of_t<_Sender, _Env...>,
-    __qq<__msingle>,
-    __qq<__msingle>
-  >;
-
-  template <class _Sender, class... _Env>
-  using __single_value_variant_sender_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
-
-  template <class _Sender, class... _Env>
-  using __unrecognized_sender_error =
-    __mexception<_UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
 
   // Below is the definition of the STDEXEC_COMPLSIGS_LET portability macro. It
   // is used to check that an expression's type is a valid completion_signature
@@ -431,20 +401,7 @@ namespace stdexec {
   //   }
   //   else
 
-#if STDEXEC_STD_NO_EXCEPTIONS()                                                                    \
-  && __cpp_constexpr_exceptions >= 202411L // C++26, https://wg21.link/p3068
-
-#  define STDEXEC_COMPLSIGS_LET(...)                                                               \
-    if constexpr ([[maybe_unused]] __VA_ARGS__; false) {                                           \
-    } else
-
-  template <class _Sndr>
-  [[noreturn, nodiscard]]
-  consteval auto __dependent_sender() -> completion_signatures<> {
-    throw __dependent_sender_error<_Sndr>{};
-  }
-
-#else // ^^^ constexpr exceptions ^^^ / vvv no constexpr exceptions vvv
+#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
 #  define STDEXEC_PP_EAT_AUTO_auto(_ID)    _ID STDEXEC_EAT STDEXEC_LPAREN
 #  define STDEXEC_PP_EXPAND_AUTO_auto(_ID) auto _ID
@@ -461,8 +418,20 @@ namespace stdexec {
   template <class _Sndr>
   [[nodiscard]]
   consteval auto __dependent_sender() noexcept -> __dependent_sender_error<_Sndr> {
-    return __dependent_sender_error<_Sndr>{};
+    return {};
   }
 
-#endif // ^^^ no constexpr exceptions ^^^
+#else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+#  define STDEXEC_COMPLSIGS_LET(...)                                                               \
+    if constexpr ([[maybe_unused]] __VA_ARGS__; false) {                                           \
+    } else
+
+  template <class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __dependent_sender() -> completion_signatures<> {
+    throw __dependent_sender_error<_Sndr>{};
+  }
+
+#endif // ^^^ constexpr exceptions ^^^
 } // namespace stdexec

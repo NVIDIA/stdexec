@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/execution.hpp"
 
 namespace exec {
   namespace __final {

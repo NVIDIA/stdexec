@@ -28,9 +28,9 @@ namespace exec {
   namespace __at_coro_exit {
     using namespace stdexec;
 
-    using __any_scheduler_t = any_receiver_ref<completion_signatures<
-      set_error_t(std::exception_ptr),
-      set_stopped_t()>>::any_sender<>::any_scheduler<>;
+    using __any_scheduler_t = any_receiver_ref<
+      completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
+    >::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t {
       template <class _Receiver>
@@ -132,11 +132,11 @@ namespace exec {
       using promise_type = __promise;
 
 #if STDEXEC_EDG()
-      __task(__coro::coroutine_handle<__promise> __coro) noexcept
+      __task(__std::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro) {
       }
 #else
-      explicit __task(__coro::coroutine_handle<__promise> __coro) noexcept
+      explicit __task(__std::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro) {
       }
 #endif
@@ -151,7 +151,7 @@ namespace exec {
       }
 
       template <__has_continuation _Promise>
-      auto await_suspend(__coro::coroutine_handle<_Promise> __parent) noexcept -> bool {
+      auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool {
         __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
@@ -168,8 +168,8 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__coro::coroutine_handle<__promise> __h) noexcept
-          -> __coro::coroutine_handle<> {
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept
+          -> __std::coroutine_handle<> {
           __promise& __p = __h.promise();
           auto __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
                                                     : __p.continuation().handle();
@@ -202,7 +202,7 @@ namespace exec {
         }
 #endif
 
-        auto initial_suspend() noexcept -> __coro::suspend_always {
+        auto initial_suspend() noexcept -> __std::suspend_always {
           return {};
         }
 
@@ -218,13 +218,13 @@ namespace exec {
           std::terminate();
         }
 
-        auto unhandled_stopped() noexcept -> __coro::coroutine_handle<__promise> {
+        auto unhandled_stopped() noexcept -> __std::coroutine_handle<__promise> {
           __is_unhandled_stopped_ = true;
-          return __coro::coroutine_handle<__promise>::from_promise(*this);
+          return __std::coroutine_handle<__promise>::from_promise(*this);
         }
 
         auto get_return_object() noexcept -> __task {
-          return __task(__coro::coroutine_handle<__promise>::from_promise(*this));
+          return __task(__std::coroutine_handle<__promise>::from_promise(*this));
         }
 
         template <class _Awaitable>
@@ -241,7 +241,7 @@ namespace exec {
         __any_scheduler_t __scheduler_{stdexec::inline_scheduler{}};
       };
 
-      __coro::coroutine_handle<__promise> __coro_;
+      __std::coroutine_handle<__promise> __coro_;
     };
 
     struct __at_coro_exit_t {

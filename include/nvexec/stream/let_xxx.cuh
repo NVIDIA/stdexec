@@ -61,7 +61,7 @@ namespace nvexec::_strm {
       template <class... As>
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<As...>>;
 
-      static constexpr std::size_t value = __v<__gather_completions_of<
+      static constexpr std::size_t value = __v<__gather_completions_of_t<
         SetTag,
         Sender,
         env_of_t<PropagateReceiver>,
@@ -172,7 +172,7 @@ namespace nvexec::_strm {
     };
 
     template <class SenderId, class ReceiverId, class Fun, class Let>
-    using __receiver = stdexec::__t<__gather_completions_of<
+    using __receiver = stdexec::__t<__gather_completions_of_t<
       Let,
       stdexec::__t<SenderId>,
       stream_env<env_of_t<stdexec::__t<ReceiverId>>>,

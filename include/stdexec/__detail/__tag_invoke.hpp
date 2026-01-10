@@ -23,7 +23,7 @@ namespace stdexec::__std_concepts {
 #else
   template <class _Fun, class... _As>
   concept invocable = requires(_Fun&& __f, _As&&... __as) {
-    std::invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
+    std::invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
   };
 #endif
 } // namespace stdexec::__std_concepts
@@ -42,13 +42,13 @@ namespace stdexec {
     // and results in diagnostics that are more verbose than necessary.
     template <class _Tag, class... _Args>
     concept tag_invocable = requires(_Tag __tag, _Args&&... __args) {
-      tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
+      tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
     };
 
     template <class _Ret, class _Tag, class... _Args>
     concept __tag_invocable_r = requires(_Tag __tag, _Args&&... __args) {
       {
-        static_cast<_Ret>(tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...))
+        static_cast<_Ret>(tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...))
       };
     };
 
@@ -56,7 +56,7 @@ namespace stdexec {
     template <class _Tag, class... _Args>
     concept nothrow_tag_invocable =
       tag_invocable<_Tag, _Args...> && requires(_Tag __tag, _Args&&... __args) {
-        { tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...) } noexcept;
+        { tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...) } noexcept;
       };
 
     template <class _Tag, class... _Args>

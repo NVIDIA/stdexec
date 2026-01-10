@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__config.hpp"
 #include "__type_traits.hpp"
 
 #include <initializer_list>
@@ -81,6 +81,13 @@ namespace stdexec {
 
   template <class... _Fns>
   __overload(_Fns...) -> __overload<_Fns...>;
+
+  // Helper to select overloads by priority:
+  template <int _Iy>
+  struct __priority : __priority<_Iy - 1> { };
+
+  template <>
+  struct __priority<0> { };
 
   inline constexpr auto __umax(std::initializer_list<std::size_t> __il) noexcept -> std::size_t {
     std::size_t __m = 0;

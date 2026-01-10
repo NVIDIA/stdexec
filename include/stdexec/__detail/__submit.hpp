@@ -85,14 +85,14 @@ namespace stdexec {
 
   template <class _Sender, class _Receiver>
   concept __submittable = requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-    __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
+    __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
   };
 
   template <class _Sender, class _Receiver>
   concept __nothrow_submittable =
     __submittable<_Sender, _Receiver> && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
       {
-        __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr))
+        __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr))
       } noexcept;
     };
 

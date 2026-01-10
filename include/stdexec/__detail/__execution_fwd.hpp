@@ -15,10 +15,9 @@
  */
 #pragma once
 
+#include "__concepts.hpp"
 #include "__config.hpp" // IWYU pragma: export
 #include "__meta.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
 #include "__type_traits.hpp"
 
 // IWYU pragma: always_keep
@@ -134,6 +133,8 @@ namespace stdexec {
     template <__completion_tag _CPO>
     struct get_completion_behavior_t;
     struct get_domain_t;
+
+    struct __debug_env_t;
   } // namespace __queries
 
   using __queries::forwarding_query_t;
@@ -161,6 +162,13 @@ namespace stdexec {
   extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
 
+  template <class _Env>
+  concept __is_debug_env = __callable<__queries::__debug_env_t, _Env>;
+
+  namespace __debug {
+    struct __completion_signatures;
+  } // namespace __debug
+
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto get_completion_behavior() noexcept;
@@ -178,39 +186,55 @@ namespace stdexec {
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __sigs {
-    template <class _Sig>
-    inline constexpr bool __is_compl_sig = false;
-
-    struct get_completion_signatures_t;
-  } // namespace __sigs
-
-  template <class _Sig>
-  concept __completion_signature = __sigs::__is_compl_sig<_Sig>;
-
   template <class... _Sigs>
   struct completion_signatures;
 
-  using __sigs::get_completion_signatures_t;
-  extern const get_completion_signatures_t get_completion_signatures;
+  template <class _Completions>
+  concept __valid_completion_signatures = __ok<_Completions>
+                                       && __is_instance_of<_Completions, completion_signatures>;
 
-  namespace __detail {
-    template <class _Sender, class... _Env>
-    extern __mexception<
-      _UNRECOGNIZED_SENDER_TYPE_<>,
-      _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env...>
-    >
-      __compl_sigs_of_v;
+  struct dependent_sender_error;
+  using dependent_completions [[deprecated(
+    "use dependent_sender_error instead of dependent_completions")]] = dependent_sender_error;
 
-    template <class _Sender, class... _Env>
-      requires __callable<get_completion_signatures_t, _Sender, _Env...>
-    extern __call_result_t<get_completion_signatures_t, _Sender, _Env...>
-      __compl_sigs_of_v<_Sender, _Env...>;
-  } // namespace __detail
+  namespace __cmplsigs {
+    struct get_completion_signatures_t;
+
+#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+    // Without constexpr exceptions, we cannot always produce a valid
+    // completion_signatures type. We must permit get_completion_signatures to return an
+    // error type because we can't throw it.
+    template <class _Completions>
+    concept __well_formed_completions_helper =
+      __valid_completion_signatures<_Completions>
+      || STDEXEC_IS_BASE_OF(stdexec::dependent_sender_error, _Completions)
+      || __is_instance_of<_Completions, _ERROR_>;
+#else
+    // When we have constexpr exceptions, we can require that get_completion_signatures
+    // always produces a valid completion_signatures type.
+    template <class _Completions>
+    concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>;
+#endif
+  } // namespace __cmplsigs
+
+  using __cmplsigs::get_completion_signatures_t;
+
+  // The cast to bool is to hide the disjunction in __well_formed_completions_helper.
+  template <class _Completions>
+  concept __well_formed_completions = bool(
+    __cmplsigs::__well_formed_completions_helper<_Completions>);
+
+  // Legacy interface:
+  template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
+  constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
+    -> __well_formed_completions auto;
 
   template <class _Sender, class... _Env>
-  using __completion_signatures_of_t = decltype(__detail::__compl_sigs_of_v<_Sender, _Env...>);
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
+  consteval auto get_completion_signatures() -> __well_formed_completions auto;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
@@ -219,6 +243,9 @@ namespace stdexec {
 
   using __connect::connect_t;
   extern const connect_t connect;
+
+  template <class _Sender, class _Receiver>
+  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   struct sender_t;
 

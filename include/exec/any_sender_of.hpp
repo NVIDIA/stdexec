@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__any_receiver_ref.hpp"
+#include "../stdexec/execution.hpp"
 
 #include "sequence_senders.hpp"
 
@@ -245,7 +245,8 @@ namespace exec {
       class _Allocator,
       bool _Copyable = false,
       std::size_t _InlineSize = 3 * sizeof(void*),
-      std::size_t _Alignment = alignof(std::max_align_t)>
+      std::size_t _Alignment = alignof(std::max_align_t)
+    >
     struct __storage {
       class __t;
     };
@@ -254,7 +255,8 @@ namespace exec {
       class _Vtable,
       class _Allocator,
       std::size_t _InlineSize = 3 * sizeof(void*),
-      std::size_t _Alignment = alignof(std::max_align_t)>
+      std::size_t _Alignment = alignof(std::max_align_t)
+    >
     struct __immovable_storage {
       class __t : __immovable {
         static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
@@ -374,7 +376,8 @@ namespace exec {
       class _Allocator,
       bool _Copyable,
       std::size_t _InlineSize,
-      std::size_t _Alignment>
+      std::size_t _Alignment
+    >
     class __storage<_Vtable, _Allocator, _Copyable, _InlineSize, _Alignment>::__t
       : __if_c<_Copyable, __, __move_only> {
       static_assert(
@@ -393,7 +396,8 @@ namespace exec {
       using __vtable_t = __if_c<
         _Copyable,
         __storage_vtable<_Vtable, __with_delete, __with_move, __with_copy>,
-        __storage_vtable<_Vtable, __with_delete, __with_move>>;
+        __storage_vtable<_Vtable, __with_delete, __with_move>
+      >;
 
       template <class _Tp>
       static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
@@ -404,7 +408,8 @@ namespace exec {
             _Vtable,
             __with_delete,
             __with_move,
-            __with_copy>;
+            __with_copy
+          >;
         } else {
           return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
         }
@@ -581,7 +586,8 @@ namespace exec {
       class _VTable = __empty_vtable,
       class _Allocator = std::allocator<std::byte>,
       std::size_t _InlineSize = 3 * sizeof(void*),
-      std::size_t _Alignment = alignof(std::max_align_t)>
+      std::size_t _Alignment = alignof(std::max_align_t)
+    >
     using __immovable_storage_t =
       __t<__immovable_storage<_VTable, _Allocator, _InlineSize, _Alignment>>;
 
@@ -591,7 +597,8 @@ namespace exec {
     template <
       class _VTable,
       std::size_t _InlineSize = 3 * sizeof(void*),
-      class _Allocator = std::allocator<std::byte>>
+      class _Allocator = std::allocator<std::byte>
+    >
     using __copyable_storage_t = __t<__storage<_VTable, _Allocator, true, _InlineSize>>;
 
     template <class _Tag, class... _As>
@@ -755,7 +762,8 @@ namespace exec {
         using _FilteredQueries =
           __minvoke<__mremove_if<__q<__is_never_stop_token_query_t>>, _Queries...>;
         using __vtable_t = stdexec::__t<
-          __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>>;
+          __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>
+        >;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -1052,7 +1060,8 @@ namespace exec {
 
         template <receiver_of<_Sigs> _Rcvr>
         auto connect(_Rcvr __rcvr) && -> stdexec::__t<
-          __operation<stdexec::__id<_Rcvr>, __with_inplace_stop_token>> {
+          __operation<stdexec::__id<_Rcvr>, __with_inplace_stop_token>
+        > {
           return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
         }
 
@@ -1207,7 +1216,8 @@ namespace exec {
     template <auto... _SenderQueries>
     class any_sender {
       using __sender_base = stdexec::__t<
-        __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>>;
+        __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>
+      >;
       __sender_base __sender_;
 
      public:
@@ -1243,7 +1253,8 @@ namespace exec {
         // Add the required set_value_t() completions to the schedule-sender.
         using __schedule_completions = stdexec::__concat_completion_signatures<
           _Completions,
-          stdexec::completion_signatures<stdexec::set_value_t()>>;
+          stdexec::completion_signatures<stdexec::set_value_t()>
+        >;
         using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
 
         template <class _BaseSender>
@@ -1291,8 +1302,10 @@ namespace exec {
         using __schedule_sender_base_t = stdexec::__minvoke<
           stdexec::__mremove_if<
             __any::__ret_equals_to<stdexec::get_completion_scheduler_t<stdexec::set_value_t>>,
-            stdexec::__q<__any_sender_t>>,
-          decltype(_SenderQueries)...>;
+            stdexec::__q<__any_sender_t>
+          >,
+          decltype(_SenderQueries)...
+        >;
 
         using __schedule_sender_t = __schedule_sender<__schedule_sender_base_t>;
 

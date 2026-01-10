@@ -18,12 +18,12 @@
 #include "__execution_fwd.hpp"
 
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
-#include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__transform_completion_signatures.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
+#include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
 namespace stdexec {
@@ -38,7 +38,7 @@ namespace stdexec {
     using __completion_signatures_t = transform_completion_signatures<
       __completion_signatures_of_t<_CvrefSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_error_t, _Fun, _CvrefSender, _Env...>,
-      __sigs::__default_set_value,
+      __cmplsigs::__default_set_value,
       __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f
     >;
 
@@ -46,7 +46,8 @@ namespace stdexec {
     struct upon_error_t {
       template <sender _Sender, __movable_value _Fun>
       auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        return __make_sexpr<upon_error_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+        return __make_sexpr<upon_error_t>(
+          static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
       }
 
       template <__movable_value _Fun>

@@ -140,8 +140,8 @@ namespace nvexec::_strm {
           __copy_cvref_t<Self, Sender>,
           Env...
         >,
-        __sigs::__default_set_value,
-        __sigs::__default_set_error,
+        __cmplsigs::__default_set_value,
+        __cmplsigs::__default_set_error,
         __set_value_invoke_t<Fun>
       >;
 

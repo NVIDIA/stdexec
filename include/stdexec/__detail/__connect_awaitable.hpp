@@ -18,10 +18,10 @@
 #include "__execution_fwd.hpp"
 
 #include "__awaitable.hpp"
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
+#include "__get_completion_signatures.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
 
@@ -29,17 +29,17 @@
 #include <utility>
 
 namespace stdexec {
-#if !STDEXEC_STD_NO_COROUTINES()
+#if !STDEXEC_NO_STD_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
     struct __promise_base {
-      auto initial_suspend() noexcept -> __coro::suspend_always {
+      auto initial_suspend() noexcept -> __std::suspend_always {
         return {};
       }
 
       [[noreturn]]
-      auto final_suspend() noexcept -> __coro::suspend_always {
+      auto final_suspend() noexcept -> __std::suspend_always {
         std::terminate();
       }
 
@@ -55,9 +55,9 @@ namespace stdexec {
     };
 
     struct __operation_base {
-      __coro::coroutine_handle<> __coro_;
+      __std::coroutine_handle<> __coro_;
 
-      explicit __operation_base(__coro::coroutine_handle<> __hcoro) noexcept
+      explicit __operation_base(__std::coroutine_handle<> __hcoro) noexcept
         : __coro_(__hcoro) {
       }
 
@@ -103,7 +103,7 @@ namespace stdexec {
 
       struct __t
         : __promise_base
-        , __env::__with_await_transform<__t> {
+        , __detail::__with_await_transform<__t> {
         using __id = __promise;
 
 #  if STDEXEC_EDG()
@@ -116,17 +116,17 @@ namespace stdexec {
         }
 #  endif
 
-        auto unhandled_stopped() noexcept -> __coro::coroutine_handle<> {
+        auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
           stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
-          return __coro::noop_coroutine();
+          return __std::noop_coroutine();
         }
 
         auto get_return_object() noexcept -> stdexec::__t<__operation<_ReceiverId>> {
           return stdexec::__t<__operation<_ReceiverId>>{
-            __coro::coroutine_handle<__t>::from_promise(*this)};
+            __std::coroutine_handle<__t>::from_promise(*this)};
         }
 
         // Pass through the get_env receiver query
@@ -159,7 +159,7 @@ namespace stdexec {
             return false;
           }
 
-          void await_suspend(__coro::coroutine_handle<>) noexcept {
+          void await_suspend(__std::coroutine_handle<>) noexcept {
             __fn_();
           }
 

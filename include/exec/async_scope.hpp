@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/stop_token.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
 #include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/execution.hpp"
+#include "../stdexec/stop_token.hpp"
 #include "env.hpp"
 
 #include "../stdexec/__detail/__atomic.hpp"
@@ -383,15 +383,17 @@ namespace exec {
         }
 
         template <class _Receiver2>
-        explicit __t(
-          _Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
-          : __subscription{{},
-            [](__subscription* __self) noexcept -> void {
+        explicit __t(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
+          : __subscription{
+              {},
+              [](__subscription* __self) noexcept -> void {
                 static_cast<__t*>(__self)->__complete_();
-            }}
+              }}
           , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
           , __state_(std::move(__state))
-          , __forward_consumer_(std::in_place, get_stop_token(get_env(__rcvr_)),
+          , __forward_consumer_(
+              std::in_place,
+              get_stop_token(get_env(__rcvr_)),
               __forward_stopped{&__state_->__stop_source_}) {
         }
 
@@ -485,7 +487,10 @@ namespace exec {
     template <class _Completions, class _Env>
     struct __future_state_base {
       __future_state_base(_Env __env, const __impl* __scope)
-        : __forward_scope_{std::in_place, __scope->__stop_source_.get_token(), __forward_stopped{&__stop_source_}}
+        : __forward_scope_{
+            std::in_place,
+            __scope->__stop_source_.get_token(),
+            __forward_stopped{&__stop_source_}}
         , __env_(make_env(
             static_cast<_Env&&>(__env),
             stdexec::prop{get_stop_token, __scope->__stop_source_.get_token()})) {
@@ -757,9 +762,8 @@ namespace exec {
 
       struct __t : __spawn_op_base<_EnvId> {
         __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
-          : __spawn_op_base<
-              _EnvId
-            >{__env::__join(
+          : __spawn_op_base<_EnvId>{
+              __env::__join(
                 static_cast<_Env&&>(__env),
                 __spawn_env_{__scope->__stop_source_.get_token()}),
               [](__spawn_op_base<_EnvId>* __op) { delete static_cast<__t*>(__op); }}

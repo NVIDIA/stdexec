@@ -21,9 +21,9 @@
 #include "__concepts.hpp"
 #include "__scope.hpp"
 
-#include <new> // IWYU pragma: keep for ::new
 #include <exception>
 #include <memory>
+#include <new> // IWYU pragma: keep for ::new
 #include <utility>
 
 namespace stdexec {

@@ -18,7 +18,6 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__debug.hpp" // IWYU pragma: keep
 #include "__diagnostics.hpp"
@@ -26,15 +25,15 @@
 #include "__env.hpp"
 #include "__into_variant.hpp"
 #include "__meta.hpp"
-#include "__senders.hpp"
 #include "__receivers.hpp"
-#include "__transform_sender.hpp"
 #include "__run_loop.hpp"
+#include "__senders.hpp"
+#include "__transform_sender.hpp"
 #include "__type_traits.hpp"
 
 #include <exception>
-#include <system_error>
 #include <optional>
+#include <system_error>
 #include <tuple>
 #include <variant>
 

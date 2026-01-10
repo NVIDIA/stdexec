@@ -22,17 +22,17 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-#include "../__detail/__basic_sequence.hpp"
+#include "../../stdexec/__detail/__completion_signatures_of.hpp"
 #include "../../stdexec/__detail/__concepts.hpp"
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__diagnostics.hpp"
 #include "../../stdexec/__detail/__execution_fwd.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__sender_introspection.hpp"
-#include "../../stdexec/__detail/__senders_core.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
+#include "../__detail/__basic_sequence.hpp"
 
 #include <atomic>
 
@@ -58,10 +58,10 @@ namespace exec {
     };
     static constexpr inline __env_with_inplace_stop_token_t __env_with_inplace_stop_token;
 
-    template <class... _Env>
+    template <class _Env>
     using __env_with_inplace_stop_token_result_t = decltype(__env_with_inplace_stop_token(
       stdexec::__declval<stdexec::inplace_stop_source&>(),
-      stdexec::__declval<_Env>()...));
+      stdexec::__declval<_Env>()));
 
     template <class _Receiver>
     struct __nested_stop {
@@ -240,18 +240,20 @@ namespace exec {
         __operation_base_interface_t* __op_;
 
         template <class _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-          -> stdexec::__mapply<
+        static consteval auto get_completion_signatures() {
+          using __result_t = stdexec::__mapply<
             stdexec::__mtransform<
               stdexec::__q<__error_signature_t>,
               stdexec::__qq<stdexec::completion_signatures>
             >,
             _ErrorStorage
-          > {
-          return {};
+          >;
+          if constexpr (__ok<__result_t>) {
+            return __result_t();
+          } else {
+            return stdexec::__invalid_completion_signature(__result_t());
+          }
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         template <class _Self, receiver _ErrorReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _ErrorReceiver&& __rcvr)
@@ -608,17 +610,19 @@ namespace exec {
         __operation_base_interface_t* __op_;
 
         template <class _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-          -> stdexec::transform_completion_signatures<
-            stdexec::completion_signatures_of_t<_NestedValueSender, _Env...>,
+        static consteval auto get_completion_signatures() noexcept {
+          using __result_t = stdexec::transform_completion_signatures<
+            stdexec::__completion_signatures_of_t<_NestedValueSender, _Env...>,
             stdexec::completion_signatures<stdexec::set_stopped_t()>,
-            stdexec::__sigs::__default_set_value,
+            stdexec::__cmplsigs::__default_set_value,
             drop
-          > {
-          return {};
+          >;
+          if constexpr (__ok<__result_t>) {
+            return __result_t();
+          } else {
+            return stdexec::__invalid_completion_signature(__result_t());
+          }
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         template <class _Self, receiver _NestedValueReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(
@@ -745,7 +749,7 @@ namespace exec {
         __next_seq_op_->nested_sequence_complete();
       }
 
-      using __env_t = typename _OperationBase::__nested_stop_env_t;
+      using __env_t = _OperationBase::__nested_stop_env_t;
       auto get_env() const noexcept -> __env_t {
         return __op_->__nested_stop_.env_from(__op_->__receiver_);
       }
@@ -759,38 +763,41 @@ namespace exec {
     template <class _Sequence, class _Sender, class... _Env>
     struct __value_completions_error {
       template <class... _Args>
-      using __f = __mexception<
-        _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_,
-        _WITH_SEQUENCE_<_Sequence>,
-        _WITH_SENDER_<_Sender>,
-        _WITH_ENVIRONMENT_<_Env>...,
-        _WITH_ARGUMENTS_<_Args...>
+      using __f = std::conditional_t<
+        sizeof...(_Env) == 0 && sizeof...(_Args) == 1 && (dependent_sender<_Args> && ...),
+        stdexec::__mexception<dependent_sender_error, _WITH_SENDER_<_Args>...>,
+        stdexec::__mexception<
+          _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_,
+          _WITH_SEQUENCE_<_Sequence>,
+          _WITH_SENDER_<_Sender>,
+          _WITH_ENVIRONMENT_<_Env>...,
+          _WITH_ARGUMENTS_<_Args...>
+        >
       >;
     };
 
     struct __compute {
+      template <class... _Env>
+      struct __arg_of_base_t {
+        template <class... _Senders>
+        static constexpr bool __valid_args() noexcept {
+          return sizeof...(_Senders) == 1 && (has_sequence_item_types<_Senders, _Env...> && ...);
+        }
+      };
 
       //
       // __nested_sequences extracts the types of all the nested sequences.
       //
 
       template <class _Sequence, class _Sender, class... _Env>
-      struct __arg_of_t {
-
-        template <class... _Args>
-        static constexpr bool __valid_args = sizeof...(_Args) == 1
-                                          && (has_sequence_item_types<_Args, _Env...> && ...
-                                              && true);
-
-        template <class... _Args>
-        using __checked_eval_t = stdexec::__if_c<
-          __valid_args<_Args...>,
-          __mconst<stdexec::__types<_Args...>>,
-          __value_completions_error<_Sequence, _Sender, _Env...>
+      struct __arg_of_t : __arg_of_base_t<_Env...> {
+        template <class... _Senders>
+        using __f = __minvoke_if_c<
+          __arg_of_base_t<_Env...>::template __valid_args<_Senders...>(),
+          __mconst<stdexec::__types<_Senders...>>,
+          __value_completions_error<_Sequence, _Sender, _Env...>,
+          _Senders...
         >;
-
-        template <class... _Args>
-        using __f = __minvoke<__checked_eval_t<_Args...>, _Args...>;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
@@ -1074,13 +1081,9 @@ namespace exec {
         _NestedSequenceSender __nested_sequence_;
 
         template <class _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-          -> stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()> {
-          return {};
+        static consteval auto get_completion_signatures() noexcept {
+          return stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>();
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
-
 
         template <class _Self, receiver _NextReceiver>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _NextReceiver&& __rcvr)
@@ -1239,38 +1242,48 @@ namespace exec {
       }
 
       template <sender_expr_for<merge_each_t> _Self, class... _Env>
-      static auto get_item_types(_Self&&, _Env&&...) noexcept {
-        return __compute::__nested_values<
+      static consteval auto get_item_types() {
+        using __result_t = __compute::__nested_values<
           __child_of<_Self>,
-          __env_with_inplace_stop_token_result_t<_Env...>
-        >();
+          __env_with_inplace_stop_token_result_t<_Env>...
+        >;
+        if constexpr (__ok<__result_t>) {
+          return __result_t();
+        } else {
+          return exec::__invalid_item_types(__result_t());
+        }
       }
 
-      template <class _Self, class _Env>
-      struct __completions_t {
-
+      template <class _Self, class... _Env>
+      struct __completions_fn {
         template <class... _Sequences>
         using __f = __minvoke<
           __mtry_q<__concat_completion_signatures>,
           completion_signatures<set_stopped_t()>,
-          completion_signatures_of_t<__child_of<_Self>, _Env>,
-          completion_signatures_of_t<_Sequences, _Env>...
+          __completion_signatures_of_t<__child_of<_Self>, _Env...>,
+          __completion_signatures_of_t<_Sequences, _Env...>...
         >;
       };
 
       template <class _Self, class... _Env>
-      using __completions = __mtry_q<__mapply>::__f<
-        __mtry<__completions_t<_Self, _Env...>>,
+      using __completions_t = __mtry_q<__mapply>::__f<
+        __mtry<__completions_fn<_Self, _Env...>>,
         __compute::__nested_sequences<__child_of<_Self>, _Env...>
       >;
 
       template <sender_expr_for<merge_each_t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
-        return __minvoke<
-          __mtry_q<__completions>,
+      static consteval auto get_completion_signatures() {
+        using __result_t = __minvoke<
+          __mtry_q<__completions_t>,
           _Self,
-          __env_with_inplace_stop_token_result_t<_Env...>
-        >{};
+          __env_with_inplace_stop_token_result_t<_Env>...
+        >;
+        if constexpr (__ok<__result_t>) {
+          static_assert(__valid_completion_signatures<__result_t>);
+          return __result_t();
+        } else {
+          return stdexec::__invalid_completion_signature(__result_t());
+        }
       }
 
       static constexpr auto subscribe =

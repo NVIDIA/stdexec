@@ -20,71 +20,23 @@
 // include these after __execution_fwd.hpp
 #include "../functional.hpp"
 #include "__completion_signatures.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__debug.hpp" // IWYU pragma: keep
-#include "__senders_core.hpp"
+#include "__get_completion_signatures.hpp"
 #include "__meta.hpp"
 
 #include <exception>
 
 namespace stdexec {
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
-  // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
-  // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
-  // completion signatures wrapper enforces that at compile time.
-  template <class _Sender, class... _Env>
-  auto __checked_completion_signatures(_Sender &&__sndr, _Env &&...__env) noexcept {
-    using __completions_t = __completion_signatures_of_t<_Sender, _Env...>;
-    stdexec::__debug_sender(static_cast<_Sender &&>(__sndr), __env...);
-    return __completions_t{};
-  }
-
-  template <class _Sender, class... _Env>
-    requires sender_in<_Sender, _Env...>
-  using completion_signatures_of_t =
-    decltype(stdexec::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
-#else
-  template <class _Sender, class... _Env>
-    requires sender_in<_Sender, _Env...>
-  using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env...>;
-#endif
-
-  namespace __sigs {
-    // The following code is used to normalize completion signatures. "Normalization" means that
-    // that rvalue-references are stripped from the types in the completion signatures. For example,
-    // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
-    // but `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
-    template <class _Tag, class... _Args>
-    auto __normalize_sig_impl(_Args &&...) -> _Tag (*)(_Args...);
-
-    template <class _Tag, class... _Args>
-    auto __normalize_sig(_Tag (*)(_Args...))
-      -> decltype(__sigs::__normalize_sig_impl<_Tag>(__declval<_Args>()...));
-
-    template <class... _Sigs>
-    auto __repack_completions(_Sigs *...) -> completion_signatures<_Sigs...>;
-
-    template <class... _Sigs>
-    auto __normalize_completions(completion_signatures<_Sigs...> *)
-      -> decltype(__sigs::__repack_completions(
-        __sigs::__normalize_sig(static_cast<_Sigs *>(nullptr))...));
-
-    template <class _Completions>
-    using __normalize_completions_t = decltype(__sigs::__normalize_completions(
-      static_cast<_Completions *>(nullptr)));
-  } // namespace __sigs
-
-  template <class... _SigPtrs>
-  using __completion_signature_ptrs = decltype(__sigs::__repack_completions(
-    static_cast<_SigPtrs>(nullptr)...));
-
-  namespace __sigs {
+  namespace __cmplsigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     template <template <class...> class _Tuple, class _Tag, class... _Args>
     auto __for_each_sig(_Tag (*)(_Args...)) -> _Tuple<_Tag, _Args...>;
 
     template <class _Sig, template <class...> class _Tuple>
-    using __for_each_sig_t = decltype(__sigs::__for_each_sig<_Tuple>(static_cast<_Sig *>(nullptr)));
+    using __for_each_sig_t = decltype(__cmplsigs::__for_each_sig<_Tuple>(
+      static_cast<_Sig *>(nullptr)));
 
     template <
       template <class...> class _Tuple,
@@ -101,7 +53,7 @@ namespace stdexec {
     >
     auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
-  } // namespace __sigs
+  } // namespace __cmplsigs
 
   template <
     class _Sigs,
@@ -110,10 +62,10 @@ namespace stdexec {
     class... _More
   >
   using __for_each_completion_signature =
-    decltype(__sigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
+    decltype(__cmplsigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
       static_cast<_Sigs **>(nullptr)));
 
-  namespace __sigs {
+  namespace __cmplsigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     template <
       template <class...> class _SetVal,
@@ -140,7 +92,7 @@ namespace stdexec {
       template <class...> class _SetErr,
       class _SetStp
     >
-    using __transform_sig_t = decltype(__sigs::__transform_sig<_SetVal, _SetErr, _SetStp>(
+    using __transform_sig_t = decltype(__cmplsigs::__transform_sig<_SetVal, _SetErr, _SetStp>(
       static_cast<_Sig *>(nullptr)));
 
     template <
@@ -163,7 +115,7 @@ namespace stdexec {
     >
     auto __transform_sigs_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
-  } // namespace __sigs
+  } // namespace __cmplsigs
 
   template <
     class _Sigs,
@@ -174,10 +126,10 @@ namespace stdexec {
     class... _More
   >
   using __transform_completion_signatures =
-    decltype(__sigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
+    decltype(__cmplsigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
       static_cast<_Sigs **>(nullptr)));
 
-  namespace __sigs {
+  namespace __cmplsigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     template <class _WantedTag>
     struct __gather_sigs_fn;
@@ -247,7 +199,7 @@ namespace stdexec {
 
     template <class _Tag, class... _Args>
     using __default_completion = completion_signatures<_Tag(_Args...)>;
-  } // namespace __sigs
+  } // namespace __cmplsigs
 
   template <
     class _Sigs,
@@ -258,7 +210,7 @@ namespace stdexec {
     class... _More
   >
   using __gather_completion_signatures =
-    __sigs::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
+    __cmplsigs::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures
@@ -325,8 +277,8 @@ namespace stdexec {
   template <
     class _Sigs,
     class _MoreSigs = completion_signatures<>,
-    template <class...> class _ValueTransform = __sigs::__default_set_value,
-    template <class...> class _ErrorTransform = __sigs::__default_set_error,
+    template <class...> class _ValueTransform = __cmplsigs::__default_set_value,
+    template <class...> class _ErrorTransform = __cmplsigs::__default_set_error,
     class _StoppedSigs = completion_signatures<set_stopped_t()>
   >
   using transform_completion_signatures = __transform_completion_signatures<
@@ -342,8 +294,8 @@ namespace stdexec {
     class _Sndr,
     class _Env = env<>,
     class _MoreSigs = completion_signatures<>,
-    template <class...> class _ValueTransform = __sigs::__default_set_value,
-    template <class...> class _ErrorTransform = __sigs::__default_set_error,
+    template <class...> class _ValueTransform = __cmplsigs::__default_set_value,
+    template <class...> class _ErrorTransform = __cmplsigs::__default_set_error,
     class _StoppedSigs = completion_signatures<set_stopped_t()>
   >
   using transform_completion_signatures_of = transform_completion_signatures<
@@ -366,8 +318,8 @@ namespace stdexec {
     class _Sender,
     class _Env = env<>,
     class _More = completion_signatures<>,
-    class _SetValue = __qq<__sigs::__default_set_value>,
-    class _SetError = __qq<__sigs::__default_set_error>,
+    class _SetValue = __qq<__cmplsigs::__default_set_value>,
+    class _SetError = __qq<__cmplsigs::__default_set_error>,
     class _SetStopped = completion_signatures<set_stopped_t()>
   >
   using __try_make_completion_signatures = __transform_completion_signatures<

@@ -83,10 +83,9 @@ namespace exec {
         subscribe_result_t<_Sender, stdexec::__t<__receiver<_ReceiverId, _Adaptor>>> __op_;
 
         __t(_Sender&& __sndr, _Receiver __rcvr, _Adaptor __adaptor)
-          : __operation_base<
-              _Receiver,
-              _Adaptor
-            >{static_cast<_Receiver&&>(__rcvr), static_cast<_Adaptor&&>(__adaptor)}
+          : __operation_base<_Receiver, _Adaptor>{
+              static_cast<_Receiver&&>(__rcvr),
+              static_cast<_Adaptor&&>(__adaptor)}
           , __op_{exec::subscribe(
               static_cast<_Sender&&>(__sndr),
               stdexec::__t<__receiver<_ReceiverId, _Adaptor>>{this})} {
@@ -169,9 +168,13 @@ namespace exec {
       using __completion_sigs_t = __sequence_completion_signatures_of_t<__child_of<_Self>, _Env...>;
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
-        -> __completion_sigs_t<_Self, _Env...> {
-        return {};
+      static consteval auto get_completion_signatures() noexcept {
+        using __result_t = __completion_sigs_t<_Self, _Env...>;
+        if constexpr (__ok<__result_t>) {
+          return __result_t();
+        } else {
+          return stdexec::__invalid_completion_signature(__result_t());
+        }
       }
 
       template <class _Self, class... _Env>
@@ -193,15 +196,17 @@ namespace exec {
                  __data_of<_Self>,
                  __item_types_of_t<__child_of<_Self>, _Env...>
              >)
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
-        _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>,
-        _WITH_TYPE_<__try_adaptor_calls_result_t<
-          __data_of<_Self>,
-          __item_types_of_t<__child_of<_Self>, _Env...>
-        >>
-      >;
+      static consteval auto get_item_types() {
+        return exec::__invalid_item_types<
+          _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
+          _WITH_SEQUENCE_<__child_of<_Self>>,
+          _WITH_ENVIRONMENT_<_Env...>,
+          _WITH_TYPE_<__try_adaptor_calls_result_t<
+            __data_of<_Self>,
+            __item_types_of_t<__child_of<_Self>, _Env...>
+          >>
+        >();
+      }
 
       template <class _Transform>
       struct _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_ { };
@@ -209,11 +214,13 @@ namespace exec {
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
         requires(!__mvalid<__item_types_t, _Self, _Env...>)
              && (!__mvalid<__item_types_of_t, __child_of<_Self>, _Env...>)
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
-        _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>
-      >;
+      static consteval auto get_item_types() {
+        return exec::__invalid_item_types<
+          _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_<_Self>,
+          _WITH_SEQUENCE_<__child_of<_Self>>,
+          _WITH_ENVIRONMENT_<_Env...>
+        >();
+      }
 
       template <class _Transform>
       struct _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_ { };
@@ -225,11 +232,13 @@ namespace exec {
                   __data_of<_Self>,
                   __item_types_of_t<__child_of<_Self>, _Env...>
              >
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> __mexception<
-        _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_<_Self>,
-        _WITH_SEQUENCE_<__child_of<_Self>>,
-        _WITH_ENVIRONMENT_<_Env...>
-      >;
+      static consteval auto get_item_types() {
+        return exec::__invalid_item_types<
+          _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_<_Self>,
+          _WITH_SEQUENCE_<__child_of<_Self>>,
+          _WITH_ENVIRONMENT_<_Env...>
+        >();
+      }
 
       template <sender_expr_for<transform_each_t> _Self, class... _Env>
         requires __mvalid<__item_types_t, _Self, _Env...>
@@ -238,7 +247,7 @@ namespace exec {
                    __data_of<_Self>,
                    __item_types_of_t<__child_of<_Self>, _Env...>
               >
-      static auto get_item_types(_Self&&, _Env&&...) noexcept -> __item_types_t<_Self, _Env...> {
+      static consteval auto get_item_types() noexcept -> __item_types_t<_Self, _Env...> {
         return {};
       }
 

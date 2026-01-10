@@ -20,6 +20,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__get_completion_signatures.hpp"
 #include "__tag_invoke.hpp"
 
 #include "../functional.hpp"
