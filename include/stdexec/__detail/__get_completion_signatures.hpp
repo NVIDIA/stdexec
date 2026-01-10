@@ -21,6 +21,7 @@
 #include "__awaitable.hpp"
 #include "__completion_signatures.hpp" // IWYU pragma: export
 #include "__diagnostics.hpp"
+#include "__meta.hpp"
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp" // IWYU pragma: keep for __tuple
 
@@ -85,7 +86,7 @@ namespace stdexec {
   consteval auto __invalid_completion_signature([[maybe_unused]] _Values... __values)
     -> completion_signatures<> {
     if constexpr (__same_as<_What, dependent_sender_error>) {
-      throw __dependent_sender_error<_What, _More...>();
+      throw __mexception<dependent_sender_error, _More...>();
     } else if constexpr (sizeof...(_Values) == 1) {
       throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
     } else {

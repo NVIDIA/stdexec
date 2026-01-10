@@ -560,9 +560,13 @@ namespace stdexec {
 #  define STDEXEC_NO_STD_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
-#if !STDEXEC_NO_STD_EXCEPTIONS() && __cpp_constexpr_exceptions >= 2024'11L
+#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 2024'11L
+#  if !STDEXEC_NO_STD_EXCEPTIONS()
 // https://wg21.link/p3068
-#  define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 0
+#    define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 0
+#  else
+#    define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 1
+#  endif
 #else
 #  define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 1
 #endif

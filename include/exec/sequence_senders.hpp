@@ -483,12 +483,12 @@ namespace exec {
   template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto
-    __invalid_item_types([[maybe_unused]] _Values... __values) -> completion_signatures<> {
+    __invalid_item_types([[maybe_unused]] _Values... __values) -> stdexec::completion_signatures<> {
     if constexpr (sizeof...(_Values) == 1) {
       throw __sequence_type_check_failure<_Values..., _What, _More...>(__values...);
     } else {
-      throw __sequence_type_check_failure<__tuple<_Values...>, _What, _More...>(
-        __tuple{__values...});
+      throw __sequence_type_check_failure<stdexec::__tuple<_Values...>, _What, _More...>(
+        stdexec::__tuple{__values...});
     }
   }
 
