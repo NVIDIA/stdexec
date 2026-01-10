@@ -1,13 +1,13 @@
 # User-customizable variables:
 CXX ?= c++
 CXX_STD ?= c++20
-CXXFLAGS ?= -I relacy -I relacy/relacy/fakestd -O1 -std=$(CXX_STD) -I ../../include -I ../../test -g
+CXXFLAGS ?= -DSTDEXEC_RELACY -I relacy -I relacy/relacy/fakestd -O1 -std=$(CXX_STD) -I ../../include -I ../../test -g
 DEPFLAGS ?= -MD -MF $(@).d -MP -MT $(@)
 build_dir = build
 
 .SECONDARY:
 
-test_programs = split async_scope
+test_programs = split async_scope sync_wait
 
 test_exe_files = $(foreach name,$(test_programs),$(build_dir)/$(name))
 
