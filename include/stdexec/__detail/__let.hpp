@@ -144,6 +144,18 @@ namespace stdexec {
         __mapply_q<_NESTED_ERROR_, __completion_signatures_of_t<_Sender, _JoinEnv2...>>
       >;
     };
+    // Special-case handling for void to avoid EDG instantiation issues
+    template <class _SetTag, class... _JoinEnv2>
+    struct __bad_result_sender_<void, _SetTag, _JoinEnv2...> {
+      using __t = __not_a_sender<
+        _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
+          __in_which_let_msg<_SetTag>,
+          "The function must return a valid sender for the current environment"_mstr
+        >,
+        _WITH_SENDER_<void>,
+        _WITH_ENVIRONMENT_<_JoinEnv2>...
+      >;
+    };
     template <class _Sender, class _SetTag, class... _JoinEnv2>
     using __bad_result_sender = __t<__bad_result_sender_<_Sender, _SetTag, _JoinEnv2...>>;
 #else
