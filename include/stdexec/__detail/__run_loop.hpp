@@ -27,7 +27,6 @@
 
 #include "__atomic.hpp"
 #include "stdexec/__detail/__config.hpp"
-#include <atomic>
 #include <cstddef>
 
 namespace stdexec {
@@ -56,16 +55,21 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(host, device) void finish() noexcept {
       // Increment our task count to avoid lifetime issues. This is preventing
       // a use-after-free issue if finish is called from a different thread.
-      __task_count_.fetch_add(1,    __std::memory_order_release);
+      // We increment the task counter by two to avoid the run loop to exit before
+      // we scheduled the noop task
+      __task_count_.fetch_add(2, __std::memory_order_release);
       if (!__finishing_.exchange(true, __std::memory_order_acq_rel)) {
         // push an empty work item to the queue to wake up the consuming thread
         // and let it finish.
         // The count will be decremented once the tasks executes.
         __queue_.push(&__noop_task);
+        // If the task got pushed, simply subtract one again, the other increment
+        // happens when the noop task got executed.
+        __task_count_.fetch_sub(1, __std::memory_order_release);
         return;
       }
-      // We are done finishing. Decrement the count, which signals final completion.
-      __task_count_.fetch_sub(1,    __std::memory_order_release);
+      // We are done finishing. Decrement the count by two, which signals final completion.
+      __task_count_.fetch_sub(2, __std::memory_order_release);
     }
 
     struct __task : __immovable {
