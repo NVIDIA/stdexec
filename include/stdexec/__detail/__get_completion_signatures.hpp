@@ -197,9 +197,8 @@ namespace stdexec {
         // This branch is strictly for backwards compatibility
         using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
         return STDEXEC_CHECKED_COMPLSIGS(_Result());
-      }
-      // [WAR] The explicit cast to bool below is to work around a bug in nvc++ (nvbug#4707793)
-      else if constexpr (bool(__awaitable<_Sender, __detail::__promise<_Env>...>)) {
+      } else if constexpr (bool(__awaitable<_Sender, __detail::__promise<_Env>...>)) {
+        // [WAR] The explicit cast to bool above is to work around a bug in nvc++ (nvbug#4707793)
         using _Result = __await_result_t<_Sender, __detail::__promise<_Env>...>;
         using _ValueSig = __minvoke<__mremove<void, __qf<set_value_t>>, _Result>;
         return completion_signatures<_ValueSig, set_error_t(std::exception_ptr), set_stopped_t()>();
@@ -281,8 +280,9 @@ namespace stdexec {
     >();
   }
 
-  // An unconstrained alias for get_completion_signatures:
+  // An minimally constrained alias for get_completion_signatures:
   template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
     decltype(stdexec::get_completion_signatures<_Sender, _Env...>());
 
