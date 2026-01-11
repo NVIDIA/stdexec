@@ -277,8 +277,8 @@ namespace stdexec {
     requires(std::remove_cvref_t<_Alloc> __al, std::size_t __n) {
       {
         __al.allocate(__n)
-      } -> std::same_as<std::add_pointer_t<typename std::remove_cvref_t<_Alloc>::value_type>>;
+      } -> same_as<std::add_pointer_t<typename std::remove_cvref_t<_Alloc>::value_type>>;
       __al.deallocate(__al.allocate(__n), __n);
-    } && std::copy_constructible<std::remove_cvref_t<_Alloc>>
-    && std::equality_comparable<std::remove_cvref_t<_Alloc>>;
+    } && copy_constructible<std::remove_cvref_t<_Alloc>>
+    && equality_comparable<std::remove_cvref_t<_Alloc>>;
 } // namespace stdexec
