@@ -310,7 +310,7 @@ namespace stdexec {
     template <class _Receiver>
     static auto __mk_state_fn(const _Receiver&) noexcept {
       using __env_of_t = env_of_t<_Receiver>;
-      return []<__max1_sender<__env_t<__env_of_t>>... _Child>(__ignore, __ignore, _Child&&...) {
+      return []<__max1_sender<__env_t<__env_of_t>>... _Child>(__ignore, __ignore, _Child&&...) noexcept {
         using _Traits = __traits<__env_of_t, _Child...>;
         using _ErrorsVariant = _Traits::__errors_variant;
         using _ValuesTuple = _Traits::__values_tuple;
@@ -368,7 +368,7 @@ namespace stdexec {
       };
 
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver& __rcvr)
+        []<class _Self, class _Receiver>(_Self&& __self, _Receiver& __rcvr) noexcept
         -> __sexpr_apply_result_t<_Self, __mk_state_fn_t<_Receiver>> {
         return __sexpr_apply(static_cast<_Self&&>(__self), __when_all::__mk_state_fn(__rcvr));
       };

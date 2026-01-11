@@ -33,6 +33,7 @@ namespace {
   TEST_CASE("when_all returns a sender", "[adaptors][when_all]") {
     auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
     static_assert(ex::sender<decltype(snd)>);
+    static_assert(noexcept(ex::connect(snd, expect_error_receiver{})));
     (void) snd;
   }
 
