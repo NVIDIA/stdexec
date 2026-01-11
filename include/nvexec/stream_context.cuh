@@ -35,6 +35,7 @@
 #include "stream/upon_stopped.cuh"        // IWYU pragma: export
 #include "stream/when_all.cuh"            // IWYU pragma: export
 #include "stream/reduce.cuh"              // IWYU pragma: export
+#include "stream/repeat_n.cuh"            // IWYU pragma: export
 #include "stream/ensure_started.cuh"      // IWYU pragma: export
 #include "stream/common.cuh"              // IWYU pragma: export
 #include "detail/queue.cuh"               // IWYU pragma: export
@@ -44,14 +45,15 @@ namespace nvexec {
   namespace _strm {
     struct stream_scheduler;
 
-    struct stream_scheduler_env {
+    template <class StreamScheduler>
+    struct stream_scheduler_env { // NOLINT(bugprone-crtp-constructor-accessibility)
       STDEXEC_ATTRIBUTE(nodiscard)
       static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee {
         return forward_progress_guarantee::weakly_parallel;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard)
-      auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler;
+      auto query(get_completion_scheduler_t<set_value_t>) const noexcept -> StreamScheduler;
 
       STDEXEC_ATTRIBUTE(nodiscard)
       constexpr auto query(get_completion_domain_t<set_value_t>) const noexcept -> stream_domain {
@@ -59,7 +61,7 @@ namespace nvexec {
       }
     };
 
-    struct stream_scheduler : private stream_scheduler_env {
+    struct stream_scheduler : private stream_scheduler_env<stream_scheduler> {
       using __t = stream_scheduler;
       using __id = stream_scheduler;
 
@@ -152,10 +154,11 @@ namespace nvexec {
       context_state_t context_state_;
     };
 
+    template <>
     STDEXEC_ATTRIBUTE(nodiscard)
-    inline auto stream_scheduler_env::query(get_completion_scheduler_t<set_value_t>) const noexcept
-      -> stream_scheduler {
-      return (const stream_scheduler&) *this;
+    inline auto stream_scheduler_env<stream_scheduler>::query(
+      get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
+      return stdexec::__c_downcast<stream_scheduler>(*this);
     }
   } // namespace _strm
 

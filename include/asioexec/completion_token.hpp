@@ -18,18 +18,18 @@
 
 #pragma once
 
+#include <asioexec/as_default_on.hpp>
+#include <asioexec/asio_config.hpp>
 #include <concepts>
 #include <exception>
 #include <functional>
 #include <mutex>
 #include <optional>
+#include <stdexec/execution.hpp>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <version>
-#include <asioexec/as_default_on.hpp>
-#include <asioexec/asio_config.hpp>
-#include <stdexec/execution.hpp>
 
 namespace asioexec {
 
@@ -92,7 +92,7 @@ namespace asioexec {
         at_least_as_qualified_v<std::remove_reference_t<T>, std::remove_reference_t<U>>
         && (
           //  Reference type must agree except...
-          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<T>) ||
+          (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<U>) ||
           //  ...special rules for const& which allows rvalues to bind thereto
           (std::is_lvalue_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>) ))
 #endif
@@ -527,7 +527,7 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
   template <typename... Signatures>
   struct async_result<::asioexec::completion_token_t, Signatures...> {
     template <typename Initiation, typename... Args>
-      requires (std::is_constructible_v<std::decay_t<Args>, Args> && ...)
+      requires(std::is_constructible_v<std::decay_t<Args>, Args> && ...)
     static constexpr auto
       initiate(Initiation&& i, const ::asioexec::completion_token_t&, Args&&... args) {
       return ::asioexec::detail::completion_token::sender<

@@ -46,7 +46,7 @@ struct fail_some {
   };
 
   template <class R>
-  friend auto tag_invoke(stdexec::connect_t, fail_some, R r) -> op<R> {
+  auto connect(R r) const -> op<R> {
     return {std::move(r)};
   }
 };

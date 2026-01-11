@@ -34,15 +34,16 @@ namespace stdexec {
   // [execution.senders.transfer_just]
   namespace __transfer_just {
     inline auto __make_transform_fn() {
-      return [&]<class _Scheduler, class... _Values>(_Scheduler&& __sched, _Values&&... __vals) {
+      return []<class _Scheduler, __decay_copyable... _Values>(
+               _Scheduler&& __sched, _Values&&... __vals) {
         return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
       };
     }
 
     inline auto __transform_sender_fn() {
-      return [&]<class _Data>(__ignore, _Data&& __data) {
-        return __data.apply(__make_transform_fn(), static_cast<_Data&&>(__data));
+      return []<class _Data>(__ignore, _Data&& __data) {
+        return stdexec::__apply(__make_transform_fn(), static_cast<_Data&&>(__data));
       };
     }
 
@@ -50,13 +51,17 @@ namespace stdexec {
       template <scheduler _Scheduler, __movable_value... _Values>
       auto
         operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
-          return __make_sexpr<transfer_just_t>(
-            __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
+        return __make_sexpr<transfer_just_t>(
+          __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
       }
 
       template <class _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
+        if constexpr (!__decay_copyable<_Sender>) {
+          return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
+        } else {
+          return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
+        }
       }
     };
 
@@ -69,7 +74,7 @@ namespace stdexec {
 
     struct __transfer_just_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Data>(const _Data& __data) noexcept {
-        return __data.apply(__make_attrs_fn(), __data);
+        return stdexec::__apply(__make_attrs_fn(), __data);
       };
 
       static constexpr auto get_completion_signatures =

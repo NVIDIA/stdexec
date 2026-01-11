@@ -15,18 +15,52 @@
  */
 #pragma once
 
+#include "__concepts.hpp"
 #include "__config.hpp" // IWYU pragma: export
 #include "__meta.hpp"
-#include "__concepts.hpp"
 #include "__type_traits.hpp"
 
 // IWYU pragma: always_keep
 
+STDEXEC_NAMESPACE_STD_BEGIN
+struct monostate;
+
+template <class...>
+class variant;
+
+template <class...>
+class tuple;
+STDEXEC_NAMESPACE_STD_END
+
 namespace stdexec {
   struct __none_such;
 
+  namespace __detail {
+    struct __not_a_variant {
+      __not_a_variant() = delete;
+    };
+  } // namespace __detail
+
+  template <class... _Ts>
+  using __std_variant = __minvoke_if_c<
+    sizeof...(_Ts) == 0,
+    __mconst<__detail::__not_a_variant>,
+    __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
+    _Ts...
+  >;
+
+  template <class... _Ts>
+  using __nullable_std_variant =
+    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
+
+  template <class... _Ts>
+  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct default_domain;
+
+  template <class...>
+  struct indeterminate_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __rcvrs {
@@ -94,11 +128,13 @@ namespace stdexec {
     struct get_stop_token_t;
     template <__completion_tag _CPO>
     struct get_completion_scheduler_t;
-    template <__completion_tag _CPO>
+    template <class _CPO = void>
     struct get_completion_domain_t;
     template <__completion_tag _CPO>
     struct get_completion_behavior_t;
     struct get_domain_t;
+
+    struct __debug_env_t;
   } // namespace __queries
 
   using __queries::forwarding_query_t;
@@ -122,9 +158,16 @@ namespace stdexec {
   extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
-  template <__completion_tag _CPO>
+  template <class _CPO = void>
   extern const get_completion_domain_t<_CPO> get_completion_domain;
   extern const get_domain_t get_domain;
+
+  template <class _Env>
+  concept __is_debug_env = __callable<__queries::__debug_env_t, _Env>;
+
+  namespace __debug {
+    struct __completion_signatures;
+  } // namespace __debug
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -143,25 +186,55 @@ namespace stdexec {
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __sigs {
-    template <class _Sig>
-    inline constexpr bool __is_compl_sig = false;
-
-    struct get_completion_signatures_t;
-  } // namespace __sigs
-
-  template <class _Sig>
-  concept __completion_signature = __sigs::__is_compl_sig<_Sig>;
-
   template <class... _Sigs>
   struct completion_signatures;
 
-  using __sigs::get_completion_signatures_t;
-  extern const get_completion_signatures_t get_completion_signatures;
+  template <class _Completions>
+  concept __valid_completion_signatures = __ok<_Completions>
+                                       && __is_instance_of<_Completions, completion_signatures>;
+
+  struct dependent_sender_error;
+  using dependent_completions [[deprecated(
+    "use dependent_sender_error instead of dependent_completions")]] = dependent_sender_error;
+
+  namespace __cmplsigs {
+    struct get_completion_signatures_t;
+
+#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+    // Without constexpr exceptions, we cannot always produce a valid
+    // completion_signatures type. We must permit get_completion_signatures to return an
+    // error type because we can't throw it.
+    template <class _Completions>
+    concept __well_formed_completions_helper =
+      __valid_completion_signatures<_Completions>
+      || STDEXEC_IS_BASE_OF(stdexec::dependent_sender_error, _Completions)
+      || __is_instance_of<_Completions, _ERROR_>;
+#else
+    // When we have constexpr exceptions, we can require that get_completion_signatures
+    // always produces a valid completion_signatures type.
+    template <class _Completions>
+    concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>;
+#endif
+  } // namespace __cmplsigs
+
+  using __cmplsigs::get_completion_signatures_t;
+
+  // The cast to bool is to hide the disjunction in __well_formed_completions_helper.
+  template <class _Completions>
+  concept __well_formed_completions = bool(
+    __cmplsigs::__well_formed_completions_helper<_Completions>);
+
+  // Legacy interface:
+  template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
+  constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
+    -> __well_formed_completions auto;
 
   template <class _Sender, class... _Env>
-  using __completion_signatures_of_t =
-    __call_result_t<get_completion_signatures_t, _Sender, _Env...>;
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
+  consteval auto get_completion_signatures() -> __well_formed_completions auto;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
@@ -170,6 +243,9 @@ namespace stdexec {
 
   using __connect::connect_t;
   extern const connect_t connect;
+
+  template <class _Sender, class _Receiver>
+  using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   struct sender_t;
 
@@ -276,6 +352,21 @@ namespace stdexec {
   extern const bulk_t bulk;
   extern const bulk_chunked_t bulk_chunked;
   extern const bulk_unchunked_t bulk_unchunked;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  namespace __let {
+    template <class _SetTag>
+    struct __let_t;
+  } // namespace __let
+
+  using let_value_t = __let::__let_t<set_value_t>;
+  extern const let_value_t let_value;
+
+  using let_error_t = __let::__let_t<set_error_t>;
+  extern const let_error_t let_error;
+
+  using let_stopped_t = __let::__let_t<set_stopped_t>;
+  extern const let_stopped_t let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __split {

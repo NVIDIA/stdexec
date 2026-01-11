@@ -21,8 +21,8 @@
 #include "__basic_sender.hpp"
 #include "__env.hpp"
 #include "__intrusive_slist.hpp"
-#include "__optional.hpp"
 #include "__meta.hpp"
+#include "__optional.hpp"
 #include "__receivers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
@@ -76,7 +76,7 @@ namespace stdexec::__shared {
   template <class _Receiver>
   auto __make_notify_visitor(_Receiver& __rcvr) noexcept {
     return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
-      __tupl.apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
+      stdexec::__apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
     };
   }
 
@@ -210,6 +210,7 @@ namespace stdexec::__shared {
   //! Heap-allocatable shared state for things like `stdexec::split`.
   template <class _CvrefSender, class _Env>
   struct __shared_state {
+    static_assert(__decays_to<_CvrefSender, _CvrefSender>);
     using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
     using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
 
@@ -217,9 +218,9 @@ namespace stdexec::__shared {
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __mbind_front_q<__decayed_tuple, set_value_t>::__f,
       __mbind_front_q<__decayed_tuple, set_error_t>::__f,
-      __tuple_for<set_error_t, std::exception_ptr>,
-      __munique<__mbind_front_q<__variant_for, __tuple_for<set_stopped_t>>>::__f,
-      __tuple_for<set_error_t, std::exception_ptr>
+      __tuple<set_error_t, std::exception_ptr>,
+      __munique<__mbind_front_q<__variant_for, __tuple<set_stopped_t>>>::__f,
+      __tuple<set_error_t, std::exception_ptr>
     >;
 
     inplace_stop_source __stop_source_{};
@@ -368,7 +369,7 @@ namespace stdexec::__shared {
   __shared_state(_CvrefSender&&, _Env) -> __shared_state<_CvrefSender, _Env>;
 
   template <class _Cvref, class _CvrefSender, class _Env>
-  using __make_completions = __try_make_completion_signatures<
+  using __make_completions_t = __try_make_completion_signatures<
     // NOT TO SPEC:
     // See https://github.com/cplusplus/sender-receiver/issues/23
     _CvrefSender,
@@ -390,8 +391,8 @@ namespace stdexec::__shared {
   // denotes an instance of the __shared_state template, which is parameterized on the
   // cvref-qualified sender and the environment.
   template <class _Tag, class _ShState>
-  using __completions =
-    __mapply<__mbind_front_q<__make_completions, __cvref_results_t<_Tag>>, _ShState>;
+  using __completions_t =
+    __mapply<__mbind_front_q<__make_completions_t, __cvref_results_t<_Tag>>, _ShState>;
 
   template <class _CvrefSender, class _Env, bool _Copyable = true>
   struct __box {
@@ -432,14 +433,16 @@ namespace stdexec::__shared {
   struct __shared_impl : __sexpr_defaults {
     static constexpr auto get_state =
       []<class _CvrefSender, class _Receiver>(_CvrefSender&& __sndr, _Receiver&) noexcept
-      -> __local_state<_CvrefSender, _Receiver> {
+      -> __local_state<_CvrefSender, _Receiver>
+      requires __decay_copyable<__data_of<_CvrefSender>>
+    {
       static_assert(sender_expr_for<_CvrefSender, _Tag>);
       return __local_state<_CvrefSender, _Receiver>{static_cast<_CvrefSender&&>(__sndr)};
     };
 
     static constexpr auto get_completion_signatures =
       []<class _Self>(const _Self&, auto&&...) noexcept
-      -> __completions<_Tag, typename __data_of<_Self>::__sh_state_t> {
+      -> __completions_t<_Tag, typename __data_of<_Self>::__sh_state_t> {
       static_assert(sender_expr_for<_Self, _Tag>);
       return {};
     };

@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// This file causes clangd to crash during parsing
+#if !defined(STDEXEC_CLANGD_INVOKED)
+
 #include "maxwell/snr.cuh"
 
 auto main(int argc, char *argv[]) -> int {
@@ -52,3 +55,5 @@ auto main(int argc, char *argv[]) -> int {
   nvexec::multi_gpu_stream_context stream_context{};
   run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
 }
+
+#endif // !defined(STDEXEC_CLANGD_INVOKED)

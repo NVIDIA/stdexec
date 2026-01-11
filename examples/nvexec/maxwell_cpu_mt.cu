@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// This file causes clangd to crash during parsing
+#if !defined(STDEXEC_CLANGD_INVOKED)
+
 #include "maxwell/snr.cuh"
 #include "maxwell/std.cuh"
 #include "maxwell/stdpar.cuh" // IWYU pragma: keep
@@ -85,3 +88,5 @@ auto main(int argc, char *argv[]) -> int {
   }
 #endif
 }
+
+#endif // !defined(STDEXEC_CLANGD_INVOKED)

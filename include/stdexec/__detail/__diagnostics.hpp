@@ -17,21 +17,11 @@
 
 #include "__meta.hpp"
 
+#include <exception> // IWYU pragma: keep for std::exception
+
 namespace stdexec {
-  namespace __detail {
-    template <class _Ty>
-    extern __q<__midentity> __name_of_v;
-
-    template <class _Ty>
-    using __name_of_fn = decltype(__name_of_v<_Ty>);
-
-    template <class _Ty>
-    using __name_of = __minvoke<__name_of_fn<_Ty>, _Ty>;
-  } // namespace __detail
-
-  // A utility for pretty-printing type names in diagnostics
-  template <class _Ty>
-  using __name_of = __detail::__name_of<_Ty>;
+  struct sender_t;
+  struct scheduler_t;
 
   namespace __errs {
     inline constexpr __mstring __unrecognized_sender_type_diagnostic =
@@ -47,16 +37,18 @@ namespace stdexec {
 
   struct _WHERE_;
 
+  struct _WHY_;
+
   struct _IN_ALGORITHM_;
 
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
   template <class _Sender>
-  using _WITH_SENDER_ = __errs::_WITH_SENDER_<__name_of<_Sender>>;
+  using _WITH_SENDER_ = __errs::_WITH_SENDER_<__demangle_t<_Sender>>;
 
   template <class... _Senders>
-  using _WITH_SENDERS_ = __errs::_WITH_SENDERS_<__name_of<_Senders>...>;
+  using _WITH_SENDERS_ = __errs::_WITH_SENDERS_<__demangle_t<_Senders>...>;
 
   template <class _Env>
   struct _WITH_ENVIRONMENT_;
@@ -73,6 +65,8 @@ namespace stdexec {
   template <class _Sig>
   struct _WITH_COMPLETION_SIGNATURE_;
 
+  struct _WITH_COMPLETION_SIGNATURES_;
+
   template <class _Fun>
   struct _WITH_FUNCTION_;
 
@@ -81,6 +75,8 @@ namespace stdexec {
 
   template <class _Tag>
   struct _WITH_QUERY_;
+
+  struct _TO_FIX_THIS_ERROR_;
 
   struct _SENDER_TYPE_IS_NOT_COPYABLE_;
 
@@ -101,6 +97,143 @@ namespace stdexec {
     template <class _Fun, class... _Args>
     using __f =
       __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_<_Fun>, _WITH_ARGUMENTS_<_Args...>>;
+  };
+
+  template <class _Sender, class... _Env>
+  using __unrecognized_sender_error =
+    __mexception<_UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
+
+#if __cpp_lib_constexpr_exceptions >= 2025'02L // constexpr exception types, https://wg21.link/p3378
+
+  using __exception = ::std::exception;
+
+#elif __cpp_constexpr >= 2024'11L // constexpr virtual functions
+
+  struct __exception {
+    constexpr __exception() noexcept = default;
+    constexpr virtual ~__exception() = default;
+
+    [[nodiscard]]
+    constexpr virtual auto what() const noexcept -> const char* {
+      return "<exception>";
+    }
+  };
+
+#else // no constexpr virtual functions:
+
+  struct __exception {
+    constexpr __exception() noexcept = default;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return "<exception>";
+    }
+  };
+
+#endif // __cpp_lib_constexpr_exceptions >= 2025'02L
+
+  template <class _Derived>
+  struct __compile_time_error : __exception {
+    __compile_time_error() = default; // NOLINT (bugprone-crtp-constructor-accessibility)
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return static_cast<_Derived const *>(this)->what();
+    }
+  };
+
+  template <class _Data, class... _What>
+  struct __sender_type_check_failure //
+    : __compile_time_error<__sender_type_check_failure<_Data, _What...>> {
+    static_assert(
+      std::is_nothrow_move_constructible_v<_Data>,
+      "The data member of sender_type_check_failure must be nothrow move constructible.");
+
+    constexpr __sender_type_check_failure() noexcept = default;
+
+    constexpr explicit __sender_type_check_failure(_Data data)
+      : __data_(static_cast<_Data&&>(data)) {
+    }
+
+   private:
+    friend struct __compile_time_error<__sender_type_check_failure>;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> const char* {
+      return "This sender is not well-formed. It does not meet the requirements of a sender type.";
+    }
+
+    _Data __data_{};
+  };
+
+  struct dependent_sender_error : __compile_time_error<dependent_sender_error> {
+    constexpr explicit dependent_sender_error(char const * what) noexcept
+      : what_(what) {
+    }
+
+   private:
+    friend struct __compile_time_error<dependent_sender_error>;
+
+    [[nodiscard]]
+    constexpr auto what() const noexcept -> char const * {
+      return what_;
+    }
+
+    char const * what_;
+  };
+
+  template <class... _What>
+  struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error {
+    constexpr _ERROR_() noexcept
+      : dependent_sender_error{
+          "This sender needs to know its execution environment before it can know how it will "
+          "complete."} {
+    }
+
+    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> _ERROR_;
+
+    template <class Ty>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(Ty&) -> _ERROR_&;
+
+    template <class... Other>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(_ERROR_<Other...>&) -> _ERROR_<Other...>&;
+
+    using __partitioned = _ERROR_;
+
+    template <class, class>
+    using __value_types = _ERROR_;
+
+    template <class, class>
+    using __error_types = _ERROR_;
+
+    template <class, class>
+    using __stopped_types = _ERROR_;
+  };
+
+  template <class _Sender>
+  using __dependent_sender_error = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
+
+  template <class _What, class... _With>
+  struct __not_a_sender {
+    using sender_concept = sender_t;
+
+    template <class Self>
+    constexpr auto get_completion_signatures(Self&&) const noexcept {
+      return __mexception<_What, _With...>();
+    }
+  };
+
+  template <class _What, class... _With>
+  struct __not_a_scheduler {
+    using scheduler_concept = scheduler_t;
+
+    auto schedule() noexcept {
+      return __not_a_sender<_What, _With...>{};
+    }
+
+    constexpr bool operator==(const __not_a_scheduler&) const noexcept = default;
   };
 } // namespace stdexec
 

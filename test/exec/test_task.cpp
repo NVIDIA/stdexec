@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !STDEXEC_STD_NO_COROUTINES()
+#if !STDEXEC_NO_STD_COROUTINES()
 #  include <exec/task.hpp>
 #  include <exec/single_thread_context.hpp>
 #  include <exec/async_scope.hpp>
@@ -304,7 +304,7 @@ namespace {
     CHECK(msg == "goodbye"s);
   }
 
-#  if !STDEXEC_STD_NO_EXCEPTIONS()
+#  if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("task - can error early", "[types][task]") {
     int count = 0;
     auto work = [](int& count) -> exec::task<void> {
@@ -325,7 +325,7 @@ namespace {
     }
     CHECK(count == 3);
   }
-#  endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#  endif // !STDEXEC_NO_STD_EXCEPTIONS()
 } // namespace
 
 #endif

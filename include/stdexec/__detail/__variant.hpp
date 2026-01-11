@@ -16,9 +16,9 @@
 #pragma once
 
 #include "__meta.hpp"
+#include "__scope.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
-#include "__scope.hpp"
 
 #include <cstddef>
 #include <new>
@@ -94,7 +94,6 @@ namespace stdexec {
       }
 
      public:
-
       template <std::size_t _Ny>
       using __at = __m_at_c<_Ny, _Ts...>;
 

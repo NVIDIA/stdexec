@@ -313,12 +313,7 @@ namespace {
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;
 
     template <class Recv>
-    friend auto tag_invoke(ex::connect_t, my_sender&&, Recv&& recv) {
-      return ex::connect(ex::just(), std::forward<Recv>(recv));
-    }
-
-    template <class Recv>
-    friend auto tag_invoke(ex::connect_t, const my_sender&, Recv&& recv) {
+    auto connect(Recv&& recv) const {
       return ex::connect(ex::just(), std::forward<Recv>(recv));
     }
   };

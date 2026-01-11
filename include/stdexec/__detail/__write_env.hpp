@@ -20,6 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__env.hpp"
+#include "__queries.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__utility.hpp"
 
@@ -36,8 +37,8 @@ namespace stdexec {
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Env __env) const -> __binder_back<write_env_t, _Env> {
-        return {{static_cast<_Env&&>(__env)}, {}, {}};
+      constexpr auto operator()(_Env __env) const {
+        return __closure(*this, static_cast<_Env&&>(__env));
       }
     };
 
@@ -52,11 +53,11 @@ namespace stdexec {
       };
 
       static constexpr auto get_completion_signatures =
-          []<class _Self, class... _Env>(_Self &&, _Env &&...) noexcept
-          -> __completion_signatures_of_t<
-              __child_of<_Self>,
-              __meval<__join_env_t, const __decay_t<__data_of<_Self>> &,
-                      _Env>...> {
+        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
+        -> __completion_signatures_of_t<
+          __child_of<_Self>,
+          __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
+        > {
         static_assert(sender_expr_for<_Self, write_env_t>);
         return {};
       };

@@ -22,7 +22,7 @@
 
 #include <test_common/type_helpers.hpp>
 
-#if !STDEXEC_STD_NO_COROUTINES()
+#if !STDEXEC_NO_STD_COROUTINES()
 
 namespace ex = stdexec;
 
@@ -33,15 +33,15 @@ namespace {
 
   template <typename Awaiter>
   struct promise {
-    auto get_return_object() -> __coro::coroutine_handle<promise> {
-      return {__coro::coroutine_handle<promise>::from_promise(*this)};
+    auto get_return_object() -> ex::__std::coroutine_handle<promise> {
+      return {ex::__std::coroutine_handle<promise>::from_promise(*this)};
     }
 
-    auto initial_suspend() noexcept -> __coro::suspend_always {
+    auto initial_suspend() noexcept -> ex::__std::suspend_always {
       return {};
     }
 
-    auto final_suspend() noexcept -> __coro::suspend_always {
+    auto final_suspend() noexcept -> ex::__std::suspend_always {
       return {};
     }
 
@@ -62,7 +62,7 @@ namespace {
       return true;
     }
 
-    auto await_suspend(__coro::coroutine_handle<>) -> bool {
+    auto await_suspend(ex::__std::coroutine_handle<>) -> bool {
       return false;
     }
 
@@ -73,12 +73,9 @@ namespace {
 
   struct invalid_awaiter {
     auto await_ready() -> bool;
-    auto await_suspend(__coro::coroutine_handle<>) -> bool;
+    auto await_suspend(ex::__std::coroutine_handle<>) -> bool;
     //void await_resume();
   };
-
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-internal")
 
   template <typename Awaiter>
   struct awaitable_sender_1 {
@@ -88,7 +85,7 @@ namespace {
   };
 
   struct awaitable_sender_2 {
-    using promise_type = promise<__coro::suspend_always>;
+    using promise_type = promise<ex::__std::suspend_always>;
 
    private:
     friend auto operator co_await(awaitable_sender_2) -> invalid_awaiter {
@@ -105,22 +102,18 @@ namespace {
     }
   };
 
-  STDEXEC_PRAGMA_POP()
-
   struct awaitable_sender_4 {
-    using promise_type = promise<__coro::suspend_always>;
+    using promise_type = promise<ex::__std::suspend_always>;
 
-   private:
     template <class Promise>
-    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_4, Promise&) -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter {
       return {};
     }
   };
 
   struct awaitable_sender_5 {
-   private:
     template <class Promise>
-    friend auto tag_invoke(ex::as_awaitable_t, awaitable_sender_5, Promise&) -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter {
       return {};
     }
   };
@@ -131,7 +124,7 @@ namespace {
     static_assert(sender_with_env<awaitable_sender_1<Awaiter>>);
     static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_1<Awaiter>>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_1<Awaiter>>);
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
   }
@@ -142,9 +135,9 @@ namespace {
     static_assert(!ex::sender_in<awaitable_sender_2, ex::env<>>);
 
     static_assert(!ex::__awaitable<awaitable_sender_2>);
-    static_assert(ex::__awaitable<awaitable_sender_2, promise<__coro::suspend_always>>);
+    static_assert(ex::__awaitable<awaitable_sender_2, promise<ex::__std::suspend_always>>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_2>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_2>);
   }
 
   void test_awaitable_sender3() {
@@ -156,7 +149,7 @@ namespace {
     static_assert(!ex::__awaitable<awaitable_sender_3>);
     static_assert(ex::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_3>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_3>);
   }
 
   template <class Signatures>
@@ -168,11 +161,11 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_4>);
     static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_4, ex::__env::__promise<ex::env<>>>);
+    static_assert(ex::__awaitable<awaitable_sender_4, ex::__detail::__promise<ex::env<>>>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_4>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_4>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_4>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_4>);
 
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::env<>>, Signatures>);
@@ -190,9 +183,9 @@ namespace {
     static_assert(ex::__awaiter<awaiter>);
     static_assert(!ex::__awaitable<awaitable_sender_5>);
     static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
-    static_assert(ex::__awaitable<awaitable_sender_5, ex::__env::__promise<ex::env<>>>);
+    static_assert(ex::__awaitable<awaitable_sender_5, ex::__detail::__promise<ex::env<>>>);
 
-    static_assert(!ex::__sigs::__with_member_alias<awaitable_sender_5>);
+    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_5>);
 
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_5, ex::env<>>, Signatures>);
@@ -209,7 +202,7 @@ namespace {
 
   TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]") {
     ::test_awaitable_sender1(
-      signature_error_values(std::exception_ptr()), __coro::suspend_always{});
+      signature_error_values(std::exception_ptr()), ex::__std::suspend_always{});
     ::test_awaitable_sender1(
       signature_error_values(
         std::exception_ptr(), ex::__await_result_t<awaitable_sender_1<awaiter>>()),
@@ -251,9 +244,9 @@ namespace {
     ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() { }));
 
     using _Awaitable = decltype(snd);
-    using _Promise = ex::__env::__promise<ex::env<>>;
+    using _Promise = ex::__detail::__promise<ex::env<>>;
     static_assert(!ex::__awaitable<_Awaitable, _Promise>);
   }
 } // namespace
 
-#endif // STDEXEC_STD_NO_COROUTINES()
+#endif // STDEXEC_NO_STD_COROUTINES()

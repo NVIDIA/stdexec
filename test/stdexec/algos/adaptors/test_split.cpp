@@ -387,7 +387,7 @@ namespace {
 
     SECTION("lvalue split copyable sender") {
       auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
-      ex::get_completion_signatures(multishot, ex::env<>{});
+      (void) ex::get_completion_signatures(multishot, ex::env<>{});
       auto snd = multishot | ex::then([](const copy_and_movable_type&) { });
 
       REQUIRE(!ex::sender_of<decltype(multishot), ex::set_value_t(copy_and_movable_type)>);
@@ -490,12 +490,7 @@ namespace {
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;
 
     template <class Recv>
-    friend auto tag_invoke(ex::connect_t, my_sender&&, Recv&& recv) {
-      return ex::connect(ex::just(), std::forward<Recv>(recv));
-    }
-
-    template <class Recv>
-    friend auto tag_invoke(ex::connect_t, const my_sender&, Recv&& recv) {
+    auto connect(Recv&& recv) const {
       return ex::connect(ex::just(), std::forward<Recv>(recv));
     }
   };

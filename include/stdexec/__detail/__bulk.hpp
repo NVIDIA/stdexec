@@ -15,17 +15,17 @@
  */
 #pragma once
 
-#include "__execution_legacy.hpp"
 #include "__execution_fwd.hpp"
+#include "__execution_legacy.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
-#include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__transform_completion_signatures.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
+#include "__transform_completion_signatures.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
@@ -185,15 +185,12 @@ namespace stdexec {
       template <typename _Policy, integral _Shape, copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const
-        -> __binder_back<_AlgoTag, _Policy, _Shape, _Fun> {
-        return {
-          {static_cast<_Policy&&>(__pol),
-           static_cast<_Shape&&>(__shape),
-           static_cast<_Fun&&>(__fun)},
-          {},
-          {}
-        };
+      auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
+        return __closure(
+          *this,
+          static_cast<_Policy&&>(__pol),
+          static_cast<_Shape&&>(__shape),
+          static_cast<_Fun&&>(__fun));
       }
 
       template <sender _Sender, integral _Shape, copy_constructible _Fun>

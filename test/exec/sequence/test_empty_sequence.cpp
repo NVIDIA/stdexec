@@ -43,9 +43,8 @@ namespace {
     using receiver_concept = stdexec::receiver_t;
     int& count_invocations_;
 
-    friend auto
-      tag_invoke(set_next_t, count_set_next_receiver_t& __self, auto /* item */) noexcept {
-      ++__self.count_invocations_;
+    auto set_next(auto /* item */) & noexcept {
+      ++count_invocations_;
       return just();
     }
 

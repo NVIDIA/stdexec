@@ -132,7 +132,7 @@ namespace {
   void expect_val_types() {
     using expected_t = ex::__mmake_set<Expected...>;
     using actual_t =
-      ex::__gather_completions<ex::set_value_t, CS, ex::__q<ex::__types>, ex::__q<ex::__mset>>;
+      ex::__gather_completions_t<ex::set_value_t, CS, ex::__q<ex::__types>, ex::__q<ex::__mset>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
@@ -140,7 +140,7 @@ namespace {
   void expect_err_types() {
     using expected_t = ex::__mmake_set<Expected...>;
     using actual_t =
-      ex::__gather_completions<ex::set_error_t, CS, ex::__q<ex::__midentity>, ex::__q<ex::__mset>>;
+      ex::__gather_completions_t<ex::set_error_t, CS, ex::__q<ex::__midentity>, ex::__q<ex::__mset>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
@@ -274,7 +274,7 @@ namespace {
       snd_eptr_t,
       ex::env<>,
       ex::completion_signatures<ex::set_error_t(error_code)>,
-      ex::__sigs::__default_set_value,
+      ex::__cmplsigs::__default_set_value,
       optional_set_error_sig
     >;
 

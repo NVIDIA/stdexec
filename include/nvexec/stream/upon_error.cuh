@@ -150,7 +150,7 @@ namespace nvexec::_strm {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = __v<__gather_completions_of<
+        static constexpr std::size_t value = __v<__gather_completions_of_t<
           set_error_t,
           Sender,
           env_of_t<Receiver>,
@@ -171,13 +171,13 @@ namespace nvexec::_strm {
       using completion_signatures = transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
-        __sigs::__default_set_value,
+        __cmplsigs::__default_set_value,
         _set_error_t
       >;
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
@@ -185,12 +185,13 @@ namespace nvexec::_strm {
           [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto
-        get_completion_signatures(Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completion_signatures<Self, Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
@@ -212,8 +213,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<nvexec::_strm::upon_error_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::_strm::upon_error_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::upon_error_sender_t<__demangle_t<__t<SenderId>>, Fun>>
+    __demangle_v<nvexec::_strm::upon_error_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

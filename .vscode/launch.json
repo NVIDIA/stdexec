@@ -74,15 +74,15 @@
             "args": "-v normal ${input:CUDA_TEST_TAGS}",
         },
         {
-            "name": "maxwell_gpu_s (cuda-gdb)",
+            "name": "maxwell_cpu_st (cuda-gdb)",
             "type": "cuda-gdb",
             "request": "launch",
             "stopAtEntry": false,
             "breakOnLaunch": false,
             "internalConsoleOptions": "openOnFirstSessionStart",
-            "program": "${command:cmake.buildDirectory}/examples/nvexec/maxwell_gpu_s",
+            "program": "${command:cmake.buildDirectory}/examples/nvexec/maxwell_cpu_st",
             "cwd": "${command:cmake.buildDirectory}",
-            "args": ["--iterations=1000", "--N=512", "--run-cuda", "--run-stdpar", "--run-stream-scheduler"],
+            "args": ["--iterations=1000", "--N=512", "--run-cpp", "--run-inline-scheduler"],
         },
     ],
     "inputs": [

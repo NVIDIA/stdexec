@@ -50,7 +50,7 @@ namespace {
     CHECK(std::get<1>(res.value()) == 0.1415);
   }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
     // Generate an exception pointer object
     std::exception_ptr eptr;
@@ -100,7 +100,7 @@ namespace {
       FAIL("expecting std::string exception to be thrown");
     }
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
     stopped_scheduler sched;
@@ -117,7 +117,7 @@ namespace {
 
   TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     // static_assert(!std::invocable<ex::sync_wait_t, decltype(snd)>);
   }
 
@@ -125,11 +125,11 @@ namespace {
     "sync_wait_with_variant accepts multi-variant senders",
     "[consumers][sync_wait_with_variant]") {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
-    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(snd);
+    check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
 
     std::optional<std::tuple<std::variant<std::tuple<int>, std::tuple<std::string>>>> res =
-      ex::sync_wait_with_variant(snd);
+      ex::sync_wait_with_variant(std::move(snd));
 
     CHECK(res.has_value());
     CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
@@ -233,8 +233,8 @@ namespace {
     CHECK(std::get<0>(res.value()) == "ciao");
   }
 
-  // TODO(gevtushenko)
-  #if 0
+  // TODO(ericniebler)
+#if 0
   TEST_CASE("sync_wait_with_variant can be customized", "[consumers][sync_wait_with_variant]") {
     basic_inline_scheduler<sync_wait_test_domain> sched;
 
@@ -247,7 +247,7 @@ namespace {
     CHECK(res.has_value());
     CHECK(std::get<0>(std::get<1>(res.value())) == std::string{"ciao_multi"});
   }
-  #endif
+#endif
 
   template <class... Ts>
   using decayed_tuple = std::tuple<std::decay_t<Ts>...>;

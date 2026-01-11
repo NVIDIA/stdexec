@@ -54,11 +54,9 @@ endif()
 file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
 string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
 
-# nvc++ isn't supported by (s)ccache yet, so unset these before the `project()`
-# call so CMake's CXX compiler detection doesn't throw attempting to use it
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
-
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
 
 # Print CMake configuration
 message(STATUS "System           : ${CMAKE_SYSTEM}")
@@ -365,7 +363,6 @@ if(STDEXEC_ENABLE_CUDA)
 
         set_source_files_properties(${nvexec_sources} PROPERTIES LANGUAGE CUDA)
 
-        include(rapids-find)
         rapids_find_package(
             CUDAToolkit REQUIRED
             BUILD_EXPORT_SET stdexec-exports
@@ -384,207 +381,18 @@ if(STDEXEC_ENABLE_CUDA)
     endif ()
 endif ()
 
+include(ConfigureTBB)
+include(ConfigureTaskflow)
+include(ConfigureASIO)
 
-option(STDEXEC_ENABLE_TBB "Enable TBB targets" OFF)
-
-if (STDEXEC_ENABLE_TBB)
-    include(rapids-find)
-    rapids_find_package(
-        TBB REQUIRED
-        COMPONENTS tbb
-        BUILD_EXPORT_SET stdexec-exports
-        INSTALL_EXPORT_SET stdexec-exports
-    )
-
-    # CONFIGURE_DEPENDS ensures that CMake reconfigures when a relevant hpp file is
-    # added or removed.
-    file(GLOB_RECURSE tbbpool_headers CONFIGURE_DEPENDS include/execpools/tbb/*.hpp)
-    add_library(tbbpool INTERFACE)
-    list(APPEND stdexec_export_targets tbbpool)
-    add_library(STDEXEC::tbbpool ALIAS tbbpool)
-    target_sources(tbbpool
-    PUBLIC
-      FILE_SET headers
-      TYPE HEADERS
-      BASE_DIRS include
-      FILES ${tbbpool_headers}
-    )
-
-    target_link_libraries(stdexec INTERFACE
-        TBB::tbb
-        )
-
-    target_link_libraries(tbbpool
-        INTERFACE
-        STDEXEC::stdexec
-        )
-
-    install(TARGETS tbbpool
-        EXPORT stdexec-exports
-        FILE_SET headers)
-endif()
-
-option(STDEXEC_ENABLE_TASKFLOW "Enable TaskFlow targets" OFF)
-
-if(STDEXEC_ENABLE_TASKFLOW)
-    include(rapids-find)
-    rapids_cpm_find(Taskflow 3.7.0
-    CPM_ARGS
-      GITHUB_REPOSITORY taskflow/taskflow
-      GIT_TAG v3.7.0
-    )
-    file(GLOB_RECURSE taskflow_pool include/execpools/taskflow/*.hpp)
-      add_library(taskflow_pool INTERFACE ${taskflowexec_sources})
-      list(APPEND stdexec_export_targets taskflow_pool)
-      add_library(STDEXEC::taskflow_pool ALIAS taskflow_pool)
-
-      target_link_libraries(taskflow_pool
-          INTERFACE
-          STDEXEC::stdexec
-          Taskflow
-      )
-endif()
-
-option(STDEXEC_ENABLE_ASIO "Enable Boost targets" OFF)
-set(STDEXEC_ASIO_IMPLEMENTATION "boost" CACHE STRING "boost")
-set_property(CACHE STDEXEC_ASIO_IMPLEMENTATION PROPERTY STRINGS boost standalone)
-
-if(STDEXEC_ENABLE_ASIO)
-    set(STDEXEC_ASIO_USES_BOOST FALSE)
-    set(STDEXEC_ASIO_USES_STANDALONE FALSE)
-
-    include(rapids-find)
-    if(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "boost")
-      set(STDEXEC_ASIO_USES_BOOST TRUE)
-    elseif(${STDEXEC_ASIO_IMPLEMENTATION} STREQUAL "standalone")
-      set(STDEXEC_ASIO_USES_STANDALONE TRUE)
-    else()
-      message(FATAL_ERROR "Unknown configuration for ASIO implementation: " ${STDEXEC_ASIO_IMPLEMENTATION})
-    endif()
-
-    set(ASIOEXEC_USES_BOOST ${STDEXEC_ASIO_USES_BOOST})
-    set(ASIOEXEC_USES_STANDALONE ${STDEXEC_ASIO_USES_STANDALONE})
-
-    set(STDEXEC_ASIO_POOL_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/execpools/asio/asio_config.hpp)
-    set(ASIOEXEC_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/asioexec/asio_config.hpp)
-
-    configure_file(
-        include/execpools/asio/asio_config.hpp.in
-        ${STDEXEC_ASIO_POOL_CONFIG_HPP}
-    )
-    configure_file(
-        include/asioexec/asio_config.hpp.in
-        ${ASIOEXEC_CONFIG_HPP}
-    )
-
-    file(GLOB_RECURSE boost_pool_sources CONFIGURE_DEPENDS include/execpools/asio/*.hpp)
-    file(GLOB_RECURSE asioexec_sources CONFIGURE_DEPENDS include/asioexec/*.hpp)
-
-    if(${STDEXEC_ASIO_USES_BOOST})
-      set(BOOST_INCLUDE_LIBRARIES asio system)
-      set(BOOST_VERSION 1.86.0)
-      rapids_cpm_find(Boost ${BOOST_VERSION}
-        CPM_ARGS
-          URL https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-cmake.tar.xz
-          OPTIONS "BOOST_SKIP_INSTALL_RULES OFF"
-      )
-
-      add_library(stdexec_boost_pool INTERFACE)
-      list(APPEND stdexec_export_targets stdexec_boost_pool)
-      add_library(STDEXEC::asio_pool ALIAS stdexec_boost_pool)
-
-      target_sources(stdexec_boost_pool PUBLIC
-          FILE_SET headers
-          TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-          FILES ${boost_pool_sources}
-          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-          FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
-      )
-
-      target_link_libraries(stdexec_boost_pool INTERFACE
-          STDEXEC::stdexec
-          Boost::asio
-      )
-      install(TARGETS stdexec_boost_pool EXPORT stdexec-exports FILE_SET headers)
-
-      add_library(asioexec_boost INTERFACE)
-      list(APPEND stdexec_export_targets asioexec_boost)
-      add_library(STDEXEC::asioexec_boost ALIAS asioexec_boost)
-
-      target_sources(asioexec_boost PUBLIC
-          FILE_SET headers
-          TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-          FILES ${asioexec_sources}
-          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-          FILES ${ASIOEXEC_CONFIG_HPP}
-      )
-
-      target_link_libraries(asioexec_boost INTERFACE
-          STDEXEC::stdexec
-          Boost::asio
-      )
-      install(TARGETS asioexec_boost EXPORT stdexec-exports FILE_SET headers)
-
-    elseif(${STDEXEC_ASIO_USES_STANDALONE})
-      include(cmake/import_standalone_asio.cmake)
-      import_standalone_asio(
-        TAG "asio-1-31-0"
-        VERSION "1.31.0")
-
-      add_library(stdexec_asio_pool INTERFACE)
-      list(APPEND stdexec_export_targets stdexec_asio_pool)
-      add_library(STDEXEC::asio_pool ALIAS stdexec_asio_pool)
-
-      target_sources(stdexec_asio_pool PUBLIC
-          FILE_SET headers
-          TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-          FILES ${boost_pool_sources}
-          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-          FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
-      )
-
-      target_link_libraries(stdexec_asio_pool INTERFACE
-          STDEXEC::stdexec
-          asio
-      )
-      install(TARGETS stdexec_asio_pool EXPORT stdexec-exports FILE_SET headers)
-
-      add_library(asioexec_asio INTERFACE)
-      list(APPEND stdexec_export_targets asioexec_asio)
-      add_library(STDEXEC::asioexec_asio ALIAS asioexec_asio)
-
-      target_sources(asioexec_asio PUBLIC
-          FILE_SET headers
-          TYPE HEADERS
-          BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-          FILES ${asioexec_sources}
-          BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-          FILES ${ASIOEXEC_CONFIG_HPP}
-      )
-
-      target_link_libraries(asioexec_asio INTERFACE
-          STDEXEC::stdexec
-          asio
-      )
-      install(TARGETS asioexec_asio EXPORT stdexec-exports FILE_SET headers)
-
-    else()
-      message(FATAL_ERROR "ASIO implementation is not configured")
-    endif()
-endif()
-
-include(CheckIncludeFileCXX)
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  CHECK_INCLUDE_FILE_CXX("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
+  check_include_file_cxx("dispatch/dispatch.h" STDEXEC_FOUND_LIBDISPATCH)
   option(STDEXEC_ENABLE_LIBDISPATCH "Enable use of the Grand Central Dispatch scheduler" ${STDEXEC_FOUND_LIBDISPATCH})
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_LIBDISPATCH)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  CHECK_INCLUDE_FILE_CXX("windows.h" STDEXEC_FOUND_WINDOWS_HEADER)
+  check_include_file_cxx("windows.h" STDEXEC_FOUND_WINDOWS_HEADER)
   option(STDEXEC_ENABLE_WINDOWS_THREAD_POOL "Enable use of the Windows Thread Pool scheduler" ${STDEXEC_FOUND_WINDOWS_HEADER})
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_WINDOWS_THREAD_POOL)
 endif()
@@ -614,7 +422,7 @@ option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linu
 
 if(STDEXEC_ENABLE_IO_URING)
   if(CMAKE_CROSSCOMPILING)
-    CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" STDEXEC_ENABLE_IO_URING)
+    check_include_file_cxx("linux/io_uring.h" STDEXEC_ENABLE_IO_URING)
   else()
     include(CheckCXXSourceRuns)
     CHECK_CXX_SOURCE_RUNS(

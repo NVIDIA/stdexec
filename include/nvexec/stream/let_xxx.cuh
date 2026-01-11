@@ -61,7 +61,7 @@ namespace nvexec::_strm {
       template <class... As>
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<As...>>;
 
-      static constexpr std::size_t value = __v<__gather_completions_of<
+      static constexpr std::size_t value = __v<__gather_completions_of_t<
         SetTag,
         Sender,
         env_of_t<PropagateReceiver>,
@@ -172,7 +172,7 @@ namespace nvexec::_strm {
     };
 
     template <class SenderId, class ReceiverId, class Fun, class Let>
-    using __receiver = stdexec::__t<__gather_completions_of<
+    using __receiver = stdexec::__t<__gather_completions_of_t<
       Let,
       stdexec::__t<SenderId>,
       stream_env<env_of_t<stdexec::__t<ReceiverId>>>,
@@ -250,22 +250,25 @@ namespace nvexec::_strm {
           Receiver,
           __completions<__copy_cvref_t<Self, Sender>, stream_env<env_of_t<Receiver>>>
         >
-      static auto connect(Self&& self, Receiver rcvr) -> operation_t<Self, Receiver> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        -> operation_t<Self, Receiver> {
         return operation_t<Self, Receiver>{
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
           static_cast<Self&&>(self).fun_};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
       }
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
         -> __completions<__copy_cvref_t<Self, Sender>, stream_env<Env>...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       Sender sndr_;
       Fun fun_;
@@ -298,8 +301,8 @@ namespace nvexec::_strm {
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun, class Set>
-  inline constexpr __mconst<nvexec::_strm::let_sender_t<__name_of<__t<SenderId>>, Fun, Set>>
-    __name_of_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
+  inline constexpr __mconst<nvexec::_strm::let_sender_t<__demangle_t<__t<SenderId>>, Fun, Set>>
+    __demangle_v<nvexec::_strm::let_sender_t<SenderId, Fun, Set>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -157,12 +157,8 @@ namespace nvexec {
 
       template <class InitT, class Fun = cuda::std::plus<>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(InitT init, Fun fun = {}) const -> __binder_back<reduce_t, InitT, Fun> {
-        return {
-          {static_cast<InitT&&>(init), static_cast<Fun&&>(fun)},
-          {},
-          {}
-        };
+      auto operator()(InitT init, Fun fun = {}) const noexcept(__nothrow_decay_copyable<InitT, Fun>) {
+        return stdexec::__closure(*this, static_cast<InitT&&>(init), static_cast<Fun&&>(fun));
       }
     };
   } // namespace _strm
@@ -172,8 +168,8 @@ namespace nvexec {
 
 namespace stdexec::__detail {
   template <class SenderId, class Init, class Fun>
-  extern __mconst<nvexec::_strm::reduce_::sender_t<__name_of<__t<SenderId>>, Init, Fun>>
-    __name_of_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
+  extern __mconst<nvexec::_strm::reduce_::sender_t<__demangle_t<__t<SenderId>>, Init, Fun>>
+    __demangle_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

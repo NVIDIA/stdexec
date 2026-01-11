@@ -87,7 +87,7 @@ namespace {
     >;
 
     template <typename R>
-    friend auto tag_invoke(ex::connect_t, many_error_sender, R&& r) -> oper<R> {
+    auto connect(R&& r) const -> oper<R> {
       return {{}, static_cast<R&&>(r)};
     }
   };

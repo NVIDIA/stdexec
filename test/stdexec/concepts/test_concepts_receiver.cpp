@@ -23,9 +23,13 @@ namespace ex = stdexec;
 struct recv_no_set_value {
   using receiver_concept = stdexec::receiver_t;
 
-  friend void tag_invoke(ex::set_stopped_t, recv_no_set_value) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_no_set_value, std::exception_ptr) noexcept {}
-  friend ex::env<> tag_invoke(ex::get_env_t, const recv_no_set_value&) noexcept {
+  void set_stopped() noexcept {
+  }
+  void set_error(std::exception_ptr) noexcept {
+  }
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };
@@ -33,10 +37,15 @@ struct recv_no_set_value {
 struct recv_set_value_except {
   using receiver_concept = stdexec::receiver_t;
 
-  friend void tag_invoke(ex::set_value_t, recv_set_value_except) {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_value_except) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_value_except, std::exception_ptr) noexcept {}
-  friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_value_except&) noexcept {
+  void set_value() {
+  }
+  void set_stopped() noexcept {
+  }
+  void set_error(std::exception_ptr) noexcept {
+  }
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };
@@ -44,10 +53,15 @@ struct recv_set_value_except {
 struct recv_set_value_noexcept {
   using receiver_concept = stdexec::receiver_t;
 
-  friend void tag_invoke(ex::set_value_t, recv_set_value_noexcept) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_value_noexcept) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_value_noexcept, std::exception_ptr) noexcept
-  {} friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_value_noexcept&) noexcept {
+  void set_value() noexcept {
+  }
+  void set_stopped() noexcept {
+  }
+  void set_error(std::exception_ptr) noexcept {
+  }
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };
@@ -55,23 +69,32 @@ struct recv_set_value_noexcept {
 struct recv_set_error_except {
   using receiver_concept = stdexec::receiver_t;
 
-  friend void tag_invoke(ex::set_value_t, recv_set_error_except) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_error_except) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_set_error_except, std::exception_ptr) {
+  void set_value() noexcept {
+  }
+  void set_stopped() noexcept {
+  }
+  void set_error(std::exception_ptr) {
     throw std::logic_error{"err"};
   }
-  friend ex::env<> tag_invoke(ex::get_env_t, const recv_set_error_except&) noexcept {
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };
 struct recv_set_stopped_except {
   using receiver_concept = stdexec::receiver_t;
 
-  friend void tag_invoke(ex::set_value_t, recv_set_stopped_except) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_set_stopped_except) { throw
-  std::logic_error{"err"}; } friend void tag_invoke(ex::set_error_t, recv_set_stopped_except,
-  std::exception_ptr) noexcept {} friend ex::env<> tag_invoke(ex::get_env_t, const
-  recv_set_stopped_except&) noexcept {
+  void set_value() noexcept {
+  }
+  void set_stopped() {
+    throw std::logic_error{"err"};
+  }
+  void set_error(std::exception_ptr) noexcept {
+  }
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };
@@ -86,10 +109,15 @@ struct recv_non_movable {
   recv_non_movable(const recv_non_movable&) = default;
   recv_non_movable& operator=(const recv_non_movable&) = default;
 
-  friend void tag_invoke(ex::set_value_t, recv_non_movable) noexcept {}
-  friend void tag_invoke(ex::set_stopped_t, recv_non_movable) noexcept {}
-  friend void tag_invoke(ex::set_error_t, recv_non_movable, std::exception_ptr) noexcept {}
-  friend ex::env<> tag_invoke(ex::get_env_t, const recv_non_movable&) noexcept {
+  void set_value() noexcept {
+  }
+  void set_stopped() noexcept {
+  }
+  void set_error(std::exception_ptr) noexcept {
+  }
+
+  [[nodiscard]]
+  ex::env<> get_env() const noexcept {
     return {};
   }
 };

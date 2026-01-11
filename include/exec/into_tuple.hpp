@@ -15,9 +15,9 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/execution.hpp"
 
 namespace exec {
   namespace __into_tuple {
@@ -101,8 +101,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const noexcept -> __binder_back<into_tuple_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
   } // namespace __into_tuple

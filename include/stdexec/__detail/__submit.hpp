@@ -85,14 +85,14 @@ namespace stdexec {
 
   template <class _Sender, class _Receiver>
   concept __submittable = requires(_Sender&& __sndr, _Receiver&& __rcvr) {
-    __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
+    __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
   };
 
   template <class _Sender, class _Receiver>
   concept __nothrow_submittable =
     __submittable<_Sender, _Receiver> && requires(_Sender&& __sndr, _Receiver&& __rcvr) {
       {
-        __submit::__submit(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr))
+        __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr))
       } noexcept;
     };
 
@@ -127,6 +127,7 @@ namespace stdexec {
     class _Receiver,
     __submit_result_kind _Kind = __get_submit_result_kind<_Sender, _Receiver>()
   >
+    requires sender_to<_Sender, _Receiver>
   struct submit_result {
     using __result_t = connect_result_t<_Sender, _Receiver>;
 

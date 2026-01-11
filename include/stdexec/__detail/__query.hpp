@@ -19,8 +19,8 @@
 
 // // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
-#include "__tag_invoke.hpp"
 #include "__meta.hpp"
+#include "__tag_invoke.hpp"
 #include "__utility.hpp"
 
 #include <type_traits>
@@ -91,9 +91,9 @@ namespace stdexec {
     // Query with tag_invoke (legacy):
     template <class _Qy = _Query, class _Env, class... _Args>
       requires tag_invocable<_Qy, const _Env&, _Args...>
-    // [[deprecated("the use of tag_invoke for queries is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) constexpr auto
-      operator()(const _Env& __env, _Args&&... __args) const
+    [[deprecated("the use of tag_invoke for queries is deprecated")]]
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
+      constexpr auto operator()(const _Env& __env, _Args&&... __args) const
       noexcept(nothrow_tag_invocable<_Qy, const _Env&, _Args...>)
         -> __mcall1<_Transform, tag_invoke_result_t<_Qy, const _Env&, _Args...>> {
       if constexpr (__has_validation<_Query, _Env, _Args...>) {

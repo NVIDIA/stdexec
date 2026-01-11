@@ -17,8 +17,8 @@
 
 #include "__config.hpp"
 
-#include <cstddef>
 #include <cassert>
+#include <cstddef>
 #include <iterator>
 #include <utility>
 

@@ -101,7 +101,7 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires(sender_to<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...)
-        static auto connect(_Self&& __self, _Receiver __rcvr) noexcept((
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept((
           __nothrow_connectable<__copy_cvref_t<_Self, stdexec::__t<_SenderIds>>, _Receiver> && ...))
           -> stdexec::__t<__operation_state<
             stdexec::__id<_Receiver>,
@@ -111,12 +111,14 @@ namespace exec {
             __visitor<_Self, _Receiver>{static_cast<_Receiver&&>(__rcvr)},
             static_cast<_Self&&>(__self).base());
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env&&) -> __completion_signatures_t<_Self, _Env> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&)
+          -> __completion_signatures_t<_Self, _Env> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
   } // namespace __variant
@@ -130,11 +132,11 @@ namespace stdexec::__detail {
   struct __variant_sender_name {
     template <class _Sender>
     using __f = __mapply<
-      __mtransform<__mcompose<__q<__name_of>, __q<__t>>, __q<exec::__variant::__sender>>,
+      __mtransform<__mcompose<__q<__demangle_t>, __q<__t>>, __q<exec::__variant::__sender>>,
       _Sender
     >;
   }; // namespace stdexec::__detail
 
   template <class... _SenderIds>
-  extern __variant_sender_name __name_of_v<exec::__variant::__sender<_SenderIds...>>;
+  extern __variant_sender_name __demangle_v<exec::__variant::__sender<_SenderIds...>>;
 } // namespace stdexec::__detail

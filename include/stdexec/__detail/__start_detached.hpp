@@ -19,10 +19,9 @@
 
 #include <memory>
 
+#include "__env.hpp"
 #include "__meta.hpp"
-#include "__env.hpp"
 #include "__receivers.hpp"
-#include "__env.hpp"
 #include "__scope.hpp"
 #include "__submit.hpp"
 #include "__transform_sender.hpp"
@@ -127,29 +126,37 @@ namespace stdexec {
                         && __same_as<void, __submit_result_t<_Sender, __submit_receiver>>;
 
     struct start_detached_t {
+      template <class _Sender, class _Env>
+      using __compl_domain_t = __mcall<
+        __mwith_default_q<__completion_domain_of_t, indeterminate_domain<>>,
+        set_value_t,
+        _Sender,
+        __as_root_env_t<_Env>
+      >;
+
       template <sender_in<__root_env> _Sender>
         requires __callable<
           apply_sender_t,
-          __detail::__completion_domain_of_t<set_value_t, _Sender, __root_env>,
+          __compl_domain_t<_Sender, __root_env>,
           start_detached_t,
           _Sender
         >
       void operator()(_Sender&& __sndr) const {
-        using __domain = __detail::__completion_domain_of_t<set_value_t, _Sender, __root_env>;
+        using __domain = __compl_domain_t<_Sender, __root_env>;
         stdexec::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Env, sender_in<__as_root_env_t<_Env>> _Sender>
         requires __callable<
           apply_sender_t,
-          __detail::__completion_domain_of_t<set_value_t, _Sender, __as_root_env_t<_Env>>,
+          __compl_domain_t<_Sender, __as_root_env_t<_Env>>,
           start_detached_t,
           _Sender,
           __as_root_env_t<_Env>
         >
       void operator()(_Sender&& __sndr, _Env&& __env) const {
         auto __env2 = __as_root_env(static_cast<_Env&&>(__env));
-        using __domain = __detail::__completion_domain_of_t<set_value_t, _Sender, __as_root_env_t<_Env>>;
+        using __domain = __compl_domain_t<_Sender, __as_root_env_t<_Env>>;
         stdexec::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr), __env2);
       }
 

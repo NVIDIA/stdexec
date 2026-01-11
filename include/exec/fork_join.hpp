@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__receiver_ref.hpp"
+#include "../stdexec/execution.hpp"
 
 #include <exception>
 
@@ -39,7 +39,7 @@ namespace exec {
       template <class Rcvr, class Tuple>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       void operator()(Rcvr& rcvr, const Tuple& tupl) const noexcept {
-        tupl.apply(_impl_fn{}, tupl, rcvr);
+        stdexec::__apply(_impl_fn{}, tupl, rcvr);
       }
     };
 
@@ -55,7 +55,7 @@ namespace exec {
     using _maybe_eptr_completion_t = stdexec::__if_c<
       stdexec::__nothrow_decay_copyable_results_t<Completions>::value,
       stdexec::__mset_nil,
-      stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>
+      stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>
     >;
 
     template <class Completions>
@@ -102,9 +102,9 @@ namespace exec {
         const Variant* _results_;
       };
 
-      template <class _Self, class... _Env>
+      template <class... _Env>
       STDEXEC_ATTRIBUTE(host, device)
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
+      auto get_completion_signatures(_Env&&...) const noexcept {
         return stdexec::__mapply<stdexec::__qq<_cache_sndr_completions_t>, Variant>{};
       }
 
@@ -122,7 +122,7 @@ namespace exec {
     };
 
     template <class Completions, class Closures, class Domain>
-    using _when_all_sndr_t = stdexec::__tup::__apply_result_t<
+    using _when_all_sndr_t = stdexec::__apply_result_t<
       _mk_when_all_fn,
       Closures,
       _cache_sndr_t<_variant_t<Completions>, Domain>
@@ -133,8 +133,7 @@ namespace exec {
       using operation_state_concept = stdexec::operation_state_t;
       using _env_t = stdexec::__call_result_t<stdexec::__env::__fwd_fn, stdexec::env_of_t<Rcvr>>;
       using _child_completions_t = stdexec::__completion_signatures_of_t<Sndr, _env_t>;
-      using _domain_t =
-        stdexec::__detail::__completion_domain_of_t<stdexec::set_value_t, Sndr, _env_t>;
+      using _domain_t = stdexec::__completion_domain_of_t<stdexec::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
         fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
@@ -148,7 +147,7 @@ namespace exec {
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
         , _fork_opstate_(
             stdexec::connect(
-              closures.apply(
+              stdexec::__apply(
                 _mk_when_all_fn{},
                 static_cast<Closures&&>(closures),
                 _cache_sndr_t{&_cache_}),
@@ -179,7 +178,7 @@ namespace exec {
         }
         STDEXEC_CATCH_ALL {
           if constexpr (!stdexec::__nothrow_decay_copyable<Args...>) {
-            using _tuple_t = stdexec::__tuple_for<stdexec::set_error_t, ::std::exception_ptr>;
+            using _tuple_t = stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>;
             _cache_._results_
               .template emplace<_tuple_t>(stdexec::set_error, ::std::current_exception());
           }
@@ -217,7 +216,7 @@ namespace exec {
 
     template <class... Closures>
     struct _closure_t {
-      using _closures_t = stdexec::__tuple_for<Closures...>;
+      using _closures_t = stdexec::__tuple<Closures...>;
 
       template <class Sndr>
       STDEXEC_ATTRIBUTE(host, device)
@@ -246,18 +245,18 @@ namespace exec {
   };
 
   template <>
-  struct fork_join_t::_env_t<stdexec::__not_a_domain> { };
+  struct fork_join_t::_env_t<stdexec::indeterminate_domain<>> { };
 
   template <class Sndr, class... Closures>
   struct fork_join_t::_sndr_t {
     using sender_concept = stdexec::sender_t;
-    using _closures_t = stdexec::__tuple_for<Closures...>;
+    using _closures_t = stdexec::__tuple<Closures...>;
 
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
-    static auto get_completion_signatures(Self&&, Env&&...) noexcept {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) noexcept {
       using namespace stdexec;
-      using _domain_t = __detail::__try_completion_domain_of_t<set_value_t, Sndr, Env...>;
+      using _domain_t = stdexec::__completion_domain_of_t<set_value_t, Sndr, Env...>;
       using _child_t = __copy_cvref_t<Self, Sndr>;
       using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
       using __decay_copyable_results_t = stdexec::__decay_copyable_results_t<_child_completions_t>;
@@ -271,9 +270,10 @@ namespace exec {
         >();
       } else {
         using _sndr_t = _when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-        return completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+        return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
       }
     }
+    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
     template <class Rcvr>
     STDEXEC_ATTRIBUTE(host, device)
@@ -297,7 +297,7 @@ namespace exec {
     }
 
     STDEXEC_ATTRIBUTE(no_unique_address) fork_join_t _tag_;
-    stdexec::__tuple_for<Closures...> _closures_;
+    stdexec::__tuple<Closures...> _closures_;
     Sndr sndr_;
   };
 

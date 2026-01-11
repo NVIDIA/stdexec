@@ -216,14 +216,14 @@ namespace {
     >;
 
     template <class Receiver>
-    friend auto tag_invoke(connect_t, dup_sender, Receiver rec) noexcept -> dup_op<Receiver> {
+    auto connect(Receiver rec) const noexcept -> dup_op<Receiver> {
       return {static_cast<Receiver&&>(rec)};
     }
   };
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]") {
     REQUIRE_THROWS(stdexec::sync_wait(exec::when_any(dup_sender{})));
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 } // namespace

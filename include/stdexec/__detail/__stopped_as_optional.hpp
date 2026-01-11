@@ -20,11 +20,12 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__completion_signatures.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
-#include "__sender_adaptor_closure.hpp"
 #include "__receivers.hpp"
-#include "__senders_core.hpp"
+#include "__sender_adaptor_closure.hpp"
+#include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__type_traits.hpp"
 
@@ -39,13 +40,13 @@ namespace stdexec {
 
     struct stopped_as_optional_t {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const {
+      auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
         return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept -> __binder_back<stopped_as_optional_t> {
-        return {{}, {}, {}};
+      auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
 
@@ -83,11 +84,13 @@ namespace stdexec {
       };
 
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept {
-          static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
-          using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
-          return __mtype<_Value>();
-        };
+        []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept
+        requires sender_in<__child_of<_Self>, env_of_t<_Receiver>>
+      {
+        static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
+        using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
+        return __mtype<_Value>();
+      };
 
       static constexpr auto complete =
         []<class _State, class _Receiver, class _Tag, class... _Args>(

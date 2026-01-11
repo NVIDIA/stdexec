@@ -16,15 +16,14 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/execution.hpp"
 
-#include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
+#include "trampoline_scheduler.hpp"
 
-#include "../stdexec/__detail/__atomic.hpp"
 #include <exception>
 #include <type_traits>
 
@@ -65,6 +64,9 @@ namespace exec {
       };
     };
 
+    template <typename _T, bool _B>
+    concept __compile_time_bool_of = std::remove_cvref_t<_T>::value == _B;
+
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
@@ -82,7 +84,7 @@ namespace exec {
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __child_t __child_;
-      __std::atomic_flag __started_{};
+      bool __has_child_op_ = false;
       stdexec::__manual_lifetime<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
 
@@ -93,11 +95,7 @@ namespace exec {
       }
 
       ~__repeat_effect_state() {
-        if (!__started_.test(__std::memory_order_acquire)) {
-          __std::atomic_thread_fence(__std::memory_order_release);
-          // TSan does not support __std::atomic_thread_fence, so we
-          // need to use the TSan-specific __tsan_release instead:
-          STDEXEC_WHEN(STDEXEC_TSAN(), __tsan_release(&__started_));
+        if (__has_child_op_) {
           __child_op_.__destroy();
         }
       }
@@ -107,30 +105,47 @@ namespace exec {
           return stdexec::connect(
             exec::sequence(stdexec::schedule(__sched_), __child_), __receiver_t{this});
         });
+        __has_child_op_ = true;
+      }
+
+      void __destroy() noexcept {
+        __child_op_.__destroy();
+        __has_child_op_ = false;
       }
 
       void __start() noexcept {
-        const bool __already_started [[maybe_unused]]
-        = __started_.test_and_set(__std::memory_order_relaxed);
-        STDEXEC_ASSERT(!__already_started);
+        STDEXEC_ASSERT(__has_child_op_);
         stdexec::start(__child_op_.__get());
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args... __args) noexcept { // Intentionally by value...
-        __child_op_.__destroy(); // ... because this could potentially invalidate them.
+      void __complete(_Tag, _Args &&...__args) noexcept {
         if constexpr (same_as<_Tag, set_value_t>) {
           // If the sender completed with true, we're done
           STDEXEC_TRY {
-            const bool __done = (static_cast<bool>(__args) && ...);
-            if (__done) {
+            if constexpr ((__compile_time_bool_of<_Args, true> && ...)) {
               stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
-            } else {
-              __connect();
-              stdexec::start(__child_op_.__get());
+              return;
+            } else if constexpr (!(__compile_time_bool_of<_Args, false> && ...)) {
+              const bool __done = (static_cast<bool>(static_cast<_Args &&>(__args)) && ...);
+              if (__done) {
+                stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
+                return;
+              }
             }
+            __destroy();
+            STDEXEC_TRY {
+              __connect();
+            }
+            STDEXEC_CATCH_ALL {
+              stdexec::set_error(
+                static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
+              return;
+            }
+            stdexec::start(__child_op_.__get());
           }
           STDEXEC_CATCH_ALL {
+            __destroy();
             stdexec::set_error(
               static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
           }
@@ -139,6 +154,9 @@ namespace exec {
         }
       }
     };
+
+    template <class _Sender, class _Receiver>
+    __repeat_effect_state(_Sender &&, _Receiver &) -> __repeat_effect_state<_Sender, _Receiver>;
 
     STDEXEC_PRAGMA_POP()
 
@@ -153,12 +171,16 @@ namespace exec {
       // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
       std::conditional_t<
         ((sizeof...(_Args) == 1) && (convertible_to<_Args, bool> && ...)),
-        completion_signatures<>,
+        std::conditional_t<
+          (__compile_time_bool_of<_Args, false> && ...),
+          completion_signatures<>,
+          completion_signatures<set_value_t()>
+        >,
         __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_SENDER_<_Sender>>
       >;
 
-    template <class _Error>
-    using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
+    template <class...>
+    using __delete_set_value_t = completion_signatures<>;
 
     template <class _Sender, class... _Env>
     using __completions_t = stdexec::transform_completion_signatures<
@@ -166,11 +188,9 @@ namespace exec {
       stdexec::transform_completion_signatures<
         __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
         __eptr_completion,
-        __sigs::__default_set_value,
-        __error_t
+        __delete_set_value_t
       >,
-      __mbind_front_q<__values_t, _Sender>::template __f,
-      __error_t
+      __mbind_front_q<__values_t, _Sender>::template __f
     >;
 
     struct __repeat_effect_tag { };
@@ -201,8 +221,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const -> __binder_back<repeat_effect_until_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const {
+        return __closure(*this);
       }
 
       template <class _Sender>
@@ -218,8 +238,8 @@ namespace exec {
       struct _never {
         template <class... _Args>
         STDEXEC_ATTRIBUTE(host, device, always_inline)
-        constexpr auto operator()(_Args &&...) const noexcept -> bool {
-          return false;
+        constexpr std::false_type operator()(_Args &&...) const noexcept {
+          return {};
         }
       };
 
@@ -229,8 +249,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const -> __binder_back<repeat_effect_t> {
-        return {{}, {}, {}};
+      constexpr auto operator()() const {
+        return __closure(*this);
       }
 
       template <class _Sender>

@@ -137,7 +137,7 @@ namespace nvexec {
 
         template <__decays_to<__t> Self, receiver Receiver>
           requires receiver_of<Receiver, completions_t<Self, env_of_t<Receiver>>>
-        static auto connect(Self&& self, Receiver rcvr)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
           -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
@@ -147,11 +147,13 @@ namespace nvexec {
               return receiver_t<Receiver>(stream_provider, self.fun_, self.params_);
             });
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> Self, class... Env>
-        static auto get_completion_signatures(Self&&, Env&&...) -> completions_t<Self, Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completions_t<Self, Env...> {
           return {};
         }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> stream_sender_attrs<Sender> {
           return {&sndr_};
@@ -169,29 +171,23 @@ namespace nvexec {
       }
 
       template <sender Sender, __movable_value Fun>
-      auto
-        operator()(Sender&& sndr, launch_params params, Fun&& fun) const -> sender_t<Sender, Fun> {
+      auto operator()(Sender&& sndr, launch_params params, Fun&& fun) const //
+        -> sender_t<Sender, Fun> {
         return {{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun), params};
       }
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(Fun&& fun) const -> __binder_back<launch_t, Fun> {
-        return {{static_cast<Fun&&>(fun)}};
+      auto operator()(Fun&& fun) const {
+        return stdexec::__closure(*this, static_cast<Fun&&>(fun));
       }
 
       template <__movable_value Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(launch_params params, Fun&& fun) const
-        -> __binder_back<launch_t, launch_params, Fun> {
-        return {
-          {params, static_cast<Fun&&>(fun)},
-          {},
-          {}
-        };
+      auto operator()(launch_params params, Fun&& fun) const {
+        return stdexec::__closure(*this, params, static_cast<Fun&&>(fun));
       }
     };
-
   } // namespace _strm
 
   inline constexpr _strm::launch_t launch{};
@@ -200,8 +196,8 @@ namespace nvexec {
 
 namespace stdexec::__detail {
   template <class SenderId, class Fun>
-  inline constexpr __mconst<nvexec::_strm::launch_sender_t<__name_of<__t<SenderId>>, Fun>>
-    __name_of_v<nvexec::_strm::launch_sender_t<SenderId, Fun>>{};
+  inline constexpr __mconst<nvexec::_strm::launch_sender_t<__demangle_t<__t<SenderId>>, Fun>>
+    __demangle_v<nvexec::_strm::launch_sender_t<SenderId, Fun>>{};
 } // namespace stdexec::__detail
 
 STDEXEC_PRAGMA_POP()

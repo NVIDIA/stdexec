@@ -27,7 +27,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   namespace _strm {
-    struct multi_gpu_stream_scheduler : private stream_scheduler_env {
+    struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler> {
       using __t = multi_gpu_stream_scheduler;
       using __id = multi_gpu_stream_scheduler;
 
@@ -138,6 +138,13 @@ namespace nvexec {
       int num_devices_{};
       context_state_t context_state_;
     };
+
+    template <>
+    STDEXEC_ATTRIBUTE(nodiscard)
+    inline auto stream_scheduler_env<multi_gpu_stream_scheduler>::query(
+      get_completion_scheduler_t<set_value_t>) const noexcept -> multi_gpu_stream_scheduler {
+      return stdexec::__c_downcast<multi_gpu_stream_scheduler>(*this);
+    }
   } // namespace _strm
 
   using _strm::multi_gpu_stream_scheduler;

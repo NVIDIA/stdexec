@@ -42,12 +42,14 @@ namespace {
     const void* object_{nullptr};
     inplace_stop_token token_{};
 
-    friend auto tag_invoke(get_address_t, const env& e) noexcept -> const void* {
-      return e.object_;
+    [[nodiscard]]
+    auto query(get_address_t) const noexcept -> const void* {
+      return object_;
     }
 
-    friend auto tag_invoke(get_stop_token_t, const env& e) noexcept -> inplace_stop_token {
-      return e.token_;
+    [[nodiscard]]
+    auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+      return token_;
     }
   };
 
@@ -134,7 +136,7 @@ namespace {
     ref = error;
     stdexec::set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
 #endif
     // Check set stopped
@@ -284,7 +286,7 @@ namespace {
   template <class... Vals>
   using my_sender_of = any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr)>;
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("sync_wait returns value and exception", "[types][any_sender]") {
     my_sender_of<int> sender = just(21) | then([&](int v) { return 2 * v; });
     auto [value] = *sync_wait(std::move(sender));
@@ -293,7 +295,7 @@ namespace {
     sender = just(21) | then([&](int) -> int { throw 420; });
     CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   TEST_CASE("any_sender is connectable with any_receiver_ref", "[types][any_sender]") {
     using Sigs = completion_signatures<set_value_t(int), set_stopped_t()>;
@@ -333,7 +335,7 @@ namespace {
   using my_stoppable_sender_of =
     any_sender_of<set_value_t(Vals)..., set_error_t(std::exception_ptr), set_stopped_t()>;
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
     auto split_sender = split(just(42));
     static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
@@ -346,7 +348,7 @@ namespace {
     sender = just(21) | then([&](int) -> int { throw 420; });
     CHECK_THROWS_AS(sync_wait(std::move(sender)), int);
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   class stopped_token {
    private:
@@ -391,8 +393,9 @@ namespace {
   struct stopped_receiver_env {
     const stopped_receiver_base<Token>* receiver_;
 
-    friend auto tag_invoke(get_stop_token_t, const stopped_receiver_env& env) noexcept -> Token {
-      return env.receiver_->stop_token_;
+    [[nodiscard]]
+    auto query(get_stop_token_t) const noexcept -> Token {
+      return receiver_->stop_token_;
     }
   };
 
@@ -503,7 +506,7 @@ namespace {
     static_assert(requires {
       {
         stdexec::get_completion_signatures(std::declval<sender>())
-      } -> same_as<_ERROR_<__detail::__dependent_completions>>;
+      } -> derived_from<dependent_sender_error>;
     });
     using env = make_env_t<prop<get_stop_token_t, inplace_stop_token>>;
     static_assert(requires {
@@ -724,7 +727,7 @@ namespace {
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
-      friend auto tag_invoke(ex::connect_t, sender, R r) -> operation<R> {
+      auto connect(R r) const -> operation<R> {
         return {{}, static_cast<R&&>(r)};
       }
 

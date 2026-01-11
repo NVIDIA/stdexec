@@ -24,6 +24,8 @@
 #include <exec/env.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
+#include <exception>
+#include <memory>
 
 namespace ex = stdexec;
 
@@ -101,7 +103,7 @@ namespace {
     return true;
   }
 
-#if !STDEXEC_STD_NO_EXCEPTIONS()
+#if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("let_value can be used for composition", "[adaptors][let_value]") {
     bool called1{false};
     bool called2{false};
@@ -128,12 +130,22 @@ namespace {
   }
 
   TEST_CASE("let_value can throw, and set_error will be called", "[adaptors][let_value]") {
-    auto snd = ex::just(13)
-             | ex::let_value([](int&) -> decltype(ex::just(0)) { throw std::logic_error{"err"}; });
+    struct invocable {
+      decltype(ex::just(0)) operator()(int&) && {
+        throw std::logic_error{"err"};
+      }
+      decltype(ex::just()) operator()(int&&) && noexcept;
+    };
+    auto snd = ex::just(13) | ex::let_value(invocable{});
+    static_assert(set_equivalent<
+                  ::stdexec::completion_signatures<
+                    ::stdexec::set_value_t(int),
+                    ::stdexec::set_error_t(std::exception_ptr)>,
+                  ::stdexec::completion_signatures_of_t<decltype(snd), ::stdexec::env<>>>);
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
-#endif // !STDEXEC_STD_NO_EXCEPTIONS()
+#endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
   TEST_CASE("let_value can be used with just_error", "[adaptors][let_value]") {
     ex::sender auto snd = ex::just_error(std::string{"err"})
@@ -346,5 +358,90 @@ namespace {
     auto op = ex::connect(std::move(snd), bad_receiver{completed}); // should compile
     ex::start(op);
     CHECK(completed);
+  }
+
+  struct throws_on_connect {
+    using sender_concept = ::stdexec::sender_t;
+    template <typename... Args>
+    static consteval ::stdexec::completion_signatures<::stdexec::set_value_t()>
+      get_completion_signatures(const Args&...) noexcept {
+      return {};
+    }
+    template <typename Receiver>
+    auto connect(Receiver) const
+      -> ::stdexec::connect_result_t<decltype(::stdexec::just()), Receiver> {
+      throw std::logic_error("TEST");
+    }
+  };
+
+  TEST_CASE(
+    "When connecting the successor throws an exception let_value delivers an error completion "
+    "signal to a valid receiver",
+    "[adaptors][let_value]") {
+    struct receiver {
+      using receiver_concept = ::stdexec::receiver_t;
+      std::shared_ptr<int> ptr;
+      void set_value() noexcept {
+        FAIL_CHECK("Operation should end in error");
+      }
+      void set_error(std::exception_ptr ex) noexcept {
+        CHECK(ex);
+        REQUIRE(ptr);
+        *ptr = 5;
+      }
+    };
+    const auto ptr = std::make_shared<int>(0);
+    auto sender = ex::let_value(::stdexec::just(), []() noexcept { return throws_on_connect{}; });
+    auto op = ex::connect(std::move(sender), receiver{ptr});
+    ex::start(op);
+    CHECK(*ptr == 5);
+  }
+
+  TEST_CASE(
+    "let_value destroys the first operation state before invoking the sender factory",
+    "[adaptors][let_value]") {
+    const auto ptr = std::make_shared<int>(5);
+    CHECK(ptr.use_count() == 1);
+    auto first = ex::just() | ex::then([ptr = ptr]() { });
+    CHECK(ptr.use_count() == 2);
+    auto sender = ex::let_value(std::move(first), [&]() {
+      CHECK(ptr.use_count() == 2);
+      return ex::just();
+    });
+    CHECK(ptr.use_count() == 2);
+    auto op = ex::connect(std::move(sender), expect_void_receiver{});
+    CHECK(ptr.use_count() == 2);
+    ex::start(op);
+    CHECK(ptr.use_count() == 1);
+  }
+
+  struct immovable_sender {
+    using sender_concept = ::stdexec::sender_t;
+    template <typename... Args>
+    consteval auto get_completion_signatures(const Args&...) const & noexcept {
+      return ::stdexec::completion_signatures_of_t<decltype(::stdexec::just()), Args...>{};
+    }
+    template <typename Receiver>
+    auto connect(Receiver r) const & noexcept {
+      return ::stdexec::connect(::stdexec::just(), std::move(r));
+    }
+    immovable_sender() = default;
+    immovable_sender(const immovable_sender&) {
+      throw std::logic_error("Unexpected copy");
+    }
+  };
+  static_assert(::stdexec::sender<immovable_sender>);
+  static_assert(::stdexec::sender<const immovable_sender&>);
+  static_assert(::stdexec::sender_in<immovable_sender, ::stdexec::env<>>);
+  static_assert(::stdexec::sender_in<const immovable_sender&, ::stdexec::env<>>);
+
+  TEST_CASE(
+    "If the sender factory returns a reference to a sender that reference is passed to connect",
+    "[adaptors][let_value]") {
+    const immovable_sender s;
+    auto just = ex::just();
+    auto sender = ex::let_value(just, [&]() -> decltype(auto) { return (s); });
+    auto op = ex::connect(sender, expect_void_receiver{});
+    ex::start(op);
   }
 } // namespace

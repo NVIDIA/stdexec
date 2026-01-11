@@ -45,13 +45,15 @@ namespace stdexec {
         constexpr bool __is_nothrow =
           __has_nothrow_transform_sender<__domain_t, _OpTag, _Sndr, _Env>;
 
-        if constexpr (__same_as<__result_t, _Sndr>) {
+        if constexpr (!__ok<__result_t>) {
+          return __declfn<__result_t>();
+        } else if constexpr (__same_as<__result_t, _Sndr>) {
           return __declfn<__result_t, __is_nothrow>();
         } else if constexpr (__same_as<_OpTag, start_t>) {
           return __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>();
         } else {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain<set_value_t, __result_t, _Env>, set_value_t>;
+            __transform_sender_t<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t::template __get_declfn<
             __result_t,
             _Env,
@@ -68,6 +70,7 @@ namespace stdexec {
       }
 
       template <class _Sndr, class _Env, auto _DeclFn = __get_declfn<_Sndr, _Env>()>
+        requires __callable<__mtypeof<_DeclFn>>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       constexpr auto operator()(_Sndr&& __sndr, const _Env& __env) const
         noexcept(noexcept(_DeclFn())) -> decltype(_DeclFn()) {
@@ -81,7 +84,7 @@ namespace stdexec {
             __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env), __env);
         } else {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain<set_value_t, __result_t, _Env>, set_value_t>;
+            __transform_sender_t<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t()(
             __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env), __env);
         }
@@ -107,11 +110,8 @@ namespace stdexec {
     // 2. Starting domain transformation (where the operation state starts)
     template <class _Sndr, class _Env>
     using __impl_fn_t = __compose<
-      __detail::__transform_sender_t<__detail::__starting_domain<_Env>, start_t>,
-      __detail::__transform_sender_t<
-        __detail::__completing_domain<set_value_t, _Sndr, _Env>,
-        set_value_t
-      >
+      __detail::__transform_sender_t<__detail::__starting_domain_t<_Env>, start_t>,
+      __detail::__transform_sender_t<__detail::__completing_domain_t<void, _Sndr, _Env>, set_value_t>
     >;
 
    public:

@@ -19,10 +19,9 @@
 
 // include these after __execution_fwd.hpp
 #include "__completion_behavior.hpp"
-#include "__config.hpp"
 #include "__concepts.hpp"
+#include "__config.hpp"
 #include "__query.hpp"
-#include "__tag_invoke.hpp" // IWYU pragma: keep for tag_invoke_result_t
 
 namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -17,13 +17,12 @@
 
 #include "__detail/__config.hpp"
 #include "__detail/__meta.hpp"
+#include "__detail/__utility.hpp"
 
 #include "concepts.hpp" // IWYU pragma: keep
 
-#include <functional>
-#include <tuple>
-#include <type_traits>
 #include <cstddef>
+#include <functional>
 
 namespace stdexec {
   template <class _Fun0, class _Fun1>
@@ -134,12 +133,14 @@ namespace stdexec {
       }
     };
 
-    STDEXEC_ATTRIBUTE(host, device)
-    auto __invoke_selector(__ignore, __ignore) noexcept -> __funobj;
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto __invoke_selector(__ignore, __ignore) noexcept -> __funobj {
+      return {};
+    }
 
     template <class _Mbr, class _Class, class _Ty>
-    STDEXEC_ATTRIBUTE(host, device)
-    auto __invoke_selector(_Mbr _Class::*, const _Ty&) noexcept {
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto __invoke_selector(_Mbr _Class::*, const _Ty&) noexcept {
       if constexpr (STDEXEC_IS_FUNCTION(_Mbr)) {
         // member function ptr case
         if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
@@ -170,19 +171,13 @@ namespace stdexec {
       }
 
       template <class _Fun, class _Ty, class... _Args>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Fun&& __fun, _Ty&& __ty, _Args&&... __args) const
-        noexcept(noexcept(__invoke_::__invoke_selector(__fun, __ty)(
-          static_cast<_Fun&&>(__fun),
-          static_cast<_Ty&&>(__ty),
-          static_cast<_Args&&>(__args)...)))
-          -> decltype(__invoke_::__invoke_selector(__fun, __ty)(
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto operator()(_Fun&& __fun, _Ty&& __ty, _Args&&... __args) const //
+        STDEXEC_AUTO_RETURN(
+          __invoke_::__invoke_selector(__fun, __ty)(
             static_cast<_Fun&&>(__fun),
             static_cast<_Ty&&>(__ty),
-            static_cast<_Args&&>(__args)...)) {
-        return decltype(__invoke_::__invoke_selector(__fun, __ty))()(
-          static_cast<_Fun&&>(__fun), static_cast<_Ty&&>(__ty), static_cast<_Args&&>(__args)...);
-      }
+            static_cast<_Args&&>(__args)...))
     };
   } // namespace __invoke_
 
@@ -190,61 +185,16 @@ namespace stdexec {
 
   template <class _Fun, class... _As>
   concept __invocable = requires(_Fun&& __f, _As&&... __as) {
-    __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
+    __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
   };
 
   template <class _Fun, class... _As>
   concept __nothrow_invocable = __invocable<_Fun, _As...> && requires(_Fun&& __f, _As&&... __as) {
-    { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
+    { __invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...) } noexcept;
   };
 
   template <class _Fun, class... _As>
   using __invoke_result_t = decltype(__invoke(__declval<_Fun>(), __declval<_As>()...));
-
-  namespace __apply_ {
-    using std::get;
-
-    template <std::size_t... _Is, class _Fn, class _Tup>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto __impl(__indices<_Is...>, _Fn&& __fn, _Tup&& __tup) noexcept(
-      noexcept(__invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...)))
-      -> decltype(__invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...)) {
-      return __invoke(static_cast<_Fn&&>(__fn), get<_Is>(static_cast<_Tup&&>(__tup))...);
-    }
-
-    template <class _Tup>
-    using __tuple_indices = __make_indices<std::tuple_size_v<std::remove_cvref_t<_Tup>>>;
-
-    template <class _Fn, class _Tup>
-    using __result_t =
-      decltype(__apply_::__impl(__tuple_indices<_Tup>(), __declval<_Fn>(), __declval<_Tup>()));
-  } // namespace __apply_
-
-  template <class _Fn, class _Tup>
-  concept __applicable = __mvalid<__apply_::__result_t, _Fn, _Tup>;
-
-  template <class _Fn, class _Tup>
-  concept __nothrow_applicable =
-    __applicable<_Fn, _Tup>
-    && noexcept(
-      __apply_::__impl(__apply_::__tuple_indices<_Tup>(), __declval<_Fn>(), __declval<_Tup>()));
-
-  template <class _Fn, class _Tup>
-    requires __applicable<_Fn, _Tup>
-  using __apply_result_t = __apply_::__result_t<_Fn, _Tup>;
-
-  struct __apply_t {
-    template <class _Fn, class _Tup>
-      requires __applicable<_Fn, _Tup>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto operator()(_Fn&& __fn, _Tup&& __tup) const
-      noexcept(__nothrow_applicable<_Fn, _Tup>) -> __apply_result_t<_Fn, _Tup> {
-      return __apply_::__impl(
-        __apply_::__tuple_indices<_Tup>(), static_cast<_Fn&&>(__fn), static_cast<_Tup&&>(__tup));
-    }
-  };
-
-  inline constexpr __apply_t __apply{};
 
   template <class _Fn, class _Default>
   struct __with_default : _Fn {
@@ -272,4 +222,24 @@ namespace stdexec {
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __with_default(_Fn, _Default) -> __with_default<_Fn, _Default>;
 
+  template <class _Fn>
+  struct __for_each {
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void operator()(_Ts&&... __ts) noexcept((__nothrow_callable<_Fn&, _Ts> && ...)) {
+      (static_cast<void>(__fn_(static_cast<_Ts&&>(__ts))), ...);
+    }
+
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void
+      operator()(_Ts&&... __ts) const noexcept((__nothrow_callable<const _Fn&, _Ts> && ...)) {
+      (static_cast<void>(__fn_(static_cast<_Ts&&>(__ts))), ...);
+    }
+
+    _Fn __fn_;
+  };
+
+  template <class _Fn>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __for_each(_Fn) -> __for_each<_Fn>;
 } // namespace stdexec

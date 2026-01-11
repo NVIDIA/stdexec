@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__execution_fwd.hpp"
+#include "__utility.hpp"
 
 #include <cstddef>
 #include <exception> // IWYU pragma: keep for std::terminate

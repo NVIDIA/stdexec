@@ -16,18 +16,21 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__basic_sender.hpp"
-#include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/execution.hpp"
 
-#include "trampoline_scheduler.hpp"
 #include "sequence.hpp"
+#include "trampoline_scheduler.hpp"
 
-#include "../stdexec/__detail/__atomic.hpp"
 #include <cstddef>
 #include <exception>
 #include <type_traits>
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace exec {
   namespace __repeat_n {
@@ -46,28 +49,13 @@ namespace exec {
         using receiver_concept = stdexec::receiver_t;
         __repeat_n_state<_Sender, _Receiver> *__state_;
 
-        template <class... _Args>
-        void set_value(_Args &&...__args) noexcept {
-          STDEXEC_TRY {
-            __state_->__complete(set_value_t(), static_cast<_Args &&>(__args)...);
-          }
-          STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow_decay_copyable<_Args...>) {
-              __state_->__complete(set_error_t(), std::current_exception());
-            }
-          }
+        void set_value() noexcept {
+          __state_->__complete(set_value_t());
         }
 
         template <class _Error>
         void set_error(_Error &&__err) noexcept {
-          STDEXEC_TRY {
-            __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
-          }
-          STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow_decay_copyable<_Error>) {
-              __state_->__complete(set_error_t(), std::current_exception());
-            }
-          }
+          __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
         }
 
         void set_stopped() noexcept {
@@ -89,10 +77,6 @@ namespace exec {
     template <class _Child>
     __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
-    STDEXEC_PRAGMA_PUSH()
-
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
-
     template <class _Sender, class _Receiver>
     struct __repeat_n_state
       : stdexec::__enable_receiver_from_this<
@@ -107,69 +91,59 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
       using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-      __child_count_pair<__child_t> __pair_;
-      __std::atomic_flag __started_{};
-      stdexec::__manual_lifetime<__child_op_t> __child_op_;
-      trampoline_scheduler __sched_;
-
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
         : __pair_(__sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
 
-      ~__repeat_n_state() {
-        if (!__started_.test(__std::memory_order_acquire)) {
-          __std::atomic_thread_fence(__std::memory_order_release);
-          // TSan does not support __std::atomic_thread_fence, so we
-          // need to use the TSan-specific __tsan_release instead:
-          STDEXEC_WHEN(STDEXEC_TSAN(), __tsan_release(&__started_));
-          __child_op_.__destroy();
-        }
-      }
-
-      void __connect() {
-        __child_op_.__construct_from([this] {
-          return stdexec::connect(
-            exec::sequence(stdexec::schedule(__sched_), __pair_.__child_), __receiver_t{this});
-        });
+      auto __connect() -> __child_op_t & {
+        return __child_op_.__emplace_from(
+          stdexec::connect,
+          exec::sequence(stdexec::schedule(__sched_), __pair_.__child_),
+          __receiver_t{this});
       }
 
       void __start() noexcept {
         if (__pair_.__count_ == 0) {
           stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
-          [[maybe_unused]]
-          const bool __already_started = __started_.test_and_set(__std::memory_order_relaxed);
-          STDEXEC_ASSERT(!__already_started);
-          stdexec::start(__child_op_.__get());
+          stdexec::start(*__child_op_);
         }
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args... __args) noexcept { // Intentionally by value...
+      void __complete(_Tag, _Args &&...__args) noexcept { // Intentionally by value...
+        static_assert(sizeof...(_Args) <= 1);
+        static_assert(sizeof...(_Args) == 0 || std::is_same_v<_Tag, stdexec::set_error_t>);
         STDEXEC_ASSERT(__pair_.__count_ > 0);
-        __child_op_.__destroy(); // ... because this could potentially invalidate them.
-        if constexpr (same_as<_Tag, set_value_t>) {
-          STDEXEC_TRY {
+
+        STDEXEC_TRY {
+          auto __arg_copy = (0, ..., static_cast<_Args &&>(__args)); // copy any arg...
+          __child_op_.reset(); // ... because this could potentially invalidate it.
+
+          if constexpr (same_as<_Tag, set_value_t>) {
             if (--__pair_.__count_ == 0) {
-              stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
+              stdexec::set_value(std::move(this->__receiver()));
             } else {
-              __connect();
-              stdexec::start(__child_op_.__get());
+              stdexec::start(__connect());
             }
+          } else {
+            _Tag()(std::move(this->__receiver()), static_cast<__decay_t<_Args> &&>(__arg_copy)...);
           }
-          STDEXEC_CATCH_ALL {
-            stdexec::set_error(
-              static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
-          }
-        } else {
-          _Tag()(static_cast<_Receiver &&>(this->__receiver()), static_cast<_Args &&>(__args)...);
+        }
+        STDEXEC_CATCH_ALL {
+          stdexec::set_error(std::move(this->__receiver()), std::current_exception());
         }
       }
+
+      __child_count_pair<__child_t> __pair_;
+      stdexec::__optional<__child_op_t> __child_op_;
+      trampoline_scheduler __sched_;
     };
 
-    STDEXEC_PRAGMA_POP()
+    template <class _Sender, class _Receiver>
+    __repeat_n_state(_Sender &&, _Receiver &) -> __repeat_n_state<_Sender, _Receiver>;
 
     struct repeat_n_t;
     struct _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_;
@@ -196,7 +170,7 @@ namespace exec {
       stdexec::transform_completion_signatures<
         __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
         __eptr_completion,
-        __sigs::__default_set_value,
+        __cmplsigs::__default_set_value,
         __error_t
       >,
       __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,
@@ -228,16 +202,15 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto
-        operator()(std::size_t __count) const -> __binder_back<repeat_n_t, std::size_t> {
-        return {{__count}, {}, {}};
+      constexpr auto operator()(std::size_t __count) const noexcept {
+        return __closure(*this, __count);
       }
 
-      template <class _Sender>
-      auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) {
+      template <class _Sender, bool _NoThrow = __nothrow_decay_copyable<_Sender>>
+      auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) noexcept(_NoThrow) {
         return __sexpr_apply(
           static_cast<_Sender &&>(__sndr),
-          []<class _Child>(__ignore, std::size_t __count, _Child __child) {
+          []<class _Child>(__ignore, std::size_t __count, _Child __child) noexcept(_NoThrow) {
             return __make_sexpr<__repeat_n_tag>(__child_count_pair{std::move(__child), __count});
           });
       }
@@ -260,3 +233,5 @@ namespace stdexec {
     };
   };
 } // namespace stdexec
+
+STDEXEC_PRAGMA_POP()

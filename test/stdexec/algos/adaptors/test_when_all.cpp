@@ -17,8 +17,10 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 #include <exec/env.hpp>
+#include <exec/async_scope.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 namespace ex = stdexec;
@@ -289,21 +291,8 @@ namespace {
         ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
-
-    // TODO(gevtushenko)
-    #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd =
-        ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
-    }
-    #endif
 
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
@@ -327,19 +316,7 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
-    }
-
-  // TODO(gevtushenko)
-  #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_with_variant_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::just_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
 
     SECTION("late customization") {
@@ -350,7 +327,6 @@ namespace {
         ex::starts_on(scheduler(), ex::when_all_with_variant(ex::just(3), ex::just(0.1415)));
       wait_for_value(std::move(snd), std::string{"hello world"});
     }
-  #endif
   }
 
   TEST_CASE("when_all_with_variant finds when_all customizations", "[adaptors][when_all]") {
@@ -366,21 +342,8 @@ namespace {
         ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
-      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
+      domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
-
-    // TODO(gevtushenko)
-    #if 0
-    SECTION("early customization") {
-      using domain = basic_domain<ex::when_all_t, customize::early, hello>;
-      using scheduler = basic_inline_scheduler<domain>;
-
-      auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
-      wait_for_value(std::move(snd), std::string{"hello world"});
-    }
-    #endif
 
     SECTION("late customization") {
       using domain = basic_domain<ex::when_all_t, customize::late, hello>;
@@ -405,5 +368,16 @@ namespace {
                   ex::completion_signatures<ex::set_value_t()>>);
     auto op = ex::connect(snd, expect_void_receiver{});
     ex::start(op);
+  }
+
+
+
+  TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all") {
+    auto snd = ex::when_all(completes_if(false), completes_if(false));
+
+    exec::async_scope scope;
+    scope.spawn(snd);
+    scope.request_stop();
+    ex::sync_wait(scope.on_empty());
   }
 } // namespace

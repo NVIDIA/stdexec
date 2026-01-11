@@ -18,8 +18,8 @@
 
 #include "../safe_file_descriptor.hpp"
 
-#include <utility>
 #include <unistd.h>
+#include <utility>
 
 namespace exec {
   inline safe_file_descriptor::safe_file_descriptor(int __fd) noexcept

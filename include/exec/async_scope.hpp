@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
-#include "../stdexec/stop_token.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
 #include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/execution.hpp"
+#include "../stdexec/stop_token.hpp"
 #include "env.hpp"
 
 #include "../stdexec/__detail/__atomic.hpp"
@@ -117,17 +117,19 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, _Receiver>
         [[nodiscard]]
-        static auto
-          connect(_Self&& __self, _Receiver __rcvr) -> __when_empty_op_t<_Self, _Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __when_empty_op_t<_Self, _Receiver> {
           return __when_empty_op_t<_Self, _Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         const __impl* __scope_;
         STDEXEC_ATTRIBUTE(no_unique_address) _Constrained __c_;
@@ -157,8 +159,8 @@ namespace exec {
 
         static void __complete(const __impl* __scope) noexcept {
           auto& __active = __scope->__active_;
+          std::unique_lock __guard{__scope->__lock_};
           if (__active.fetch_sub(1, __std::memory_order_acq_rel) == 1) {
-            std::unique_lock __guard{__scope->__lock_};
             auto __local_waiters = std::move(__scope->__waiters_);
             __guard.unlock();
             __scope = nullptr;
@@ -256,16 +258,19 @@ namespace exec {
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Constrained>, __nest_receiver_t<_Receiver>>
         [[nodiscard]]
-        static auto connect(_Self&& __self, _Receiver __rcvr) -> __nest_operation_t<_Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __nest_operation_t<_Receiver> {
           return __nest_operation_t<_Receiver>{
             __self.__scope_, static_cast<_Self&&>(__self).__c_, static_cast<_Receiver&&>(__rcvr)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
 
@@ -378,15 +383,17 @@ namespace exec {
         }
 
         template <class _Receiver2>
-        explicit __t(
-          _Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
-          : __subscription{{},
-            [](__subscription* __self) noexcept -> void {
+        explicit __t(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
+          : __subscription{
+              {},
+              [](__subscription* __self) noexcept -> void {
                 static_cast<__t*>(__self)->__complete_();
-            }}
+              }}
           , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
           , __state_(std::move(__state))
-          , __forward_consumer_(std::in_place, get_stop_token(get_env(__rcvr_)),
+          , __forward_consumer_(
+              std::in_place,
+              get_stop_token(get_env(__rcvr_)),
               __forward_stopped{&__state_->__stop_source_}) {
         }
 
@@ -480,7 +487,10 @@ namespace exec {
     template <class _Completions, class _Env>
     struct __future_state_base {
       __future_state_base(_Env __env, const __impl* __scope)
-        : __forward_scope_{std::in_place, __scope->__stop_source_.get_token(), __forward_stopped{&__stop_source_}}
+        : __forward_scope_{
+            std::in_place,
+            __scope->__stop_source_.get_token(),
+            __forward_stopped{&__stop_source_}}
         , __env_(make_env(
             static_cast<_Env&&>(__env),
             stdexec::prop{get_stop_token, __scope->__stop_source_.get_token()})) {
@@ -654,15 +664,19 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver _Receiver>
           requires receiver_of<_Receiver, __completions_t<_Self>>
-        static auto connect(_Self&& __self, _Receiver __rcvr) -> __future_op_t<_Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+          -> __future_op_t<_Receiver> {
           return __future_op_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__state_};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _OtherEnv>
-        static auto get_completion_signatures(_Self&&, _OtherEnv&&...) -> __completions_t<_Self> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _OtherEnv&&...)
+          -> __completions_t<_Self> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         friend struct async_scope;
@@ -684,6 +698,8 @@ namespace exec {
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation
     struct __spawn_env_ {
+      using __t = __spawn_env_;
+      using __id = __spawn_env_;
       inplace_stop_token __token_;
 
       [[nodiscard]]
@@ -746,9 +762,8 @@ namespace exec {
 
       struct __t : __spawn_op_base<_EnvId> {
         __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
-          : __spawn_op_base<
-              _EnvId
-            >{__env::__join(
+          : __spawn_op_base<_EnvId>{
+              __env::__join(
                 static_cast<_Env&&>(__env),
                 __spawn_env_{__scope->__stop_source_.get_token()}),
               [](__spawn_op_base<_EnvId>* __op) { delete static_cast<__t*>(__op); }}

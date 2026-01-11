@@ -17,19 +17,21 @@
 
 #include "__execution_fwd.hpp"
 
+#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
+#include "__connect.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
-#include "__senders_core.hpp"
+#include "__receivers.hpp"
 #include "__sender_introspection.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 
-#include <utility> // for tuple_size/tuple_element
 #include <cstddef>
-#include <new> // IWYU pragma: keep for placement new
+#include <new>         // IWYU pragma: keep for placement new
 #include <type_traits> // IWYU pragma: keep for is_standard_layout
+#include <utility>     // for tuple_size/tuple_element
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -42,14 +44,16 @@ namespace stdexec {
   // template <class _Descriptor>
   // inline constexpr auto __descriptor_fn_v = _Descriptor{};
 
+#if STDEXEC_NVHPC()
   template <
     class _Descriptor,
-    auto _DescriptorFn =
-      [] {
-        return _Descriptor();
-      }
+    auto _DescriptorFn = ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
   >
   inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#else
+  template <class _Descriptor, auto _DescriptorFn = ([] { return _Descriptor(); })>
+  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#endif
 
   template <class _Tag, class _Data, class... _Child>
   inline constexpr auto __descriptor_fn() {
@@ -67,6 +71,11 @@ namespace stdexec {
   template <class _Tag>
   struct __sexpr_impl;
 
+  namespace __detail {
+    template <class _Sexpr, class _Receiver>
+    struct __connect_fn;
+  } // namespace __detail
+
   template <class _Sexpr, class _Receiver>
   struct __op_state;
 
@@ -74,18 +83,23 @@ namespace stdexec {
   struct __rcvr;
 
   namespace __detail {
-    template <class _Sexpr, class _Receiver>
-    struct __connect_fn;
+    // A decay_copyable trait that uses C++17 guaranteed copy elision, so
+    // that __decay_copyable_if<immovable_type> is satisfied.
+    template <class _Ty, class _Uy = __decay_t<_Ty>>
+    concept __decay_copyable_if = requires(__declfn_t<_Ty> __val) { _Uy(__val()); };
+
+    template <__decay_copyable_if _Ty>
+    using __decay_if_t = __decay_t<_Ty>;
 
     template <class _Tag, class _Sexpr, class _Receiver>
     using __state_type_t =
-      __decay_t<__result_of<__sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
+      __decay_if_t<__result_of<__sexpr_impl<_Tag>::get_state, _Sexpr, _Receiver&>>;
 
-    template <class _Self, class _Tag, class _Index, class _Sexpr, class _Receiver>
+    template <class _Tag, class _Index, class _Sexpr, class _Receiver>
     using __env_type_t = __result_of<
-      __sexpr_impl<__meval<__msecond, _Self, _Tag>>::get_env,
+      __sexpr_impl<__meval<__msecond, _Index, _Tag>>::get_env,
       _Index,
-      __state_type_t<__meval<__msecond, _Self, _Tag>, _Sexpr, _Receiver>&,
+      __state_type_t<__meval<__msecond, _Index, _Tag>, _Sexpr, _Receiver>&,
       _Receiver&
     >;
 
@@ -117,8 +131,9 @@ namespace stdexec {
 
       static constexpr auto connect =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>)
-        -> __op_state<_Sender, _Receiver>
+          noexcept(__op_state<_Sender, _Receiver>{
+            static_cast<_Sender&&>(__sndr),
+            static_cast<_Receiver&&>(__rcvr)})) -> __op_state<_Sender, _Receiver>
         requires __connectable<_Sender, _Receiver>
       {
         return __op_state<_Sender, _Receiver>{
@@ -282,15 +297,19 @@ namespace stdexec {
       template <std::size_t _Idx>
       using __receiver_t = __t<__rcvr<__id<_Receiver>, _Sexpr, _Idx>>;
 
+      template <std::size_t _Idx>
+      using __env_t = __detail::__env_type_t<tag_of_t<_Sexpr>, __msize_t<_Idx>, _Sexpr, _Receiver>;
+
       __op_state<_Sexpr, _Receiver>* __op_;
 
       struct __impl {
         __op_state<_Sexpr, _Receiver>* __op_;
 
         template <std::size_t... _Is, class... _Child>
+          requires(sender_to<_Child, __receiver_archetype<__env_t<_Is>>> && ...)
         auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
-            -> __tuple_for<connect_result_t<_Child, __receiver_t<_Is>>...> {
+            -> __tuple<connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
       };
@@ -302,7 +321,7 @@ namespace stdexec {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tuple_for<> {
+      auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
         return {};
       }
     };
@@ -356,7 +375,7 @@ namespace stdexec {
       using receiver_concept = receiver_t;
       using __id = __rcvr;
 
-      using __index = __msize_t<_Idx>;
+      using __index_t = __msize_t<_Idx>;
       using __parent_op_t = __op_state<_Sexpr, _Receiver>;
       using __tag_t = tag_of_t<_Sexpr>;
 
@@ -367,24 +386,23 @@ namespace stdexec {
       template <class... _Args>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_value(_Args&&... __args) noexcept {
-        __op_->__complete(__index(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+        __op_->__complete(__index_t(), stdexec::set_value, static_cast<_Args&&>(__args)...);
       }
 
       template <class _Error>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_error(_Error&& __err) noexcept {
-        __op_->__complete(__index(), stdexec::set_error, static_cast<_Error&&>(__err));
+        __op_->__complete(__index_t(), stdexec::set_error, static_cast<_Error&&>(__err));
       }
 
       STDEXEC_ATTRIBUTE(always_inline) void set_stopped() noexcept {
-        __op_->__complete(__index(), stdexec::set_stopped);
+        __op_->__complete(__index_t(), stdexec::set_stopped);
       }
 
-      template <__same_as<__t> _Self = __t>
+      template <class _Index = __msize_t<_Idx>>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      auto get_env() const noexcept
-        -> __detail::__env_type_t<_Self, __tag_t, __index, _Sexpr, _Receiver> {
-        return __op_->__get_env(__index());
+      auto get_env() const noexcept -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
+        return __op_->__get_env(__index_t());
       }
     };
   };
@@ -400,7 +418,7 @@ namespace stdexec {
 
     __inner_ops_t __inner_ops_;
 
-    __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+    explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
       __nothrow_constructible_from<__detail::__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
       && __noexcept_of<__sexpr_apply, _Sexpr, __detail::__connect_fn<_Sexpr, _Receiver>>)
       : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
@@ -412,7 +430,7 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
       using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
-      __inner_ops_.apply(
+      stdexec::__apply(
         [&](auto&... __ops) noexcept {
           __sexpr_impl<__tag_t>::start(this->__state(), __rcvr, __ops...);
         },
@@ -436,7 +454,7 @@ namespace stdexec {
     template <class _Index>
     STDEXEC_ATTRIBUTE(always_inline)
     auto __get_env(_Index) const noexcept
-      -> __detail::__env_type_t<_Index, __tag_t, _Index, _Sexpr, _Receiver> {
+      -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
       const auto& __rcvr = this->__rcvr();
       return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state(), __rcvr);
     }
@@ -500,32 +518,35 @@ namespace stdexec {
         return __sexpr_apply(*this, __detail::__drop_front(__impl<_Self>::get_attrs));
       }
 
-      template <__decays_to<__sexpr> _Self, class... _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      static auto get_completion_signatures(_Self&&, _Env&&...) noexcept -> __msecond<
-        __if_c<__decays_to<_Self, __sexpr>>,
-        __result_of<__impl<_Self>::get_completion_signatures, _Self, _Env...>
-      > {
-        return {};
+      template <__decays_to_derived_from<__sexpr> _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        using __impl_t = __mtypeof<__impl<_Self>::get_completion_signatures>;
+        if constexpr (__callable<__impl_t, _Self, _Env...>) {
+          return __call_result_t<__impl_t, _Self, _Env...>();
+        } else if constexpr (sizeof...(_Env) == 0) {
+          return __dependent_sender<_Self>();
+        } else {
+          return __invalid_completion_signature(__unrecognized_sender_error<_Self, _Env...>());
+        }
       }
 
-      // BUGBUG fix receiver constraint here:
-      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      template <__decays_to_derived_from<__sexpr> _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
-      static auto connect(_Self&& __self, _Receiver&& __rcvr)
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to<_Self, __sexpr>>,
+          __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::connect, _Self, _Receiver>
         > {
         return __impl<_Self>::connect(
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <__decays_to<__sexpr> _Self, /*receiver*/ class _Receiver>
+      template <__decays_to_derived_from<__sexpr> _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto submit(_Self&& __self, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) -> __msecond<
-          __if_c<__decays_to<_Self, __sexpr>>,
+          __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
           __result_of<__impl<_Self>::submit, _Self, _Receiver>
         > {
         return __impl<_Self>::submit(
@@ -581,12 +602,12 @@ namespace stdexec {
   template <class _Tag>
   inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
 
-  // The __name_of utility defined below is used to pretty-print the type names of
+  // The __demangle_t utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
   namespace __detail {
     struct __basic_sender_name {
       template <class _Tag, class _Data, class... _Child>
-      using __result = __basic_sender<_Tag, _Data, __name_of<_Child>...>;
+      using __result = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>;
 
       template <class _Sender>
       using __f = __minvoke<typename __decay_t<_Sender>::__desc_t, __q<__result>>;
@@ -594,24 +615,24 @@ namespace stdexec {
 
     struct __id_name {
       template <class _Sender>
-      using __f = __name_of<__id<_Sender>>;
+      using __f = __demangle_t<__id<_Sender>>;
     };
 
     template <class _Sender>
-    extern __mcompose<__cplr, __name_of_fn<_Sender>> __name_of_v<_Sender&>;
+    extern __mcompose<__cplr, __demangle_fn<_Sender>> __demangle_v<_Sender&>;
 
     template <class _Sender>
-    extern __mcompose<__cprr, __name_of_fn<_Sender>> __name_of_v<_Sender&&>;
+    extern __mcompose<__cprr, __demangle_fn<_Sender>> __demangle_v<_Sender&&>;
 
     template <class _Sender>
-    extern __mcompose<__cpclr, __name_of_fn<_Sender>> __name_of_v<const _Sender&>;
+    extern __mcompose<__cpclr, __demangle_fn<_Sender>> __demangle_v<const _Sender&>;
 
     template <auto _Descriptor>
-    extern __basic_sender_name __name_of_v<__sexpr<_Descriptor>>;
+    extern __basic_sender_name __demangle_v<__sexpr<_Descriptor>>;
 
     template <__has_id _Sender>
       requires(!same_as<__id<_Sender>, _Sender>)
-    extern __id_name __name_of_v<_Sender>;
+    extern __id_name __demangle_v<_Sender>;
   } // namespace __detail
 } // namespace stdexec
 

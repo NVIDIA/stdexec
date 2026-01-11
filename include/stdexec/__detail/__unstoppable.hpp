@@ -18,9 +18,9 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "../stop_token.hpp"
 #include "__env.hpp"
 #include "__write_env.hpp"
-#include "../stop_token.hpp"
 
 namespace stdexec {
   inline constexpr auto unstoppable = write_env(prop{get_stop_token, never_stop_token{}});

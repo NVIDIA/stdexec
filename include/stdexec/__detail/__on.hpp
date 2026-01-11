@@ -19,13 +19,13 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
+#include "__completion_signatures_of.hpp"
 #include "__continues_on.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__inline_scheduler.hpp"
 #include "__meta.hpp"
 #include "__schedulers.hpp"
-#include "__senders_core.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
@@ -54,14 +54,16 @@ namespace stdexec {
     struct __no_scheduler_in_environment {
       using sender_concept = sender_t;
 
-      static auto
-        get_completion_signatures(const __no_scheduler_in_environment&, const auto&) noexcept {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(
+        this const __no_scheduler_in_environment&,
+        const auto&) noexcept {
         return __mexception<
           _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
           _WITH_SENDER_<_Sender>,
           _WITH_ENVIRONMENT_<_Env>
         >{};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
     };
 
     template <class _Scheduler, class _Closure>
@@ -92,30 +94,9 @@ namespace stdexec {
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
-        return __binder_back<on_t, __decay_t<_Scheduler>, __decay_t<_Closure>>{
-          {{static_cast<_Scheduler&&>(__sched)}, {static_cast<_Closure&&>(__clsur)}},
-          {},
-          {}
-        };
+        return __closure(
+          *this, static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur));
       }
-
-      template <class _Error>
-      struct __not_a_sender {
-        using sender_concept = sender_t;
-        static auto get_completion_signatures(const __not_a_sender&) noexcept -> _Error {
-          return {};
-        }
-      };
-
-      template <class _Error>
-      struct __not_a_scheduler {
-        using scheduler_concept = scheduler_t;
-        bool operator==(const __not_a_scheduler&) const noexcept = default;
-
-        __not_a_sender<_Error> schedule() const noexcept {
-          return __not_a_sender<_Error>{};
-        }
-      };
 
       template <class _Sender, class _OldSched, class _NewSched>
       static auto __reschedule(
@@ -145,7 +126,7 @@ namespace stdexec {
             // This branch handles the case where `on` was called like `on(sch, sndr)`. In
             // this case, we find the old scheduler by looking in the receiver's
             // environment.
-            const auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
+            auto __old = __with_default{get_scheduler, __end_sched_t()}(__env);
 
             return continues_on(
               starts_on(static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)),
@@ -156,7 +137,7 @@ namespace stdexec {
             // want to restore is the completion scheduler of __child.
             constexpr auto __get_old_sched =
               __with_default{get_completion_scheduler<set_value_t>, __end_sched_t()};
-            const auto __old = __get_old_sched(get_env(__child), __env);
+            auto __old = __get_old_sched(get_env(__child), __env);
 
             auto& [__sched, __clsur] = __data;
             auto __pred = __reschedule(static_cast<_Child&&>(__child), __old, __sched);

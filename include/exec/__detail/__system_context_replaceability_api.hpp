@@ -19,11 +19,11 @@
 
 #include "../../stdexec/__detail/__execution_fwd.hpp"
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
-#include <optional>
 #include <memory>
+#include <optional>
 #include <span>
 
 struct __uuid {

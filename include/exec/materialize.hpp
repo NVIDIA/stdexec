@@ -79,13 +79,14 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        static auto connect(_Self&& __self, _Receiver __receiver)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <class... _Args>
         using __materialize_value = completion_signatures<set_value_t(set_value_t, _Args...)>;
@@ -103,10 +104,11 @@ namespace exec {
         >;
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         _Sender __sndr_;
@@ -121,8 +123,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept -> __binder_back<__materialize_t> {
-        return {{}, {}, {}};
+      auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
   } // namespace __materialize
@@ -188,13 +190,14 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>
-        static auto connect(_Self&& __self, _Receiver __receiver)
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
           return stdexec::connect(
             static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <class _Tag, class... _Args>
           requires __completion_tag<__decay_t<_Tag>>
@@ -208,10 +211,11 @@ namespace exec {
         >;
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto
-          get_completion_signatures(_Self&&, _Env&&...) -> __completions_t<_Self, _Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+          -> __completions_t<_Self, _Env...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         _Sender __sndr_;
@@ -229,8 +233,8 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept -> __binder_back<__dematerialize_t> {
-        return {{}, {}, {}};
+      auto operator()() const noexcept {
+        return __closure(*this);
       }
     };
   } // namespace __dematerialize

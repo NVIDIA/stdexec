@@ -17,20 +17,20 @@
 
 #pragma once
 
-#include "timed_scheduler.hpp" // IWYU pragma: keep for schedule_at and schedule_after
 #include "__detail/intrusive_heap.hpp"
+#include "timed_scheduler.hpp" // IWYU pragma: keep for schedule_at and schedule_after
 
 #include "../stdexec/__detail/__atomic.hpp"
 #include "../stdexec/__detail/__intrusive_mpsc_queue.hpp"
-#include "../stdexec/__detail/__spin_loop_pause.hpp"
-#include "../stdexec/__detail/__schedulers.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__schedulers.hpp"
+#include "../stdexec/__detail/__spin_loop_pause.hpp"
 
 #include <chrono>
 #include <condition_variable>
-#include <optional>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <utility>
 
 namespace exec {

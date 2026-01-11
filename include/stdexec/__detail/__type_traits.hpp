@@ -28,8 +28,11 @@ namespace stdexec {
   template <class _Tp, bool _Noexcept = true>
   using __declfn_t = auto (*)() noexcept(_Noexcept) -> _Tp;
 
-  template <class _Tp>
+  template <class _Tp, class...>
   extern __declfn_t<_Tp &&> __declval;
+
+  template <class... _NoneSuch>
+  extern __declfn_t<void> __declval<void, _NoneSuch...>;
 
 #if STDEXEC_MSVC()
   template <class _Tp, bool _Noexcept = true>
@@ -48,7 +51,7 @@ namespace stdexec {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
-#if STDEXEC_HAS_BUILTIN(__decay)
+#if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 21'00)
 
   namespace __tt {
     template <class>
@@ -60,6 +63,7 @@ namespace stdexec {
       using __f = __decay(_Ty);
     };
   } // namespace __tt
+
   template <class _Ty>
   using __decay_t = __tt::__decay_<sizeof(__tt::__wrap<_Ty> *) == ~0ul>::template __f<_Ty>;
 

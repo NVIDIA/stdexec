@@ -20,6 +20,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__get_completion_signatures.hpp"
 #include "__tag_invoke.hpp"
 
 #include "../functional.hpp"
@@ -27,6 +28,24 @@
 #include <exception>
 
 namespace stdexec {
+  enum class __disposition {
+    __value,
+    __error,
+    __stopped
+  };
+
+  namespace __detail {
+    template <__disposition _Disposition>
+    struct __completion_tag {
+      static constexpr stdexec::__disposition __disposition = _Disposition;
+
+      template <stdexec::__disposition _OtherDisposition>
+      constexpr bool operator==(__completion_tag<_OtherDisposition>) const noexcept {
+        return _Disposition == _OtherDisposition;
+      }
+    };
+  } // namespace __detail
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.receivers]
   namespace __rcvrs {
@@ -35,7 +54,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__args)...);
     };
 
-    struct set_value_t {
+    struct set_value_t : __detail::__completion_tag<__disposition::__value> {
       template <class _Fn, class... _As>
       using __f = __minvoke<_Fn, _As...>;
 
@@ -56,10 +75,11 @@ namespace stdexec {
       }
 
       template <class _Receiver, class... _As>
-        requires(!__set_value_member<_Receiver, _As...>)
-             && tag_invocable<set_value_t, _Receiver, _As...>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
+        requires __set_value_member<_Receiver, _As...>
+              || tag_invocable<set_value_t, _Receiver, _As...>
+      [[deprecated("the use of tag_invoke for set_value is deprecated")]]
+      STDEXEC_ATTRIBUTE(host, device, always_inline) //
+        void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
       }
@@ -70,7 +90,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_error(static_cast<_Error &&>(__err));
     };
 
-    struct set_error_t {
+    struct set_error_t : __detail::__completion_tag<__disposition::__error> {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 1)
       using __f = __minvoke<_Fn, _Args...>;
@@ -92,10 +112,11 @@ namespace stdexec {
       }
 
       template <class _Receiver, class _Error>
-        requires(!__set_error_member<_Receiver, _Error>)
-             && tag_invocable<set_error_t, _Receiver, _Error>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
+        requires __set_error_member<_Receiver, _Error>
+              || tag_invocable<set_error_t, _Receiver, _Error>
+      [[deprecated("the use of tag_invoke for set_error is deprecated")]]
+      STDEXEC_ATTRIBUTE(host, device, always_inline) //
+        void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_Error &&>(__err));
       }
@@ -106,7 +127,7 @@ namespace stdexec {
       static_cast<_Receiver &&>(__rcvr).set_stopped();
     };
 
-    struct set_stopped_t {
+    struct set_stopped_t : __detail::__completion_tag<__disposition::__stopped> {
       template <class _Fn, class... _Args>
         requires(sizeof...(_Args) == 0)
       using __f = __minvoke<_Fn, _Args...>;
@@ -125,9 +146,10 @@ namespace stdexec {
       }
 
       template <class _Receiver>
-        requires(!__set_stopped_member<_Receiver>) && tag_invocable<set_stopped_t, _Receiver>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr) const noexcept {
+        requires __set_stopped_member<_Receiver> || tag_invocable<set_stopped_t, _Receiver>
+      [[deprecated("the use of tag_invoke for set_stopped is deprecated")]]
+      STDEXEC_ATTRIBUTE(host, device, always_inline) //
+        void operator()(_Receiver &&__rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr));
       }
@@ -226,12 +248,12 @@ namespace stdexec {
 
     template <class... _Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_value(_Args...) noexcept {
+    void set_value(_Args &&...) noexcept {
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_error(_Error) noexcept {
+    void set_error(_Error &&) noexcept {
     }
 
     STDEXEC_ATTRIBUTE(host, device)

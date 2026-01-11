@@ -175,17 +175,19 @@ namespace {
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, __completions_t<Self, stdexec::env_of_t<Receiver>>>
-        friend auto
-          tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+          -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
             static_cast<Self&&>(self).sndr_,
             _receiver_t<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <stdexec::__decays_to<__t> Self, class... Env>
-        static auto get_completion_signatures(Self&&, Env&&...) -> __completions_t<Self, Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> __completions_t<Self, Env...> {
           return {};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
           return stdexec::__fwd_env(stdexec::get_env(sndr_));
@@ -243,15 +245,18 @@ namespace {
 
         template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
           requires stdexec::receiver_of<Receiver, _completions_t<Self, stdexec::env_of_t<Receiver>>>
-        static auto connect(Self&& self, Receiver&& rcvr) -> op_t<Self, Receiver> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+          -> op_t<Self, Receiver> {
           return op_t<Self, Receiver>(
             static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <stdexec::__decays_to<__t> Self, class... Env>
-        static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Self, Env...> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completions_t<Self, Env...> {
           return {};
         }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sender>> {
           return stdexec::__fwd_env(stdexec::get_env(sndr_));
@@ -282,9 +287,8 @@ namespace {
     }
 
     template <class _Fun>
-    auto operator()(_Fun __fun) const
-      -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::then>, _Fun> {
-      return {{static_cast<_Fun&&>(__fun)}, {}, {}};
+    auto operator()(_Fun __fun) const {
+      return stdexec::__closure(*this, static_cast<_Fun&&>(__fun));
     };
   };
 
@@ -298,9 +302,8 @@ namespace {
       return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
-    auto
-      operator()() const -> stdexec::__binder_back<a_sender_helper_t<a_sender_kind::receiverless>> {
-      return {{}, {}, {}};
+    auto operator()() const {
+      return stdexec::__closure(*this);
     }
   };
 

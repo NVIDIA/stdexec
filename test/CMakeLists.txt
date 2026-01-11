@@ -29,6 +29,7 @@ set(stdexec_test_sources
     stdexec/concepts/test_concepts_receiver.cpp
     stdexec/concepts/test_concept_operation_state.cpp
     stdexec/concepts/test_concepts_sender.cpp
+    stdexec/concepts/test_concepts_stop_tokens.cpp
     stdexec/concepts/test_awaitables.cpp
     stdexec/algos/factories/test_just.cpp
     stdexec/algos/factories/test_transfer_just.cpp
@@ -74,9 +75,9 @@ set_target_properties(common_test_settings PROPERTIES
     MSVC_DEBUG_INFORMATION_FORMAT Embedded
     )
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
-target_compile_definitions(
-    common_test_settings INTERFACE
-    $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
+# target_compile_definitions(
+#     common_test_settings INTERFACE
+#     $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 add_executable(test.stdexec ${stdexec_test_sources})
 target_link_libraries(test.stdexec

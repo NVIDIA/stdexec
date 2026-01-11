@@ -65,11 +65,12 @@ namespace {
       stdexec::__decays_to<sum_sender> Self,
       stdexec::receiver_of<completion_signatures> Receiver
     >
-    friend auto tag_invoke(stdexec::connect_t, Self&& self, Receiver rcvr) noexcept {
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept {
       return stdexec::connect(
         static_cast<Self&&>(self).item_,
         sum_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr), self.sum_});
     }
+    STDEXEC_EXPLICIT_THIS_END(connect)
   };
 
   template <class Env = stdexec::env<>>
@@ -80,9 +81,8 @@ namespace {
     Env env_{};
 
     template <class Item>
-    friend auto tag_invoke(exec::set_next_t, sum_receiver& self, Item&& item) noexcept
-      -> sum_sender<stdexec::__decay_t<Item>> {
-      return {static_cast<Item&&>(item), &self.sum_};
+    auto set_next(Item&& item) noexcept -> sum_sender<stdexec::__decay_t<Item>> {
+      return {static_cast<Item&&>(item), &sum_};
     }
 
     void set_value() noexcept {

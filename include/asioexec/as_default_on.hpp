@@ -18,10 +18,10 @@
 
 #pragma once
 
-#include <type_traits>
-#include <utility>
 #include <asioexec/asio_config.hpp>
 #include <asioexec/executor_with_default.hpp>
+#include <type_traits>
+#include <utility>
 
 namespace asioexec {
 

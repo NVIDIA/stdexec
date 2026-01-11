@@ -16,8 +16,8 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/execution.hpp"
 
 namespace exec {
   namespace __final {
@@ -270,24 +270,28 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class _Rec>
-        static auto connect(_Self&& __self, _Rec&& __receiver) noexcept -> __op_t<_Self, _Rec> {
+        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept
+          -> __op_t<_Self, _Rec> {
           return {
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,
             static_cast<_Rec&&>(__receiver)};
         }
+        STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept
+        STDEXEC_EXPLICIT_THIS_BEGIN(
+          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
           -> __completion_signatures_t<__copy_cvref_t<_Self, _InitialSender>, _FinalSender, _Env...> {
           return {};
         }
-
         template <__decays_to<__t> _Self, class... _Env>
           requires(!__decay_copyable<__copy_cvref_t<_Self, _FinalSender>>)
-        static auto get_completion_signatures(_Self&&, _Env&&...) noexcept {
+        STDEXEC_EXPLICIT_THIS_BEGIN(
+          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept {
           return _ERROR_<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_FinalSender>>{};
         }
+        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
 
@@ -300,8 +304,8 @@ namespace exec {
 
       template <sender _Final>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Final&& __final) const -> __binder_back<finally_t, __decay_t<_Final>> {
-        return {{static_cast<_Final&&>(__final)}, {}, {}};
+      auto operator()(_Final&& __final) const {
+        return __closure(*this, static_cast<_Final&&>(__final));
       }
 
       template <class _Sender>

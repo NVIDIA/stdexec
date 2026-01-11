@@ -17,19 +17,19 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
 #include "../stdexec/__detail/__atomic.hpp"
 #include "../stdexec/__detail/__config.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/execution.hpp"
 #include "__detail/__atomic_intrusive_queue.hpp"
 #include "__detail/__bwos_lifo_queue.hpp"
-#include "__detail/__xorshift.hpp"
 #include "__detail/__numa.hpp"
+#include "__detail/__xorshift.hpp"
 
-#include "sequence_senders.hpp"
 #include "sequence/iterate.hpp"
+#include "sequence_senders.hpp"
 
 #include <algorithm>
 #include <compare>
@@ -47,6 +47,14 @@ namespace exec {
     std::size_t numBlocks{32};
     std::size_t blockSize{8};
   };
+
+  struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
+  struct CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM;
 
   namespace _pool_ {
     using namespace stdexec;
@@ -85,13 +93,6 @@ namespace exec {
       };
     } // namespace schedule_all_
 #endif
-
-    template <class>
-    struct not_a_sender {
-      using __t = not_a_sender;
-      using __id = not_a_sender;
-      using sender_concept = sender_t;
-    };
 
     struct task_base {
       task_base* next = nullptr;
@@ -299,11 +300,16 @@ namespace exec {
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_bulk{*sched.pool_});
           } else {
-            static_assert(
-              __completes_on<Sender, _static_thread_pool::scheduler, Env>,
-              "Unable to dispatch bulk work to the static_thread_pool. The predecessor sender "
-              "is not able to provide a static_thread_pool scheduler.");
-            return not_a_sender<__name_of<Sender>>();
+            return stdexec::__not_a_sender<
+              stdexec::_WHAT_<>(
+                CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
+              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, tag_of_t<Sender>),
+              stdexec::_TO_FIX_THIS_ERROR_(
+                ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+              stdexec::_WITH_SENDER_<Sender>,
+              stdexec::_WITH_ENVIRONMENT_<Env>
+            >();
           }
         }
 
@@ -314,11 +320,16 @@ namespace exec {
             auto sched = stdexec::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_iterate{*sched.pool_});
           } else {
-            static_assert(
-              __completes_on<Sender, _static_thread_pool::scheduler, Env>,
-              "Unable to dispatch the iterate algorithm to the static_thread_pool. The predecessor "
-              "sender is not able to provide a static_thread_pool scheduler.");
-            return not_a_sender<__name_of<Sender>>();
+            return stdexec::__not_a_sender<
+              stdexec::_WHAT_<>(
+                CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
+              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, exec::iterate_t),
+              stdexec::_TO_FIX_THIS_ERROR_(
+                ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM),
+              stdexec::_WITH_SENDER_<Sender>,
+              stdexec::_WITH_ENVIRONMENT_<Env>
+            >();
           }
         }
 #endif
@@ -1166,14 +1177,15 @@ namespace exec {
 
       template <__decays_to<__t> Self, receiver Receiver>
         requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
-      static auto connect(Self&& self, Receiver rcvr) noexcept(__nothrow_constructible_from<
-                                                               _bulk_opstate_t<Receiver>,
-                                                               _static_thread_pool&,
-                                                               Shape,
-                                                               Fun,
-                                                               Sender,
-                                                               Receiver
-      >) -> _bulk_opstate_t<Receiver> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        noexcept(__nothrow_constructible_from<
+                 _bulk_opstate_t<Receiver>,
+                 _static_thread_pool&,
+                 Shape,
+                 Fun,
+                 Sender,
+                 Receiver
+        >) -> _bulk_opstate_t<Receiver> {
         return _bulk_opstate_t<Receiver>{
           self.pool_,
           self.shape_,
@@ -1181,11 +1193,14 @@ namespace exec {
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr)};
       }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      static auto get_completion_signatures(Self&&, Env&&...) -> _completions_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> _completions_t<Self, Env...> {
         return {};
       }
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         return stdexec::get_env(sndr_);

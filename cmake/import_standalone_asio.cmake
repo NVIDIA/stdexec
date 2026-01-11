@@ -8,6 +8,10 @@
 #       import_standalone_asio([TAG github-tag] VERSION [version-stirng])
 #
 function(import_standalone_asio)
+    if(TARGET asio)
+      message(STATUS "stdexec: reusing existing asio target")
+      return()
+    endif()
     set(options "")
     set(args TAG VERSION)
     set(multi_args "")

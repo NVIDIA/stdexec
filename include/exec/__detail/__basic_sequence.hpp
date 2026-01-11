@@ -16,9 +16,9 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__basic_sender.hpp"
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
-#include "../../stdexec/__detail/__basic_sender.hpp"
 
 #include "../sequence_senders.hpp"
 
@@ -63,22 +63,17 @@ namespace exec {
       return _Self::__tag().get_env(*this);
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    static auto get_completion_signatures(_Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag().get_completion_signatures(
-        static_cast<_Self&&>(__self),
-        static_cast<_Env&&>(__env)...)) {
-      return {};
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
+    static consteval auto get_completion_signatures() {
+      return __tag_t::template get_completion_signatures<_Self, _Env...>();
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, class... _Env>
-    static auto get_item_types(_Self&& __self, _Env&&... __env)
-      -> decltype(__self.__tag()
-                    .get_item_types(static_cast<_Self&&>(__self), static_cast<_Env&&>(__env)...)) {
-      return {};
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
+    static consteval auto get_item_types() {
+      return __tag_t::template get_item_types<_Self, _Env...>();
     }
 
-    template <stdexec::__decays_to<__seqexpr> _Self, stdexec::receiver _Receiver>
+    template <stdexec::__decays_to_derived_from<__seqexpr> _Self, stdexec::receiver _Receiver>
     static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
       __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
       -> decltype(__self.__tag()
@@ -123,7 +118,7 @@ namespace exec {
 
   struct __basic_sequence_sender_name {
     template <class _Tag, class _Data, class... _Child>
-    using __result = __basic_sequence_sender<_Tag, _Data, stdexec::__name_of<_Child>...>;
+    using __result = __basic_sequence_sender<_Tag, _Data, stdexec::__demangle_t<_Child>...>;
 
     template <class _Sender>
     using __f =
@@ -136,5 +131,5 @@ namespace exec {
 
 namespace stdexec::__detail {
   template <auto _DescriptorFn>
-  extern exec::__basic_sequence_sender_name __name_of_v<exec::__seqexpr<_DescriptorFn>>;
+  extern exec::__basic_sequence_sender_name __demangle_v<exec::__seqexpr<_DescriptorFn>>;
 } // namespace stdexec::__detail
