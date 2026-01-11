@@ -178,7 +178,7 @@ namespace exec::bwos {
   auto lifo_queue<Tp, Allocator>::steal_front() noexcept -> Tp {
     std::size_t thief = 0;
     do {
-      thief = thief_block_.load(stdexec::__std::memory_order_relaxed);
+      thief = thief_block_.load(stdexec::__std::memory_order_acquire);
       std::size_t thief_index = thief & mask_;
       block_type &block = blocks_[thief_index];
       fetch_result result = block.steal();
@@ -257,7 +257,7 @@ namespace exec::bwos {
       if (thief_counter == predecessor) {
         predecessor += blocks_.size();
         thief_counter += blocks_.size() - 1ul;
-        thief_block_.store(thief_counter, stdexec::__std::memory_order_relaxed);
+        thief_block_.store(thief_counter, stdexec::__std::memory_order_release);
       }
       owner_block_.store(predecessor, stdexec::__std::memory_order_relaxed);
       return true;
@@ -296,7 +296,7 @@ namespace exec::bwos {
     block_type &next_block = blocks_[next_index];
     if (next_block.is_stealable()) {
       thief_block_
-        .compare_exchange_strong(thief_counter, next_counter, stdexec::__std::memory_order_relaxed);
+        .compare_exchange_strong(thief_counter, next_counter, stdexec::__std::memory_order_acq_rel);
       return true;
     }
     return thief_block_.load(stdexec::__std::memory_order_relaxed) != thief_counter;
@@ -409,7 +409,7 @@ namespace exec::bwos {
     if (front == block_size()) [[unlikely]] {
       return {lifo_queue_error_code::done, nullptr};
     }
-    std::uint64_t back = tail_.load(stdexec::__std::memory_order_relaxed);
+    std::uint64_t back = tail_.load(stdexec::__std::memory_order_acquire);
     if (front == back) [[unlikely]] {
       return {lifo_queue_error_code::empty, nullptr};
     }
@@ -420,7 +420,7 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::steal() noexcept -> fetch_result<Tp> {
-    std::uint64_t spos = steal_tail_.load(stdexec::__std::memory_order_relaxed);
+    std::uint64_t spos = steal_head_.load(stdexec::__std::memory_order_acquire);
     fetch_result<Tp> result{};
     if (spos == block_size()) [[unlikely]] {
       result.status = lifo_queue_error_code::done;
@@ -432,7 +432,7 @@ namespace exec::bwos {
       return result;
     }
     if (!steal_tail_
-           .compare_exchange_strong(spos, spos + 1, stdexec::__std::memory_order_relaxed)) {
+           .compare_exchange_strong(spos, spos + 1, stdexec::__std::memory_order_acquire)) {
       result.status = lifo_queue_error_code::conflict;
       return result;
     }
@@ -444,7 +444,7 @@ namespace exec::bwos {
 
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::takeover() noexcept -> takeover_result {
-    std::uint64_t spos = steal_tail_.exchange(block_size(), stdexec::__std::memory_order_relaxed);
+    std::uint64_t spos = steal_tail_.exchange(block_size(), stdexec::__std::memory_order_acq_rel);
     if (spos == block_size()) [[unlikely]] {
       return {
         .front = static_cast<std::size_t>(head_.load(stdexec::__std::memory_order_relaxed)),
