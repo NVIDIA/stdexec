@@ -272,13 +272,22 @@ namespace stdexec {
     requires __none_of<_Ty, _Us...>
   using __unless_one_of_t = _Ty;
 
+  namespace __detail {
+    template <class _Alloc>
+    auto __test_alloc_pointer(int) -> typename _Alloc::pointer;
+    template <class _Alloc>
+    auto __test_alloc_pointer(long) -> typename _Alloc::value_type*;
+
+    template <class _Alloc>
+    using __alloc_pointer_t = decltype(__detail::__test_alloc_pointer<__decay_t<_Alloc>>(0));
+  } // namespace __detail
+
   template <class _Alloc>
-  concept __allocator =
-    requires(std::remove_cvref_t<_Alloc> __al, std::size_t __n) {
-      {
-        __al.allocate(__n)
-      } -> same_as<std::add_pointer_t<typename std::remove_cvref_t<_Alloc>::value_type>>;
-      __al.deallocate(__al.allocate(__n), __n);
-    } && copy_constructible<std::remove_cvref_t<_Alloc>>
-    && equality_comparable<std::remove_cvref_t<_Alloc>>;
+  concept __allocator = //
+    requires(__declfn_t<__decay_t<_Alloc>&> __al, std::size_t __n) {
+      { __al().allocate(__n) } -> same_as<__detail::__alloc_pointer_t<_Alloc>>;
+      __al().deallocate(__al().allocate(__n), __n);
+    } //
+    && copy_constructible<__decay_t<_Alloc>> //
+    && equality_comparable<__decay_t<_Alloc>>;
 } // namespace stdexec
