@@ -271,4 +271,14 @@ namespace stdexec {
   template <class _Ty, class... _Us>
     requires __none_of<_Ty, _Us...>
   using __unless_one_of_t = _Ty;
+
+  template <class _Alloc>
+  concept __allocator =
+    requires(std::remove_cvref_t<_Alloc> __al, std::size_t __n) {
+      {
+        __al.allocate(__n)
+      } -> std::same_as<std::add_pointer_t<typename std::remove_cvref_t<_Alloc>::value_type>>;
+      __al.deallocate(__al.allocate(__n), __n);
+    } && std::copy_constructible<std::remove_cvref_t<_Alloc>>
+    && std::equality_comparable<std::remove_cvref_t<_Alloc>>;
 } // namespace stdexec

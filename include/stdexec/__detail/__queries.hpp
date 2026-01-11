@@ -27,10 +27,6 @@ namespace stdexec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
   namespace __queries {
-    // TODO: implement allocator concept
-    template <class _T0>
-    concept __allocator_c = true;
-
     //////////////////////////////////////////////////////////////////////////////////
     // [exec.get.allocator]
     struct get_allocator_t : __query<get_allocator_t> {
@@ -44,7 +40,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr void __validate() noexcept {
         static_assert(__nothrow_callable<get_allocator_t, const _Env&>);
-        static_assert(__allocator_c<__call_result_t<get_allocator_t, const _Env&>>);
+        static_assert(__allocator<__call_result_t<get_allocator_t, const _Env&>>);
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
