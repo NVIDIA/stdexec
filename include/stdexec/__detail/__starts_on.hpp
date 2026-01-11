@@ -55,8 +55,8 @@ namespace STDEXEC {
           static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
-      template <__decay_copyable _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+      template <__decay_copyable _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         return __apply(
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
             // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
@@ -66,9 +66,9 @@ namespace STDEXEC {
           static_cast<_Sender&&>(__sndr));
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&&, const _Env&) {
-        return _ERROR_<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&&, __ignore) {
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
       }
     };
   } // namespace __starts_on_ns
@@ -142,10 +142,11 @@ namespace STDEXEC {
       return __attrs<_Data, _Child>{__data, STDEXEC::get_env(__child)};
     };
 
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-      return {};
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      using __sndr_t =
+        __detail::__transform_sender_result_t<starts_on_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
     };
   };
 } // namespace STDEXEC

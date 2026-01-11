@@ -18,6 +18,8 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "../stop_token.hpp"
+#include "__atomic.hpp"
 #include "__basic_sender.hpp"
 #include "__env.hpp"
 #include "__intrusive_slist.hpp"
@@ -28,9 +30,6 @@
 #include "__tuple.hpp"
 #include "__variant.hpp" // IWYU pragma: keep
 
-#include "../stop_token.hpp"
-
-#include "__atomic.hpp"
 #include <exception>
 #include <mutex>
 #include <type_traits>
@@ -63,22 +62,19 @@ namespace STDEXEC::__shared {
     _BaseEnv
   >; // BUGBUG NOT TO SPEC
 
-  template <class _Receiver>
   struct __notify_fn {
-    template <class _Tag, class... _Args>
-    void operator()(_Tag __tag, _Args&&... __args) const noexcept {
-      __tag(static_cast<_Receiver&&>(__rcvr_), static_cast<_Args&&>(__args)...);
+    template <class _Receiver, class _Tag, class... _Args>
+    void operator()(_Receiver& __rcvr, _Tag __tag, _Args&&... __args) const noexcept {
+      __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
     }
-
-    _Receiver& __rcvr_;
   };
 
-  template <class _Receiver>
-  auto __make_notify_visitor(_Receiver& __rcvr) noexcept {
-    return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
-      STDEXEC::__apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
+  struct __notify_visitor {
+    template <class _Receiver, class _Tuple>
+    void operator()(_Receiver& __rcvr, _Tuple&& __tupl) const noexcept {
+      STDEXEC::__apply(__notify_fn(), static_cast<_Tuple&&>(__tupl), __rcvr);
     };
-  }
+  };
 
   struct __local_state_base : __immovable {
     using __notify_fn = void(__local_state_base*) noexcept;
@@ -157,8 +153,10 @@ namespace STDEXEC::__shared {
 
       __self->__on_stop_.reset();
 
-      auto __visitor = __make_notify_visitor(__self->__receiver());
-      __variant_t::visit(__visitor, static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_));
+      __variant_t::visit(
+        __notify_visitor(),
+        static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_),
+        __self->__receiver());
     }
 
     static auto __get_sh_state(_CvrefSender& __sndr) noexcept {
@@ -440,11 +438,12 @@ namespace STDEXEC::__shared {
       return __local_state<_CvrefSender, _Receiver>{static_cast<_CvrefSender&&>(__sndr)};
     };
 
-    static constexpr auto get_completion_signatures =
-      []<class _Self>(const _Self&, auto&&...) noexcept
-      -> __completions_t<_Tag, typename __data_of<_Self>::__sh_state_t> {
-      static_assert(sender_expr_for<_Self, _Tag>);
-      return {};
+    template <class _Sender, class...>
+    static consteval auto get_completion_signatures() {
+      static_assert(sender_expr_for<_Sender, _Tag>);
+      // TODO: update this for constant evaluation
+      using __shared_state_t = STDEXEC_REMOVE_REFERENCE(__data_of<_Sender>)::__sh_state_t;
+      return __completions_t<_Tag, __shared_state_t>{};
     };
 
     static constexpr auto start = []<class _Sender, class _Receiver>(

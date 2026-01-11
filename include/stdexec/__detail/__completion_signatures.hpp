@@ -380,7 +380,7 @@ namespace STDEXEC {
   //
   // USAGE:
   //
-  //   STDEXEC_COMPLSIGS_LET(auto(__cs) = <expression>)
+  //   STDEXEC_COMPLSIGS_LET(__cs, <expression>)
   //   {
   //     // __cs is guaranteed to be a specialization of completion_signatures.
   //   }
@@ -402,16 +402,11 @@ namespace STDEXEC {
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
-#  define STDEXEC_PP_EAT_AUTO_auto(_ID)    _ID STDEXEC_PP_EAT STDEXEC_PP_LPAREN
-#  define STDEXEC_PP_EXPAND_AUTO_auto(_ID) auto _ID
-#  define STDEXEC_COMPLSIGS_LET_ID(...)                                                            \
-    STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_PP_EAT_AUTO_, __VA_ARGS__) STDEXEC_PP_RPAREN)
-
-#  define STDEXEC_COMPLSIGS_LET(...)                                                               \
-    if constexpr (STDEXEC_PP_CAT(STDEXEC_PP_EXPAND_AUTO_, __VA_ARGS__);                            \
-                  !STDEXEC::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
-                    __VA_ARGS__))>) {                                                              \
-      return STDEXEC_COMPLSIGS_LET_ID(__VA_ARGS__);                                                \
+#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
+    if constexpr ([[maybe_unused]]                                                                 \
+                  auto _ID = __VA_ARGS__;                                                          \
+                  !STDEXEC::__valid_completion_signatures<decltype(_ID)>) {                        \
+      return _ID;                                                                                  \
     } else
 
   template <class _Sndr>
@@ -422,8 +417,10 @@ namespace STDEXEC {
 
 #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
-#  define STDEXEC_COMPLSIGS_LET(...)                                                               \
-    if constexpr ([[maybe_unused]] __VA_ARGS__; false) {                                           \
+#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
+    if constexpr ([[maybe_unused]]                                                                 \
+                  auto _ID = __VA_ARGS__;                                                          \
+                  false) {                                                                         \
     } else
 
   template <class _Sndr>

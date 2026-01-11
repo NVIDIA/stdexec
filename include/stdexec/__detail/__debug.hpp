@@ -44,8 +44,6 @@ namespace STDEXEC {
     template <class _Env>
     using __debug_env_t = env<prop<__queries::__debug_env_t, bool>, _Env>;
 
-    struct __completion_signatures { };
-
     template <class... _Sigs>
     struct __valid_completions {
       template <class... _Args>

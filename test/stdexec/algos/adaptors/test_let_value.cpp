@@ -363,12 +363,13 @@ namespace {
 
   struct throws_on_connect {
     using sender_concept = ::STDEXEC::sender_t;
-    template <typename... Args>
-    static consteval ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>
-      get_completion_signatures(const Args&...) noexcept {
-      return {};
+
+    template <class>
+    static consteval auto get_completion_signatures() noexcept {
+      return ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>{};
     }
-    template <typename Receiver>
+
+    template <class Receiver>
     auto connect(Receiver) const
       -> ::STDEXEC::connect_result_t<decltype(::STDEXEC::just()), Receiver> {
       throw std::logic_error("TEST");
@@ -418,14 +419,17 @@ namespace {
 
   struct immovable_sender {
     using sender_concept = ::STDEXEC::sender_t;
-    template <typename... Args>
-    consteval auto get_completion_signatures(const Args&...) const & noexcept {
-      return ::STDEXEC::completion_signatures_of_t<decltype(::STDEXEC::just()), Args...>{};
+
+    template <class, class... Env>
+    static consteval auto get_completion_signatures() noexcept {
+      return ::STDEXEC::completion_signatures_of_t<decltype(::STDEXEC::just()), Env...>{};
     }
-    template <typename Receiver>
+
+    template <class Receiver>
     auto connect(Receiver r) const & noexcept {
       return ::STDEXEC::connect(::STDEXEC::just(), std::move(r));
     }
+
     immovable_sender() = default;
     immovable_sender(const immovable_sender&) {
       throw std::logic_error("Unexpected copy");

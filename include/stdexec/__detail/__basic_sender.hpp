@@ -331,8 +331,13 @@ namespace STDEXEC {
     concept __in_range = (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));
 
     template <class _Tag, class _Self, class... _Env>
-    concept __has_static_consteval_get_completion_signatures = requires {
-      _Tag::template get_completion_signatures<_Self, _Env...>();
+    concept __has_new_get_completion_signatures = requires {
+      __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>();
+    };
+
+    template <class _Tag, class _Self, class... _Env>
+    concept __has_old_get_completion_signatures = requires(__declfn_t<_Self> __self) {
+      __sexpr_impl<_Tag>::get_completion_signatures(__self(), __declval<_Env>()...);
     };
   } // namespace __detail
 
@@ -468,14 +473,13 @@ namespace STDEXEC {
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
-        static_assert(__decays_to_derived_from<_Self, __sexpr>);
-        using __impl_t = __mtypeof<__sexpr_impl<__tag_t>::get_completion_signatures>;
-        using __detail::__has_static_consteval_get_completion_signatures;
-
-        if constexpr (__has_static_consteval_get_completion_signatures<__tag_t, _Self, _Env...>) {
-          return __impl_t::template get_completion_signatures<_Self, _Env...>();
-        } else if constexpr (__callable<__impl_t, _Self, _Env...>) {
-          return __call_result_t<__impl_t, _Self, _Env...>();
+        using namespace __detail;
+        if constexpr (__has_new_get_completion_signatures<__tag_t, _Self, _Env...>) {
+          return __sexpr_impl<__tag_t>::template get_completion_signatures<_Self, _Env...>();
+        } else if constexpr (__has_new_get_completion_signatures<__tag_t, _Self>) {
+          return __sexpr_impl<__tag_t>::template get_completion_signatures<_Self>();
+        } else if constexpr (__has_old_get_completion_signatures<__tag_t, _Self, _Env...>) {
+          return __result_of<__sexpr_impl<__tag_t>::get_completion_signatures, _Self, _Env...>();
         } else if constexpr (sizeof...(_Env) == 0) {
           return __dependent_sender<_Self>();
         } else {

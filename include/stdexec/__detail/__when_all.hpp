@@ -466,8 +466,8 @@ namespace STDEXEC {
         return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
         return __apply(
           [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
@@ -482,10 +482,15 @@ namespace STDEXEC {
         return __when_all::__attrs<_Child...>{};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-        -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-        return {};
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        using __sndr_t = __detail::__transform_sender_result_t<
+          when_all_with_variant_t,
+          set_value_t,
+          _Sender,
+          env<>
+        >;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       };
     };
 
@@ -497,8 +502,8 @@ namespace STDEXEC {
           static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform transfer_when_all(sch, sndrs...) into
         // continues_on(when_all(sndrs...), sch).
         return __apply(
@@ -518,10 +523,11 @@ namespace STDEXEC {
         return __sched_attrs{std::cref(__sched)};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-        -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-        return {};
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        using __sndr_t =
+          __detail::__transform_sender_result_t<transfer_when_all_t, set_value_t, _Sender, env<>>;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       };
     };
 
@@ -533,8 +539,8 @@ namespace STDEXEC {
           static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform the transfer_when_all_with_variant(sch, sndrs...) into
         // transfer_when_all(sch, into_variant(sndrs...))
         return __apply(
@@ -553,10 +559,15 @@ namespace STDEXEC {
         return __sched_attrs{std::cref(__sched)};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-        -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-        return {};
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        using __sndr_t = __detail::__transform_sender_result_t<
+          transfer_when_all_with_variant_t,
+          set_value_t,
+          _Sender,
+          env<>
+        >;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       };
     };
   } // namespace __when_all

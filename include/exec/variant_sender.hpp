@@ -114,11 +114,10 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&)
+        static consteval auto get_completion_signatures() //
           -> __completion_signatures_t<_Self, _Env> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
   } // namespace __variant

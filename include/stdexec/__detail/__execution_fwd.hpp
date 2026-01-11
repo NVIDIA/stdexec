@@ -166,7 +166,7 @@ namespace STDEXEC {
   concept __is_debug_env = __callable<__queries::__debug_env_t, _Env>;
 
   namespace __debug {
-    struct __completion_signatures;
+    struct __completion_signatures { };
   } // namespace __debug
 
   template <class _Tag, class _Sndr, class... _Env>
@@ -224,17 +224,34 @@ namespace STDEXEC {
   concept __well_formed_completions = bool(
     __cmplsigs::__well_formed_completions_helper<_Completions>);
 
-  // Legacy interface:
-  template <class _Sender, class... _Env>
-    requires(sizeof...(_Env) <= 1)
-  [[nodiscard]]
-  constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
-    -> __well_formed_completions auto;
-
   template <class _Sender, class... _Env>
     requires(sizeof...(_Env) <= 1)
   [[nodiscard]]
   consteval auto get_completion_signatures() -> __well_formed_completions auto;
+
+  // Legacy interface:
+  template <class _Sender, class... _Env>
+    requires(sizeof...(_Env) <= 1)
+  [[nodiscard]]
+  constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept //
+    -> __well_formed_completions auto;
+
+  #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+
+    template <class... _What, class... _Values>
+    consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...>;
+
+  #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+    // C++26, https://wg21.link/p3068
+    template <class _What, class... _More, class... _Values>
+    consteval auto __invalid_completion_signature(_Values...)
+      -> completion_signatures<>;
+
+  #endif // ^^^ constexpr exceptions ^^^
+
+    template <class... _What>
+    consteval auto __invalid_completion_signature(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {
@@ -393,13 +410,6 @@ namespace STDEXEC {
 
   using __on::on_t;
   extern const on_t on;
-
-  // namespace __detail {
-  //   struct __sexpr_apply_t;
-  // } // namespace __detail
-
-  // using __detail::__sexpr_apply_t;
-  // extern const __sexpr_apply_t __sexpr_apply;
 } // namespace STDEXEC
 
 template <class...>

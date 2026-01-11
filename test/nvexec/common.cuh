@@ -184,11 +184,9 @@ namespace {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <STDEXEC::__decays_to<__t> Self, class... Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
-          -> __completions_t<Self, Env...> {
+        static consteval auto get_completion_signatures() -> __completions_t<Self, Env...> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
           return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
@@ -254,11 +252,9 @@ namespace {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <STDEXEC::__decays_to<__t> Self, class... Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
-          -> _completions_t<Self, Env...> {
+        static consteval auto get_completion_signatures() -> _completions_t<Self, Env...> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
           return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));

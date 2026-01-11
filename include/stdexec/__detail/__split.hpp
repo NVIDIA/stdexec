@@ -51,25 +51,25 @@ namespace STDEXEC {
       template <class _CvrefSender, class _Env>
       using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
 
-      template <__decay_copyable _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
+      template <__decay_copyable _Sender>
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
         return __apply(
-          [&]<class _Env2, class _Child>(__ignore, _Env2&& __env, _Child&& __child) {
+          [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
             // The shared state starts life with a ref-count of one.
             auto* __sh_state =
-              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env2&&>(__env)};
+              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env&&>(__env)};
 
             return __make_sexpr<__split_t>(__box{__split_t(), __sh_state});
           },
           static_cast<_Sender&&>(__sndr));
       }
 
-      template <class _Sender, class _Env>
-      static auto transform_sender(set_value_t, _Sender&&, const _Env&) {
-        return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender&&, __ignore) {
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
       }
     };
   } // namespace __split
@@ -82,16 +82,19 @@ namespace STDEXEC {
 
   template <>
   struct __sexpr_impl<split_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept {
-        // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
-        if constexpr (__decay_copyable<_Sender>) {
-          using __result_t =
-            __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...>;
-          return __result_t{};
-        } else {
-          return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
-        }
-      };
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
+      if constexpr (__decay_copyable<_Sender>) {
+        using __sndr_t =
+          __detail::__transform_sender_result_t<split_t, set_value_t, _Sender, env<>>;
+        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+      } else {
+        return STDEXEC::__invalid_completion_signature<
+          _SENDER_TYPE_IS_NOT_COPYABLE_,
+          _WITH_SENDER_<_Sender>
+        >();
+      }
+    }
   };
 } // namespace STDEXEC

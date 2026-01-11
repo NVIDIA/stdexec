@@ -131,11 +131,10 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+        static consteval auto get_completion_signatures()
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         const __impl* __scope_;
         STDEXEC_ATTRIBUTE(no_unique_address) _Constrained __c_;
@@ -278,11 +277,10 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+        static consteval auto get_completion_signatures()
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
       };
     };
 
@@ -684,11 +682,9 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _OtherEnv>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _OtherEnv&&...)
-          -> __completions_t<_Self> {
+        static consteval auto get_completion_signatures() -> __completions_t<_Self> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         friend struct async_scope;

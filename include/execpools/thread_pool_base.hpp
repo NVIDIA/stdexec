@@ -391,11 +391,10 @@ namespace execpools {
           STDEXEC_EXPLICIT_THIS_END(connect)
 
           template <STDEXEC::__decays_to<__t> Self, class... Env>
-          STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+          static consteval auto get_completion_signatures() //
             -> _completion_signatures_t<Self, Env...> {
             return {};
           }
-          STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
           template <STDEXEC::__forwarding_query Tag, class... As>
             requires STDEXEC::__queryable_with<STDEXEC::env_of_t<Sender>, Tag, As...>

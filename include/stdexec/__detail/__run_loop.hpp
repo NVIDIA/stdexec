@@ -18,15 +18,15 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "__atomic.hpp"
 #include "__atomic_intrusive_queue.hpp"
 #include "__completion_signatures.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
+#include "__stop_token.hpp"
 
-#include "__atomic.hpp"
-#include "__config.hpp"
 #include <cstddef>
 
 namespace STDEXEC {
@@ -99,7 +99,10 @@ namespace STDEXEC {
         static_assert(noexcept(get_stop_token(__declval<env_of_t<_Rcvr>>()).stop_requested()));
         auto& __rcvr = static_cast<__opstate_t*>(__p)->__rcvr_;
 
-        if (get_stop_token(get_env(__rcvr)).stop_requested()) {
+        // NOLINTNEXTLINE(bugprone-branch-clone)
+        if constexpr (unstoppable_token<stop_token_of_t<env_of_t<_Rcvr>>>) {
+          set_value(static_cast<_Rcvr&&>(__rcvr));
+        } else if (get_stop_token(get_env(__rcvr)).stop_requested()) {
           set_stopped(static_cast<_Rcvr&&>(__rcvr));
         } else {
           set_value(static_cast<_Rcvr&&>(__rcvr));

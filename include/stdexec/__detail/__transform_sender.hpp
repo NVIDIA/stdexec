@@ -45,7 +45,7 @@ namespace STDEXEC {
         constexpr bool __is_nothrow =
           __has_nothrow_transform_sender<__domain_t, _OpTag, _Sndr, _Env>;
 
-        if constexpr (!__ok<__result_t>) {
+        if constexpr (__merror<__result_t>) {
           return __declfn<__result_t>();
         } else if constexpr (__same_as<__result_t, _Sndr>) {
           return __declfn<__result_t, __is_nothrow>();
@@ -115,6 +115,14 @@ namespace STDEXEC {
     >;
 
    public:
+    // NOT TO SPEC:
+    template <class _Sndr>
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    constexpr auto operator()(_Sndr&& __sndr) const noexcept(__nothrow_move_constructible<_Sndr>) //
+      -> _Sndr {
+      return static_cast<_Sndr&&>(__sndr);
+    }
+
     template <class _Sndr, class _Env, auto _ImplFn = __impl_fn_t<_Sndr, _Env>{}>
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     constexpr auto operator()(_Sndr && __sndr, const _Env & __env) const

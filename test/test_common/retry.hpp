@@ -122,17 +122,16 @@ namespace {
     }
 
     template <class>
-    using _error = STDEXEC::completion_signatures<>;
+    using _swallow_errors = STDEXEC::completion_signatures<>;
     template <class... Ts>
-    using _value = STDEXEC::completion_signatures<STDEXEC::set_value_t(Ts...)>;
+    using _keep_values = STDEXEC::completion_signatures<STDEXEC::set_value_t(Ts...)>;
 
-    template <class Env>
-    auto get_completion_signatures(Env&&) const -> STDEXEC::transform_completion_signatures_of<
-      S&,
-      Env,
+    template <std::same_as<_retry_sender> Self, class... Env>
+    static consteval auto get_completion_signatures() -> STDEXEC::transform_completion_signatures<
+      STDEXEC::completion_signatures_of_t<S&, Env...>,
       STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
-      _value,
-      _error
+      _keep_values,
+      _swallow_errors
     > {
       return {};
     }

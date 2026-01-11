@@ -154,7 +154,8 @@ namespace exec {
           return {__stg_, static_cast<_Receiver&&>(__rcvr)};
         }
 
-        auto get_completion_signatures(STDEXEC::__ignore = {}) -> __completions_t {
+        template <class>
+        static consteval auto get_completion_signatures() -> __completions_t {
           return {};
         }
       };

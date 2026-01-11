@@ -1233,11 +1233,9 @@ namespace exec {
 
       template <STDEXEC::__decays_to_derived_from<any_sender> _Self, class... _Env>
         requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env...> && ...)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-        -> __sender_base::completion_signatures {
+      static consteval auto get_completion_signatures() -> __sender_base::completion_signatures {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <STDEXEC::receiver_of<_Completions> _Receiver>
       auto connect(_Receiver __rcvr) && -> STDEXEC::connect_result_t<__sender_base, _Receiver> {

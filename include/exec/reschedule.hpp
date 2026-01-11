@@ -48,8 +48,8 @@ namespace exec {
       struct __sender {
         using sender_concept = sender_t;
 
-        template <class _Env>
-        auto get_completion_signatures(_Env&&) noexcept -> __completions<_Env> {
+        template <class _Self, class _Env>
+        static consteval auto get_completion_signatures() -> __completions<_Env> {
           return {};
         }
 

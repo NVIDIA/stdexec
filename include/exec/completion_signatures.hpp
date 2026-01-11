@@ -39,6 +39,17 @@ namespace exec {
       detail::normalize(static_cast<Sigs*>(nullptr))...));
   } // namespace detail
 
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  // get_child_completion_signatures
+  template <STDEXEC::sender _Parent, STDEXEC::sender _Child, class... _Env>
+  [[nodiscard]]
+  consteval auto get_child_completion_signatures() {
+    return STDEXEC::get_completion_signatures<
+      STDEXEC::__copy_cvref_t<_Parent, _Child>,
+      STDEXEC::__fwd_env_t<_Env>...
+    >();
+  }
+
   //! Creates a compile-time completion signatures type from explicit and deduced signature types.
   //!
   //! This function is a compile-time helper that constructs a completion signatures type
@@ -213,8 +224,8 @@ namespace exec {
     ErrorFn error_fn = {},
     StoppedFn stopped_fn = {},
     ExtraSigs = {}) {
-    STDEXEC_COMPLSIGS_LET(auto(completions) = Completions{}) {
-      STDEXEC_COMPLSIGS_LET(auto(extra_sigs) = ExtraSigs{}) {
+    STDEXEC_COMPLSIGS_LET(completions, Completions{}) {
+      STDEXEC_COMPLSIGS_LET(extra_sigs, ExtraSigs{}) {
         detail::_transform_one<ValueFn, ErrorFn, StoppedFn> tfx1{value_fn, error_fn, stopped_fn};
         return concat_completion_signatures(
           completions.__apply(detail::_transform_all_fn{tfx1}), extra_sigs);

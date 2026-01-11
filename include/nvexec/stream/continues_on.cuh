@@ -169,11 +169,10 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decay_copyable _Self, class... _Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
+      static consteval auto get_completion_signatures()
         -> __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...> {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
@@ -232,16 +231,14 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> _Self, class... _Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
-        -> transform_completion_signatures<
-          __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
-          completion_signatures<set_error_t(cudaError_t)>,
-          _trnsfr::value_completions_t,
-          _trnsfr::error_completions_t
-        > {
+      static consteval auto get_completion_signatures() -> transform_completion_signatures<
+        __completion_signatures_of_t<__copy_cvref_t<_Self, Sender>, _Env...>,
+        completion_signatures<set_error_t(cudaError_t)>,
+        _trnsfr::value_completions_t,
+        _trnsfr::error_completions_t
+      > {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> __sched_attrs<Scheduler> {

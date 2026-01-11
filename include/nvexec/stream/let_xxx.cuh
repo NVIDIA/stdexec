@@ -264,11 +264,10 @@ namespace nvexec::_strm {
       }
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+      static consteval auto get_completion_signatures()
         -> __completions<__copy_cvref_t<Self, Sender>, stream_env<Env>...> {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       Sender sndr_;
       Fun fun_;

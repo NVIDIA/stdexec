@@ -53,16 +53,14 @@ namespace STDEXEC {
     struct __no_scheduler_in_environment {
       using sender_concept = sender_t;
 
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(
-        this const __no_scheduler_in_environment&,
-        const auto&) noexcept {
-        return __mexception<
+      template <class>
+      static consteval auto get_completion_signatures() {
+        return STDEXEC::__invalid_completion_signature<
           _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
           _WITH_SENDER_<_Sender>,
           _WITH_ENVIRONMENT_<_Env>
-        >{};
+        >();
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
     };
 
     template <class _Scheduler, class _Closure>
@@ -167,10 +165,10 @@ namespace STDEXEC {
 
   template <>
   struct __sexpr_impl<on_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class _Env>(_Sender&&, const _Env&) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env>, _Env> {
-      return {};
-    };
+    template <class _Sender, class _Env>
+    static constexpr auto get_completion_signatures() {
+      using __sndr_t = __detail::__transform_sender_result_t<on_t, set_value_t, _Sender, _Env>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env>();
+    }
   };
 } // namespace STDEXEC

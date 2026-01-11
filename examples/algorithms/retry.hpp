@@ -119,10 +119,9 @@ struct _retry_sender {
   template <class... Ts>
   using _value = stdexec::completion_signatures<stdexec::set_value_t(Ts...)>;
 
-  template <class Env>
-  auto get_completion_signatures(Env&&) const -> stdexec::transform_completion_signatures_of<
-    S&,
-    Env,
+  template <class Self, class... Env>
+  static consteval auto get_completion_signatures() -> stdexec::transform_completion_signatures<
+    stdexec::completion_signatures_of_t<S&, Env...>,
     stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
     _value,
     _error

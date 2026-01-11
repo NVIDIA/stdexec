@@ -314,8 +314,7 @@ namespace exec {
             __tfx_sequence_t)::template get_item_types<__tfx_sequence_t, _Env>()>;
           return __debug::__item_types();
         } else {
-          using __result_t = __unrecognized_sequence_error_t<_Sequence, _Env>;
-          return __declfn<__result_t>();
+          return __unrecognized_sequence_error_t<_Sequence, _Env>();
         }
       }
     };
@@ -567,21 +566,29 @@ namespace exec {
   >;
 
   template <class _Receiver, class _Sequence>
-  concept sequence_receiver_from = STDEXEC::receiver<_Receiver>
-                                && STDEXEC::sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>>
-                                && sequence_receiver_of<
-                                     _Receiver,
-                                     __item_types_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>
-                                >
-                                && ((sequence_sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>>
-                                     && STDEXEC::receiver_of<
-                                       _Receiver,
-                                       STDEXEC::completion_signatures_of_t<
-                                         _Sequence,
-                                         STDEXEC::env_of_t<_Receiver>
-                                       >
-                                     >)
-                                    || (!sequence_sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>> && STDEXEC::__receiver_from<__sequence_sndr::__stopped_means_break_t<_Receiver>, next_sender_of_t<_Receiver, _Sequence>>) );
+  concept __sequence_receiver_from =                            //
+    sequence_sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>> //
+    && STDEXEC::receiver_of<
+      _Receiver,
+      STDEXEC::completion_signatures_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>
+    >;
+
+  template <class _Receiver, class _Sequence>
+  concept __stopped_means_break_receiver_from = //
+    !sequence_sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>>
+    && STDEXEC::__receiver_from<
+      __sequence_sndr::__stopped_means_break_t<_Receiver>,
+      next_sender_of_t<_Receiver, _Sequence>
+    >;
+
+  template <class _Receiver, class _Sequence>
+  concept sequence_receiver_from =                                 //
+    STDEXEC::receiver<_Receiver>                                   //
+    && STDEXEC::sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>> //
+    && sequence_receiver_of<_Receiver, __item_types_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>> //
+    && bool( // cast to bool to hide the disjunction
+      __sequence_receiver_from<_Receiver, _Sequence> //
+      || __stopped_means_break_receiver_from<_Receiver, _Sequence>);
 
   namespace __sequence_sndr {
     struct subscribe_t;
@@ -654,7 +661,7 @@ namespace exec {
       template <class _Sequence, class _Receiver>
       static consteval auto __get_declfn() noexcept {
         constexpr bool __nothrow_tfx_sequence =
-          __nothrow_callable<transform_sender_t, _Sequence, env_of_t<_Receiver>>;
+          __noexcept_of<transform_sender, _Sequence, env_of_t<_Receiver>>;
         using __tfx_sequence_t = __transform_sender_result_t<_Sequence, _Receiver>;
 
         static_assert(

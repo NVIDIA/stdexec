@@ -167,8 +167,9 @@ namespace exec {
       template <class _Self, class... _Env>
       using __completion_sigs_t = __sequence_completion_signatures_of_t<__child_of<_Self>, _Env...>;
 
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-      static consteval auto get_completion_signatures() noexcept {
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Self, transform_each_t>);
         using __result_t = __completion_sigs_t<_Self, _Env...>;
         if constexpr (__ok<__result_t>) {
           return __result_t();

@@ -207,7 +207,7 @@ namespace exec {
       }
 
       template <class _Sender, bool _NoThrow = __nothrow_decay_copyable<_Sender>>
-      auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) noexcept(_NoThrow) {
+      static auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) noexcept(_NoThrow) {
         return __apply(
           []<class _Child>(__ignore, std::size_t __count, _Child __child) noexcept(_NoThrow) {
             return __make_sexpr<__repeat_n_tag>(__child_count_pair{std::move(__child), __count});
@@ -227,9 +227,11 @@ namespace STDEXEC {
 
   template <>
   struct __sexpr_impl<exec::repeat_n_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class... _Env>(_Sender &&, const _Env &...) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      using __sndr_t =
+        __detail::__transform_sender_result_t<exec::repeat_n_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
     };
   };
 } // namespace STDEXEC

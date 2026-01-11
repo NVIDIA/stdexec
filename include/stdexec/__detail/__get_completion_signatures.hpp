@@ -74,8 +74,8 @@ namespace STDEXEC {
 
   template <class... _What, class... _Values>
   [[nodiscard]]
-  consteval auto __invalid_completion_signature(_Values...) {
-    return __mexception<_What...>();
+  consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...> {
+    return {};
   }
 
 #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
@@ -102,6 +102,12 @@ namespace STDEXEC {
     return STDEXEC::__invalid_completion_signature<_What...>();
   }
 
+  // Returns _Sender if sizeof...(_Env) == 0, otherwise it is the result of applying
+  // transform_sender_result_t to _Sender with _Env.
+  template <class _Sender, class... _Env>
+  using __maybe_transform_sender_t =
+    __mmemoize<__mfold_right<_Sender, __q<transform_sender_result_t>>, _Env...>;
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_signatures
   STDEXEC_PRAGMA_PUSH()
@@ -114,10 +120,10 @@ namespace STDEXEC {
   STDEXEC_REMOVE_REFERENCE(                                                                        \
     STDEXEC_PP_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
 
-#define STDEXEC_CHECKED_COMPLSIGS(...)                                                             \
+#define STDEXEC_CHECKED_COMPLSIGS(_SENDER, _ENV, ...)                                              \
   (static_cast<void>(__VA_ARGS__),                                                                 \
-   void(),                                                                                         \
-   STDEXEC::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>())
+   STDEXEC::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>(                                \
+     static_cast<__types<_SENDER, _ENV...>*>(nullptr)))
 
     struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION {
     };
@@ -126,20 +132,23 @@ namespace STDEXEC {
     concept __non_sender = !enable_sender<__decay_t<_Ty>>;
 
     template <__valid_completion_signatures _Completions>
-    consteval auto __checked_complsigs() {
+    consteval auto __checked_complsigs(void*) {
       return _Completions();
     }
 
-    template <class _Completions>
-    consteval auto __checked_complsigs() {
+    template <class _Completions, class _Sender, class... _Env>
+      requires(!__valid_completion_signatures<_Completions>)
+    consteval auto __checked_complsigs(__types<_Sender, _Env...>*) {
       if constexpr (__merror<_Completions>) { // NOLINT(bugprone-branch-clone)
-        return _Completions();
+        return STDEXEC::__invalid_completion_signature(_Completions());
       } else if constexpr (STDEXEC_IS_BASE_OF(dependent_sender_error, _Completions)) {
         return _Completions();
       } else {
         return __invalid_completion_signature<
           _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
-          _WITH_COMPLETION_SIGNATURES_(_Completions)
+          _WITH_COMPLETION_SIGNATURES_(_Completions),
+          _WITH_SENDER_<_Sender>,
+          _WITH_ENVIRONMENT_<_Env>...
         >();
       }
     }
@@ -156,15 +165,21 @@ namespace STDEXEC {
     template <class _Sender, class... _Env>
     concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
 
+    template <class _Sender>
+    using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
+
     template <class _Sender, class... _Env>
     concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Env...>;
 
     template <class _Sender, class... _Env>
-    concept __with_consteval_static_member = (__non_sender<_Env> && ...)
-                                          && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env...); };
+    concept __with_consteval_static_member = //
+      (__non_sender<_Env> && ...)            //
+      && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env...); };
 
+    // [WAR]: see nvbugs#5813160
     template <class _Sender>
-    using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
+    concept __with_non_dependent_consteval_static_member = //
+      requires { STDEXEC_GET_COMPLSIGS(_Sender); };
 
     template <class _Sender, class... _Env>
     concept __with_tag_invoke = tag_invocable<get_completion_signatures_t, _Sender, _Env...>;
@@ -181,22 +196,26 @@ namespace STDEXEC {
     consteval auto __get_completion_signatures_helper() {
       using namespace __cmplsigs;
       if constexpr (__with_static_member<_Sender, _Env...>) {
-        return STDEXEC_CHECKED_COMPLSIGS(__static_member_result_t<_Sender, _Env...>());
+        using _Result = __static_member_result_t<_Sender, _Env...>;
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, _Result());
       } else if constexpr (__with_member<_Sender, _Env...>) {
-        return STDEXEC_CHECKED_COMPLSIGS(__member_result_t<_Sender, _Env...>());
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, __member_result_t<_Sender, _Env...>());
       } else if constexpr (__with_member_alias<_Sender>) {
-        return STDEXEC_CHECKED_COMPLSIGS(__member_alias_t<_Sender>());
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, __member_alias_t<_Sender>());
       } else if constexpr (__with_consteval_static_member<_Sender, _Env...>) {
-        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
-      } else if constexpr (__with_consteval_static_member<_Sender>) {
-        return STDEXEC_CHECKED_COMPLSIGS(STDEXEC_GET_COMPLSIGS(_Sender));
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
+      } else if constexpr (__with_non_dependent_consteval_static_member<_Sender>) {
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, STDEXEC_GET_COMPLSIGS(_Sender));
       } else if constexpr (__with_tag_invoke<_Sender, _Env...>) {
+        static_assert(!__with_tag_invoke<_Sender, _Env...>);
+        //__deprecated_tag_invoke_completion_signatures_warning(); // NOLINT(deprecated-declarations)
         using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env...>;
-        return STDEXEC_CHECKED_COMPLSIGS(_Result());
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, _Result());
       } else if constexpr (__with_legacy_tag_invoke<_Sender, _Env...>) {
         // This branch is strictly for backwards compatibility
+        //__deprecated_tag_invoke_completion_signatures_warning(); // NOLINT(deprecated-declarations)
         using _Result = tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
-        return STDEXEC_CHECKED_COMPLSIGS(_Result());
+        return STDEXEC_CHECKED_COMPLSIGS(_Sender, _Env, _Result());
       } else if constexpr (bool(__awaitable<_Sender, __detail::__promise<_Env>...>)) {
         // [WAR] The explicit cast to bool above is to work around a bug in nvc++ (nvbug#4707793)
         using _Result = __await_result_t<_Sender, __detail::__promise<_Env>...>;
@@ -207,7 +226,7 @@ namespace STDEXEC {
       } else if constexpr ((__is_debug_env<_Env> || ...)) {
         // This ought to cause a hard error that indicates where the problem is.
         using _Completions [[maybe_unused]] = decltype(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
-        return static_cast<__debug::__completion_signatures (*)()>(nullptr);
+        return __debug::__completion_signatures();
       } else {
         return __unrecognized_sender_error<_Sender, _Env...>();
       }
@@ -215,19 +234,13 @@ namespace STDEXEC {
 
     // For backwards compatibility
     struct get_completion_signatures_t {
-      template <class _Sender>
-      constexpr auto operator()(_Sender&&) const noexcept
-        -> decltype(__get_completion_signatures_helper<_Sender>()) {
-        return {};
-      }
-
-      template <class _Sender, class _Env>
-      constexpr auto operator()(_Sender&&, _Env&&) const noexcept
-        -> decltype(__get_completion_signatures_helper<
-                    transform_sender_result_t<_Sender, _Env>,
-                    _Env
-        >()) {
-        return {};
+      template <class _Sender, class... _Env>
+      constexpr auto operator()(_Sender&&, const _Env&...) const noexcept {
+        // _Sender2 is _Sender if sizeof...(_Env) == 0, otherwise it is the result of applying
+        // transform_sender_result_t to _Sender with _Env.
+        using _NewSender = __maybe_transform_sender_t<_Sender, _Env...>;
+        using _Completions = decltype(__get_completion_signatures_helper<_NewSender, _Env...>());
+        return _Completions{};
       }
     };
   } // namespace __cmplsigs
@@ -238,46 +251,21 @@ namespace STDEXEC {
     requires(sizeof...(_Env) <= 1)
   [[nodiscard]]
   consteval auto get_completion_signatures() -> __well_formed_completions auto {
-    if constexpr (0 == sizeof...(_Env)) {
-      return __cmplsigs::__get_completion_signatures_helper<_Sender>();
+    using _NewSender = __maybe_transform_sender_t<_Sender, _Env...>;
+    if constexpr (__merror<_NewSender>) {
+      // Computing the type of the transformed sender returned an error type. Propagate it.
+      return STDEXEC::__invalid_completion_signature(_NewSender());
     } else {
-      // Apply a lazy sender transform if one exists before computing the completion signatures:
-      using _NewSender = transform_sender_result_t<_Sender, _Env...>;
-      if constexpr (__merror<_NewSender>) {
-        // Computing the type of the transformed sender returned an error type. Propagate it.
-        return STDEXEC::__invalid_completion_signature(_NewSender());
-      } else {
-        return __cmplsigs::__get_completion_signatures_helper<_NewSender, _Env...>();
-      }
+      return __cmplsigs::__get_completion_signatures_helper<_NewSender, _Env...>();
     }
   }
 
   // Legacy interface:
   template <class _Sender, class... _Env>
     requires(sizeof...(_Env) <= 1)
-  constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
+  constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept //
     -> __well_formed_completions auto {
     return STDEXEC::get_completion_signatures<_Sender, _Env...>();
-  }
-
-  template <class _Sender>
-    requires __cmplsigs::__with_legacy_tag_invoke<_Sender>
-  [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
-  constexpr auto get_completion_signatures(_Sender&&) noexcept //
-    -> __well_formed_completions auto {
-    return tag_invoke_result_t<get_completion_signatures_t, _Sender>();
-  }
-
-  template <class _Sender, class _Env>
-    requires __cmplsigs::__with_legacy_tag_invoke<transform_sender_result_t<_Sender, _Env>, _Env>
-  [[deprecated("the use of tag_invoke for get_completion_signatures is deprecated")]]
-  constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
-    -> __well_formed_completions auto {
-    return tag_invoke_result_t<
-      get_completion_signatures_t,
-      transform_sender_result_t<_Sender, _Env>,
-      _Env
-    >();
   }
 
   // An minimally constrained alias for get_completion_signatures:
