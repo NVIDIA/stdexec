@@ -26,7 +26,7 @@
 #include "__schedulers.hpp"
 
 #include "__atomic.hpp"
-#include "stdexec/__detail/__config.hpp"
+#include "__config.hpp"
 #include <cstddef>
 
 namespace stdexec {
@@ -55,8 +55,8 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(host, device) void finish() noexcept {
       // Increment our task count to avoid lifetime issues. This is preventing
       // a use-after-free issue if finish is called from a different thread.
-      // We increment the task counter by two to avoid the run loop to exit before
-      // we scheduled the noop task
+      // We increment the task counter by two to prevent the run loop from
+      // exiting before we schedule the noop task.
       __task_count_.fetch_add(2, __std::memory_order_release);
       if (!__finishing_.exchange(true, __std::memory_order_acq_rel)) {
         // push an empty work item to the queue to wake up the consuming thread
@@ -118,7 +118,7 @@ namespace stdexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device) constexpr void start() noexcept {
-        __task_count_->fetch_add(1,    __std::memory_order_release);
+        __task_count_->fetch_add(1, __std::memory_order_release);
         __queue_->push(this);
       }
     };
