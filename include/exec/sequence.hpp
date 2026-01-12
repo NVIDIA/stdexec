@@ -90,7 +90,7 @@ namespace exec {
       using _rcvr_t = _seq::_rcvr<Rcvr, stdexec::__id<_opstate>, stdexec::__msize_t<Idx>>;
 
       template <class Sender, class Idx>
-      using _child_opstate_t = stdexec::connect_result_t<Sender, _rcvr_t<stdexec::__v<Idx>>>;
+      using _child_opstate_t = stdexec::connect_result_t<Sender, _rcvr_t<Idx::value>>;
 
       using _mk_child_ops_variant_fn = stdexec::__mzip_with2<
         stdexec::__q2<_child_opstate_t>,
@@ -122,7 +122,7 @@ namespace exec {
       STDEXEC_ATTRIBUTE(host, device)
       void _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
         STDEXEC_TRY {
-          constexpr size_t Idx = stdexec::__v<Index> + 1;
+          constexpr size_t Idx = Index::value + 1;
           if constexpr (Idx == sizeof...(Senders) + 1) {
             stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {

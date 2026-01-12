@@ -1152,11 +1152,11 @@ namespace exec {
 
       template <class Sender, class... Env>
       using _with_error_invoke_t = __if_c<
-        __v<__value_types_t<
+        __value_types_t<
           __completion_signatures_of_t<Sender, Env...>,
           _is_nothrow_bulk_fn<Shape, Fun>,
           __q<__mand>
-        >>,
+        >::value,
         completion_signatures<>,
         __eptr_completion
       >;
@@ -1412,12 +1412,12 @@ namespace exec {
     >::__t {
       using __id = _bulk_opstate;
 
-      static constexpr bool may_throw = !__v<__value_types_of_t<
+      static constexpr bool may_throw = !__value_types_of_t<
         CvrefSender,
         env_of_t<Receiver>,
         _is_nothrow_bulk_fn<Shape, Fun>,
         __q<__mand>
-      >>;
+      >::value;
 
       using receiver_t =
         _bulk_receiver_t<Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;

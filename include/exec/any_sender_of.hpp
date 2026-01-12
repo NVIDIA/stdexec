@@ -988,7 +988,7 @@ namespace exec {
     struct __sender {
       using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
       static constexpr bool __with_inplace_stop_token =
-        __v<__mapply<__mall_of<__q<__is_not_stop_token_query_t>>, _ReceiverQueries>>;
+        __mapply<__mall_of<__q<__is_not_stop_token_query_t>>, _ReceiverQueries>::value;
 
       class __vtable : public __query_vtable<_SenderQueries> {
        public:

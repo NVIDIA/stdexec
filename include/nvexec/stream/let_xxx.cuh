@@ -48,7 +48,7 @@ namespace nvexec::_strm {
 
     template <class... Sizes>
     struct max_in_pack {
-      static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
+      static constexpr std::size_t value = std::max({std::size_t{}, Sizes::value...});
     };
 
     template <class Sender, class PropagateReceiver, class Fun, class SetTag>
@@ -61,13 +61,13 @@ namespace nvexec::_strm {
       template <class... As>
       using __sender_size_for_t = stdexec::__t<__sender_size_for_<As...>>;
 
-      static constexpr std::size_t value = __v<__gather_completions_of_t<
+      static constexpr std::size_t value = __gather_completions_of_t<
         SetTag,
         Sender,
         env_of_t<PropagateReceiver>,
         __q<__sender_size_for_t>,
         __q<max_in_pack>
-      >>;
+      >::value;
     };
 
     template <class Receiver, class Fun>
@@ -108,7 +108,7 @@ namespace nvexec::_strm {
         using __id = _receiver_;
 
         static constexpr std::size_t memory_allocation_size =
-          __v<__max_sender_size<Sender, PropagateReceiver, Fun, Let>>;
+          __max_sender_size<Sender, PropagateReceiver, Fun, Let>::value;
 
         template <__one_of<Let> Tag, class... As>
           requires __minvocable<__result_sender_fn<Fun>, As...>

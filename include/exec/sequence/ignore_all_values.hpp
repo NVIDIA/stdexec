@@ -24,13 +24,13 @@
 
 namespace exec {
   template <class _Variant, class _Type, class... _Args>
-  concept __variant_emplaceable = requires(_Variant& __v, _Args&&... __args) {
-    __v.template emplace<_Type>(static_cast<_Args&&>(__args)...);
+  concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
+    __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
   };
 
   template <class _Variant, class _Type, class... _Args>
-  concept __nothrow_variant_emplaceable = requires(_Variant& __v, _Args&&... __args) {
-    { __v.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
+  concept __nothrow_variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
+    { __var.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
   };
 
   namespace __ignore_all_values {

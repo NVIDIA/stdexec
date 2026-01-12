@@ -26,9 +26,9 @@
 #include <optional>
 #include <utility>
 
-#include "common.cuh"
 #include "../detail/event.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -49,12 +49,12 @@ namespace nvexec::_strm {
 
     template <class Sender, class... Env>
     concept valid_child_sender = sender_in<Sender, Env...> && requires {
-      requires(__v<__count_of<set_value_t, Sender, Env...>> <= 1);
+      requires(__count_of<set_value_t, Sender, Env...>::value <= 1);
     };
 
     template <class Sender, class... Env>
     concept too_many_completions_sender = sender_in<Sender, Env...> && requires {
-      requires(__v<__count_of<set_value_t, Sender, Env...>> > 1);
+      requires(__count_of<set_value_t, Sender, Env...>::value > 1);
     };
 
     template <class Env, class... Senders>
@@ -130,9 +130,11 @@ namespace nvexec::_strm {
           get_completion_domain_t<set_value_t>,
           indeterminate_domain<>,
           Scheduler,
-          Env...>;
+          Env...
+        >;
 
-        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
+        auto
+          query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
           requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
         {
           return Scheduler(context_state_);
@@ -307,7 +309,7 @@ namespace nvexec::_strm {
             // All child operations have completed and arrived at the barrier.
             switch (state_.load(std::memory_order_relaxed)) {
             case _when_all::started:
-              if constexpr (__v<sends_values<Completions>>) {
+              if constexpr (sends_values<Completions>::value) {
                 // All child operations completed successfully:
                 stdexec::__apply(
                   [this]<class... Tuples>(Tuples&&... value_tupls) noexcept -> void {
@@ -398,7 +400,7 @@ namespace nvexec::_strm {
 
         template <std::size_t Index, class... Args>
         void _set_value(Args&&... args) noexcept {
-          if constexpr (__v<sends_values<Completions>>) {
+          if constexpr (sends_values<Completions>::value) {
             // We only need to bother recording the completion values
             // if we're not already in the "error" or "stopped" state.
             if (state_.load() == _when_all::started) {
@@ -485,7 +487,8 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<type> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completion_sigs<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> completion_sigs<Self, Env...> {
         return {};
       }
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)

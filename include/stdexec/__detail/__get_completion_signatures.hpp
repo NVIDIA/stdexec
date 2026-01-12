@@ -305,7 +305,7 @@ namespace stdexec {
   }
 
   template <class _Sender>
-  concept __is_dependent_sender = __v<__mbool<__is_dependent_sender_helper<_Sender>()>>;
+  concept __is_dependent_sender = __mbool<__is_dependent_sender_helper<_Sender>()>::value;
 #endif // ^^^ constexpr exceptions ^^^
 
   template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>

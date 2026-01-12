@@ -104,7 +104,7 @@ namespace stdexec {
   using __child_of = __children_of<_Sender, __q<__mfront>>;
 
   template <class _Sender>
-  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
+  inline constexpr std::size_t __nbr_children_of = __children_of<_Sender, __msize>::value;
 
   template <class _Tp>
     requires __mvalid<tag_of_t, _Tp>

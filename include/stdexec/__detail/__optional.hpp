@@ -64,8 +64,8 @@ namespace stdexec {
 
       template <__not_decays_to<__optional> _Up>
         requires constructible_from<_Tp, _Up>
-      __optional(_Up&& __v) noexcept(__nothrow_constructible_from<_Tp, _Up>) {
-        emplace(static_cast<_Up&&>(__v));
+      __optional(_Up&& __val) noexcept(__nothrow_constructible_from<_Tp, _Up>) {
+        emplace(static_cast<_Up&&>(__val));
       }
 
       template <class... _Us>

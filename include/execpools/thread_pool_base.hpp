@@ -297,12 +297,12 @@ namespace execpools {
 
         struct __t {
           using __id = bulk_op_state;
-          static constexpr bool may_throw = !stdexec::__v<stdexec::__value_types_of_t<
+          static constexpr bool may_throw = !stdexec::__value_types_of_t<
             CvrefSender,
             stdexec::env_of_t<Receiver>,
             stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
             stdexec::__q<stdexec::__mand>
-          >>;
+          >::value;
 
           using bulk_rcvr =
             stdexec::__t<bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>>;
