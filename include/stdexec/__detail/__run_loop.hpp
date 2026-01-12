@@ -26,6 +26,8 @@
 #include "__schedulers.hpp"
 
 #include "__atomic.hpp"
+#include "__config.hpp"
+#include <cstddef>
 
 namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
@@ -34,6 +36,10 @@ namespace stdexec {
    public:
     __run_loop_base() = default;
 
+    ~__run_loop_base() noexcept {
+      STDEXEC_ASSERT(__task_count_.load(__std::memory_order_acquire) == 0);
+    }
+
     STDEXEC_ATTRIBUTE(host, device) void run() noexcept {
       // execute work items until the __finishing_ flag is set:
       while (!__finishing_.load(__std::memory_order_acquire)) {
@@ -41,17 +47,29 @@ namespace stdexec {
         __execute_all();
       }
       // drain the queue, taking care to execute any tasks that get added while
-      // executing the remaining tasks:
-      while (__execute_all())
+      // executing the remaining tasks (also wait for other tasks that might still be in flight):
+      while (__execute_all() || __task_count_.load(__std::memory_order_acquire) > 0)
         ;
     }
 
     STDEXEC_ATTRIBUTE(host, device) void finish() noexcept {
+      // Increment our task count to avoid lifetime issues. This is preventing
+      // a use-after-free issue if finish is called from a different thread.
+      // We increment the task counter by two to prevent the run loop from
+      // exiting before we schedule the noop task.
+      __task_count_.fetch_add(2, __std::memory_order_release);
       if (!__finishing_.exchange(true, __std::memory_order_acq_rel)) {
         // push an empty work item to the queue to wake up the consuming thread
-        // and let it finish:
+        // and let it finish.
+        // The count will be decremented once the tasks executes.
         __queue_.push(&__noop_task);
+        // If the task got pushed, simply subtract one again, the other decrement
+        // happens when the noop task got executed.
+        __task_count_.fetch_sub(1, __std::memory_order_release);
+        return;
       }
+      // We are done finishing. Decrement the count by two, which signals final completion.
+      __task_count_.fetch_sub(2, __std::memory_order_release);
     }
 
     struct __task : __immovable {
@@ -73,6 +91,7 @@ namespace stdexec {
 
     template <class _Rcvr>
     struct __opstate_t : __task {
+      __std::atomic<std::size_t>* __task_count_;
       __atomic_intrusive_queue<&__task::__next_>* __queue_;
       _Rcvr __rcvr_;
 
@@ -89,14 +108,17 @@ namespace stdexec {
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit __opstate_t(
+        __std::atomic<std::size_t>* __task_count,
         __atomic_intrusive_queue<&__task::__next_>* __queue,
         _Rcvr __rcvr)
         : __task{&__execute_impl}
+        , __task_count_(__task_count)
         , __queue_{__queue}
         , __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
       }
 
       STDEXEC_ATTRIBUTE(host, device) constexpr void start() noexcept {
+        __task_count_->fetch_add(1, __std::memory_order_release);
         __queue_->push(this);
       }
     };
@@ -112,20 +134,25 @@ namespace stdexec {
         return false; // No tasks to execute.
       }
 
+      std::size_t __task_count = 0;
+
       do {
         // Take care to increment the iterator before executing the task,
         // because __execute() may invalidate the current node.
         auto __prev = __it++;
         (*__prev)->__execute();
+        ++__task_count;
       } while (__it != __queue.end());
 
       __queue.clear();
+      __task_count_.fetch_sub(__task_count, __std::memory_order_release);
       return true;
     }
 
     STDEXEC_ATTRIBUTE(host, device) static void __noop_(__task*) noexcept {
     }
 
+    __std::atomic<std::size_t> __task_count_{0};
     __std::atomic<bool> __finishing_{false};
     __atomic_intrusive_queue<&__task::__next_> __queue_{};
     __task __noop_task{&__noop_};
@@ -186,7 +213,7 @@ namespace stdexec {
         template <class _Rcvr>
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
         constexpr auto connect(_Rcvr __rcvr) const noexcept -> __opstate_t<_Rcvr> {
-          return __opstate_t<_Rcvr>{&__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
+          return __opstate_t<_Rcvr>{&__loop_->__task_count_, &__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
         }
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
