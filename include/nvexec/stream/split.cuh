@@ -27,9 +27,9 @@
 
 #include <cuda/std/tuple>
 
-#include "common.cuh"
 #include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -72,13 +72,13 @@ namespace nvexec::_strm {
 
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = sh_state_.op_state2_.get_stream();
-            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
+            sh_state_.index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(sh_state_.data_, static_cast<As&&>(as)...);
             sh_state_.stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(sh_state_.event_, stream));
           } else {
-            sh_state_.index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
+            sh_state_.index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
           }
         }
 

@@ -198,7 +198,8 @@ namespace stdexec {
           stdexec::__diagnose_sender_concept_failure<_Sender, __env>();
         } else {
           using __domain_t = __completion_domain_of_t<set_value_t, _Sender, __env>;
-          constexpr auto __success_completion_count = __v<__count_of<set_value_t, _Sender, __env>>;
+          constexpr auto __success_completion_count =
+            __count_of<set_value_t, _Sender, __env>::value;
 
           static_assert(
             __success_completion_count != 0,

@@ -100,7 +100,7 @@ namespace exec {
     using __mall_contained_in_t = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
 
     template <class _Needles, class _Haystack>
-    concept __all_contained_in = __v<__mall_contained_in_t<_Needles, _Haystack>>;
+    concept __all_contained_in = __mall_contained_in_t<_Needles, _Haystack>::value;
   } // namespace __sequence_sndr
 
   // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.

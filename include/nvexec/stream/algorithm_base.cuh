@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "../../stdexec/execution.hpp"
 #include "../../stdexec/__detail/__ranges.hpp"
+#include "../../stdexec/execution.hpp"
 #include <algorithm>
 #include <cstddef>
 
@@ -48,20 +48,20 @@ namespace nvexec::_strm::__algo_range_init_fun {
 
       template <class... Sizes>
       struct max_in_pack {
-        static constexpr ::std::size_t value = ::std::max({::std::size_t{}, __v<Sizes>...});
+        static constexpr ::std::size_t value = ::std::max({::std::size_t{}, Sizes::value...});
       };
 
       struct max_result_size {
         template <class... _As>
         using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
 
-        static constexpr ::std::size_t value = __v<__gather_completions_of_t<
+        static constexpr ::std::size_t value = __gather_completions_of_t<
           set_value_t,
           Sender,
           env_of_t<Receiver>,
           __q<result_size_for_t>,
           __q<max_in_pack>
-        >>;
+        >::value;
       };
 
       operation_state_base_t<ReceiverId>& op_state_;
@@ -138,10 +138,11 @@ namespace nvexec::_strm::__algo_range_init_fun {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> completion_signatures<Self, Env...> {
         return {};
       }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         return stdexec::get_env(sndr_);

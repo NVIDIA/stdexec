@@ -75,13 +75,13 @@ namespace nvexec::_strm {
 
           if constexpr (stream_sender<Sender, env_t>) {
             cudaStream_t stream = shared_state_->stream_provider_.own_stream_.value();
-            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
+            shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
             copy_kernel<Tag, As&&...>
               <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<As&&>(as)...);
             shared_state_->stream_provider_
               .status_ = STDEXEC_LOG_CUDA_API(cudaEventRecord(shared_state_->event_, stream));
           } else {
-            shared_state_->index_ = __v<__mapply<__mfind_i<tuple_t>, variant_t>>;
+            shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
           }
         }
 

@@ -15,27 +15,26 @@
  * limitations under the License.
  */
 
-#include "exec/sequence/ignore_all_values.hpp"
-#include "exec/sequence/merge_each.hpp"
-#include "exec/sequence/merge.hpp"
 #include "exec/sequence/empty_sequence.hpp"
+#include "exec/sequence/ignore_all_values.hpp"
 #include "exec/sequence/iterate.hpp"
+#include "exec/sequence/merge.hpp"
+#include "exec/sequence/merge_each.hpp"
 #include "exec/sequence_senders.hpp"
-#include "exec/variant_sender.hpp"
 #include "exec/single_thread_context.hpp"
 #include "exec/timed_thread_scheduler.hpp"
+#include "exec/variant_sender.hpp"
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__read_env.hpp"
 
-#include <stdexcept>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
-#include <array>
 #include <chrono>
 #include <iomanip>
+#include <stdexcept>
 
 namespace {
   using namespace std::chrono_literals;
@@ -45,8 +44,8 @@ namespace {
   template <class _A, class _B>
   concept __equivalent = __sequence_sndr::__all_contained_in<_A, _B>
                       && __sequence_sndr::__all_contained_in<_B, _A>
-                      && ex::__v<ex::__mapply<ex::__msize, _A>>
-                           == ex::__v<ex::__mapply<ex::__msize, _B>>;
+                      && ex::__mapply<ex::__msize, _A>::value
+                           == ex::__mapply<ex::__msize, _B>::value;
 
   struct null_receiver {
     using __id = null_receiver;

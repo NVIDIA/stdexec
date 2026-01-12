@@ -154,7 +154,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _SetTag,
           _Args&&... __args) noexcept {
-          static_assert(__v<_Index> == 0, "I don't know how to complete this operation.");
+          static_assert(_Index::value == 0, "I don't know how to complete this operation.");
           _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
         };
 
@@ -496,8 +496,6 @@ namespace stdexec {
       using __tag_t = __desc_t::__tag;
       using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
-      mutable __captures_t __impl_;
-
       template <class _Tag, class _Data, class... _Child>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       explicit __sexpr(_Tag, _Data&& __data, _Child&&... __child)
@@ -573,12 +571,14 @@ namespace stdexec {
           return __self.__impl_(__copy_cvref_fn<_Self>(), __nth_pack_element<_Idx>);
         }
       }
+
+      mutable __captures_t __impl_;
     };
 
     template <class _Tag, class _Data, class... _Child>
-    STDEXEC_ATTRIBUTE(host, device)
-    __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-  } // namespace
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+  } // anonymous namespace
 
   template <class _Tag, class _Data, class... _Child>
   using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
@@ -631,7 +631,7 @@ namespace stdexec {
     extern __basic_sender_name __demangle_v<__sexpr<_Descriptor>>;
 
     template <__has_id _Sender>
-      requires(!same_as<__id<_Sender>, _Sender>)
+      requires __not_same_as<__id<_Sender>, _Sender>
     extern __id_name __demangle_v<_Sender>;
   } // namespace __detail
 } // namespace stdexec
@@ -641,7 +641,7 @@ namespace std {
   struct tuple_size<stdexec::__sexpr<_Descriptor>>
     : integral_constant<
         size_t,
-        stdexec::__v<stdexec::__minvoke<stdexec::__result_of<_Descriptor>, stdexec::__msize>>
+        stdexec::__minvoke<stdexec::__result_of<_Descriptor>, stdexec::__msize>::value
       > { };
 
   template <size_t _Idx, auto _Descriptor>

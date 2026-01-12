@@ -90,11 +90,11 @@ namespace stdexec {
 
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...> //
-                 && __v<__count_of<_Tag, _Sender, _Env...>> != 0;
+                 && __count_of<_Tag, _Sender, _Env...>::value != 0;
 
   template <class _Tag, class _Sender, class... _Env>
   concept __never_sends = sender_in<_Sender, _Env...> //
-                       && __v<__count_of<_Tag, _Sender, _Env...>> == 0;
+                       && __count_of<_Tag, _Sender, _Env...>::value == 0;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...> //

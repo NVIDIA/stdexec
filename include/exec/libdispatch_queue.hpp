@@ -256,11 +256,11 @@ namespace exec {
 
     template <class Sender, class... Env>
     using with_error_invoke_t = stdexec::__if_c<
-      stdexec::__v<stdexec::__value_types_t<
+      stdexec::__value_types_t<
         stdexec::__completion_signatures_of_t<Sender, Env...>,
         stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
         stdexec::__q<stdexec::__mand>
-      >>,
+      >::value,
       stdexec::completion_signatures<>,
       stdexec::__eptr_completion
     >;
@@ -470,12 +470,12 @@ namespace exec {
   struct __libdispatch_bulk::bulk_op_state<CvrefSenderId, ReceiverId, Shape, Fun>::__t {
     using __id = bulk_op_state;
 
-    static constexpr bool may_throw = !stdexec::__v<stdexec::__value_types_of_t<
+    static constexpr bool may_throw = !stdexec::__value_types_of_t<
       CvrefSender,
       stdexec::env_of_t<Receiver>,
       stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
       stdexec::__q<stdexec::__mand>
-    >>;
+    >::value;
 
     using bulk_rcvr = bulk_receiver_t<CvrefSender, Receiver, Shape, Fun, may_throw>;
     using shared_state = bulk_shared_state<CvrefSender, Receiver, Shape, Fun, may_throw>;

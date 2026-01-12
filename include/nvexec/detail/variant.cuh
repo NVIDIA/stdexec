@@ -150,7 +150,7 @@ namespace nvexec {
     STDEXEC_ATTRIBUTE(host, device)
     void construct(As&&... as) {
       ::new (storage_.data_) T(static_cast<As&&>(as)...);
-      index_ = stdexec::__v<stdexec::__mcall<stdexec::__mfind_i<T>, Ts...>>;
+      index_ = stdexec::__mcall<stdexec::__mfind_i<T>, Ts...>::value;
     }
 
     STDEXEC_ATTRIBUTE(host, device)
@@ -161,7 +161,8 @@ namespace nvexec {
             using val_t = stdexec::__decay_t<decltype(val)>;
             if constexpr (std::is_same_v<
                             val_t,
-                            ::cuda::std::tuple<stdexec::set_error_t, std::exception_ptr>>) {
+                            ::cuda::std::tuple<stdexec::set_error_t, std::exception_ptr>
+                          >) {
               // TODO Not quite possible at the moment
             } else {
               val.~val_t();

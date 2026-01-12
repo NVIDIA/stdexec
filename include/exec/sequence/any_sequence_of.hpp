@@ -144,14 +144,14 @@ namespace exec {
           }
 
           template <class Error>
-            requires __v<__mapply<__mcontains<set_error_t(Error)>, __sigs>>
+            requires __mapply<__mcontains<set_error_t(Error)>, __sigs>::value
           void set_error(Error&& __error) noexcept {
             const __vfun<set_error_t(Error)>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_error_t(), static_cast<Error&&>(__error));
           }
 
           void set_stopped() noexcept
-            requires __v<__mapply<__mcontains<set_stopped_t()>, __sigs>>
+            requires __mapply<__mcontains<set_stopped_t()>, __sigs>::value
           {
             const __vfun<set_stopped_t()>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_stopped_t());

@@ -29,7 +29,7 @@ namespace {
   };
 
   template <class Needles, class Haystack>
-  concept all_contained_in = ex::__v<ex::__mapply<mall_contained_in<Haystack>, Needles>>;
+  concept all_contained_in = ex::__mapply<mall_contained_in<Haystack>, Needles>::value;
 
   template <class Needles, class Haystack>
   concept set_equivalent =

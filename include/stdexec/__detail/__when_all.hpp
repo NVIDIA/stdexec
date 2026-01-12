@@ -310,18 +310,19 @@ namespace stdexec {
     template <class _Receiver>
     static auto __mk_state_fn(const _Receiver&) noexcept {
       using __env_of_t = env_of_t<_Receiver>;
-      return []<__max1_sender<__env_t<__env_of_t>>... _Child>(__ignore, __ignore, _Child&&...) noexcept {
-        using _Traits = __traits<__env_of_t, _Child...>;
-        using _ErrorsVariant = _Traits::__errors_variant;
-        using _ValuesTuple = _Traits::__values_tuple;
-        using _State = __when_all_state<
-          _ErrorsVariant,
-          _ValuesTuple,
-          _Receiver,
-          (sends_stopped<_Child, __env_of_t> || ...)
-        >;
-        return _State{sizeof...(_Child)};
-      };
+      return
+        []<__max1_sender<__env_t<__env_of_t>>... _Child>(__ignore, __ignore, _Child&&...) noexcept {
+          using _Traits = __traits<__env_of_t, _Child...>;
+          using _ErrorsVariant = _Traits::__errors_variant;
+          using _ValuesTuple = _Traits::__values_tuple;
+          using _State = __when_all_state<
+            _ErrorsVariant,
+            _ValuesTuple,
+            _Receiver,
+            (sends_stopped<_Child, __env_of_t> || ...)
+          >;
+          return _State{sizeof...(_Child)};
+        };
     }
 
     template <class _Receiver>
@@ -437,7 +438,7 @@ namespace stdexec {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.
           if (__state.__state_.load() == __started) {
-            auto& __opt_values = stdexec::__get<__v<_Index>>(__state.__values_);
+            auto& __opt_values = stdexec::__get<_Index::value>(__state.__values_);
             using _Tuple = __decayed_tuple<_Args...>;
             static_assert(
               __same_as<decltype(*__opt_values), _Tuple&>,

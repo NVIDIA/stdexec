@@ -28,7 +28,6 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__sender_introspection.hpp"
-#include "__type_traits.hpp"
 #include "__utility.hpp"
 
 namespace stdexec {
