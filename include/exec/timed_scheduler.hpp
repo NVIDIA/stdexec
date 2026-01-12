@@ -22,7 +22,7 @@
 
 namespace exec {
   namespace __now {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Tp>
     concept time_point = regular<_Tp> && totally_ordered<_Tp>
@@ -65,16 +65,16 @@ namespace exec {
   inline constexpr now_t now{};
 
   template <class _TimedScheduler>
-  concept __timed_scheduler = stdexec::scheduler<_TimedScheduler>
+  concept __timed_scheduler = STDEXEC::scheduler<_TimedScheduler>
                            && requires(_TimedScheduler&& __sched) {
                                 now(static_cast<_TimedScheduler&&>(__sched));
                               };
 
   template <__timed_scheduler _TimedScheduler>
-  using time_point_of_t = decltype(now(stdexec::__declval<_TimedScheduler>()));
+  using time_point_of_t = decltype(now(STDEXEC::__declval<_TimedScheduler>()));
 
   template <__timed_scheduler _TimedScheduler>
-  using duration_of_t = stdexec::__decay_t<time_point_of_t<_TimedScheduler>>::duration;
+  using duration_of_t = STDEXEC::__decay_t<time_point_of_t<_TimedScheduler>>::duration;
 
   namespace __schedule_after {
     struct __schedule_after_base_t;
@@ -95,7 +95,7 @@ namespace exec {
   extern const schedule_at_t schedule_at;
 
   namespace __schedule_after {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Scheduler>
     concept __has_schedule_after_member =
@@ -168,7 +168,7 @@ namespace exec {
   inline constexpr schedule_after_t schedule_after{};
 
   namespace __schedule_at {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Scheduler>
     concept __has_schedule_at_member =
@@ -241,13 +241,13 @@ namespace exec {
   template <class _Scheduler>
   concept __has_schedule_after =
     requires(_Scheduler&& __sched, const duration_of_t<_Scheduler>& __duration) {
-      { schedule_after(static_cast<_Scheduler&&>(__sched), __duration) } -> stdexec::sender;
+      { schedule_after(static_cast<_Scheduler&&>(__sched), __duration) } -> STDEXEC::sender;
     };
 
   template <class _Scheduler>
   concept __has_schedule_at =
     requires(_Scheduler&& __sched, const time_point_of_t<_Scheduler>& __time_point) {
-      { schedule_at(static_cast<_Scheduler&&>(__sched), __time_point) } -> stdexec::sender;
+      { schedule_at(static_cast<_Scheduler&&>(__sched), __time_point) } -> STDEXEC::sender;
     };
 
   template <class _Scheduler, class _Clock = std::chrono::system_clock>
@@ -255,8 +255,8 @@ namespace exec {
                          && __has_schedule_at<_Scheduler>;
 
   template <timed_scheduler _Scheduler>
-  using schedule_after_result_t = stdexec::__call_result_t<schedule_after_t, _Scheduler>;
+  using schedule_after_result_t = STDEXEC::__call_result_t<schedule_after_t, _Scheduler>;
 
   template <timed_scheduler _Scheduler>
-  using schedule_at_result_t = stdexec::__call_result_t<schedule_at_t, _Scheduler>;
+  using schedule_at_result_t = STDEXEC::__call_result_t<schedule_at_t, _Scheduler>;
 } // namespace exec

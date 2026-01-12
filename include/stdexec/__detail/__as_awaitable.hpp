@@ -29,7 +29,7 @@
 #include <system_error>
 #include <variant>
 
-namespace stdexec {
+namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   namespace __detail {
     template <std::size_t _Count>
@@ -51,7 +51,7 @@ namespace stdexec {
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
-  // stdexec::as_awaitable [exec.as.awaitable]
+  // STDEXEC::as_awaitable [exec.as.awaitable]
   namespace __as_awaitable {
     struct __void { };
 
@@ -74,7 +74,7 @@ namespace stdexec {
           __continuation_.resume();
         }
         STDEXEC_CATCH_ALL {
-          stdexec::set_error(static_cast<__receiver_base&&>(*this), std::current_exception());
+          STDEXEC::set_error(static_cast<__receiver_base&&>(*this), std::current_exception());
         }
       }
 
@@ -95,7 +95,7 @@ namespace stdexec {
 
     template <class _PromiseId, class _Value>
     struct __receiver {
-      using _Promise = stdexec::__t<_PromiseId>;
+      using _Promise = STDEXEC::__t<_PromiseId>;
 
       struct __t : __receiver_base<_Value> {
         using __id = __receiver;
@@ -112,7 +112,7 @@ namespace stdexec {
         auto get_env() const noexcept -> env_of_t<_Promise&> {
           auto __continuation = __std::coroutine_handle<_Promise>::from_address(
             this->__continuation_.address());
-          return stdexec::get_env(__continuation.promise());
+          return STDEXEC::get_env(__continuation.promise());
         }
       };
     };
@@ -149,8 +149,8 @@ namespace stdexec {
 
     template <class _PromiseId, class _SenderId>
     struct __sender_awaitable {
-      using _Promise = stdexec::__t<_PromiseId>;
-      using _Sender = stdexec::__t<_SenderId>;
+      using _Promise = STDEXEC::__t<_PromiseId>;
+      using _Sender = STDEXEC::__t<_SenderId>;
       using __value = __detail::__value_t<_Sender, _Promise>;
 
       struct __t : __sender_awaitable_base<__value> {
@@ -164,7 +164,7 @@ namespace stdexec {
         }
 
         void await_suspend(__std::coroutine_handle<_Promise>) noexcept {
-          stdexec::start(__op_state_);
+          STDEXEC::start(__op_state_);
         }
 
        private:
@@ -250,4 +250,4 @@ namespace stdexec {
   using __as_awaitable::as_awaitable_t;
   inline constexpr as_awaitable_t as_awaitable{};
 #endif
-} // namespace stdexec
+} // namespace STDEXEC

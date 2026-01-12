@@ -15,32 +15,32 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
 #include <exec/env.hpp>
+#include <stdexec/execution.hpp>
 
 namespace {
   // Two dummy properties:
   constexpr struct Foo
-    : stdexec::__query<Foo>
-    , stdexec::forwarding_query_t {
-    using stdexec::__query<Foo>::operator();
+    : STDEXEC::__query<Foo>
+    , STDEXEC::forwarding_query_t {
+    using STDEXEC::__query<Foo>::operator();
   } foo{};
 
-  constexpr struct Bar : stdexec::__query<Bar> {
-    static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
+  constexpr struct Bar : STDEXEC::__query<Bar> {
+    static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool {
       return true;
     }
   } bar{};
 
   TEST_CASE("Test make_env works", "[env]") {
-    auto e = stdexec::prop{foo, 42};
+    auto e = STDEXEC::prop{foo, 42};
     CHECK(foo(e) == 42);
 
-    auto e2 = exec::make_env(e, stdexec::prop{bar, 43});
+    auto e2 = exec::make_env(e, STDEXEC::prop{bar, 43});
     CHECK(foo(e2) == 42);
     CHECK(bar(e2) == 43);
 
-    auto e3 = exec::make_env(e2, stdexec::prop{foo, 44});
+    auto e3 = exec::make_env(e2, STDEXEC::prop{foo, 44});
     CHECK(foo(e3) == 44);
     CHECK(bar(e3) == 43);
 

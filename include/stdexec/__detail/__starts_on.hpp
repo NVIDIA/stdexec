@@ -28,7 +28,7 @@
 #include "__schedulers.hpp"
 #include "__utility.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __detail {
     //! Constant function object always returning `__val_`.
     template <class _Ty, class = __demangle_t<__decay_t<_Ty>>>
@@ -139,7 +139,7 @@ namespace stdexec {
     static constexpr auto get_attrs = []<class _Data, class _Child>(
                                         const _Data& __data,
                                         const _Child& __child) noexcept -> decltype(auto) {
-      return __attrs<_Data, _Child>{__data, stdexec::get_env(__child)};
+      return __attrs<_Data, _Child>{__data, STDEXEC::get_env(__child)};
     };
 
     static constexpr auto get_completion_signatures =
@@ -148,4 +148,4 @@ namespace stdexec {
       return {};
     };
   };
-} // namespace stdexec
+} // namespace STDEXEC

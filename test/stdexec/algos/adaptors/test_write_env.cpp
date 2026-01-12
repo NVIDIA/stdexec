@@ -18,8 +18,8 @@
 
 #include <catch2/catch.hpp>
 
-#include <utility>
 #include <type_traits>
+#include <utility>
 
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -28,7 +28,7 @@ namespace {
 
   template <typename T>
   struct receiver : expect_void_receiver<> {
-    constexpr ::stdexec::env<> get_env() const noexcept {
+    constexpr ::STDEXEC::env<> get_env() const noexcept {
       return state_->get_env();
     }
     T* state_;
@@ -38,15 +38,17 @@ namespace {
 
   static_assert(!std::is_same_v<
                 void,
-                decltype(::stdexec::connect(
-                  ::stdexec::just()
-                    | ::stdexec::write_env(::stdexec::prop{
-                      ::stdexec::get_stop_token,
-                      std::declval<::stdexec::inplace_stop_source&>().get_token()}),
-                  receiver<state>{{}, nullptr}))>);
+                decltype(::STDEXEC::connect(
+                  ::STDEXEC::just()
+                    | ::STDEXEC::write_env(
+                      ::STDEXEC::prop{
+                        ::STDEXEC::get_stop_token,
+                        std::declval<::STDEXEC::inplace_stop_source&>().get_token()}),
+                  receiver<state>{{}, nullptr}))
+  >);
 
   struct state {
-    constexpr ::stdexec::env<> get_env() const noexcept {
+    constexpr ::STDEXEC::env<> get_env() const noexcept {
       return {};
     }
   };
@@ -55,12 +57,12 @@ namespace {
     "write_env works when the actual environment is sourced from a type which was initially "
     "incomplete but has since been completed",
     "[adaptors][write_env]") {
-    ::stdexec::inplace_stop_source source;
+    ::STDEXEC::inplace_stop_source source;
     state s;
-    auto op = ::stdexec::connect(
-      ::stdexec::just()
-        | ::stdexec::write_env(::stdexec::prop{::stdexec::get_stop_token, source.get_token()}),
+    auto op = ::STDEXEC::connect(
+      ::STDEXEC::just()
+        | ::STDEXEC::write_env(::STDEXEC::prop{::STDEXEC::get_stop_token, source.get_token()}),
       receiver<state>{{}, &s});
-    ::stdexec::start(op);
+    ::STDEXEC::start(op);
   }
 } // namespace

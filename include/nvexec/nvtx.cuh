@@ -41,7 +41,7 @@ namespace nvexec {
     template <kind Kind, class ReceiverId>
     struct receiver_t {
       class __t : public stream_receiver_base {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
         using Env = operation_state_base_t<ReceiverId>::env_t;
 
         operation_state_base_t<ReceiverId>& op_state_;
@@ -63,16 +63,16 @@ namespace nvexec {
 
         template <class... _Args>
         void set_value(_Args&&... __args) noexcept {
-          _complete(stdexec::set_value, static_cast<_Args&&>(__args)...);
+          _complete(STDEXEC::set_value, static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
         void set_error(_Error&& __error) noexcept {
-          _complete(stdexec::set_error, static_cast<_Error&&>(__error));
+          _complete(STDEXEC::set_error, static_cast<_Error&&>(__error));
         }
 
         void set_stopped() noexcept {
-          _complete(stdexec::set_stopped);
+          _complete(STDEXEC::set_stopped);
         }
 
         auto get_env() const noexcept -> Env {
@@ -88,7 +88,7 @@ namespace nvexec {
 
     template <kind Kind, class SenderId>
     struct nvtx_sender_t {
-      using Sender = stdexec::__t<SenderId>;
+      using Sender = STDEXEC::__t<SenderId>;
 
       struct __t : stream_sender_base {
         using __id = nvtx_sender_t;
@@ -96,7 +96,7 @@ namespace nvexec {
         std::string name_;
 
         template <class Receiver>
-        using receiver_t = stdexec::__t<receiver_t<Kind, stdexec::__id<Receiver>>>;
+        using receiver_t = STDEXEC::__t<receiver_t<Kind, STDEXEC::__id<Receiver>>>;
 
         template <class Self, class Env>
         using _completion_signatures_t =
@@ -109,7 +109,7 @@ namespace nvexec {
           return stream_op_state<__copy_cvref_t<Self, Sender>>(
             static_cast<Self&&>(self).sndr_,
             static_cast<Receiver&&>(rcvr),
-            [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
+            [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
               -> receiver_t<Receiver> {
               return receiver_t<Receiver>(stream_provider, std::move(self.name_));
             });
@@ -129,12 +129,12 @@ namespace nvexec {
       };
     };
 
-    template <kind Kind, stdexec::sender Sender>
+    template <kind Kind, STDEXEC::sender Sender>
     using nvtx_sender_th =
-      stdexec::__t<nvtx_sender_t<Kind, stdexec::__id<stdexec::__decay_t<Sender>>>>;
+      STDEXEC::__t<nvtx_sender_t<Kind, STDEXEC::__id<STDEXEC::__decay_t<Sender>>>>;
 
     struct push_t {
-      template <stdexec::sender Sender>
+      template <STDEXEC::sender Sender>
       auto
         operator()(Sender&& sndr, std::string&& name) const -> nvtx_sender_th<kind::push, Sender> {
         return nvtx_sender_th<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
@@ -142,19 +142,19 @@ namespace nvexec {
 
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()(std::string name) const {
-        return stdexec::__closure(*this, std::move(name));
+        return STDEXEC::__closure(*this, std::move(name));
       }
     };
 
     struct pop_t {
-      template <stdexec::sender Sender>
+      template <STDEXEC::sender Sender>
       auto operator()(Sender&& sndr) const -> nvtx_sender_th<kind::pop, Sender> {
         return nvtx_sender_th<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()() const noexcept {
-        return stdexec::__closure(*this);
+        return STDEXEC::__closure(*this);
       }
     };
 
@@ -162,15 +162,15 @@ namespace nvexec {
     inline constexpr pop_t pop{};
 
     struct scoped_t {
-      template <stdexec::sender Sender, stdexec::__sender_adaptor_closure Closure>
+      template <STDEXEC::sender Sender, STDEXEC::__sender_adaptor_closure Closure>
       auto operator()(Sender&& __sndr, std::string&& name, Closure closure) const noexcept {
         return static_cast<Sender&&>(__sndr) | push(std::move(name)) | closure | pop();
       }
 
-      template <stdexec::__sender_adaptor_closure Closure>
+      template <STDEXEC::__sender_adaptor_closure Closure>
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()(std::string name, Closure closure) const {
-        return stdexec::__closure(*this, std::move(name), static_cast<Closure&&>(closure));
+        return STDEXEC::__closure(*this, std::move(name), static_cast<Closure&&>(closure));
       }
     };
 

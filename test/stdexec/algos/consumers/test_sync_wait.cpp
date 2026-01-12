@@ -15,18 +15,18 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/env.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
-#include <test_common/receivers.hpp>
 #include <test_common/tuple.hpp>
 #include <test_common/type_helpers.hpp>
-#include <exec/static_thread_pool.hpp>
-#include <exec/env.hpp>
 
 #include <thread>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 

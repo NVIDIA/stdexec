@@ -15,17 +15,17 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/env.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
-#include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
-#include <exec/static_thread_pool.hpp>
-#include <exec/env.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
@@ -80,22 +80,22 @@ namespace {
     "[adaptors][let_error]") {
     ex::sender auto snd = ex::just_error(std::exception_ptr{})
                         | ex::let_error([](std::exception_ptr) { return ex::just(); });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
   }
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
     ex::sender auto snd = ex::just() | ex::then([]() -> std::string {
-                            throw std::logic_error{"error description"};
+      throw std::logic_error{"error description"};
                           })
                         | ex::let_error([](std::exception_ptr eptr) {
-                            STDEXEC_TRY {
-                              std::rethrow_exception(eptr);
-                            }
-                            STDEXEC_CATCH(const std::exception& e) {
-                              return ex::just(std::string{e.what()});
-                            }
-                            STDEXEC_CATCH_FALLTHROUGH
+      STDEXEC_TRY {
+        std::rethrow_exception(eptr);
+      }
+      STDEXEC_CATCH(const std::exception& e) {
+        return ex::just(std::string{e.what()});
+      }
+    STDEXEC_CATCH_FALLTHROUGH
                           });
     wait_for_value(std::move(snd), std::string{"error description"});
     (void) snd;
@@ -336,7 +336,7 @@ namespace {
   // Return a different sender when we invoke this custom defined let_error implementation
   struct let_error_test_domain {
     template <ex::sender_expr_for<ex::let_error_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"what error?"});
     }
   };

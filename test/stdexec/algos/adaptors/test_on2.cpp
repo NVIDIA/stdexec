@@ -17,10 +17,10 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
@@ -30,7 +30,7 @@ namespace {
   }
 
   TEST_CASE(
-    "stdexec::on transitions back to the receiver's scheduler when completing with a value",
+    "STDEXEC::on transitions back to the receiver's scheduler when completing with a value",
     "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::then([&]() -> int {
@@ -63,7 +63,7 @@ namespace {
   }
 
   TEST_CASE(
-    "stdexec::on transitions back to the receiver's scheduler when completing with an error",
+    "STDEXEC::on transitions back to the receiver's scheduler when completing with an error",
     "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::let_value([&]() {
@@ -96,7 +96,7 @@ namespace {
   }
 
   TEST_CASE(
-    "inner stdexec::on transitions back to outer on's scheduler when completing with a value",
+    "inner STDEXEC::on transitions back to outer on's scheduler when completing with a value",
     "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::then([&]() -> int {
@@ -147,7 +147,7 @@ namespace {
   }
 
   TEST_CASE(
-    "inner stdexec::on transitions back to outer on's scheduler when completing with an error",
+    "inner STDEXEC::on transitions back to outer on's scheduler when completing with an error",
     "[adaptors][on]") {
     bool called{false};
     auto snd_base = ex::just() | ex::let_value([&]() {
@@ -198,7 +198,7 @@ namespace {
   }
 
   TEST_CASE(
-    "stdexec::on(closure) transitions onto and back off of the scheduler when completing with a "
+    "STDEXEC::on(closure) transitions onto and back off of the scheduler when completing with a "
     "value",
     "[adaptors][on]") {
     bool called{false};
@@ -232,7 +232,7 @@ namespace {
   }
 
   TEST_CASE(
-    "stdexec::on(closure) transitions onto and back off of the scheduler when completing with "
+    "STDEXEC::on(closure) transitions onto and back off of the scheduler when completing with "
     "an error",
     "[adaptors][on]") {
     bool called{false};
@@ -266,7 +266,7 @@ namespace {
   }
 
   TEST_CASE(
-    "inner stdexec::on(closure) transitions back to outer on's scheduler when completing with a "
+    "inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing with a "
     "value",
     "[adaptors][on]") {
     bool called{false};
@@ -319,7 +319,7 @@ namespace {
   }
 
   TEST_CASE(
-    "inner stdexec::on(closure) transitions back to outer on's scheduler when completing with an "
+    "inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing with an "
     "error",
     "[adaptors][on]") {
     bool called{false};

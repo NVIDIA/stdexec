@@ -28,7 +28,7 @@
 
 namespace exec {
   namespace __on_coro_disp {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     using __any_scheduler = any_receiver_ref<
       completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
@@ -182,7 +182,7 @@ namespace exec {
         using __get_disposition_callback_t = task_disposition (*)(void*) noexcept;
         __std::coroutine_handle<> __parent_{};
         __get_disposition_callback_t __get_disposition_callback_{nullptr};
-        __any_scheduler __scheduler_{stdexec::inline_scheduler{}};
+        __any_scheduler __scheduler_{STDEXEC::inline_scheduler{}};
       };
 
       __std::coroutine_handle<__promise> __coro_;

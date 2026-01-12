@@ -28,7 +28,7 @@
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #endif
 
-namespace stdexec::__std {
+namespace STDEXEC::__std {
 #if __has_include(<cuda/std/atomic>)
 
   using cuda::std::atomic;
@@ -102,4 +102,4 @@ namespace stdexec::__std {
 #  endif
 
 #endif
-} // namespace stdexec::__std
+} // namespace STDEXEC::__std

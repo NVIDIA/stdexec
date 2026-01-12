@@ -29,7 +29,7 @@
 #include "__config.hpp"
 #include <cstddef>
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // run_loop
   class __run_loop_base : __immovable {
@@ -213,7 +213,8 @@ namespace stdexec {
         template <class _Rcvr>
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
         constexpr auto connect(_Rcvr __rcvr) const noexcept -> __opstate_t<_Rcvr> {
-          return __opstate_t<_Rcvr>{&__loop_->__task_count_, &__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
+          return __opstate_t<_Rcvr>{
+            &__loop_->__task_count_, &__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
         }
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
@@ -290,7 +291,7 @@ namespace stdexec {
   constexpr auto basic_run_loop<_Env>::__attrs_t::query(
     get_completion_scheduler_t<set_value_t>) const noexcept {
     if constexpr (__callable<get_scheduler_t, _Env&>) {
-      return stdexec::get_scheduler(__loop_->__env_);
+      return STDEXEC::get_scheduler(__loop_->__env_);
     } else {
       return scheduler{__loop_};
     }
@@ -321,4 +322,4 @@ namespace stdexec {
     return query(get_completion_domain<set_value_t>);
   }
 
-} // namespace stdexec
+} // namespace STDEXEC

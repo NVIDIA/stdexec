@@ -27,7 +27,7 @@
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   namespace __split {
@@ -39,7 +39,7 @@ namespace stdexec {
       template <sender _Sender, class _Env = env<>>
         requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
       auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
-        return stdexec::transform_sender(
+        return STDEXEC::transform_sender(
           __make_sexpr<split_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
       }
 
@@ -94,4 +94,4 @@ namespace stdexec {
         }
       };
   };
-} // namespace stdexec
+} // namespace STDEXEC

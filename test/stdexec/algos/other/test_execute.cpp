@@ -16,13 +16,13 @@
 
 #include <atomic>
 #include <catch2/catch.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
-#include <exec/static_thread_pool.hpp>
 
 #include <chrono>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 

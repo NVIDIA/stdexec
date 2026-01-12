@@ -26,5 +26,5 @@
 #endif
 
 namespace nvexec::_strm {
-  using namespace stdexec;
+  using namespace STDEXEC;
 } // namespace nvexec::_strm

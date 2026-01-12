@@ -1,10 +1,10 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -29,7 +29,7 @@ namespace {
                  }
                  return ex::just();
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -49,7 +49,7 @@ namespace {
                  }
                  return ex::just();
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -71,7 +71,7 @@ namespace {
                  }
                  return ex::just();
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -81,7 +81,7 @@ namespace {
 
     auto snd = ex::schedule(stream_ctx.get_scheduler())
              | ex::let_value([=]() { return ex::just(is_on_gpu()); });
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(result == 1);
   }
@@ -106,7 +106,7 @@ namespace {
                    flags.set(1);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -117,14 +117,14 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::schedule(sch) | a_sender([]() noexcept {}) | ex::let_value([=] {
+    auto snd = ex::schedule(sch) | a_sender([]() noexcept { }) | ex::let_value([=] {
                  if (is_on_gpu()) {
                    flags.set();
                  }
 
                  return ex::schedule(sch);
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -142,7 +142,7 @@ namespace {
                  }
                  return stream;
                });
-    auto [stream] = stdexec::sync_wait(std::move(snd)).value();
+    auto [stream] = STDEXEC::sync_wait(std::move(snd)).value();
     static_assert(ex::same_as<decltype(+stream), cudaStream_t>);
 
     REQUIRE(flags_storage.all_set_once());

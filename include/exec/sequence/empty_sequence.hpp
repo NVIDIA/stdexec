@@ -22,18 +22,18 @@
 namespace exec {
   namespace __empty_sequence {
 
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _ReceiverId>
     struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t {
         using __id = __operation;
         STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
 
         void start() & noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
+          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
         }
       };
     };
@@ -42,12 +42,12 @@ namespace exec {
       struct __t {
         using __id = __sender;
         using sender_concept = sequence_sender_t;
-        using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
+        using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
         using item_types = exec::item_types<>;
 
         template <receiver_of<completion_signatures> _Rcvr>
         auto subscribe(_Rcvr __rcvr) const noexcept {
-          return stdexec::__t<__operation<stdexec::__id<_Rcvr>>>{static_cast<_Rcvr&&>(__rcvr)};
+          return STDEXEC::__t<__operation<STDEXEC::__id<_Rcvr>>>{static_cast<_Rcvr&&>(__rcvr)};
         }
       };
     };

@@ -11,14 +11,14 @@ replaces the standard library and pthread APIs at compile time. Since it replace
 standard library includes, writing new tests may require working around certain
 limitations in terms of what the replacement headers and accompanying runtime can
 support. For example, Relacy's atomic replacements cannot support `++x`, so the
-stdexec library could needs to use `x.fetch_add(1)` to be compatible with Relacy.
+STDEXEC library could needs to use `x.fetch_add(1)` to be compatible with Relacy.
 
 ## Instructions
 
 Run the following commands from within this directory (`./tests/rrd`).
 
 ```
-git clone -b stdexec https://github.com/dvyukov/relacy
+git clone -b STDEXEC https://github.com/dvyukov/relacy
 CXX=g++-11 make -j 4
 ./build/split
 ./build/async_scope
@@ -27,14 +27,14 @@ CXX=g++-11 make -j 4
 ## Recommended use
 
 The Relacy tests can be manually built and executed. New tests can be written for
-new algorithms, or new use cases in the stdexec library.
+new algorithms, or new use cases in the STDEXEC library.
 
 At this time, integrating the tests into CI is not yet recommended. If we can figure
 out a more stable build on all environments/compilers, we should revisit this.
 
 ## Supported platforms
 
-The stdexec Relacy tests have been verified to build and run on
+The STDEXEC Relacy tests have been verified to build and run on
  * Linux based GCC+11 with libstdc++ (`x86_64`)
  * Mac with Apple Clang 15 with libc++ (`x86_64`)
 

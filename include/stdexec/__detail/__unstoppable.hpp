@@ -22,6 +22,6 @@
 #include "__env.hpp"
 #include "__write_env.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   inline constexpr auto unstoppable = write_env(prop{get_stop_token, never_stop_token{}});
-} // namespace stdexec
+} // namespace STDEXEC

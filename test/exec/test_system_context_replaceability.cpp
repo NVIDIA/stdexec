@@ -15,11 +15,11 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <exec/system_context.hpp>
 #include <exec/__detail/__system_context_default_impl.hpp>
+#include <exec/system_context.hpp>
+#include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 namespace scr = exec::system_context_replaceability;
 
 namespace {

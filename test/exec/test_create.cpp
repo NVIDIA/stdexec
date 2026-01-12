@@ -15,15 +15,15 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/create.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
 
 #include <optional>
 
 using namespace std;
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   struct immovable {
@@ -36,7 +36,7 @@ namespace {
     exec::async_scope scope_;
 
     ~create_test_fixture() {
-      stdexec::sync_wait(scope_.on_empty());
+      STDEXEC::sync_wait(scope_.on_empty());
     }
 
     void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
@@ -70,11 +70,11 @@ namespace {
     }(1, 2);
 
 #if STDEXEC_NO_STD_EXCEPTIONS()
-    auto [res] = stdexec::sync_wait(std::move(snd)).value();
+    auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
     CHECK(res == 3);
 #else
     REQUIRE_NOTHROW([&] {
-      auto [res] = stdexec::sync_wait(std::move(snd)).value();
+      auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
       CHECK(res == 3);
     }());
 #endif
@@ -98,7 +98,7 @@ namespace {
         &called);
     }();
 
-    std::optional<std::tuple<>> res = stdexec::sync_wait(std::move(snd));
+    std::optional<std::tuple<>> res = STDEXEC::sync_wait(std::move(snd));
     CHECK(res.has_value());
     CHECK(called);
   }

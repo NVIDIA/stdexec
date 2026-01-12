@@ -22,31 +22,31 @@
 namespace {
 
   template <typename T>
-  concept can_get_domain = requires(const T& t) { t.query(::stdexec::get_domain); };
+  concept can_get_domain = requires(const T& t) { t.query(::STDEXEC::get_domain); };
 
   namespace zero {
 
-    using env = ::stdexec::env<>;
-    static_assert(std::is_same_v<::stdexec::never_stop_token, ::stdexec::stop_token_of_t<env>>);
+    using env = ::STDEXEC::env<>;
+    static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
 
   } // namespace zero
 
   namespace one {
-    using env = ::stdexec::env<::stdexec::env<>>;
-    static_assert(std::is_same_v<::stdexec::never_stop_token, ::stdexec::stop_token_of_t<env>>);
+    using env = ::STDEXEC::env<::STDEXEC::env<>>;
+    static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
   } // namespace one
 
   namespace two {
-    using env = ::stdexec::env<::stdexec::env<>, ::stdexec::env<>>;
-    static_assert(std::is_same_v<::stdexec::never_stop_token, ::stdexec::stop_token_of_t<env>>);
+    using env = ::STDEXEC::env<::STDEXEC::env<>, ::STDEXEC::env<>>;
+    static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
   } // namespace two
 
   namespace three {
-    using env = ::stdexec::env<::stdexec::env<>, ::stdexec::env<>, ::stdexec::env<>>;
-    static_assert(std::is_same_v<::stdexec::never_stop_token, ::stdexec::stop_token_of_t<env>>);
+    using env = ::STDEXEC::env<::STDEXEC::env<>, ::STDEXEC::env<>, ::STDEXEC::env<>>;
+    static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
   } // namespace three
 } // namespace

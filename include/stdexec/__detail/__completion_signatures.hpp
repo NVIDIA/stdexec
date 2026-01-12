@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __cmplsigs {
@@ -295,16 +295,16 @@ namespace stdexec {
         return __value_types_t<
           completion_signatures,
           __qf<set_value_t>,
-          __qq<stdexec::completion_signatures>
+          __qq<STDEXEC::completion_signatures>
         >{};
       } else if constexpr (_Tag{} == set_error) {
         return __error_types_t<
           completion_signatures,
-          __qq<stdexec::completion_signatures>,
+          __qq<STDEXEC::completion_signatures>,
           __qf<set_error_t>
         >{};
       } else {
-        return __stopped_types_t<completion_signatures, __qq<stdexec::completion_signatures>>{};
+        return __stopped_types_t<completion_signatures, __qq<STDEXEC::completion_signatures>>{};
       }
     }
 
@@ -409,7 +409,7 @@ namespace stdexec {
 
 #  define STDEXEC_COMPLSIGS_LET(...)                                                               \
     if constexpr (STDEXEC_CAT(STDEXEC_PP_EXPAND_AUTO_, __VA_ARGS__);                               \
-                  !stdexec::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
+                  !STDEXEC::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
                     __VA_ARGS__))>) {                                                              \
       return STDEXEC_COMPLSIGS_LET_ID(__VA_ARGS__);                                                \
     } else
@@ -433,4 +433,4 @@ namespace stdexec {
   }
 
 #endif // ^^^ constexpr exceptions ^^^
-} // namespace stdexec
+} // namespace STDEXEC

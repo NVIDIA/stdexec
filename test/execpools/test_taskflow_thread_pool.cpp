@@ -19,25 +19,25 @@
 
 #include <stdexec/execution.hpp>
 
-#include <test_common/schedulers.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <test_common/schedulers.hpp>
 
 #include <execpools/taskflow/taskflow_thread_pool.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   // Example adapted from
   // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
   [[nodiscard]]
   auto async_inclusive_scan(
-    stdexec::scheduler auto sch,                    // 2
+    STDEXEC::scheduler auto sch,                    // 2
     std::span<const double> input,                  // 1
     std::span<double> output,                       // 1
     double init,                                    // 1
-    std::size_t tile_count) -> stdexec::sender auto // 3
+    std::size_t tile_count) -> STDEXEC::sender auto // 3
   {
-    using namespace stdexec;
+    using namespace STDEXEC;
     std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
     std::vector<double> partials(tile_count + 1);
@@ -83,24 +83,24 @@ namespace {
   }
 
   TEST_CASE(
-    "stdexec::on works when changing threads with execpools::taskflow_thread_pool",
+    "STDEXEC::on works when changing threads with execpools::taskflow_thread_pool",
     "[taskflow_thread_pool]") {
     execpools::taskflow_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     bool called{false};
     // launch some work on the thread pool
     ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) | ex::then([&] { called = true; });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
     // the work should be executed
     REQUIRE(called);
   }
 
   TEST_CASE("more taskflow_thread_pool", "[taskflow_thread_pool]") {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     execpools::taskflow_thread_pool pool(1ul);
     exec::static_thread_pool other_pool(1);
-    stdexec::inline_scheduler inline_sched;
+    STDEXEC::inline_scheduler inline_sched;
 
     // Get a handle to the thread pool:
     auto other_sched = other_pool.get_scheduler();
@@ -121,33 +121,33 @@ namespace {
     // clang-format on
 
     // Launch the work and wait for the result:
-    auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
+    auto [i, j, k] = STDEXEC::sync_wait(std::move(work)).value();
     CHECK(i == 3);
     CHECK(j == 2);
     CHECK(k == 5);
   }
 
   TEST_CASE("taskflow_thread_pool exceptions", "[taskflow_thread_pool]") {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     execpools::taskflow_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
       CHECK_THROWS(
-        stdexec::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
+        STDEXEC::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
                              throw std::exception();
                            })));
       CHECK_THROWS(
-        stdexec::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
+        STDEXEC::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
                              throw std::exception();
                            })));
     }
     // Ensure it still works normally after exceptions:
     {
-      auto tbb_result = stdexec::sync_wait(
+      auto tbb_result = STDEXEC::sync_wait(
         starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result.has_value());
-      auto other_result = stdexec::sync_wait(
+      auto other_result = STDEXEC::sync_wait(
         starts_on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
       CHECK(tbb_result == other_result);
     }
@@ -157,7 +157,7 @@ namespace {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
     execpools::taskflow_thread_pool pool{2ul};
-    auto [value] = stdexec::sync_wait(
+    auto [value] = STDEXEC::sync_wait(
                      async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4))
                      .value();
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);

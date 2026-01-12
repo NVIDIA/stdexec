@@ -23,7 +23,7 @@
 #include "__config.hpp"
 #include "__query.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
   namespace __queries {
@@ -148,4 +148,4 @@ namespace stdexec {
 
   template <class _Sender>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sync_attrs(const _Sender&) -> __sync_attrs<_Sender>;
-} // namespace stdexec
+} // namespace STDEXEC

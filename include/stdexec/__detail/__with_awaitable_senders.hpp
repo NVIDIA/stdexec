@@ -23,7 +23,7 @@
 
 #include <exception>
 
-namespace stdexec {
+namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   template <class _Promise = void>
   class __coroutine_handle;
@@ -134,4 +134,4 @@ namespace stdexec {
     }
   };
 #endif
-} // namespace stdexec
+} // namespace STDEXEC

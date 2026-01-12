@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
+#include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include "test_common/receivers.hpp"
 
-#include <string>
 #include <climits>
+#include <string>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")

@@ -31,7 +31,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
   namespace __env {
@@ -345,6 +345,6 @@ namespace stdexec {
   concept environment_provider = requires(_EnvProvider& __ep) {
     { get_env(std::as_const(__ep)) } -> queryable;
   };
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

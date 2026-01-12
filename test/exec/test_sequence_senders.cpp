@@ -19,7 +19,7 @@
 
 #include <catch2/catch.hpp>
 
-using namespace stdexec;
+using namespace STDEXEC;
 using namespace exec;
 
 namespace {
@@ -35,8 +35,8 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct some_sender_of {
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<_Sigs...>;
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
 
     template <class R>
     auto connect(R&&) const -> nop_operation {
@@ -61,7 +61,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct test_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     template <class... _Args>
       requires __one_of<set_value_t(_Args...), _Sigs...>
@@ -98,7 +98,7 @@ namespace {
 
   template <__completion_signature... _Sigs>
   struct next_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     template <sender_to<test_receiver<_Sigs...>> _Item>
     auto set_next(_Item&& __item) & noexcept -> _Item {
@@ -129,7 +129,7 @@ namespace {
   template <__completion_signature... _Sigs>
   struct some_sequence_sender_of {
     using sender_concept = sequence_sender_t;
-    using completion_signatures = stdexec::completion_signatures<set_value_t()>;
+    using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
     using item_types = exec::item_types<some_sender_of<_Sigs...>>;
 
     template <receiver R>

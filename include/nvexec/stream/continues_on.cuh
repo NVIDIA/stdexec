@@ -45,7 +45,7 @@ namespace nvexec::_strm {
     template <class CvrefSenderId, class ReceiverId>
     struct receiver_t {
       using Sender = __cvref_t<CvrefSenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
+      using Receiver = STDEXEC::__t<ReceiverId>;
       using Env = operation_state_base_t<ReceiverId>::env_t;
 
       struct __t : stream_receiver_base {
@@ -81,7 +81,7 @@ namespace nvexec::_strm {
             int dev_id{};
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id));
                 status != cudaSuccess) {
-              operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              operation_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
               return;
             }
 
@@ -89,7 +89,7 @@ namespace nvexec::_strm {
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
                   &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id));
                 status != cudaSuccess) {
-              operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              operation_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
               return;
             }
 
@@ -99,7 +99,7 @@ namespace nvexec::_strm {
               if (cudaError_t status = STDEXEC_LOG_CUDA_API(
                     cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                   status != cudaSuccess) {
-                operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                operation_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
                 return;
               }
             }
@@ -110,7 +110,7 @@ namespace nvexec::_strm {
 
               if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                   status != cudaSuccess) {
-                operation_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+                operation_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
                 return;
               }
             }
@@ -164,7 +164,7 @@ namespace nvexec::_strm {
       template <__decay_copyable Self, receiver Receiver>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> connect_result_t<__copy_cvref_t<Self, schedule_from_sender_t>, Receiver> {
-        return stdexec::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
+        return STDEXEC::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
@@ -178,7 +178,7 @@ namespace nvexec::_strm {
       [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<const Sender&> {
         // TODO - this code is not exercised by any test
-        return stdexec::get_env(sndr_);
+        return STDEXEC::get_env(sndr_);
       }
 
      private:
@@ -194,7 +194,7 @@ namespace nvexec::_strm {
 
   template <class Scheduler, class SenderId>
   struct continues_on_sender_t {
-    using Sender = stdexec::__t<SenderId>;
+    using Sender = STDEXEC::__t<SenderId>;
     using source_sender_t = _trnsfr::source_sender_t<Sender>;
 
     struct __t : stream_sender_base {
@@ -202,7 +202,7 @@ namespace nvexec::_strm {
 
       template <class Self, class Receiver>
       using receiver_t =
-        stdexec::__t<_trnsfr::receiver_t<__cvref_id<Self, Sender>, stdexec::__id<Receiver>>>;
+        STDEXEC::__t<_trnsfr::receiver_t<__cvref_id<Self, Sender>, STDEXEC::__id<Receiver>>>;
 
       explicit __t(Scheduler sched, Sender sndr)
         : sched_(sched)
@@ -218,7 +218,7 @@ namespace nvexec::_strm {
           Receiver
         > {
         auto receiver_factory =
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
+          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
           -> receiver_t<Self, Receiver> {
           return receiver_t<Self, Receiver>{{}, stream_provider};
         };
@@ -255,11 +255,11 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<stdexec::continues_on_t, Env> {
+  struct transform_sender_for<STDEXEC::continues_on_t, Env> {
     template <class Sched, class Sender>
     auto operator()(__ignore, Sched sched, Sender&& sndr) const {
       static_assert(gpu_stream_scheduler<Sched, Env>);
-      using __sender_t = stdexec::__t<continues_on_sender_t<Sched, __id<__decay_t<Sender>>>>;
+      using __sender_t = STDEXEC::__t<continues_on_sender_t<Sched, __id<__decay_t<Sender>>>>;
       return __sender_t{sched, static_cast<Sender&&>(sndr)};
     }
 
@@ -268,10 +268,10 @@ namespace nvexec::_strm {
 } // namespace nvexec::_strm
 
 // Decode the sender name for diagnostics:
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class _Scheduler, class _SenderId>
   extern __mconst<nvexec::_strm::continues_on_sender_t<_Scheduler, __demangle_t<__t<_SenderId>>>>
     __demangle_v<nvexec::_strm::continues_on_sender_t<_Scheduler, _SenderId>>;
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

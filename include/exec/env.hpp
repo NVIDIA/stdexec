@@ -22,20 +22,20 @@ STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
 namespace exec {
   template <class _Tag, class _Value>
-  using with_t = stdexec::prop<_Tag, _Value>;
+  using with_t = STDEXEC::prop<_Tag, _Value>;
 
   namespace __envs {
     struct __with_t {
       template <class _Tag, class _Value>
       constexpr auto operator()(_Tag, _Value&& __val) const {
-        return stdexec::prop{_Tag(), static_cast<_Value&&>(__val)};
+        return STDEXEC::prop{_Tag(), static_cast<_Value&&>(__val)};
       }
     };
 
     struct __without_t {
       template <class _Env, class _Tag>
       constexpr auto operator()(_Env&& __env, _Tag) const -> decltype(auto) {
-        return stdexec::__env::__without(static_cast<_Env&&>(__env), _Tag());
+        return STDEXEC::__env::__without(static_cast<_Env&&>(__env), _Tag());
       }
     };
 
@@ -43,15 +43,15 @@ namespace exec {
     // another environment.
     struct __make_env_t {
       template <
-        stdexec::__nothrow_move_constructible _Base,
-        stdexec::__nothrow_move_constructible _Env
+        STDEXEC::__nothrow_move_constructible _Base,
+        STDEXEC::__nothrow_move_constructible _Env
       >
       constexpr auto operator()(_Base&& __base, _Env&& __env) const noexcept
-        -> stdexec::__join_env_t<_Env, _Base> {
-        return stdexec::__env::__join(static_cast<_Env&&>(__env), static_cast<_Base&&>(__base));
+        -> STDEXEC::__join_env_t<_Env, _Base> {
+        return STDEXEC::__env::__join(static_cast<_Env&&>(__env), static_cast<_Base&&>(__base));
       }
 
-      template <stdexec::__nothrow_move_constructible _Env>
+      template <STDEXEC::__nothrow_move_constructible _Env>
       constexpr auto operator()(_Env&& __env) const noexcept -> _Env {
         return static_cast<_Env&&>(__env);
       }
@@ -63,17 +63,17 @@ namespace exec {
   inline constexpr __envs::__make_env_t make_env{};
 
   template <class... _Ts>
-  using make_env_t = stdexec::__result_of<make_env, _Ts...>;
+  using make_env_t = STDEXEC::__result_of<make_env, _Ts...>;
 
   namespace __read_with_default {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     struct read_with_default_t;
 
     template <class _Tag, class _DefaultId, class _ReceiverId>
     struct __operation {
-      using _Default = stdexec::__t<_DefaultId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Default = STDEXEC::__t<_DefaultId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t : __immovable {
         using __id = __operation;
@@ -85,13 +85,13 @@ namespace exec {
           STDEXEC_TRY {
             if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
               const auto& __env = get_env(__rcvr_);
-              stdexec::set_value(std::move(__rcvr_), _Tag{}(__env));
+              STDEXEC::set_value(std::move(__rcvr_), _Tag{}(__env));
             } else {
-              stdexec::set_value(std::move(__rcvr_), std::move(__default_));
+              STDEXEC::set_value(std::move(__rcvr_), std::move(__default_));
             }
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(std::move(__rcvr_), std::current_exception());
+            STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
           }
         }
       };
@@ -104,7 +104,7 @@ namespace exec {
     struct __sender {
       using __id = __sender;
       using __t = __sender;
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       STDEXEC_ATTRIBUTE(no_unique_address) _Default __default_;
 
       template <class _Env>
@@ -143,17 +143,17 @@ namespace exec {
 
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
-  [[deprecated("exec::write has been renamed to stdexec::write_env")]]
-  inline constexpr stdexec::__write::write_env_t write{};
-  [[deprecated("write_env has been moved to the stdexec:: namespace")]]
-  inline constexpr stdexec::__write::write_env_t write_env{};
+  [[deprecated("exec::write has been renamed to STDEXEC::write_env")]]
+  inline constexpr STDEXEC::__write::write_env_t write{};
+  [[deprecated("write_env has been moved to the STDEXEC:: namespace")]]
+  inline constexpr STDEXEC::__write::write_env_t write_env{};
 
   namespace __write_attrs {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _SenderId, class _Attrs>
     struct __sender {
-      using _Sender = stdexec::__t<_SenderId>;
+      using _Sender = STDEXEC::__t<_SenderId>;
 
       struct __t {
         using sender_concept = sender_t;
@@ -162,7 +162,7 @@ namespace exec {
         _Attrs __attrs_;
 
         constexpr auto get_env() const noexcept -> __join_env_t<const _Attrs&, env_of_t<_Sender>> {
-          return stdexec::__env::__join(__attrs_, stdexec::get_env(__sndr_));
+          return STDEXEC::__env::__join(__attrs_, STDEXEC::get_env(__sndr_));
         }
 
         template <__decays_to<__t> _Self, class... _Env>
@@ -177,7 +177,7 @@ namespace exec {
           requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
         constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver> {
-          return stdexec::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
+          return STDEXEC::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
         }
         STDEXEC_EXPLICIT_THIS_END(connect)
       };

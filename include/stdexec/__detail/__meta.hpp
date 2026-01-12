@@ -26,7 +26,7 @@
 #include <string_view>
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   //! Convenience metafunction getting the dependant type `__t` out of `_Tp`.
   //! That is, `typename _Tp::__t`.
   //! See MAINTAINERS.md#class-template-parameters for details.
@@ -355,7 +355,7 @@ namespace stdexec {
 
   //! This struct template is like [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
   //! It turns an alias/class template into a metafunction that also propagates "meta-exceptions".
-  //! All of the meta utilities recognize specializations of stdexec::_ERROR_ as an error type.
+  //! All of the meta utilities recognize specializations of STDEXEC::_ERROR_ as an error type.
   //! Error types short-circuit the evaluation of the metafunction and are automatically propagated like an exception.
   //! Note: `__minvoke` and `__meval` also participate in this error propagation.
   //!
@@ -1201,7 +1201,7 @@ namespace stdexec {
     template <std::size_t _Np>
     STDEXEC_ATTRIBUTE(always_inline)
     static constexpr auto __nth() noexcept {
-      return stdexec::__nth_pack_element<_Np>(_Vs...);
+      return STDEXEC::__nth_pack_element<_Np>(_Vs...);
     }
   };
 
@@ -1272,4 +1272,4 @@ namespace stdexec {
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
   };
-} // namespace stdexec
+} // namespace STDEXEC

@@ -27,7 +27,7 @@
 
 #include <exception>
 
-namespace stdexec {
+namespace STDEXEC {
   enum class __disposition {
     __value,
     __error,
@@ -37,9 +37,9 @@ namespace stdexec {
   namespace __detail {
     template <__disposition _Disposition>
     struct __completion_tag {
-      static constexpr stdexec::__disposition __disposition = _Disposition;
+      static constexpr STDEXEC::__disposition __disposition = _Disposition;
 
-      template <stdexec::__disposition _OtherDisposition>
+      template <STDEXEC::__disposition _OtherDisposition>
       constexpr bool operator==(__completion_tag<_OtherDisposition>) const noexcept {
         return _Disposition == _OtherDisposition;
       }
@@ -219,16 +219,16 @@ namespace stdexec {
     STDEXEC_TRY {
       if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun &&>(__fun), static_cast<_As &&>(__as)...);
-        stdexec::set_value(static_cast<_Receiver &&>(__rcvr));
+        STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr));
       } else {
-        stdexec::set_value(
+        STDEXEC::set_value(
           static_cast<_Receiver &&>(__rcvr),
           __invoke(static_cast<_Fun &&>(__fun), static_cast<_As &&>(__as)...));
       }
     }
     STDEXEC_CATCH_ALL {
       if constexpr (!__nothrow_invocable<_Fun, _As...>) {
-        stdexec::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
+        STDEXEC::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
       }
     }
   }
@@ -266,4 +266,4 @@ namespace stdexec {
       STDEXEC_TERMINATE();
     }
   };
-} // namespace stdexec
+} // namespace STDEXEC

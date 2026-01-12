@@ -18,17 +18,17 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
-#include <vector>
 #include <algorithm>
 #include <numeric>
+#include <vector>
 
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -58,7 +58,7 @@ namespace { namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
+    auto snd = STDEXEC::transfer_just(stream.get_scheduler(), first, last)
              | nvexec::launch(
                  {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
                  [flags](cudaStream_t, int* first, int* last) -> void {
@@ -74,7 +74,7 @@ namespace { namespace {
                      first[idx] *= scaling;
                    }
                  })
-             | stdexec::then([flags](int* first, int* last) -> int {
+             | STDEXEC::then([flags](int* first, int* last) -> int {
                  printf("In then() size=%d\n", (int) (last - first));
                  if (nvexec::is_on_gpu()) {
                    flags.set(1);
@@ -82,7 +82,7 @@ namespace { namespace {
                  return std::accumulate(first, last, 0);
                });
 
-    auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(result == bench());
     REQUIRE(flags_storage.all_set_once());

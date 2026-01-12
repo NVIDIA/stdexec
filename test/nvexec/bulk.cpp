@@ -1,12 +1,12 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
 #include <cuda/std/span>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -30,7 +30,7 @@ namespace {
                    flags.set(idx);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -49,7 +49,7 @@ namespace {
                    }
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -68,7 +68,7 @@ namespace {
                    }
                  }
                });
-    const auto [i, d] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [i, d] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
     REQUIRE(i == 42);
@@ -90,7 +90,7 @@ namespace {
                    flags.set(idx);
                  }
                });
-    [[maybe_unused]] auto [flags_actual] = stdexec::sync_wait(std::move(snd)).value();
+    [[maybe_unused]] auto [flags_actual] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -115,7 +115,7 @@ namespace {
                    flags.set(2);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -136,7 +136,7 @@ namespace {
                      flags.set(idx);
                    }
                  });
-      stdexec::sync_wait(std::move(snd));
+      STDEXEC::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -153,7 +153,7 @@ namespace {
                      flags.set(idx);
                    }
                  });
-      stdexec::sync_wait(std::move(snd)).value();
+      STDEXEC::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -168,17 +168,17 @@ namespace {
     const int nelems = 10;
     cudaMallocManaged(&inout, nelems * sizeof(double));
 
-    auto task = stdexec::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
-              | stdexec::bulk(
+    auto task = STDEXEC::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
+              | STDEXEC::bulk(
                   ex::par,
                   nelems,
                   [](std::size_t i, cuda::std::span<double> out) { out[i] = (double) i; })
-              | stdexec::let_value([](cuda::std::span<double> out) { return stdexec::just(out); })
-              | stdexec::bulk(ex::par, nelems, [](std::size_t i, cuda::std::span<double> out) {
+              | STDEXEC::let_value([](cuda::std::span<double> out) { return STDEXEC::just(out); })
+              | STDEXEC::bulk(ex::par, nelems, [](std::size_t i, cuda::std::span<double> out) {
                   out[i] = 2.0 * out[i];
                 });
 
-    stdexec::sync_wait(std::move(task)).value();
+    STDEXEC::sync_wait(std::move(task)).value();
 
     for (int i = 0; i < nelems; ++i) {
       REQUIRE(i * 2 == (int) inout[i]);

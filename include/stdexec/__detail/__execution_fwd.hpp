@@ -32,7 +32,7 @@ template <class...>
 class tuple;
 STDEXEC_NAMESPACE_STD_END
 
-namespace stdexec {
+namespace STDEXEC {
   struct __none_such;
 
   namespace __detail {
@@ -98,7 +98,7 @@ namespace stdexec {
   using __env::prop;
   using __env::cprop;
   using __env::env;
-  using empty_env [[deprecated("stdexec::empty_env is now spelled stdexec::env<>")]] = env<>;
+  using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __get_env {
@@ -207,7 +207,7 @@ namespace stdexec {
     template <class _Completions>
     concept __well_formed_completions_helper =
       __valid_completion_signatures<_Completions>
-      || STDEXEC_IS_BASE_OF(stdexec::dependent_sender_error, _Completions)
+      || STDEXEC_IS_BASE_OF(STDEXEC::dependent_sender_error, _Completions)
       || __is_instance_of<_Completions, _ERROR_>;
 #else
     // When we have constexpr exceptions, we can require that get_completion_signatures
@@ -400,7 +400,7 @@ namespace stdexec {
 
   using __detail::__sexpr_apply_t;
   extern const __sexpr_apply_t __sexpr_apply;
-} // namespace stdexec
+} // namespace STDEXEC
 
 template <class...>
 [[deprecated]]

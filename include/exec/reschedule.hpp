@@ -20,7 +20,7 @@
 namespace exec {
   namespace __resched {
 
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <
       __mstring _Where = "In reschedule() ..."_mstr,
@@ -57,13 +57,13 @@ namespace exec {
           requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
         auto connect(_Receiver __rcvr) const
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
-          auto __sched = get_scheduler(stdexec::get_env(__rcvr));
-          return stdexec::connect(stdexec::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
+          auto __sched = get_scheduler(STDEXEC::get_env(__rcvr));
+          return STDEXEC::connect(STDEXEC::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         [[nodiscard]]
         auto get_env() const noexcept {
-          return stdexec::prop{get_completion_scheduler<set_value_t>, __scheduler()};
+          return STDEXEC::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 
@@ -78,11 +78,11 @@ namespace exec {
     struct __reschedule_t {
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const {
-        return stdexec::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
+        return STDEXEC::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
       }
 
       auto operator()() const {
-        return stdexec::continues_on(__resched::__scheduler{});
+        return STDEXEC::continues_on(__resched::__scheduler{});
       }
     };
   } // namespace __resched

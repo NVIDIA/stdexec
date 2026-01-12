@@ -16,11 +16,11 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 // For testing `transfer_when_all` we assume that, the main implementation is based on `transfer`
 // and `when_all`. As both of these are tested independently, we provide fewer tests here.
@@ -113,7 +113,7 @@ namespace {
     template <class Tag, auto Fun>
     struct basic_domain {
       template <ex::sender_expr_for<Tag> Sender, class Env>
-      auto transform_sender(stdexec::set_value_t, Sender&&, const Env&) const {
+      auto transform_sender(STDEXEC::set_value_t, Sender&&, const Env&) const {
         return Fun();
       }
     };

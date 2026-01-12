@@ -27,9 +27,9 @@ namespace exec {
   struct just_stopped_from_t;
 
   namespace detail {
-    auto _just_from(just_from_t*) -> stdexec::set_value_t;
-    auto _just_from(just_error_from_t*) -> stdexec::set_error_t;
-    auto _just_from(just_stopped_from_t*) -> stdexec::set_stopped_t;
+    auto _just_from(just_from_t*) -> STDEXEC::set_value_t;
+    auto _just_from(just_error_from_t*) -> STDEXEC::set_error_t;
+    auto _just_from(just_stopped_from_t*) -> STDEXEC::set_stopped_t;
   } // namespace detail
 
   template <class JustTag>
@@ -38,17 +38,17 @@ namespace exec {
     friend JustTag;
     using _set_tag_t = decltype(detail::_just_from(static_cast<JustTag*>(nullptr)));
 
-    using _diag_t = stdexec::__if_c<
-      STDEXEC_IS_SAME(_set_tag_t, stdexec::set_error_t),
+    using _diag_t = STDEXEC::__if_c<
+      STDEXEC_IS_SAME(_set_tag_t, STDEXEC::set_error_t),
       AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT,
       A_STOPPED_COMPLETION_MUST_HAVE_NO_ARGUMENTS
     >;
 
     template <class... Ts>
-    using _error_t = stdexec::_ERROR_<
-      stdexec::_WHAT_<>(_diag_t),
-      stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, JustTag),
-      stdexec::_WITH_COMPLETION_SIGNATURE_<_set_tag_t(Ts...)>
+    using _error_t = STDEXEC::_ERROR_<
+      STDEXEC::_WHAT_<>(_diag_t),
+      STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, JustTag),
+      STDEXEC::_WITH_COMPLETION_SIGNATURE_<_set_tag_t(Ts...)>
     >;
 
     struct _probe_fn {
@@ -56,8 +56,8 @@ namespace exec {
       auto operator()(Ts&&... ts) const noexcept -> _error_t<Ts...>;
 
       template <class... Ts>
-        requires stdexec::__cmplsigs::__is_compl_sig<_set_tag_t(Ts...)>
-      auto operator()(Ts&&...) const noexcept -> stdexec::completion_signatures<_set_tag_t(Ts...)> {
+        requires STDEXEC::__cmplsigs::__is_compl_sig<_set_tag_t(Ts...)>
+      auto operator()(Ts&&...) const noexcept -> STDEXEC::completion_signatures<_set_tag_t(Ts...)> {
         return {};
       }
     };
@@ -75,20 +75,20 @@ namespace exec {
 
     template <class Rcvr, class Fn>
     struct _opstate {
-      using operation_state_concept = stdexec::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_t;
 
       Rcvr _rcvr;
       Fn _fn;
 
       STDEXEC_ATTRIBUTE(host, device) void start() & noexcept {
-        if constexpr (stdexec::__nothrow_callable<Fn, _complete_fn<Rcvr>>) {
+        if constexpr (STDEXEC::__nothrow_callable<Fn, _complete_fn<Rcvr>>) {
           static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
         } else {
           STDEXEC_TRY {
             static_cast<Fn&&>(_fn)(_complete_fn<Rcvr>{_rcvr});
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
           }
         }
       }
@@ -96,20 +96,20 @@ namespace exec {
 
     struct _nothrow_completions {
       template <class Fn>
-      using __f = stdexec::__call_result_t<Fn, _probe_fn>;
+      using __f = STDEXEC::__call_result_t<Fn, _probe_fn>;
     };
 
     struct _throw_completions {
       template <class Fn>
-      using __f = stdexec::__concat_completion_signatures<
-        stdexec::__call_result_t<Fn, _probe_fn>,
-        stdexec::__eptr_completion
+      using __f = STDEXEC::__concat_completion_signatures<
+        STDEXEC::__call_result_t<Fn, _probe_fn>,
+        STDEXEC::__eptr_completion
       >;
     };
 
     template <class Fn>
-    using _completions = stdexec::__minvoke_if_c<
-      stdexec::__nothrow_callable<Fn, _probe_fn>,
+    using _completions = STDEXEC::__minvoke_if_c<
+      STDEXEC::__nothrow_callable<Fn, _probe_fn>,
       _nothrow_completions,
       _throw_completions,
       Fn
@@ -117,16 +117,16 @@ namespace exec {
 
     template <class... Tags>
     struct _attrs {
-      template <stdexec::__one_of<Tags...> Tag>
+      template <STDEXEC::__one_of<Tags...> Tag>
       [[nodiscard]]
-      constexpr auto query(stdexec::get_completion_behavior_t<Tag>) const noexcept {
-        return stdexec::completion_behavior::inline_completion;
+      constexpr auto query(STDEXEC::get_completion_behavior_t<Tag>) const noexcept {
+        return STDEXEC::completion_behavior::inline_completion;
       }
     };
 
     template <class Fn>
     struct _sndr_base {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = _completions<Fn>;
 
       STDEXEC_ATTRIBUTE(no_unique_address) JustTag _tag;
@@ -134,14 +134,14 @@ namespace exec {
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto connect(Rcvr rcvr) && noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn>)
+      auto connect(Rcvr rcvr) && noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn>)
         -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), static_cast<Fn&&>(_fn)};
       }
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto connect(Rcvr rcvr) const & noexcept(stdexec::__nothrow_decay_copyable<Rcvr, Fn const &>)
+      auto connect(Rcvr rcvr) const & noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn const &>)
         -> _opstate<Rcvr, Fn> {
         return _opstate<Rcvr, Fn>{static_cast<Rcvr&&>(rcvr), _fn};
       }
@@ -149,10 +149,10 @@ namespace exec {
       [[nodiscard]]
       constexpr auto get_env() const noexcept {
         // Extract the tags from the completion signatures and use them to construct the attributes.
-        return stdexec::__mapply<
-          stdexec::__mtransform<
-            stdexec::__q1<stdexec::__detail::__tag_of_sig_t>,
-            stdexec::__munique<stdexec::__qq<_just_from::_attrs>>
+        return STDEXEC::__mapply<
+          STDEXEC::__mtransform<
+            STDEXEC::__q1<STDEXEC::__detail::__tag_of_sig_t>,
+            STDEXEC::__munique<STDEXEC::__qq<_just_from::_attrs>>
           >,
           completion_signatures
         >();
@@ -162,14 +162,14 @@ namespace exec {
       STDEXEC_ATTRIBUTE(host, device)
       auto submit(Rcvr rcvr) && noexcept -> void {
         auto op = static_cast<_sndr_base&&>(*this).connect(static_cast<Rcvr&&>(rcvr));
-        stdexec::start(op);
+        STDEXEC::start(op);
       }
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
       auto submit(Rcvr rcvr) const & noexcept -> void {
         auto op = this->connect(static_cast<Rcvr&&>(rcvr));
-        stdexec::start(op);
+        STDEXEC::start(op);
       }
     };
 
@@ -180,18 +180,18 @@ namespace exec {
     template <class Fn>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     auto operator()(Fn fn) const noexcept {
-      if constexpr (stdexec::__callable<Fn, _probe_fn>) {
-        using _completions = stdexec::__call_result_t<Fn, _probe_fn>;
+      if constexpr (STDEXEC::__callable<Fn, _probe_fn>) {
+        using _completions = STDEXEC::__call_result_t<Fn, _probe_fn>;
         static_assert(
-          stdexec::__is_instance_of<_completions, stdexec::completion_signatures>,
+          STDEXEC::__is_instance_of<_completions, STDEXEC::completion_signatures>,
           "The function passed to just_from, just_error_from, and just_stopped_from must return an "
-          "instance of a specialization of stdexec::completion_signatures<>.");
+          "instance of a specialization of STDEXEC::completion_signatures<>.");
         return _sndr<Fn>{
           {{}, static_cast<Fn&&>(fn)}
         };
       } else {
         static_assert(
-          stdexec::__callable<Fn, _probe_fn>,
+          STDEXEC::__callable<Fn, _probe_fn>,
           "The function passed to just_from, just_error_from, and just_stopped_from must be "
           "callable with a sink function.");
       }
@@ -207,8 +207,8 @@ namespace exec {
   //!
   //! @par
   //! The function passed to `just_from` must return an instance of a specialization of
-  //! `stdexec::completion_signatures<>` that describes the ways the sink function might be
-  //! invoked. The sink function returns such a specialization of `stdexec::completion_signatures<>`
+  //! `STDEXEC::completion_signatures<>` that describes the ways the sink function might be
+  //! invoked. The sink function returns such a specialization of `STDEXEC::completion_signatures<>`
   //! corresponding to the arguments passed to it, but if your function uses the sink function
   //! in several different ways, you must specify the return type explicitly.
   //!
@@ -228,8 +228,8 @@ namespace exec {
   //!     } else {
   //!       sink(3.14);
   //!     }
-  //!     return stdexec::completion_signatures<stdexec::set_value_t(int),
-  //!                                           stdexec::set_value_t(double)>{};
+  //!     return STDEXEC::completion_signatures<STDEXEC::set_value_t(int),
+  //!                                           STDEXEC::set_value_t(double)>{};
   //!   });
   //! @endcode
   struct just_from_t : _just_from<just_from_t> {

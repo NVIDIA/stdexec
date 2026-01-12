@@ -49,7 +49,7 @@ namespace nvexec::_strm {
     template <class ReceiverId, std::integral Shape, class Fun>
     struct receiver_t {
       class __t : public stream_receiver_base {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
         using Env = operation_state_base_t<ReceiverId>::env_t;
 
         Shape shape_;
@@ -75,9 +75,9 @@ namespace nvexec::_strm {
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
               status == cudaSuccess) {
-            op_state.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
+            op_state.propagate_completion_signal(STDEXEC::set_value, static_cast<As&&>(as)...);
           } else {
-            op_state.propagate_completion_signal(stdexec::set_error, std::move(status));
+            op_state.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
 
@@ -106,7 +106,7 @@ namespace nvexec::_strm {
 
   template <class SenderId, std::integral Shape, class Fun>
   struct bulk_sender_t {
-    using Sender = stdexec::__t<SenderId>;
+    using Sender = STDEXEC::__t<SenderId>;
 
     struct __t : stream_sender_base {
       using __id = bulk_sender_t;
@@ -117,7 +117,7 @@ namespace nvexec::_strm {
       using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
 
       template <class Receiver>
-      using receiver_t = stdexec::__t<_bulk::receiver_t<stdexec::__id<Receiver>, Shape, Fun>>;
+      using receiver_t = STDEXEC::__t<_bulk::receiver_t<STDEXEC::__id<Receiver>, Shape, Fun>>;
 
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(Tys...)>;
@@ -136,7 +136,7 @@ namespace nvexec::_strm {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
+          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
             return receiver_t<Receiver>(
               self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
@@ -145,10 +145,11 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> _completion_signatures_t<Self, Env...> {
         return {};
       }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
@@ -173,7 +174,7 @@ namespace nvexec::_strm {
 
     template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
     struct receiver_t {
-      using Receiver = stdexec::__t<ReceiverId>;
+      using Receiver = STDEXEC::__t<ReceiverId>;
 
       class __t : public stream_receiver_base {
         Shape shape_;
@@ -247,9 +248,9 @@ namespace nvexec::_strm {
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
               status == cudaSuccess) {
-            op_state_.propagate_completion_signal(stdexec::set_value, static_cast<As&&>(as)...);
+            op_state_.propagate_completion_signal(STDEXEC::set_value, static_cast<As&&>(as)...);
           } else {
-            op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
 
@@ -264,7 +265,7 @@ namespace nvexec::_strm {
 
         [[nodiscard]]
         auto get_env() const noexcept -> env_of_t<Receiver> {
-          return stdexec::get_env(op_state_.rcvr_);
+          return STDEXEC::get_env(op_state_.rcvr_);
         }
 
         explicit __t(
@@ -285,7 +286,7 @@ namespace nvexec::_strm {
     template <class CvrefSenderId, class ReceiverId, class Shape, class Fun>
     struct operation_t : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun> {
       using Sender = __cvref_t<CvrefSenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
+      using Receiver = STDEXEC::__t<ReceiverId>;
 
       template <class _Receiver2>
       operation_t(
@@ -298,9 +299,9 @@ namespace nvexec::_strm {
         : operation_base_t<CvrefSenderId, ReceiverId, Shape, Fun>(
             static_cast<Sender&&>(__sndr),
             static_cast<_Receiver2&&>(__rcvr),
-            [&](operation_state_base_t<stdexec::__id<_Receiver2>>&)
-              -> stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
-              return stdexec::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(
+            [&](operation_state_base_t<STDEXEC::__id<_Receiver2>>&)
+              -> STDEXEC::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>> {
+              return STDEXEC::__t<receiver_t<CvrefSenderId, ReceiverId, Shape, Fun>>(
                 shape, fun, *this);
             },
             context_state)
@@ -341,8 +342,8 @@ namespace nvexec::_strm {
 
   template <class SenderId, class Shape, class Fun>
   struct multi_gpu_bulk_sender_t {
-    using sender_concept = stdexec::sender_t;
-    using Sender = stdexec::__t<SenderId>;
+    using sender_concept = STDEXEC::sender_t;
+    using Sender = STDEXEC::__t<SenderId>;
     static_assert(std::integral<Shape>);
 
     struct __t : stream_sender_base {
@@ -369,16 +370,16 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
         -> multi_gpu_bulk::operation_t<
           __cvref_id<Self, Sender>,
-          stdexec::__id<Receiver>,
+          STDEXEC::__id<Receiver>,
           Shape,
           Fun
         > {
-        auto sch = stdexec::get_completion_scheduler<set_value_t>(
-          stdexec::get_env(self.sndr_), stdexec::get_env(rcvr));
+        auto sch = STDEXEC::get_completion_scheduler<set_value_t>(
+          STDEXEC::get_env(self.sndr_), STDEXEC::get_env(rcvr));
         context_state_t context_state = sch.context_state_;
         return multi_gpu_bulk::operation_t<
           __cvref_id<Self, Sender>,
-          stdexec::__id<Receiver>,
+          STDEXEC::__id<Receiver>,
           Shape,
           Fun
         >(self.num_devices_,
@@ -391,10 +392,11 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> _completion_signatures_t<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> _completion_signatures_t<Self, Env...> {
         return {};
       }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
@@ -403,7 +405,7 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<stdexec::bulk_t, Env> {
+  struct transform_sender_for<STDEXEC::bulk_t, Env> {
     template <class Data, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Data data, Sender&& sndr) const {
       auto [policy, shape, fun] = static_cast<Data&&>(data);
@@ -426,7 +428,7 @@ namespace nvexec::_strm {
   };
 } // namespace nvexec::_strm
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class SenderId, class Shape, class Fun>
   inline constexpr __mconst<nvexec::_strm::bulk_sender_t<__demangle_t<__t<SenderId>>, Shape, Fun>>
     __demangle_v<nvexec::_strm::bulk_sender_t<SenderId, Shape, Fun>>{};
@@ -436,6 +438,6 @@ namespace stdexec::__detail {
     nvexec::_strm::multi_gpu_bulk_sender_t<__demangle_t<__t<SenderId>>, Shape, Fun>
   >
     __demangle_v<nvexec::_strm::multi_gpu_bulk_sender_t<SenderId, Shape, Fun>>{};
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -18,14 +18,14 @@
 #include "exec/repeat_n.hpp"
 #include "exec/static_thread_pool.hpp"
 #include "stdexec/execution.hpp"
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <catch2/catch.hpp>
 
-using namespace stdexec;
+using namespace STDEXEC;
 
 namespace {
   TEST_CASE("repeat_n returns a sender", "[adaptors][repeat_n]") {

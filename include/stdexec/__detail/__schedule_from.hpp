@@ -23,7 +23,7 @@
 #include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
   namespace __schfr {
@@ -48,4 +48,4 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<schedule_from_t> : __schfr::__schedule_from_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

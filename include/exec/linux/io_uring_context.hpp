@@ -94,7 +94,7 @@ namespace exec {
     }
 
     // This base class maps the Linux kernel's io_uring data structures into the process.
-    struct __context_base : stdexec::__immovable {
+    struct __context_base : STDEXEC::__immovable {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
         : __params_{__context_base::__init_params(__flags)}
         , __ring_fd_{__io_uring_setup(__entries, __params_)}
@@ -151,7 +151,7 @@ namespace exec {
 
     // This is the base class for all io operations.
     // It provides the vtable and the next pointer for the intrusive queues.
-    struct __task : stdexec::__immovable {
+    struct __task : STDEXEC::__immovable {
       const __task_vtable* __vtable_;
       __task* __next_{nullptr};
 
@@ -160,7 +160,7 @@ namespace exec {
       }
     };
 
-    using __task_queue = stdexec::__intrusive_queue<&__task::__next_>;
+    using __task_queue = STDEXEC::__intrusive_queue<&__task::__next_>;
     using __atomic_task_queue = __atomic_intrusive_queue<&__task::__next_>;
 
     template <class _Ty>
@@ -183,8 +183,8 @@ namespace exec {
 
     // This class implements the io_uring submission queue.
     class __submission_queue {
-      stdexec::__std::atomic_ref<__u32> __head_;
-      stdexec::__std::atomic_ref<__u32> __tail_;
+      STDEXEC::__std::atomic_ref<__u32> __head_;
+      STDEXEC::__std::atomic_ref<__u32> __tail_;
       __u32* __array_;
       ::io_uring_sqe* __entries_;
       __u32 __mask_;
@@ -212,8 +212,8 @@ namespace exec {
       // an io_uring_cqe object with the result field set to -ECANCELED.
       auto submit(__task_queue __tasks, __u32 __max_submissions, bool __is_stopped) noexcept
         -> __submission_result {
-        __u32 __tail = __tail_.load(stdexec::__std::memory_order_relaxed);
-        __u32 __head = __head_.load(stdexec::__std::memory_order_acquire);
+        __u32 __tail = __tail_.load(STDEXEC::__std::memory_order_relaxed);
+        __u32 __head = __head_.load(STDEXEC::__std::memory_order_acquire);
         __u32 __current_count = __tail - __head;
         STDEXEC_ASSERT(__current_count <= __n_total_slots_);
         __max_submissions = std::min(__max_submissions, __n_total_slots_ - __current_count);
@@ -241,7 +241,7 @@ namespace exec {
             }
           }
         }
-        __tail_.store(__tail, stdexec::__std::memory_order_release);
+        __tail_.store(__tail, STDEXEC::__std::memory_order_release);
         while (!__tasks.empty()) {
           __op = __tasks.pop_front();
           if (__op->__vtable_->__ready_(__op)) {
@@ -255,8 +255,8 @@ namespace exec {
     };
 
     class __completion_queue {
-      stdexec::__std::atomic_ref<__u32> __head_;
-      stdexec::__std::atomic_ref<__u32> __tail_;
+      STDEXEC::__std::atomic_ref<__u32> __head_;
+      STDEXEC::__std::atomic_ref<__u32> __tail_;
       ::io_uring_cqe* __entries_;
       __u32 __mask_;
      public:
@@ -272,10 +272,10 @@ namespace exec {
       // This function first completes all tasks that are ready in the completion queue of the io_uring.
       // Then it completes all tasks that are ready in the given queue of ready tasks.
       // The function returns the number of previously submitted completed tasks.
-      auto complete(stdexec::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
+      auto complete(STDEXEC::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
         -> int {
-        __u32 __head = __head_.load(stdexec::__std::memory_order_relaxed);
-        __u32 __tail = __tail_.load(stdexec::__std::memory_order_acquire);
+        __u32 __head = __head_.load(STDEXEC::__std::memory_order_relaxed);
+        __u32 __tail = __tail_.load(STDEXEC::__std::memory_order_acquire);
         int __count = 0;
         while (__head != __tail) {
           const __u32 __index = __head & __mask_;
@@ -284,9 +284,9 @@ namespace exec {
           __op->__vtable_->__complete_(__op, __cqe);
           ++__head;
           ++__count;
-          __tail = __tail_.load(stdexec::__std::memory_order_acquire);
+          __tail = __tail_.load(STDEXEC::__std::memory_order_acquire);
         }
-        __head_.store(__head, stdexec::__std::memory_order_release);
+        __head_.store(__head, STDEXEC::__std::memory_order_release);
         while (!__ready.empty()) {
           __task* __op = __ready.pop_front();
           ::io_uring_cqe __dummy_cqe{};
@@ -375,11 +375,11 @@ namespace exec {
 
       /// @brief Resets the io context to its initial state.
       void reset() {
-        if (__is_running_.load(stdexec::__std::memory_order_relaxed) || __n_total_submitted_ > 0) {
+        if (__is_running_.load(STDEXEC::__std::memory_order_relaxed) || __n_total_submitted_ > 0) {
           STDEXEC_THROW(
             std::runtime_error("exec::io_uring_context::reset() called on a running context"));
         }
-        __n_submissions_in_flight_.store(0, stdexec::__std::memory_order_relaxed);
+        __n_submissions_in_flight_.store(0, STDEXEC::__std::memory_order_relaxed);
         __stop_source_.reset();
         __stop_source_.emplace();
       }
@@ -393,17 +393,17 @@ namespace exec {
         return __stop_source_->stop_requested();
       }
 
-      auto get_stop_token() const noexcept -> stdexec::inplace_stop_token {
+      auto get_stop_token() const noexcept -> STDEXEC::inplace_stop_token {
         return __stop_source_->get_token();
       }
 
       auto is_running() const noexcept -> bool {
-        return __is_running_.load(stdexec::__std::memory_order_relaxed);
+        return __is_running_.load(STDEXEC::__std::memory_order_relaxed);
       }
 
       /// @brief  Breaks out of the run loop of the io context without stopping the context.
       void finish() {
-        __break_loop_.store(true, stdexec::__std::memory_order_release);
+        __break_loop_.store(true, STDEXEC::__std::memory_order_release);
         wakeup();
       }
 
@@ -421,8 +421,8 @@ namespace exec {
                && !__n_submissions_in_flight_.compare_exchange_weak(
                  __n,
                  __n + 1,
-                 stdexec::__std::memory_order_acquire,
-                 stdexec::__std::memory_order_relaxed))
+                 STDEXEC::__std::memory_order_acquire,
+                 STDEXEC::__std::memory_order_relaxed))
           ;
         if (__n == __no_new_submissions) {
           __stop(__op);
@@ -431,7 +431,7 @@ namespace exec {
           __requests_.push_front(__op);
           [[maybe_unused]]
           int __prev = __n_submissions_in_flight_
-                         .fetch_sub(1, stdexec::__std::memory_order_relaxed);
+                         .fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
           STDEXEC_ASSERT(__prev > 0);
           return true;
         }
@@ -476,31 +476,31 @@ namespace exec {
         bool expected_running = false;
         // Only one thread of execution is allowed to drive the io context.
         if (!__is_running_.compare_exchange_strong(
-              expected_running, true, stdexec::__std::memory_order_relaxed)) {
+              expected_running, true, STDEXEC::__std::memory_order_relaxed)) {
           STDEXEC_THROW(
             std::runtime_error("exec::io_uring_context::run() called on a running context"));
         } else {
           // Check whether we restart the context after a context-wide stop.
           // We have to reset the stop source in this case.
-          int __in_flight = __n_submissions_in_flight_.load(stdexec::__std::memory_order_relaxed);
+          int __in_flight = __n_submissions_in_flight_.load(STDEXEC::__std::memory_order_relaxed);
           if (__in_flight == __no_new_submissions) {
             __stop_source_.emplace();
             // Make emplacement of stop source visible to other threads and open the door for new submissions.
-            __n_submissions_in_flight_.store(0, stdexec::__std::memory_order_release);
+            __n_submissions_in_flight_.store(0, STDEXEC::__std::memory_order_release);
           } else {
             // This can only happen for the very first pass of run_until_stopped()
             __wakeup_operation_.start();
           }
         }
         scope_guard __not_running{
-          [&]() noexcept { __is_running_.store(false, stdexec::__std::memory_order_relaxed); }};
+          [&]() noexcept { __is_running_.store(false, STDEXEC::__std::memory_order_relaxed); }};
         __pending_.append(__requests_.pop_all_reversed());
         while (__n_total_submitted_ > 0 || !__pending_.empty()) {
           run_some();
           if (
             __n_total_submitted_ == 0
-            || (__n_total_submitted_ == 1 && __break_loop_.load(stdexec::__std::memory_order_acquire))) {
-            __break_loop_.store(false, stdexec::__std::memory_order_relaxed);
+            || (__n_total_submitted_ == 1 && __break_loop_.load(STDEXEC::__std::memory_order_acquire))) {
+            __break_loop_.store(false, STDEXEC::__std::memory_order_relaxed);
             break;
           }
           constexpr int __min_complete = 1;
@@ -527,14 +527,14 @@ namespace exec {
           // try to shutdown the request queue
           int __n_in_flight_expected = 0;
           while (!__n_submissions_in_flight_.compare_exchange_weak(
-            __n_in_flight_expected, __no_new_submissions, stdexec::__std::memory_order_relaxed)) {
+            __n_in_flight_expected, __no_new_submissions, STDEXEC::__std::memory_order_relaxed)) {
             if (__n_in_flight_expected == __no_new_submissions) {
               break;
             }
             __n_in_flight_expected = 0;
           }
           STDEXEC_ASSERT(
-            __n_submissions_in_flight_.load(stdexec::__std::memory_order_relaxed)
+            __n_submissions_in_flight_.load(STDEXEC::__std::memory_order_relaxed)
             == __no_new_submissions);
           // There could have been requests in flight. Complete all of them
           // and then stop it, finally.
@@ -565,15 +565,15 @@ namespace exec {
         __context& __context_;
         until __mode_;
 
-        using __on_stopped_callback = stdexec::stop_callback_for_t<
-          stdexec::stop_token_of_t<stdexec::env_of_t<_Rcvr&>>,
+        using __on_stopped_callback = STDEXEC::stop_callback_for_t<
+          STDEXEC::stop_token_of_t<STDEXEC::env_of_t<_Rcvr&>>,
           __on_stop
         >;
 
         void start() & noexcept {
           std::optional<__on_stopped_callback> __callback(
             std::in_place,
-            stdexec::get_stop_token(stdexec::get_env(__rcvr_)),
+            STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)),
             __on_stop{__context_});
           STDEXEC_TRY {
             if (__mode_ == until::stopped) {
@@ -584,27 +584,27 @@ namespace exec {
           }
           STDEXEC_CATCH_ALL {
             __callback.reset();
-            stdexec::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
+            STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
           }
           __callback.reset();
           if (__context_.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
+            STDEXEC::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
           } else {
-            stdexec::set_value(static_cast<_Rcvr&&>(__rcvr_));
+            STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_));
           }
         }
       };
 
       class __run_sender {
        public:
-        using sender_concept = stdexec::sender_t;
-        using completion_signatures = stdexec::completion_signatures<
-          stdexec::set_value_t(),
-          stdexec::set_error_t(std::exception_ptr),
-          stdexec::set_stopped_t()
+        using sender_concept = STDEXEC::sender_t;
+        using completion_signatures = STDEXEC::completion_signatures<
+          STDEXEC::set_value_t(),
+          STDEXEC::set_error_t(std::exception_ptr),
+          STDEXEC::set_stopped_t()
         >;
 
-        template <stdexec::receiver_of<completion_signatures> _Rcvr>
+        template <STDEXEC::receiver_of<completion_signatures> _Rcvr>
         auto connect(_Rcvr __rcvr) const noexcept -> __run_op<_Rcvr> {
           return {static_cast<_Rcvr&&>(__rcvr), *__context_, __mode_};
         }
@@ -625,7 +625,7 @@ namespace exec {
       }
 
       void run_until_empty() {
-        __break_loop_.store(true, stdexec::__std::memory_order_relaxed);
+        __break_loop_.store(true, STDEXEC::__std::memory_order_relaxed);
         run_until_stopped();
       }
 
@@ -638,12 +638,12 @@ namespace exec {
       // to this context will be completed by this context.
       static constexpr int __no_new_submissions = -1;
 
-      stdexec::__std::atomic<bool> __is_running_{false};
-      stdexec::__std::atomic<int> __n_submissions_in_flight_{0};
-      stdexec::__std::atomic<bool> __break_loop_{false};
+      STDEXEC::__std::atomic<bool> __is_running_{false};
+      STDEXEC::__std::atomic<int> __n_submissions_in_flight_{0};
+      STDEXEC::__std::atomic<bool> __break_loop_{false};
       std::ptrdiff_t __n_total_submitted_{0};
       std::ptrdiff_t __n_newly_submitted_{0};
-      std::optional<stdexec::inplace_stop_source> __stop_source_{std::in_place};
+      std::optional<STDEXEC::inplace_stop_source> __stop_source_{std::in_place};
       __completion_queue __completion_queue_;
       __submission_queue __submission_queue_;
       __task_queue __pending_{};
@@ -669,11 +669,11 @@ namespace exec {
     concept __stoppable_task = __io_task<_Op> && requires(_Op& __op) {
       {
         static_cast<_Op&&>(__op).receiver()
-      } noexcept -> stdexec::receiver_of<stdexec::completion_signatures<stdexec::set_stopped_t()>>;
+      } noexcept -> STDEXEC::receiver_of<STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>>;
     };
 
     template <__stoppable_task _Op>
-    using __receiver_of_t = stdexec::__decay_t<decltype(std::declval<_Op&>().receiver())>;
+    using __receiver_of_t = STDEXEC::__decay_t<decltype(std::declval<_Op&>().receiver())>;
 
     template <__io_task _Base>
     struct __io_task_facade : __task {
@@ -695,17 +695,17 @@ namespace exec {
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
       template <class... _Args>
-        requires stdexec::constructible_from<_Base, std::in_place_t, __task*, _Args...>
+        requires STDEXEC::constructible_from<_Base, std::in_place_t, __task*, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args)
-        noexcept(stdexec::__nothrow_constructible_from<_Base, __task*, _Args...>)
+        noexcept(STDEXEC::__nothrow_constructible_from<_Base, __task*, _Args...>)
         : __task{__vtable}
         , __base_(std::in_place, static_cast<__task*>(this), static_cast<_Args&&>(__args)...) {
       }
 
       template <class... _Args>
-        requires stdexec::constructible_from<_Base, _Args...>
+        requires STDEXEC::constructible_from<_Base, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args)
-        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
+        noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -729,7 +729,7 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __schedule_operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __impl {
         __context& __context_;
@@ -753,12 +753,12 @@ namespace exec {
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
-          auto token = stdexec::get_stop_token(stdexec::get_env(__receiver_));
+          auto token = STDEXEC::get_stop_token(STDEXEC::get_env(__receiver_));
           if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__receiver_));
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__receiver_));
           } else {
 
-            stdexec::set_value(static_cast<_Receiver&&>(__receiver_));
+            STDEXEC::set_value(static_cast<_Receiver&&>(__receiver_));
           }
         }
       };
@@ -802,10 +802,10 @@ namespace exec {
         }
 
         void complete(const ::io_uring_cqe&) noexcept {
-          if (__op_->__n_ops_.fetch_sub(1, stdexec::__std::memory_order_relaxed) == 1) {
+          if (__op_->__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1) {
             __op_->__on_context_stop_.reset();
             __op_->__on_receiver_stop_.reset();
-            stdexec::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
+            STDEXEC::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
           }
         }
 
@@ -819,7 +819,7 @@ namespace exec {
         void start() & noexcept {
           int expected = 1;
           if (__op_->__n_ops_
-                .compare_exchange_strong(expected, 2, stdexec::__std::memory_order_relaxed)) {
+                .compare_exchange_strong(expected, 2, STDEXEC::__std::memory_order_relaxed)) {
             if (__op_->context().submit(this)) {
               __op_->context().wakeup();
             }
@@ -835,7 +835,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(__task* __parent, std::in_place_t, _Args&&... __args)
-        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
+        noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -848,7 +848,7 @@ namespace exec {
 
       template <class... _Args>
       __impl_base(__task* __parent, std::in_place_t, _Args&&... __args)
-        noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
+        noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
         : __parent_{__parent}
         , __base_(static_cast<_Args&&>(__args)...) {
       }
@@ -878,20 +878,20 @@ namespace exec {
           }
         };
 
-        using __on_context_stop_t = std::optional<stdexec::inplace_stop_callback<__stop_callback>>;
-        using __on_receiver_stop_t = std::optional<typename stdexec::stop_token_of_t<
-          stdexec::env_of_t<_Receiver>&
+        using __on_context_stop_t = std::optional<STDEXEC::inplace_stop_callback<__stop_callback>>;
+        using __on_receiver_stop_t = std::optional<typename STDEXEC::stop_token_of_t<
+          STDEXEC::env_of_t<_Receiver>&
         >::template callback_type<__stop_callback>>;
 
-        stdexec::__t<__stop_operation<__impl>> __stop_operation_;
-        stdexec::__std::atomic<int> __n_ops_{0};
+        STDEXEC::__t<__stop_operation<__impl>> __stop_operation_;
+        STDEXEC::__std::atomic<int> __n_ops_{0};
         __on_context_stop_t __on_context_stop_{};
         __on_receiver_stop_t __on_receiver_stop_{};
 
         template <class... _Args>
-          requires stdexec::constructible_from<_Base, _Args...>
+          requires STDEXEC::constructible_from<_Base, _Args...>
         __impl(std::in_place_t, __task* __parent, _Args&&... __args)
-          noexcept(stdexec::__nothrow_constructible_from<_Base, _Args...>)
+          noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
           : __base_t(__parent, std::in_place, static_cast<_Args&&>(__args)...)
           , __stop_operation_{this} {
         }
@@ -915,25 +915,25 @@ namespace exec {
 
         void submit(::io_uring_sqe& __sqe) noexcept {
           [[maybe_unused]]
-          int prev = __n_ops_.fetch_add(1, stdexec::__std::memory_order_relaxed);
+          int prev = __n_ops_.fetch_add(1, STDEXEC::__std::memory_order_relaxed);
           STDEXEC_ASSERT(prev == 0);
           __context& __context_ = this->__base_.context();
           _Receiver& __receiver = this->__base_.receiver();
           __on_context_stop_.emplace(__context_.get_stop_token(), __stop_callback{this});
           __on_receiver_stop_
-            .emplace(stdexec::get_stop_token(stdexec::get_env(__receiver)), __stop_callback{this});
+            .emplace(STDEXEC::get_stop_token(STDEXEC::get_env(__receiver)), __stop_callback{this});
           this->__base_.submit(__sqe);
         }
 
         void complete(const ::io_uring_cqe& __cqe) noexcept {
-          if (__n_ops_.fetch_sub(1, stdexec::__std::memory_order_relaxed) == 1) {
+          if (__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1) {
             __on_context_stop_.reset();
             __on_receiver_stop_.reset();
             _Receiver& __receiver = this->__base_.receiver();
             __context& __context_ = this->__base_.context();
-            auto token = stdexec::get_stop_token(stdexec::get_env(__receiver));
+            auto token = STDEXEC::get_stop_token(STDEXEC::get_env(__receiver));
             if (__cqe.res == -ECANCELED || __context_.stop_requested() || token.stop_requested()) {
-              stdexec::set_stopped(static_cast<_Receiver&&>(__receiver));
+              STDEXEC::set_stopped(static_cast<_Receiver&&>(__receiver));
             } else {
               this->__base_.complete(__cqe);
             }
@@ -945,7 +945,7 @@ namespace exec {
     };
 
     template <class _Base>
-    using __stoppable_task_facade_t = stdexec::__t<__stoppable_task_facade<_Base>>;
+    using __stoppable_task_facade_t = STDEXEC::__t<__stoppable_task_facade<_Base>>;
 
     template <class _Receiver>
     struct __stoppable_op_base {
@@ -967,7 +967,7 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __schedule_after_operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       class __impl : public __stoppable_op_base<_Receiver> {
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
@@ -1050,10 +1050,10 @@ namespace exec {
 #    endif
             ;
           if (__success) {
-            stdexec::set_value(static_cast<_Receiver&&>(this->__receiver_));
+            STDEXEC::set_value(static_cast<_Receiver&&>(this->__receiver_));
           } else {
             STDEXEC_ASSERT(__cqe.res < 0);
-            stdexec::set_error(
+            STDEXEC::set_error(
               static_cast<_Receiver&&>(this->__receiver_),
               std::make_exception_ptr(std::system_error(-__cqe.res, std::system_category())));
           }
@@ -1087,7 +1087,7 @@ namespace exec {
 
       struct __schedule_env {
         [[nodiscard]]
-        auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+        auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
           -> __scheduler {
           return __scheduler{__context_};
         }
@@ -1097,12 +1097,12 @@ namespace exec {
 
       class __schedule_sender {
         using __completion_sigs_t =
-          stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+          STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
 
         __schedule_env __env_;
 
        public:
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using __id = __schedule_sender;
         using __t = __schedule_sender;
 
@@ -1117,27 +1117,27 @@ namespace exec {
 
         [[nodiscard]]
         auto
-          get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs_t {
+          get_completion_signatures(STDEXEC::__ignore = {}) const noexcept -> __completion_sigs_t {
           return {};
         }
 
-        template <stdexec::receiver_of<__completion_sigs_t> _Receiver>
+        template <STDEXEC::receiver_of<__completion_sigs_t> _Receiver>
         auto connect(_Receiver __receiver)
-          const & -> stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>> {
-          return stdexec::__t<__schedule_operation<stdexec::__id<_Receiver>>>(
+          const & -> STDEXEC::__t<__schedule_operation<STDEXEC::__id<_Receiver>>> {
+          return STDEXEC::__t<__schedule_operation<STDEXEC::__id<_Receiver>>>(
             std::in_place, *__env_.__context_, static_cast<_Receiver&&>(__receiver));
         }
       };
 
       class __schedule_after_sender {
-        using __completion_sigs_t = stdexec::completion_signatures<
-          stdexec::set_value_t(),
-          stdexec::set_error_t(std::exception_ptr),
-          stdexec::set_stopped_t()
+        using __completion_sigs_t = STDEXEC::completion_signatures<
+          STDEXEC::set_value_t(),
+          STDEXEC::set_error_t(std::exception_ptr),
+          STDEXEC::set_stopped_t()
         >;
 
        public:
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using __id = __schedule_after_sender;
         using __t = __schedule_after_sender;
 
@@ -1151,14 +1151,14 @@ namespace exec {
 
         [[nodiscard]]
         auto
-          get_completion_signatures(stdexec::__ignore = {}) const noexcept -> __completion_sigs_t {
+          get_completion_signatures(STDEXEC::__ignore = {}) const noexcept -> __completion_sigs_t {
           return {};
         }
 
-        template <stdexec::receiver_of<__completion_sigs_t> _Receiver>
+        template <STDEXEC::receiver_of<__completion_sigs_t> _Receiver>
         auto connect(_Receiver __receiver)
-          const & -> stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>> {
-          return stdexec::__t<__schedule_after_operation<stdexec::__id<_Receiver>>>(
+          const & -> STDEXEC::__t<__schedule_after_operation<STDEXEC::__id<_Receiver>>> {
+          return STDEXEC::__t<__schedule_after_operation<STDEXEC::__id<_Receiver>>>(
             std::in_place, *__env_.__context_, __duration_, static_cast<_Receiver&&>(__receiver));
         }
       };

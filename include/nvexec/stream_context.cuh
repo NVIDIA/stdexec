@@ -22,24 +22,24 @@
 
 #include "detail/config.cuh"              // IWYU pragma: export
 #include "detail/memory.cuh"              // IWYU pragma: export
-#include "stream/sync_wait.cuh"           // IWYU pragma: export
+#include "detail/queue.cuh"               // IWYU pragma: export
+#include "detail/throw_on_cuda_error.cuh" // IWYU pragma: export
 #include "stream/bulk.cuh"                // IWYU pragma: export
-#include "stream/let_xxx.cuh"             // IWYU pragma: export
-#include "stream/schedule_from.cuh"       // IWYU pragma: export
-#include "stream/start_detached.cuh"      // IWYU pragma: export
-#include "stream/split.cuh"               // IWYU pragma: export
-#include "stream/then.cuh"                // IWYU pragma: export
+#include "stream/common.cuh"              // IWYU pragma: export
 #include "stream/continues_on.cuh"        // IWYU pragma: export
+#include "stream/ensure_started.cuh"      // IWYU pragma: export
 #include "stream/launch.cuh"              // IWYU pragma: export
+#include "stream/let_xxx.cuh"             // IWYU pragma: export
+#include "stream/reduce.cuh"              // IWYU pragma: export
+#include "stream/repeat_n.cuh"            // IWYU pragma: export
+#include "stream/schedule_from.cuh"       // IWYU pragma: export
+#include "stream/split.cuh"               // IWYU pragma: export
+#include "stream/start_detached.cuh"      // IWYU pragma: export
+#include "stream/sync_wait.cuh"           // IWYU pragma: export
+#include "stream/then.cuh"                // IWYU pragma: export
 #include "stream/upon_error.cuh"          // IWYU pragma: export
 #include "stream/upon_stopped.cuh"        // IWYU pragma: export
 #include "stream/when_all.cuh"            // IWYU pragma: export
-#include "stream/reduce.cuh"              // IWYU pragma: export
-#include "stream/repeat_n.cuh"            // IWYU pragma: export
-#include "stream/ensure_started.cuh"      // IWYU pragma: export
-#include "stream/common.cuh"              // IWYU pragma: export
-#include "detail/queue.cuh"               // IWYU pragma: export
-#include "detail/throw_on_cuda_error.cuh" // IWYU pragma: export
 
 namespace nvexec {
   namespace _strm {
@@ -82,7 +82,7 @@ namespace nvexec {
      private:
       template <class ReceiverId>
       struct operation_state_ {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         struct __t : operation_state_base_t<ReceiverId> {
           using __id = operation_state_;
@@ -103,14 +103,14 @@ namespace nvexec {
       };
 
       template <class ReceiverId>
-      using operation_state_t = stdexec::__t<operation_state_<ReceiverId>>;
+      using operation_state_t = STDEXEC::__t<operation_state_<ReceiverId>>;
 
       struct sender_t : stream_sender_base {
         using __t = sender_t;
         using __id = sender_t;
 
         using completion_signatures =
-          stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
+          STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender_t(context_state_t context_state) noexcept
@@ -119,8 +119,8 @@ namespace nvexec {
 
         template <class Receiver>
         auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> operation_state_t<stdexec::__id<Receiver>> {
-          return operation_state_t<stdexec::__id<Receiver>>(
+          -> operation_state_t<STDEXEC::__id<Receiver>> {
+          return operation_state_t<STDEXEC::__id<Receiver>>(
             static_cast<Receiver&&>(rcvr), env_.context_state_);
         }
 
@@ -135,7 +135,8 @@ namespace nvexec {
           context_state_t context_state_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
-          auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> stream_scheduler {
+          auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept
+            -> stream_scheduler {
             return stream_scheduler{context_state_};
           }
 
@@ -158,7 +159,7 @@ namespace nvexec {
     STDEXEC_ATTRIBUTE(nodiscard)
     inline auto stream_scheduler_env<stream_scheduler>::query(
       get_completion_scheduler_t<set_value_t>) const noexcept -> stream_scheduler {
-      return stdexec::__c_downcast<stream_scheduler>(*this);
+      return STDEXEC::__c_downcast<stream_scheduler>(*this);
     }
   } // namespace _strm
 

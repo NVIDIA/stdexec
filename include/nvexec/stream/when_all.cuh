@@ -45,7 +45,7 @@ namespace nvexec::_strm {
     };
 
     template <class Env>
-    using env_t = stdexec::env<stdexec::prop<get_stop_token_t, inplace_stop_token>, Env>;
+    using env_t = STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, Env>;
 
     template <class Sender, class... Env>
     concept valid_child_sender = sender_in<Sender, Env...> && requires {
@@ -69,7 +69,7 @@ namespace nvexec::_strm {
       }
 
       using InvalidArg = __m_at_c<position_of(), Senders...>;
-      using __t = stdexec::__when_all::__too_many_value_completions_error<InvalidArg, Env...>;
+      using __t = STDEXEC::__when_all::__too_many_value_completions_error<InvalidArg, Env...>;
     };
 
     template <class... As, class TupleT>
@@ -135,22 +135,22 @@ namespace nvexec::_strm {
 
         auto
           query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
-          requires stdexec::__same_as<WhenAllTag, transfer_when_all_t>
+          requires STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>
         {
           return Scheduler(context_state_);
         }
 
         template <class... Env>
         constexpr auto query(get_completion_domain_t<set_value_t>, const Env&...) const noexcept {
-          if constexpr (stdexec::__same_as<WhenAllTag, transfer_when_all_t>) {
+          if constexpr (STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>) {
             return sched_domain_t<Env...>{};
           } else {
             static_assert(
               sizeof...(SenderIds) == 0
-              || stdexec::__same_as<
+              || STDEXEC::__same_as<
                 stream_domain,
                 __common_domain_t<
-                  stdexec::__completion_domain_of_t<set_value_t, stdexec::__t<SenderIds>, Env...>...
+                  STDEXEC::__completion_domain_of_t<set_value_t, STDEXEC::__t<SenderIds>, Env...>...
                 >
               >);
             return stream_domain{};
@@ -170,9 +170,9 @@ namespace nvexec::_strm {
       attrs attrs_;
 
       template <class Cvref, class... Env>
-      using completion_sigs = stdexec::__t<_when_all::completions<
+      using completion_sigs = STDEXEC::__t<_when_all::completions<
         __types<_when_all::env_t<Env>...>,
-        __copy_cvref_t<Cvref, stdexec::__t<SenderIds>>...
+        __copy_cvref_t<Cvref, STDEXEC::__t<SenderIds>>...
       >>;
 
       template <class Completions>
@@ -189,19 +189,19 @@ namespace nvexec::_strm {
 
       template <class CvrefReceiverId, std::size_t Index>
       struct receiver_t {
-        using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
-        using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>;
+        using WhenAll = __copy_cvref_t<CvrefReceiverId, STDEXEC::__t<when_all_sender_t>>;
+        using Receiver = STDEXEC::__t<__decay_t<CvrefReceiverId>>;
         using SenderId = __m_at_c<Index, SenderIds...>;
         using Completions = completion_sigs<env_of_t<Receiver>, CvrefReceiverId>;
         using Env = make_terminal_stream_env_t<
-          stdexec::env<stdexec::prop<get_stop_token_t, inplace_stop_token>, env_of_t<Receiver>>
+          STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<Receiver>>
         >;
 
         struct type;
         using __t = type;
 
         struct type : stream_receiver_base {
-          using receiver_concept = stdexec::receiver_t;
+          using receiver_concept = STDEXEC::receiver_t;
           using __id = receiver_t;
 
           template <class... Values>
@@ -223,9 +223,9 @@ namespace nvexec::_strm {
           [[nodiscard]]
           auto get_env() const noexcept -> Env {
             return make_terminal_stream_env(
-              stdexec::env{
-                stdexec::prop{get_stop_token, op_state_->stop_source_.get_token()},
-                stdexec::get_env(op_state_->rcvr_)
+              STDEXEC::env{
+                STDEXEC::prop{get_stop_token, op_state_->stop_source_.get_token()},
+                STDEXEC::get_env(op_state_->rcvr_)
             },
               &const_cast<stream_provider_t&>(op_state_->stream_providers_[Index]));
           }
@@ -236,15 +236,15 @@ namespace nvexec::_strm {
 
       template <class CvrefReceiverId>
       struct operation_t : stream_op_state_base {
-        using WhenAll = __copy_cvref_t<CvrefReceiverId, stdexec::__t<when_all_sender_t>>;
-        using Receiver = stdexec::__t<__decay_t<CvrefReceiverId>>; // NOT __cvref_t
+        using WhenAll = __copy_cvref_t<CvrefReceiverId, STDEXEC::__t<when_all_sender_t>>;
+        using Receiver = STDEXEC::__t<__decay_t<CvrefReceiverId>>; // NOT __cvref_t
         using Env = env_of_t<Receiver>;
         using Completions = completion_sigs<Env, CvrefReceiverId>;
 
         template <class SenderId, std::size_t Index>
         using child_op_state_t = exit_operation_state_t<
-          __copy_cvref_t<WhenAll, stdexec::__t<SenderId>>,
-          stdexec::__t<receiver_t<CvrefReceiverId, Index>>
+          __copy_cvref_t<WhenAll, STDEXEC::__t<SenderId>>,
+          STDEXEC::__t<receiver_t<CvrefReceiverId, Index>>
         >;
 
         using Indices = __indices_for<SenderIds...>;
@@ -254,13 +254,13 @@ namespace nvexec::_strm {
           -> __tuple<child_op_state_t<SenderIds, Is>...> {
 
           using __child_ops_t = __tuple<child_op_state_t<SenderIds, Is>...>;
-          return stdexec::__apply(
+          return STDEXEC::__apply(
             [parent_op]<class... Children>(Children&&... children) -> __child_ops_t {
               return __child_ops_t{_strm::exit_op_state(
                 static_cast<Children&&>(children),
-                stdexec::__t<receiver_t<CvrefReceiverId, Is>>{{}, parent_op},
-                stdexec::get_completion_scheduler<set_value_t>(
-                  stdexec::get_env(children), stdexec::get_env(parent_op->rcvr_))
+                STDEXEC::__t<receiver_t<CvrefReceiverId, Is>>{{}, parent_op},
+                STDEXEC::get_completion_scheduler<set_value_t>(
+                  STDEXEC::get_env(children), STDEXEC::get_env(parent_op->rcvr_))
                   .context_state_)...};
             },
             static_cast<WhenAll&&>(when_all).sndrs_);
@@ -290,7 +290,7 @@ namespace nvexec::_strm {
           // Synchronize streams
           if (status_ == cudaSuccess) {
             if constexpr (stream_receiver<Receiver>) {
-              auto env = stdexec::get_env(rcvr_);
+              auto env = STDEXEC::get_env(rcvr_);
               stream_provider_t* stream_provider = get_stream_provider(env);
               cudaStream_t stream = *stream_provider->own_stream_;
 
@@ -301,7 +301,7 @@ namespace nvexec::_strm {
               }
             } else {
               // Synchronize the streams of all the child operations
-              stdexec::__apply(stdexec::__for_each{_when_all::_sync_op}, child_states_);
+              STDEXEC::__apply(STDEXEC::__for_each{_when_all::_sync_op}, child_states_);
             }
           }
 
@@ -311,10 +311,10 @@ namespace nvexec::_strm {
             case _when_all::started:
               if constexpr (sends_values<Completions>::value) {
                 // All child operations completed successfully:
-                stdexec::__apply(
+                STDEXEC::__apply(
                   [this]<class... Tuples>(Tuples&&... value_tupls) noexcept -> void {
-                    stdexec::__cat_apply(
-                      __mk_completion_fn(stdexec::set_value, rcvr_),
+                    STDEXEC::__cat_apply(
+                      __mk_completion_fn(STDEXEC::set_value, rcvr_),
                       static_cast<Tuples&&>(value_tupls)...);
                   },
                   static_cast<child_values_tuple_t&&>(*values_));
@@ -322,26 +322,26 @@ namespace nvexec::_strm {
               break;
             case _when_all::error:
               errors_.visit(
-                __mk_completion_fn(stdexec::set_error, rcvr_),
+                __mk_completion_fn(STDEXEC::set_error, rcvr_),
                 static_cast<errors_variant_t&&>(errors_));
               break;
             case _when_all::stopped:
-              stdexec::set_stopped(static_cast<Receiver&&>(rcvr_));
+              STDEXEC::set_stopped(static_cast<Receiver&&>(rcvr_));
               break;
             default:;
             }
           } else {
-            stdexec::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
+            STDEXEC::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
           }
         }
 
         using stream_providers_t = std::array<stream_provider_t, sizeof...(SenderIds)>;
 
         static auto get_stream_providers(WhenAll& when_all, Receiver& rcvr) -> stream_providers_t {
-          return stdexec::__apply(
+          return STDEXEC::__apply(
             [](auto& rcvr, auto&... sndrs) -> stream_providers_t {
-              return stream_providers_t{stdexec::get_completion_scheduler<set_value_t>(
-                                          stdexec::get_env(sndrs), stdexec::get_env(rcvr))
+              return stream_providers_t{STDEXEC::get_completion_scheduler<set_value_t>(
+                                          STDEXEC::get_env(sndrs), STDEXEC::get_env(rcvr))
                                           .context_state_...};
             },
             when_all.sndrs_,
@@ -364,14 +364,14 @@ namespace nvexec::_strm {
 
         void start() & noexcept {
           // register stop callback:
-          auto tok = stdexec::get_stop_token(stdexec::get_env(rcvr_));
+          auto tok = STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_));
           on_stop_.emplace(std::move(tok), __forward_stop_request{stop_source_});
           if (stop_source_.stop_requested()) {
             // Stop has already been requested. Don't bother starting
             // the child operations.
-            stdexec::set_stopped(static_cast<Receiver&&>(rcvr_));
+            STDEXEC::set_stopped(static_cast<Receiver&&>(rcvr_));
           } else {
-            stdexec::__apply(stdexec::__for_each{stdexec::start}, child_states_);
+            STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, child_states_);
             if constexpr (sizeof...(SenderIds) == 0) {
               complete();
             }
@@ -404,10 +404,10 @@ namespace nvexec::_strm {
             // We only need to bother recording the completion values
             // if we're not already in the "error" or "stopped" state.
             if (state_.load() == _when_all::started) {
-              cudaStream_t stream = stdexec::__get<Index>(child_states_).get_stream();
+              cudaStream_t stream = STDEXEC::__get<Index>(child_states_).get_stream();
               if constexpr (sizeof...(Args)) {
                 _when_all::copy_kernel<Args&&...><<<1, 1, 0, stream>>>(
-                  &stdexec::__get<Index>(*values_), static_cast<Args&&>(args)...);
+                  &STDEXEC::__get<Index>(*values_), static_cast<Args&&>(args)...);
                 statuses_[Index] = cudaGetLastError();
               }
 
@@ -444,7 +444,7 @@ namespace nvexec::_strm {
           __minvoke<
             __qq<__tuple>,
             __value_types_of_t<
-              stdexec::__t<SenderIds>,
+              STDEXEC::__t<SenderIds>,
               _when_all::env_t<Env>,
               __qq<__decayed_tuple>,
               __msingle_or<void>
@@ -454,7 +454,7 @@ namespace nvexec::_strm {
         >;
 
         using errors_variant_t = error_types_of_t<
-          stdexec::__t<when_all_sender_t>,
+          STDEXEC::__t<when_all_sender_t>,
           _when_all::env_t<Env>,
           __uniqued_variant_for
         >;
@@ -481,7 +481,7 @@ namespace nvexec::_strm {
      public:
       template <__decays_to<type> Self, receiver Receiver>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-        -> operation_t<__copy_cvref_t<Self, stdexec::__id<Receiver>>> {
+        -> operation_t<__copy_cvref_t<Self, STDEXEC::__id<Receiver>>> {
         return {static_cast<Self&&>(self), static_cast<Receiver&&>(rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
@@ -499,16 +499,16 @@ namespace nvexec::_strm {
       }
 
      private:
-      __tuple<stdexec::__t<SenderIds>...> sndrs_;
+      __tuple<STDEXEC::__t<SenderIds>...> sndrs_;
     };
   };
 
   template <class Env>
-  struct transform_sender_for<stdexec::when_all_t, Env> {
+  struct transform_sender_for<STDEXEC::when_all_t, Env> {
     template <stream_completing_sender<Env>... Senders>
     auto operator()(__ignore, __ignore, Senders&&... sndrs) const {
       using __sender_t =
-        __t<when_all_sender_t<stdexec::when_all_t, stream_scheduler, __id<__decay_t<Senders>>...>>;
+        __t<when_all_sender_t<STDEXEC::when_all_t, stream_scheduler, __id<__decay_t<Senders>>...>>;
       return __sender_t{
         context_state_t{nullptr, nullptr, nullptr, nullptr},
         static_cast<Senders&&>(sndrs)...
@@ -519,11 +519,11 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<stdexec::transfer_when_all_t, Env> {
+  struct transform_sender_for<STDEXEC::transfer_when_all_t, Env> {
     template <gpu_stream_scheduler<Env> Scheduler, stream_completing_sender<Env>... Senders>
     auto operator()(__ignore, Scheduler sched, Senders&&... sndrs) const {
       using __sender_t = __t<when_all_sender_t<
-        stdexec::transfer_when_all_t,
+        STDEXEC::transfer_when_all_t,
         stream_scheduler,
         __id<__decay_t<Senders>>...
       >>;
@@ -534,12 +534,12 @@ namespace nvexec::_strm {
   };
 } // namespace nvexec::_strm
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class WhenAllTag, class Scheduler, class... SenderIds>
   inline constexpr __mconst<
     nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, __demangle_t<__t<SenderIds>>...>
   >
     __demangle_v<nvexec::_strm::when_all_sender_t<WhenAllTag, Scheduler, SenderIds...>>{};
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

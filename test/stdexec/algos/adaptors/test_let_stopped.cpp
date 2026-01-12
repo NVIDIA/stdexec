@@ -16,15 +16,15 @@
 
 #include "stdexec/__detail/__sender_introspection.hpp"
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/type_helpers.hpp>
 #include <exec/env.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
@@ -64,7 +64,7 @@ namespace {
     "let_stopped returning void can we waited on (cancel annihilation)",
     "[adaptors][let_stopped]") {
     ex::sender auto snd = ex::just_stopped() | ex::let_stopped([] { return ex::just(); });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
   }
 
   TEST_CASE(
@@ -197,7 +197,7 @@ namespace {
   // Return a different sender when we invoke this custom defined let_stopped implementation
   struct let_stopped_test_domain {
     template <ex::sender_expr_for<ex::let_stopped_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"Don't stop me now"});
     }
   };
@@ -206,8 +206,7 @@ namespace {
     basic_inline_scheduler<let_stopped_test_domain> sched;
 
     // The customization will return a different stopped
-    auto snd = ex::just(std::string{"hello"})
-             | ex::continues_on(sched)
+    auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }

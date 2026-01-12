@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-#include <stdexec/execution.hpp>
 #include <exec/repeat_n.hpp>
+#include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 auto main() -> int {
   ex::sender auto snd = ex::just(42) | exec::repeat_n(10);
   // build error: _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_
-  stdexec::sync_wait(std::move(snd));
+  STDEXEC::sync_wait(std::move(snd));
 }

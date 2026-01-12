@@ -25,7 +25,7 @@
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp" // IWYU pragma: keep for __tuple
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __detail {
     template <class _Tp, class _Promise>
     concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
@@ -99,7 +99,7 @@ namespace stdexec {
   template <class... _What>
   [[nodiscard]]
   consteval auto __invalid_completion_signature(__mexception<_What...>) {
-    return stdexec::__invalid_completion_signature<_What...>();
+    return STDEXEC::__invalid_completion_signature<_What...>();
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +117,7 @@ namespace stdexec {
 #define STDEXEC_CHECKED_COMPLSIGS(...)                                                             \
   (static_cast<void>(__VA_ARGS__),                                                                 \
    void(),                                                                                         \
-   stdexec::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>())
+   STDEXEC::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>())
 
     struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION {
     };
@@ -203,7 +203,7 @@ namespace stdexec {
         using _ValueSig = __minvoke<__mremove<void, __qf<set_value_t>>, _Result>;
         return completion_signatures<_ValueSig, set_error_t(std::exception_ptr), set_stopped_t()>();
       } else if constexpr (sizeof...(_Env) == 0) {
-        return stdexec::__dependent_sender<_Sender>();
+        return STDEXEC::__dependent_sender<_Sender>();
       } else if constexpr ((__is_debug_env<_Env> || ...)) {
         // This ought to cause a hard error that indicates where the problem is.
         using _Completions [[maybe_unused]] = decltype(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
@@ -245,7 +245,7 @@ namespace stdexec {
       using _NewSender = transform_sender_result_t<_Sender, _Env...>;
       if constexpr (__merror<_NewSender>) {
         // Computing the type of the transformed sender returned an error type. Propagate it.
-        return stdexec::__invalid_completion_signature(_NewSender());
+        return STDEXEC::__invalid_completion_signature(_NewSender());
       } else {
         return __cmplsigs::__get_completion_signatures_helper<_NewSender, _Env...>();
       }
@@ -257,7 +257,7 @@ namespace stdexec {
     requires(sizeof...(_Env) <= 1)
   constexpr auto get_completion_signatures(_Sender&&, _Env&&...) noexcept //
     -> __well_formed_completions auto {
-    return stdexec::get_completion_signatures<_Sender, _Env...>();
+    return STDEXEC::get_completion_signatures<_Sender, _Env...>();
   }
 
   template <class _Sender>
@@ -284,7 +284,7 @@ namespace stdexec {
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
-    decltype(stdexec::get_completion_signatures<_Sender, _Env...>());
+    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
@@ -296,7 +296,7 @@ namespace stdexec {
   template <class _Sender>
   [[nodiscard]]
   consteval bool __is_dependent_sender_helper() noexcept try {
-    (void) stdexec::get_completion_signatures<_Sender>();
+    (void) STDEXEC::get_completion_signatures<_Sender>();
     return false; // didn't throw, not a dependent sender
   } catch (dependent_sender_error&) {
     return true;
@@ -355,4 +355,4 @@ namespace stdexec {
   template <class _Tag, class _Sender, class... _Env>
   using __count_of =
     __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
-} // namespace stdexec
+} // namespace STDEXEC

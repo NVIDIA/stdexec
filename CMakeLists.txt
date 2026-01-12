@@ -181,7 +181,7 @@ set_target_properties(stdexec PROPERTIES
                       SOVERSION "${STDEXEC_VERSION_MAJOR}")
 
 if (BUILD_TESTING)
-  # Test headers are self-contained
+  # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES
                         VERIFY_INTERFACE_HEADER_SETS TRUE)
 endif()
@@ -217,10 +217,14 @@ target_compile_options(stdexec INTERFACE
                        $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
                        )
 
-option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
+set(STDEXEC_NAMESPACE "stdexec" CACHE STRING "The name of the top-level namespace for stdexec")
+if (NOT STDEXEC_NAMESPACE STREQUAL "stdexec")
+  target_compile_definitions(stdexec INTERFACE STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
+endif()
 
+option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
 if (STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
-    target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+  target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
 endif()
 
 add_library(STDEXEC::stdexec ALIAS stdexec)

@@ -23,7 +23,7 @@
 
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   // operation state tag type
   struct operation_state_t { };
 
@@ -61,5 +61,5 @@ namespace stdexec {
   // [execution.op_state]
   template <class _Op>
   concept operation_state = destructible<_Op> && std::is_object_v<_Op>
-                         && requires(_Op &__op) { stdexec::start(__op); };
-} // namespace stdexec
+                         && requires(_Op &__op) { STDEXEC::start(__op); };
+} // namespace STDEXEC

@@ -28,11 +28,11 @@ namespace exec {
   class alignas(64) __atomic_intrusive_queue<_NextPtr> {
    public:
     using __node_pointer = _Tp *;
-    using __atomic_node_pointer = stdexec::__std::atomic<_Tp *>;
+    using __atomic_node_pointer = STDEXEC::__std::atomic<_Tp *>;
 
     [[nodiscard]]
     auto empty() const noexcept -> bool {
-      return __head_.load(stdexec::__std::memory_order_relaxed) == nullptr;
+      return __head_.load(STDEXEC::__std::memory_order_relaxed) == nullptr;
     }
 
     struct try_push_result {
@@ -41,47 +41,47 @@ namespace exec {
     };
 
     auto try_push_front(__node_pointer t) noexcept -> try_push_result {
-      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(STDEXEC::__std::memory_order_relaxed);
       t->*_NextPtr = __old_head;
       return {
-        __head_.compare_exchange_strong(__old_head, t, stdexec::__std::memory_order_acq_rel),
+        __head_.compare_exchange_strong(__old_head, t, STDEXEC::__std::memory_order_acq_rel),
         __old_head == nullptr};
     }
 
     auto push_front(__node_pointer t) noexcept -> bool {
-      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(STDEXEC::__std::memory_order_relaxed);
       do {
         t->*_NextPtr = __old_head;
-      } while (!__head_.compare_exchange_weak(__old_head, t, stdexec::__std::memory_order_acq_rel));
+      } while (!__head_.compare_exchange_weak(__old_head, t, STDEXEC::__std::memory_order_acq_rel));
       return __old_head == nullptr;
     }
 
-    void prepend(stdexec::__intrusive_queue<_NextPtr> queue) noexcept {
+    void prepend(STDEXEC::__intrusive_queue<_NextPtr> queue) noexcept {
       __node_pointer __new_head = queue.front();
       __node_pointer __tail = queue.back();
-      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(STDEXEC::__std::memory_order_relaxed);
       __tail->*_NextPtr = __old_head;
       while (
         !__head_
-           .compare_exchange_weak(__old_head, __new_head, stdexec::__std::memory_order_acq_rel)) {
+           .compare_exchange_weak(__old_head, __new_head, STDEXEC::__std::memory_order_acq_rel)) {
         __tail->*_NextPtr = __old_head;
       }
       queue.clear();
     }
 
-    auto pop_all() noexcept -> stdexec::__intrusive_queue<_NextPtr> {
-      return stdexec::__intrusive_queue<_NextPtr>::make(reset_head());
+    auto pop_all() noexcept -> STDEXEC::__intrusive_queue<_NextPtr> {
+      return STDEXEC::__intrusive_queue<_NextPtr>::make(reset_head());
     }
 
-    auto pop_all_reversed() noexcept -> stdexec::__intrusive_queue<_NextPtr> {
-      return stdexec::__intrusive_queue<_NextPtr>::make_reversed(reset_head());
+    auto pop_all_reversed() noexcept -> STDEXEC::__intrusive_queue<_NextPtr> {
+      return STDEXEC::__intrusive_queue<_NextPtr>::make_reversed(reset_head());
     }
 
    private:
     auto reset_head() noexcept -> __node_pointer {
-      __node_pointer __old_head = __head_.load(stdexec::__std::memory_order_relaxed);
+      __node_pointer __old_head = __head_.load(STDEXEC::__std::memory_order_relaxed);
       while (!__head_
-                .compare_exchange_weak(__old_head, nullptr, stdexec::__std::memory_order_acq_rel)) {
+                .compare_exchange_weak(__old_head, nullptr, STDEXEC::__std::memory_order_acq_rel)) {
         ;
       }
       return __old_head;

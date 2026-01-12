@@ -17,7 +17,7 @@
 
 #include "__concepts.hpp"
 
-namespace stdexec::__std_concepts {
+namespace STDEXEC::__std_concepts {
 #if STDEXEC_HAS_STD_CONCEPTS_HEADER()
   using std::invocable;
 #else
@@ -26,13 +26,13 @@ namespace stdexec::__std_concepts {
     std::invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
   };
 #endif
-} // namespace stdexec::__std_concepts
+} // namespace STDEXEC::__std_concepts
 
 namespace std {
-  using namespace stdexec::__std_concepts;
+  using namespace STDEXEC::__std_concepts;
 } // namespace std
 
-namespace stdexec {
+namespace STDEXEC {
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
     void tag_invoke();
@@ -99,4 +99,4 @@ namespace stdexec {
   using __tag_invoke::nothrow_tag_invocable;
   using __tag_invoke::tag_invoke_result_t;
   using __tag_invoke::tag_invoke_result;
-} // namespace stdexec
+} // namespace STDEXEC

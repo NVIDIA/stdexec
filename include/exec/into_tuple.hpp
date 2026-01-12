@@ -21,7 +21,7 @@
 
 namespace exec {
   namespace __into_tuple {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <
       __mstring _Where = "In into_tuple: "_mstr,
@@ -52,13 +52,13 @@ namespace exec {
 
     template <class _Tuple>
     using __tuple_completions_t =
-      stdexec::completion_signatures<set_error_t(std::exception_ptr), set_value_t(_Tuple)>;
+      STDEXEC::completion_signatures<set_error_t(std::exception_ptr), set_value_t(_Tuple)>;
 
     template <class _Sender, class... _Env>
     using __completions_t = transform_completion_signatures<
       __completion_signatures_of_t<_Sender, _Env...>,
       __meval<__tuple_completions_t, __result_tuple_t<_Sender, _Env...>>,
-      __mconst<stdexec::completion_signatures<>>::__f
+      __mconst<STDEXEC::completion_signatures<>>::__f
     >;
 
     struct __into_tuple_impl : __sexpr_defaults {
@@ -86,7 +86,7 @@ namespace exec {
               static_cast<_Receiver &&>(__rcvr), __tuple_t{static_cast<_Args &&>(__args)...});
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
           }
         } else {
           _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
@@ -111,7 +111,7 @@ namespace exec {
   inline constexpr into_tuple_t into_tuple{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <>
   struct __sexpr_impl<exec::__into_tuple::into_tuple_t> : exec::__into_tuple::__into_tuple_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

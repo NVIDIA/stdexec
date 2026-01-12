@@ -16,18 +16,18 @@
 
 #include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/type_helpers.hpp>
-#include <exec/static_thread_pool.hpp>
 #include <exec/env.hpp>
+#include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
 #include <exception>
 #include <memory>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
@@ -65,7 +65,7 @@ namespace {
 
   TEST_CASE("let_value returning void can we waited on", "[adaptors][let_value]") {
     ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
   }
 
   TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]") {
@@ -138,10 +138,12 @@ namespace {
     };
     auto snd = ex::just(13) | ex::let_value(invocable{});
     static_assert(set_equivalent<
-                  ::stdexec::completion_signatures<
-                    ::stdexec::set_value_t(int),
-                    ::stdexec::set_error_t(std::exception_ptr)>,
-                  ::stdexec::completion_signatures_of_t<decltype(snd), ::stdexec::env<>>>);
+                  ::STDEXEC::completion_signatures<
+                    ::STDEXEC::set_value_t(int),
+                    ::STDEXEC::set_error_t(std::exception_ptr)
+                  >,
+                  ::STDEXEC::completion_signatures_of_t<decltype(snd), ::STDEXEC::env<>>
+    >);
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
@@ -313,7 +315,7 @@ namespace {
   // Return a different sender when we invoke this custom defined let_value implementation
   struct let_value_test_domain {
     template <ex::sender_expr_for<ex::let_value_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, auto&&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...) {
       return ex::just(std::string{"hallo"});
     }
   };
@@ -322,8 +324,7 @@ namespace {
     basic_inline_scheduler<let_value_test_domain> sched;
 
     // The customization will return a different value
-    auto snd = ex::just(std::string{"hello"})
-             | ex::continues_on(sched)
+    auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
              | ex::let_value([](std::string& x) { return ex::just(x + ", world"); });
     wait_for_value(std::move(snd), std::string{"hallo"});
   }
@@ -361,15 +362,15 @@ namespace {
   }
 
   struct throws_on_connect {
-    using sender_concept = ::stdexec::sender_t;
+    using sender_concept = ::STDEXEC::sender_t;
     template <typename... Args>
-    static consteval ::stdexec::completion_signatures<::stdexec::set_value_t()>
+    static consteval ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>
       get_completion_signatures(const Args&...) noexcept {
       return {};
     }
     template <typename Receiver>
     auto connect(Receiver) const
-      -> ::stdexec::connect_result_t<decltype(::stdexec::just()), Receiver> {
+      -> ::STDEXEC::connect_result_t<decltype(::STDEXEC::just()), Receiver> {
       throw std::logic_error("TEST");
     }
   };
@@ -379,7 +380,7 @@ namespace {
     "signal to a valid receiver",
     "[adaptors][let_value]") {
     struct receiver {
-      using receiver_concept = ::stdexec::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_t;
       std::shared_ptr<int> ptr;
       void set_value() noexcept {
         FAIL_CHECK("Operation should end in error");
@@ -391,7 +392,7 @@ namespace {
       }
     };
     const auto ptr = std::make_shared<int>(0);
-    auto sender = ex::let_value(::stdexec::just(), []() noexcept { return throws_on_connect{}; });
+    auto sender = ex::let_value(::STDEXEC::just(), []() noexcept { return throws_on_connect{}; });
     auto op = ex::connect(std::move(sender), receiver{ptr});
     ex::start(op);
     CHECK(*ptr == 5);
@@ -416,24 +417,24 @@ namespace {
   }
 
   struct immovable_sender {
-    using sender_concept = ::stdexec::sender_t;
+    using sender_concept = ::STDEXEC::sender_t;
     template <typename... Args>
     consteval auto get_completion_signatures(const Args&...) const & noexcept {
-      return ::stdexec::completion_signatures_of_t<decltype(::stdexec::just()), Args...>{};
+      return ::STDEXEC::completion_signatures_of_t<decltype(::STDEXEC::just()), Args...>{};
     }
     template <typename Receiver>
     auto connect(Receiver r) const & noexcept {
-      return ::stdexec::connect(::stdexec::just(), std::move(r));
+      return ::STDEXEC::connect(::STDEXEC::just(), std::move(r));
     }
     immovable_sender() = default;
     immovable_sender(const immovable_sender&) {
       throw std::logic_error("Unexpected copy");
     }
   };
-  static_assert(::stdexec::sender<immovable_sender>);
-  static_assert(::stdexec::sender<const immovable_sender&>);
-  static_assert(::stdexec::sender_in<immovable_sender, ::stdexec::env<>>);
-  static_assert(::stdexec::sender_in<const immovable_sender&, ::stdexec::env<>>);
+  static_assert(::STDEXEC::sender<immovable_sender>);
+  static_assert(::STDEXEC::sender<const immovable_sender&>);
+  static_assert(::STDEXEC::sender_in<immovable_sender, ::STDEXEC::env<>>);
+  static_assert(::STDEXEC::sender_in<const immovable_sender&, ::STDEXEC::env<>>);
 
   TEST_CASE(
     "If the sender factory returns a reference to a sender that reference is passed to connect",

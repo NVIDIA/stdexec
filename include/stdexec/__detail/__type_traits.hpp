@@ -21,7 +21,7 @@
 #include <type_traits> // IWYU pragma: keep
 #include <utility>     // IWYU pragma: keep
 
-namespace stdexec {
+namespace STDEXEC {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
@@ -238,4 +238,4 @@ namespace stdexec {
   using __mtrue = __mbool<true>;
   using __mfalse = __mbool<false>;
 
-} // namespace stdexec
+} // namespace STDEXEC

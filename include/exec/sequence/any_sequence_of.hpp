@@ -83,7 +83,7 @@ namespace exec {
       struct __env {
         using __sigs = __to_sequence_completions_t<_Sigs>;
 
-        using __vtable_t = stdexec::__t<__next_vtable<_Sigs, __sigs, _Queries...>>;
+        using __vtable_t = STDEXEC::__t<__next_vtable<_Sigs, __sigs, _Queries...>>;
 
         struct __t {
           using __id = __env;
@@ -113,15 +113,15 @@ namespace exec {
           using __item_sender = any_receiver_ref<__next_sigs>::template any_sender<>;
           using __item_types = item_types<__item_sender>;
 
-          using __vtable_t = stdexec::__t<__next_vtable<__next_sigs, __sigs, _Queries...>>;
+          using __vtable_t = STDEXEC::__t<__next_vtable<__next_sigs, __sigs, _Queries...>>;
 
           template <class Sig>
           using __vfun = __any_::__rcvr_vfun<Sig>;
 
-          using __env_t = stdexec::__t<__env<__next_sigs, _Queries...>>;
+          using __env_t = STDEXEC::__t<__env<__next_sigs, _Queries...>>;
           __env_t __env_;
 
-          using receiver_concept = stdexec::receiver_t;
+          using receiver_concept = STDEXEC::receiver_t;
 
           template <__none_of<__t, const __t, __env_t, const __env_t> _Rcvr>
             requires sequence_receiver_of<_Rcvr, __item_types>
@@ -171,7 +171,7 @@ namespace exec {
     template <class _Sigs, class _SenderQueries, class _ReceiverQueries>
     struct __sender_vtable {
       using __query_vtable_t = __query_vtable<_SenderQueries>;
-      using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
+      using __receiver_ref_t = STDEXEC::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
 
       struct __t : public __query_vtable_t {
         auto queries() const noexcept -> const __query_vtable_t& {
@@ -203,7 +203,7 @@ namespace exec {
     template <class _Sigs, class _SenderQueries, class _ReceiverQueries>
     struct __sender_env {
       using __query_vtable_t = __query_vtable<_SenderQueries>;
-      using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
+      using __vtable_t = STDEXEC::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
       struct __t {
        public:
@@ -227,8 +227,8 @@ namespace exec {
 
     template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
     struct __sequence_sender {
-      using __receiver_ref_t = stdexec::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
-      using __vtable_t = stdexec::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
+      using __receiver_ref_t = STDEXEC::__t<__next_receiver_ref<_Sigs, _ReceiverQueries>>;
+      using __vtable_t = STDEXEC::__t<__sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
       using __sigs = __to_sequence_completions_t<_Sigs>;
       using __item_sender = any_receiver_ref<_Sigs>::template any_sender<>;
@@ -260,11 +260,11 @@ namespace exec {
         __unique_storage_t<__vtable_t> __storage_;
 
         template <class _Rcvr>
-        auto subscribe(_Rcvr __rcvr) && -> stdexec::__t<__operation<stdexec::__id<_Rcvr>, true>> {
+        auto subscribe(_Rcvr __rcvr) && -> STDEXEC::__t<__operation<STDEXEC::__id<_Rcvr>, true>> {
           return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
         }
 
-        using __env_t = stdexec::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
+        using __env_t = STDEXEC::__t<__sender_env<_Sigs, _SenderQueries, _ReceiverQueries>>;
 
         auto get_env() const noexcept -> __env_t {
           return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
@@ -276,60 +276,60 @@ namespace exec {
   template <class _Completions, auto... _ReceiverQueries>
   class any_sequence_receiver_ref {
     using __receiver_base =
-      stdexec::__t<__any::__next_receiver_ref<_Completions, queries<_ReceiverQueries...>>>;
-    using __env_t = stdexec::env_of_t<__receiver_base>;
+      STDEXEC::__t<__any::__next_receiver_ref<_Completions, queries<_ReceiverQueries...>>>;
+    using __env_t = STDEXEC::env_of_t<__receiver_base>;
     __receiver_base __receiver_;
    public:
     using __id = any_sequence_receiver_ref;
     using __t = any_sequence_receiver_ref;
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     template <auto... _SenderQueries>
     class any_sender;
 
-    template <stdexec::__not_decays_to<__t> _Receiver>
+    template <STDEXEC::__not_decays_to<__t> _Receiver>
       requires sequence_receiver_of<_Receiver, _Completions>
     any_sequence_receiver_ref(_Receiver& __receiver) noexcept
       : __receiver_(__receiver) {
     }
 
     auto get_env() const noexcept -> __env_t {
-      return stdexec::get_env(__receiver_);
+      return STDEXEC::get_env(__receiver_);
     }
 
-    template <stdexec::sender _Item>
-      requires stdexec::__callable<set_next_t, __receiver_base&, _Item>
+    template <STDEXEC::sender _Item>
+      requires STDEXEC::__callable<set_next_t, __receiver_base&, _Item>
     [[nodiscard]]
     auto set_next(_Item&& __item) & noexcept(
-      stdexec::__nothrow_callable<set_next_t, __receiver_base&, _Item>)
-      -> stdexec::__call_result_t<set_next_t, __receiver_base&, _Item> {
+      STDEXEC::__nothrow_callable<set_next_t, __receiver_base&, _Item>)
+      -> STDEXEC::__call_result_t<set_next_t, __receiver_base&, _Item> {
       return exec::set_next(__receiver_, static_cast<_Item&&>(__item));
     }
 
     void set_value() noexcept
-      requires stdexec::__callable<stdexec::set_value_t, __receiver_base&&>
+      requires STDEXEC::__callable<STDEXEC::set_value_t, __receiver_base&&>
     {
-      stdexec::set_value(static_cast<__receiver_base&&>(__receiver_));
+      STDEXEC::set_value(static_cast<__receiver_base&&>(__receiver_));
     }
 
     template <class _Error>
-      requires stdexec::__callable<stdexec::set_error_t, __receiver_base&&, _Error>
+      requires STDEXEC::__callable<STDEXEC::set_error_t, __receiver_base&&, _Error>
     void set_error(_Error&& __error) noexcept {
-      stdexec::set_error(
+      STDEXEC::set_error(
         static_cast<__receiver_base&&>(__receiver_), static_cast<_Error&&>(__error));
     }
 
     void set_stopped() noexcept
-      requires stdexec::__callable<stdexec::set_stopped_t, __receiver_base&&>
+      requires STDEXEC::__callable<STDEXEC::set_stopped_t, __receiver_base&&>
     {
-      stdexec::set_stopped(static_cast<__receiver_base&&>(__receiver_));
+      STDEXEC::set_stopped(static_cast<__receiver_base&&>(__receiver_));
     }
   };
 
   template <class _Completions, auto... _ReceiverQueries>
   template <auto... _SenderQueries>
   class any_sequence_receiver_ref<_Completions, _ReceiverQueries...>::any_sender {
-    using __sender_base = stdexec::__t<__any::__sequence_sender<
+    using __sender_base = STDEXEC::__t<__any::__sequence_sender<
       _Completions,
       queries<_SenderQueries...>,
       queries<_ReceiverQueries...>
@@ -343,10 +343,10 @@ namespace exec {
     using completion_signatures = __sender_base::completion_signatures;
     using item_types = __sender_base::item_types;
 
-    template <stdexec::__not_decays_to<any_sender> _Sender>
-      requires stdexec::sender_in<_Sender, __env_t> && sequence_sender_to<_Sender, __receiver_base>
+    template <STDEXEC::__not_decays_to<any_sender> _Sender>
+      requires STDEXEC::sender_in<_Sender, __env_t> && sequence_sender_to<_Sender, __receiver_base>
     any_sender(_Sender&& __sender)
-      noexcept(stdexec::__nothrow_constructible_from<__sender_base, _Sender>)
+      noexcept(STDEXEC::__nothrow_constructible_from<__sender_base, _Sender>)
       : __sender_(static_cast<_Sender&&>(__sender)) {
     }
 
@@ -355,8 +355,8 @@ namespace exec {
       return exec::subscribe(static_cast<__sender_base&&>(__sender_), static_cast<_Rcvr&&>(__rcvr));
     }
 
-    auto get_env() const noexcept -> stdexec::env_of_t<__sender_base> {
-      return stdexec::get_env(__sender_);
+    auto get_env() const noexcept -> STDEXEC::env_of_t<__sender_base> {
+      return STDEXEC::get_env(__sender_);
     }
   };
 

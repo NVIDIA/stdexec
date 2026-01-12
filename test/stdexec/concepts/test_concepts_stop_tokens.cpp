@@ -27,16 +27,18 @@ namespace {
     }
   };
 
-  static_assert(::stdexec::stoppable_token<::stdexec::never_stop_token>);
-  static_assert(::stdexec::unstoppable_token<::stdexec::never_stop_token>);
-  static_assert(::stdexec::stoppable_token<::stdexec::inplace_stop_token>);
-  static_assert(!::stdexec::unstoppable_token<::stdexec::inplace_stop_token>);
+  static_assert(::STDEXEC::stoppable_token<::STDEXEC::never_stop_token>);
+  static_assert(::STDEXEC::unstoppable_token<::STDEXEC::never_stop_token>);
+  static_assert(::STDEXEC::stoppable_token<::STDEXEC::inplace_stop_token>);
+  static_assert(!::STDEXEC::unstoppable_token<::STDEXEC::inplace_stop_token>);
   static_assert(std::is_same_v<
-                ::stdexec::stop_callback_for_t<::stdexec::never_stop_token, on_stop_request>,
-                ::stdexec::never_stop_token::callback_type<on_stop_request>>);
-  static_assert(::stdexec::stoppable_token<std::stop_token>);
+                ::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
+                ::STDEXEC::never_stop_token::callback_type<on_stop_request>
+  >);
+  static_assert(::STDEXEC::stoppable_token<std::stop_token>);
   static_assert(std::is_same_v<
-                ::stdexec::stop_callback_for_t<std::stop_token, on_stop_request>,
-                std::stop_callback<on_stop_request>>);
+                ::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
+                std::stop_callback<on_stop_request>
+  >);
 
 } // namespace

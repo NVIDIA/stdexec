@@ -17,24 +17,24 @@
 
 #include "exec/sequence/merge.hpp"
 
-#include "exec/sequence/empty_sequence.hpp"
-#include "exec/sequence/iterate.hpp"
-#include "exec/sequence/ignore_all_values.hpp"
-#include "exec/sequence/transform_each.hpp"
 #include "exec/sequence.hpp"
+#include "exec/sequence/empty_sequence.hpp"
+#include "exec/sequence/ignore_all_values.hpp"
+#include "exec/sequence/iterate.hpp"
+#include "exec/sequence/transform_each.hpp"
 #include "exec/sequence_senders.hpp"
-#include "exec/trampoline_scheduler.hpp"
 #include "exec/single_thread_context.hpp"
+#include "exec/trampoline_scheduler.hpp"
+#include "stdexec/__detail/__continues_on.hpp"
 #include "stdexec/__detail/__just.hpp"
 #include "stdexec/__detail/__meta.hpp"
-#include "stdexec/__detail/__continues_on.hpp"
 #include "stdexec/__detail/__upon_error.hpp"
 #include <atomic>
 #include <catch2/catch.hpp>
 
 #include <mutex>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 #include <thread>
@@ -70,13 +70,13 @@ namespace {
     template <ex::sender _Item>
     [[nodiscard]]
     auto set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>)
-      -> stdexec::__call_result_t<
-        stdexec::upon_error_t,
-        stdexec::__call_result_t<stdexec::then_t, _Item, ignore_values_fn_t>,
+      -> STDEXEC::__call_result_t<
+        STDEXEC::upon_error_t,
+        STDEXEC::__call_result_t<STDEXEC::then_t, _Item, ignore_values_fn_t>,
         ignore_values_fn_t
       > {
-      return stdexec::upon_error(
-        stdexec::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
+      return STDEXEC::upon_error(
+        STDEXEC::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
     }
   };
 
@@ -158,7 +158,7 @@ namespace {
                  ++count;
                });
     // this causes both iterate sequences to use the same trampoline.
-    ex::sync_wait(exec::sequence(stdexec::schedule(sched), exec::ignore_all_values(sum)));
+    ex::sync_wait(exec::sequence(STDEXEC::schedule(sched), exec::ignore_all_values(sum)));
     UNSCOPED_INFO("max stack size: " << max);
     CHECK(total == 12570);
     CHECK(count == 60);
@@ -216,7 +216,7 @@ namespace {
 
   struct my_domain {
     template <ex::sender_expr_for<ex::then_t> Sender, class Env>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, const Env&) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, const Env&) {
       return ex::just(int{21});
     }
   };

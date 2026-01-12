@@ -32,14 +32,14 @@
 namespace nvexec::_strm::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>
   using binary_invoke_result_t = ::cuda::std::decay_t<
-    ::cuda::std::invoke_result_t<Fun, stdexec::ranges::range_reference_t<Range>, InitT>
+    ::cuda::std::invoke_result_t<Fun, STDEXEC::ranges::range_reference_t<Range>, InitT>
   >;
 
   template <class SenderId, class ReceiverId, class InitT, class Fun, class DerivedReceiver>
   struct receiver_t {
     struct __t : public stream_receiver_base {
-      using Sender = stdexec::__t<SenderId>;
-      using Receiver = stdexec::__t<ReceiverId>;
+      using Sender = STDEXEC::__t<SenderId>;
+      using Receiver = STDEXEC::__t<ReceiverId>;
 
       template <class... Range>
       struct result_size_for {
@@ -53,7 +53,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
 
       struct max_result_size {
         template <class... _As>
-        using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+        using result_size_for_t = STDEXEC::__t<result_size_for<_As...>>;
 
         static constexpr ::std::size_t value = __gather_completions_of_t<
           set_value_t,
@@ -89,7 +89,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
 
       [[nodiscard]]
       auto get_env() const noexcept -> env_of_t<Receiver> {
-        return stdexec::get_env(op_state_.rcvr_);
+        return STDEXEC::get_env(op_state_.rcvr_);
       }
 
       __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
@@ -103,7 +103,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
   template <class SenderId, class InitT, class Fun, class DerivedSender>
   struct sender_t {
     struct __t : stream_sender_base {
-      using Sender = stdexec::__t<SenderId>;
+      using Sender = STDEXEC::__t<SenderId>;
       using __id = sender_t;
 
       template <class Receiver>
@@ -117,7 +117,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
       STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
 
       template <class Self, class... Env>
-      using completion_signatures = stdexec::transform_completion_signatures<
+      using completion_signatures = STDEXEC::transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         completion_signatures<set_error_t(cudaError_t)>,
         __mtry_q<_set_value_t>::template __f
@@ -130,7 +130,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
+          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> {
             return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
           });
@@ -145,13 +145,13 @@ namespace nvexec::_strm::__algo_range_init_fun {
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+        return STDEXEC::get_env(sndr_);
       }
     };
   };
 } // namespace nvexec::_strm::__algo_range_init_fun
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class SenderId, class InitT, class Fun, class DerivedSender>
   extern __mconst<nvexec::_strm::__algo_range_init_fun::sender_t<
     __demangle_t<__t<SenderId>>,
@@ -162,4 +162,4 @@ namespace stdexec::__detail {
     __demangle_v<
       nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>
     >;
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
