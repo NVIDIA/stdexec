@@ -48,7 +48,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
 
       template <class... Sizes>
       struct max_in_pack {
-        static constexpr ::std::size_t value = ::std::max({::std::size_t{}, Sizes::value...});
+        static constexpr ::std::size_t value = (std::max) ({::std::size_t{}, Sizes::value...});
       };
 
       struct max_result_size {

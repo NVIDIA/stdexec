@@ -141,7 +141,7 @@ namespace nvexec::_strm {
 
       template <class... Sizes>
       struct max_in_pack {
-        static constexpr std::size_t value = std::max({std::size_t{}, Sizes::value...});
+        static constexpr std::size_t value = (std::max) ({std::size_t{}, Sizes::value...});
       };
 
       template <class Receiver>

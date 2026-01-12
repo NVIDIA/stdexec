@@ -33,15 +33,15 @@
  * - exemplify the use of `starts_on` and `continues_on` algorithms
  */
 
-#include <iostream>
 #include <array>
-#include <string_view>
 #include <cstring>
+#include <iostream>
 #include <mutex>
+#include <string_view>
 
 // Pull in the reference implementation of P2300:
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
+#include <stdexec/execution.hpp>
 // Use a thread pool
 #include "exec/static_thread_pool.hpp"
 
@@ -73,7 +73,7 @@ std::mutex sync_stream::s_mtx_{};
 auto legacy_read_from_socket(int, char* buffer, size_t buffer_len) -> size_t {
   const char fake_data[] = "Hello, world!";
   size_t sz = sizeof(fake_data) - 1;
-  size_t count = std::min(sz, buffer_len);
+  size_t count = (std::min) (sz, buffer_len);
   std::memcpy(buffer, fake_data, count);
   return count;
 }

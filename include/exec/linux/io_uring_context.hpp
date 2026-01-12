@@ -104,7 +104,7 @@ namespace exec {
         auto __cring_sz = __params_.cq_off.cqes + __params_.cq_entries * sizeof(::io_uring_cqe);
         auto __sqes_sz = __params_.sq_entries * sizeof(::io_uring_sqe);
         if (__params_.features & IORING_FEAT_SINGLE_MMAP) {
-          __sring_sz = std::max(__sring_sz, __cring_sz);
+          __sring_sz = (std::max) (__sring_sz, __cring_sz);
           __cring_sz = __sring_sz;
         }
         __submission_queue_region_ = __map_region(__ring_fd_, IORING_OFF_SQ_RING, __sring_sz);
@@ -216,7 +216,7 @@ namespace exec {
         __u32 __head = __head_.load(STDEXEC::__std::memory_order_acquire);
         __u32 __current_count = __tail - __head;
         STDEXEC_ASSERT(__current_count <= __n_total_slots_);
-        __max_submissions = std::min(__max_submissions, __n_total_slots_ - __current_count);
+        __max_submissions = (std::min) (__max_submissions, __n_total_slots_ - __current_count);
         __submission_result __result{};
         __task* __op = nullptr;
         while (!__tasks.empty() && __result.__n_submitted < __max_submissions) {
@@ -353,7 +353,7 @@ namespace exec {
     class __context : __context_base {
      public:
       explicit __context(unsigned __entries = 1024, unsigned __flags = 0)
-        : __context_base(std::max(__entries, 2u), __flags)
+        : __context_base((std::max) (__entries, 2u), __flags)
         , __completion_queue_{__completion_queue_region_ ? __completion_queue_region_ : __submission_queue_region_, __params_}
         , __submission_queue_{__submission_queue_region_, __submission_queue_entries_, __params_}
         , __wakeup_operation_{this, __eventfd_} {
@@ -982,7 +982,7 @@ namespace exec {
           __duration_to_timespec(std::chrono::nanoseconds dur) noexcept -> __kernel_timespec {
           auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
           dur -= secs;
-          secs = std::max(secs, std::chrono::seconds{0});
+          secs = (std::max) (secs, std::chrono::seconds{0});
           dur = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
           return __kernel_timespec{secs.count(), dur.count()};
         }

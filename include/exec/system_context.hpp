@@ -522,9 +522,10 @@ namespace exec {
       using __inner_op_state = STDEXEC::connect_result_t<_Previous, __intermediate_receiver_t>;
 
       static constexpr size_t _PreallocatedSize =
-        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
+        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
       static constexpr size_t _PreallocatedAlign =
-        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN), alignof(__inner_op_state));
+        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN),
+                    alignof(__inner_op_state));
 
       /// Preallocated space for storing the inner operation state, and then storage space for the backend call.
       __aligned_storage<_PreallocatedSize, _PreallocatedAlign> __preallocated_;

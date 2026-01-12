@@ -161,7 +161,7 @@ namespace execpools {
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
           // than we can actually deal with at one time?
           return static_cast<std::uint32_t>(
-            std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
+            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
         }
 
         template <class F>

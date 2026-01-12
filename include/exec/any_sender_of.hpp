@@ -259,8 +259,8 @@ namespace exec {
     >
     struct __immovable_storage {
       class __t : __immovable {
-        static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
-        static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
+        static constexpr std::size_t __buffer_size = (std::max) (_InlineSize, sizeof(void*));
+        static constexpr std::size_t __alignment = (std::max) (_Alignment, alignof(void*));
         using __with_delete = __delete_t(void() noexcept);
         using __vtable_t = __storage_vtable<_Vtable, __with_delete>;
 
@@ -383,8 +383,8 @@ namespace exec {
       static_assert(
         STDEXEC_IS_CONVERTIBLE_TO(typename std::allocator_traits<_Allocator>::void_pointer, void*));
 
-      static constexpr std::size_t __buffer_size = std::max(_InlineSize, sizeof(void*));
-      static constexpr std::size_t __alignment = std::max(_Alignment, alignof(void*));
+      static constexpr std::size_t __buffer_size = (std::max) (_InlineSize, sizeof(void*));
+      static constexpr std::size_t __alignment = (std::max) (_Alignment, alignof(void*));
       using __with_copy = __copy_construct_t(void(const __t&));
       using __with_move = __move_construct_t(void(__t&&) noexcept);
       using __with_delete = __delete_t(void() noexcept);

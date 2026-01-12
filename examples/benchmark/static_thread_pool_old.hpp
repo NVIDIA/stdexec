@@ -587,7 +587,7 @@ namespace exec_old {
 
     [[nodiscard]]
     auto num_agents_required() const -> std::uint32_t {
-      return std::min(shape_, static_cast<Shape>(pool_.available_parallelism()));
+      return (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism()));
     }
 
     template <class F>

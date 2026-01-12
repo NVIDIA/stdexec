@@ -21,8 +21,8 @@
 #include <barrier>
 #include <chrono>
 #include <cmath>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <memory>
 #include <span>
 #include <thread>
@@ -73,8 +73,8 @@ auto compute_perf(
   for (std::size_t j = i0; j <= i; ++j) {
     auto stats = compute_perf(start[j], end[j], total_scheds);
     average += stats.ops_per_sec / static_cast<double>(i + 1 - i0);
-    max = std::max(max, stats.ops_per_sec);
-    min = std::min(min, stats.ops_per_sec);
+    max = (std::max) (max, stats.ops_per_sec);
+    min = (std::min) (min, stats.ops_per_sec);
   }
   // compute variant
   double variance = 0.0;

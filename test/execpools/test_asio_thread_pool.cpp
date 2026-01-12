@@ -55,7 +55,7 @@ namespace {
              tile_count,
              [=](std::size_t i, std::span<double> partials) {
                auto start = i * tile_size;
-               auto end = std::min(input.size(), (i + 1) * tile_size);
+               auto end = (std::min) (input.size(), (i + 1) * tile_size);
                partials[i + 1] = *--std::inclusive_scan(
                  begin(input) + static_cast<long>(start),
                  begin(input) + static_cast<long>(end),
@@ -70,7 +70,7 @@ namespace {
              tile_count,
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
-               auto end = std::min(input.size(), (i + 1) * tile_size);
+               auto end = (std::min) (input.size(), (i + 1) * tile_size);
                std::for_each(
                  begin(output) + static_cast<long>(start),
                  begin(output) + static_cast<long>(end),

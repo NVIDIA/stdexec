@@ -1302,7 +1302,7 @@ namespace exec {
       auto num_agents_required() const noexcept -> std::uint32_t {
         if constexpr (Parallelize) {
           return static_cast<std::uint32_t>(
-            std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
+            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
         } else {
           return static_cast<std::uint32_t>(1);
         }
@@ -1618,7 +1618,7 @@ namespace exec {
             std::size_t nthreads = this->pool_.available_parallelism();
             bwos_params params = this->pool_.params();
             std::size_t local_size = params.blockSize * params.numBlocks;
-            std::size_t chunk_size = std::min(size / nthreads, local_size * nthreads);
+            std::size_t chunk_size = (std::min) (size / nthreads, local_size * nthreads);
             auto& remote_queue = *this->pool_.get_remote_queue();
             auto it = std::ranges::begin(this->range_);
             std::size_t i0 = 0;
