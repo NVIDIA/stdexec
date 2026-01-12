@@ -63,7 +63,7 @@ namespace stdexec {
         // and let it finish.
         // The count will be decremented once the tasks executes.
         __queue_.push(&__noop_task);
-        // If the task got pushed, simply subtract one again, the other increment
+        // If the task got pushed, simply subtract one again, the other decrement
         // happens when the noop task got executed.
         __task_count_.fetch_sub(1, __std::memory_order_release);
         return;
