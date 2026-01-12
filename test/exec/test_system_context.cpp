@@ -221,7 +221,7 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
   auto bulk_snd =
-    ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
+    ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](size_t id) {
       pool_ids[id] = std::this_thread::get_id();
     });
 
