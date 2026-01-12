@@ -50,7 +50,7 @@ namespace nvexec {
      private:
       template <class ReceiverId>
       struct operation_state_t : stream_op_state_base {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         explicit operation_state_t(Receiver rcvr)
           : rcvr_(static_cast<Receiver&&>(rcvr)) {
@@ -69,16 +69,16 @@ namespace nvexec {
         void start() & noexcept {
           if constexpr (stream_receiver<Receiver>) {
             if (status_ == cudaSuccess) {
-              stdexec::set_value(static_cast<Receiver&&>(rcvr_));
+              STDEXEC::set_value(static_cast<Receiver&&>(rcvr_));
             } else {
-              stdexec::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
+              STDEXEC::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
             }
           } else {
             if (status_ == cudaSuccess) {
-              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rcvr_), stdexec::set_value);
+              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rcvr_), STDEXEC::set_value);
             } else {
               continuation_kernel<<<1, 1, 0, stream_>>>(
-                std::move(rcvr_), stdexec::set_error, std::move(status_));
+                std::move(rcvr_), STDEXEC::set_error, std::move(status_));
             }
           }
         }
@@ -96,7 +96,7 @@ namespace nvexec {
         using __id = sender_t;
 
         using completion_signatures =
-          stdexec::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
+          STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender_t(int num_devices, context_state_t context_state) noexcept
@@ -106,8 +106,8 @@ namespace nvexec {
         template <class Receiver>
         [[nodiscard]]
         auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> operation_state_t<stdexec::__id<Receiver>> {
-          return operation_state_t<stdexec::__id<Receiver>>(static_cast<Receiver&&>(rcvr));
+          -> operation_state_t<STDEXEC::__id<Receiver>> {
+          return operation_state_t<STDEXEC::__id<Receiver>>(static_cast<Receiver&&>(rcvr));
         }
 
         [[nodiscard]]
@@ -125,7 +125,8 @@ namespace nvexec {
 
           template <class CPO>
           [[nodiscard]]
-          auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept -> multi_gpu_stream_scheduler {
+          auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
+            -> multi_gpu_stream_scheduler {
             return multi_gpu_stream_scheduler{num_devices_, context_state_};
           }
         };
@@ -143,7 +144,7 @@ namespace nvexec {
     STDEXEC_ATTRIBUTE(nodiscard)
     inline auto stream_scheduler_env<multi_gpu_stream_scheduler>::query(
       get_completion_scheduler_t<set_value_t>) const noexcept -> multi_gpu_stream_scheduler {
-      return stdexec::__c_downcast<multi_gpu_stream_scheduler>(*this);
+      return STDEXEC::__c_downcast<multi_gpu_stream_scheduler>(*this);
     }
   } // namespace _strm
 

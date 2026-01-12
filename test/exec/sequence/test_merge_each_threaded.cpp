@@ -39,7 +39,7 @@
 namespace {
   using namespace std::chrono_literals;
   using namespace exec;
-  namespace ex = stdexec;
+  namespace ex = STDEXEC;
 
   template <class _A, class _B>
   concept __equivalent = __sequence_sndr::__all_contained_in<_A, _B>
@@ -78,8 +78,8 @@ namespace {
     [[nodiscard]]
     auto
       set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>) -> next_sender auto {
-      return stdexec::upon_error(
-        stdexec::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
+      return STDEXEC::upon_error(
+        STDEXEC::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
     }
   };
 
@@ -101,7 +101,7 @@ namespace {
     auto delay_value = []<class Value>(Value&& value, Sched sched, auto after) {
       return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
     };
-    auto delay_adaptor = stdexec::__closure(delay_value, sched, after);
+    auto delay_adaptor = STDEXEC::__closure(delay_value, sched, after);
     return exec::transform_each(delay_adaptor);
   };
   // a sequence adaptor that applies a function to each item
@@ -114,7 +114,7 @@ namespace {
         exec::transform_each(
           static_cast<decltype(sequence)&&>(sequence), ex::then(static_cast<decltype(f)&&>(f))));
     };
-    return stdexec::__closure(map_merge, static_cast<decltype(f)&&>(f));
+    return STDEXEC::__closure(map_merge, static_cast<decltype(f)&&>(f));
   };
   // when_all requires a successful completion
   // however stop_after_on has no successful completion
@@ -122,7 +122,7 @@ namespace {
   // (the successful completion will never occur)
   [[maybe_unused]]
   static constexpr auto with_void = [](auto&& sender) noexcept
-    -> variant_sender<stdexec::__call_result_t<ex::just_t>, decltype(sender)> {
+    -> variant_sender<STDEXEC::__call_result_t<ex::just_t>, decltype(sender)> {
     return {static_cast<decltype(sender)&&>(sender)};
   };
   // with_stop_token_from adds get_stop_token query, that returns the
@@ -135,7 +135,7 @@ namespace {
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message) {
     return exec::sequence(
-      ex::read_env(ex::get_stop_token) | stdexec::then([message](auto&& token) noexcept {
+      ex::read_env(ex::get_stop_token) | STDEXEC::then([message](auto&& token) noexcept {
         UNSCOPED_INFO(
           message << (token.stop_requested() ? ", stop was requested" : ", stop not requested")
                   << ", on thread id: " << std::this_thread::get_id());
@@ -153,7 +153,7 @@ namespace {
   // emits_stopped completes with set_stopped after printing info
   [[maybe_unused]]
   auto emits_stopped = []() {
-    return ex::just() | stdexec::let_value([]() noexcept {
+    return ex::just() | STDEXEC::let_value([]() noexcept {
              UNSCOPED_INFO("emitting stopped, on thread id: " << std::this_thread::get_id());
              return ex::just_stopped();
            });
@@ -161,7 +161,7 @@ namespace {
   // emits_error completes with set_error(error) after printing info
   [[maybe_unused]]
   auto emits_error = [](auto error) {
-    return ex::just() | stdexec::let_value([error]() noexcept {
+    return ex::just() | STDEXEC::let_value([error]() noexcept {
              UNSCOPED_INFO(error.what() << ", on thread id: " << std::this_thread::get_id());
              return ex::just_error(error);
            });
@@ -232,8 +232,8 @@ namespace {
 
     auto stop_after_on = [sched0, elapsed_ms](auto sched, auto after) {
       return schedule_after(sched, after)
-           | stdexec::continues_on(sched0) // serializes output on the sched0 strand
-           | stdexec::let_value([elapsed_ms]() noexcept {
+           | STDEXEC::continues_on(sched0) // serializes output on the sched0 strand
+           | STDEXEC::let_value([elapsed_ms]() noexcept {
                UNSCOPED_INFO(
                  "requesting stop  - at: " << std::setw(3) << elapsed_ms()
                                            << "ms, on thread id: " << std::this_thread::get_id());
@@ -243,8 +243,8 @@ namespace {
 
     auto error_after_on = [sched0, elapsed_ms](auto sched, auto after, auto error) {
       return schedule_after(sched, after)
-           | stdexec::continues_on(sched0) // serializes output on the sched0 strand
-           | stdexec::let_value([elapsed_ms, error]() noexcept {
+           | STDEXEC::continues_on(sched0) // serializes output on the sched0 strand
+           | STDEXEC::let_value([elapsed_ms, error]() noexcept {
                UNSCOPED_INFO(
                  error.what() << " - at: " << std::setw(3) << elapsed_ms()
                               << "ms, on thread id: " << std::this_thread::get_id());
@@ -303,8 +303,8 @@ namespace {
 
     auto stop_after_on = [sched0, elapsed_ms](auto sched, auto after) {
       return schedule_after(sched, after)
-           | stdexec::continues_on(sched0) // serializes output on the sched0 strand
-           | stdexec::let_value([elapsed_ms]() noexcept {
+           | STDEXEC::continues_on(sched0) // serializes output on the sched0 strand
+           | STDEXEC::let_value([elapsed_ms]() noexcept {
                UNSCOPED_INFO(
                  "requesting stop  - at: " << std::setw(3) << elapsed_ms()
                                            << "ms, on thread id: " << std::this_thread::get_id());
@@ -314,8 +314,8 @@ namespace {
 
     auto error_after_on = [sched0, elapsed_ms](auto sched, auto after, auto error) {
       return schedule_after(sched, after)
-           | stdexec::continues_on(sched0) // serializes output on the sched0 strand
-           | stdexec::let_value([elapsed_ms, error]() noexcept {
+           | STDEXEC::continues_on(sched0) // serializes output on the sched0 strand
+           | STDEXEC::let_value([elapsed_ms, error]() noexcept {
                UNSCOPED_INFO(
                  error.what() << " - at: " << std::setw(3) << elapsed_ms()
                               << "ms, on thread id: " << std::this_thread::get_id());

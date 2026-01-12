@@ -25,7 +25,7 @@
 #  if STDEXEC_MSVC_HEADERS()
 #    include <intrin.h>
 #  endif
-namespace stdexec {
+namespace STDEXEC {
   STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
 #  if STDEXEC_MSVC_HEADERS()
     _mm_pause();
@@ -33,9 +33,9 @@ namespace stdexec {
     __builtin_ia32_pause();
 #  endif
   }
-} // namespace stdexec
+} // namespace STDEXEC
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
-namespace stdexec {
+namespace STDEXEC {
   STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
 #  if (                                                                                            \
     defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)              \
@@ -49,10 +49,10 @@ namespace stdexec {
     asm volatile("nop" ::: "memory");
 #  endif
   }
-} // namespace stdexec
+} // namespace STDEXEC
 #else
-namespace stdexec {
+namespace STDEXEC {
   STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
   }
-} // namespace stdexec
+} // namespace STDEXEC
 #endif

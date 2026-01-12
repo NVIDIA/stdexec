@@ -25,7 +25,7 @@
 #include "__then.hpp"
 #include "__transform_sender.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
   namespace __execute_ {
@@ -34,7 +34,7 @@ namespace stdexec {
         requires __callable<_Fun&> && move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
         auto __domain = get_domain(__sched);
-        stdexec::apply_sender(
+        STDEXEC::apply_sender(
           __domain,
           *this,
           schedule(static_cast<_Scheduler&&>(__sched)),
@@ -51,4 +51,4 @@ namespace stdexec {
 
   using __execute_::execute_t;
   inline constexpr execute_t execute{};
-} // namespace stdexec
+} // namespace STDEXEC

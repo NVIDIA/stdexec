@@ -34,7 +34,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
 
 namespace exec {
   namespace __task {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     // The required set_value_t() scheduler-sender completion signature is added in
     // any_receiver_ref::any_sender::any_scheduler.
@@ -87,7 +87,7 @@ namespace exec {
       static constexpr bool __with_scheduler = _SchedulerAffinity == __scheduler_affinity::__sticky;
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      __if_c<__with_scheduler, __any_scheduler, __ignore> __scheduler_{stdexec::inline_scheduler{}};
+      __if_c<__with_scheduler, __any_scheduler, __ignore> __scheduler_{STDEXEC::inline_scheduler{}};
       inplace_stop_token __stop_token_;
 
      public:
@@ -281,12 +281,12 @@ namespace exec {
     template <class _Sch>
     struct __just_void {
       using sender_concept = sender_t;
-      using completion_signatures = stdexec::completion_signatures<set_value_t()>;
+      using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
       template <class _Rcvr>
       [[nodiscard]]
       static constexpr auto connect(_Rcvr __rcvr) noexcept {
-        return stdexec::connect(just(), static_cast<_Rcvr&&>(__rcvr));
+        return STDEXEC::connect(just(), static_cast<_Rcvr&&>(__rcvr));
       }
 
       [[nodiscard]]
@@ -336,7 +336,7 @@ namespace exec {
 
      private:
       using __scheduler_t =
-        __query_result_or_t<get_scheduler_t, _Context, stdexec::inline_scheduler>;
+        __query_result_or_t<get_scheduler_t, _Context, STDEXEC::inline_scheduler>;
 
       struct __final_awaitable {
         static constexpr auto await_ready() noexcept -> bool {
@@ -394,9 +394,9 @@ namespace exec {
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
           if constexpr (
             __completes_where_it_starts<set_value_t, env_of_t<_Awaitable>, __promise_context_t&>) {
-            return stdexec::as_awaitable(static_cast<_Awaitable&&>(__awaitable), *this);
+            return STDEXEC::as_awaitable(static_cast<_Awaitable&&>(__awaitable), *this);
           } else {
-            return stdexec::as_awaitable(
+            return STDEXEC::as_awaitable(
               continues_on(static_cast<_Awaitable&&>(__awaitable), get_scheduler(*__context_)),
               *this);
           }
@@ -417,7 +417,7 @@ namespace exec {
             (void) __cleanup_task.await_resume();
           }
           __context_->set_scheduler(__box.__sched_);
-          return stdexec::as_awaitable(schedule(__box.__sched_), *this);
+          return STDEXEC::as_awaitable(schedule(__box.__sched_), *this);
         }
 #endif
 
@@ -522,9 +522,9 @@ namespace exec {
   inline constexpr __task::__reschedule_coroutine_on reschedule_coroutine_on{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <class _Ty, class _Context>
   inline constexpr bool enable_sender<exec::basic_task<_Ty, _Context>> = true;
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

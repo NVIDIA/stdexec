@@ -28,7 +28,7 @@ namespace execpools {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
     template <class... Args>
-      requires stdexec::constructible_from<tbb::task_arena, Args...>
+      requires STDEXEC::constructible_from<tbb::task_arena, Args...>
     explicit tbb_thread_pool(Args&&... args)
       : arena_{std::forward<Args>(args)...} {
       arena_.initialize();
@@ -40,8 +40,8 @@ namespace execpools {
     }
    private:
     [[nodiscard]]
-    static constexpr auto forward_progress_guarantee() -> stdexec::forward_progress_guarantee {
-      return stdexec::forward_progress_guarantee::parallel;
+    static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee {
+      return STDEXEC::forward_progress_guarantee::parallel;
     }
 
     friend thread_pool_base<tbb_thread_pool>;

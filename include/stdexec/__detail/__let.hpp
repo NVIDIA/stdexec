@@ -35,7 +35,7 @@
 #include <exception>
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let {
@@ -48,15 +48,15 @@ namespace stdexec {
     };
 
     template <class _SetTag>
-    inline constexpr __mstring __in_which_let_msg{"In stdexec::let_value(Sender, Function)..."};
+    inline constexpr __mstring __in_which_let_msg{"In STDEXEC::let_value(Sender, Function)..."};
 
     template <>
     inline constexpr __mstring __in_which_let_msg<set_error_t>{
-      "In stdexec::let_error(Sender, Function)..."};
+      "In STDEXEC::let_error(Sender, Function)..."};
 
     template <>
     inline constexpr __mstring __in_which_let_msg<set_stopped_t>{
-      "In stdexec::let_stopped(Sender, Function)..."};
+      "In STDEXEC::let_stopped(Sender, Function)..."};
 
     template <class _SetTag>
     using __on_not_callable = __callable_error<__in_which_let_msg<_SetTag>>;
@@ -92,8 +92,8 @@ namespace stdexec {
 
     template <class _ReceiverId, class _Env2Id>
     struct __rcvr_env {
-      using _Receiver = stdexec::__t<_ReceiverId>;
-      using _Env2 = stdexec::__t<_Env2Id>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using _Env2 = STDEXEC::__t<_Env2Id>;
 
       struct __t {
         using receiver_concept = receiver_t;
@@ -101,20 +101,20 @@ namespace stdexec {
 
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
         void set_error(_Error&& __err) noexcept {
-          stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
         }
 
         auto get_env() const noexcept {
-          return __env::__join(__env_, stdexec::get_env(__rcvr_));
+          return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
         }
 
         _Receiver& __rcvr_;
@@ -296,7 +296,7 @@ namespace stdexec {
               .template emplace<__submit_t>(__declval<__sender_t>(), __declval<__second_rcvr_t>()));
           STDEXEC_TRY {
             auto& __tuple = __args_.emplace_from(__mktuple, static_cast<_Args&&>(__args)...);
-            auto&& __sender = ::stdexec::__apply(static_cast<_Fun&&>(__fun_), __tuple);
+            auto&& __sender = ::STDEXEC::__apply(static_cast<_Fun&&>(__fun_), __tuple);
             __storage_.template emplace<__monostate>();
             __second_rcvr_t __r{__rcvr, static_cast<__env2_t&&>(__env2_)};
             auto& __op = __storage_.template emplace<__submit_t>(
@@ -305,7 +305,7 @@ namespace stdexec {
           }
           STDEXEC_CATCH_ALL {
             if constexpr (!(__nothrow_store && __nothrow_invoke && __nothrow_submit)) {
-              ::stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+              ::STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
             }
           }
         } else {
@@ -313,30 +313,30 @@ namespace stdexec {
         }
       }
       struct __first_rcvr_t {
-        using receiver_concept = ::stdexec::receiver_t;
+        using receiver_concept = ::STDEXEC::receiver_t;
         __let_state& __state;
         _Receiver& __rcvr;
         template <typename... _Args>
         constexpr void set_value(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::stdexec::set_value, static_cast<_Args&&>(__args)...);
+          __state.__impl(__rcvr, ::STDEXEC::set_value, static_cast<_Args&&>(__args)...);
         }
         template <typename... _Args>
         constexpr void set_error(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::stdexec::set_error, static_cast<_Args&&>(__args)...);
+          __state.__impl(__rcvr, ::STDEXEC::set_error, static_cast<_Args&&>(__args)...);
         }
         template <typename... _Args>
         constexpr void set_stopped(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::stdexec::set_stopped, static_cast<_Args&&>(__args)...);
+          __state.__impl(__rcvr, ::STDEXEC::set_stopped, static_cast<_Args&&>(__args)...);
         }
         constexpr decltype(auto) get_env() const noexcept {
-          return ::stdexec::get_env(__rcvr);
+          return ::STDEXEC::get_env(__rcvr);
         }
       };
 
       using __result_variant = __variant_for<__monostate, _Tuples...>;
       using __op_state_variant = __variant_for<
         __monostate,
-        ::stdexec::connect_result_t<_Sender, __first_rcvr_t>,
+        ::STDEXEC::connect_result_t<_Sender, __first_rcvr_t>,
         __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
       >;
 
@@ -346,9 +346,9 @@ namespace stdexec {
         : __fun_(static_cast<_Fun&&>(__fun))
         , __env2_(
             // TODO(ericniebler): this needs a fallback
-            __let::__mk_env2<_SetTag>(::stdexec::get_env(__sender), ::stdexec::get_env(__r))) {
+            __let::__mk_env2<_SetTag>(::STDEXEC::get_env(__sender), ::STDEXEC::get_env(__r))) {
         __storage_.emplace_from(
-          ::stdexec::connect, static_cast<_Sender&&>(__sender), __first_rcvr_t{*this, __r});
+          ::STDEXEC::connect, static_cast<_Sender&&>(__sender), __first_rcvr_t{*this, __r});
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -432,7 +432,7 @@ namespace stdexec {
         using __result_sender_fn = __let::__result_sender_fn<_SetTag, _Fn, _JoinEnv2...>;
         if constexpr (__minvocable<__result_sender_fn, _Ts...>) {
           using __sndr2_t = __mcall<__result_sender_fn, _Ts...>;
-          return stdexec::get_completion_behavior<_SetTag, __sndr2_t, _JoinEnv2...>();
+          return STDEXEC::get_completion_behavior<_SetTag, __sndr2_t, _JoinEnv2...>();
         } else {
           return completion_behavior::unknown;
         }
@@ -488,7 +488,7 @@ namespace stdexec {
     struct __attrs {
       using __t = __attrs;
       using __id = __attrs;
-      using __set_tag_t = stdexec::__t<_LetTag>;
+      using __set_tag_t = STDEXEC::__t<_LetTag>;
 
       template <class _Tag>
       constexpr auto query(get_completion_scheduler_t<_Tag>) const = delete;
@@ -540,7 +540,7 @@ namespace stdexec {
           using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
 
           constexpr auto __pred_behavior =
-            stdexec::get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
+            STDEXEC::get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
           constexpr auto __result_behavior = __gather_completions_t<
             __set_tag_t,
             __completions_t,
@@ -604,7 +604,7 @@ namespace stdexec {
       static constexpr auto get_attrs =
         []<class _Child, class _Fun>(const __data_t<_Child, _Fun>& __data) noexcept {
           // BUGBUG:
-          return stdexec::get_env(__data.__sndr);
+          return STDEXEC::get_env(__data.__sndr);
         };
 
       static constexpr auto get_completion_signatures =
@@ -642,7 +642,7 @@ namespace stdexec {
 
       static constexpr auto start =
         []<typename _State, typename _Receiver>(_State& __state, _Receiver&) noexcept {
-          ::stdexec::start(__state.__storage_.template get<1>());
+          ::STDEXEC::start(__state.__storage_.template get<1>());
         };
     };
   } // namespace __let
@@ -661,4 +661,4 @@ namespace stdexec {
       -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
-} // namespace stdexec
+} // namespace STDEXEC

@@ -21,7 +21,7 @@
 #  include <execution>
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
 
 #if STDEXEC_HAS_EXECUTION_POLICY()
 
@@ -80,4 +80,4 @@ namespace stdexec {
 
 #endif
 
-} // namespace stdexec
+} // namespace STDEXEC

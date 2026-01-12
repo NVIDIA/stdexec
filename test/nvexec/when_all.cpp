@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "common.cuh"
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
-#include "common.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -36,7 +36,7 @@ namespace {
           flags.set(1);
         }
       }));
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -47,7 +47,7 @@ namespace {
     auto snd = ex::when_all(
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 24; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 42; }));
-    auto [v1, v2] = stdexec::sync_wait(std::move(snd)).value();
+    auto [v1, v2] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 24);
     REQUIRE(v2 == 42);
@@ -62,7 +62,7 @@ namespace {
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 3; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 4; }),
       ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 5; }));
-    auto [v1, v2, v3, v4, v5] = stdexec::sync_wait(std::move(snd)).value();
+    auto [v1, v2, v3, v4, v5] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 1);
     REQUIRE(v2 == 2);
@@ -78,7 +78,7 @@ namespace {
     auto snd = ex::when_all(
       ex::schedule(sch) | ex::then([]() -> int { return is_on_gpu() * 24; }),
       ex::schedule(sch) | a_sender([]() -> int { return is_on_gpu() * 42; }));
-    auto [v1, v2] = stdexec::sync_wait(std::move(snd)).value();
+    auto [v1, v2] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 24);
     REQUIRE(v2 == 42);

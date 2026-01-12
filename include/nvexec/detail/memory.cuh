@@ -24,10 +24,10 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <memory_resource>
-#include <new>
 #include <memory>
+#include <memory_resource>
 #include <mutex>
+#include <new>
 #include <set>
 #include <vector>
 
@@ -213,7 +213,7 @@ namespace nvexec::_strm {
 
     monotonic_buffer_resource(std::size_t bytes, std::pmr::memory_resource* upstream)
       : upstream(upstream)
-      , space(std::max(bytes, std::size_t{2})) {
+      , space((std::max) (bytes, std::size_t{2})) {
       block_descriptor_t first_block{
         .ptr = upstream->allocate(space, block_alignment), .total = space};
       current_ptr = first_block.ptr;
@@ -240,7 +240,7 @@ namespace nvexec::_strm {
       void* ptr = std::align(alignment, bytes, current_ptr, space);
 
       if (ptr == nullptr) {
-        space = std::max(bytes, get_next_space());
+        space = (std::max) (bytes, get_next_space());
         ptr = current_ptr = upstream->allocate(space, block_alignment);
         allocated_blocks.push_back(block_descriptor_t{.ptr = current_ptr, .total = space});
       }

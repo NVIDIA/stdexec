@@ -20,7 +20,7 @@
 
 #include <catch2/catch.hpp>
 
-using namespace stdexec;
+using namespace STDEXEC;
 
 namespace {
   TEST_CASE("fork_join is a sender", "[adaptors][fork_join]") {

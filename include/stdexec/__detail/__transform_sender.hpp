@@ -26,7 +26,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.transform_sender]
   namespace __detail {
@@ -163,6 +163,6 @@ namespace stdexec {
   /////////////////////////////////////////////////////////////////////////////
   template <class _Sender, class _Scheduler, class _Env>
   concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

@@ -23,7 +23,7 @@
 #include "__senders.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __submit {
     template <class _Sender, class _Receiver>
     concept __has_memfn = requires(_Sender && (*__sndr)(), _Receiver && (*__rcvr)()) {
@@ -137,7 +137,7 @@ namespace stdexec {
     }
 
     void submit(_Sender&&, _Receiver&&) noexcept {
-      stdexec::start(__result_);
+      STDEXEC::start(__result_);
     }
 
     __result_t __result_;
@@ -193,4 +193,4 @@ namespace stdexec {
   template <class _Sender, class _Receiver>
   submit_result(_Sender&&, _Receiver) -> submit_result<_Sender, _Receiver>;
 
-} // namespace stdexec
+} // namespace STDEXEC

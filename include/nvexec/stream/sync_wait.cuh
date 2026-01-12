@@ -58,7 +58,7 @@ namespace nvexec::_strm {
 
     template <class SenderId>
     struct receiver_t {
-      using Sender = stdexec::__t<SenderId>;
+      using Sender = STDEXEC::__t<SenderId>;
 
       struct __t : public stream_receiver_base {
         using __id = receiver_t;
@@ -153,7 +153,7 @@ namespace nvexec::_strm {
 
     template <class SenderId>
     struct state_t {
-      using _Tuple = sync_wait_result_t<stdexec::__t<SenderId>>;
+      using _Tuple = sync_wait_result_t<STDEXEC::__t<SenderId>>;
 
       cudaStream_t stream_{};
       std::variant<std::monostate, _Tuple, cudaError_t, set_stopped_t> data_{};
@@ -161,13 +161,13 @@ namespace nvexec::_strm {
 
     struct sync_wait_t {
       template <class Sender>
-      using receiver_t = stdexec::__t<receiver_t<stdexec::__id<Sender>>>;
+      using receiver_t = STDEXEC::__t<receiver_t<STDEXEC::__id<Sender>>>;
 
       template <__single_value_variant_sender<__env> Sender>
         requires sender_in<Sender, __env> && __receiver_from<receiver_t<Sender>, Sender>
       auto operator()(context_state_t context_state, Sender&& __sndr) const
         -> std::optional<sync_wait_result_t<Sender>> {
-        using state_t = state_t<stdexec::__id<Sender>>;
+        using state_t = state_t<STDEXEC::__id<Sender>>;
         state_t state{};
         run_loop loop;
 
@@ -203,7 +203,7 @@ namespace nvexec::_strm {
   struct apply_sender_for<sync_wait_t> {
     template <stream_completing_sender<env<>> Sender>
     auto operator()(Sender&& sndr) const {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), stdexec::env{});
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), STDEXEC::env{});
       return _sync_wait::sync_wait_t{}(sched.context_state_, static_cast<Sender&&>(sndr));
     }
   };

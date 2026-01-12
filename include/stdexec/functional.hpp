@@ -24,7 +24,7 @@
 #include <cstddef>
 #include <functional>
 
-namespace stdexec {
+namespace STDEXEC {
   template <class _Fun0, class _Fun1>
   struct __composed {
     STDEXEC_ATTRIBUTE(no_unique_address) _Fun0 __t0_;
@@ -242,4 +242,4 @@ namespace stdexec {
 
   template <class _Fn>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __for_each(_Fn) -> __for_each<_Fn>;
-} // namespace stdexec
+} // namespace STDEXEC

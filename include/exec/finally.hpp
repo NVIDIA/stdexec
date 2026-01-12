@@ -21,7 +21,7 @@
 
 namespace exec {
   namespace __final {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Sigs>
     using __result_variant =
@@ -32,7 +32,7 @@ namespace exec {
       using _Receiver = __t<_ReceiverId>;
 
       _Receiver __receiver_{};
-      stdexec::__manual_lifetime<_ResultType> __result_{};
+      STDEXEC::__manual_lifetime<_ResultType> __result_{};
     };
 
     template <class... _Args>
@@ -73,19 +73,19 @@ namespace exec {
 
     template <class _ResultType, class _ReceiverId>
     struct __final_receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       class __t {
        public:
         using __id = __final_receiver;
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
 
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__op_->__receiver_);
+          return STDEXEC::get_env(__op_->__receiver_);
         }
 
         void set_value() noexcept {
@@ -104,7 +104,7 @@ namespace exec {
                 static_cast<_ResultType&&>(__result));
             }
             STDEXEC_CATCH_ALL {
-              stdexec::set_error(
+              STDEXEC::set_error(
                 static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
             }
           }
@@ -113,13 +113,13 @@ namespace exec {
         template <class _Error>
         void set_error(_Error&& __error) noexcept {
           __op_->__result_.__destroy();
-          stdexec::set_error(
+          STDEXEC::set_error(
             static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
         }
 
         void set_stopped() noexcept {
           __op_->__result_.__destroy();
-          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
        private:
@@ -130,12 +130,12 @@ namespace exec {
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
     struct __operation_state {
       using _InitialSender = __cvref_t<_InitialSenderId>;
-      using _FinalSender = stdexec::__t<_FinalSenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _FinalSender = STDEXEC::__t<_FinalSenderId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
       using __signatures = completion_signatures_of_t<_InitialSender, env_of_t<_Receiver>>;
       using __base_t = __final_operation_base<__result_variant<__signatures>, _ReceiverId>;
       using __final_receiver_t =
-        stdexec::__t<__final_receiver<__result_variant<__signatures>, _ReceiverId>>;
+        STDEXEC::__t<__final_receiver<__result_variant<__signatures>, _ReceiverId>>;
       using __final_op_t = connect_result_t<_FinalSender, __final_receiver_t>;
       class __t;
     };
@@ -143,15 +143,15 @@ namespace exec {
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
     struct __initial_receiver {
       using _Receiver = __cvref_t<_ReceiverId>;
-      using _FinalSender = stdexec::__t<_FinalSenderId>;
+      using _FinalSender = STDEXEC::__t<_FinalSenderId>;
 
       using __base_op_t =
-        stdexec::__t<__operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
+        STDEXEC::__t<__operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
 
       class __t {
        public:
         using __id = __initial_receiver;
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
 
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
@@ -161,10 +161,10 @@ namespace exec {
         void set_value(_As&&... __as) noexcept {
           STDEXEC_TRY {
             __op_
-              ->__store_result_and_start_next_op(stdexec::set_value, static_cast<_As&&>(__as)...);
+              ->__store_result_and_start_next_op(STDEXEC::set_value, static_cast<_As&&>(__as)...);
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(
+            STDEXEC::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }
         }
@@ -173,26 +173,26 @@ namespace exec {
         void set_error(_Error&& __err) noexcept {
           STDEXEC_TRY {
             __op_
-              ->__store_result_and_start_next_op(stdexec::set_error, static_cast<_Error&&>(__err));
+              ->__store_result_and_start_next_op(STDEXEC::set_error, static_cast<_Error&&>(__err));
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(
+            STDEXEC::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }
         }
 
         void set_stopped() noexcept {
           STDEXEC_TRY {
-            __op_->__store_result_and_start_next_op(stdexec::set_stopped);
+            __op_->__store_result_and_start_next_op(STDEXEC::set_stopped);
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(
+            STDEXEC::set_error(
               static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
           }
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__op_->__receiver_);
+          return STDEXEC::get_env(__op_->__receiver_);
         }
 
        private:
@@ -203,7 +203,7 @@ namespace exec {
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
     class __operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>::__t : public __base_t {
       using __initial_receiver_t =
-        stdexec::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
+        STDEXEC::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
 
       struct __initial_op_t {
         _FinalSender __sndr_;
@@ -223,9 +223,9 @@ namespace exec {
         STDEXEC_ASSERT(__op_.index() == 0);
         auto __final = static_cast<_FinalSender&&>(std::get_if<0>(&__op_)->__sndr_);
         __final_op_t& __final_op = __op_.template emplace<1>(__emplace_from{[&] {
-          return stdexec::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
+          return STDEXEC::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         }});
-        stdexec::start(__final_op);
+        STDEXEC::start(__final_op);
       }
 
       __t(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
@@ -233,24 +233,24 @@ namespace exec {
         , __op_(std::in_place_index<0>, __emplace_from{[&] {
                   return __initial_op_t{
                     static_cast<_FinalSender&&>(__final),
-                    stdexec::connect(
+                    STDEXEC::connect(
                       static_cast<_InitialSender&&>(__initial), __initial_receiver_t{this})};
                 }}) {
       }
 
       void start() & noexcept {
         STDEXEC_ASSERT(__op_.index() == 0);
-        stdexec::start(std::get_if<0>(&__op_)->__initial_operation_);
+        STDEXEC::start(std::get_if<0>(&__op_)->__initial_operation_);
       }
     };
 
     template <class _InitialSenderId, class _FinalSenderId>
     struct __sender {
-      using _InitialSender = stdexec::__t<_InitialSenderId>;
-      using _FinalSender = stdexec::__t<_FinalSenderId>;
+      using _InitialSender = STDEXEC::__t<_InitialSenderId>;
+      using _FinalSender = STDEXEC::__t<_FinalSenderId>;
 
       template <class _Self, class _Receiver>
-      using __op_t = stdexec::__t<
+      using __op_t = STDEXEC::__t<
         __operation_state<__cvref_id<_Self, _InitialSender>, __id<_FinalSender>, __id<_Receiver>>
       >;
 
@@ -260,7 +260,7 @@ namespace exec {
 
        public:
         using __id = __sender;
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
 
         template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
         __t(_Initial&& __initial, _Final&& __final)
@@ -309,7 +309,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      static auto transform_sender(stdexec::set_value_t, _Sender&& __sndr, __ignore) {
+      static auto transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, __ignore) {
         return __sexpr_apply(
           static_cast<_Sender&&>(__sndr),
           []<class _Initial, class _Final>(
@@ -327,7 +327,7 @@ namespace exec {
   inline constexpr __final::finally_t finally{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <>
   struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
     static constexpr auto get_completion_signatures =
@@ -335,4 +335,4 @@ namespace stdexec {
       -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
-} // namespace stdexec
+} // namespace STDEXEC

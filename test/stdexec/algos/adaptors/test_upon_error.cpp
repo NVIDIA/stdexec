@@ -16,11 +16,11 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
@@ -78,7 +78,7 @@ namespace {
 
   template <class... AdditionalCompletions>
   struct many_error_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<
       AdditionalCompletions...,
       ex::set_error_t(Error1),

@@ -37,7 +37,7 @@
 namespace {
   using namespace std::chrono_literals;
   using namespace exec;
-  namespace ex = stdexec;
+  namespace ex = STDEXEC;
 
   template <class _A, class _B>
   concept __equivalent = __sequence_sndr::__all_contained_in<_A, _B>
@@ -76,8 +76,8 @@ namespace {
     [[nodiscard]]
     auto
       set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>) -> next_sender auto {
-      return stdexec::upon_error(
-        stdexec::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
+      return STDEXEC::upon_error(
+        STDEXEC::then(static_cast<_Item&&>(__item), ignore_values_fn_t{}), ignore_values_fn_t{});
     }
   };
 
@@ -100,7 +100,7 @@ namespace {
       auto delay_value = []<class Value>(Value&& value, Sched sched, duration_of_t<Sched> after) {
         return sequence(schedule_after(sched, after), static_cast<Value&&>(value));
       };
-      auto delay_adaptor = stdexec::__closure<decltype(delay_value), Sched, duration_of_t<Sched>>{
+      auto delay_adaptor = STDEXEC::__closure<decltype(delay_value), Sched, duration_of_t<Sched>>{
         {sched, after},
         {},
         {}
@@ -117,7 +117,7 @@ namespace {
         exec::transform_each(
           static_cast<decltype(sequence)&&>(sequence), ex::then(static_cast<decltype(f)&&>(f))));
     };
-    return stdexec::__closure<decltype(map_merge), decltype(f)>{
+    return STDEXEC::__closure<decltype(map_merge), decltype(f)>{
       {static_cast<decltype(f)&&>(f)}, {}, {}};
   };
   // when_all requires a successful completion
@@ -126,7 +126,7 @@ namespace {
   // (the successful completion will never occur)
   [[maybe_unused]]
   static constexpr auto with_void = [](auto&& sender) noexcept
-    -> variant_sender<stdexec::__call_result_t<ex::just_t>, decltype(sender)> {
+    -> variant_sender<STDEXEC::__call_result_t<ex::just_t>, decltype(sender)> {
     return {static_cast<decltype(sender)&&>(sender)};
   };
   // with_stop_token_from adds get_stop_token query, that returns the
@@ -139,7 +139,7 @@ namespace {
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message) {
     return exec::sequence(
-      ex::read_env(ex::get_stop_token) | stdexec::then([message](auto&& token) noexcept {
+      ex::read_env(ex::get_stop_token) | STDEXEC::then([message](auto&& token) noexcept {
         UNSCOPED_INFO(
           message << (token.stop_requested() ? ", stop was requested" : ", stop not requested")
                   << ", on thread id: " << std::this_thread::get_id());
@@ -157,7 +157,7 @@ namespace {
   // emits_stopped completes with set_stopped after printing info
   [[maybe_unused]]
   auto emits_stopped = []() {
-    return ex::just() | stdexec::let_value([]() noexcept {
+    return ex::just() | STDEXEC::let_value([]() noexcept {
              UNSCOPED_INFO("emitting stopped, on thread id: " << std::this_thread::get_id());
              return ex::just_stopped();
            });
@@ -165,7 +165,7 @@ namespace {
   // emits_error completes with set_error(error) after printing info
   [[maybe_unused]]
   auto emits_error = [](auto error) {
-    return ex::just() | stdexec::let_value([error]() noexcept {
+    return ex::just() | STDEXEC::let_value([error]() noexcept {
              UNSCOPED_INFO(error.what() << ", on thread id: " << std::this_thread::get_id());
              return ex::just_error(error);
            });
@@ -191,7 +191,7 @@ namespace {
   TEST_CASE(
     "merge_each - merge two sequence senders of no elements",
     "[sequence_senders][merge_each][empty_sequence]") {
-    using empty_sequence_t = stdexec::__call_result_t<empty_sequence_t>;
+    using empty_sequence_t = STDEXEC::__call_result_t<empty_sequence_t>;
 
     [[maybe_unused]]
     std::array<empty_sequence_t, 2> array{empty_sequence(), empty_sequence()};
@@ -201,14 +201,14 @@ namespace {
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<stdexec::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t>>);
-    STATIC_REQUIRE(ex::__ok<stdexec::completion_signatures_of_t<merged_t>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -228,7 +228,7 @@ namespace {
     "merge_each - merge two sequence senders of integers",
     "[sequence_senders][merge_each][empty_sequence]") {
 
-    using range_sender_t = stdexec::__call_result_t<decltype(range), int, int>;
+    using range_sender_t = STDEXEC::__call_result_t<decltype(range), int, int>;
 
     [[maybe_unused]]
     std::array<range_sender_t, 2> array{range(100, 120), range(200, 220)};
@@ -238,14 +238,14 @@ namespace {
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<stdexec::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t>>);
-    STATIC_REQUIRE(ex::__ok<stdexec::completion_signatures_of_t<merged_t>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -265,7 +265,7 @@ namespace {
     "merge_each - merge sequence of two sequence senders of integers and one empty sequence",
     "[sequence_senders][merge_each][merge][empty_sequence]") {
 
-    using range_sequence_t = stdexec::__call_result_t<decltype(range), int, int>;
+    using range_sequence_t = STDEXEC::__call_result_t<decltype(range), int, int>;
     STATIC_REQUIRE(__well_formed_sequence_sender<range_sequence_t>);
     STATIC_REQUIRE_FALSE(std::same_as<item_types_of_t<range_sequence_t>, item_types<>>);
     STATIC_REQUIRE(
@@ -285,7 +285,7 @@ namespace {
         ex::completion_signatures<ex::set_value_t(range_sequence_t)>
       >);
 
-    using empty_sequence_t = stdexec::__call_result_t<empty_sequence_t>;
+    using empty_sequence_t = STDEXEC::__call_result_t<empty_sequence_t>;
     STATIC_REQUIRE(__well_formed_sequence_sender<empty_sequence_t>);
     STATIC_REQUIRE(std::same_as<item_types_of_t<empty_sequence_t>, item_types<>>);
     STATIC_REQUIRE(

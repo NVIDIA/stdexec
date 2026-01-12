@@ -32,7 +32,7 @@
 #include <exception>
 #include <optional>
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.stopped_as_optional]
   namespace __sao {
@@ -102,17 +102,17 @@ namespace stdexec {
         if constexpr (__same_as<_Tag, set_value_t>) {
           STDEXEC_TRY {
             static_assert(constructible_from<__t<_State>, _Args...>);
-            stdexec::set_value(
+            STDEXEC::set_value(
               static_cast<_Receiver&&>(__rcvr),
               std::optional<__t<_State>>{static_cast<_Args&&>(__args)...});
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
           }
         } else if constexpr (__same_as<_Tag, set_error_t>) {
-          stdexec::set_error(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
         } else {
-          stdexec::set_value(
+          STDEXEC::set_value(
             static_cast<_Receiver&&>(__rcvr), std::optional<__t<_State>>{std::nullopt});
         }
       };
@@ -124,4 +124,4 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<stopped_as_optional_t> : __sao::__stopped_as_optional_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

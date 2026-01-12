@@ -50,7 +50,7 @@ namespace exec {
         , set_value_{set_value} {
       }
 
-      stdexec::__std::atomic<void*> next_{nullptr};
+      STDEXEC::__std::atomic<void*> next_{nullptr};
       command_type command_;
       void (*set_value_)(timed_thread_operation_base*) noexcept;
     };
@@ -169,8 +169,8 @@ namespace exec {
         if (stop_requested) {
           std::ptrdiff_t expected = 0;
           while (!n_submissions_in_flight_.compare_exchange_weak(
-            expected, context_closed, stdexec::__std::memory_order_relaxed)) {
-            stdexec::__spin_loop_pause();
+            expected, context_closed, STDEXEC::__std::memory_order_relaxed)) {
+            STDEXEC::__spin_loop_pause();
             expected = 0;
           }
           op = heap_.front();
@@ -186,7 +186,7 @@ namespace exec {
 
     void schedule(command_type* op) {
       std::ptrdiff_t n = n_submissions_in_flight_
-                           .fetch_add(1, stdexec::__std::memory_order_relaxed);
+                           .fetch_add(1, STDEXEC::__std::memory_order_relaxed);
       if (n < 0) {
         if (op->command_ == command_type::command_type::schedule) {
           static_cast<task_type*>(op)->set_stopped_(op);
@@ -195,7 +195,7 @@ namespace exec {
           static_cast<stop_type*>(op)->set_value_(op);
         }
         n_submissions_in_flight_
-          .compare_exchange_strong(n, context_closed, stdexec::__std::memory_order_relaxed);
+          .compare_exchange_strong(n, context_closed, STDEXEC::__std::memory_order_relaxed);
         return;
       }
       if (command_queue_.push_back(op)) {
@@ -203,7 +203,7 @@ namespace exec {
         ready_ = true;
         cv_.notify_one();
       }
-      n_submissions_in_flight_.fetch_sub(1, stdexec::__std::memory_order_relaxed);
+      n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
     }
 
     void request_stop() {
@@ -212,7 +212,7 @@ namespace exec {
       cv_.notify_one();
     }
 
-    stdexec::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
+    STDEXEC::__intrusive_mpsc_queue<&command_type::next_> command_queue_;
     intrusive_heap<
       task_type,
       _time_thrd_sched::when_type<time_point>,
@@ -222,7 +222,7 @@ namespace exec {
       &task_type::right_
     >
       heap_;
-    stdexec::__std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
+    STDEXEC::__std::atomic<std::ptrdiff_t> n_submissions_in_flight_{0};
     std::mutex ready_mutex_;
     bool ready_{false};
     bool stop_requested_{false};
@@ -246,18 +246,18 @@ namespace exec {
             time_point,
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
               auto* self = static_cast<__t*>(op);
-              int counter = self->ref_count_.fetch_sub(1, stdexec::__std::memory_order_relaxed);
+              int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                stdexec::set_stopped(std::move(self->receiver_));
+                STDEXEC::set_stopped(std::move(self->receiver_));
               }
             },
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
               auto* self = static_cast<__t*>(op);
-              int counter = self->ref_count_.fetch_sub(1, stdexec::__std::memory_order_relaxed);
+              int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                stdexec::set_value(std::move(self->receiver_));
+                STDEXEC::set_value(std::move(self->receiver_));
               }
             }}
         , context_{context}
@@ -266,10 +266,10 @@ namespace exec {
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
               auto* stop = static_cast<_time_thrd_sched::timed_thread_stop_operation*>(op);
               auto* self = static_cast<__t*>(stop->target_);
-              int counter = self->ref_count_.fetch_sub(1, stdexec::__std::memory_order_relaxed);
+              int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                stdexec::set_stopped(std::move(self->receiver_));
+                STDEXEC::set_stopped(std::move(self->receiver_));
               }
             },
             this} {
@@ -277,13 +277,13 @@ namespace exec {
 
       void start() & noexcept {
         stop_callback_
-          .emplace(stdexec::get_stop_token(stdexec::get_env(receiver_)), on_stopped_t{*this});
+          .emplace(STDEXEC::get_stop_token(STDEXEC::get_env(receiver_)), on_stopped_t{*this});
         int expected = 0;
-        if (ref_count_.compare_exchange_strong(expected, 1, stdexec::__std::memory_order_relaxed)) {
+        if (ref_count_.compare_exchange_strong(expected, 1, STDEXEC::__std::memory_order_relaxed)) {
           schedule_this();
         } else {
           stop_callback_.reset();
-          stdexec::set_stopped(std::move(receiver_));
+          STDEXEC::set_stopped(std::move(receiver_));
         }
       }
 
@@ -301,10 +301,10 @@ namespace exec {
       };
 
       using callback_type =
-        stdexec::stop_token_of_t<stdexec::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
+        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
 
       void request_stop() noexcept {
-        if (ref_count_.fetch_add(1, stdexec::__std::memory_order_relaxed) == 1) {
+        if (ref_count_.fetch_add(1, STDEXEC::__std::memory_order_relaxed) == 1) {
           context_.schedule(&stop_op_);
         }
       }
@@ -313,7 +313,7 @@ namespace exec {
       Receiver receiver_;
       _time_thrd_sched::timed_thread_stop_operation stop_op_;
       std::optional<callback_type> stop_callback_;
-      stdexec::__std::atomic<int> ref_count_{0};
+      STDEXEC::__std::atomic<int> ref_count_{0};
     };
   } // namespace _time_thrd_sched
 
@@ -324,13 +324,13 @@ namespace exec {
 
     class schedule_at_sender {
      public:
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
-        stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+        STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
 
       struct attrs {
         [[nodiscard]]
-        auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+        auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
           -> timed_thread_scheduler {
           return timed_thread_scheduler{*context_};
         }

@@ -33,7 +33,7 @@
 
 namespace exec {
   namespace __iterate {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Iterator, class _Sentinel>
     struct __operation_base {
@@ -53,7 +53,7 @@ namespace exec {
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         void start() & noexcept {
-          stdexec::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+          STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
         }
       };
     };
@@ -62,14 +62,14 @@ namespace exec {
     struct __sender {
       struct __t {
         using __id = __sender;
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using completion_signatures =
-          stdexec::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
+          STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
         __operation_base<_Iterator, _Sentinel>* __parent_;
 
         template <receiver_of<completion_signatures> _ItemRcvr>
         auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
-          -> stdexec::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
+          -> STDEXEC::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
           return {static_cast<_ItemRcvr&&>(__rcvr), __parent_};
         }
       };
@@ -77,7 +77,7 @@ namespace exec {
 
     template <class _Range>
     using __sender_t =
-      stdexec::__t<__sender<std::ranges::iterator_t<_Range>, std::ranges::sentinel_t<_Range>>>;
+      STDEXEC::__t<__sender<std::ranges::iterator_t<_Range>, std::ranges::sentinel_t<_Range>>>;
 
     template <class _Range, class _Receiver>
     struct __operation {
@@ -87,10 +87,10 @@ namespace exec {
     template <class _Range, class _ReceiverId>
     struct __next_receiver {
       struct __t {
-        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Receiver = STDEXEC::__t<_ReceiverId>;
         using __id = __next_receiver;
-        using receiver_concept = stdexec::receiver_t;
-        stdexec::__t<__operation<_Range, _ReceiverId>>* __op_;
+        using receiver_concept = STDEXEC::receiver_t;
+        STDEXEC::__t<__operation<_Range, _ReceiverId>>* __op_;
 
         void set_value() noexcept {
           __op_->__start_next();
@@ -101,19 +101,19 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__op_->__rcvr_);
+          return STDEXEC::get_env(__op_->__rcvr_);
         }
       };
     };
 
     template <class _Range, class _ReceiverId>
     struct __operation<_Range, _ReceiverId>::__t : __operation_base_t<_Range> {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
       _Receiver __rcvr_;
 
       using __item_sender_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler&>, __sender_t<_Range>>;
-      using __next_receiver_t = stdexec::__t<__next_receiver<_Range, _ReceiverId>>;
+      using __next_receiver_t = STDEXEC::__t<__next_receiver<_Range, _ReceiverId>>;
 
       __variant_for<
         connect_result_t<next_sender_of_t<_Receiver, __item_sender_t>, __next_receiver_t>
@@ -123,17 +123,17 @@ namespace exec {
 
       void __start_next() noexcept {
         if (this->__iterator_ == this->__sentinel_) {
-          stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
+          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
           STDEXEC_TRY {
-            stdexec::start(__op_.emplace_from(
-              stdexec::connect,
+            STDEXEC::start(__op_.emplace_from(
+              STDEXEC::connect,
               exec::set_next(
-                __rcvr_, exec::sequence(stdexec::schedule(__scheduler_), __sender_t<_Range>{this})),
+                __rcvr_, exec::sequence(STDEXEC::schedule(__scheduler_), __sender_t<_Range>{this})),
               __next_receiver_t{this}));
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
         }
       }
@@ -179,7 +179,7 @@ namespace exec {
       >;
 
       template <class _Sequence, class _Receiver>
-      using _NextReceiver = stdexec::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
+      using _NextReceiver = STDEXEC::__t<__next_receiver<__data_of<_Sequence>, __id<_Receiver>>>;
 
       template <class _Sequence, class _Receiver>
       using _NextSender = next_sender_of_t<_Receiver, __item_sender_t<_Sequence>>;

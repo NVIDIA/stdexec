@@ -28,7 +28,7 @@
 
 #include <exception>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __cmplsigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     template <template <class...> class _Tuple, class _Tag, class... _Args>
@@ -362,4 +362,4 @@ namespace stdexec {
   template <class _Completions>
   using __nothrow_decay_copyable_results_t =
     __for_each_completion_signature<_Completions, __nothrow_decay_copyable_t, __mand_t>;
-} // namespace stdexec
+} // namespace STDEXEC

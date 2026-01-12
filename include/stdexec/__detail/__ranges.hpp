@@ -22,7 +22,7 @@
 
 #  include <ranges>
 
-namespace stdexec::ranges {
+namespace STDEXEC::ranges {
   using std::ranges::begin;
   using std::ranges::end;
 
@@ -36,7 +36,7 @@ namespace stdexec::ranges {
 
 #  include <iterator>
 
-namespace stdexec::ranges {
+namespace STDEXEC::ranges {
 
   namespace __detail {
     void begin();
@@ -106,6 +106,6 @@ namespace stdexec::ranges {
   template <class _Range>
   using range_value_t = std::iterator_traits<iterator_t<_Range>>::value_type;
 
-} // namespace stdexec::ranges
+} // namespace STDEXEC::ranges
 
 #endif

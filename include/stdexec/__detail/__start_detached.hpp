@@ -26,7 +26,7 @@
 #include "__submit.hpp"
 #include "__transform_sender.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
   namespace __start_detached {
@@ -76,7 +76,7 @@ namespace stdexec {
 
       static void __destroy_delete(__operation* __self) noexcept {
         if constexpr (__callable<get_allocator_t, _Env>) {
-          auto __alloc = stdexec::get_allocator(__self->__env_);
+          auto __alloc = STDEXEC::get_allocator(__self->__env_);
           using _Alloc = decltype(__alloc);
           using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
           _OpAlloc __op_alloc{__alloc};
@@ -143,7 +143,7 @@ namespace stdexec {
         >
       void operator()(_Sender&& __sndr) const {
         using __domain = __compl_domain_t<_Sender, __root_env>;
-        stdexec::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr));
+        STDEXEC::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Env, sender_in<__as_root_env_t<_Env>> _Sender>
@@ -157,7 +157,7 @@ namespace stdexec {
       void operator()(_Sender&& __sndr, _Env&& __env) const {
         auto __env2 = __as_root_env(static_cast<_Env&&>(__env));
         using __domain = __compl_domain_t<_Sender, __as_root_env_t<_Env>>;
-        stdexec::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr), __env2);
+        STDEXEC::apply_sender(__domain{}, *this, static_cast<_Sender&&>(__sndr), __env2);
       }
 
       // Below is the default implementation for `start_detached`.
@@ -174,7 +174,7 @@ namespace stdexec {
         if constexpr (__use_submit<_Sender, _Env>) {
           // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
           // for the operation. We can just call submit and return.
-          stdexec::__submit::__submit(static_cast<_Sender&&>(__sndr), __submit_receiver{});
+          STDEXEC::__submit::__submit(static_cast<_Sender&&>(__sndr), __submit_receiver{});
         } else
 #endif
           if constexpr (__callable<get_allocator_t, _Env>) {
@@ -207,4 +207,4 @@ namespace stdexec {
 
   using __start_detached::start_detached_t;
   inline constexpr start_detached_t start_detached{};
-} // namespace stdexec
+} // namespace STDEXEC

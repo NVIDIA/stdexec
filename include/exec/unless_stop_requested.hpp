@@ -22,7 +22,7 @@
 
 namespace exec {
   namespace __unless_stop_requested {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <typename _Env>
     inline constexpr bool __unstoppable_env = unstoppable_token<stop_token_of_t<_Env>>;
@@ -45,9 +45,9 @@ namespace exec {
         requires __unstoppable_receiver<_Receiver>
       constexpr connect_result_t<__child_of<_Sender>, _Receiver>
         operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(
-          noexcept(stdexec::connect(__declval<__child_of<_Sender>>(), (_Receiver&&) __rcvr))) {
+          noexcept(STDEXEC::connect(__declval<__child_of<_Sender>>(), (_Receiver&&) __rcvr))) {
         return __sexpr_apply((_Sender&&) __sndr, [&](auto, const auto&, auto&& __child) {
-          return stdexec::connect((decltype(__child)&&) __child, (_Receiver&&) __rcvr);
+          return STDEXEC::connect((decltype(__child)&&) __child, (_Receiver&&) __rcvr);
         });
       }
       template <class _Sender, class _Receiver>
@@ -80,11 +80,11 @@ namespace exec {
                                       _Receiver& __rcvr,
                                       _Operation& __child_op) noexcept -> void {
         static_assert(!__unstoppable_receiver<_Receiver>);
-        if (get_stop_token(stdexec::get_env(__rcvr)).stop_requested()) {
-          stdexec::set_stopped((_Receiver&&) __rcvr);
+        if (get_stop_token(STDEXEC::get_env(__rcvr)).stop_requested()) {
+          STDEXEC::set_stopped((_Receiver&&) __rcvr);
           return;
         }
-        stdexec::start(__child_op);
+        STDEXEC::start(__child_op);
       };
 
       static constexpr __connect_fn connect{};
@@ -95,8 +95,8 @@ namespace exec {
   inline constexpr __unless_stop_requested::unless_stop_requested_t unless_stop_requested{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <>
   struct __sexpr_impl<::exec::unless_stop_requested_t>
     : ::exec::__unless_stop_requested::__unless_stop_requested_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

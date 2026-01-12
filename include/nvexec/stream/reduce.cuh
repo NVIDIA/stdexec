@@ -25,8 +25,8 @@
 
 #include <cub/device/device_reduce.cuh>
 
-#include "algorithm_base.cuh"
 #include "../detail/throw_on_cuda_error.cuh"
+#include "algorithm_base.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
@@ -61,7 +61,7 @@ namespace nvexec {
 
           // `range` is produced asynchronously, so we need to wait for it to be ready
           if (status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream)); status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
@@ -87,14 +87,14 @@ namespace nvexec {
                   self.init_,
                   stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
           if (status = STDEXEC_LOG_CUDA_API(
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
@@ -109,7 +109,7 @@ namespace nvexec {
                   self.init_,
                   stream));
               status != cudaSuccess) {
-            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
@@ -117,9 +117,9 @@ namespace nvexec {
           self.op_state_.defer_temp_storage_destruction(d_out);
 
           if (status == cudaSuccess) {
-            self.op_state_.propagate_completion_signal(stdexec::set_value, *d_out);
+            self.op_state_.propagate_completion_signal(STDEXEC::set_value, *d_out);
           } else {
-            self.op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+            self.op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
       };
@@ -134,7 +134,7 @@ namespace nvexec {
           > {
         template <class Receiver>
         using receiver_t =
-          stdexec::__t<reduce_::receiver_t<SenderId, stdexec::__id<Receiver>, InitT, Fun>>;
+          STDEXEC::__t<reduce_::receiver_t<SenderId, STDEXEC::__id<Receiver>, InitT, Fun>>;
 
         template <class Range>
         using _set_value_t = completion_signatures<set_value_t(
@@ -147,7 +147,7 @@ namespace nvexec {
     struct reduce_t {
       template <class Sender, class InitT, class Fun>
       using __sender =
-        stdexec::__t<reduce_::sender_t<stdexec::__id<__decay_t<Sender>>, InitT, Fun>>;
+        STDEXEC::__t<reduce_::sender_t<STDEXEC::__id<__decay_t<Sender>>, InitT, Fun>>;
 
       template <sender Sender, __movable_value InitT, __movable_value Fun = cuda::std::plus<>>
       auto operator()(Sender&& sndr, InitT init, Fun fun) const -> __sender<Sender, InitT, Fun> {
@@ -157,8 +157,9 @@ namespace nvexec {
 
       template <class InitT, class Fun = cuda::std::plus<>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(InitT init, Fun fun = {}) const noexcept(__nothrow_decay_copyable<InitT, Fun>) {
-        return stdexec::__closure(*this, static_cast<InitT&&>(init), static_cast<Fun&&>(fun));
+      auto
+        operator()(InitT init, Fun fun = {}) const noexcept(__nothrow_decay_copyable<InitT, Fun>) {
+        return STDEXEC::__closure(*this, static_cast<InitT&&>(init), static_cast<Fun&&>(fun));
       }
     };
   } // namespace _strm
@@ -166,10 +167,10 @@ namespace nvexec {
   inline constexpr _strm::reduce_t reduce{};
 } // namespace nvexec
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class SenderId, class Init, class Fun>
   extern __mconst<nvexec::_strm::reduce_::sender_t<__demangle_t<__t<SenderId>>, Init, Fun>>
     __demangle_v<nvexec::_strm::reduce_::sender_t<SenderId, Init, Fun>>;
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

@@ -1,10 +1,10 @@
-#include "../../relacy/relacy_std.hpp"
 #include "../../relacy/relacy_cli.hpp"
+#include "../../relacy/relacy_std.hpp"
 
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
-#include <exec/static_thread_pool.hpp>
 #include <exec/single_thread_context.hpp>
+#include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
 
 #include <stdexcept>
 
@@ -12,7 +12,7 @@ using rl::nvar;
 using rl::nvolatile;
 using rl::mutex;
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
 
 struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1> {

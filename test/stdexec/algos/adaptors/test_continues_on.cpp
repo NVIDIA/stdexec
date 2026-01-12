@@ -15,15 +15,15 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <chrono> // IWYU pragma: keep for chrono_literals
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
@@ -224,7 +224,7 @@ namespace {
 
   struct continues_on_test_domain {
     template <ex::sender_expr_for<ex::continues_on_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, const auto&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, const auto&...) {
       return ex::just(value_type{53});
     }
   };
@@ -241,14 +241,14 @@ namespace {
 
   struct test_domain_A {
     template <ex::sender_expr_for<ex::continues_on_t> Sender, class Env>
-    auto transform_sender(stdexec::set_value_t, Sender&&, Env&&) const {
+    auto transform_sender(STDEXEC::set_value_t, Sender&&, Env&&) const {
       return ex::just(std::string("hello"));
     }
   };
 
   struct test_domain_B {
     template <ex::sender_expr_for<ex::continues_on_t> Sender, class Env>
-    auto transform_sender(stdexec::set_value_t, Sender&&, Env&&) const {
+    auto transform_sender(STDEXEC::set_value_t, Sender&&, Env&&) const {
       return ex::just(std::string("goodbye"));
     }
   };

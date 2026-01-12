@@ -26,7 +26,7 @@
 
 namespace exec {
   namespace __at_coro_exit {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     using __any_scheduler_t = any_receiver_ref<
       completion_signatures<set_error_t(std::exception_ptr), set_stopped_t()>
@@ -36,21 +36,21 @@ namespace exec {
       template <class _Receiver>
       struct __receiver_id {
         struct __t {
-          using receiver_concept = stdexec::receiver_t;
+          using receiver_concept = STDEXEC::receiver_t;
           using __id = __receiver_id;
           _Receiver __receiver_;
 
           template <class... _Args>
             requires __callable<set_value_t, _Receiver, _Args...>
           void set_value(_Args&&... __args) noexcept {
-            stdexec::set_value(
+            STDEXEC::set_value(
               static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
           }
 
           template <class _Error>
             requires __callable<set_error_t, _Receiver, _Error>
           void set_error(_Error&& __err) noexcept {
-            stdexec::set_error(static_cast<_Receiver&&>(__receiver_), static_cast<_Error&&>(__err));
+            STDEXEC::set_error(static_cast<_Receiver&&>(__receiver_), static_cast<_Error&&>(__err));
           }
 
           [[noreturn]]
@@ -59,7 +59,7 @@ namespace exec {
           }
 
           auto get_env() const noexcept -> env_of_t<_Receiver> {
-            return stdexec::get_env(__receiver_);
+            return STDEXEC::get_env(__receiver_);
           }
         };
       };
@@ -77,7 +77,7 @@ namespace exec {
 
         struct __t {
           using __id = __sender_id;
-          using sender_concept = stdexec::sender_t;
+          using sender_concept = STDEXEC::sender_t;
 
           _Sender __sender_;
 
@@ -85,7 +85,7 @@ namespace exec {
             requires sender_to<_Sender, __receiver<_Receiver>>
           auto connect(_Receiver __rcvr) && noexcept
             -> connect_result_t<_Sender, __receiver<_Receiver>> {
-            return stdexec::connect(
+            return STDEXEC::connect(
               static_cast<_Sender&&>(__sender_),
               __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
           }
@@ -98,7 +98,7 @@ namespace exec {
           STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
           auto get_env() const noexcept -> env_of_t<_Sender> {
-            return stdexec::get_env(__sender_);
+            return STDEXEC::get_env(__sender_);
           }
         };
       };
@@ -238,7 +238,7 @@ namespace exec {
 
         bool __is_unhandled_stopped_{false};
         std::tuple<_Ts&...> __args_{};
-        __any_scheduler_t __scheduler_{stdexec::inline_scheduler{}};
+        __any_scheduler_t __scheduler_{STDEXEC::inline_scheduler{}};
       };
 
       __std::coroutine_handle<__promise> __coro_;

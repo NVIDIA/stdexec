@@ -22,7 +22,7 @@
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   // NOT TO SPEC:
   namespace __clsur {
     template <__class _Dp>
@@ -93,7 +93,7 @@ namespace stdexec {
         requires __callable<_Fn, _Sender, _As...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       auto operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fn, _Sender, _As...>) {
-        return stdexec::__apply(
+        return STDEXEC::__apply(
           static_cast<_Fn&&>(__fn_),
           static_cast<__tuple<_As...>&&>(__args_),
           static_cast<_Sender&&>(__sndr));
@@ -104,7 +104,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       auto operator()(_Sender&& __sndr) const & noexcept(
         __nothrow_callable<const _Fn&, _Sender, const _As&...>) {
-        return stdexec::__apply(__fn_, __args_, static_cast<_Sender&&>(__sndr));
+        return STDEXEC::__apply(__fn_, __args_, static_cast<_Sender&&>(__sndr));
       }
 
      private:
@@ -117,4 +117,4 @@ namespace stdexec {
   } // namespace __clsur
 
   using __clsur::__closure;
-} // namespace stdexec
+} // namespace STDEXEC

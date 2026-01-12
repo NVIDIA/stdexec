@@ -19,8 +19,8 @@
 #include "exec/static_thread_pool.hpp"
 #include "stdexec/execution.hpp"
 
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
@@ -31,7 +31,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
@@ -49,9 +49,9 @@ namespace {
 
       void start() & noexcept {
         if (counter_ == 0) {
-          ex::set_value(static_cast<Receiver &&>(rcvr_), true);
+          ex::set_value(static_cast<Receiver&&>(rcvr_), true);
         } else {
-          ex::set_value(static_cast<Receiver &&>(rcvr_), false);
+          ex::set_value(static_cast<Receiver&&>(rcvr_), false);
         }
       }
     };
@@ -92,10 +92,12 @@ namespace {
     ex::sender auto snd = exec::repeat_effect_until(boolean_sender{});
     static_assert(all_contained_in<
                   ex::completion_signatures<ex::set_error_t(const int&)>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
+    >);
     static_assert(!all_contained_in<
                   ex::completion_signatures<ex::set_error_t(int)>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
+    >);
     ex::sync_wait(std::move(snd));
   }
 
@@ -175,7 +177,7 @@ namespace {
     std::atomic<bool> failed{false};
     const auto tid = std::this_thread::get_id();
     bool called{false};
-    ex::sender auto snd = stdexec::on(
+    ex::sender auto snd = STDEXEC::on(
       pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int) noexcept {
                               if (tid == std::this_thread::get_id()) {
                                 failed = true;
@@ -184,7 +186,7 @@ namespace {
                               called = true;
                               return called;
                             }) | exec::repeat_effect_until());
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
     REQUIRE(called);
   }
 
@@ -202,7 +204,8 @@ namespace {
       succeed_n_sender(10, ex::set_error, std::string("error")) | ex::then([&] { ++counter; }));
     static_assert(!all_contained_in<
                   ex::completion_signatures<ex::set_value_t()>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
+    >);
     auto op = ex::connect(
       std::move(snd), no_set_value_receiver(expect_error_receiver{std::string("error")}));
     ex::start(op);
@@ -236,7 +239,7 @@ namespace {
       unsigned& throw_after_;
     };
     struct receiver {
-      using receiver_concept = ::stdexec::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_t;
       void set_value() && noexcept {
         FAIL_CHECK("Unexpected value completion signal");
       }
@@ -292,7 +295,7 @@ namespace {
       }
     };
     struct receiver {
-      using receiver_concept = ::stdexec::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_t;
       void set_value() && noexcept {
         done_ = true;
       }

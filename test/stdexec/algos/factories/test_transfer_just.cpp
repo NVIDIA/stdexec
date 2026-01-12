@@ -16,11 +16,11 @@
 
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   TEST_CASE("transfer_just returns a sender", "[factories][transfer_just]") {
@@ -164,22 +164,25 @@ namespace {
     stopped_scheduler sched3{};
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched1, 1)), ex::env<>{})
+      ex::get_completion_scheduler<ex::set_value_t>(
+        ex::get_env(ex::transfer_just(sched1, 1)), ex::env<>{})
       == sched1);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched2, 2)), ex::env<>{})
+      ex::get_completion_scheduler<ex::set_value_t>(
+        ex::get_env(ex::transfer_just(sched2, 2)), ex::env<>{})
       == sched2);
 
     REQUIRE(
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::transfer_just(sched3, 3)), ex::env<>{})
+      ex::get_completion_scheduler<ex::set_value_t>(
+        ex::get_env(ex::transfer_just(sched3, 3)), ex::env<>{})
       == sched3);
   }
 
   // Modify the value when we invoke this custom defined transfer_just implementation
   struct transfer_just_test_domain {
     template <ex::sender_expr_for<ex::transfer_just_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&& sndr, auto&&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, auto&&...) {
       auto&& [tag, data] = sndr;
       auto [sched, value] = data;
       return ex::continues_on(ex::just("Hello, " + value), sched);

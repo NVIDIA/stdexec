@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <exception> // IWYU pragma: keep for std::terminate
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __detail {
     // Accessor for the "data" field of a sender
     struct __get_data {
@@ -118,4 +118,4 @@ namespace stdexec {
 
   template <class _Sender, class _Tag>
   concept sender_expr_for = sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
-} // namespace stdexec
+} // namespace STDEXEC

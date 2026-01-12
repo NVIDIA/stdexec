@@ -24,7 +24,7 @@
 
 #if !STDEXEC_NO_STD_COROUTINES()
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 

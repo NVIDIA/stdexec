@@ -33,7 +33,7 @@ namespace execpools {
   //!
   template <class PoolType, class ReceiverId>
   struct operation {
-    using Receiver = stdexec::__t<ReceiverId>;
+    using Receiver = STDEXEC::__t<ReceiverId>;
     struct __t;
   };
 
@@ -47,40 +47,40 @@ namespace execpools {
    public:
     struct scheduler;
 
-    struct domain : stdexec::default_domain {
+    struct domain : STDEXEC::default_domain {
       using __t = domain;
       using __id = domain;
 
-      template <stdexec::sender_expr_for<stdexec::bulk_chunked_t> Sender, class Env>
-      static constexpr auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) {
+      template <STDEXEC::sender_expr_for<STDEXEC::bulk_chunked_t> Sender, class Env>
+      static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
         auto& [tag, data, child] = sndr;
         auto& [pol, shape, fun] = data;
 
-        if constexpr (stdexec::__completes_on<decltype(child), scheduler, Env>) {
+        if constexpr (STDEXEC::__completes_on<decltype(child), scheduler, Env>) {
           auto sch =
-            stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(child), env);
+            STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(child), env);
           using sender_t =
             scheduler::template bulk_sender_t<decltype(child), decltype(shape), decltype(fun)>;
           return sender_t{
             *sch.pool_,
-            stdexec::__forward_like<Sender>(child),
+            STDEXEC::__forward_like<Sender>(child),
             shape,
-            stdexec::__forward_like<Sender>(fun)};
+            STDEXEC::__forward_like<Sender>(fun)};
         } else {
-          return stdexec::__not_a_sender<
-            stdexec::_WHAT_<>(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
-            stdexec::_WHY_(BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
-            stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::tag_of_t<Sender>),
-            stdexec::_TO_FIX_THIS_ERROR_(
+          return STDEXEC::__not_a_sender<
+            STDEXEC::_WHAT_<>(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
+            STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
+            STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-            stdexec::_WITH_SENDER_<Sender>,
-            stdexec::_WITH_ENVIRONMENT_<Env>
+            STDEXEC::_WITH_SENDER_<Sender>,
+            STDEXEC::_WITH_ENVIRONMENT_<Env>
           >();
         }
       }
 
-      template <stdexec::sender_expr_for<stdexec::bulk_unchunked_t> Sender, class Env>
-      static constexpr auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env);
+      template <STDEXEC::sender_expr_for<STDEXEC::bulk_unchunked_t> Sender, class Env>
+      static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env);
     };
 
     struct scheduler {
@@ -90,20 +90,20 @@ namespace execpools {
 
       class sender {
        public:
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using __t = sender;
         using __id = sender;
         using completion_signatures =
-          stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_stopped_t()>;
+          STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
 
         template <class CPO>
-        auto query(stdexec::get_completion_scheduler_t<CPO>) const noexcept
+        auto query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept
           -> DerivedPoolType::scheduler {
           return pool_.get_scheduler();
         }
 
         template <class CPO>
-        auto query(stdexec::get_completion_domain_t<CPO>) const noexcept -> domain {
+        auto query(STDEXEC::get_completion_domain_t<CPO>) const noexcept -> domain {
           return {};
         }
 
@@ -113,8 +113,8 @@ namespace execpools {
 
         template <class Receiver>
         auto connect(Receiver rcvr) const
-          -> stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>> {
-          return stdexec::__t<operation<DerivedPoolType, stdexec::__id<Receiver>>>{
+          -> STDEXEC::__t<operation<DerivedPoolType, STDEXEC::__id<Receiver>>> {
+          return STDEXEC::__t<operation<DerivedPoolType, STDEXEC::__id<Receiver>>>{
             this->pool_, static_cast<Receiver&&>(rcvr)};
         }
 
@@ -129,21 +129,21 @@ namespace execpools {
       };
 
       template <class Fun, class Shape, class... Args>
-      using bulk_non_throwing = stdexec::__mbool<
+      using bulk_non_throwing = STDEXEC::__mbool<
         // If function invocation doesn't throw
-        stdexec::__nothrow_callable<Fun, Shape, Args...> &&
+        STDEXEC::__nothrow_callable<Fun, Shape, Args...> &&
         // and emplacing a tuple doesn't throw
-        noexcept(stdexec::__decayed_std_tuple<Args...>(std::declval<Args>()...))
+        noexcept(STDEXEC::__decayed_std_tuple<Args...>(std::declval<Args>()...))
         // there's no need to advertise completion with `exception_ptr`
       >;
 
       template <class CvrefSender, class Receiver, class Shape, class Fun, bool MayThrow>
       struct bulk_shared_state : task_base {
-        using variant_t = stdexec::__value_types_of_t<
+        using variant_t = STDEXEC::__value_types_of_t<
           CvrefSender,
-          stdexec::env_of_t<Receiver>,
-          stdexec::__q<stdexec::__decayed_std_tuple>,
-          stdexec::__q<stdexec::__std_variant>
+          STDEXEC::env_of_t<Receiver>,
+          STDEXEC::__q<STDEXEC::__decayed_std_tuple>,
+          STDEXEC::__q<STDEXEC::__std_variant>
         >;
 
         variant_t data_;
@@ -161,7 +161,7 @@ namespace execpools {
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
           // than we can actually deal with at one time?
           return static_cast<std::uint32_t>(
-            std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
+            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
         }
 
         template <class F>
@@ -189,7 +189,7 @@ namespace execpools {
             };
 
             auto completion = [&](auto&... args) {
-              stdexec::set_value(static_cast<Receiver&&>(self.rcvr_), std::move(args)...);
+              STDEXEC::set_value(static_cast<Receiver&&>(self.rcvr_), std::move(args)...);
             };
 
             if constexpr (MayThrow) {
@@ -210,7 +210,7 @@ namespace execpools {
 
               if (is_last_thread) {
                 if (self.exception_) {
-                  stdexec::set_error(
+                  STDEXEC::set_error(
                     static_cast<Receiver&&>(self.rcvr_), std::move(self.exception_));
                 } else {
                   self.apply(completion);
@@ -232,12 +232,12 @@ namespace execpools {
 
       template <class CvrefSenderId, class ReceiverId, class Shape, class Fun, bool MayThrow>
       struct bulk_receiver {
-        using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+        using CvrefSender = STDEXEC::__cvref_t<CvrefSenderId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         struct __t {
           using __id = bulk_receiver;
-          using receiver_concept = stdexec::receiver_t;
+          using receiver_concept = STDEXEC::receiver_t;
 
           using shared_state = bulk_shared_state<CvrefSender, Receiver, Shape, Fun, MayThrow>;
 
@@ -249,7 +249,7 @@ namespace execpools {
 
           template <class... As>
           void set_value(As&&... as) noexcept {
-            using tuple_t = stdexec::__decayed_std_tuple<As...>;
+            using tuple_t = STDEXEC::__decayed_std_tuple<As...>;
 
             shared_state& state = shared_state_;
 
@@ -258,7 +258,7 @@ namespace execpools {
                 state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
               }
               STDEXEC_CATCH_ALL {
-                stdexec::set_error(std::move(state.rcvr_), std::current_exception());
+                STDEXEC::set_error(std::move(state.rcvr_), std::current_exception());
               }
             } else {
               state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
@@ -268,7 +268,7 @@ namespace execpools {
               enqueue();
             } else {
               state.apply([&](auto&... args) {
-                stdexec::set_value(std::move(state.rcvr_), std::move(args)...);
+                STDEXEC::set_value(std::move(state.rcvr_), std::move(args)...);
               });
             }
           }
@@ -276,65 +276,65 @@ namespace execpools {
           template <class Error>
           void set_error(Error&& err) noexcept {
             shared_state& state = shared_state_;
-            stdexec::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(err));
+            STDEXEC::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(err));
           }
 
           void set_stopped() noexcept {
             shared_state& state = shared_state_;
-            stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
+            STDEXEC::set_stopped(static_cast<Receiver&&>(state.rcvr_));
           }
 
-          auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
-            return stdexec::get_env(shared_state_.rcvr_);
+          auto get_env() const noexcept -> STDEXEC::env_of_t<Receiver> {
+            return STDEXEC::get_env(shared_state_.rcvr_);
           }
         };
       };
 
       template <class CvrefSenderId, class ReceiverId, std::integral Shape, class Fun>
       struct bulk_op_state {
-        using CvrefSender = stdexec::__cvref_t<CvrefSenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+        using CvrefSender = STDEXEC::__cvref_t<CvrefSenderId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         struct __t {
           using __id = bulk_op_state;
-          static constexpr bool may_throw = !stdexec::__value_types_of_t<
+          static constexpr bool may_throw = !STDEXEC::__value_types_of_t<
             CvrefSender,
-            stdexec::env_of_t<Receiver>,
-            stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-            stdexec::__q<stdexec::__mand>
+            STDEXEC::env_of_t<Receiver>,
+            STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+            STDEXEC::__q<STDEXEC::__mand>
           >::value;
 
           using bulk_rcvr =
-            stdexec::__t<bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>>;
+            STDEXEC::__t<bulk_receiver<CvrefSenderId, ReceiverId, Shape, Fun, may_throw>>;
           using shared_state = bulk_shared_state<CvrefSender, Receiver, Shape, Fun, may_throw>;
-          using inner_op_state = stdexec::connect_result_t<CvrefSender, bulk_rcvr>;
+          using inner_op_state = STDEXEC::connect_result_t<CvrefSender, bulk_rcvr>;
 
           shared_state shared_state_;
 
           inner_op_state inner_op_;
 
           void start() & noexcept {
-            stdexec::start(inner_op_);
+            STDEXEC::start(inner_op_);
           }
 
           __t(DerivedPoolType& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
             : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun)
             , inner_op_{
-                stdexec::connect(static_cast<CvrefSender&&>(sndr), bulk_rcvr{shared_state_})} {
+                STDEXEC::connect(static_cast<CvrefSender&&>(sndr), bulk_rcvr{shared_state_})} {
           }
         };
       };
 
       template <class _Ty>
-      using __decay_ref = stdexec::__decay_t<_Ty>&;
+      using __decay_ref = STDEXEC::__decay_t<_Ty>&;
 
       template <class SenderId, std::integral Shape, class Fun>
       struct bulk_sender {
-        using Sender = stdexec::__t<SenderId>;
+        using Sender = STDEXEC::__t<SenderId>;
 
         struct __t {
           using __id = bulk_sender;
-          using sender_concept = stdexec::sender_t;
+          using sender_concept = STDEXEC::sender_t;
 
           DerivedPoolType& pool_;
           Sender sndr_;
@@ -342,38 +342,38 @@ namespace execpools {
           Fun fun_;
 
           template <class Sender, class... Env>
-          using _with_error_invoke_t = stdexec::__eptr_completion_unless_t<stdexec::__value_types_t<
-            stdexec::__completion_signatures_of_t<Sender, Env...>,
-            stdexec::__mtransform<
-              stdexec::__q1<__decay_ref>,
-              stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>
+          using _with_error_invoke_t = STDEXEC::__eptr_completion_unless_t<STDEXEC::__value_types_t<
+            STDEXEC::__completion_signatures_of_t<Sender, Env...>,
+            STDEXEC::__mtransform<
+              STDEXEC::__q1<__decay_ref>,
+              STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>
             >,
-            stdexec::__q<stdexec::__mand>
+            STDEXEC::__q<STDEXEC::__mand>
           >>;
 
           template <class... Tys>
           using _set_value_t =
-            stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
+            STDEXEC::completion_signatures<STDEXEC::set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
           template <class Self, class... Env>
-          using _completion_signatures_t = stdexec::transform_completion_signatures<
-            stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
-            _with_error_invoke_t<stdexec::__copy_cvref_t<Self, Sender>, Env...>,
+          using _completion_signatures_t = STDEXEC::transform_completion_signatures<
+            STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
+            _with_error_invoke_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
             _set_value_t
           >;
 
           template <class Self, class Receiver>
-          using bulk_op_state_t = stdexec::__t<
-            bulk_op_state<stdexec::__cvref_id<Self, Sender>, stdexec::__id<Receiver>, Shape, Fun>
+          using bulk_op_state_t = STDEXEC::__t<
+            bulk_op_state<STDEXEC::__cvref_id<Self, Sender>, STDEXEC::__id<Receiver>, Shape, Fun>
           >;
 
-          template <stdexec::__decays_to<__t> Self, stdexec::receiver Receiver>
-            requires stdexec::receiver_of<
+          template <STDEXEC::__decays_to<__t> Self, STDEXEC::receiver Receiver>
+            requires STDEXEC::receiver_of<
               Receiver,
-              _completion_signatures_t<Self, stdexec::env_of_t<Receiver>>
+              _completion_signatures_t<Self, STDEXEC::env_of_t<Receiver>>
             >
           STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-            noexcept(stdexec::__nothrow_constructible_from<
+            noexcept(STDEXEC::__nothrow_constructible_from<
                      bulk_op_state_t<Self, Receiver>,
                      DerivedPoolType&,
                      Shape,
@@ -390,19 +390,19 @@ namespace execpools {
           }
           STDEXEC_EXPLICIT_THIS_END(connect)
 
-          template <stdexec::__decays_to<__t> Self, class... Env>
+          template <STDEXEC::__decays_to<__t> Self, class... Env>
           STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
             -> _completion_signatures_t<Self, Env...> {
             return {};
           }
           STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
-          template <stdexec::__forwarding_query Tag, class... As>
-            requires stdexec::__queryable_with<stdexec::env_of_t<Sender>, Tag, As...>
+          template <STDEXEC::__forwarding_query Tag, class... As>
+            requires STDEXEC::__queryable_with<STDEXEC::env_of_t<Sender>, Tag, As...>
           auto query(Tag, As&&... as) const
-            noexcept(stdexec::__nothrow_queryable_with<stdexec::env_of_t<Sender>, Tag, As...>)
+            noexcept(STDEXEC::__nothrow_queryable_with<STDEXEC::env_of_t<Sender>, Tag, As...>)
               -> decltype(auto) {
-            return stdexec::__query<Tag>()(stdexec::get_env(sndr_), static_cast<As&&>(as)...);
+            return STDEXEC::__query<Tag>()(STDEXEC::get_env(sndr_), static_cast<As&&>(as)...);
           }
 
           auto get_env() const noexcept -> const __t& {
@@ -411,9 +411,9 @@ namespace execpools {
         };
       };
 
-      template <stdexec::sender Sender, std::integral Shape, class Fun>
+      template <STDEXEC::sender Sender, std::integral Shape, class Fun>
       using bulk_sender_t =
-        stdexec::__t<bulk_sender<stdexec::__id<stdexec::__decay_t<Sender>>, Shape, Fun>>;
+        STDEXEC::__t<bulk_sender<STDEXEC::__id<STDEXEC::__decay_t<Sender>>, Shape, Fun>>;
 
       friend thread_pool_base;
 
@@ -430,27 +430,27 @@ namespace execpools {
 
 
       [[nodiscard]]
-      constexpr auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
-        -> stdexec::forward_progress_guarantee {
+      constexpr auto query(STDEXEC::get_forward_progress_guarantee_t) const noexcept
+        -> STDEXEC::forward_progress_guarantee {
         return pool_->forward_progress_guarantee();
       }
 
-      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      template <STDEXEC::__one_of<STDEXEC::set_value_t, STDEXEC::set_stopped_t> Tag>
       [[nodiscard]]
-      constexpr auto query(stdexec::get_completion_scheduler_t<Tag>) const noexcept -> scheduler {
+      constexpr auto query(STDEXEC::get_completion_scheduler_t<Tag>) const noexcept -> scheduler {
         return *this;
       }
 
-      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      template <STDEXEC::__one_of<STDEXEC::set_value_t, STDEXEC::set_stopped_t> Tag>
       [[nodiscard]]
-      constexpr auto query(stdexec::get_completion_domain_t<Tag>) const noexcept -> domain {
+      constexpr auto query(STDEXEC::get_completion_domain_t<Tag>) const noexcept -> domain {
         return {};
       }
 
-      template <stdexec::__one_of<stdexec::set_value_t, stdexec::set_stopped_t> Tag>
+      template <STDEXEC::__one_of<STDEXEC::set_value_t, STDEXEC::set_stopped_t> Tag>
       [[nodiscard]]
-      constexpr auto query(stdexec::get_completion_behavior_t<Tag>) const noexcept {
-        return stdexec::completion_behavior::asynchronous;
+      constexpr auto query(STDEXEC::get_completion_behavior_t<Tag>) const noexcept {
+        return STDEXEC::completion_behavior::asynchronous;
       }
 
       [[nodiscard]]
@@ -494,11 +494,11 @@ namespace execpools {
       , rcvr_(std::move(rcvr)) {
       this->execute_ = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
         auto& op = *static_cast<__t*>(t);
-        auto stoken = stdexec::get_stop_token(stdexec::get_env(op.rcvr_));
+        auto stoken = STDEXEC::get_stop_token(STDEXEC::get_env(op.rcvr_));
         if (stoken.stop_requested()) {
-          stdexec::set_stopped(std::move(op.rcvr_));
+          STDEXEC::set_stopped(std::move(op.rcvr_));
         } else {
-          stdexec::set_value(std::move(op.rcvr_));
+          STDEXEC::set_value(std::move(op.rcvr_));
         }
       };
     }

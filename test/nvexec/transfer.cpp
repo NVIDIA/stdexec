@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "common.cuh"
 #include "exec/single_thread_context.hpp"
 #include "nvexec/stream_context.cuh"
-#include "common.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -64,7 +64,7 @@ namespace {
                  return 0;
                });
 
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
     REQUIRE(result == 2);
   }
 
@@ -92,7 +92,7 @@ namespace {
                  return 0;
                });
 
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
     REQUIRE(result == 2);
   }
 
@@ -110,7 +110,7 @@ namespace {
                  return false;
                });
 
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
     REQUIRE(result == true);
   }
 
@@ -124,7 +124,7 @@ namespace {
              | ex::then(
                  [=](move_only_t&& val) noexcept { return is_on_gpu() && val.contains(42); });
 
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
     REQUIRE(result == true);
   }
 
@@ -142,7 +142,7 @@ namespace {
              | ex::continues_on(cpu)                    //
              | ex::then([=](move_only_t val) noexcept { return !is_on_gpu() && val.contains(42); });
 
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
     REQUIRE(result == true);
   }
 } // namespace

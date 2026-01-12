@@ -75,6 +75,6 @@
 #include "stop_token.hpp" // IWYU pragma: export
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
-template <stdexec::sender _Ignore, stdexec::sender _Sender>
-  requires stdexec::__ok<stdexec::__bad_pipe_sink_t<_Sender>>
+template <STDEXEC::sender _Ignore, STDEXEC::sender _Sender>
+  requires STDEXEC::__ok<STDEXEC::__bad_pipe_sink_t<_Sender>>
 auto operator|(_Ignore&&, _Sender&&) noexcept;

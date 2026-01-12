@@ -27,7 +27,7 @@
 #  include <sanitizer/tsan_interface.h>
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __ptr {
     template <std::size_t _ReservedBits>
     struct __count_and_bits {
@@ -327,4 +327,4 @@ namespace stdexec {
   template <class _Ty, std::size_t _ReservedBits = 0ul>
   inline constexpr __ptr::__make_intrusive_t<_Ty, _ReservedBits> __make_intrusive{};
 
-} // namespace stdexec
+} // namespace STDEXEC

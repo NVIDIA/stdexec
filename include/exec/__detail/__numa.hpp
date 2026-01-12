@@ -38,21 +38,21 @@ namespace exec {
     using small = void* [1];
 
     template <class T>
-    using _is_small = stdexec::__mbool<sizeof(T) <= sizeof(small)>;
+    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(small)>;
 
     union _storage {
       _storage() noexcept = default;
 
-      template <stdexec::__not_decays_to<_storage> Ty>
+      template <STDEXEC::__not_decays_to<_storage> Ty>
       explicit _storage(Ty&& value)
-        : ptr{new stdexec::__decay_t<Ty>{static_cast<Ty&&>(value)}} {
+        : ptr{new STDEXEC::__decay_t<Ty>{static_cast<Ty&&>(value)}} {
       }
 
-      template <stdexec::__not_decays_to<_storage> Ty>
-        requires(_is_small<stdexec::__decay_t<Ty>>::value)
-      explicit _storage(Ty&& value) noexcept(stdexec::__nothrow_decay_copyable<Ty>)
+      template <STDEXEC::__not_decays_to<_storage> Ty>
+        requires(_is_small<STDEXEC::__decay_t<Ty>>::value)
+      explicit _storage(Ty&& value) noexcept(STDEXEC::__nothrow_decay_copyable<Ty>)
         : buf{} {
-        ::new (static_cast<void*>(buf)) stdexec::__decay_t<Ty>{static_cast<Ty&&>(value)};
+        ::new (static_cast<void*>(buf)) STDEXEC::__decay_t<Ty>{static_cast<Ty&&>(value)};
       }
 
       void* ptr{};
@@ -153,9 +153,9 @@ namespace exec {
     _numa::_storage storage_;
 
    public:
-    template <stdexec::__not_decays_to<numa_policy> NumaPolicy>
+    template <STDEXEC::__not_decays_to<numa_policy> NumaPolicy>
     numa_policy(NumaPolicy&& policy)
-      : vtable_(&_numa::_vtable_for_v<stdexec::__decay_t<NumaPolicy>>)
+      : vtable_(&_numa::_vtable_for_v<STDEXEC::__decay_t<NumaPolicy>>)
       , storage_(static_cast<NumaPolicy&&>(policy)) {
     }
 
@@ -239,7 +239,7 @@ namespace exec {
     static const std::vector<int>& get() noexcept {
       // This leaks one memory block at shutdown, but it's fine. Clang's and gcc's leak
       // sanitizer do not report it.
-      static const stdexec::__indestructible<std::vector<int>> g_node_to_thread_index{[] {
+      static const STDEXEC::__indestructible<std::vector<int>> g_node_to_thread_index{[] {
         std::vector<int> index(::numa_num_task_nodes());
         for (std::size_t node = 0, total_cpus = 0; node < index.size(); ++node) {
           total_cpus += exec::_get_numa_num_cpus(static_cast<int>(node));
@@ -337,7 +337,7 @@ namespace exec {
     }
 
     static const nodemask& any() noexcept {
-      static const stdexec::__indestructible<nodemask> mask{make_any()};
+      static const STDEXEC::__indestructible<nodemask> mask{make_any()};
       return mask.get();
     }
 

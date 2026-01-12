@@ -37,7 +37,7 @@
 #  include <type_traits>
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Fun, class... _As>
   concept __callable = requires(_Fun&& __fun, _As&&... __as) {
@@ -99,9 +99,9 @@ namespace stdexec {
 
   template <class _Ay, template <class...> class _Ty>
   concept __is_not_instance_of = !__is_instance_of<_Ay, _Ty>;
-} // namespace stdexec
+} // namespace STDEXEC
 
-namespace stdexec::__std_concepts {
+namespace STDEXEC::__std_concepts {
   // Make sure we're using a same_as concept that doesn't instantiate std::is_same
   template <class _Ap, class _Bp>
   concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
@@ -132,9 +132,9 @@ namespace stdexec::__std_concepts {
     { __t != __t } -> convertible_to<bool>;
   };
 #endif
-} // namespace stdexec::__std_concepts
+} // namespace STDEXEC::__std_concepts
 
-namespace stdexec {
+namespace STDEXEC {
   using namespace __std_concepts;
 
   // Avoid using libstdc++'s object concepts because they instantiate a
@@ -271,4 +271,4 @@ namespace stdexec {
   template <class _Ty, class... _Us>
     requires __none_of<_Ty, _Us...>
   using __unless_one_of_t = _Ty;
-} // namespace stdexec
+} // namespace STDEXEC

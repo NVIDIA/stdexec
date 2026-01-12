@@ -20,10 +20,10 @@
 
 #include "common.cuh"
 
+#include <barrier>
 #include <chrono>
 #include <thread>
 #include <vector>
-#include <barrier>
 
 template <class Shape>
 auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape> {
@@ -99,8 +99,8 @@ void run_std(
   std::chrono::system_clock::time_point end = ends[0];
 
   for (std::size_t tid = 1; tid < n_threads; tid++) {
-    begin = std::min(begins[tid], begin);
-    end = std::max(ends[tid], end);
+    begin = (std::min) (begins[tid], begin);
+    end = (std::max) (ends[tid], end);
   }
 
   report_performance(

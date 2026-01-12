@@ -34,7 +34,7 @@ namespace exec {
   };
 
   namespace __ignore_all_values {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _ResultVariant>
     struct __result_type {
@@ -59,7 +59,7 @@ namespace exec {
       void __visit_result(_Receiver __rcvr) noexcept {
         int __is_emplaced = __emplaced_.load(__std::memory_order_acquire);
         if (__is_emplaced == 0) {
-          stdexec::set_value(static_cast<_Receiver&&>(__rcvr));
+          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr));
           return;
         }
         std::visit(
@@ -87,13 +87,13 @@ namespace exec {
     struct __item_receiver {
       struct __t {
         using __id = __item_receiver;
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
 
         template <class... _Args>
         void set_value([[maybe_unused]] _Args&&... __args) noexcept {
           // ignore incoming values
-          stdexec::set_value(static_cast<_ItemReceiver&&>(__op_->__receiver_));
+          STDEXEC::set_value(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
         template <class _Error>
@@ -103,11 +103,11 @@ namespace exec {
                      set_error_t,
                      _Error
                    >
-                && __callable<stdexec::set_stopped_t, _ItemReceiver>
+                && __callable<STDEXEC::set_stopped_t, _ItemReceiver>
         void set_error(_Error&& __error) noexcept {
           // store error and signal stop
           __op_->__result_->__emplace(set_error_t(), static_cast<_Error&&>(__error));
-          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
+          STDEXEC::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
         void set_stopped() noexcept
@@ -120,11 +120,11 @@ namespace exec {
         {
           // stop without error
           __op_->__result_->__emplace(set_stopped_t());
-          stdexec::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
+          STDEXEC::set_stopped(static_cast<_ItemReceiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_ItemReceiver> {
-          return stdexec::get_env(__op_->__receiver_);
+          return STDEXEC::get_env(__op_->__receiver_);
         }
       };
     };
@@ -132,7 +132,7 @@ namespace exec {
     template <class _Sender, class _ItemReceiver, class _ResultVariant>
     struct __item_operation {
       using __base_type = __item_operation_base<_ItemReceiver, _ResultVariant>;
-      using __item_receiver_t = stdexec::__t<__item_receiver<_ItemReceiver, _ResultVariant>>;
+      using __item_receiver_t = STDEXEC::__t<__item_receiver<_ItemReceiver, _ResultVariant>>;
 
       struct __t : __base_type {
         using __id = __item_operation;
@@ -143,11 +143,11 @@ namespace exec {
             __nothrow_decay_copyable<_ItemReceiver>
             && __nothrow_connectable<_Sender, __item_receiver_t>)
           : __base_type{static_cast<_ItemReceiver&&>(__rcvr), __parent}
-          , __op_{stdexec::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
+          , __op_{STDEXEC::connect(static_cast<_Sender&&>(__sndr), __item_receiver_t{this})} {
         }
 
         void start() & noexcept {
-          stdexec::start(__op_);
+          STDEXEC::start(__op_);
         }
       };
     };
@@ -155,21 +155,21 @@ namespace exec {
     template <class _Sender, class _ResultVariant>
     struct __item_sender {
       struct __t {
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using completion_signatures =
-          stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
+          STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
         template <class _Self, class _Receiver>
         using __operation_t =
-          stdexec::__t<__item_operation<__copy_cvref_t<_Self, _Sender>, _Receiver, _ResultVariant>>;
+          STDEXEC::__t<__item_operation<__copy_cvref_t<_Self, _Sender>, _Receiver, _ResultVariant>>;
 
         template <class _Receiver>
-        using __item_receiver_t = stdexec::__t<__item_receiver<_Receiver, _ResultVariant>>;
+        using __item_receiver_t = STDEXEC::__t<__item_receiver<_Receiver, _ResultVariant>>;
 
         _Sender __sender_;
         __result_type<_ResultVariant>* __parent_;
 
-        template <__decays_to<__t> _Self, stdexec::receiver_of<completion_signatures> _Receiver>
+        template <__decays_to<__t> _Self, STDEXEC::receiver_of<completion_signatures> _Receiver>
           requires sender_to<__copy_cvref_t<_Self, _Sender>, __item_receiver_t<_Receiver>>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> __operation_t<_Self, _Receiver> {
@@ -189,11 +189,11 @@ namespace exec {
 
     template <class _ReceiverId, class _ResultVariant>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t {
         using __id = __receiver;
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
 
         constexpr explicit __t(__operation_base<_Receiver, _ResultVariant>* __op) noexcept
           : __op_{__op} {
@@ -205,7 +205,7 @@ namespace exec {
         template <sender _Item>
         [[nodiscard]]
         auto set_next(_Item&& __item) & noexcept(__nothrow_decay_copyable<_Item>)
-          -> stdexec::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
+          -> STDEXEC::__t<__item_sender<__decay_t<_Item>, _ResultVariant>> {
           return {static_cast<_Item&&>(__item), __op_};
         }
 
@@ -215,16 +215,16 @@ namespace exec {
 
         template <class _Error>
         void set_error(_Error&& error) noexcept {
-          stdexec::set_error(
+          STDEXEC::set_error(
             static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(error));
         }
 
         void set_stopped() noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__op_->__receiver_);
+          return STDEXEC::get_env(__op_->__receiver_);
         }
 
        private:
@@ -251,12 +251,12 @@ namespace exec {
 
     template <class _Sender, class _ReceiverId>
     struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t : __operation_base<_Receiver, __result_variant_t<_Sender, env_of_t<_Receiver>>> {
         using _ResultVariant = __result_variant_t<_Sender, env_of_t<_Receiver>>;
         using __base_type = __operation_base<_Receiver, _ResultVariant>;
-        using __receiver_t = stdexec::__t<__receiver<_ReceiverId, _ResultVariant>>;
+        using __receiver_t = STDEXEC::__t<__receiver<_ReceiverId, _ResultVariant>>;
 
         subscribe_result_t<_Sender, __receiver_t> __op_;
 
@@ -266,7 +266,7 @@ namespace exec {
         }
 
         void start() & noexcept {
-          stdexec::start(__op_);
+          STDEXEC::start(__op_);
         }
       };
     };
@@ -279,13 +279,13 @@ namespace exec {
       using _Env = env_of_t<_Receiver>;
 
       template <class _Child>
-      using __operation_t = stdexec::__t<__operation<_Child, _ReceiverId>>;
+      using __operation_t = STDEXEC::__t<__operation<_Child, _ReceiverId>>;
 
       template <class _Child>
       using _ResultVariant = __result_variant_t<_Child, _Env>;
 
       template <class _Child>
-      using __receiver_t = stdexec::__t<__receiver<_ReceiverId, _ResultVariant<_Child>>>;
+      using __receiver_t = STDEXEC::__t<__receiver<_ReceiverId, _ResultVariant<_Child>>>;
 
       template <class _Child>
       using __completion_sigs = __sequence_completion_signatures_of_t<_Child, _Env>;
@@ -339,7 +339,7 @@ namespace exec {
       // };
 
       // static constexpr auto start = [](auto& __state, __ignore, __ignore) noexcept -> void {
-      //   stdexec::start(__state);
+      //   STDEXEC::start(__state);
       // };
 
       static constexpr auto connect =
@@ -356,8 +356,8 @@ namespace exec {
   inline constexpr ignore_all_values_t ignore_all_values{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <>
   struct __sexpr_impl<exec::ignore_all_values_t>
     : exec::__ignore_all_values::__ignore_all_values_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

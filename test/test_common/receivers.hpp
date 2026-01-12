@@ -17,22 +17,22 @@
 #pragma once
 
 #include <catch2/catch.hpp>
+#include <stdexec/execution.hpp>
 #include <test_common/tuple.hpp>
 #include <test_common/type_helpers.hpp>
-#include <stdexec/execution.hpp>
 
 #include <atomic>
 #include <exception>
 #include <tuple>
 #include <typeinfo>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
   namespace empty_recv {
     struct recv0 {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
 
       void set_value() noexcept {
       }
@@ -45,7 +45,7 @@ namespace {
     };
 
     struct recv_int {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
 
       void set_value(int) noexcept {
       }
@@ -58,7 +58,7 @@ namespace {
     };
 
     struct recv0_ec {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
 
       void set_value() noexcept {
       }
@@ -74,7 +74,7 @@ namespace {
     };
 
     struct recv_int_ec {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
 
       void set_value(int) noexcept {
       }
@@ -97,7 +97,7 @@ namespace {
     _Env env_{};
 
    public:
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
     base_expect_receiver() = default;
 
     ~base_expect_receiver() { // NOLINT(modernize-use-equals-default)
@@ -151,7 +151,7 @@ namespace {
   };
 
   struct expect_void_receiver_ex {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     expect_void_receiver_ex(bool& executed)
       : executed_(&executed) {
@@ -216,7 +216,7 @@ namespace {
     Env env_{};
 
    public:
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     explicit expect_value_receiver_ex(T& dest)
       : dest_(&dest) {
@@ -273,7 +273,7 @@ namespace {
 
   template <class Env = ex::env<>>
   struct expect_stopped_receiver_ex {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     explicit expect_stopped_receiver_ex(bool& executed)
       : executed_(&executed) {
@@ -376,7 +376,7 @@ namespace {
 
   template <class T, class Env = ex::env<>>
   struct expect_error_receiver_ex {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     explicit expect_error_receiver_ex(T& value)
       : value_(&value) {
@@ -415,7 +415,7 @@ namespace {
   };
 
   struct logging_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     logging_receiver(int& state)
       : state_(&state) {
@@ -449,7 +449,7 @@ namespace {
 
   template <class T>
   struct typecat_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
     T* value_;
     typecat* cat_;
 
@@ -483,7 +483,7 @@ namespace {
 
   template <class F>
   struct fun_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
     F f_;
 
     template <class... Ts>
@@ -525,10 +525,10 @@ namespace {
     // Ensure that the given sender type has only one variant for set_value calls
     // If not, sync_wait will not work
     static_assert(
-      stdexec::__single_value_variant_sender<S, ex::__sync_wait::__env>,
+      STDEXEC::__single_value_variant_sender<S, ex::__sync_wait::__env>,
       "Sender passed to sync_wait needs to have one variant for sending set_value");
 
-    std::optional<std::tuple<Ts...>> res = stdexec::sync_wait(static_cast<S&&>(snd));
+    std::optional<std::tuple<Ts...>> res = STDEXEC::sync_wait(static_cast<S&&>(snd));
     CHECK(res.has_value());
     std::tuple<Ts...> expected(static_cast<Ts&&>(val)...);
     if constexpr (std::tuple_size_v<std::tuple<Ts...>> == 1)

@@ -17,10 +17,10 @@
 
 #include "../../relacy/relacy_std.hpp"
 
-#include <stdexec/execution.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 struct sync_wait_bg_thread : rl::test_suite<sync_wait_bg_thread, 1> {
   static size_t const dynamic_thread_count = 1;

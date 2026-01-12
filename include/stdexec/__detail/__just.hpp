@@ -27,7 +27,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
@@ -48,7 +48,7 @@ namespace stdexec {
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        stdexec::__apply(
+        STDEXEC::__apply(
           __tag_t(), static_cast<_State&&>(__state), static_cast<_Receiver&&>(__rcvr));
       };
 
@@ -56,7 +56,7 @@ namespace stdexec {
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept -> void {
         static_assert(sender_expr_for<_Sender, _JustTag>);
         auto&& __state = get_state(static_cast<_Sender&&>(__sndr), __rcvr);
-        stdexec::__apply(
+        STDEXEC::__apply(
           __tag_t(), static_cast<decltype(__state)>(__state), static_cast<_Receiver&&>(__rcvr));
       };
     };
@@ -108,6 +108,6 @@ namespace stdexec {
   inline constexpr just_t just{};
   inline constexpr just_error_t just_error{};
   inline constexpr just_stopped_t just_stopped{};
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

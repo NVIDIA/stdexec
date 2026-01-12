@@ -15,15 +15,15 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <exec/env.hpp>
 #include <exec/async_scope.hpp>
-#include <test_common/schedulers.hpp>
+#include <exec/env.hpp>
+#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 // For testing `when_all_with_variant`, we just check a couple of examples, check customization, and
 // we assume it's implemented in terms of `when_all`.
@@ -254,9 +254,8 @@ namespace {
     basic_inline_scheduler<test_domain1> sched1;
     basic_inline_scheduler<test_domain2> sched2;
 
-    auto snd = ex::when_all(
-      ex::starts_on(sched1, ex::just(13)),
-      ex::starts_on(sched2, ex::just(3.14)));
+    auto snd =
+      ex::when_all(ex::starts_on(sched1, ex::just(13)), ex::starts_on(sched2, ex::just(3.14)));
     auto env = ex::get_env(snd);
     auto domain = ex::get_completion_domain<ex::set_value_t>(env, ex::env<>{});
     STATIC_REQUIRE(std::same_as<decltype(domain), test_domain1>);
@@ -273,7 +272,7 @@ namespace {
     struct basic_domain {
       template <ex::sender_expr_for<Tag> Sender, class... Env>
         requires(sizeof...(Env) == C)
-      auto transform_sender(stdexec::set_value_t, Sender&&, Env&&...) const {
+      auto transform_sender(STDEXEC::set_value_t, Sender&&, Env&&...) const {
         return Fun();
       }
     };
@@ -362,18 +361,21 @@ namespace {
     auto snd = ex::when_all(ex::just(), ex::just());
     static_assert(set_equivalent<
                   ex::completion_signatures_of_t<decltype(snd), ex::env<>>,
-                  ex::completion_signatures<ex::set_value_t()>>);
+                  ex::completion_signatures<ex::set_value_t()>
+    >);
     auto env = ex::prop(ex::get_stop_token, source.get_token());
     static_assert(set_equivalent<
                   ex::completion_signatures_of_t<decltype(snd), decltype(env)>,
-                  ex::completion_signatures<ex::set_value_t()>>);
+                  ex::completion_signatures<ex::set_value_t()>
+    >);
     auto op = ex::connect(snd, expect_void_receiver{});
     ex::start(op);
   }
 
 
-
-  TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all") {
+  TEST_CASE(
+    "when_all handles stop requests from the environment correctly",
+    "[adaptors][when_all") {
     auto snd = ex::when_all(completes_if(false), completes_if(false));
 
     exec::async_scope scope;

@@ -20,15 +20,15 @@
 
 namespace exec {
   namespace __materialize {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _ReceiverId>
     struct __receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       class __t {
        public:
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         using __id = __receiver;
 
         __t(_Receiver&& __upstream)
@@ -37,22 +37,22 @@ namespace exec {
 
         template <class... _As>
         void set_value(_As&&... __as) noexcept {
-          stdexec::set_value(
+          STDEXEC::set_value(
             static_cast<_Receiver&&>(__upstream_), set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
         void set_error(_Error __err) noexcept {
-          stdexec::set_value(
+          STDEXEC::set_value(
             static_cast<_Receiver&&>(__upstream_), set_error_t(), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__upstream_), set_stopped_t());
+          STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_), set_stopped_t());
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__upstream_);
+          return STDEXEC::get_env(__upstream_);
         }
 
        private:
@@ -62,14 +62,14 @@ namespace exec {
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = __decay_t<stdexec::__t<_SenderId>>;
+      using _Sender = __decay_t<STDEXEC::__t<_SenderId>>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
+      using __receiver_t = STDEXEC::__t<__receiver<__id<__decay_t<_Receiver>>>>;
 
       class __t {
        public:
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
@@ -82,7 +82,7 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
-          return stdexec::connect(
+          return STDEXEC::connect(
             static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }
@@ -132,15 +132,15 @@ namespace exec {
   inline constexpr __materialize::__materialize_t materialize;
 
   namespace __dematerialize {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _ReceiverId>
     struct __receiver {
-      using _Receiver = __decay_t<stdexec::__t<_ReceiverId>>;
+      using _Receiver = __decay_t<STDEXEC::__t<_ReceiverId>>;
 
       class __t {
        public:
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         using __id = __receiver;
 
         __t(_Receiver&& __upstream)
@@ -155,15 +155,15 @@ namespace exec {
 
         template <class Error>
         void set_error(Error&& err) noexcept {
-          stdexec::set_error(static_cast<_Receiver&&>(__upstream_), static_cast<Error&&>(err));
+          STDEXEC::set_error(static_cast<_Receiver&&>(__upstream_), static_cast<Error&&>(err));
         }
 
         void set_stopped() noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__upstream_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__upstream_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__upstream_);
+          return STDEXEC::get_env(__upstream_);
         }
 
        private:
@@ -173,14 +173,14 @@ namespace exec {
 
     template <class _SenderId>
     struct __sender {
-      using _Sender = __decay_t<stdexec::__t<_SenderId>>;
+      using _Sender = __decay_t<STDEXEC::__t<_SenderId>>;
 
       template <class _Receiver>
-      using __receiver_t = stdexec::__t<__receiver<__id<__decay_t<_Receiver>>>>;
+      using __receiver_t = STDEXEC::__t<__receiver<__id<__decay_t<_Receiver>>>>;
 
       class __t {
        public:
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
@@ -193,7 +193,7 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __receiver)
           noexcept(__nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>>)
             -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __receiver_t<_Receiver>> {
-          return stdexec::connect(
+          return STDEXEC::connect(
             static_cast<_Self&&>(__self).__sndr_,
             __receiver_t<_Receiver>{static_cast<_Receiver&&>(__receiver)});
         }

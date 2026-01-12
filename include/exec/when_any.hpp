@@ -26,7 +26,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace exec {
   namespace __when_any {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
@@ -80,7 +80,7 @@ namespace exec {
     template <class _Receiver>
     auto __make_visitor_fn(_Receiver& __rcvr) noexcept {
       return [&__rcvr]<class _Tuple>(_Tuple&& __result) noexcept {
-        stdexec::__apply(
+        STDEXEC::__apply(
           [&__rcvr]<class... _As>(auto __tag, _As&... __args) noexcept {
             __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__args)...);
           },
@@ -136,7 +136,7 @@ namespace exec {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__rcvr_));
           if (stop_token.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             return;
           }
           STDEXEC_ASSERT(!__result_.is_valueless());
@@ -150,7 +150,7 @@ namespace exec {
     struct __receiver {
       class __t {
        public:
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         using __id = __receiver;
 
         explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
@@ -159,7 +159,7 @@ namespace exec {
 
         auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           auto __token = prop{get_stop_token, __op_->__stop_source_.get_token()};
-          return __env::__join(std::move(__token), stdexec::get_env(__op_->__rcvr_));
+          return __env::__join(std::move(__token), STDEXEC::get_env(__op_->__rcvr_));
         }
 
         template <class... _Args>
@@ -183,10 +183,10 @@ namespace exec {
 
     template <class _ReceiverId, class... _CvrefSenderIds>
     struct __op {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       using __result_t = __result_type_t<env_of_t<_Receiver>, __cvref_t<_CvrefSenderIds>...>;
-      using __receiver_t = stdexec::__t<__receiver<_Receiver, __result_t>>;
+      using __receiver_t = STDEXEC::__t<__receiver<_Receiver, __result_t>>;
       using __op_base_t = __op_base<_Receiver, __result_t>;
 
       static constexpr bool __nothrow_construct =
@@ -195,16 +195,16 @@ namespace exec {
 
       class __t : __op_base_t {
         using __opstate_tuple =
-          __tuple<connect_result_t<stdexec::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
+          __tuple<connect_result_t<STDEXEC::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
        public:
         template <class _SenderTuple>
         __t(_SenderTuple&& __senders, _Receiver&& __rcvr) noexcept(__nothrow_construct)
           : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
-          , __ops_{stdexec::__apply(
+          , __ops_{STDEXEC::__apply(
               [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(
                 __nothrow_construct) -> __opstate_tuple {
                 return __opstate_tuple{
-                  stdexec::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})...};
+                  STDEXEC::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})...};
               },
               static_cast<_SenderTuple&&>(__senders))} {
         }
@@ -213,9 +213,9 @@ namespace exec {
           this->__on_stop_.emplace(
             get_stop_token(get_env(this->__rcvr_)), __forward_stop_request{this->__stop_source_});
           if (this->__stop_source_.stop_requested()) {
-            stdexec::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
           } else {
-            stdexec::__apply(stdexec::__for_each{stdexec::start}, __ops_);
+            STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, __ops_);
           }
         }
 
@@ -227,26 +227,26 @@ namespace exec {
     template <class... _SenderIds>
     struct __sender {
       template <class _Self, class _Env>
-      using __result_t = __result_type_t<_Env, __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...>;
+      using __result_t = __result_type_t<_Env, __copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>...>;
 
       template <class _Self, class _Receiver>
       using __receiver_t =
-        stdexec::__t<__receiver<_Receiver, __result_t<_Self, env_of_t<_Receiver>>>>;
+        STDEXEC::__t<__receiver<_Receiver, __result_t<_Self, env_of_t<_Receiver>>>>;
 
       template <class _Self, class _Receiver>
-      using __op_t = stdexec::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
+      using __op_t = STDEXEC::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
 
       template <class _Self, class... _Env>
       using __completions_t = __minvoke<
         __when_any::__completions_fn<_Env...>,
-        __copy_cvref_t<_Self, stdexec::__t<_SenderIds>>...
+        __copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>...
       >;
 
       class __t {
        public:
         using __id = __sender;
-        using sender_concept = stdexec::sender_t;
-        using __senders_tuple = __tuple<stdexec::__t<_SenderIds>...>;
+        using sender_concept = STDEXEC::sender_t;
+        using __senders_tuple = __tuple<STDEXEC::__t<_SenderIds>...>;
 
         template <__not_decays_to<__t>... _Senders>
         explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
@@ -276,7 +276,7 @@ namespace exec {
           auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
           return __mexception<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
-            _WITH_SENDERS_<stdexec::__t<_SenderIds>>...
+            _WITH_SENDERS_<STDEXEC::__t<_SenderIds>>...
           >{};
         }
         STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)

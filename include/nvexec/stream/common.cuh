@@ -20,25 +20,25 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include <cuda/std/type_traits>
 #include <cuda/std/tuple>
+#include <cuda/std/type_traits>
 
-#include <optional>
-#include <type_traits>
-#include <stack>
 #include <memory_resource>
+#include <optional>
+#include <stack>
+#include <type_traits>
 
 #include "../detail/config.cuh"
 #include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
-#include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/queue.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
 #include "../detail/variant.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
-  using stdexec::operator""_mstr;
+  using STDEXEC::operator""_mstr;
 
   enum class stream_priority {
     high,
@@ -85,20 +85,20 @@ namespace nvexec {
 
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
-  struct stream_domain : stdexec::default_domain {
-    template <stdexec::sender_expr Sender, class Tag = stdexec::tag_of_t<Sender>, class Env>
-      requires stdexec::__callable<
-        stdexec::__sexpr_apply_t,
+  struct stream_domain : STDEXEC::default_domain {
+    template <STDEXEC::sender_expr Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
+      requires STDEXEC::__callable<
+        STDEXEC::__sexpr_apply_t,
         Sender,
         _strm::transform_sender_for<Tag, Env>
       >
-    static auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) {
-      return stdexec::__sexpr_apply(
+    static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
+      return STDEXEC::__sexpr_apply(
         static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env>{env});
     }
 
-    template <class Tag, stdexec::sender Sender, class... Args>
-      requires stdexec::__callable<_strm::apply_sender_for<Tag>, Sender, Args...>
+    template <class Tag, STDEXEC::sender Sender, class... Args>
+      requires STDEXEC::__callable<_strm::apply_sender_for<Tag>, Sender, Args...>
     static auto apply_sender(Tag, Sender&& sndr, Args&&... args) {
       return _strm::apply_sender_for<Tag>{}(
         static_cast<Sender&&>(sndr), static_cast<Args&&>(args)...);
@@ -248,11 +248,11 @@ namespace nvexec {
          };
 
     struct stream_sender_base {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
     };
 
     struct stream_receiver_base {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
       static constexpr std::size_t memory_allocation_size = 0;
     };
 
@@ -309,9 +309,9 @@ namespace nvexec {
       }
     };
 
-    struct get_stream_provider_t : stdexec::__query<get_stream_provider_t> {
+    struct get_stream_provider_t : STDEXEC::__query<get_stream_provider_t> {
       STDEXEC_ATTRIBUTE(host, device)
-      static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
+      static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
@@ -326,7 +326,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
-    // using _nullable_variant_t = stdexec::__variant_for<::cuda::std::tuple<set_noop>, Ts...>;
+    // using _nullable_variant_t = STDEXEC::__variant_for<::cuda::std::tuple<set_noop>, Ts...>;
     using _nullable_variant_t = variant_t<::cuda::std::tuple<set_noop>, Ts...>;
 
     template <class... Ts>
@@ -349,11 +349,11 @@ namespace nvexec {
       }
 
       STDEXEC_ATTRIBUTE(host, device) auto operator()() const noexcept {
-        return stdexec::read_env(*this);
+        return STDEXEC::read_env(*this);
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-      static constexpr auto query(stdexec::forwarding_query_t) noexcept -> bool {
+      static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool {
         return true;
       }
     };
@@ -368,7 +368,7 @@ namespace nvexec {
       STDEXEC_ATTRIBUTE(nodiscard)
       constexpr auto query(Query) const noexcept(__nothrow_queryable_with<env_of_t<Sender>, Query>)
         -> __query_result_t<env_of_t<Sender>, Query> {
-        return stdexec::__query<Query>()(stdexec::get_env(*child_));
+        return STDEXEC::__query<Query>()(STDEXEC::get_env(*child_));
       }
 
       const Sender* child_{};
@@ -411,7 +411,7 @@ namespace nvexec {
     concept stream_sender = sender_in<S, E>
                          && STDEXEC_IS_BASE_OF(
                               stream_sender_base,
-                              STDEXEC_REMOVE_REFERENCE(stdexec::transform_sender_result_t<S, E>));
+                              STDEXEC_REMOVE_REFERENCE(STDEXEC::transform_sender_result_t<S, E>));
 
     template <class R>
     concept stream_receiver = receiver<R>
@@ -421,7 +421,7 @@ namespace nvexec {
 
     template <class EnvId, class Variant>
     struct stream_enqueue_receiver {
-      using Env = stdexec::__cvref_t<EnvId>;
+      using Env = STDEXEC::__cvref_t<EnvId>;
 
       class __t {
         Env* env_;
@@ -430,7 +430,7 @@ namespace nvexec {
         queue::producer_t producer_;
 
        public:
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         using __id = stream_enqueue_receiver;
 
         template <class... As>
@@ -452,7 +452,7 @@ namespace nvexec {
           if constexpr (__decays_to<Error, std::exception_ptr>) {
             // What is `exception_ptr` but death pending
             variant_->template emplace<decayed_tuple<set_error_t, cudaError_t>>(
-              stdexec::set_error, cudaErrorUnknown);
+              STDEXEC::set_error, cudaErrorUnknown);
           } else {
             variant_->template emplace<decayed_tuple<set_error_t, Error>>(
               set_error_t(), static_cast<Error&&>(err));
@@ -536,13 +536,13 @@ namespace nvexec {
 
     template <class OuterReceiverId>
     struct operation_state_base_ {
-      using outer_receiver_t = stdexec::__t<OuterReceiverId>;
+      using outer_receiver_t = STDEXEC::__t<OuterReceiverId>;
       using outer_env_t = env_of_t<outer_receiver_t>;
       static constexpr bool borrows_stream = borrows_stream_h<outer_env_t>();
 
       struct __t : stream_op_state_base {
         using __id = operation_state_base_;
-        using operation_state_concept = stdexec::operation_state_t;
+        using operation_state_concept = STDEXEC::operation_state_t;
         using env_t = make_stream_env_t<outer_env_t>;
 
         __t(outer_receiver_t rcvr, context_state_t context_state)
@@ -609,7 +609,7 @@ namespace nvexec {
         template <__decays_to<cudaError_t> Error>
         void propagate_completion_signal(set_error_t, Error&& status) noexcept {
           if constexpr (stream_receiver<outer_receiver_t>) {
-            stdexec::set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
+            STDEXEC::set_error(static_cast<outer_receiver_t&&>(rcvr_), cudaError_t(status));
           } else {
             // pass a cudaError_t by value:
             continuation_kernel<outer_receiver_t, Error><<<1, 1, 0, get_stream()>>>(
@@ -636,11 +636,11 @@ namespace nvexec {
     };
 
     template <class OuterReceiverId>
-    using operation_state_base_t = stdexec::__t<operation_state_base_<OuterReceiverId>>;
+    using operation_state_base_t = STDEXEC::__t<operation_state_base_<OuterReceiverId>>;
 
     template <class OuterReceiverId>
     struct propagate_receiver_t {
-      using outer_receiver_t = stdexec::__t<OuterReceiverId>;
+      using outer_receiver_t = STDEXEC::__t<OuterReceiverId>;
 
       struct __t : stream_receiver_base {
         using __id = propagate_receiver_t;
@@ -673,8 +673,8 @@ namespace nvexec {
       struct __t : operation_state_base_t<OuterReceiverId> {
         using __id = operation_state_;
         using sender_t = __cvref_t<CvrefSenderId>;
-        using inner_receiver_t = stdexec::__t<InnerReceiverId>;
-        using outer_receiver_t = stdexec::__t<OuterReceiverId>;
+        using inner_receiver_t = STDEXEC::__t<InnerReceiverId>;
+        using outer_receiver_t = STDEXEC::__t<OuterReceiverId>;
         using typename operation_state_base_t<OuterReceiverId>::env_t;
         using variant_t = variant_storage_t<sender_t, env_t>;
 
@@ -682,7 +682,7 @@ namespace nvexec {
 
         using task_t = continuation_task_t<inner_receiver_t, variant_t>;
         using stream_enqueue_receiver_t =
-          stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
+          STDEXEC::__t<stream_enqueue_receiver<STDEXEC::__cvref_id<env_t>, variant_t>>;
         using intermediate_receiver =
           __if_c<stream_sender<sender_t, env_t>, inner_receiver_t, stream_enqueue_receiver_t>;
         using inner_op_state_t = connect_result_t<sender_t, intermediate_receiver>;
@@ -693,7 +693,7 @@ namespace nvexec {
           if (this->stream_provider_.status_ != cudaSuccess) {
             // Couldn't allocate memory for operation state, complete with error
             this->propagate_completion_signal(
-              stdexec::set_error, std::move(this->stream_provider_.status_));
+              STDEXEC::set_error, std::move(this->stream_provider_.status_));
             return;
           }
 
@@ -704,13 +704,13 @@ namespace nvexec {
                                         ->allocate(inner_receiver_t::memory_allocation_size);
               }
               STDEXEC_CATCH_ALL {
-                this->propagate_completion_signal(stdexec::set_error, cudaErrorMemoryAllocation);
+                this->propagate_completion_signal(STDEXEC::set_error, cudaErrorMemoryAllocation);
                 return;
               }
             }
           }
 
-          stdexec::start(inner_op_);
+          STDEXEC::start(inner_op_);
         }
 
         template <__decays_to<outer_receiver_t> OutR, class ReceiverProvider>
@@ -787,26 +787,26 @@ namespace nvexec {
 
     template <class CvrefSenderId, class InnerReceiverId, class OuterReceiverId>
     using operation_state_t =
-      stdexec::__t<operation_state_<CvrefSenderId, InnerReceiverId, OuterReceiverId>>;
+      STDEXEC::__t<operation_state_<CvrefSenderId, InnerReceiverId, OuterReceiverId>>;
 
     template <class CvrefSender, class OuterReceiver>
       requires stream_receiver<OuterReceiver>
     using exit_operation_state_t = operation_state_t<
       __cvref_id<CvrefSender>,
-      stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>,
-      stdexec::__id<OuterReceiver>
+      STDEXEC::__id<STDEXEC::__t<propagate_receiver_t<STDEXEC::__id<OuterReceiver>>>>,
+      STDEXEC::__id<OuterReceiver>
     >;
 
     template <class Sender, class OuterReceiver>
     auto exit_op_state(Sender&& sndr, OuterReceiver rcvr, context_state_t context_state) noexcept
       -> exit_operation_state_t<Sender, OuterReceiver> {
-      using ReceiverId = stdexec::__id<OuterReceiver>;
+      using ReceiverId = STDEXEC::__id<OuterReceiver>;
       return exit_operation_state_t<Sender, OuterReceiver>(
         static_cast<Sender&&>(sndr),
         static_cast<OuterReceiver&&>(rcvr),
         [](operation_state_base_t<ReceiverId>& op)
-          -> stdexec::__t<propagate_receiver_t<ReceiverId>> {
-          return stdexec::__t<propagate_receiver_t<ReceiverId>>{{}, op};
+          -> STDEXEC::__t<propagate_receiver_t<ReceiverId>> {
+          return STDEXEC::__t<propagate_receiver_t<ReceiverId>>{{}, op};
         },
         context_state);
     }
@@ -818,13 +818,13 @@ namespace nvexec {
 
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t =
-      __call_result_t<InnerReceiverProvider, operation_state_base_t<stdexec::__id<OuterReceiver>>&>;
+      __call_result_t<InnerReceiverProvider, operation_state_base_t<STDEXEC::__id<OuterReceiver>>&>;
 
     template <class CvrefSender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = operation_state_t<
       __cvref_id<CvrefSender>,
-      stdexec::__id<InnerReceiver>,
-      stdexec::__id<OuterReceiver>
+      STDEXEC::__id<InnerReceiver>,
+      STDEXEC::__id<OuterReceiver>
     >;
 
     template <class Sender, class OuterReceiver, class ReceiverProvider>

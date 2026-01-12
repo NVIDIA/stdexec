@@ -15,15 +15,15 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/type_helpers.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <chrono> // IWYU pragma: keep for std::chrono_literals
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
@@ -191,7 +191,7 @@ namespace {
   // Return a different sender when we invoke this custom defined starts_on implementation
   struct starts_on_test_domain {
     template <ex::sender_expr_for<ex::starts_on_t> Sender>
-    static auto transform_sender(stdexec::set_value_t, Sender&&, const auto&...) {
+    static auto transform_sender(STDEXEC::set_value_t, Sender&&, const auto&...) {
       return ex::just(std::string{"Hello, world!"});
     }
   };
@@ -256,7 +256,7 @@ namespace {
     };
 
     struct sender {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <typename Receiver>

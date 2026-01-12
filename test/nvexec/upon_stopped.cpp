@@ -1,10 +1,10 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -31,7 +31,7 @@ namespace {
                    flags.set();
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }

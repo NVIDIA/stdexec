@@ -1,10 +1,10 @@
+#include "exec/static_thread_pool.hpp"
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
-#include "exec/static_thread_pool.hpp"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
-using stdexec::sync_wait;
+using STDEXEC::sync_wait;
 
 namespace {
 

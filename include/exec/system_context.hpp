@@ -50,11 +50,11 @@ namespace exec {
 
       auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
         using system_context_replaceability::__runtime_property_helper;
-        using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__rcvr_)));
-        if constexpr (std::is_same_v<stdexec::inplace_stop_token, __StopToken>) {
-          if (__id == __runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
-            *static_cast<stdexec::inplace_stop_token*>(__dest) = stdexec::get_stop_token(
-              stdexec::get_env(__rcvr_));
+        using __StopToken = decltype(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
+        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __StopToken>) {
+          if (__id == __runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
+            *static_cast<STDEXEC::inplace_stop_token*>(__dest) = STDEXEC::get_stop_token(
+              STDEXEC::get_env(__rcvr_));
             return true;
           }
         }
@@ -62,15 +62,15 @@ namespace exec {
       }
 
       void set_value() noexcept override {
-        stdexec::set_value(std::forward<_Rcvr>(__rcvr_));
+        STDEXEC::set_value(std::forward<_Rcvr>(__rcvr_));
       }
 
       void set_error(std::exception_ptr __ex) noexcept override {
-        stdexec::set_error(std::forward<_Rcvr>(__rcvr_), std::move(__ex));
+        STDEXEC::set_error(std::forward<_Rcvr>(__rcvr_), std::move(__ex));
       }
 
       void set_stopped() noexcept override {
-        stdexec::set_stopped(std::forward<_Rcvr>(__rcvr_));
+        STDEXEC::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
@@ -79,13 +79,13 @@ namespace exec {
 
     /// The type large enough to store the data produced by a sender.
     template <class _Sender>
-    using __sender_data_t = decltype(stdexec::sync_wait(std::declval<_Sender>()).value());
+    using __sender_data_t = decltype(STDEXEC::sync_wait(std::declval<_Sender>()).value());
 
   } // namespace detail
 
   class parallel_scheduler;
   class __parallel_sender;
-  template <bool, stdexec::sender _S, std::integral _Size, class _Fn, bool>
+  template <bool, STDEXEC::sender _S, std::integral _Size, class _Fn, bool>
   class __parallel_bulk_sender;
 
   /// Returns a scheduler that can add work to the underlying execution context.
@@ -94,14 +94,14 @@ namespace exec {
   /// Concept that matches `bulk_chunked` and `bulk_unchunked` senders.
   template <class _Sender>
   concept __bulk_chunked_or_unchunked =
-    stdexec::sender_expr_for<_Sender, stdexec::bulk_chunked_t>
-    || stdexec::sender_expr_for<_Sender, stdexec::bulk_unchunked_t>;
+    STDEXEC::sender_expr_for<_Sender, STDEXEC::bulk_chunked_t>
+    || STDEXEC::sender_expr_for<_Sender, STDEXEC::bulk_unchunked_t>;
 
   /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
-  struct __parallel_scheduler_domain : stdexec::default_domain {
+  struct __parallel_scheduler_domain : STDEXEC::default_domain {
     template <__bulk_chunked_or_unchunked _Sender, class _Env>
-    auto transform_sender(stdexec::set_value_t, _Sender&& __sndr, const _Env& __env) const noexcept;
+    auto transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, const _Env& __env) const noexcept;
   };
 
   namespace detail {
@@ -114,9 +114,9 @@ namespace exec {
     /// Describes the environment of this sender.
     struct __parallel_scheduler_env {
       /// Returns the system scheduler as the completion scheduler for `set_value_t`.
-      template <stdexec::__one_of<stdexec::set_value_t> _Tag>
+      template <STDEXEC::__one_of<STDEXEC::set_value_t> _Tag>
       [[nodiscard]]
-      auto query(stdexec::get_completion_scheduler_t<_Tag>) const noexcept {
+      auto query(STDEXEC::get_completion_scheduler_t<_Tag>) const noexcept {
         return detail::__make_parallel_scheduler_from(_Tag(), __scheduler_);
       }
 
@@ -191,9 +191,9 @@ namespace exec {
 
       /// Starts the work stored in `this`.
       void start() & noexcept {
-        auto st = stdexec::get_stop_token(stdexec::get_env(__rcvr_.__rcvr_));
+        auto st = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_.__rcvr_));
         if (st.stop_requested()) {
-          stdexec::set_stopped(__rcvr_);
+          STDEXEC::set_stopped(__rcvr_);
           return;
         }
         auto& __scheduler_impl = __preallocated_.__as<__backend_ptr>();
@@ -219,12 +219,12 @@ namespace exec {
   class __parallel_sender {
    public:
     /// Marks this type as being a sender; not to spec.
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     /// Declares the completion signals sent by `this`.
-    using completion_signatures = stdexec::completion_signatures<
-      stdexec::set_value_t(),
-      stdexec::set_stopped_t(),
-      stdexec::set_error_t(std::exception_ptr)
+    using completion_signatures = STDEXEC::completion_signatures<
+      STDEXEC::set_value_t(),
+      STDEXEC::set_stopped_t(),
+      STDEXEC::set_error_t(std::exception_ptr)
     >;
 
     /// Implementation detail. Constructs the sender to wrap `__impl`.
@@ -240,18 +240,18 @@ namespace exec {
 
     /// Value completion happens on the parallel scheduler.
     [[nodiscard]]
-    auto query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept
+    auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
       -> parallel_scheduler;
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
-    template <stdexec::receiver _Rcvr>
-    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
+    template <STDEXEC::receiver _Rcvr>
+    auto connect(_Rcvr __rcvr) && noexcept(STDEXEC::__nothrow_move_constructible<_Rcvr>)
       -> detail::__system_op<__parallel_sender, _Rcvr> {
       return {std::move(__rcvr), std::move(__scheduler_)};
     }
 
-    template <stdexec::receiver _Rcvr>
-    auto connect(_Rcvr __rcvr) & noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
+    template <STDEXEC::receiver _Rcvr>
+    auto connect(_Rcvr __rcvr) & noexcept(STDEXEC::__nothrow_move_constructible<_Rcvr>)
       -> detail::__system_op<__parallel_sender, _Rcvr> {
       return {std::move(__rcvr), __scheduler_};
     }
@@ -276,12 +276,12 @@ namespace exec {
 
     /// Returns the forward progress guarantee of `this`.
     [[nodiscard]]
-    auto query(stdexec::get_forward_progress_guarantee_t) const noexcept
-      -> stdexec::forward_progress_guarantee;
+    auto query(STDEXEC::get_forward_progress_guarantee_t) const noexcept
+      -> STDEXEC::forward_progress_guarantee;
 
     /// Returns the execution domain of `this`.
     [[nodiscard]]
-    auto query(stdexec::get_domain_t) const noexcept -> __parallel_scheduler_domain {
+    auto query(STDEXEC::get_domain_t) const noexcept -> __parallel_scheduler_domain {
       return {};
     }
 
@@ -292,7 +292,7 @@ namespace exec {
     }
 
    private:
-    template <bool, stdexec::sender, std::integral, class, bool>
+    template <bool, STDEXEC::sender, std::integral, class, bool>
     friend class __parallel_bulk_sender;
 
     /// The underlying implementation of the scheduler.
@@ -330,17 +330,17 @@ namespace exec {
       explicit __typed_forward_args_receiver(_As&&... __as) {
         static_assert(sizeof(std::tuple<_As...>) <= sizeof(__base_t::__arguments_data_));
         new (__base_t::__arguments_data_)
-          std::tuple<stdexec::__decay_t<_As>...>{std::move(__as)...};
+          std::tuple<STDEXEC::__decay_t<_As>...>{std::move(__as)...};
       }
 
       auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
         auto __state = reinterpret_cast<_BulkState*>(this);
         using system_context_replaceability::__runtime_property_helper;
-        using __StopToken = decltype(stdexec::get_stop_token(stdexec::get_env(__state->__rcvr_)));
-        if constexpr (std::is_same_v<stdexec::inplace_stop_token, __StopToken>) {
-          if (__id == __runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
-            *static_cast<stdexec::inplace_stop_token*>(__dest) = stdexec::get_stop_token(
-              stdexec::get_env(__state->__rcvr_));
+        using __StopToken = decltype(STDEXEC::get_stop_token(STDEXEC::get_env(__state->__rcvr_)));
+        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __StopToken>) {
+          if (__id == __runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
+            *static_cast<STDEXEC::inplace_stop_token*>(__dest) = STDEXEC::get_stop_token(
+              STDEXEC::get_env(__state->__rcvr_));
             return true;
           }
         }
@@ -352,7 +352,7 @@ namespace exec {
         auto __state = reinterpret_cast<_BulkState*>(this);
         std::apply(
           [&](auto&&... __args) {
-            stdexec::set_value(
+            STDEXEC::set_value(
               std::forward<__rcvr_t>(__state->__rcvr_), std::forward<_As>(__args)...);
           },
           *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
@@ -361,13 +361,13 @@ namespace exec {
       /// Calls `set_error()` on the final receiver of the bulk operation, passing `__ex`.
       void set_error(std::exception_ptr __ex) noexcept override {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        stdexec::set_error(std::forward<__rcvr_t>(__state->__rcvr_), std::move(__ex));
+        STDEXEC::set_error(std::forward<__rcvr_t>(__state->__rcvr_), std::move(__ex));
       }
 
       /// Calls `set_stopped()` on the final receiver of the bulk operation.
       void set_stopped() noexcept override {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        stdexec::set_stopped(std::forward<__rcvr_t>(__state->__rcvr_));
+        STDEXEC::set_stopped(std::forward<__rcvr_t>(__state->__rcvr_));
       }
 
       /// Calls the bulk functor passing `__index` and the values from the previous sender.
@@ -401,7 +401,7 @@ namespace exec {
     /// The state needed to execute the bulk sender created from system context, minus the preallocates space.
     /// The preallocated space is obtained by calling the `__prepare_storage_for_backend` function pointer.
     template <
-      stdexec::sender _Previous,
+      STDEXEC::sender _Previous,
       std::integral _Size,
       class _Fn,
       class _Rcvr,
@@ -439,10 +439,10 @@ namespace exec {
     };
 
     /// Receiver that is used in "bulk" to connect to the input sender of the bulk operation.
-    template <class _BulkState, stdexec::sender _Previous>
+    template <class _BulkState, STDEXEC::sender _Previous>
     struct __bulk_intermediate_receiver {
       /// Declare that this is a `receiver`.
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = STDEXEC::receiver_t;
 
       /// Object that holds the relevant data for the entire bulk operation.
       _BulkState& __state_;
@@ -451,9 +451,9 @@ namespace exec {
 
       template <class... _As>
       void set_value(_As&&... __as) noexcept {
-        auto st = stdexec::get_stop_token(stdexec::get_env(__state_.__rcvr_));
+        auto st = STDEXEC::get_stop_token(STDEXEC::get_env(__state_.__rcvr_));
         if (st.stop_requested()) {
-          stdexec::set_stopped(__state_.__rcvr_);
+          STDEXEC::set_stopped(__state_.__rcvr_);
           return;
         }
 
@@ -482,26 +482,26 @@ namespace exec {
 
       /// Invoked when the previous sender completes with "stopped" to stop the entire work.
       void set_stopped() noexcept {
-        stdexec::set_stopped(std::move(__state_.__rcvr_));
+        STDEXEC::set_stopped(std::move(__state_.__rcvr_));
       }
 
       /// Invoked when the previous sender completes with error to forward the error to the connected receiver.
       template <typename __E>
       void set_error(__E __e) noexcept {
-        stdexec::set_error(std::move(__state_.__rcvr_), std::move(__e));
+        STDEXEC::set_error(std::move(__state_.__rcvr_), std::move(__e));
       }
 
       /// Gets the environment of this receiver; returns the environment of the connected receiver.
       [[nodiscard]]
       auto get_env() const noexcept -> decltype(auto) {
-        return stdexec::get_env(__state_.__rcvr_);
+        return STDEXEC::get_env(__state_.__rcvr_);
       }
     };
 
     /// The operation state object for the system bulk sender.
     template <
       bool _IsUnchunked,
-      stdexec::sender _Previous,
+      STDEXEC::sender _Previous,
       std::integral _Size,
       class _Fn,
       class _Rcvr,
@@ -519,12 +519,13 @@ namespace exec {
         __bulk_intermediate_receiver<__bulk_state_base_t, _Previous>;
 
       /// The type of inner operation state, which is the result of connecting the previous sender to the bulk intermediate receiver.
-      using __inner_op_state = stdexec::connect_result_t<_Previous, __intermediate_receiver_t>;
+      using __inner_op_state = STDEXEC::connect_result_t<_Previous, __intermediate_receiver_t>;
 
       static constexpr size_t _PreallocatedSize =
-        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
+        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE), sizeof(__inner_op_state));
       static constexpr size_t _PreallocatedAlign =
-        std::max(size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN), alignof(__inner_op_state));
+        (std::max) (size_t(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN),
+                    alignof(__inner_op_state));
 
       /// Preallocated space for storing the inner operation state, and then storage space for the backend call.
       __aligned_storage<_PreallocatedSize, _PreallocatedAlign> __preallocated_;
@@ -565,7 +566,7 @@ namespace exec {
       void start() & noexcept {
         // Start previous operation state.
         // Bulk operation will be started when the previous sender completes.
-        stdexec::start(__preallocated_.template __as<__inner_op_state>());
+        STDEXEC::start(__preallocated_.template __as<__inner_op_state>());
       }
     };
   } // namespace detail
@@ -573,7 +574,7 @@ namespace exec {
   /// The sender used to schedule bulk work in the system context.
   template <
     bool _IsUnchunked,
-    stdexec::sender _Previous,
+    STDEXEC::sender _Previous,
     std::integral _Size,
     class _Fn,
     bool _Parallelize
@@ -581,17 +582,17 @@ namespace exec {
   class __parallel_bulk_sender {
     /// Meta-function that returns the completion signatures of `this`.
     template <class _Self, class... _Env>
-    using __completions_t = stdexec::transform_completion_signatures<
-      stdexec::__completion_signatures_of_t<stdexec::__copy_cvref_t<_Self, _Previous>, _Env...>,
-      stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>
+    using __completions_t = STDEXEC::transform_completion_signatures<
+      STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<_Self, _Previous>, _Env...>,
+      STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>
     >;
 
-    template <bool, stdexec::sender, std::integral, class, class, bool>
+    template <bool, STDEXEC::sender, std::integral, class, class, bool>
     friend struct detail::__system_bulk_op;
 
    public:
     /// Marks this type as being a sender
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
 
     /// Constructs `this`.
     __parallel_bulk_sender(
@@ -612,21 +613,21 @@ namespace exec {
     }
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
-    template <stdexec::receiver _Rcvr>
-    auto connect(_Rcvr __rcvr) && noexcept(stdexec::__nothrow_move_constructible<_Rcvr>)
+    template <STDEXEC::receiver _Rcvr>
+    auto connect(_Rcvr __rcvr) && noexcept(STDEXEC::__nothrow_move_constructible<_Rcvr>)
       -> detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize> {
       using __res_t =
         detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize>;
       using __receiver_t = __res_t::__intermediate_receiver_t;
       return {std::move(*this), std::move(__rcvr), [this](auto& __op) {
                 // Connect bulk input receiver with the previous operation and store in the operating state.
-                return stdexec::connect(
+                return STDEXEC::connect(
                   std::move(this->__previous_), __receiver_t{__op, std::move(this->__scheduler_)});
               }};
     }
 
     /// Gets the completion signatures for this sender.
-    template <stdexec::__decays_to<__parallel_bulk_sender> _Self, class... _Env>
+    template <STDEXEC::__decays_to<__parallel_bulk_sender> _Self, class... _Env>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
       -> __completions_t<_Self, _Env...> {
       return {};
@@ -658,24 +659,24 @@ namespace exec {
     return get_parallel_scheduler();
   }
 
-  inline auto __parallel_sender::query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>)
+  inline auto __parallel_sender::query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>)
     const noexcept -> parallel_scheduler {
-    return detail::__make_parallel_scheduler_from(stdexec::set_value_t{}, __scheduler_);
+    return detail::__make_parallel_scheduler_from(STDEXEC::set_value_t{}, __scheduler_);
   }
 
-  inline auto parallel_scheduler::query(stdexec::get_forward_progress_guarantee_t) const noexcept
-    -> stdexec::forward_progress_guarantee {
-    return stdexec::forward_progress_guarantee::parallel;
+  inline auto parallel_scheduler::query(STDEXEC::get_forward_progress_guarantee_t) const noexcept
+    -> STDEXEC::forward_progress_guarantee {
+    return STDEXEC::forward_progress_guarantee::parallel;
   }
 
   struct __transform_parallel_bulk_sender {
     template <class _Data, class _Previous>
     auto
-      operator()(stdexec::bulk_chunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
+      operator()(STDEXEC::bulk_chunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
       auto [__pol, __shape, __fn] = static_cast<_Data&&>(__data);
       using __policy_t = std::remove_cvref_t<decltype(__pol.__get())>;
-      constexpr bool __parallelize = std::same_as<__policy_t, stdexec::parallel_policy>
-                                  || std::same_as<__policy_t, stdexec::parallel_unsequenced_policy>;
+      constexpr bool __parallelize = std::same_as<__policy_t, STDEXEC::parallel_policy>
+                                  || std::same_as<__policy_t, STDEXEC::parallel_unsequenced_policy>;
       return __parallel_bulk_sender<
         false,
         _Previous,
@@ -687,11 +688,11 @@ namespace exec {
 
     template <class _Data, class _Previous>
     auto
-      operator()(stdexec::bulk_unchunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
+      operator()(STDEXEC::bulk_unchunked_t, _Data&& __data, _Previous&& __previous) const noexcept {
       auto [__pol, __shape, __fn] = static_cast<_Data&&>(__data);
       using __policy_t = std::remove_cvref_t<decltype(__pol.__get())>;
-      constexpr bool __parallelize = std::same_as<__policy_t, stdexec::parallel_policy>
-                                  || std::same_as<__policy_t, stdexec::parallel_unsequenced_policy>;
+      constexpr bool __parallelize = std::same_as<__policy_t, STDEXEC::parallel_policy>
+                                  || std::same_as<__policy_t, STDEXEC::parallel_unsequenced_policy>;
       return __parallel_bulk_sender<
         true,
         _Previous,
@@ -706,22 +707,22 @@ namespace exec {
 
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
   auto __parallel_scheduler_domain::transform_sender(
-    stdexec::set_value_t,
+    STDEXEC::set_value_t,
     _Sender&& __sndr,
     const _Env& __env) const noexcept {
-    if constexpr (stdexec::__completes_on<_Sender, parallel_scheduler, _Env>) {
-      auto __sched = stdexec::get_scheduler(__env);
-      return stdexec::__sexpr_apply(
+    if constexpr (STDEXEC::__completes_on<_Sender, parallel_scheduler, _Env>) {
+      auto __sched = STDEXEC::get_scheduler(__env);
+      return STDEXEC::__sexpr_apply(
         static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
     } else {
-      return stdexec::__not_a_sender<
-        stdexec::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),
-        stdexec::_WHY_(BECAUSE_THERE_IS_NO_PARALLEL_SCHEDULER_IN_THE_ENVIRONMENT),
-        stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, stdexec::tag_of_t<_Sender>),
-        stdexec::_TO_FIX_THIS_ERROR_(
+      return STDEXEC::__not_a_sender<
+        STDEXEC::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),
+        STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_PARALLEL_SCHEDULER_IN_THE_ENVIRONMENT),
+        STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<_Sender>),
+        STDEXEC::_TO_FIX_THIS_ERROR_(
           ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-        stdexec::_WITH_SENDER_<_Sender>,
-        stdexec::_WITH_ENVIRONMENT_<_Env>
+        STDEXEC::_WITH_SENDER_<_Sender>,
+        STDEXEC::_WITH_ENVIRONMENT_<_Env>
       >();
     }
   }

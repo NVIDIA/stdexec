@@ -2,12 +2,12 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "common.cuh"
 #include "nvexec/detail/cuda_atomic.cuh"
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
-#include "common.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -28,7 +28,7 @@ namespace {
 
     REQUIRE(flags_storage.all_set_once());
 
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
   }
 
   TEST_CASE("nvexec ensure_started propagates values", "[cuda][stream][adaptors][ensure_started]") {
@@ -40,7 +40,7 @@ namespace {
     auto snd2 = std::move(snd1)
               | ex::then([](bool prev_on_gpu) -> int { return prev_on_gpu && is_on_gpu(); });
 
-    auto [v] = stdexec::sync_wait(std::move(snd2)).value();
+    auto [v] = STDEXEC::sync_wait(std::move(snd2)).value();
 
     REQUIRE(v == 1);
   }
@@ -63,7 +63,7 @@ namespace {
                    flags.set(1);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -86,7 +86,7 @@ namespace {
                      flags.set(0);
                    }
                  });
-      stdexec::sync_wait(std::move(snd));
+      STDEXEC::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -104,7 +104,7 @@ namespace {
                      flags.set();
                    }
                  });
-      stdexec::sync_wait(std::move(snd)).value();
+      STDEXEC::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }

@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 #include "test_common/type_helpers.hpp"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -32,7 +32,7 @@ namespace {
                    flags.set();
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -56,7 +56,7 @@ namespace {
                    flags.set(1);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -70,12 +70,12 @@ namespace {
     auto flags = flags_storage.get();
 
     auto snd = ex::just_error(42) | ex::continues_on(stream_ctx.get_scheduler())
-             | a_sender([=]() noexcept {}) | ex::upon_error([=](int err) noexcept {
+             | a_sender([=]() noexcept { }) | ex::upon_error([=](int err) noexcept {
                  if (is_on_gpu() && err == 42) {
                    flags.set();
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }

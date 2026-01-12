@@ -20,7 +20,7 @@
 #include <optional>
 
 using namespace std;
-using namespace stdexec;
+using namespace STDEXEC;
 
 namespace {
 

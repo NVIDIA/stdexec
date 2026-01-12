@@ -22,7 +22,7 @@
 #include "__get_completion_signatures.hpp" // IWYU pragma: export
 #include "__transform_completion_signatures.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   namespace __detail {
@@ -71,4 +71,4 @@ namespace stdexec {
   // early sender type-checking
   template <class _Sender>
   concept __well_formed_sender = sender_in<_Sender> || dependent_sender<_Sender>;
-} // namespace stdexec
+} // namespace STDEXEC

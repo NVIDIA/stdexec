@@ -3,14 +3,14 @@
 #include <exec/start_now.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include "test_common/schedulers.hpp"
 #include "test_common/receivers.hpp"
+#include "test_common/schedulers.hpp"
 #include "test_common/type_helpers.hpp"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
 using exec::start_now;
-using stdexec::sync_wait;
+using STDEXEC::sync_wait;
 
 namespace {
 
@@ -46,7 +46,7 @@ namespace {
 
     // This will be a blocking call
     auto stg = start_now(
-      stdexec::__root_env{},
+      STDEXEC::__root_env{},
       scope,
       ex::just() | ex::then([&]() noexcept { executedA = true; }),
       ex::just() | ex::then([&]() noexcept { executedB = true; }));

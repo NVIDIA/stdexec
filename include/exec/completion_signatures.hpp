@@ -17,7 +17,7 @@
 
 #include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__tuple.hpp" // IWYU pragma: keep for stdexec::__tuple
+#include "../stdexec/__detail/__tuple.hpp" // IWYU pragma: keep for STDEXEC::__tuple
 
 namespace exec {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,11 +28,11 @@ namespace exec {
 
     template <class Tag, class... As>
     auto normalize(Tag (*)(As...))
-      -> decltype(detail::normalize_impl<Tag>(stdexec::__declval<As>()...));
+      -> decltype(detail::normalize_impl<Tag>(STDEXEC::__declval<As>()...));
 
     template <class... Sigs>
     auto make_unique(Sigs*...)
-      -> stdexec::__mapply_q<stdexec::completion_signatures, stdexec::__mmake_set<Sigs...>>;
+      -> STDEXEC::__mapply_q<STDEXEC::completion_signatures, STDEXEC::__mmake_set<Sigs...>>;
 
     template <class... Sigs>
     using make_completion_signatures_t = decltype(detail::make_unique(
@@ -72,7 +72,7 @@ namespace exec {
       template <class... Sigs>
       [[nodiscard]]
       consteval auto
-        operator()(Sigs...) const noexcept -> stdexec::__concat_completion_signatures<Sigs...> {
+        operator()(Sigs...) const noexcept -> STDEXEC::__concat_completion_signatures<Sigs...> {
         return {};
       }
     };
@@ -85,7 +85,7 @@ namespace exec {
   template <class... What, class... Values>
   [[nodiscard]]
   consteval auto invalid_completion_signature(Values... vals) {
-    return stdexec::__invalid_completion_signature<What...>(static_cast<Values&&>(vals)...);
+    return STDEXEC::__invalid_completion_signature<What...>(static_cast<Values&&>(vals)...);
   }
 
   struct IN_TRANSFORM_COMPLETION_SIGNATURES;
@@ -94,7 +94,7 @@ namespace exec {
 
   namespace detail {
     template <class Fn, class... As>
-    using meta_call_result_t = decltype(stdexec::__declval<Fn>().template operator()<As...>());
+    using meta_call_result_t = decltype(STDEXEC::__declval<Fn>().template operator()<As...>());
 
     template <class Ay, class... As, class Fn>
     [[nodiscard]]
@@ -104,37 +104,37 @@ namespace exec {
 
     template <class Fn>
     [[nodiscard]]
-    consteval auto _transform_expr(const Fn& fn) -> stdexec::__call_result_t<const Fn&> {
+    consteval auto _transform_expr(const Fn& fn) -> STDEXEC::__call_result_t<const Fn&> {
       return fn();
     }
 
     template <class Fn, class... As>
     using _transform_expr_t = decltype(detail::_transform_expr<As...>(
-      stdexec::__declval<const Fn&>()));
+      STDEXEC::__declval<const Fn&>()));
 
     // transform_completion_signatures:
     template <class... As, class Fn>
     [[nodiscard]]
     consteval auto _apply_transform(const Fn& fn) {
-      if constexpr (stdexec::__mvalid<_transform_expr_t, Fn, As...>) {
+      if constexpr (STDEXEC::__mvalid<_transform_expr_t, Fn, As...>) {
         using _completions_t = _transform_expr_t<Fn, As...>;
-        if constexpr (stdexec::__well_formed_completions<_completions_t>) {
+        if constexpr (STDEXEC::__well_formed_completions<_completions_t>) {
           return detail::_transform_expr<As...>(fn);
         } else {
           (void) detail::_transform_expr<As...>(fn); // potentially throwing
           return invalid_completion_signature<
             IN_TRANSFORM_COMPLETION_SIGNATURES,
             A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
-            stdexec::_WITH_FUNCTION_<Fn>,
-            stdexec::_WITH_ARGUMENTS_<As...>
+            STDEXEC::_WITH_FUNCTION_<Fn>,
+            STDEXEC::_WITH_ARGUMENTS_<As...>
           >();
         }
       } else {
         return invalid_completion_signature<
           IN_TRANSFORM_COMPLETION_SIGNATURES,
           COULD_NOT_CALL_THE_TRANSFORM_FUNCTION_WITH_THE_GIVEN_TEMPLATE_ARGUMENTS,
-          stdexec::_WITH_FUNCTION_<Fn>,
-          stdexec::_WITH_ARGUMENTS_<As...>
+          STDEXEC::_WITH_FUNCTION_<Fn>,
+          STDEXEC::_WITH_ARGUMENTS_<As...>
         >();
       }
     }
@@ -148,9 +148,9 @@ namespace exec {
       template <class Tag, class... Ts>
       [[nodiscard]]
       consteval auto operator()(Tag (*)(Ts...)) const {
-        if constexpr (Tag{} == stdexec::set_value) {
+        if constexpr (Tag{} == STDEXEC::set_value) {
           return detail::_apply_transform<Ts...>(value_fn);
-        } else if constexpr (Tag{} == stdexec::set_error) {
+        } else if constexpr (Tag{} == STDEXEC::set_error) {
           return detail::_apply_transform<Ts...>(error_fn);
         } else {
           return detail::_apply_transform<Ts...>(stopped_fn);
@@ -176,14 +176,14 @@ namespace exec {
   template <class Tag>
   struct keep_completion {
     template <class... Ts>
-    consteval auto operator()() const noexcept -> stdexec::completion_signatures<Tag(Ts...)> {
+    consteval auto operator()() const noexcept -> STDEXEC::completion_signatures<Tag(Ts...)> {
       return {};
     }
   };
 
   struct ignore_completion {
     template <class... Ts>
-    consteval auto operator()() const noexcept -> stdexec::completion_signatures<> {
+    consteval auto operator()() const noexcept -> STDEXEC::completion_signatures<> {
       return {};
     }
   };
@@ -192,20 +192,20 @@ namespace exec {
   struct transform_arguments {
     template <class... Ts>
     consteval auto operator()() const noexcept
-      -> stdexec::completion_signatures<Tag(stdexec::__minvoke<Fn, Ts>...)> {
+      -> STDEXEC::completion_signatures<Tag(STDEXEC::__minvoke<Fn, Ts>...)> {
       return {};
     }
   };
 
   template <class Tag>
-  struct decay_arguments : transform_arguments<Tag, stdexec::__q1<stdexec::__decay_t>> { };
+  struct decay_arguments : transform_arguments<Tag, STDEXEC::__q1<STDEXEC::__decay_t>> { };
 
   template <
     class Completions,
-    class ValueFn = keep_completion<stdexec::set_value_t>,
-    class ErrorFn = keep_completion<stdexec::set_error_t>,
-    class StoppedFn = keep_completion<stdexec::set_stopped_t>,
-    class ExtraSigs = stdexec::completion_signatures<>
+    class ValueFn = keep_completion<STDEXEC::set_value_t>,
+    class ErrorFn = keep_completion<STDEXEC::set_error_t>,
+    class StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
+    class ExtraSigs = STDEXEC::completion_signatures<>
   >
   consteval auto transform_completion_signatures(
     Completions,

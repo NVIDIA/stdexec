@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "exec/sequence/ignore_all_values.hpp"
 #include "exec/sequence/empty_sequence.hpp"
+#include "exec/sequence/ignore_all_values.hpp"
 
 #include <catch2/catch.hpp>
 
@@ -25,64 +25,64 @@ namespace {
   TEST_CASE("ignore_all_values - ignore empty sequence", "[sequence_senders][ignore_all_values]") {
     auto sndr = exec::ignore_all_values(exec::empty_sequence());
     using Sender = decltype(sndr);
-    STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      stdexec::same_as<
-        stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      STDEXEC::same_as<
+        STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
+        STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
-    STATIC_REQUIRE(stdexec::sender_expr_for<Sender, exec::ignore_all_values_t>);
-    CHECK(stdexec::sync_wait(sndr));
+    STATIC_REQUIRE(STDEXEC::sender_expr_for<Sender, exec::ignore_all_values_t>);
+    CHECK(STDEXEC::sync_wait(sndr));
   }
 
   TEST_CASE("ignore_all_values - ignore just(42)", "[sequence_senders][ignore_all_values]") {
-    auto sndr = exec::ignore_all_values(stdexec::just(42));
+    auto sndr = exec::ignore_all_values(STDEXEC::just(42));
     using Sender = decltype(sndr);
-    STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      stdexec::same_as<
-        stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      STDEXEC::same_as<
+        STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
+        STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
-    CHECK(stdexec::sync_wait(sndr));
+    CHECK(STDEXEC::sync_wait(sndr));
   }
 
   TEST_CASE("ignore_all_values - ignore just()", "[sequence_senders][ignore_all_values]") {
-    auto sndr = exec::ignore_all_values(stdexec::just());
+    auto sndr = exec::ignore_all_values(STDEXEC::just());
     using Sender = decltype(sndr);
-    STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      stdexec::same_as<
-        stdexec::completion_signatures<stdexec::set_value_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      STDEXEC::same_as<
+        STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
+        STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
-    CHECK(stdexec::sync_wait(sndr));
+    CHECK(STDEXEC::sync_wait(sndr));
   }
 
   TEST_CASE("ignore_all_values - ignore just_stopped()", "[sequence_senders][ignore_all_values]") {
-    auto sndr = exec::ignore_all_values(stdexec::just_stopped());
+    auto sndr = exec::ignore_all_values(STDEXEC::just_stopped());
     using Sender = decltype(sndr);
-    STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      stdexec::__mset_eq<
-        stdexec::__mset<stdexec::set_value_t(), stdexec::set_stopped_t()>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      STDEXEC::__mset_eq<
+        STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>,
+        STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
-    CHECK_FALSE(stdexec::sync_wait(sndr));
+    CHECK_FALSE(STDEXEC::sync_wait(sndr));
   }
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("ignore_all_values - ignore just_error()", "[sequence_senders][ignore_all_values]") {
     auto sndr = exec::ignore_all_values(
-      stdexec::just_error(std::make_exception_ptr(std::runtime_error("test"))));
+      STDEXEC::just_error(std::make_exception_ptr(std::runtime_error("test"))));
     using Sender = decltype(sndr);
-    STATIC_REQUIRE(stdexec::sender_in<Sender, stdexec::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      stdexec::__mset_eq<
-        stdexec::__mset<stdexec::set_value_t(), stdexec::set_error_t(std::exception_ptr)>,
-        stdexec::completion_signatures_of_t<Sender, stdexec::env<>>
+      STDEXEC::__mset_eq<
+        STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_error_t(std::exception_ptr)>,
+        STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
-    CHECK_THROWS(stdexec::sync_wait(sndr));
+    CHECK_THROWS(STDEXEC::sync_wait(sndr));
   }
 #endif // !STDEXEC_NO_STD_EXCEPTIONS()
 
@@ -96,7 +96,7 @@ namespace {
     using sender_concept = exec::sequence_sender_t;
 
     using completion_signatures =
-      stdexec::completion_signatures<stdexec::set_value_t(), stdexec::set_error_t(int)>;
+      STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_error_t(int)>;
 
     using item_types = exec::item_types<Item>;
 
@@ -107,16 +107,16 @@ namespace {
   };
 
   TEST_CASE("ignore_all_values - Merge error and stop signatures from sequence and items") {
-    using just_t = decltype(stdexec::just_error(
+    using just_t = decltype(STDEXEC::just_error(
       std::make_exception_ptr(std::runtime_error("test"))));
     sequence<just_t> seq;
     auto ignore = exec::ignore_all_values(seq);
-    using ActualSigs = stdexec::completion_signatures_of_t<decltype(ignore), stdexec::env<>>;
-    using ExpectedSigs = stdexec::__mset<
-      stdexec::set_value_t(),
-      stdexec::set_error_t(int),
-      stdexec::set_error_t(std::exception_ptr)
+    using ActualSigs = STDEXEC::completion_signatures_of_t<decltype(ignore), STDEXEC::env<>>;
+    using ExpectedSigs = STDEXEC::__mset<
+      STDEXEC::set_value_t(),
+      STDEXEC::set_error_t(int),
+      STDEXEC::set_error_t(std::exception_ptr)
     >;
-    STATIC_REQUIRE(stdexec::__mset_eq<ExpectedSigs, ActualSigs>);
+    STATIC_REQUIRE(STDEXEC::__mset_eq<ExpectedSigs, ActualSigs>);
   }
 } // namespace

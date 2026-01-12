@@ -22,7 +22,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __queue {
     template <auto _Next>
     class __intrusive_queue;
@@ -246,4 +246,4 @@ namespace stdexec {
 
   using __queue::__intrusive_queue;
 
-} // namespace stdexec
+} // namespace STDEXEC

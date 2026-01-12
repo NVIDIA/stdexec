@@ -18,9 +18,9 @@
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_NO_STD_COROUTINES()
-#  include <exec/task.hpp>
-#  include <exec/single_thread_context.hpp>
 #  include <exec/async_scope.hpp>
+#  include <exec/single_thread_context.hpp>
+#  include <exec/task.hpp>
 
 #  include <test_common/schedulers.hpp>
 
@@ -29,7 +29,7 @@
 #  include <string>
 
 using namespace exec;
-using namespace stdexec;
+using namespace STDEXEC;
 using namespace std::string_literals;
 
 namespace {
@@ -37,7 +37,7 @@ namespace {
   // This is a work-around for clang-12 bugs in Release mode
   thread_local int __thread_id = 0;
 
-  static_assert(stdexec::sender<exec::task<void>>);
+  static_assert(STDEXEC::sender<exec::task<void>>);
 
   // This is a work-around for apple clang bugs in Release mode
   STDEXEC_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int {
@@ -176,8 +176,8 @@ namespace {
   }
 
   TEST_CASE("Use two inline schedulers", "[types][sticky][task]") {
-    scheduler auto scheduler1 = stdexec::inline_scheduler{};
-    scheduler auto scheduler2 = stdexec::inline_scheduler{};
+    scheduler auto scheduler1 = STDEXEC::inline_scheduler{};
+    scheduler auto scheduler2 = STDEXEC::inline_scheduler{};
     sync_wait(when_all(
       schedule(scheduler1) | then([] { __thread_id = 0; }),
       schedule(scheduler2) | then([] { __thread_id = 0; })));
@@ -231,15 +231,15 @@ namespace {
   }
 
   auto check_stop_possible() -> exec::task<void> {
-    auto stop_token = co_await stdexec::get_stop_token();
+    auto stop_token = co_await STDEXEC::get_stop_token();
     CHECK(stop_token.stop_possible());
   }
 
   TEST_CASE("task - stop token is forwarded", "[types][task]") {
     single_thread_context context{};
     exec::async_scope scope;
-    scope.spawn(stdexec::starts_on(context.get_scheduler(), check_stop_possible()));
-    CHECK(stdexec::sync_wait(scope.on_empty()));
+    scope.spawn(STDEXEC::starts_on(context.get_scheduler(), check_stop_possible()));
+    CHECK(STDEXEC::sync_wait(scope.on_empty()));
   }
 
   TEST_CASE("task - can stop early", "[types][task]") {
@@ -248,32 +248,32 @@ namespace {
       count += 1;
       co_await [](int& count) -> exec::task<void> {
         count += 2;
-        co_await stdexec::just_stopped();
+        co_await STDEXEC::just_stopped();
         count += 4;
       }(count);
       count += 8;
     }(count);
 
-    auto res = stdexec::sync_wait(std::move(work));
+    auto res = STDEXEC::sync_wait(std::move(work));
     CHECK(!res.has_value());
     CHECK(count == 3);
   }
 
   TEST_CASE("task - can co_await task wrapped in write_env", "[types][task]") {
-    stdexec::sync_wait([]() -> exec::task<void> {
-      co_await stdexec::write_env(
-          []() -> exec::task<void> {
-            auto token = co_await stdexec::get_stop_token();
-            assert(!token.stop_possible());
-            (void)token;
-          }(),
-          stdexec::prop{stdexec::get_stop_token, stdexec::never_stop_token{}});
+    STDEXEC::sync_wait([]() -> exec::task<void> {
+      co_await STDEXEC::write_env(
+        []() -> exec::task<void> {
+          auto token = co_await STDEXEC::get_stop_token();
+          assert(!token.stop_possible());
+          (void) token;
+        }(),
+        STDEXEC::prop{STDEXEC::get_stop_token, STDEXEC::never_stop_token{}});
     }());
   }
 
   struct test_domain {
     template <sender_expr_for<then_t> _Sender>
-    static constexpr auto transform_sender(stdexec::set_value_t, _Sender&&, auto&&...) noexcept {
+    static constexpr auto transform_sender(STDEXEC::set_value_t, _Sender&&, auto&&...) noexcept {
       return just("goodbye"s);
     }
   };
@@ -300,7 +300,7 @@ namespace {
     auto salutation = []() -> test_task<std::string> {
       co_return co_await then([] { return "hello"s; });
     }();
-    auto [msg] = stdexec::sync_wait(std::move(salutation)).value();
+    auto [msg] = STDEXEC::sync_wait(std::move(salutation)).value();
     CHECK(msg == "goodbye"s);
   }
 
@@ -311,14 +311,14 @@ namespace {
       count += 1;
       co_await [](int& count) -> exec::task<void> {
         count += 2;
-        co_await stdexec::just_error(std::runtime_error("on noes"));
+        co_await STDEXEC::just_error(std::runtime_error("on noes"));
         count += 4;
       }(count);
       count += 8;
     }(count);
 
     try {
-      stdexec::sync_wait(std::move(work));
+      STDEXEC::sync_wait(std::move(work));
       CHECK(false);
     } catch (const std::runtime_error& e) {
       CHECK(std::string_view(e.what()) == "on noes");

@@ -148,16 +148,23 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if !defined(STDEXEC_NAMESPACE)
+#  define STDEXEC stdexec
+#else
+#  define STDEXEC STDEXEC_NAMESPACE
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02 && __cpp_lib_coroutine >= 2019'02
 #  include <coroutine> // IWYU pragma: keep
 #  define STDEXEC_NO_STD_COROUTINES() 0
-namespace stdexec::__std {
+namespace STDEXEC::__std {
   namespace __coro = std; // NOLINT(misc-unused-alias-decls)
 }
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
 #  include <experimental/coroutine>
 #  define STDEXEC_NO_STD_COROUTINES() 0
-namespace stdexec::__std {
+namespace STDEXEC::__std {
   namespace __coro = std::experimental; // NOLINT(misc-unused-alias-decls)
 }
 #else
@@ -165,12 +172,12 @@ namespace stdexec::__std {
 #endif
 
 #if !STDEXEC_NO_STD_COROUTINES()
-namespace stdexec::__std {
+namespace STDEXEC::__std {
   using __coro::coroutine_handle;
   using __coro::suspend_always;
   using __coro::suspend_never;
   using __coro::noop_coroutine;
-} // namespace stdexec::__std
+} // namespace STDEXEC::__std
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +358,7 @@ namespace stdexec::__std {
 #if STDEXEC_HAS_BUILTIN(__is_const)
 #  define STDEXEC_IS_CONST(...) __is_const(__VA_ARGS__)
 #else
-#  define STDEXEC_IS_CONST(...) stdexec::__is_const_<__VA_ARGS__>
+#  define STDEXEC_IS_CONST(...) STDEXEC::__is_const_<__VA_ARGS__>
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_function)
@@ -369,7 +376,7 @@ namespace stdexec::__std {
 // msvc replaces std::is_same_v with a compile-time constant
 #  define STDEXEC_IS_SAME(...) std::is_same_v<__VA_ARGS__>
 #else
-#  define STDEXEC_IS_SAME(...) stdexec::__same_as_v<__VA_ARGS__>
+#  define STDEXEC_IS_SAME(...) STDEXEC::__same_as_v<__VA_ARGS__>
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__is_constructible) || STDEXEC_MSVC()
@@ -397,30 +404,30 @@ namespace stdexec::__std {
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__remove_reference)
-namespace stdexec {
+namespace STDEXEC {
   template <class Ty>
   using _remove_reference_t = __remove_reference(Ty);
-} // namespace stdexec
+} // namespace STDEXEC
 
-#  define STDEXEC_REMOVE_REFERENCE(...) stdexec::_remove_reference_t<__VA_ARGS__>
+#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::_remove_reference_t<__VA_ARGS__>
 #elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
-namespace stdexec {
+namespace STDEXEC {
   template <class Ty>
   using _remove_reference_t = __remove_reference_t(Ty);
-} // namespace stdexec
+} // namespace STDEXEC
 
-#  define STDEXEC_REMOVE_REFERENCE(...) stdexec::_remove_reference_t<__VA_ARGS__>
+#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::_remove_reference_t<__VA_ARGS__>
 #else
 #  define STDEXEC_REMOVE_REFERENCE(...) ::std::remove_reference_t<__VA_ARGS__>
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
   template <class _Ap, class _Bp>
   inline constexpr bool __same_as_v = false;
 
   template <class _Ap>
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
-} // namespace stdexec
+} // namespace STDEXEC
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
 #  define STDEXEC_UNREACHABLE() std::unreachable()
@@ -623,9 +630,9 @@ namespace stdexec {
 //   }
 #if STDEXEC_NO_STD_EXCEPTIONS()
 #  define STDEXEC_TRY               if constexpr (true) {
-#  define STDEXEC_CATCH(...)        } else if constexpr (__VA_ARGS__ = ::stdexec::__catch_any_lvalue; false) {
+#  define STDEXEC_CATCH(...)        } else if constexpr (__VA_ARGS__ = ::STDEXEC::__catch_any_lvalue; false) {
 #  define STDEXEC_CATCH_ALL         } else if constexpr (true) {} else
-#  define STDEXEC_THROW(...)        ::stdexec::__terminate()
+#  define STDEXEC_THROW(...)        ::STDEXEC::__terminate()
 #  define STDEXEC_CATCH_FALLTHROUGH } else {}
 #else
 #  define STDEXEC_TRY               try
@@ -637,7 +644,7 @@ namespace stdexec {
 
 // clang-format on
 
-namespace stdexec {
+namespace STDEXEC {
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
   constexpr struct __catch_any_lvalue_t {
     template <class _Tp>
@@ -651,10 +658,10 @@ namespace stdexec {
     STDEXEC_IF_DEVICE(__trap())
     STDEXEC_UNREACHABLE();
   }
-} // namespace stdexec
+} // namespace STDEXEC
 
 ///////////////////////////////////////////////////////////////////////////////
-/// To hook a customization point like stdexec::connect, define a member
+/// To hook a customization point like STDEXEC::connect, define a member
 /// function like this:
 ///
 /// @code
@@ -684,13 +691,13 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(always_inline)                                                             \
       auto _FN(Ts&&... ts)                                                                         \
       && STDEXEC_AUTO_RETURN(                                                                      \
-        decltype(stdexec::__get_self<Ts...>(                                                       \
+        decltype(STDEXEC::__get_self<Ts...>(                                                       \
           *this))::STDEXEC_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))          \
                                                                                                    \
         template <class... Ts>                                                                     \
         STDEXEC_ATTRIBUTE(always_inline)                                                           \
         auto _FN(Ts&&... ts) const & STDEXEC_AUTO_RETURN(                                          \
-          decltype(stdexec::__get_self<Ts...>(                                                     \
+          decltype(STDEXEC::__get_self<Ts...>(                                                     \
             *this))::STDEXEC_CAT(static_, _FN)(*this, static_cast<Ts&&>(ts)...))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
@@ -700,10 +707,10 @@ namespace stdexec {
 #  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_LPAREN
 #  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_CAT(static_, _NAME)
 
-namespace stdexec {
+namespace STDEXEC {
   template <class... _Ts, class _Self>
   auto __get_self(const _Self&) -> _Self;
-} // namespace stdexec
+} // namespace STDEXEC
 
 #endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
 
@@ -768,5 +775,5 @@ namespace stdexec {
 #  endif
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
 }

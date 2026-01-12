@@ -2,16 +2,16 @@
 
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
-#include <thrust/device_vector.h>
 #include <cub/thread/thread_operators.cuh>
+#include <thrust/device_vector.h>
 
 #include <algorithm>
 #include <span>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   struct minimum {

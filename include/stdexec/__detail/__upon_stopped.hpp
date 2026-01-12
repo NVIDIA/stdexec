@@ -26,12 +26,12 @@
 #include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
     inline constexpr __mstring __upon_stopped_context =
-      "In stdexec::upon_stopped(Sender, Function)..."_mstr;
+      "In STDEXEC::upon_stopped(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__upon_stopped_context>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
@@ -76,7 +76,7 @@ namespace stdexec {
           _Tag,
           _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_stopped_t>) {
-          stdexec::__set_value_invoke(
+          STDEXEC::__set_value_invoke(
             static_cast<_Receiver&&>(__rcvr),
             static_cast<_State&&>(__state),
             static_cast<_Args&&>(__args)...);
@@ -93,4 +93,4 @@ namespace stdexec {
   template <>
   struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__upon_stopped_impl { };
 
-} // namespace stdexec
+} // namespace STDEXEC

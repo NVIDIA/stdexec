@@ -26,12 +26,12 @@
 #include <new> // IWYU pragma: keep for ::new
 #include <utility>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __opt {
     struct __bad_optional_access : std::exception {
       [[nodiscard]]
       auto what() const noexcept -> const char* override {
-        return "stdexec::__optional: bad access";
+        return "STDEXEC::__optional: bad access";
       }
     };
 
@@ -180,4 +180,4 @@ namespace stdexec {
   using __opt::__optional;
   using __opt::__bad_optional_access;
   using __opt::__nullopt;
-} // namespace stdexec
+} // namespace STDEXEC

@@ -23,7 +23,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
@@ -168,17 +168,17 @@ namespace {
       }
     };
     auto sender = repeat_until_succeeds(
-      [&]() { return ::stdexec::just(throwing_move(throws_after)); });
+      [&]() { return ::STDEXEC::just(throwing_move(throws_after)); });
     CHECK(throws_after == 0);
     std::size_t invoked = 0;
     auto op = repeat_until_succeeds([&]() {
-      return ::stdexec::connect(std::move(sender), make_fun_receiver([&](throwing_move&&) noexcept {
+      return ::STDEXEC::connect(std::move(sender), make_fun_receiver([&](throwing_move&&) noexcept {
                                   ++invoked;
                                 }));
     });
     CHECK(throws_after == 0);
     CHECK(invoked == 0);
-    ::stdexec::start(op);
+    ::STDEXEC::start(op);
     CHECK(invoked == 1);
   }
 } // namespace

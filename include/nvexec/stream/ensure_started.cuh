@@ -57,7 +57,7 @@ namespace nvexec::_strm {
     template <class SenderId, class SharedState>
     struct receiver_t {
       class __t : public stream_receiver_base {
-        using Sender = stdexec::__t<SenderId>;
+        using Sender = STDEXEC::__t<SenderId>;
 
         __intrusive_ptr<SharedState> shared_state_;
 
@@ -134,16 +134,16 @@ namespace nvexec::_strm {
 
     template <class Sender>
     struct sh_state_t : __enable_intrusive_from_this<sh_state_t<Sender>> {
-      using SenderId = stdexec::__id<Sender>;
+      using SenderId = STDEXEC::__id<Sender>;
       using variant_t = variant_storage_t<Sender, env_t>;
-      using inner_receiver_t = stdexec::__t<receiver_t<SenderId, sh_state_t>>;
+      using inner_receiver_t = STDEXEC::__t<receiver_t<SenderId, sh_state_t>>;
       using task_t = continuation_task_t<inner_receiver_t, variant_t>;
       using enqueue_receiver_t =
-        stdexec::__t<stream_enqueue_receiver<stdexec::__cvref_id<env_t>, variant_t>>;
-      using intermediate_receiver = stdexec::__t<std::conditional_t<
+        STDEXEC::__t<stream_enqueue_receiver<STDEXEC::__cvref_id<env_t>, variant_t>>;
+      using intermediate_receiver = STDEXEC::__t<std::conditional_t<
         stream_sender<Sender, env_t>,
-        stdexec::__id<inner_receiver_t>,
-        stdexec::__id<enqueue_receiver_t>
+        STDEXEC::__id<inner_receiver_t>,
+        STDEXEC::__id<enqueue_receiver_t>
       >>;
       using inner_op_state_t = connect_result_t<Sender, intermediate_receiver>;
 
@@ -176,7 +176,7 @@ namespace nvexec::_strm {
             cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
         }
 
-        stdexec::start(op_state2_);
+        STDEXEC::start(op_state2_);
       }
 
       explicit sh_state_t(Sender& sndr, context_state_t context_state)
@@ -197,7 +197,7 @@ namespace nvexec::_strm {
         , op_state2_(connect(
             static_cast<Sender&&>(sndr),
             enqueue_receiver_t{env_.get(), data_, task_, context_state.hub_->producer()})) {
-        stdexec::start(op_state2_);
+        STDEXEC::start(op_state2_);
       }
 
       ~sh_state_t() {
@@ -231,8 +231,8 @@ namespace nvexec::_strm {
       class __t
         : public operation_base_t
         , public operation_state_base_t<ReceiverId> {
-        using Sender = stdexec::__t<SenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Sender = STDEXEC::__t<SenderId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         using on_stop = std::optional<typename stop_token_of_t<
           env_of_t<Receiver>&
@@ -286,7 +286,7 @@ namespace nvexec::_strm {
               *op->shared_state_->data_,
               op->shared_state_->index_);
           } else {
-            op->propagate_completion_signal(stdexec::set_error, std::move(status));
+            op->propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
 
@@ -300,7 +300,7 @@ namespace nvexec::_strm {
           } else {
             // register stop callback:
             on_stop_.emplace(
-              get_stop_token(stdexec::get_env(this->rcvr_)),
+              get_stop_token(STDEXEC::get_env(this->rcvr_)),
               __forward_stop_request{shared_state->stop_source_});
             // Check if the stop_source has requested cancellation
             if (shared_state->stop_source_.stop_requested()) {
@@ -327,15 +327,15 @@ namespace nvexec::_strm {
 
   template <class SenderId>
   struct ensure_started_sender_t {
-    using sender_concept = stdexec::sender_t;
-    using Sender = stdexec::__t<SenderId>;
+    using sender_concept = STDEXEC::sender_t;
+    using Sender = STDEXEC::__t<SenderId>;
 
     struct __t : stream_sender_base {
       using __id = ensure_started_sender_t;
       using sh_state_ = _ensure_started::sh_state_t<Sender>;
       template <class Receiver>
       using operation_t =
-        stdexec::__t<_ensure_started::operation_t<SenderId, stdexec::__id<__decay_t<Receiver>>>>;
+        STDEXEC::__t<_ensure_started::operation_t<SenderId, STDEXEC::__id<__decay_t<Receiver>>>>;
 
       Sender sndr_;
       __intrusive_ptr<sh_state_> shared_state_;
@@ -391,7 +391,7 @@ namespace nvexec::_strm {
     using _sender_t = __t<ensure_started_sender_t<__id<__decay_t<Sender>>>>;
 
     template <stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, stdexec::__ignore, Sender&& sndr) const -> _sender_t<Sender> {
+    auto operator()(__ignore, STDEXEC::__ignore, Sender&& sndr) const -> _sender_t<Sender> {
       auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
       return _sender_t<Sender>{sched.context_state_, static_cast<Sender&&>(sndr)};
     }
@@ -400,10 +400,10 @@ namespace nvexec::_strm {
   };
 } // namespace nvexec::_strm
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class SenderId>
   extern __mconst<nvexec::_strm::ensure_started_sender_t<__demangle_t<__t<SenderId>>>>
     __demangle_v<nvexec::_strm::ensure_started_sender_t<SenderId>>;
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

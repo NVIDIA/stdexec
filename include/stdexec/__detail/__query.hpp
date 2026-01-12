@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   // [exec.queries.queryable]
   template <class T>
   concept queryable = destructible<T>;
@@ -182,4 +182,4 @@ namespace stdexec {
   inline constexpr bool __is_completion_query<get_completion_scheduler_t<_Tag>> = true;
   template <class _Tag>
   inline constexpr bool __is_completion_query<get_completion_behavior_t<_Tag>> = true;
-} // namespace stdexec
+} // namespace STDEXEC

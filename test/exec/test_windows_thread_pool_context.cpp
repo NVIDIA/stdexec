@@ -19,8 +19,8 @@
 
 #include <stdexec/execution.hpp>
 
-#include <exec/windows/windows_thread_pool.hpp>
 #include <exec/repeat_effect_until.hpp>
+#include <exec/windows/windows_thread_pool.hpp>
 
 using namespace std::chrono_literals;
 
@@ -34,10 +34,10 @@ TEST_CASE("windows_thread_pool: custom_thread_pool", "[types][windows_thread_poo
 
   std::atomic<int> count = 0;
 
-  auto incrementCountOnTp = stdexec::then(stdexec::schedule(s), [&] { ++count; });
+  auto incrementCountOnTp = STDEXEC::then(STDEXEC::schedule(s), [&] { ++count; });
 
-  stdexec::sync_wait(
-    stdexec::when_all(
+  STDEXEC::sync_wait(
+    STDEXEC::when_all(
       incrementCountOnTp, incrementCountOnTp, incrementCountOnTp, incrementCountOnTp));
 
   REQUIRE(count.load() == 4);
@@ -45,7 +45,7 @@ TEST_CASE("windows_thread_pool: custom_thread_pool", "[types][windows_thread_poo
 
 TEST_CASE("windows_thread_pool: schedule", "[types][windows_thread_pool][schedulers]") {
   exec::windows_thread_pool tp;
-  stdexec::sync_wait(stdexec::schedule(tp.get_scheduler()));
+  STDEXEC::sync_wait(STDEXEC::schedule(tp.get_scheduler()));
 }
 
 TEST_CASE(
@@ -53,9 +53,9 @@ TEST_CASE(
   "[types][windows_thread_pool][schedulers]") {
   exec::windows_thread_pool tp;
   const auto mainThreadId = std::this_thread::get_id();
-  auto [workThreadId] = stdexec::sync_wait(
-                          stdexec::then(
-                            stdexec::schedule(tp.get_scheduler()),
+  auto [workThreadId] = STDEXEC::sync_wait(
+                          STDEXEC::then(
+                            STDEXEC::schedule(tp.get_scheduler()),
                             [&]() noexcept { return std::this_thread::get_id(); }))
                           .value();
   REQUIRE_FALSE(workThreadId == mainThreadId);
@@ -65,9 +65,9 @@ TEST_CASE(
 //   exec::windows_thread_pool tp;
 //   auto sch = tp.get_scheduler();
 
-//   stdexec::sync_wait(stdexec::then(
-//       stdexec::when_all(
-//           stdexec::schedule(sch), stdexec::schedule(sch), stdexec::schedule(sch)),
+//   STDEXEC::sync_wait(STDEXEC::then(
+//       STDEXEC::when_all(
+//           STDEXEC::schedule(sch), STDEXEC::schedule(sch), STDEXEC::schedule(sch)),
 //       [](auto&&...) noexcept { return 0; }));
 // }
 
@@ -75,12 +75,12 @@ TEST_CASE(
 //   exec::windows_thread_pool tp;
 //   auto sch = tp.get_scheduler();
 
-//   stdexec::sync_wait(exec::repeat_effect_until(
-//       stdexec::let_stopped(
-//           stdexec::stop_when(
-//               exec::repeat_effect(stdexec::schedule(sch)),
-//               stdexec::schedule(sch)),
-//           [] { return stdexec::just(); }),
+//   STDEXEC::sync_wait(exec::repeat_effect_until(
+//       STDEXEC::let_stopped(
+//           STDEXEC::stop_when(
+//               exec::repeat_effect(STDEXEC::schedule(sch)),
+//               STDEXEC::schedule(sch)),
+//           [] { return STDEXEC::just(); }),
 //       [n = 0]() mutable noexcept { return n++ == 1000; }));
 // }
 
@@ -90,7 +90,7 @@ TEST_CASE("windows_thread_pool: schedule_after", "[types][windows_thread_pool][s
 
   auto startTime = exec::now(s);
 
-  stdexec::sync_wait(exec::schedule_after(s, 50ms));
+  STDEXEC::sync_wait(exec::schedule_after(s, 50ms));
 
   auto duration = exec::now(s) - startTime;
 
@@ -106,11 +106,11 @@ TEST_CASE("windows_thread_pool: schedule_after", "[types][windows_thread_pool][s
 
 //   bool ranWork = false;
 
-//   stdexec::sync_wait(stdexec::let_stopped(
-//       stdexec::stop_when(
-//           stdexec::then(exec::schedule_after(s, 5s), [&] { ranWork = true; }),
+//   STDEXEC::sync_wait(STDEXEC::let_stopped(
+//       STDEXEC::stop_when(
+//           STDEXEC::then(exec::schedule_after(s, 5s), [&] { ranWork = true; }),
 //           exec::schedule_after(s, 5ms)),
-//       [] { return stdexec::just(); }));
+//       [] { return STDEXEC::just(); }));
 
 //   auto duration = exec::now(s) - startTime;
 
@@ -125,7 +125,7 @@ TEST_CASE("windows_thread_pool: schedule_at", "[types][windows_thread_pool][sche
 
   auto startTime = exec::now(s);
 
-  stdexec::sync_wait(exec::schedule_at(s, startTime + 100ms));
+  STDEXEC::sync_wait(exec::schedule_at(s, startTime + 100ms));
 
   auto endTime = exec::now(s);
   REQUIRE(endTime >= (startTime + 100ms));
@@ -140,12 +140,12 @@ TEST_CASE("windows_thread_pool: schedule_at", "[types][windows_thread_pool][sche
 
 //   bool ranWork = false;
 
-//   stdexec::sync_wait(stdexec::let_stopped(
-//       stdexec::stop_when(
-//           stdexec::then(
+//   STDEXEC::sync_wait(STDEXEC::let_stopped(
+//       STDEXEC::stop_when(
+//           STDEXEC::then(
 //               exec::schedule_at(s, startTime + 5s), [&] { ranWork = true; }),
-//           stdexec::schedule_at(s, startTime + 5ms)),
-//       [] { return stdexec::just(); }));
+//           STDEXEC::schedule_at(s, startTime + 5ms)),
+//       [] { return STDEXEC::just(); }));
 
 //   auto duration = exec::now(s) - startTime;
 

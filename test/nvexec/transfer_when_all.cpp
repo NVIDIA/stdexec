@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <test_common/type_helpers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include <exec/inline_scheduler.hpp>
 #include <nvexec/stream_context.cuh>
@@ -23,7 +23,7 @@
 
 #include <catch2/catch.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 

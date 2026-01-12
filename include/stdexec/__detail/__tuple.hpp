@@ -38,7 +38,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __tup {
     template <class... _Ts>
     struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
@@ -415,7 +415,7 @@ namespace stdexec {
   //
   template <size_t _Index, class _Tuple>
   using __tuple_element_t = decltype(__tt::__remove_rvalue_reference_fn(
-    stdexec::__get<_Index>(__declval<_Tuple>())));
+    STDEXEC::__get<_Index>(__declval<_Tuple>())));
 
   //
   // __cat_apply(fn, tups...)
@@ -427,7 +427,7 @@ namespace stdexec {
       operator<<(_Tuple&& __tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>) {
       return [&__tup, __fn = static_cast<_Fn&&>(__fn)]<class... _Us>(_Us&&... __us) noexcept(
                __nothrow_applicable<_Fn, _Tuple, _Us...>) -> __apply_result_t<_Fn, _Tuple, _Us...> {
-        return stdexec::__apply(__fn, static_cast<_Tuple&&>(__tup), static_cast<_Us&&>(__us)...);
+        return STDEXEC::__apply(__fn, static_cast<_Tuple&&>(__tup), static_cast<_Us&&>(__us)...);
       };
     }
 
@@ -451,6 +451,6 @@ namespace stdexec {
   };
 
   inline constexpr __mktuple_t __mktuple{};
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
