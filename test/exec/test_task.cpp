@@ -40,7 +40,7 @@ namespace {
   static_assert(STDEXEC::sender<exec::task<void>>);
 
   // This is a work-around for apple clang bugs in Release mode
-  STDEXEC_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int {
+  STDEXEC_PP_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int {
     return __thread_id;
   }
 

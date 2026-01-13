@@ -39,33 +39,33 @@
 /// }
 /// @endcode
 #define STDEXEC_MEMFN_DECL_IMPL(...)                                                               \
-  friend STDEXEC_EVAL(                                                                             \
+  friend STDEXEC_PP_EVAL(                                                                             \
     STDEXEC_MEMFN_DECL_TAG_INVOKE, STDEXEC_MEMFN_DECL_WHICH(__VA_ARGS__), __VA_ARGS__)
 
 #define STDEXEC_MEMFN_DECL_WHICH(_A1, ...)                                                         \
-  STDEXEC_CAT(STDEXEC_MEMFN_DECL_WHICH_, STDEXEC_FRONT(__VA_OPT__(1, ) 0))(_A1, __VA_ARGS__)
+  STDEXEC_PP_CAT(STDEXEC_MEMFN_DECL_WHICH_, STDEXEC_PP_FRONT(__VA_OPT__(1, ) 0))(_A1, __VA_ARGS__)
 #define STDEXEC_MEMFN_DECL_WHICH_0(_A1, ...)                                                       \
-  STDEXEC_CHECK(STDEXEC_MEMFN_DECL_PROBE_##_A1), STDEXEC_CHECK(_A1##_STDEXEC_MEMFN_DECL_PROBE)
+  STDEXEC_PP_CHECK(STDEXEC_MEMFN_DECL_PROBE_##_A1), STDEXEC_PP_CHECK(_A1##_STDEXEC_MEMFN_DECL_PROBE)
 #define STDEXEC_MEMFN_DECL_WHICH_1(_A1, ...)                                                       \
-  0, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_BACK(__VA_ARGS__), _STDEXEC_MEMFN_DECL_PROBE))
+  0, STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_PP_BACK(__VA_ARGS__), _STDEXEC_MEMFN_DECL_PROBE))
 
 #define STDEXEC_MEMFN_DECL_TAG_INVOKE(_WHICH, _QUERY, ...)                                         \
   STDEXEC_MEMFN_DECL_RETURN_ ## _WHICH(__VA_ARGS__)                                                \
   tag_invoke(STDEXEC_MEMFN_DECL_TAG_ ## _WHICH ## _QUERY(__VA_ARGS__)
 
 #define STDEXEC_MEMFN_DECL_ARGS(...)                                                               \
-  STDEXEC_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__))
+  STDEXEC_PP_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__))
 
 #define STDEXEC_MEMFN_DECL_QUERY(_SELF, _TAG, ...)                                                 \
-  _TAG, STDEXEC_CAT(STDEXEC_EAT_THIS_, _SELF) __VA_OPT__(, __VA_ARGS__))
+  _TAG, STDEXEC_PP_CAT(STDEXEC_EAT_THIS_, _SELF) __VA_OPT__(, __VA_ARGS__))
 
 #define STDEXEC_EAT_THIS_this
 #define STDEXEC_EAT_AUTO_auto
 #define STDEXEC_EAT_VOID_void
 
-#define query_STDEXEC_MEMFN_DECL_PROBE   STDEXEC_PROBE(~, 1)
-#define STDEXEC_MEMFN_DECL_PROBE_auto    STDEXEC_PROBE(~, 1)
-#define STDEXEC_MEMFN_DECL_PROBE_void    STDEXEC_PROBE(~, 2)
+#define query_STDEXEC_MEMFN_DECL_PROBE   STDEXEC_PP_PROBE(~, 1)
+#define STDEXEC_MEMFN_DECL_PROBE_auto    STDEXEC_PP_PROBE(~, 1)
+#define STDEXEC_MEMFN_DECL_PROBE_void    STDEXEC_PP_PROBE(~, 2)
 
 #define STDEXEC_MEMFN_DECL_RETURN_0(...) ::STDEXEC::__arg_type_t<void(__VA_ARGS__())>
 #define STDEXEC_MEMFN_DECL_RETURN_1(...) auto
@@ -81,7 +81,7 @@
 #define STDEXEC_MEMFN_DECL_TAG_11(...) STDEXEC_MEMFN_DECL_QUERY
 #define STDEXEC_MEMFN_DECL_TAG_21(...) STDEXEC_MEMFN_DECL_QUERY
 
-#define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_CAT(_TAG, _t) = STDEXEC_CAT(STDEXEC::_TAG, _t)
+#define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_PP_CAT(_TAG, _t) = STDEXEC_PP_CAT(STDEXEC::_TAG, _t)
 
 #if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 14'00)
 #  define STDEXEC_CUSTOM                                                                           \

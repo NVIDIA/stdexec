@@ -200,7 +200,7 @@ namespace exec {
         }
 
         // nvc++ needs this destructor to be defined to avoid a codegen issue
-        STDEXEC_WHEN(STDEXEC_NVHPC(), ~__t(){})
+        STDEXEC_PP_WHEN(STDEXEC_NVHPC(), ~__t(){})
 
         template <sender _Item>
         [[nodiscard]]
