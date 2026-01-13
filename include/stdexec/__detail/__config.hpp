@@ -116,7 +116,7 @@
 #if STDEXEC_MSVC()
 #  define STDEXEC_PRAGMA(_ARG) __pragma(_ARG)
 #else
-#  define STDEXEC_PRAGMA(_ARG) _Pragma(STDEXEC_STRINGIZE(_ARG))
+#  define STDEXEC_PRAGMA(_ARG) _Pragma(STDEXEC_PP_STRINGIZE(_ARG))
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,9 +186,9 @@ namespace STDEXEC::__std {
 //
 //   STDEXEC_ATTRIBUTE(attr1, attr2, ...)
 //   void foo() { ... }
-#define STDEXEC_ATTRIBUTE(...) STDEXEC_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, __VA_ARGS__)
+#define STDEXEC_ATTRIBUTE(...) STDEXEC_PP_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, __VA_ARGS__)
 #define STDEXEC__ATTRIBUTE_DETAIL(_ATTR)                                                           \
-  STDEXEC_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_CHECK(STDEXEC_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
+  STDEXEC_PP_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
 
 // unknown attributes are treated like C++-style attributes
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
@@ -199,16 +199,16 @@ namespace STDEXEC::__std {
 #else
 #  define STDEXEC_ATTR_WHICH_1(_ATTR)
 #endif
-#define STDEXEC_ATTR_host     STDEXEC_PROBE(~, 1)
-#define STDEXEC_ATTR___host__ STDEXEC_PROBE(~, 1)
+#define STDEXEC_ATTR_host     STDEXEC_PP_PROBE(~, 1)
+#define STDEXEC_ATTR___host__ STDEXEC_PP_PROBE(~, 1)
 
 #if defined(__CUDACC__) && !STDEXEC_NVHPC()
 #  define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
 #else
 #  define STDEXEC_ATTR_WHICH_2(_ATTR)
 #endif
-#define STDEXEC_ATTR_device     STDEXEC_PROBE(~, 2)
-#define STDEXEC_ATTR___device__ STDEXEC_PROBE(~, 2)
+#define STDEXEC_ATTR_device     STDEXEC_PP_PROBE(~, 2)
+#define STDEXEC_ATTR___device__ STDEXEC_PP_PROBE(~, 2)
 
 #if STDEXEC_NVHPC()
 // NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
@@ -235,7 +235,7 @@ namespace STDEXEC::__std {
 #else
 #  define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
 #endif
-#define STDEXEC_ATTR_no_unique_address STDEXEC_PROBE(~, 3)
+#define STDEXEC_ATTR_no_unique_address STDEXEC_PP_PROBE(~, 3)
 
 #if STDEXEC_MSVC()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
@@ -247,40 +247,40 @@ namespace STDEXEC::__std {
 #else
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
 #endif
-#define STDEXEC_ATTR_always_inline STDEXEC_PROBE(~, 4)
+#define STDEXEC_ATTR_always_inline STDEXEC_PP_PROBE(~, 4)
 
 #if STDEXEC_CLANG() || STDEXEC_GCC()
 #  define STDEXEC_ATTR_WHICH_5(_ATTR) __attribute__((__weak__))
 #else
 #  define STDEXEC_ATTR_WHICH_5(_ATTR) /*nothing*/
 #endif
-#define STDEXEC_ATTR_weak     STDEXEC_PROBE(~, 5)
-#define STDEXEC_ATTR___weak__ STDEXEC_PROBE(~, 5)
+#define STDEXEC_ATTR_weak     STDEXEC_PP_PROBE(~, 5)
+#define STDEXEC_ATTR___weak__ STDEXEC_PP_PROBE(~, 5)
 
 #if STDEXEC_HAS_ATTRIBUTE(__preferred_name__)
 #  define STDEXEC_ATTR_WHICH_6(_ATTR) __attribute__((_ATTR))
 #else
 #  define STDEXEC_ATTR_WHICH_6(_ATTR) /*nothing*/
 #endif
-#define STDEXEC_ATTR_preferred_name     STDEXEC_PROBE(~, 6)
-#define STDEXEC_ATTR___preferred_name__ STDEXEC_PROBE(~, 6)
+#define STDEXEC_ATTR_preferred_name     STDEXEC_PP_PROBE(~, 6)
+#define STDEXEC_ATTR___preferred_name__ STDEXEC_PP_PROBE(~, 6)
 
 #if defined(__launch_bounds__) && !STDEXEC_NVHPC()
-#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_CAT(STDEXEC_ATTR_NORMALIZE_, _ATTR)
+#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_PP_CAT(STDEXEC_ATTR_NORMALIZE_, _ATTR)
 #else
 #  define STDEXEC_ATTR_WHICH_7(_ATTR)
 #endif
 #define STDEXEC_ATTR_NORMALIZE_launch_bounds(...)     __launch_bounds__(__VA_ARGS__)
 #define STDEXEC_ATTR_NORMALIZE___launch_bounds__(...) __launch_bounds__(__VA_ARGS__)
-#define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PROBE(~, 7)
-#define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PROBE(~, 7)
+#define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PP_PROBE(~, 7)
+#define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PP_PROBE(~, 7)
 
 #if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
 #  define STDEXEC_ATTR_WHICH_8(_ATTR) __declspec(_ATTR)
 #else
 #  define STDEXEC_ATTR_WHICH_8(_ATTR) /*nothing*/
 #endif
-#define STDEXEC_ATTR_empty_bases STDEXEC_PROBE(~, 8)
+#define STDEXEC_ATTR_empty_bases STDEXEC_PP_PROBE(~, 8)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
@@ -680,11 +680,11 @@ namespace STDEXEC {
 #else
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                         \
-    static STDEXEC_EXPAND(STDEXEC_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__) STDEXEC_RPAREN)  \
-      STDEXEC_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__) STDEXEC_PP_RPAREN)  \
+      STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                          \
-    STDEXEC_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_RPAREN
+    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
 
 #  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                           \
     template <class... Ts>                                                                         \
@@ -692,20 +692,20 @@ namespace STDEXEC {
       auto _FN(Ts&&... ts)                                                                         \
       && STDEXEC_AUTO_RETURN(                                                                      \
         decltype(STDEXEC::__get_self<Ts...>(                                                       \
-          *this))::STDEXEC_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))          \
+          *this))::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))          \
                                                                                                    \
         template <class... Ts>                                                                     \
         STDEXEC_ATTRIBUTE(always_inline)                                                           \
         auto _FN(Ts&&... ts) const & STDEXEC_AUTO_RETURN(                                          \
           decltype(STDEXEC::__get_self<Ts...>(                                                     \
-            *this))::STDEXEC_CAT(static_, _FN)(*this, static_cast<Ts&&>(ts)...))
+            *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<Ts&&>(ts)...))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
 #  define STDEXEC_EXPLICIT_THIS_EAT_auto
 #  define STDEXEC_EXPLICIT_THIS_EAT_void
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto   auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_CAT(static_, _NAME)
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto   auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_PP_CAT(static_, _NAME)
 
 namespace STDEXEC {
   template <class... _Ts, class _Self>

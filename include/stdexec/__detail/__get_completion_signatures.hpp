@@ -112,7 +112,7 @@ namespace STDEXEC {
   namespace __cmplsigs {
 #define STDEXEC_GET_COMPLSIGS(...)                                                                 \
   STDEXEC_REMOVE_REFERENCE(                                                                        \
-    STDEXEC_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
+    STDEXEC_PP_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
 
 #define STDEXEC_CHECKED_COMPLSIGS(...)                                                             \
   (static_cast<void>(__VA_ARGS__),                                                                 \

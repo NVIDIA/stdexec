@@ -170,7 +170,7 @@ namespace STDEXEC {
   namespace __detail {
     template <class _Receiver>
     concept __enable_receiver =
-      (STDEXEC_WHEN(
+      (STDEXEC_PP_WHEN(
         STDEXEC_EDG(),
         requires { typename _Receiver::receiver_concept; } &&)
          derived_from<typename _Receiver::receiver_concept, receiver_t>)

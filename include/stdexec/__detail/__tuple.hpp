@@ -290,28 +290,28 @@ namespace STDEXEC {
           return static_cast<_Fn&&>(__fn)(static_cast<_Us&&>(__us)...);
         } else if constexpr (__size == 1) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(1, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(1, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 2) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(2, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(2, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 3) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(3, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(3, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 4) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(4, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(4, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 5) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(5, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(5, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 6) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(6, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(6, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 7) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(7, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(7, STDEXEC_TUPLE_GET));
         } else if constexpr (__size == 8) {
           return static_cast<_Fn&&>(__fn)(
-            static_cast<_Us&&>(__us)... STDEXEC_REPEAT(8, STDEXEC_TUPLE_GET));
+            static_cast<_Us&&>(__us)... STDEXEC_PP_REPEAT(8, STDEXEC_TUPLE_GET));
         } else {
           return __tupl.__apply(
             static_cast<_Fn&&>(__fn), static_cast<_Tuple&&>(__tupl), static_cast<_Us&&>(__us)...);

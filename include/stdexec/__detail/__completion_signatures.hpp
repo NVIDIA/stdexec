@@ -402,13 +402,13 @@ namespace STDEXEC {
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
-#  define STDEXEC_PP_EAT_AUTO_auto(_ID)    _ID STDEXEC_EAT STDEXEC_LPAREN
+#  define STDEXEC_PP_EAT_AUTO_auto(_ID)    _ID STDEXEC_PP_EAT STDEXEC_PP_LPAREN
 #  define STDEXEC_PP_EXPAND_AUTO_auto(_ID) auto _ID
 #  define STDEXEC_COMPLSIGS_LET_ID(...)                                                            \
-    STDEXEC_EXPAND(STDEXEC_CAT(STDEXEC_PP_EAT_AUTO_, __VA_ARGS__) STDEXEC_RPAREN)
+    STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_PP_EAT_AUTO_, __VA_ARGS__) STDEXEC_PP_RPAREN)
 
 #  define STDEXEC_COMPLSIGS_LET(...)                                                               \
-    if constexpr (STDEXEC_CAT(STDEXEC_PP_EXPAND_AUTO_, __VA_ARGS__);                               \
+    if constexpr (STDEXEC_PP_CAT(STDEXEC_PP_EXPAND_AUTO_, __VA_ARGS__);                            \
                   !STDEXEC::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
                     __VA_ARGS__))>) {                                                              \
       return STDEXEC_COMPLSIGS_LET_ID(__VA_ARGS__);                                                \

@@ -91,7 +91,7 @@ namespace nvexec::detail {
   } else {                                                                                         \
     [[maybe_unused]] auto _ign = ::nvexec::detail::log_on_cuda_error(status, __FILE__, __LINE__);  \
     STDEXEC_ASSERT(!"CUDA ERROR: " __FILE__                                                        \
-                   STDEXEC_STRINGIZE(:__LINE__: STDEXEC_STRINGIZE(__VA_ARGS__))); /*NOLINT*/       \
+                   STDEXEC_PP_STRINGIZE(:__LINE__: STDEXEC_PP_STRINGIZE(__VA_ARGS__))); /*NOLINT*/       \
   }
 
 #define STDEXEC_LOG_CUDA_API(...) \
