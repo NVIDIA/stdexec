@@ -42,7 +42,7 @@ namespace STDEXEC {
     template <class _Base>
     struct __adaptor_base {
       template <class _T1>
-        requires constructible_from<_Base, _T1>
+        requires __std::constructible_from<_Base, _T1>
       explicit __adaptor_base(_T1&& __base)
         : __base_(static_cast<_T1&&>(__base)) {
       }
@@ -65,7 +65,7 @@ namespace STDEXEC {
       }
     };
 
-    template <derived_from<__no::__nope> _Base>
+    template <__std::derived_from<__no::__nope> _Base>
     struct __adaptor_base<_Base> { };
 
 // BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
@@ -102,7 +102,7 @@ namespace STDEXEC {
       : __adaptor_base<_Base>
       , receiver_t {
 
-      static constexpr bool __has_base = !derived_from<_Base, __no::__nope>;
+      static constexpr bool __has_base = !__std::derived_from<_Base, __no::__nope>;
 
       template <class _Self>
       using __base_from_derived_t = decltype(__declval<_Self>().base());

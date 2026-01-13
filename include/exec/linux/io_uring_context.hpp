@@ -695,7 +695,7 @@ namespace exec {
       static constexpr __task_vtable __vtable{&__ready_, &__submit_, &__complete_};
 
       template <class... _Args>
-        requires STDEXEC::constructible_from<_Base, std::in_place_t, __task*, _Args...>
+        requires STDEXEC::__std::constructible_from<_Base, std::in_place_t, __task*, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args)
         noexcept(STDEXEC::__nothrow_constructible_from<_Base, __task*, _Args...>)
         : __task{__vtable}
@@ -703,7 +703,7 @@ namespace exec {
       }
 
       template <class... _Args>
-        requires STDEXEC::constructible_from<_Base, _Args...>
+        requires STDEXEC::__std::constructible_from<_Base, _Args...>
       __io_task_facade(std::in_place_t, _Args&&... __args)
         noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
         : __task{__vtable}
@@ -889,7 +889,7 @@ namespace exec {
         __on_receiver_stop_t __on_receiver_stop_{};
 
         template <class... _Args>
-          requires STDEXEC::constructible_from<_Base, _Args...>
+          requires STDEXEC::__std::constructible_from<_Base, _Args...>
         __impl(std::in_place_t, __task* __parent, _Args&&... __args)
           noexcept(STDEXEC::__nothrow_constructible_from<_Base, _Args...>)
           : __base_t(__parent, std::in_place, static_cast<_Args&&>(__args)...)

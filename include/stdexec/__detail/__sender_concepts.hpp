@@ -37,7 +37,7 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Sender>
-    concept __enable_sender = derived_from<typename _Sender::sender_concept, sender_t>
+    concept __enable_sender = __std::derived_from<typename _Sender::sender_concept, sender_t>
                            || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
                            || __awaitable<_Sender, __detail::__promise<env<>>>;
   } // namespace __detail
@@ -49,8 +49,8 @@ namespace STDEXEC {
   template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>       //
                 && environment_provider<__cref_t<_Sender>> //
-                && move_constructible<__decay_t<_Sender>>
-                && constructible_from<__decay_t<_Sender>, _Sender>;
+                && __std::move_constructible<__decay_t<_Sender>>
+                && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
   template <auto _Completions>
   concept __constant_completion_signatures = __valid_completion_signatures<decltype(_Completions)>;
@@ -111,10 +111,11 @@ namespace STDEXEC {
   static constexpr auto __diagnose_sender_concept_failure() noexcept {
     if constexpr (!enable_sender<__decay_t<_Sender>>) {
       static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-    } else if constexpr (!move_constructible<__decay_t<_Sender>>) {
+    } else if constexpr (!__std::move_constructible<__decay_t<_Sender>>) {
       static_assert(
-        move_constructible<__decay_t<_Sender>>, "The sender type is not move-constructible.");
-    } else if constexpr (!constructible_from<__decay_t<_Sender>, _Sender>) {
+        __std::move_constructible<__decay_t<_Sender>>,
+        "The sender type is not move-constructible.");
+    } else if constexpr (!__std::constructible_from<__decay_t<_Sender>, _Sender>) {
       static_assert(
         __decay_copyable<_Sender>,
         "The sender cannot be decay-copied. Did you forget a std::move?");

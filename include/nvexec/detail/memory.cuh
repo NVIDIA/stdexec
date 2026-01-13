@@ -73,7 +73,7 @@ namespace nvexec::_strm {
   }
 
   template <class T = void, class A>
-    requires same_as<T, void>
+    requires __std::same_as<T, void>
   auto make_device(cudaError_t& status, A&& t) -> device_ptr<__decay_t<A>> {
     return make_device<__decay_t<A>>(status, static_cast<A&&>(t));
   }
@@ -118,7 +118,7 @@ namespace nvexec::_strm {
   }
 
   template <class T = void, class A>
-    requires same_as<T, void>
+    requires __std::same_as<T, void>
   auto make_host(cudaError_t& status, std::pmr::memory_resource* resource, A&& t)
     -> host_ptr<__decay_t<A>> {
     return make_host<__decay_t<A>>(status, resource, static_cast<A&&>(t));

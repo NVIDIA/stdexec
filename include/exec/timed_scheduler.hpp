@@ -25,14 +25,14 @@ namespace exec {
     using namespace STDEXEC;
 
     template <class _Tp>
-    concept time_point = regular<_Tp> && totally_ordered<_Tp>
+    concept time_point = __std::regular<_Tp> && __std::totally_ordered<_Tp>
                       && requires(_Tp __tp, const _Tp __ctp, _Tp::duration __dur) {
-                           { __ctp + __dur } -> same_as<_Tp>;
-                           { __dur + __ctp } -> same_as<_Tp>;
-                           { __ctp - __dur } -> same_as<_Tp>;
-                           { __ctp - __ctp } -> same_as<typename _Tp::duration>;
-                           { __tp += __dur } -> same_as<_Tp&>;
-                           { __tp -= __dur } -> same_as<_Tp&>;
+                           { __ctp + __dur } -> __std::same_as<_Tp>;
+                           { __dur + __ctp } -> __std::same_as<_Tp>;
+                           { __ctp - __dur } -> __std::same_as<_Tp>;
+                           { __ctp - __ctp } -> __std::same_as<typename _Tp::duration>;
+                           { __tp += __dur } -> __std::same_as<_Tp&>;
+                           { __tp -= __dur } -> __std::same_as<_Tp&>;
                          };
 
     template <class _Scheduler>

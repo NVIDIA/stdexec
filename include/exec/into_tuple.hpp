@@ -79,7 +79,7 @@ namespace exec {
           _Receiver &__rcvr,
           _Tag,
           _Args &&...__args) noexcept -> void {
-        if constexpr (same_as<_Tag, set_value_t>) {
+        if constexpr (__std::same_as<_Tag, set_value_t>) {
           using __tuple_t = __t<_State>;
           STDEXEC_TRY {
             set_value(

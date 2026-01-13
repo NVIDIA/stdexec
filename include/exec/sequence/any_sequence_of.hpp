@@ -131,7 +131,7 @@ namespace exec {
           }
 
           template <class _Sender>
-            requires constructible_from<__item_sender, _Sender>
+            requires __std::constructible_from<__item_sender, _Sender>
           auto set_next(_Sender&& __sndr) -> __void_sender {
             const __rcvr_next_vfun<__next_sigs>* __vfun = __env_.__vtable_;
             return __vfun->__fn_(__env_.__rcvr_, static_cast<_Sender&&>(__sndr));

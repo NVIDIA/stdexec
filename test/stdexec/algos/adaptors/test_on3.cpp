@@ -126,11 +126,11 @@ namespace {
     auto snd = ex::get_scheduler() | ex::on(inline_scheduler{}, probe_env())
              | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
-                 static_assert(ex::same_as<Sched, ex::run_loop::scheduler>);
+                 static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                })
              | probe_env() | ex::then([]<class Env>(Env) noexcept {
                  using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
-                 static_assert(ex::same_as<Sched, ex::run_loop::scheduler>);
+                 static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                });
 
     ex::sync_wait(snd);

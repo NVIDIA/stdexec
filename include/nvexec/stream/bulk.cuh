@@ -412,7 +412,7 @@ namespace nvexec::_strm {
       using Shape = decltype(shape);
       using Fn = decltype(fun);
       auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
-      if constexpr (same_as<decltype(sched), stream_scheduler>) {
+      if constexpr (__std::same_as<decltype(sched), stream_scheduler>) {
         // Use the bulk sender for a single GPU
         using _sender_t = __t<bulk_sender_t<__id<__decay_t<Sender>>, Shape, Fn>>;
         return _sender_t{{}, static_cast<Sender&&>(sndr), shape, static_cast<Fn&&>(fun)};

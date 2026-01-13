@@ -29,6 +29,7 @@
 #include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
+#include "__utility.hpp"
 #include "__variant.hpp" // IWYU pragma: keep for __variant_for
 
 namespace STDEXEC {

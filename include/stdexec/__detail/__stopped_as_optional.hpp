@@ -101,7 +101,7 @@ namespace STDEXEC {
           _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_value_t>) {
           STDEXEC_TRY {
-            static_assert(constructible_from<__t<_State>, _Args...>);
+            static_assert(__std::constructible_from<__t<_State>, _Args...>);
             STDEXEC::set_value(
               static_cast<_Receiver&&>(__rcvr),
               std::optional<__t<_State>>{static_cast<_Args&&>(__args)...});

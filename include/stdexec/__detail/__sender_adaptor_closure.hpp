@@ -33,8 +33,8 @@ namespace STDEXEC {
 
   template <class _Tp>
   concept __sender_adaptor_closure =
-    derived_from<__decay_t<_Tp>, sender_adaptor_closure<__decay_t<_Tp>>>
-    && move_constructible<__decay_t<_Tp>> && constructible_from<__decay_t<_Tp>, _Tp>;
+    __std::derived_from<__decay_t<_Tp>, sender_adaptor_closure<__decay_t<_Tp>>>
+    && __std::move_constructible<__decay_t<_Tp>> && __std::constructible_from<__decay_t<_Tp>, _Tp>;
 
   template <class _Tp, class _Sender>
   concept __sender_adaptor_closure_for = __sender_adaptor_closure<_Tp> && sender<__decay_t<_Sender>>

@@ -60,6 +60,6 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   template <class _Op>
-  concept operation_state = destructible<_Op> && std::is_object_v<_Op>
+  concept operation_state = __std::destructible<_Op> && std::is_object_v<_Op>
                          && requires(_Op &__op) { STDEXEC::start(__op); };
 } // namespace STDEXEC

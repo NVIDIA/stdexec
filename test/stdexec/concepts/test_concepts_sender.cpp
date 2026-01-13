@@ -294,7 +294,7 @@ namespace {
 
   template <class Expected, class T>
   void has_type(T&&) {
-    STATIC_REQUIRE(ex::same_as<T, Expected>);
+    STATIC_REQUIRE(std::same_as<T, Expected>);
   }
 
   TEST_CASE(

@@ -296,7 +296,7 @@ namespace STDEXEC {
 
   template <class _Env>
   concept __is_root_env = requires(_Env&& __env) {
-    { __root_t{}(__env) } -> same_as<bool>;
+    { __root_t{}(__env) } -> __std::same_as<bool>;
   };
 
 

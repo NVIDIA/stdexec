@@ -242,7 +242,10 @@ namespace nvexec {
     template <class Scheduler, class Env>
     concept gpu_stream_scheduler =
       scheduler<Scheduler>
-      && derived_from<__result_of<get_completion_domain<set_value_t>, Scheduler, Env>, stream_domain>
+      && __std::derived_from<
+        __result_of<get_completion_domain<set_value_t>, Scheduler, Env>,
+        stream_domain
+      >
       && requires(Scheduler sched) {
            { sched.context_state_ } -> __decays_to<context_state_t>;
          };

@@ -67,7 +67,7 @@ namespace STDEXEC {
       using receiver_concept = receiver_t;
 
       template <class... _Us>
-        requires constructible_from<__value_or_void_t<_Value>, _Us...>
+        requires __std::constructible_from<__value_or_void_t<_Value>, _Us...>
       void set_value(_Us&&... __us) noexcept {
         STDEXEC_TRY {
           __result_->template emplace<1>(static_cast<_Us&&>(__us)...);
@@ -183,7 +183,7 @@ namespace STDEXEC {
                               && requires(_Promise& __promise) {
                                    {
                                      __promise.unhandled_stopped()
-                                   } -> convertible_to<__std::coroutine_handle<>>;
+                                   } -> __std::convertible_to<__std::coroutine_handle<>>;
                                  };
 
     struct __unspecified {

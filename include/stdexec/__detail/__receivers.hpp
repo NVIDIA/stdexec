@@ -173,7 +173,7 @@ namespace STDEXEC {
       (STDEXEC_PP_WHEN(
         STDEXEC_EDG(),
         requires { typename _Receiver::receiver_concept; } &&)
-         derived_from<typename _Receiver::receiver_concept, receiver_t>)
+         __std::derived_from<typename _Receiver::receiver_concept, receiver_t>)
       || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
       || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
   } // namespace __detail
@@ -185,7 +185,7 @@ namespace STDEXEC {
   concept receiver = enable_receiver<__decay_t<_Receiver>>
                   && environment_provider<__cref_t<_Receiver>>
                   && __nothrow_move_constructible<__decay_t<_Receiver>>
-                  && constructible_from<__decay_t<_Receiver>, _Receiver>;
+                  && __std::constructible_from<__decay_t<_Receiver>, _Receiver>;
 
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
@@ -217,7 +217,7 @@ namespace STDEXEC {
   STDEXEC_ATTRIBUTE(host, device)
   void __set_value_invoke(_Receiver &&__rcvr, _Fun &&__fun, _As &&...__as) noexcept {
     STDEXEC_TRY {
-      if constexpr (same_as<void, __invoke_result_t<_Fun, _As...>>) {
+      if constexpr (__std::same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun &&>(__fun), static_cast<_As &&>(__as)...);
         STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr));
       } else {

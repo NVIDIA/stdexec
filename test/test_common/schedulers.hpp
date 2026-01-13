@@ -199,7 +199,7 @@ namespace {
     auto operator==(const basic_inline_scheduler&) const noexcept -> bool = default;
 
     auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
-      requires(!ex::same_as<Domain, void>)
+      requires(!std::same_as<Domain, void>)
     {
       return {};
     }

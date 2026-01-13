@@ -41,7 +41,7 @@ namespace STDEXEC {
 
   template <class _Sender, class _SetSig, class _Env = env<>>
   concept sender_of = sender_in<_Sender, _Env>
-                   && same_as<
+                   && __std::same_as<
                         __types<_SetSig>,
                         __gather_completions_of_t<
                           __detail::__tag_of_sig_t<_SetSig>,

@@ -34,7 +34,7 @@ namespace {
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
+    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -43,7 +43,7 @@ namespace {
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender_in<Snd, ex::env<>>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
+    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd;
   }
 
@@ -503,7 +503,7 @@ namespace {
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
+    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }

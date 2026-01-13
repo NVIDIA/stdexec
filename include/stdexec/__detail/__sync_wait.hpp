@@ -99,7 +99,7 @@ namespace STDEXEC {
         std::optional<std::tuple<_Values...>>* __values_;
 
         template <class... _As>
-          requires constructible_from<std::tuple<_Values...>, _As...>
+          requires __std::constructible_from<std::tuple<_Values...>, _As...>
         void set_value(_As&&... __as) noexcept {
           STDEXEC_TRY {
             __values_->emplace(static_cast<_As&&>(__as)...);

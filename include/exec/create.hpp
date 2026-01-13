@@ -39,7 +39,7 @@ namespace exec {
     struct __operation {
       using _Context = __context<STDEXEC::__t<_ReceiverId>, STDEXEC::__t<_ArgsId>>;
       using _Result = __call_result_t<_Fun, _Context&>;
-      using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
+      using _State = __if_c<__std::same_as<_Result, void>, __void, std::optional<_Result>>;
 
       struct __t : STDEXEC::__immovable {
         using __id = __operation;
@@ -69,8 +69,8 @@ namespace exec {
 
         template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Receiver>
           requires __callable<_Fun, __context<_Receiver, _Args>&>
-                && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
-                && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
+                && __std::constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
+                && __std::constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
           -> STDEXEC::__t<__operation<STDEXEC::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
@@ -87,8 +87,8 @@ namespace exec {
     template <__completion_signature... _Sigs>
     struct __create_t {
       template <class _Fun, class... _Args>
-        requires move_constructible<_Fun>
-              && constructible_from<__decayed_std_tuple<_Args...>, _Args...>
+        requires __std::move_constructible<_Fun>
+              && __std::constructible_from<__decayed_std_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
         -> __t<__sender<_Fun, __id<__decayed_std_tuple<_Args...>>, _Sigs...>> {
         return {static_cast<_Fun&&>(__fun), {static_cast<_Args&&>(__args)...}};

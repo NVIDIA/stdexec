@@ -143,7 +143,7 @@ namespace {
                  return stream;
                });
     auto [stream] = STDEXEC::sync_wait(std::move(snd)).value();
-    static_assert(ex::same_as<decltype(+stream), cudaStream_t>);
+    static_assert(std::same_as<decltype(+stream), cudaStream_t>);
 
     REQUIRE(flags_storage.all_set_once());
   }

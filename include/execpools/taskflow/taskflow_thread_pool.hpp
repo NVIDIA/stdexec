@@ -17,7 +17,7 @@ namespace execpools {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
     template <class... Args>
-      requires STDEXEC::constructible_from<tf::Executor, Args...>
+      requires STDEXEC::__std::constructible_from<tf::Executor, Args...>
     explicit taskflow_thread_pool(Args&&... args)
       : executor_(std::forward<Args>(args)...) {
     }

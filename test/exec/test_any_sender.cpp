@@ -506,13 +506,13 @@ namespace {
     static_assert(requires {
       {
         STDEXEC::get_completion_signatures(std::declval<sender>())
-      } -> derived_from<dependent_sender_error>;
+      } -> std::derived_from<dependent_sender_error>;
     });
     using env = make_env_t<prop<get_stop_token_t, inplace_stop_token>>;
     static_assert(requires {
       {
         STDEXEC::get_completion_signatures(std::declval<sender>(), std::declval<env>())
-      } -> same_as<Sigs>;
+      } -> std::same_as<Sigs>;
     });
   }
 

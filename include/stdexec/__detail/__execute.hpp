@@ -31,7 +31,7 @@ namespace STDEXEC {
   namespace __execute_ {
     struct execute_t {
       template <scheduler _Scheduler, class _Fun>
-        requires __callable<_Fun&> && move_constructible<_Fun>
+        requires __callable<_Fun&> && __std::move_constructible<_Fun>
       void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
         auto __domain = get_domain(__sched);
         STDEXEC::apply_sender(
@@ -42,7 +42,7 @@ namespace STDEXEC {
       }
 
       template <sender_of<set_value_t()> _Sender, class _Fun>
-        requires __callable<_Fun&> && move_constructible<_Fun>
+        requires __callable<_Fun&> && __std::move_constructible<_Fun>
       void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
         start_detached(then(static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)));
       }

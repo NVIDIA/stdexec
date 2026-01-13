@@ -1312,7 +1312,7 @@ namespace exec {
       void apply(F f) {
         std::visit(
           [&]<class Tuple>(Tuple& tupl) -> void {
-            if constexpr (same_as<Tuple, std::monostate>) {
+            if constexpr (__std::same_as<Tuple, std::monostate>) {
               STDEXEC_TERMINATE();
             } else {
               std::apply([&](auto&... args) -> void { f(args...); }, tupl);

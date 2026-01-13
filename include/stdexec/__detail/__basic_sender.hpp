@@ -229,7 +229,7 @@ namespace STDEXEC {
     };
 
     template <class _Sexpr, class _Receiver>
-    concept __state_uses_receiver = derived_from<
+    concept __state_uses_receiver = __std::derived_from<
       __state_t<_Sexpr, _Receiver>,
       __enable_receiver_from_this<_Sexpr, _Receiver, __state_t<_Sexpr, _Receiver>>
     >;

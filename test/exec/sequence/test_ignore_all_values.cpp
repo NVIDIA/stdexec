@@ -27,7 +27,7 @@ namespace {
     using Sender = decltype(sndr);
     STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      STDEXEC::same_as<
+      std::same_as<
         STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
         STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
@@ -40,7 +40,7 @@ namespace {
     using Sender = decltype(sndr);
     STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      STDEXEC::same_as<
+      std::same_as<
         STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
         STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
@@ -52,7 +52,7 @@ namespace {
     using Sender = decltype(sndr);
     STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(
-      STDEXEC::same_as<
+      std::same_as<
         STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
         STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>
       >);
