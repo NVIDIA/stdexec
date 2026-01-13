@@ -283,7 +283,7 @@ namespace stdexec {
   } // namespace __detail
 
   template <class _Alloc>
-  concept __allocator = //
+  concept __allocator_ = //
     requires(__decay_t<_Alloc>& __alloc, std::size_t __bytes) {
       { __alloc.allocate(__bytes) } -> same_as<__detail::__alloc_pointer_t<_Alloc>>;
       __alloc.deallocate(__alloc.allocate(__bytes), __bytes);
