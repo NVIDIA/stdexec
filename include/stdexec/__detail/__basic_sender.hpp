@@ -363,6 +363,10 @@ namespace STDEXEC {
     template <std::size_t _Idx, class _Descriptor>
     concept __in_range = (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));
 
+    template <class _Tag, class _Self, class... _Env>
+    concept __has_static_consteval_get_completion_signatures = requires {
+      _Tag::template get_completion_signatures<_Self, _Env...>();
+    };
   } // namespace __detail
 
   using __sexpr_defaults = __detail::__defaults;
@@ -519,7 +523,11 @@ namespace STDEXEC {
       template <__decays_to_derived_from<__sexpr> _Self, class... _Env>
       static consteval auto get_completion_signatures() {
         using __impl_t = __mtypeof<__impl<_Self>::get_completion_signatures>;
-        if constexpr (__callable<__impl_t, _Self, _Env...>) {
+        using __detail::__has_static_consteval_get_completion_signatures;
+
+        if constexpr (__has_static_consteval_get_completion_signatures<__tag_t, _Self, _Env...>) {
+          return __impl_t::template get_completion_signatures<_Self, _Env...>();
+        } else if constexpr (__callable<__impl_t, _Self, _Env...>) {
           return __call_result_t<__impl_t, _Self, _Env...>();
         } else if constexpr (sizeof...(_Env) == 0) {
           return __dependent_sender<_Self>();
