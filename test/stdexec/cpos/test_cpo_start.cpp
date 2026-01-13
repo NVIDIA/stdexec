@@ -18,7 +18,7 @@
 #include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 

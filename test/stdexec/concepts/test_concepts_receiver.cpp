@@ -18,10 +18,10 @@
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 struct recv_no_set_value {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   void set_stopped() noexcept {
   }
@@ -35,7 +35,7 @@ struct recv_no_set_value {
 };
 
 struct recv_set_value_except {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   void set_value() {
   }
@@ -51,7 +51,7 @@ struct recv_set_value_except {
 };
 
 struct recv_set_value_noexcept {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   void set_value() noexcept {
   }
@@ -67,7 +67,7 @@ struct recv_set_value_noexcept {
 };
 
 struct recv_set_error_except {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   void set_value() noexcept {
   }
@@ -83,7 +83,7 @@ struct recv_set_error_except {
   }
 };
 struct recv_set_stopped_except {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   void set_value() noexcept {
   }
@@ -100,7 +100,7 @@ struct recv_set_stopped_except {
 };
 
 struct recv_non_movable {
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = STDEXEC::receiver_t;
 
   recv_non_movable() = default;
   ~recv_non_movable() = default;
@@ -145,19 +145,36 @@ TEST_CASE("receiver types satisfy the receiver_of concept", "[concepts][receiver
 
   REQUIRE(ex::receiver_of<recv_int, ex::completion_signatures<ex::set_value_t(int)>>);
   REQUIRE(ex::receiver_of<recv0_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
-  REQUIRE(ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
+  REQUIRE(
+    ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_error_t(std::error_code)>>);
   REQUIRE(ex::receiver_of<recv_int_ec, ex::completion_signatures<ex::set_value_t(int)>>);
-  REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, int>, ex::completion_signatures<ex::set_value_t(int)>>);
-  REQUIRE(ex::receiver_of<expect_value_receiver<ex::env<>, double>, ex::completion_signatures<ex::set_value_t(double)>>);
-  REQUIRE(ex::receiver_of<expect_stopped_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<expect_stopped_receiver_ex<>, ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<expect_error_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
-  REQUIRE(ex::receiver_of<expect_error_receiver_ex<std::error_code>, ex::completion_signatures<ex::set_value_t(char)>>);
+  REQUIRE(
+    ex::receiver_of<
+      expect_value_receiver<ex::env<>, int>,
+      ex::completion_signatures<ex::set_value_t(int)>
+    >);
+  REQUIRE(
+    ex::receiver_of<
+      expect_value_receiver<ex::env<>, double>,
+      ex::completion_signatures<ex::set_value_t(double)>
+    >);
+  REQUIRE(
+    ex::receiver_of<expect_stopped_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
+  REQUIRE(
+    ex::receiver_of<expect_stopped_receiver_ex<>, ex::completion_signatures<ex::set_value_t(char)>>);
+  REQUIRE(
+    ex::receiver_of<expect_error_receiver<>, ex::completion_signatures<ex::set_value_t(char)>>);
+  REQUIRE(
+    ex::receiver_of<
+      expect_error_receiver_ex<std::error_code>,
+      ex::completion_signatures<ex::set_value_t(char)>
+    >);
   REQUIRE(ex::receiver_of<logging_receiver, ex::completion_signatures<ex::set_value_t(char)>>);
 }
 
 TEST_CASE(
-    "receiver type w/o set_value models receiver but not receiver_of", "[concepts][receiver]") {
+  "receiver type w/o set_value models receiver but not receiver_of",
+  "[concepts][receiver]") {
   REQUIRE(ex::receiver<recv_no_set_value>);
   REQUIRE(!ex::receiver_of<recv_no_set_value, ex::completion_signatures<ex::set_value_t()>>);
 }

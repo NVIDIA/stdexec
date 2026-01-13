@@ -26,7 +26,7 @@
 
 #include "./__spin_loop_pause.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   template <auto _Ptr>
   class __intrusive_mpsc_queue;
 
@@ -79,4 +79,4 @@ namespace stdexec {
       return __front;
     }
   };
-} // namespace stdexec
+} // namespace STDEXEC

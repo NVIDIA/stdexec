@@ -1,12 +1,12 @@
+#include "exec/single_thread_context.hpp"
+#include "test_common/receivers.hpp"
+#include "test_common/schedulers.hpp"
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
-#include "test_common/schedulers.hpp"
-#include "test_common/receivers.hpp"
-#include "exec/single_thread_context.hpp"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
-using stdexec::sync_wait;
+using STDEXEC::sync_wait;
 
 namespace {
 

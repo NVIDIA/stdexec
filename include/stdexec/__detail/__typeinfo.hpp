@@ -27,7 +27,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 // __type_info and TYPEID
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_info
   struct __type_info {
@@ -120,4 +120,4 @@ namespace stdexec {
   static_assert(STDEXEC_IS_SAME(int, __mtypeof<__mtypeid<int>>));
 
   constexpr auto __nat_id = __mtypeid<__none_such>;
-} // namespace stdexec
+} // namespace STDEXEC

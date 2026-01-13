@@ -28,60 +28,60 @@ namespace {
 
   template <class Receiver>
   struct sum_item_rcvr {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
     Receiver rcvr;
     int* sum_;
 
     [[nodiscard]]
-    auto get_env() const noexcept -> stdexec::env_of_t<Receiver> {
-      return stdexec::get_env(rcvr);
+    auto get_env() const noexcept -> STDEXEC::env_of_t<Receiver> {
+      return STDEXEC::get_env(rcvr);
     }
 
     template <class... As>
     void set_value(int x) noexcept {
       *sum_ += x;
-      stdexec::set_value(static_cast<Receiver&&>(rcvr));
+      STDEXEC::set_value(static_cast<Receiver&&>(rcvr));
     }
 
     void set_stopped() noexcept {
-      stdexec::set_value(static_cast<Receiver&&>(rcvr));
+      STDEXEC::set_value(static_cast<Receiver&&>(rcvr));
     }
 
     template <class E>
     void set_error(E&&) noexcept {
-      stdexec::set_value(static_cast<Receiver&&>(rcvr));
+      STDEXEC::set_value(static_cast<Receiver&&>(rcvr));
     }
   };
 
   template <class Item>
   struct sum_sender {
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t()>;
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
 
     Item item_;
     int* sum_;
 
     template <
-      stdexec::__decays_to<sum_sender> Self,
-      stdexec::receiver_of<completion_signatures> Receiver
+      STDEXEC::__decays_to<sum_sender> Self,
+      STDEXEC::receiver_of<completion_signatures> Receiver
     >
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) noexcept {
-      return stdexec::connect(
+      return STDEXEC::connect(
         static_cast<Self&&>(self).item_,
         sum_item_rcvr<Receiver>{static_cast<Receiver&&>(rcvr), self.sum_});
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
   };
 
-  template <class Env = stdexec::env<>>
+  template <class Env = STDEXEC::env<>>
   struct sum_receiver {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     int& sum_;
     Env env_{};
 
     template <class Item>
-    auto set_next(Item&& item) noexcept -> sum_sender<stdexec::__decay_t<Item>> {
+    auto set_next(Item&& item) noexcept -> sum_sender<STDEXEC::__decay_t<Item>> {
       return {static_cast<Item&&>(item), &sum_};
     }
 
@@ -104,33 +104,33 @@ namespace {
     std::array<int, 3> array{42, 43, 44};
     int sum = 0;
     auto iterate = exec::iterate(std::views::all(array));
-    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::env<>>);
-    STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
+    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), STDEXEC::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_expr_for<decltype(iterate), exec::iterate_t>);
     auto op = exec::subscribe(iterate, sum_receiver<>{.sum_ = sum});
-    stdexec::start(op);
+    STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44));
   }
 
   struct my_domain {
-    template <stdexec::sender_expr_for<exec::iterate_t> Sender, class _Env>
-    auto transform_sender(stdexec::start_t, Sender&& sender, _Env&&) const noexcept {
+    template <STDEXEC::sender_expr_for<exec::iterate_t> Sender, class _Env>
+    auto transform_sender(STDEXEC::start_t, Sender&& sender, _Env&&) const noexcept {
       auto range =
-        stdexec::__sexpr_apply(std::forward<Sender>(sender), stdexec::__detail::__get_data{});
+        STDEXEC::__sexpr_apply(std::forward<Sender>(sender), STDEXEC::__detail::__get_data{});
       auto sum = std::accumulate(std::ranges::begin(range), std::ranges::end(range), 0);
-      return stdexec::just(sum + 1);
+      return STDEXEC::just(sum + 1);
     }
   };
 
   TEST_CASE("iterate - sum up an array with custom domain", "[sequence_senders][iterate]") {
     std::array<int, 3> array{42, 43, 44};
     auto iterate = exec::iterate(std::views::all(array));
-    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), stdexec::env<>>);
-    STATIC_REQUIRE(stdexec::sender_expr_for<decltype(iterate), exec::iterate_t>);
-    auto env = stdexec::prop{stdexec::get_domain, my_domain{}};
+    STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), STDEXEC::env<>>);
+    STATIC_REQUIRE(STDEXEC::sender_expr_for<decltype(iterate), exec::iterate_t>);
+    auto env = STDEXEC::prop{STDEXEC::get_domain, my_domain{}};
     using Env = decltype(env);
     int sum = 0;
     auto op = exec::subscribe(iterate, sum_receiver<Env>{.sum_ = sum, .env_ = env});
-    stdexec::start(op);
+    STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44 + 1));
   }
 

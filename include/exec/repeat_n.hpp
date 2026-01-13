@@ -34,19 +34,19 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace exec {
   namespace __repeat_n {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Sender, class _Receiver>
     struct __repeat_n_state;
 
     template <class _SenderId, class _ReceiverId>
     struct __receiver {
-      using _Sender = stdexec::__t<_SenderId>;
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Sender = STDEXEC::__t<_SenderId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t {
         using __id = __receiver;
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         __repeat_n_state<_Sender, _Receiver> *__state_;
 
         void set_value() noexcept {
@@ -63,7 +63,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__state_->__receiver());
+          return STDEXEC::get_env(__state_->__receiver());
         }
       };
     };
@@ -79,43 +79,43 @@ namespace exec {
 
     template <class _Sender, class _Receiver>
     struct __repeat_n_state
-      : stdexec::__enable_receiver_from_this<
+      : STDEXEC::__enable_receiver_from_this<
           _Sender,
           _Receiver,
           __repeat_n_state<_Sender, _Receiver>
         > {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
-      using __receiver_t = stdexec::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
+      using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
-      using __child_op_t = stdexec::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
+      using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(__sexpr_apply(static_cast<_Sender &&>(__sndr), stdexec::__detail::__get_data())) {
+        : __pair_(__sexpr_apply(static_cast<_Sender &&>(__sndr), STDEXEC::__detail::__get_data())) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
 
       auto __connect() -> __child_op_t & {
         return __child_op_.__emplace_from(
-          stdexec::connect,
-          exec::sequence(stdexec::schedule(__sched_), __pair_.__child_),
+          STDEXEC::connect,
+          exec::sequence(STDEXEC::schedule(__sched_), __pair_.__child_),
           __receiver_t{this});
       }
 
       void __start() noexcept {
         if (__pair_.__count_ == 0) {
-          stdexec::set_value(static_cast<_Receiver &&>(this->__receiver()));
+          STDEXEC::set_value(static_cast<_Receiver &&>(this->__receiver()));
         } else {
-          stdexec::start(*__child_op_);
+          STDEXEC::start(*__child_op_);
         }
       }
 
       template <class _Tag, class... _Args>
       void __complete(_Tag, _Args &&...__args) noexcept { // Intentionally by value...
         static_assert(sizeof...(_Args) <= 1);
-        static_assert(sizeof...(_Args) == 0 || std::is_same_v<_Tag, stdexec::set_error_t>);
+        static_assert(sizeof...(_Args) == 0 || std::is_same_v<_Tag, STDEXEC::set_error_t>);
         STDEXEC_ASSERT(__pair_.__count_ > 0);
 
         STDEXEC_TRY {
@@ -124,21 +124,21 @@ namespace exec {
 
           if constexpr (same_as<_Tag, set_value_t>) {
             if (--__pair_.__count_ == 0) {
-              stdexec::set_value(std::move(this->__receiver()));
+              STDEXEC::set_value(std::move(this->__receiver()));
             } else {
-              stdexec::start(__connect());
+              STDEXEC::start(__connect());
             }
           } else {
             _Tag()(std::move(this->__receiver()), static_cast<__decay_t<_Args> &&>(__arg_copy)...);
           }
         }
         STDEXEC_CATCH_ALL {
-          stdexec::set_error(std::move(this->__receiver()), std::current_exception());
+          STDEXEC::set_error(std::move(this->__receiver()), std::current_exception());
         }
       }
 
       __child_count_pair<__child_t> __pair_;
-      stdexec::__optional<__child_op_t> __child_op_;
+      STDEXEC::__optional<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
     };
 
@@ -165,10 +165,10 @@ namespace exec {
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Pair, class... _Env>
-    using __completions_t = stdexec::transform_completion_signatures<
+    using __completions_t = STDEXEC::transform_completion_signatures<
       __completion_signatures_of_t<decltype(__decay_t<_Pair>::__child_) &, _Env...>,
-      stdexec::transform_completion_signatures<
-        __completion_signatures_of_t<stdexec::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
+      STDEXEC::transform_completion_signatures<
+        __completion_signatures_of_t<STDEXEC::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
         __eptr_completion,
         __cmplsigs::__default_set_value,
         __error_t
@@ -221,7 +221,7 @@ namespace exec {
   inline constexpr repeat_n_t repeat_n{};
 } // namespace exec
 
-namespace stdexec {
+namespace STDEXEC {
   template <>
   struct __sexpr_impl<exec::__repeat_n::__repeat_n_tag> : exec::__repeat_n::__repeat_n_impl { };
 
@@ -232,6 +232,6 @@ namespace stdexec {
       -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
     };
   };
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

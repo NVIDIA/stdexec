@@ -24,7 +24,7 @@
 #include <cassert>
 #include <cstddef>
 
-namespace stdexec {
+namespace STDEXEC {
 
   // An atomic queue that supports multiple producers and a single consumer.
   template <auto _NextPtr>
@@ -68,4 +68,4 @@ namespace stdexec {
     __std::atomic<_Tp*> __head_{nullptr};
   };
 
-} // namespace stdexec
+} // namespace STDEXEC

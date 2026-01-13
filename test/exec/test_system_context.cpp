@@ -28,7 +28,7 @@
 #include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 namespace scr = exec::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
@@ -220,10 +220,9 @@ TEST_CASE("simple bulk_unchunked task on system context", "[types][system_schedu
   std::thread::id pool_ids[num_tasks];
   exec::parallel_scheduler sched = exec::get_parallel_scheduler();
 
-  auto bulk_snd =
-    ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](unsigned long id) {
-      pool_ids[id] = std::this_thread::get_id();
-    });
+  auto bulk_snd = ex::bulk_unchunked(ex::schedule(sched), ex::par, num_tasks, [&](size_t id) {
+    pool_ids[id] = std::this_thread::get_id();
+  });
 
   ex::sync_wait(std::move(bulk_snd));
 
@@ -412,7 +411,7 @@ TEST_CASE("empty environment always returns nullopt for any query", "[types][sys
 
   my_receiver rcvr{};
 
-  REQUIRE(rcvr.try_query<stdexec::inplace_stop_token>() == std::nullopt);
+  REQUIRE(rcvr.try_query<STDEXEC::inplace_stop_token>() == std::nullopt);
   REQUIRE(rcvr.try_query<int>() == std::nullopt);
   REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
 }
@@ -422,8 +421,8 @@ TEST_CASE("environment with a stop token can expose its stop token", "[types][sy
     auto __query_env(__uuid uuid, void* dest) noexcept -> bool override {
       if (
         uuid
-        == scr::__runtime_property_helper<stdexec::inplace_stop_token>::__property_identifier) {
-        *static_cast<stdexec::inplace_stop_token*>(dest) = ss.get_token();
+        == scr::__runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
+        *static_cast<STDEXEC::inplace_stop_token*>(dest) = ss.get_token();
         return true;
       }
       return false;
@@ -438,12 +437,12 @@ TEST_CASE("environment with a stop token can expose its stop token", "[types][sy
     void set_stopped() noexcept override {
     }
 
-    stdexec::inplace_stop_source ss;
+    STDEXEC::inplace_stop_source ss;
   };
 
   my_receiver rcvr{};
 
-  auto o1 = rcvr.try_query<stdexec::inplace_stop_token>();
+  auto o1 = rcvr.try_query<STDEXEC::inplace_stop_token>();
   REQUIRE(o1.has_value());
   REQUIRE(o1.value().stop_requested() == false);
   REQUIRE(o1.value() == rcvr.ss.get_token());

@@ -22,7 +22,7 @@
 #include <iterator>
 #include <utility>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __slist {
     template <auto _Next>
     class __intrusive_slist;
@@ -149,4 +149,4 @@ namespace stdexec {
 
   using __slist::__intrusive_slist;
 
-} // namespace stdexec
+} // namespace STDEXEC

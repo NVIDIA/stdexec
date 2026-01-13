@@ -29,7 +29,7 @@
 
 #include <exception> // IWYU pragma: keep for std::terminate
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
   namespace __queries {
@@ -117,7 +117,7 @@ namespace stdexec {
           requires(!__one_of<_Sig, _Sigs...>)
         __t(__debug_receiver<_CvrefSenderId, _Env, completion_signatures<_Sigs...>>&&) noexcept {
           using _SenderId = __decay_t<_CvrefSenderId>;
-          using _Sender = stdexec::__t<_SenderId>;
+          using _Sender = STDEXEC::__t<_SenderId>;
           using _What = _WARNING_<
             _COMPLETION_SIGNATURES_MISMATCH_,
             _COMPLETION_SIGNATURE_<_Sig>,
@@ -193,11 +193,11 @@ namespace stdexec {
           if constexpr (!same_as<_Operation, __debug_operation>) {
             if (sizeof(_Sender) == ~0u) { // never true
               auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-              stdexec::start(__op);
+              STDEXEC::start(__op);
             }
           }
         } else {
-          stdexec::__diagnose_sender_concept_failure<_Sender, _Env>();
+          STDEXEC::__diagnose_sender_concept_failure<_Sender, _Env>();
         }
       }
     }
@@ -214,12 +214,12 @@ namespace stdexec {
             if constexpr (!same_as<_Operation, __debug_operation>) {
               if (sizeof(_Sender) == ~0ul) { // never true
                 auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
-                stdexec::start(__op);
+                STDEXEC::start(__op);
               }
             }
           }
         } else {
-          stdexec::__diagnose_sender_concept_failure<_Sender, _Env>();
+          STDEXEC::__diagnose_sender_concept_failure<_Sender, _Env>();
         }
       }
     }
@@ -234,4 +234,4 @@ namespace stdexec {
     std::fflush(stdout);
     va_end(args);
   }
-} // namespace stdexec
+} // namespace STDEXEC

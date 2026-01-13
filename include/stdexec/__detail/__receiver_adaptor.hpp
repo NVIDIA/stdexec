@@ -22,7 +22,7 @@
 #include "__type_traits.hpp"
 #include "__utility.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __adaptors {
     namespace __no {
       struct __nope { };
@@ -133,7 +133,7 @@ namespace stdexec {
         requires __callable<set_value_t, __base_t<_Self>, _As...>
       STDEXEC_ATTRIBUTE(host, device)
       void set_value(_As&&... __as) && noexcept {
-        return stdexec::set_value(
+        return STDEXEC::set_value(
           __get_base(static_cast<_Self&&>(*this)), static_cast<_As&&>(__as)...);
       }
 
@@ -141,7 +141,7 @@ namespace stdexec {
         requires __callable<set_error_t, __base_t<_Self>, _Error>
       STDEXEC_ATTRIBUTE(host, device)
       void set_error(_Error&& __err) && noexcept {
-        return stdexec::set_error(
+        return STDEXEC::set_error(
           __get_base(static_cast<_Self&&>(*this)), static_cast<_Error&&>(__err));
       }
 
@@ -149,17 +149,17 @@ namespace stdexec {
         requires __callable<set_stopped_t, __base_t<_Self>>
       STDEXEC_ATTRIBUTE(host, device)
       void set_stopped() && noexcept {
-        return stdexec::set_stopped(__get_base(static_cast<_Self&&>(*this)));
+        return STDEXEC::set_stopped(__get_base(static_cast<_Self&&>(*this)));
       }
 
       template <class _Self = _Derived>
       STDEXEC_ATTRIBUTE(host, device)
       auto get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
-        return stdexec::get_env(__get_base(static_cast<const _Self&>(*this)));
+        return STDEXEC::get_env(__get_base(static_cast<const _Self&>(*this)));
       }
     };
   } // namespace __adaptors
 
   template <__class _Derived, receiver _Base = __adaptors::__not_a_receiver>
   using receiver_adaptor = __adaptors::receiver_adaptor<_Derived, _Base>;
-} // namespace stdexec
+} // namespace STDEXEC

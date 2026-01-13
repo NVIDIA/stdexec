@@ -1,18 +1,18 @@
+#include "test_common/receivers.hpp"
+#include "test_common/schedulers.hpp"
+#include "test_common/type_helpers.hpp"
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
-#include "test_common/schedulers.hpp"
-#include "test_common/receivers.hpp"
-#include "test_common/type_helpers.hpp"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
-using stdexec::sync_wait;
+using STDEXEC::sync_wait;
 
 namespace {
 
   //! Sender that throws exception when connected
   struct throwing_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>

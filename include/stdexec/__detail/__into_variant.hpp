@@ -30,7 +30,7 @@
 #include <tuple>
 #include <variant> // IWYU pragma: keep
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.into_variant]
   namespace __into_variant {
@@ -90,7 +90,7 @@ namespace stdexec {
               __variant_t{std::tuple<_Args&&...>{static_cast<_Args&&>(__args)...}});
           }
           STDEXEC_CATCH_ALL {
-            stdexec::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
           }
         } else {
           _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
@@ -111,4 +111,4 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<into_variant_t> : __into_variant::__into_variant_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

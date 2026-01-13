@@ -28,7 +28,7 @@
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #endif
 
-namespace stdexec::__std {
+namespace STDEXEC::__std {
 #if __has_include(<cuda/std/atomic>)
 
   using cuda::std::atomic;
@@ -58,7 +58,7 @@ namespace stdexec::__std {
   using std::atomic_thread_fence;
   using std::atomic_signal_fence;
 
-#  if __cpp_lib_atomic_ref >= 2018'06L
+#  if __cpp_lib_atomic_ref >= 2018'06L && !defined(STDEXEC_RELACY)
   using std::atomic_ref;
 #  else
   inline constexpr int __atomic_flag_map[] = {
@@ -102,4 +102,4 @@ namespace stdexec::__std {
 #  endif
 
 #endif
-} // namespace stdexec::__std
+} // namespace STDEXEC::__std

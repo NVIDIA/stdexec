@@ -22,7 +22,7 @@
 
 #include <functional>
 
-namespace stdexec::__any_ {
+namespace STDEXEC::__any_ {
   template <class _Sig>
   struct __rcvr_vfun;
 
@@ -117,4 +117,4 @@ namespace stdexec::__any_ {
     const __receiver_vtable_for<_Sigs, _Env>* __vtable_;
     void* __op_state_;
   };
-} // namespace stdexec::__any_
+} // namespace STDEXEC::__any_

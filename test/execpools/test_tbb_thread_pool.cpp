@@ -21,12 +21,12 @@
 
 #include <stdexec/execution.hpp>
 
-#include <test_common/schedulers.hpp>
 #include <exec/inline_scheduler.hpp>
+#include <test_common/schedulers.hpp>
 
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   // Example adapted from
@@ -39,7 +39,7 @@ namespace {
     double init,                               // 1
     std::size_t tile_count) -> ex::sender auto // 3
   {
-    using namespace stdexec;
+    using namespace STDEXEC;
     std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
 
     std::vector<double> partials(tile_count + 1);
@@ -51,7 +51,7 @@ namespace {
              tile_count,
              [=](std::size_t i, std::span<double> partials) {
                auto start = i * tile_size;
-               auto end = std::min(input.size(), (i + 1) * tile_size);
+               auto end = (std::min) (input.size(), (i + 1) * tile_size);
                partials[i + 1] = *--std::inclusive_scan(
                  begin(input) + static_cast<long>(start),
                  begin(input) + static_cast<long>(end),
@@ -66,7 +66,7 @@ namespace {
              tile_count,
              [=](std::size_t i, std::span<const double> partials) {
                auto start = i * tile_size;
-               auto end = std::min(input.size(), (i + 1) * tile_size);
+               auto end = (std::min) (input.size(), (i + 1) * tile_size);
                std::for_each(
                  begin(output) + static_cast<long>(start),
                  begin(output) + static_cast<long>(end),
@@ -98,11 +98,11 @@ namespace {
   }
 
   TEST_CASE("more tbb_thread_pool", "[tbb_thread_pool]") {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     execpools::tbb_thread_pool pool(1);
     exec::static_thread_pool other_pool(1);
-    stdexec::inline_scheduler inline_sched;
+    STDEXEC::inline_scheduler inline_sched;
 
     // Get a handle to the thread pool:
     auto other_sched = other_pool.get_scheduler();
@@ -133,7 +133,7 @@ namespace {
   TEST_CASE("tbb_thread_pool exceptions", "[tbb_thread_pool]") {
     // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
     // state. We'd better have it act normally here.
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     execpools::tbb_thread_pool tbb_pool;
     exec::static_thread_pool other_pool(1);

@@ -145,7 +145,7 @@ inline auto
 
 inline auto calculate_dt(float dx, float dy) -> float {
   const float cfl = 0.3;
-  return cfl * std::min(dx, dy) / C0;
+  return cfl * (std::min) (dx, dy) / C0;
 }
 
 struct grid_initializer_t {

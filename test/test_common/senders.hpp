@@ -17,11 +17,11 @@
 #pragma once
 
 #include <catch2/catch.hpp>
-#include <test_common/type_helpers.hpp>
-#include <stdexec/execution.hpp>
 #include <memory>
+#include <stdexec/execution.hpp>
+#include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 
@@ -43,7 +43,7 @@ namespace {
 
   template <class... Values>
   struct fallible_just {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
 
     explicit fallible_just(Values... values)
       : values_(std::move(values)...) {
@@ -117,7 +117,7 @@ namespace {
   struct just_with_env {
     std::remove_cvref_t<Env> env_;
     std::tuple<Values...> values_;
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(Values...)>;
 
     template <class Receiver>
@@ -144,7 +144,7 @@ namespace {
   struct completes_if {
     using __t = completes_if;
     using __id = completes_if;
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
     bool condition_;
@@ -220,7 +220,7 @@ namespace {
 
   template <class Tag, class... Args>
   struct succeed_n_sender {
-    using sender_concept = stdexec::sender_t;
+    using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), Tag(Args...)>;
 
     explicit succeed_n_sender(int count, Tag, Args... args)

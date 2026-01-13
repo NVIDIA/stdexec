@@ -23,7 +23,7 @@
 
 namespace exec {
   namespace __trampoline {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Operation>
     struct __trampoline_state {
@@ -143,7 +143,7 @@ namespace exec {
 
       template <class _ReceiverId>
       struct __operation {
-        using _Receiver = stdexec::__t<_ReceiverId>;
+        using _Receiver = STDEXEC::__t<_ReceiverId>;
 
         struct __t : __operation_base {
           using __id = __operation;
@@ -157,13 +157,13 @@ namespace exec {
 
           static void __execute_impl(__operation_base* __op) noexcept {
             auto& __self = *static_cast<__t*>(__op);
-            if (stdexec::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
-              stdexec::set_value(static_cast<_Receiver&&>(__self.__receiver_));
+            if (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
+              STDEXEC::set_value(static_cast<_Receiver&&>(__self.__receiver_));
             } else {
               if (get_stop_token(get_env(__self.__receiver_)).stop_requested()) {
-                stdexec::set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
+                STDEXEC::set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
               } else {
-                stdexec::set_value(static_cast<_Receiver&&>(__self.__receiver_));
+                STDEXEC::set_value(static_cast<_Receiver&&>(__self.__receiver_));
               }
             }
           }
@@ -174,12 +174,12 @@ namespace exec {
       friend __schedule_sender;
 
       template <class _Receiver>
-      using __operation_t = stdexec::__t<__operation<__id<__decay_t<_Receiver>>>>;
+      using __operation_t = STDEXEC::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
-        using sender_concept = stdexec::sender_t;
+        using sender_concept = STDEXEC::sender_t;
         using completion_signatures =
-          stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
+          STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
         explicit __schedule_sender(std::size_t __max_size, std::size_t __max_depth) noexcept
           : __max_recursion_size_(__max_size)

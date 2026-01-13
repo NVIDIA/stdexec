@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "../../stdexec/execution.hpp"
 #include "../../exec/scope.hpp"
+#include "../../stdexec/execution.hpp"
 
 #include <exception>
 #include <memory>
@@ -77,7 +77,7 @@ namespace nvexec::_strm {
       // state. This is a good time to use C++20's destroying delete operation.
       static void destroy_delete(operation* self) noexcept {
         if constexpr (__callable<get_allocator_t, Env>) {
-          auto alloc = stdexec::get_allocator(self->env_);
+          auto alloc = STDEXEC::get_allocator(self->env_);
           using Alloc = decltype(alloc);
           using OpAlloc = std::allocator_traits<Alloc>::template rebind_alloc<operation>;
           OpAlloc op_alloc{alloc};
@@ -141,7 +141,7 @@ namespace nvexec::_strm {
       if constexpr (_start_detached::_use_submit<Sender, Env>) {
         // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
         // for the operation. We can just call submit and return.
-        stdexec::__submit::__submit(
+        STDEXEC::__submit::__submit(
           static_cast<Sender&&>(sndr), _start_detached::submit_receiver{});
       } else
 #endif

@@ -34,7 +34,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace stdexec {
+namespace STDEXEC {
 #if STDEXEC_NVHPC()
   enum __variant_npos_t : std::size_t {
     __variant_npos = ~0UL
@@ -81,7 +81,7 @@ namespace stdexec {
 
     template <std::size_t... _Is, __indices<_Is...> _Idx, class... _Ts>
     class __variant<_Idx, _Ts...> {
-      static constexpr std::size_t __max_size = stdexec::__umax({sizeof(_Ts)...});
+      static constexpr std::size_t __max_size = STDEXEC::__umax({sizeof(_Ts)...});
       static_assert(__max_size != 0);
       std::size_t __index_{__variant_npos};
       alignas(_Ts...) unsigned char __storage_[__max_size];
@@ -137,7 +137,7 @@ namespace stdexec {
       template <class _Ty, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
       auto emplace(_As &&...__as) noexcept(__nothrow_constructible_from<_Ty, _As...>) -> _Ty & {
-        constexpr std::size_t __new_index = stdexec::__index_of<_Ty, _Ts...>();
+        constexpr std::size_t __new_index = STDEXEC::__index_of<_Ty, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
 
         __destroy();
@@ -181,7 +181,7 @@ namespace stdexec {
       auto emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
         -> __call_result_t<_Fn, _As...> & {
         using __result_t = __call_result_t<_Fn, _As...>;
-        constexpr std::size_t __new_index = stdexec::__index_of<__result_t, _Ts...>();
+        constexpr std::size_t __new_index = STDEXEC::__index_of<__result_t, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
         return emplace_from_at<__new_index>(
           static_cast<_Fn &&>(__fn), static_cast<_As &&>(__as)...);
@@ -237,6 +237,6 @@ namespace stdexec {
     template <class _Fn>
     using __f = __minvoke<_Fn, _Ts...>;
   };
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

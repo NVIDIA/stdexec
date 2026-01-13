@@ -22,7 +22,7 @@
 #include <catch2/catch.hpp>
 #include <memory>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 

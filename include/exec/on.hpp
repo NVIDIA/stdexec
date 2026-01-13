@@ -20,8 +20,8 @@
 namespace exec {
   /////////////////////////////////////////////////////////////////////////////
   // A scoped version of [execution.senders.adaptors.on]
-  using on_t [[deprecated("on_t has been moved to the stdexec:: namespace")]] = stdexec::on_t;
+  using on_t [[deprecated("on_t has been moved to the STDEXEC:: namespace")]] = STDEXEC::on_t;
 
-  [[deprecated("on has been moved to the stdexec:: namespace")]]
-  inline constexpr stdexec::on_t const & on = stdexec::on;
+  [[deprecated("on has been moved to the STDEXEC:: namespace")]]
+  inline constexpr STDEXEC::on_t const & on = STDEXEC::on;
 } // namespace exec

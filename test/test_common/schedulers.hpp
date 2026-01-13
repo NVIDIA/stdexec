@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 // Put all the test utilities in an anonymous namespace to avoid ODR violations
 namespace {
@@ -160,7 +160,7 @@ namespace {
       using __id = sender;
       using __t = sender;
 
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
@@ -217,7 +217,7 @@ namespace {
     struct sender {
       using __t = sender;
       using __id = sender;
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <class Receiver>
@@ -231,7 +231,7 @@ namespace {
     };
   };
 
-  using stdexec::inline_scheduler;
+  using STDEXEC::inline_scheduler;
 
   template <class Type>
   struct nothrow_copyable_box {
@@ -326,7 +326,7 @@ namespace {
       using __id = sender;
       using __t = sender;
 
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(Error), ex::set_stopped_t()>;
 
@@ -375,7 +375,7 @@ namespace {
       using __id = sender;
       using __t = sender;
 
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 

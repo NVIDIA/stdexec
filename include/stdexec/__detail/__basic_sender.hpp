@@ -33,7 +33,7 @@
 #include <type_traits> // IWYU pragma: keep for is_standard_layout
 #include <utility>     // for tuple_size/tuple_element
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
   namespace __detail {
@@ -62,10 +62,10 @@ namespace stdexec {
 
 #if STDEXEC_EDG()
 #  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    stdexec::__descriptor_fn<_Tag, _Data, _Child>()
+    STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
 #else
 #  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    stdexec::__descriptor_fn_v<stdexec::__detail::__desc<_Tag, _Data, _Child>>
+    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
 #endif
 
   template <class _Tag>
@@ -112,7 +112,7 @@ namespace stdexec {
       static constexpr auto get_attrs =
         [](__ignore, const auto&... __child) noexcept -> decltype(auto) {
         if constexpr (sizeof...(__child) == 1) {
-          return __fwd_env(stdexec::get_env(__child...));
+          return __fwd_env(STDEXEC::get_env(__child...));
         } else {
           return env<>();
         }
@@ -121,7 +121,7 @@ namespace stdexec {
       static constexpr auto get_env =
         []<class _Receiver>(__ignore, __ignore, const _Receiver& __rcvr) noexcept
         -> env_of_t<const _Receiver&> {
-        return stdexec::get_env(__rcvr);
+        return STDEXEC::get_env(__rcvr);
       };
 
       static constexpr auto get_state =
@@ -154,7 +154,7 @@ namespace stdexec {
           _Receiver& __rcvr,
           _SetTag,
           _Args&&... __args) noexcept {
-          static_assert(__v<_Index> == 0, "I don't know how to complete this operation.");
+          static_assert(_Index::value == 0, "I don't know how to complete this operation.");
           _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
         };
 
@@ -369,7 +369,7 @@ namespace stdexec {
 
   template <class _ReceiverId, class _Sexpr, std::size_t _Idx>
   struct __rcvr {
-    using _Receiver = stdexec::__t<_ReceiverId>;
+    using _Receiver = STDEXEC::__t<_ReceiverId>;
 
     struct __t {
       using receiver_concept = receiver_t;
@@ -386,17 +386,17 @@ namespace stdexec {
       template <class... _Args>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_value(_Args&&... __args) noexcept {
-        __op_->__complete(__index_t(), stdexec::set_value, static_cast<_Args&&>(__args)...);
+        __op_->__complete(__index_t(), STDEXEC::set_value, static_cast<_Args&&>(__args)...);
       }
 
       template <class _Error>
       STDEXEC_ATTRIBUTE(always_inline)
       void set_error(_Error&& __err) noexcept {
-        __op_->__complete(__index_t(), stdexec::set_error, static_cast<_Error&&>(__err));
+        __op_->__complete(__index_t(), STDEXEC::set_error, static_cast<_Error&&>(__err));
       }
 
       STDEXEC_ATTRIBUTE(always_inline) void set_stopped() noexcept {
-        __op_->__complete(__index_t(), stdexec::set_stopped);
+        __op_->__complete(__index_t(), STDEXEC::set_stopped);
       }
 
       template <class _Index = __msize_t<_Idx>>
@@ -430,7 +430,7 @@ namespace stdexec {
     STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
       using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
-      stdexec::__apply(
+      STDEXEC::__apply(
         [&](auto&... __ops) noexcept {
           __sexpr_impl<__tag_t>::start(this->__state(), __rcvr, __ops...);
         },
@@ -495,8 +495,6 @@ namespace stdexec {
       using __desc_t = decltype(_DescriptorFn());
       using __tag_t = __desc_t::__tag;
       using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
-
-      mutable __captures_t __impl_;
 
       template <class _Tag, class _Data, class... _Child>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
@@ -573,12 +571,14 @@ namespace stdexec {
           return __self.__impl_(__copy_cvref_fn<_Self>(), __nth_pack_element<_Idx>);
         }
       }
+
+      mutable __captures_t __impl_;
     };
 
     template <class _Tag, class _Data, class... _Child>
-    STDEXEC_ATTRIBUTE(host, device)
-    __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-  } // namespace
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+  } // anonymous namespace
 
   template <class _Tag, class _Data, class... _Child>
   using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
@@ -631,25 +631,25 @@ namespace stdexec {
     extern __basic_sender_name __demangle_v<__sexpr<_Descriptor>>;
 
     template <__has_id _Sender>
-      requires(!same_as<__id<_Sender>, _Sender>)
+      requires __not_same_as<__id<_Sender>, _Sender>
     extern __id_name __demangle_v<_Sender>;
   } // namespace __detail
-} // namespace stdexec
+} // namespace STDEXEC
 
 namespace std {
   template <auto _Descriptor>
-  struct tuple_size<stdexec::__sexpr<_Descriptor>>
+  struct tuple_size<STDEXEC::__sexpr<_Descriptor>>
     : integral_constant<
         size_t,
-        stdexec::__v<stdexec::__minvoke<stdexec::__result_of<_Descriptor>, stdexec::__msize>>
+        STDEXEC::__minvoke<STDEXEC::__result_of<_Descriptor>, STDEXEC::__msize>::value
       > { };
 
   template <size_t _Idx, auto _Descriptor>
-  struct tuple_element<_Idx, stdexec::__sexpr<_Descriptor>> {
-    using type = stdexec::__remove_rvalue_reference_t<stdexec::__call_result_t<
-      stdexec::__detail::__impl_of<stdexec::__sexpr<_Descriptor>>,
-      stdexec::__cp,
-      stdexec::__nth_pack_element_t<_Idx>
+  struct tuple_element<_Idx, STDEXEC::__sexpr<_Descriptor>> {
+    using type = STDEXEC::__remove_rvalue_reference_t<STDEXEC::__call_result_t<
+      STDEXEC::__detail::__impl_of<STDEXEC::__sexpr<_Descriptor>>,
+      STDEXEC::__cp,
+      STDEXEC::__nth_pack_element_t<_Idx>
     >>;
   };
 } // namespace std

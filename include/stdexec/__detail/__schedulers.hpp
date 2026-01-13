@@ -23,7 +23,7 @@
 #include "__domain.hpp"
 #include "__query.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   // scheduler concept opt-in tag
   struct scheduler_t { };
 
@@ -414,4 +414,4 @@ namespace stdexec {
   inline constexpr auto& get_delegatee_scheduler
     [[deprecated("get_delegatee_scheduler has been renamed get_delegation_scheduler")]]
     = get_delegation_scheduler;
-} // namespace stdexec
+} // namespace STDEXEC

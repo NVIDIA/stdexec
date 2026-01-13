@@ -1,10 +1,10 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-#include "nvexec/stream_context.cuh"
 #include "common.cuh"
+#include "nvexec/stream_context.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -26,8 +26,8 @@ namespace {
     auto b1 = fork | ex::then([](bool on_gpu) { return on_gpu * 24; });
     auto b2 = fork | ex::then([](bool on_gpu) { return on_gpu * 42; });
 
-    auto [v1] = stdexec::sync_wait(std::move(b1)).value();
-    auto [v2] = stdexec::sync_wait(std::move(b2)).value();
+    auto [v1] = STDEXEC::sync_wait(std::move(b1)).value();
+    auto [v2] = STDEXEC::sync_wait(std::move(b2)).value();
 
     REQUIRE(v1 == 24);
     REQUIRE(v2 == 42);
@@ -45,7 +45,7 @@ namespace {
                  }
                });
 
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -66,7 +66,7 @@ namespace {
                      flags.set(0);
                    }
                  });
-      stdexec::sync_wait(std::move(snd));
+      STDEXEC::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -83,7 +83,7 @@ namespace {
                      flags.set();
                    }
                  });
-      stdexec::sync_wait(std::move(snd)).value();
+      STDEXEC::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }

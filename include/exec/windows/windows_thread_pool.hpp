@@ -152,7 +152,7 @@ namespace exec::__win32 {
     static void CALLBACK
       work_callback(PTP_CALLBACK_INSTANCE, void *workContext, PTP_WORK) noexcept {
       auto &op = *static_cast<type *>(workContext);
-      stdexec::set_value(std::move(op.rcvr_));
+      STDEXEC::set_value(std::move(op.rcvr_));
     }
 
     Rcvr rcvr_;
@@ -164,7 +164,7 @@ namespace exec::__win32 {
   template <class StopToken>
   class windows_thread_pool::_cancellable_schedule_op_base<StopToken>::type {
    public:
-    using operation_state_concept = stdexec::operation_state_t;
+    using operation_state_concept = STDEXEC::operation_state_t;
     using __id = _cancellable_schedule_op_base<StopToken>;
 
     type(type &&) = delete;
@@ -193,7 +193,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>(not_started);
+        state_ = new (std::nothrow) STDEXEC::__std::atomic<std::uint32_t>(not_started);
         if (state_ == nullptr) {
           ::CloseThreadpoolWork(work_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -228,7 +228,7 @@ namespace exec::__win32 {
         // now safe for the stop-request to request cancellation of the
         // work items.
         const auto prevState =
-          state->fetch_add(submit_complete_flag, stdexec::__std::memory_order_acq_rel);
+          state->fetch_add(submit_complete_flag, STDEXEC::__std::memory_order_acq_rel);
         if ((prevState & stop_requested_flag) != 0) {
           // stop was requested before the call to SubmitThreadpoolWork()
           // returned and before the work started executing. It was not
@@ -265,7 +265,7 @@ namespace exec::__win32 {
       auto &op = *static_cast<type *>(workContext);
 
       // Signal that the work callback has started executing.
-      auto prevState = op.state_->fetch_add(starting_flag, stdexec::__std::memory_order_acq_rel);
+      auto prevState = op.state_->fetch_add(starting_flag, STDEXEC::__std::memory_order_acq_rel);
       if ((prevState & stop_requested_flag) != 0) {
         // request_stop() is already running and is waiting for this callback
         // to finish executing. So we return immediately here without doing
@@ -283,7 +283,7 @@ namespace exec::__win32 {
 
       op.stopCallback_.__destroy();
 
-      prevState = op.state_->fetch_add(running_flag, stdexec::__std::memory_order_acq_rel);
+      prevState = op.state_->fetch_add(running_flag, STDEXEC::__std::memory_order_acq_rel);
       if (prevState == starting_flag) {
         // start() method has not yet finished submitting the work
         // on another thread and so is still accessing the 'state'.
@@ -299,7 +299,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
+      auto prevState = state_->load(STDEXEC::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
@@ -311,8 +311,8 @@ namespace exec::__win32 {
       } while (!state_->compare_exchange_weak(
         prevState,
         prevState | stop_requested_flag,
-        stdexec::__std::memory_order_acq_rel,
-        stdexec::__std::memory_order_relaxed));
+        STDEXEC::__std::memory_order_acq_rel,
+        STDEXEC::__std::memory_order_relaxed));
 
       STDEXEC_ASSERT((prevState & starting_flag) == 0);
 
@@ -380,40 +380,40 @@ namespace exec::__win32 {
 
     PTP_WORK work_;
     TP_CALLBACK_ENVIRON environ_;
-    stdexec::__std::atomic<std::uint32_t> *state_;
-    stdexec::__manual_lifetime<stdexec::stop_callback_for_t<StopToken, stop_requested_callback>>
+    STDEXEC::__std::atomic<std::uint32_t> *state_;
+    STDEXEC::__manual_lifetime<STDEXEC::stop_callback_for_t<StopToken, stop_requested_callback>>
       stopCallback_;
   };
 
   template <class Rcvr>
   class windows_thread_pool::_cancellable_schedule_op<Rcvr>::type final
     : public windows_thread_pool::cancellable_schedule_op_base<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>
       > {
     using base = windows_thread_pool::cancellable_schedule_op_base<
-      stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+      STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>
     >;
 
    public:
     using __id = _cancellable_schedule_op<Rcvr>;
 
     explicit type(windows_thread_pool &pool, Rcvr rcvr)
-      : base(pool, stdexec::get_stop_token(rcvr).stop_possible())
+      : base(pool, STDEXEC::get_stop_token(rcvr).stop_possible())
       , rcvr_(std::move(rcvr)) {
     }
 
     void start() noexcept {
-      this->start_impl(stdexec::get_stop_token(stdexec::get_env(rcvr_)));
+      this->start_impl(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
     }
 
    private:
     void set_value_impl() noexcept override {
-      stdexec::set_value(std::move(rcvr_));
+      STDEXEC::set_value(std::move(rcvr_));
     }
 
     void set_stopped_impl() noexcept override {
-      if constexpr (!stdexec::unstoppable_token<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>) {
-        stdexec::set_stopped(std::move(rcvr_));
+      if constexpr (!STDEXEC::unstoppable_token<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>) {
+        STDEXEC::set_stopped(std::move(rcvr_));
       } else {
         STDEXEC_ASSERT(false);
       }
@@ -427,7 +427,7 @@ namespace exec::__win32 {
   struct windows_thread_pool::attrs {
     [[nodiscard]]
     auto
-      query(stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> scheduler;
+      query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept -> scheduler;
 
     windows_thread_pool *pool_;
   };
@@ -437,25 +437,25 @@ namespace exec::__win32 {
 
   class windows_thread_pool::schedule_sender {
    public:
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<
-      stdexec::set_value_t(),
-      stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<
+      STDEXEC::set_value_t(),
+      STDEXEC::set_error_t(std::exception_ptr),
+      STDEXEC::set_stopped_t()
     >;
     using __id = schedule_sender;
     using __t = schedule_sender;
 
     template <class Rcvr> //
-      requires stdexec::receiver_of<Rcvr, completion_signatures>
-            && stdexec::unstoppable_token<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>
+      requires STDEXEC::receiver_of<Rcvr, completion_signatures>
+            && STDEXEC::unstoppable_token<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>
     auto connect(Rcvr rcvr) const -> schedule_op<Rcvr> {
       return schedule_op<Rcvr>{*pool_, static_cast<Rcvr &&>(rcvr)};
     }
 
     template <class Rcvr> //
-      requires stdexec::receiver_of<Rcvr, completion_signatures>
-            && (!stdexec::unstoppable_token<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>)
+      requires STDEXEC::receiver_of<Rcvr, completion_signatures>
+            && (!STDEXEC::unstoppable_token<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>)
     auto connect(Rcvr rcvr) const -> cancellable_schedule_op<Rcvr> {
       return cancellable_schedule_op<Rcvr>{*pool_, static_cast<Rcvr &&>(rcvr)};
     }
@@ -487,7 +487,7 @@ namespace exec::__win32 {
 
       // Give the optimiser a hand for cases where the parameter
       // can never be true.
-      if constexpr (stdexec::unstoppable_token<StopToken>) {
+      if constexpr (STDEXEC::unstoppable_token<StopToken>) {
         isStopPossible = false;
       }
 
@@ -503,7 +503,7 @@ namespace exec::__win32 {
       }
 
       if (isStopPossible) {
-        state_ = new (std::nothrow) stdexec::__std::atomic<std::uint32_t>{not_started};
+        state_ = new (std::nothrow) STDEXEC::__std::atomic<std::uint32_t>{not_started};
         if (state_ == nullptr) {
           ::CloseThreadpoolTimer(timer_);
           ::DestroyThreadpoolEnvironment(&environ_);
@@ -513,7 +513,7 @@ namespace exec::__win32 {
     }
 
    public:
-    using operation_state_concept = stdexec::operation_state_t;
+    using operation_state_concept = STDEXEC::operation_state_t;
     using __id = _time_schedule_op<StopToken>;
 
     ~type() {
@@ -530,7 +530,7 @@ namespace exec::__win32 {
         ::SetThreadpoolTimer(timer_, &dueTime, periodInMs, maxDelayInMs);
       };
 
-      if constexpr (!stdexec::unstoppable_token<StopToken>) {
+      if constexpr (!STDEXEC::unstoppable_token<StopToken>) {
         auto *const state = state_;
         if (state != nullptr) {
           // Short-circuit extra work submitting the
@@ -547,7 +547,7 @@ namespace exec::__win32 {
           startTimer();
 
           const auto prevState =
-            state->fetch_add(submit_complete_flag, stdexec::__std::memory_order_acq_rel);
+            state->fetch_add(submit_complete_flag, STDEXEC::__std::memory_order_acq_rel);
           if ((prevState & stop_requested_flag) != 0) {
             complete_with_done();
           } else if ((prevState & running_flag) != 0) {
@@ -579,14 +579,14 @@ namespace exec::__win32 {
       [[maybe_unused]] PTP_TIMER timer) noexcept {
       type &op = *static_cast<type *>(timerContext);
 
-      auto prevState = op.state_->fetch_add(starting_flag, stdexec::__std::memory_order_acq_rel);
+      auto prevState = op.state_->fetch_add(starting_flag, STDEXEC::__std::memory_order_acq_rel);
       if ((prevState & stop_requested_flag) != 0) {
         return;
       }
 
       op.stopCallback_.__destroy();
 
-      prevState = op.state_->fetch_add(running_flag, stdexec::__std::memory_order_acq_rel);
+      prevState = op.state_->fetch_add(running_flag, STDEXEC::__std::memory_order_acq_rel);
       if (prevState == starting_flag) {
         op.state_ = nullptr;
       }
@@ -595,7 +595,7 @@ namespace exec::__win32 {
     }
 
     void request_stop() noexcept {
-      auto prevState = state_->load(stdexec::__std::memory_order_relaxed);
+      auto prevState = state_->load(STDEXEC::__std::memory_order_relaxed);
       do {
         STDEXEC_ASSERT((prevState & running_flag) == 0);
         if ((prevState & starting_flag) != 0) {
@@ -604,8 +604,8 @@ namespace exec::__win32 {
       } while (!state_->compare_exchange_weak(
         prevState,
         prevState | stop_requested_flag,
-        stdexec::__std::memory_order_acq_rel,
-        stdexec::__std::memory_order_relaxed));
+        STDEXEC::__std::memory_order_acq_rel,
+        STDEXEC::__std::memory_order_relaxed));
 
       STDEXEC_ASSERT((prevState & starting_flag) == 0);
 
@@ -653,8 +653,8 @@ namespace exec::__win32 {
 
     PTP_TIMER timer_;
     TP_CALLBACK_ENVIRON environ_;
-    stdexec::__std::atomic<std::uint32_t> *state_{nullptr};
-    stdexec::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
+    STDEXEC::__std::atomic<std::uint32_t> *state_{nullptr};
+    STDEXEC::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
       stopCallback_;
   };
 
@@ -664,10 +664,10 @@ namespace exec::__win32 {
   template <class Rcvr>
   class windows_thread_pool::_schedule_at_op<Rcvr>::type final
     : public windows_thread_pool::time_schedule_op<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>
       > {
     using base =
-      windows_thread_pool::time_schedule_op<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>;
+      windows_thread_pool::time_schedule_op<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>;
 
    public:
     using __id = _schedule_at_op<Rcvr>;
@@ -676,7 +676,7 @@ namespace exec::__win32 {
       windows_thread_pool &pool,
       windows_thread_pool::clock_type::time_point dueTime,
       Rcvr rcvr)
-      : base(pool, stdexec::get_stop_token(rcvr).stop_possible())
+      : base(pool, STDEXEC::get_stop_token(rcvr).stop_possible())
       , dueTime_(dueTime)
       , rcvr_(std::move(rcvr)) {
     }
@@ -689,16 +689,16 @@ namespace exec::__win32 {
       ft.dwLowDateTime = ticks.LowPart;
       ft.dwHighDateTime = ticks.HighPart;
 
-      this->start_impl(stdexec::get_stop_token(stdexec::get_env(rcvr_)), ft);
+      this->start_impl(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)), ft);
     }
 
    private:
     void set_value_impl() noexcept override {
-      stdexec::set_value(std::move(rcvr_));
+      STDEXEC::set_value(std::move(rcvr_));
     }
 
     void set_stopped_impl() noexcept override {
-      stdexec::set_stopped(std::move(rcvr_));
+      STDEXEC::set_stopped(std::move(rcvr_));
     }
 
     windows_thread_pool::clock_type::time_point dueTime_;
@@ -707,11 +707,11 @@ namespace exec::__win32 {
 
   class windows_thread_pool::schedule_at_sender {
    public:
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<
-      stdexec::set_value_t(),
-      stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<
+      STDEXEC::set_value_t(),
+      STDEXEC::set_error_t(std::exception_ptr),
+      STDEXEC::set_stopped_t()
     >;
     using __id = schedule_at_sender;
     using __t = schedule_at_sender;
@@ -722,7 +722,7 @@ namespace exec::__win32 {
     }
 
     template <class Rcvr>
-      requires stdexec::receiver_of<Rcvr, completion_signatures>
+      requires STDEXEC::receiver_of<Rcvr, completion_signatures>
     auto connect(Rcvr rcvr) const -> schedule_at_op<Rcvr> {
       return schedule_at_op<Rcvr>{*pool_, dueTime_, static_cast<Rcvr &&>(rcvr)};
     }
@@ -743,16 +743,16 @@ namespace exec::__win32 {
   template <class Duration, class Rcvr>
   class windows_thread_pool::_schedule_after_op<Duration, Rcvr>::type final
     : public windows_thread_pool::time_schedule_op<
-        stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>
+        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>
       > {
     using base =
-      windows_thread_pool::time_schedule_op<stdexec::stop_token_of_t<stdexec::env_of_t<Rcvr>>>;
+      windows_thread_pool::time_schedule_op<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>;
 
    public:
     using __id = _schedule_after_op<Duration, Rcvr>;
 
     explicit type(windows_thread_pool &pool, Duration duration, Rcvr rcvr)
-      : base(pool, stdexec::get_stop_token(rcvr).stop_possible())
+      : base(pool, STDEXEC::get_stop_token(rcvr).stop_possible())
       , duration_(duration)
       , rcvr_(std::move(rcvr)) {
     }
@@ -767,16 +767,16 @@ namespace exec::__win32 {
       ft.dwLowDateTime = ticks.LowPart;
       ft.dwHighDateTime = ticks.HighPart;
 
-      this->start_impl(stdexec::get_stop_token(stdexec::get_env(rcvr_)), ft);
+      this->start_impl(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)), ft);
     }
 
    private:
     void set_value_impl() noexcept override {
-      stdexec::set_value(std::move(rcvr_));
+      STDEXEC::set_value(std::move(rcvr_));
     }
 
     void set_stopped_impl() noexcept override {
-      stdexec::set_stopped(std::move(rcvr_));
+      STDEXEC::set_stopped(std::move(rcvr_));
     }
 
     Duration duration_;
@@ -786,11 +786,11 @@ namespace exec::__win32 {
   template <class Duration>
   class windows_thread_pool::_schedule_after<Duration>::sender {
    public:
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<
-      stdexec::set_value_t(),
-      stdexec::set_error_t(std::exception_ptr),
-      stdexec::set_stopped_t()
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<
+      STDEXEC::set_value_t(),
+      STDEXEC::set_error_t(std::exception_ptr),
+      STDEXEC::set_stopped_t()
     >;
     using __id = _schedule_after<Duration>;
 
@@ -800,7 +800,7 @@ namespace exec::__win32 {
     }
 
     template <class Rcvr>
-      requires stdexec::receiver_of<Rcvr, completion_signatures>
+      requires STDEXEC::receiver_of<Rcvr, completion_signatures>
     auto connect(Rcvr rcvr) const -> schedule_after_op<Duration, Rcvr> {
       return schedule_after_op<Duration, Rcvr>{*pool_, duration_, static_cast<Rcvr &&>(rcvr)};
     }
@@ -862,7 +862,7 @@ namespace exec::__win32 {
   };
 
   inline auto windows_thread_pool::attrs::query(
-    stdexec::get_completion_scheduler_t<stdexec::set_value_t>) const noexcept -> scheduler {
+    STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept -> scheduler {
     return scheduler{*pool_};
   }
 
@@ -934,8 +934,8 @@ namespace exec {
   using __win32::windows_thread_pool;
 
   static_assert(
-    stdexec::scheduler<decltype(windows_thread_pool{}.get_scheduler())>,
-    "windows_thread_pool::scheduler must model stdexec::scheduler");
+    STDEXEC::scheduler<decltype(windows_thread_pool{}.get_scheduler())>,
+    "windows_thread_pool::scheduler must model STDEXEC::scheduler");
 } // namespace exec
 
 #endif

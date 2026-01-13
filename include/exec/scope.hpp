@@ -20,9 +20,9 @@
 namespace exec {
 
   template <class _Fn, class... _Ts>
-    requires stdexec::__nothrow_callable<_Fn, _Ts...>
+    requires STDEXEC::__nothrow_callable<_Fn, _Ts...>
   struct scope_guard {
-    stdexec::__scope_guard<_Fn, _Ts...> __guard_;
+    STDEXEC::__scope_guard<_Fn, _Ts...> __guard_;
 
     void dismiss() noexcept {
       __guard_.__dismiss();

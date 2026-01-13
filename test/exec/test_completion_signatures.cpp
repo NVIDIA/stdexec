@@ -15,28 +15,28 @@
  */
 
 #include <exec/any_sender_of.hpp>
-#include <exec/inline_scheduler.hpp>
-#include <exec/when_any.hpp>
 #include <exec/env.hpp>
+#include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/when_any.hpp>
 #include <stdexec/stop_token.hpp>
 
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 
 #include <catch2/catch.hpp>
 
-using namespace stdexec;
+using namespace STDEXEC;
 using namespace exec;
 
 // NOLINTBEGIN(misc-unused-using-decls)
-using stdexec::completion_signatures;
-using stdexec::set_error;
-using stdexec::set_error_t;
-using stdexec::set_stopped;
-using stdexec::set_stopped_t;
-using stdexec::set_value;
-using stdexec::set_value_t;
+using STDEXEC::completion_signatures;
+using STDEXEC::set_error;
+using STDEXEC::set_error_t;
+using STDEXEC::set_stopped;
+using STDEXEC::set_stopped_t;
+using STDEXEC::set_value;
+using STDEXEC::set_value_t;
 // NOLINTEND(misc-unused-using-decls)
 
 namespace {
@@ -124,8 +124,8 @@ namespace {
   struct filter_value_only {
     template <class Sig>
     constexpr bool operator()(Sig*) const noexcept {
-      return stdexec::__detail::__tag_of_sig_t<Sig>::__disposition
-          == stdexec::__disposition::__value;
+      return STDEXEC::__detail::__tag_of_sig_t<Sig>::__disposition
+          == STDEXEC::__disposition::__value;
     }
   };
 

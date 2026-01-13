@@ -22,7 +22,7 @@
 
 #  include <ranges>
 
-namespace stdexec::ranges {
+namespace STDEXEC::ranges {
   using std::ranges::begin;
   using std::ranges::end;
 
@@ -36,25 +36,25 @@ namespace stdexec::ranges {
 
 #  include <iterator>
 
-namespace stdexec::ranges {
+namespace STDEXEC::ranges {
 
   namespace __detail {
     void begin();
     void end();
 
     template <class _Ty>
-    concept __has_member_begin = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).begin(); };
+    concept __has_member_begin = requires(_Ty&& __val) { static_cast<_Ty&&>(__val).begin(); };
 
     template <class _Ty>
     concept __has_free_begin = __has_member_begin<_Ty>
-                            || requires(_Ty&& __v) { begin((static_cast<_Ty&&>(__v))); };
+                            || requires(_Ty&& __val) { begin((static_cast<_Ty&&>(__val))); };
 
     template <class _Ty>
-    concept __has_member_end = requires(_Ty&& __v) { static_cast<_Ty&&>(__v).end(); };
+    concept __has_member_end = requires(_Ty&& __val) { static_cast<_Ty&&>(__val).end(); };
 
     template <class _Ty>
     concept __has_free_end = __has_member_end<_Ty>
-                          || requires(_Ty&& __v) { end((static_cast<_Ty&&>(__v))); };
+                          || requires(_Ty&& __val) { end((static_cast<_Ty&&>(__val))); };
 
     struct __begin_t {
       template <class _Range>
@@ -106,6 +106,6 @@ namespace stdexec::ranges {
   template <class _Range>
   using range_value_t = std::iterator_traits<iterator_t<_Range>>::value_type;
 
-} // namespace stdexec::ranges
+} // namespace STDEXEC::ranges
 
 #endif

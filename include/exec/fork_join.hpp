@@ -39,7 +39,7 @@ namespace exec {
       template <class Rcvr, class Tuple>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       void operator()(Rcvr& rcvr, const Tuple& tupl) const noexcept {
-        stdexec::__apply(_impl_fn{}, tupl, rcvr);
+        STDEXEC::__apply(_impl_fn{}, tupl, rcvr);
       }
     };
 
@@ -47,31 +47,31 @@ namespace exec {
       template <class CacheSndr, class... Closures>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       auto operator()(CacheSndr sndr, Closures&&... closures) const {
-        return stdexec::when_all(static_cast<Closures&&>(closures)(sndr)...);
+        return STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...);
       }
     };
 
     template <class Completions>
-    using _maybe_eptr_completion_t = stdexec::__if_c<
-      stdexec::__nothrow_decay_copyable_results_t<Completions>::value,
-      stdexec::__mset_nil,
-      stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>
+    using _maybe_eptr_completion_t = STDEXEC::__if_c<
+      STDEXEC::__nothrow_decay_copyable_results_t<Completions>::value,
+      STDEXEC::__mset_nil,
+      STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>
     >;
 
     template <class Completions>
-    using _variant_t = stdexec::__mset_insert<
-      stdexec::__for_each_completion_signature<
+    using _variant_t = STDEXEC::__mset_insert<
+      STDEXEC::__for_each_completion_signature<
         Completions,
-        stdexec::__decayed_tuple,
-        stdexec::__mset
+        STDEXEC::__decayed_tuple,
+        STDEXEC::__mset
       >,
       _maybe_eptr_completion_t<Completions>
-    >::template rebind<stdexec::__variant_for>;
+    >::template rebind<STDEXEC::__variant_for>;
 
     template <class Domain>
     struct _env_t {
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      static constexpr auto query(stdexec::get_domain_t) noexcept -> Domain {
+      static constexpr auto query(STDEXEC::get_domain_t) noexcept -> Domain {
         return {};
       }
     };
@@ -84,15 +84,15 @@ namespace exec {
     // `Tag(const Args&...)`.
     template <class... AsyncResults>
     using _cache_sndr_completions_t =
-      stdexec::completion_signatures<stdexec::__mapply<stdexec::__q<_cref_sig_t>, AsyncResults>...>;
+      STDEXEC::completion_signatures<STDEXEC::__mapply<STDEXEC::__q<_cref_sig_t>, AsyncResults>...>;
 
     template <class Variant, class Domain>
     struct _cache_sndr_t {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
 
       template <class Rcvr>
       struct _opstate_t {
-        using operation_state_concept = stdexec::operation_state_t;
+        using operation_state_concept = STDEXEC::operation_state_t;
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
           Variant::visit(_dematerialize_fn{}, *_results_, _rcvr_);
@@ -105,7 +105,7 @@ namespace exec {
       template <class... _Env>
       STDEXEC_ATTRIBUTE(host, device)
       auto get_completion_signatures(_Env&&...) const noexcept {
-        return stdexec::__mapply<stdexec::__qq<_cache_sndr_completions_t>, Variant>{};
+        return STDEXEC::__mapply<STDEXEC::__qq<_cache_sndr_completions_t>, Variant>{};
       }
 
       template <class Rcvr>
@@ -122,7 +122,7 @@ namespace exec {
     };
 
     template <class Completions, class Closures, class Domain>
-    using _when_all_sndr_t = stdexec::__apply_result_t<
+    using _when_all_sndr_t = STDEXEC::__apply_result_t<
       _mk_when_all_fn,
       Closures,
       _cache_sndr_t<_variant_t<Completions>, Domain>
@@ -130,30 +130,30 @@ namespace exec {
 
     template <class Sndr, class Closures, class Rcvr>
     struct _opstate_t {
-      using operation_state_concept = stdexec::operation_state_t;
-      using _env_t = stdexec::__call_result_t<stdexec::__env::__fwd_fn, stdexec::env_of_t<Rcvr>>;
-      using _child_completions_t = stdexec::__completion_signatures_of_t<Sndr, _env_t>;
-      using _domain_t = stdexec::__completion_domain_of_t<stdexec::set_value_t, Sndr, _env_t>;
+      using operation_state_concept = STDEXEC::operation_state_t;
+      using _env_t = STDEXEC::__call_result_t<STDEXEC::__env::__fwd_fn, STDEXEC::env_of_t<Rcvr>>;
+      using _child_completions_t = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
+      using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
         fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
-        stdexec::connect_result_t<Sndr, stdexec::__rcvr_ref_t<_opstate_t, _env_t>>;
+        STDEXEC::connect_result_t<Sndr, STDEXEC::__rcvr_ref_t<_opstate_t, _env_t>>;
       using _fork_opstate_t =
-        stdexec::connect_result_t<_when_all_sndr_t, stdexec::__rcvr_ref_t<Rcvr>>;
+        STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__rcvr_ref_t<Rcvr>>;
       using _cache_sndr_t = fork_join_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
       explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
         , _fork_opstate_(
-            stdexec::connect(
-              stdexec::__apply(
+            STDEXEC::connect(
+              STDEXEC::__apply(
                 _mk_when_all_fn{},
                 static_cast<Closures&&>(closures),
                 _cache_sndr_t{&_cache_}),
-              stdexec::__ref_rcvr(_rcvr_))) {
+              STDEXEC::__ref_rcvr(_rcvr_))) {
         _child_opstate_.__construct_from(
-          stdexec::connect, static_cast<Sndr&&>(sndr), stdexec::__ref_rcvr(*this));
+          STDEXEC::connect, static_cast<Sndr&&>(sndr), STDEXEC::__ref_rcvr(*this));
       }
 
       STDEXEC_IMMOVABLE(_opstate_t);
@@ -166,57 +166,57 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
-        stdexec::start(_child_opstate_.__get());
+        STDEXEC::start(_child_opstate_.__get());
       }
 
       template <class Tag, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
       void _complete(Tag, Args&&... args) noexcept {
         STDEXEC_TRY {
-          using _tuple_t = stdexec::__decayed_tuple<Tag, Args...>;
+          using _tuple_t = STDEXEC::__decayed_tuple<Tag, Args...>;
           _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
         }
         STDEXEC_CATCH_ALL {
-          if constexpr (!stdexec::__nothrow_decay_copyable<Args...>) {
-            using _tuple_t = stdexec::__tuple<stdexec::set_error_t, ::std::exception_ptr>;
+          if constexpr (!STDEXEC::__nothrow_decay_copyable<Args...>) {
+            using _tuple_t = STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>;
             _cache_._results_
-              .template emplace<_tuple_t>(stdexec::set_error, ::std::current_exception());
+              .template emplace<_tuple_t>(STDEXEC::set_error, ::std::current_exception());
           }
         }
         _child_opstate_.__destroy();
-        stdexec::start(_fork_opstate_);
+        STDEXEC::start(_fork_opstate_);
       }
 
       template <class... Values>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       void set_value(Values&&... values) noexcept {
-        this->_complete(stdexec::set_value, static_cast<Values&&>(values)...);
+        this->_complete(STDEXEC::set_value, static_cast<Values&&>(values)...);
       }
 
       template <class Error>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       void set_error(Error&& err) noexcept {
-        this->_complete(stdexec::set_error, static_cast<Error&&>(err));
+        this->_complete(STDEXEC::set_error, static_cast<Error&&>(err));
       }
 
       STDEXEC_ATTRIBUTE(always_inline, host, device) void set_stopped() noexcept {
-        this->_complete(stdexec::set_stopped);
+        this->_complete(STDEXEC::set_stopped);
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      constexpr auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Rcvr>> {
-        return stdexec::__fwd_env(stdexec::get_env(_rcvr_));
+      constexpr auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>> {
+        return STDEXEC::__fwd_env(STDEXEC::get_env(_rcvr_));
       }
 
       Rcvr _rcvr_;
       _variant_t<_child_completions_t> _cache_{};
-      stdexec::__manual_lifetime<_child_opstate_t> _child_opstate_{};
+      STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
       _fork_opstate_t _fork_opstate_;
     };
 
     template <class... Closures>
     struct _closure_t {
-      using _closures_t = stdexec::__tuple<Closures...>;
+      using _closures_t = STDEXEC::__tuple<Closures...>;
 
       template <class Sndr>
       STDEXEC_ATTRIBUTE(host, device)
@@ -230,14 +230,14 @@ namespace exec {
     };
 
     template <class Sndr, class... Closures>
-      requires stdexec::sender<Sndr>
+      requires STDEXEC::sender<Sndr>
     STDEXEC_ATTRIBUTE(host, device)
     auto operator()(Sndr sndr, Closures... closures) const -> _sndr_t<Sndr, Closures...> {
       return {{}, {static_cast<Closures&&>(closures)...}, static_cast<Sndr&&>(sndr)};
     }
 
     template <class... Closures>
-      requires((!stdexec::sender<Closures>) && ...)
+      requires((!STDEXEC::sender<Closures>) && ...)
     STDEXEC_ATTRIBUTE(host, device)
     auto operator()(Closures... closures) const -> _closure_t<Closures...> {
       return {{static_cast<Closures&&>(closures)...}};
@@ -245,23 +245,23 @@ namespace exec {
   };
 
   template <>
-  struct fork_join_t::_env_t<stdexec::indeterminate_domain<>> { };
+  struct fork_join_t::_env_t<STDEXEC::indeterminate_domain<>> { };
 
   template <class Sndr, class... Closures>
   struct fork_join_t::_sndr_t {
-    using sender_concept = stdexec::sender_t;
-    using _closures_t = stdexec::__tuple<Closures...>;
+    using sender_concept = STDEXEC::sender_t;
+    using _closures_t = STDEXEC::__tuple<Closures...>;
 
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
     STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) noexcept {
-      using namespace stdexec;
-      using _domain_t = stdexec::__completion_domain_of_t<set_value_t, Sndr, Env...>;
+      using namespace STDEXEC;
+      using _domain_t = STDEXEC::__completion_domain_of_t<set_value_t, Sndr, Env...>;
       using _child_t = __copy_cvref_t<Self, Sndr>;
       using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
-      using __decay_copyable_results_t = stdexec::__decay_copyable_results_t<_child_completions_t>;
+      using __decay_copyable_results_t = STDEXEC::__decay_copyable_results_t<_child_completions_t>;
 
-      if constexpr (!stdexec::__valid_completion_signatures<_child_completions_t>) {
+      if constexpr (!STDEXEC::__valid_completion_signatures<_child_completions_t>) {
         return _child_completions_t{};
       } else if constexpr (!__decay_copyable_results_t::value) {
         return _ERROR_<
@@ -292,12 +292,12 @@ namespace exec {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto get_env() const noexcept -> stdexec::__fwd_env_t<stdexec::env_of_t<Sndr>> {
-      return stdexec::__fwd_env(stdexec::get_env(sndr_));
+    constexpr auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sndr>> {
+      return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
     }
 
     STDEXEC_ATTRIBUTE(no_unique_address) fork_join_t _tag_;
-    stdexec::__tuple<Closures...> _closures_;
+    STDEXEC::__tuple<Closures...> _closures_;
     Sndr sndr_;
   };
 

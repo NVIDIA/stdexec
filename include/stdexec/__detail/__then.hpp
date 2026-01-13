@@ -26,11 +26,11 @@
 #include "__senders.hpp"
 
 // include these after __execution_fwd.hpp
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    inline constexpr __mstring __then_context = "In stdexec::then(Sender, Function)..."_mstr;
+    inline constexpr __mstring __then_context = "In STDEXEC::then(Sender, Function)..."_mstr;
     using __on_not_callable = __callable_error<__then_context>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
@@ -72,7 +72,7 @@ namespace stdexec {
         void operator()(__ignore, _State& __state, _Receiver& __rcvr, _Tag, _Args&&... __args)
           const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
-            stdexec::__set_value_invoke(
+            STDEXEC::__set_value_invoke(
               static_cast<_Receiver&&>(__rcvr),
               static_cast<_State&&>(__state),
               static_cast<_Args&&>(__args)...);
@@ -95,4 +95,4 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<then_t> : __then::__then_impl { };
-} // namespace stdexec
+} // namespace STDEXEC

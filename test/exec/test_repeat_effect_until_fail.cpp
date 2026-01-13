@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include <stdexec/execution.hpp>
 #include <exec/repeat_effect_until.hpp>
+#include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 struct not_a_bool { };
 
 auto main() -> int {
   ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_effect_until();
   // build error: _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_
-  stdexec::sync_wait(std::move(snd));
+  STDEXEC::sync_wait(std::move(snd));
 }

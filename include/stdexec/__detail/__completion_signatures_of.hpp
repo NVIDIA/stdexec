@@ -18,11 +18,11 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__debug.hpp" // IWYU pragma: keep for stdexec::__debug_sender
+#include "__debug.hpp" // IWYU pragma: keep for STDEXEC::__debug_sender
 #include "__get_completion_signatures.hpp"
 #include "__sender_concepts.hpp" // IWYU pragma: export
 
-namespace stdexec {
+namespace STDEXEC {
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
@@ -33,17 +33,17 @@ namespace stdexec {
   template <class _Sender, class... _Env>
   auto __checked_completion_signatures(_Sender &&__sndr, _Env &&...__env) noexcept {
     using __completions_t = __completion_signatures_of_t<_Sender, _Env...>;
-    stdexec::__debug_sender(static_cast<_Sender &&>(__sndr), __env...);
+    STDEXEC::__debug_sender(static_cast<_Sender &&>(__sndr), __env...);
     return __completions_t{};
   }
 
   template <class _Sender, class... _Env>
     requires sender_in<_Sender, _Env...>
   using completion_signatures_of_t =
-    decltype(stdexec::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
+    decltype(STDEXEC::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 #else
   template <class _Sender, class... _Env>
     requires sender_in<_Sender, _Env...>
   using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env...>;
 #endif
-} // namespace stdexec
+} // namespace STDEXEC

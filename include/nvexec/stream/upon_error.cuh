@@ -79,9 +79,9 @@ namespace nvexec::_strm {
               <<<1, 1, 0, stream>>>(std::move(f_), static_cast<Error&&>(error));
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
-              op_state_.propagate_completion_signal(stdexec::set_value);
+              op_state_.propagate_completion_signal(STDEXEC::set_value);
             } else {
-              op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             }
           } else {
             using decayed_result_t = __decay_t<result_t>;
@@ -91,9 +91,9 @@ namespace nvexec::_strm {
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status == cudaSuccess) {
               op_state_.defer_temp_storage_destruction(d_result);
-              op_state_.propagate_completion_signal(stdexec::set_value, std::move(*d_result));
+              op_state_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
             } else {
-              op_state_.propagate_completion_signal(stdexec::set_error, std::move(status));
+              op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             }
           }
         }
@@ -117,7 +117,7 @@ namespace nvexec::_strm {
 
   template <class SenderId, class Fun>
   struct upon_error_sender_t {
-    using Sender = stdexec::__t<SenderId>;
+    using Sender = STDEXEC::__t<SenderId>;
 
     struct __t : stream_sender_base {
       using __id = upon_error_sender_t;
@@ -141,27 +141,27 @@ namespace nvexec::_strm {
 
       template <class... Sizes>
       struct max_in_pack {
-        static constexpr std::size_t value = std::max({std::size_t{}, __v<Sizes>...});
+        static constexpr std::size_t value = (std::max) ({std::size_t{}, Sizes::value...});
       };
 
       template <class Receiver>
         requires sender_in<Sender, env_of_t<Receiver>>
       struct max_result_size {
         template <class... _As>
-        using result_size_for_t = stdexec::__t<result_size_for<_As...>>;
+        using result_size_for_t = STDEXEC::__t<result_size_for<_As...>>;
 
-        static constexpr std::size_t value = __v<__gather_completions_of_t<
+        static constexpr std::size_t value = __gather_completions_of_t<
           set_error_t,
           Sender,
           env_of_t<Receiver>,
           __q<result_size_for_t>,
           __q<max_in_pack>
-        >>;
+        >::value;
       };
 
       template <class Receiver>
-      using receiver_t = stdexec::__t<
-        _upon_error::receiver_t<max_result_size<Receiver>::value, stdexec::__id<Receiver>, Fun>
+      using receiver_t = STDEXEC::__t<
+        _upon_error::receiver_t<max_result_size<Receiver>::value, STDEXEC::__id<Receiver>, Fun>
       >;
 
       template <class Error>
@@ -182,13 +182,14 @@ namespace nvexec::_strm {
         return stream_op_state<__copy_cvref_t<Self, Sender>>(
           static_cast<Self&&>(self).sndr_,
           static_cast<Receiver&&>(rcvr),
-          [&](operation_state_base_t<stdexec::__id<Receiver>>& stream_provider)
+          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
             -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) -> completion_signatures<Self, Env...> {
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
+        -> completion_signatures<Self, Env...> {
         return {};
       }
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
@@ -200,7 +201,7 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<stdexec::upon_error_t, Env> {
+  struct transform_sender_for<STDEXEC::upon_error_t, Env> {
     template <class Fn, stream_completing_sender<Env> Sender>
     auto operator()(__ignore, Fn fun, Sender&& sndr) const {
       using _sender_t = __t<upon_error_sender_t<__id<__decay_t<Sender>>, Fn>>;
@@ -211,10 +212,10 @@ namespace nvexec::_strm {
   };
 } // namespace nvexec::_strm
 
-namespace stdexec::__detail {
+namespace STDEXEC::__detail {
   template <class SenderId, class Fun>
   inline constexpr __mconst<nvexec::_strm::upon_error_sender_t<__demangle_t<__t<SenderId>>, Fun>>
     __demangle_v<nvexec::_strm::upon_error_sender_t<SenderId, Fun>>{};
-} // namespace stdexec::__detail
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

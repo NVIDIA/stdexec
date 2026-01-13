@@ -24,7 +24,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.stopped_as_error]
   namespace __sae {
@@ -49,4 +49,4 @@ namespace stdexec {
 
   using __sae::stopped_as_error_t;
   inline constexpr stopped_as_error_t stopped_as_error{};
-} // namespace stdexec
+} // namespace STDEXEC

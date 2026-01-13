@@ -26,6 +26,7 @@ jobs:
           - { name: "CPU (gcc 11, Release)",         build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
           - { name: "CPU (gcc 11, Release, ASAN)",   build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
           - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 13, Debug)",           build: "Release", tag: gcc13-cuda12.9,  cxxflags: "", }
     container:
       options: -u root
       image: rapidsai/devcontainers:26.02-cpp-${{ matrix.tag }}
@@ -140,8 +141,8 @@ jobs:
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
         run: |
-          docker pull rapidsai/devcontainers:25.10-cuda12.9-cl14.43
-          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:25.10-cuda12.9-cl14.43 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+          docker pull rapidsai/devcontainers:26.02-cuda12.9-cl14.43
+          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:26.02-cuda12.9-cl14.43 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest

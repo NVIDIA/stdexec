@@ -23,7 +23,7 @@
 
 #include <memory>
 
-namespace stdexec {
+namespace STDEXEC {
   template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
   struct __rcvr_ref {
     using receiver_concept = receiver_t;
@@ -36,24 +36,24 @@ namespace stdexec {
     template <class... _As>
     STDEXEC_ATTRIBUTE(host, device)
     void set_value(_As&&... __as) noexcept {
-      stdexec::set_value(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_As&&>(__as)...);
+      STDEXEC::set_value(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
     void set_error(_Error&& __err) noexcept {
-      stdexec::set_error(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_Error&&>(__err));
+      STDEXEC::set_error(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_Error&&>(__err));
     }
 
     STDEXEC_ATTRIBUTE(host, device) void set_stopped() noexcept {
-      stdexec::set_stopped(static_cast<_Rcvr&&>(*__rcvr_));
+      STDEXEC::set_stopped(static_cast<_Rcvr&&>(*__rcvr_));
     }
 
     [[nodiscard]]
     STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> _Env {
       static_assert(
         __same_as<_Env, env_of_t<_Rcvr>>, "get_env() must return the same type as env_of_t<_Rcvr>");
-      return stdexec::get_env(*__rcvr_);
+      return STDEXEC::get_env(*__rcvr_);
     }
 
    private:
@@ -86,7 +86,7 @@ namespace stdexec {
   STDEXEC_ATTRIBUTE(nodiscard, host, device)
   constexpr auto __ref_rcvr(_Rcvr& __rcvr) noexcept {
     if constexpr (__same_as<_Env, void>) {
-      return stdexec::__ref_rcvr<env_of_t<_Rcvr>>(__rcvr);
+      return STDEXEC::__ref_rcvr<env_of_t<_Rcvr>>(__rcvr);
     } else if constexpr (__is_instance_of<_Rcvr, __rcvr_ref>) {
       return __rcvr;
     } else if constexpr (!__detail::__is_type_complete<_Rcvr>(0)) {
@@ -102,5 +102,5 @@ namespace stdexec {
   }
 
   template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
-  using __rcvr_ref_t = decltype(stdexec::__ref_rcvr<_Env>(stdexec::__declval<_Rcvr&>()));
-} // namespace stdexec
+  using __rcvr_ref_t = decltype(STDEXEC::__ref_rcvr<_Env>(STDEXEC::__declval<_Rcvr&>()));
+} // namespace STDEXEC

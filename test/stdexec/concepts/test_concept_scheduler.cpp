@@ -17,7 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
@@ -36,7 +36,7 @@ namespace {
 
   struct my_scheduler {
     struct my_sender {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<
         ex::set_value_t(),
         ex::set_error_t(std::exception_ptr),
@@ -51,7 +51,8 @@ namespace {
 
     template <typename CPO>
     [[nodiscard]]
-    auto query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler {
+    auto
+      query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler {
       return {};
     }
 
@@ -82,7 +83,7 @@ namespace {
 
   struct my_scheduler_except {
     struct my_sender {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<
         ex::set_value_t(),
         ex::set_error_t(std::exception_ptr),
@@ -116,7 +117,7 @@ namespace {
 
   struct noeq_sched {
     struct my_sender {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<
         ex::set_value_t(),
         ex::set_error_t(std::exception_ptr),

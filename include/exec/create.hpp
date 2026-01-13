@@ -20,7 +20,7 @@
 
 namespace exec {
   namespace __create {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     struct __void {
       template <class _Fun>
@@ -37,11 +37,11 @@ namespace exec {
 
     template <class _ReceiverId, class _Fun, class _ArgsId>
     struct __operation {
-      using _Context = __context<stdexec::__t<_ReceiverId>, stdexec::__t<_ArgsId>>;
+      using _Context = __context<STDEXEC::__t<_ReceiverId>, STDEXEC::__t<_ArgsId>>;
       using _Result = __call_result_t<_Fun, _Context&>;
       using _State = __if_c<same_as<_Result, void>, __void, std::optional<_Result>>;
 
-      struct __t : stdexec::__immovable {
+      struct __t : STDEXEC::__immovable {
         using __id = __operation;
 
         STDEXEC_ATTRIBUTE(no_unique_address) _Context __ctx_;
@@ -57,12 +57,12 @@ namespace exec {
 
     template <class _Fun, class _ArgsId, class... _Sigs>
     struct __sender {
-      using _Args = stdexec::__t<_ArgsId>;
+      using _Args = STDEXEC::__t<_ArgsId>;
 
       struct __t {
         using __id = __sender;
-        using sender_concept = stdexec::sender_t;
-        using completion_signatures = stdexec::completion_signatures<_Sigs...>;
+        using sender_concept = STDEXEC::sender_t;
+        using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
 
         _Fun __fun_;
         _Args __args_;
@@ -72,7 +72,7 @@ namespace exec {
                 && constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
                 && constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-          -> stdexec::__t<__operation<stdexec::__id<_Receiver>, _Fun, _ArgsId>> {
+          -> STDEXEC::__t<__operation<STDEXEC::__id<_Receiver>, _Fun, _ArgsId>> {
           static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
           return {
             {},
@@ -97,12 +97,12 @@ namespace exec {
   } // namespace __create
 
   template <class... _Sigs>
-  extern const stdexec::__mfront<void, _Sigs...> create;
+  extern const STDEXEC::__mfront<void, _Sigs...> create;
 
-  template <stdexec::__completion_signature... _Sigs>
+  template <STDEXEC::__completion_signature... _Sigs>
   inline constexpr __create::__create_t<_Sigs...> create<_Sigs...>{};
 
-  template <stdexec::__completion_signature... _Sigs>
+  template <STDEXEC::__completion_signature... _Sigs>
   inline constexpr __create::__create_t<_Sigs...>
-    create<stdexec::completion_signatures<_Sigs...>>{};
+    create<STDEXEC::completion_signatures<_Sigs...>>{};
 } // namespace exec

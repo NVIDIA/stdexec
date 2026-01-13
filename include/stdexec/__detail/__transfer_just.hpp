@@ -29,7 +29,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
   namespace __transfer_just {
@@ -43,7 +43,7 @@ namespace stdexec {
 
     inline auto __transform_sender_fn() {
       return []<class _Data>(__ignore, _Data&& __data) {
-        return stdexec::__apply(__make_transform_fn(), static_cast<_Data&&>(__data));
+        return STDEXEC::__apply(__make_transform_fn(), static_cast<_Data&&>(__data));
       };
     }
 
@@ -74,7 +74,7 @@ namespace stdexec {
 
     struct __transfer_just_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Data>(const _Data& __data) noexcept {
-        return stdexec::__apply(__make_attrs_fn(), __data);
+        return STDEXEC::__apply(__make_attrs_fn(), __data);
       };
 
       static constexpr auto get_completion_signatures =
@@ -89,6 +89,6 @@ namespace stdexec {
 
   template <>
   struct __sexpr_impl<transfer_just_t> : __transfer_just::__transfer_just_impl { };
-} // namespace stdexec
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

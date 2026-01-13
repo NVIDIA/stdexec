@@ -19,7 +19,7 @@
 #include "__config.hpp"
 #include "__utility.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
@@ -84,7 +84,7 @@ namespace stdexec {
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable&& __awaitable, _Promise*... __promise) {
     {
-      stdexec::__get_awaiter(static_cast<_Awaitable&&>(__awaitable), __promise...)
+      STDEXEC::__get_awaiter(static_cast<_Awaitable&&>(__awaitable), __promise...)
     } -> __awaiter<_Promise...>;
   };
 
@@ -94,8 +94,8 @@ namespace stdexec {
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t =
-    decltype(stdexec::__as_lvalue(
-               stdexec::__get_awaiter(__declval<_Awaitable>(), static_cast<_Promise*>(nullptr)...))
+    decltype(STDEXEC::__as_lvalue(
+               STDEXEC::__get_awaiter(__declval<_Awaitable>(), static_cast<_Promise*>(nullptr)...))
                .await_resume());
 
 #else
@@ -108,4 +108,4 @@ namespace stdexec {
   using __await_result_t = void;
 
 #endif
-} // namespace stdexec
+} // namespace STDEXEC

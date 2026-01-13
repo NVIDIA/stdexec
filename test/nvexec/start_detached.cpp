@@ -1,13 +1,13 @@
-#include <cstdlib>
 #include <catch2/catch.hpp>
+#include <cstdlib>
 #include <stdexec/execution.hpp>
 
+#include "common.cuh"
 #include "nvexec/detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
-#include "common.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 

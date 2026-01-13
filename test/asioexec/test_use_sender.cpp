@@ -18,19 +18,19 @@
 
 #include <asioexec/use_sender.hpp>
 
+#include <asioexec/asio_config.hpp>
+#include <catch2/catch.hpp>
 #include <chrono>
 #include <exception>
 #include <functional>
-#include <system_error>
-#include <type_traits>
-#include <utility>
-#include <asioexec/asio_config.hpp>
-#include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
+#include <system_error>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
+#include <type_traits>
+#include <utility>
 
-using namespace stdexec;
+using namespace STDEXEC;
 using namespace asioexec;
 
 namespace {
@@ -85,18 +85,18 @@ namespace {
     auto sender = t.async_wait(use_sender);
     static_assert(
       set_equivalent<
-        ::stdexec::completion_signatures_of_t<decltype(sender), ::stdexec::env<>>,
+        ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
         completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
       >);
     static_assert(
       set_equivalent<
-        ::stdexec::completion_signatures_of_t<const decltype(sender)&, ::stdexec::env<>>,
+        ::STDEXEC::completion_signatures_of_t<const decltype(sender)&, ::STDEXEC::env<>>,
         completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
       >);
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
-    auto op = ::stdexec::connect(std::move(sender), expect_stopped_receiver_ex(e, stopped));
+    auto op = ::STDEXEC::connect(std::move(sender), expect_stopped_receiver_ex(e, stopped));
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -121,7 +121,7 @@ namespace {
     };
     bool stopped = false;
     auto op =
-      ::stdexec::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
+      ::STDEXEC::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
     CHECK(!stopped);
     start(op);
     CHECK(stopped);
@@ -141,7 +141,7 @@ namespace {
     };
     bool stopped = false;
     auto op =
-      ::stdexec::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
+      ::STDEXEC::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
     CHECK(!stopped);
     start(op);
     CHECK(stopped);
@@ -160,7 +160,7 @@ namespace {
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
-    auto op = ::stdexec::connect(std::move(sender), expect_void_receiver_ex(invoked));
+    auto op = ::STDEXEC::connect(std::move(sender), expect_void_receiver_ex(invoked));
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -177,7 +177,7 @@ namespace {
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
-    auto op = ::stdexec::connect(std::move(sender), expect_void_receiver_ex(invoked));
+    auto op = ::STDEXEC::connect(std::move(sender), expect_void_receiver_ex(invoked));
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -204,7 +204,7 @@ namespace {
     "into a system_error",
     "[asioexec][use_sender]") {
     std::exception_ptr ex;
-    auto op = ::stdexec::connect(async_error_code(use_sender), expect_error_receiver_ex(ex));
+    auto op = ::STDEXEC::connect(async_error_code(use_sender), expect_error_receiver_ex(ex));
     CHECK(!ex);
     start(op);
     REQUIRE(ex);
@@ -228,7 +228,7 @@ namespace {
     "duplicate of another test)",
     "[asioexec][use_sender]") {
     std::exception_ptr ex;
-    auto op = ::stdexec::connect(async_std_error_code(use_sender), expect_error_receiver_ex(ex));
+    auto op = ::STDEXEC::connect(async_std_error_code(use_sender), expect_error_receiver_ex(ex));
     CHECK(!ex);
     start(op);
     REQUIRE(ex);
@@ -244,8 +244,8 @@ namespace {
     static_assert(
       std::is_same_v<decltype(t), use_sender_t::as_default_on_t<asio_impl::system_timer>>);
     t.expires_after(std::chrono::milliseconds(5));
-    auto op = ::stdexec::connect(t.async_wait(), expect_void_receiver_ex(invoked));
-    ::stdexec::start(op);
+    auto op = ::STDEXEC::connect(t.async_wait(), expect_void_receiver_ex(invoked));
+    ::STDEXEC::start(op);
     CHECK(ctx.run() != 0);
     CHECK(ctx.stopped());
   }
@@ -260,8 +260,8 @@ namespace {
     //
     //  See: https://github.com/NVIDIA/stdexec/issues/1684
     auto sender = asio_impl::async_read(socket, buf, use_sender);
-    auto op = ::stdexec::connect(std::move(sender), expect_error_receiver{});
-    ::stdexec::start(op);
+    auto op = ::STDEXEC::connect(std::move(sender), expect_error_receiver{});
+    ::STDEXEC::start(op);
     CHECK(ctx.run() != 0);
     CHECK(ctx.stopped());
   }

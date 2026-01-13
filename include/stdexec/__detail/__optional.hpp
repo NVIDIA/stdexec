@@ -26,12 +26,12 @@
 #include <new> // IWYU pragma: keep for ::new
 #include <utility>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __opt {
     struct __bad_optional_access : std::exception {
       [[nodiscard]]
       auto what() const noexcept -> const char* override {
-        return "stdexec::__optional: bad access";
+        return "STDEXEC::__optional: bad access";
       }
     };
 
@@ -64,8 +64,8 @@ namespace stdexec {
 
       template <__not_decays_to<__optional> _Up>
         requires constructible_from<_Tp, _Up>
-      __optional(_Up&& __v) noexcept(__nothrow_constructible_from<_Tp, _Up>) {
-        emplace(static_cast<_Up&&>(__v));
+      __optional(_Up&& __val) noexcept(__nothrow_constructible_from<_Tp, _Up>) {
+        emplace(static_cast<_Up&&>(__val));
       }
 
       template <class... _Us>
@@ -180,4 +180,4 @@ namespace stdexec {
   using __opt::__optional;
   using __opt::__bad_optional_access;
   using __opt::__nullopt;
-} // namespace stdexec
+} // namespace STDEXEC

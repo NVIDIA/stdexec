@@ -17,7 +17,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
 

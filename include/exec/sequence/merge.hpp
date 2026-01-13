@@ -29,7 +29,7 @@
 
 namespace exec {
   namespace __merge {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     template <class _Receiver>
     struct __operation_base {
@@ -38,39 +38,39 @@ namespace exec {
 
     template <class _ReceiverId>
     struct __result_receiver {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t {
-        using receiver_concept = stdexec::receiver_t;
+        using receiver_concept = STDEXEC::receiver_t;
         using __id = __result_receiver;
 
         __operation_base<_Receiver>* __op_;
 
         void set_value() noexcept {
-          stdexec::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
+          STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
         template <class _Error>
         void set_error(_Error&& __error) noexcept {
-          stdexec::set_error(
+          STDEXEC::set_error(
             static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
         }
 
         void set_stopped() noexcept {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__op_->__receiver_);
+          return STDEXEC::get_env(__op_->__receiver_);
         }
       };
     };
 
     template <class _ReceiverId>
     struct __merge_each_fn {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
-      template <stdexec::sender _Item>
+      template <STDEXEC::sender _Item>
       auto operator()(_Item&& __item, __operation_base<_Receiver>* __op) const
         noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
           -> next_sender_of_t<_Receiver, _Item> {
@@ -97,7 +97,7 @@ namespace exec {
 
     template <class _ReceiverId, class... _Sequences>
     struct __operation {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       using merge_each_fn_t = __combine::merge_each_fn_t<_ReceiverId>;
 
@@ -107,22 +107,22 @@ namespace exec {
       struct __t : __operation_base<_Receiver> {
         using __id = __operation;
 
-        connect_result_t<result_sender_t<_ReceiverId>, stdexec::__t<__result_receiver<_ReceiverId>>>
+        connect_result_t<result_sender_t<_ReceiverId>, STDEXEC::__t<__result_receiver<_ReceiverId>>>
           __op_result_;
 
         __t(_Receiver __rcvr, _Sequences... __sequences)
           : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
-          , __op_result_{stdexec::connect(
-              stdexec::when_all(
+          , __op_result_{STDEXEC::connect(
+              STDEXEC::when_all(
                 exec::ignore_all_values(
                   exec::transform_each(
                     static_cast<_Sequences&&>(__sequences),
                     merge_each_fn_t({}, this)))...),
-              stdexec::__t<__result_receiver<_ReceiverId>>{this})} {
+              STDEXEC::__t<__result_receiver<_ReceiverId>>{this})} {
         }
 
         void start() & noexcept {
-          stdexec::start(__op_result_);
+          STDEXEC::start(__op_result_);
         }
       };
     };
@@ -182,7 +182,7 @@ namespace exec {
         if constexpr (__ok<__result_t>) {
           return __result_t();
         } else {
-          return stdexec::__invalid_completion_signature(__result_t());
+          return STDEXEC::__invalid_completion_signature(__result_t());
         }
       }
 
@@ -190,10 +190,10 @@ namespace exec {
       struct __items_fn_t {
 
         template <class... _Sequences>
-        using __f = stdexec::__mapply<
-          stdexec::__munique<stdexec::__q<exec::item_types>>,
-          stdexec::__minvoke<
-            stdexec::__mconcat<stdexec::__qq<exec::item_types>>,
+        using __f = STDEXEC::__mapply<
+          STDEXEC::__munique<STDEXEC::__q<exec::item_types>>,
+          STDEXEC::__minvoke<
+            STDEXEC::__mconcat<STDEXEC::__qq<exec::item_types>>,
             __item_types_of_t<_Sequences, _Env...>...
           >
         >;

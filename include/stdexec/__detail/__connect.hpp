@@ -26,7 +26,7 @@
 #include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
   namespace __connect {
@@ -82,13 +82,13 @@ namespace stdexec {
 
       template <class _Sender, class _Receiver>
       static consteval auto __get_declfn() noexcept {
-        static_assert(sender<_Sender>, "The first argument to stdexec::connect must be a sender");
+        static_assert(sender<_Sender>, "The first argument to STDEXEC::connect must be a sender");
         if constexpr (!receiver<_Receiver>) {
           static_assert(
             __nothrow_move_constructible<__decay_t<_Receiver>>,
             "Receivers must be nothrow move constructible");
           static_assert(
-            receiver<_Receiver>, "The second argument to stdexec::connect must be a receiver");
+            receiver<_Receiver>, "The second argument to STDEXEC::connect must be a receiver");
         }
 
         static_assert(sender_in<_Sender, env_of_t<_Receiver>>);
@@ -187,4 +187,4 @@ namespace stdexec {
   concept __nothrow_connectable = sender_to<_Sender, _Receiver>
                                && __nothrow_callable<connect_t, _Sender, _Receiver>;
 
-} // namespace stdexec
+} // namespace STDEXEC

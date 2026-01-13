@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-#include <exec/when_any.hpp>
 #include <exec/single_thread_context.hpp>
+#include <exec/when_any.hpp>
 #include <numbers>
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <catch2/catch.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
-using namespace stdexec;
+using namespace STDEXEC;
 
 namespace {
 
@@ -202,14 +202,14 @@ namespace {
     Receiver rec;
 
     void start() & noexcept {
-      stdexec::set_error(
+      STDEXEC::set_error(
         static_cast<Receiver&&>(rec), std::make_exception_ptr(std::runtime_error("dup")));
     }
   };
 
   struct dup_sender {
-    using sender_concept = stdexec::sender_t;
-    using completion_signatures = stdexec::completion_signatures<
+    using sender_concept = STDEXEC::sender_t;
+    using completion_signatures = STDEXEC::completion_signatures<
       set_value_t(),
       set_error_t(std::exception_ptr),
       set_error_t(std::exception_ptr&&)
@@ -223,7 +223,7 @@ namespace {
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]") {
-    REQUIRE_THROWS(stdexec::sync_wait(exec::when_any(dup_sender{})));
+    REQUIRE_THROWS(STDEXEC::sync_wait(exec::when_any(dup_sender{})));
   }
 #endif // !STDEXEC_NO_STD_EXCEPTIONS()
 } // namespace

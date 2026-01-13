@@ -16,15 +16,15 @@
 
 #include <catch2/catch.hpp>
 
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
 
-#include <test_common/schedulers.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 namespace {
   void expect_empty(exec::async_scope& scope) {

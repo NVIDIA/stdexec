@@ -57,7 +57,7 @@ namespace exec {
   struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM;
 
   namespace _pool_ {
-    using namespace stdexec;
+    using namespace STDEXEC;
 
     // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
     // Returns `[begin, end)` range in `n` for a given `rank`.
@@ -170,13 +170,13 @@ namespace exec {
     class _static_thread_pool {
       template <class ReceiverId>
       struct _opstate {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
         class __t;
       };
 
       template <bool Parallelize, std::integral Shape, class Fun, class SenderId>
       struct _bulk_sender {
-        using Sender = stdexec::__t<SenderId>;
+        using Sender = STDEXEC::__t<SenderId>;
         struct __t;
       };
 
@@ -216,7 +216,7 @@ namespace exec {
       >
       struct _bulk_receiver {
         using CvrefSender = __cvref_t<CvrefSenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
         struct __t;
       };
 
@@ -241,7 +241,7 @@ namespace exec {
       >
       struct _bulk_opstate {
         using CvrefSender = __cvref_t<CvrefSenderId>;
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
         struct __t;
       };
 
@@ -251,7 +251,7 @@ namespace exec {
       >;
 
       struct _transform_bulk {
-        template <stdexec::__one_of<bulk_chunked_t, bulk_unchunked_t> Tag, class Data, class Sender>
+        template <STDEXEC::__one_of<bulk_chunked_t, bulk_unchunked_t> Tag, class Data, class Sender>
         auto operator()(Tag, Data&& data, Sender&& sndr) const {
           auto [pol, shape, fun] = static_cast<Data&&>(data);
           using policy_t = std::remove_cvref_t<decltype(pol.__get())>;
@@ -260,7 +260,7 @@ namespace exec {
 
           if constexpr (__same_as<Tag, bulk_unchunked_t>) {
             // Turn a bulk_unchunked into a bulk_chunked operation
-            using fun_t = stdexec::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
+            using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
             using sender_t = _bulk_sender_t<parallelize, decltype(shape), fun_t, Sender>;
             return sender_t{pool_, static_cast<Sender&&>(sndr), shape, fun_t(std::move(fun))};
           } else {
@@ -290,45 +290,45 @@ namespace exec {
       }
 
      public:
-      struct domain : stdexec::default_domain {
+      struct domain : STDEXEC::default_domain {
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
         template <sender_expr Sender, class Env>
           requires __one_of<tag_of_t<Sender>, bulk_chunked_t, bulk_unchunked_t>
-        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+        auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
-            auto sched = stdexec::get_completion_scheduler<set_value_t>(get_env(sndr), env);
+            auto sched = STDEXEC::get_completion_scheduler<set_value_t>(get_env(sndr), env);
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_bulk{*sched.pool_});
           } else {
-            return stdexec::__not_a_sender<
-              stdexec::_WHAT_<>(
+            return STDEXEC::__not_a_sender<
+              STDEXEC::_WHAT_<>(
                 CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
-              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
-              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, tag_of_t<Sender>),
-              stdexec::_TO_FIX_THIS_ERROR_(
+              STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, tag_of_t<Sender>),
+              STDEXEC::_TO_FIX_THIS_ERROR_(
                 ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-              stdexec::_WITH_SENDER_<Sender>,
-              stdexec::_WITH_ENVIRONMENT_<Env>
+              STDEXEC::_WITH_SENDER_<Sender>,
+              STDEXEC::_WITH_ENVIRONMENT_<Env>
             >();
           }
         }
 
 #if STDEXEC_HAS_STD_RANGES()
         template <sender_expr_for<exec::iterate_t> Sender, class Env>
-        auto transform_sender(stdexec::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+        auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
-            auto sched = stdexec::get_scheduler(env);
+            auto sched = STDEXEC::get_scheduler(env);
             return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_iterate{*sched.pool_});
           } else {
-            return stdexec::__not_a_sender<
-              stdexec::_WHAT_<>(
+            return STDEXEC::__not_a_sender<
+              STDEXEC::_WHAT_<>(
                 CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
-              stdexec::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
-              stdexec::_WHERE_(stdexec::_IN_ALGORITHM_, exec::iterate_t),
-              stdexec::_TO_FIX_THIS_ERROR_(
+              STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+              STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, exec::iterate_t),
+              STDEXEC::_TO_FIX_THIS_ERROR_(
                 ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM),
-              stdexec::_WITH_SENDER_<Sender>,
-              stdexec::_WITH_ENVIRONMENT_<Env>
+              STDEXEC::_WITH_SENDER_<Sender>,
+              STDEXEC::_WITH_ENVIRONMENT_<Env>
             >();
           }
         }
@@ -370,10 +370,10 @@ namespace exec {
           using __id = _sender;
           using sender_concept = sender_t;
           template <class Receiver>
-          using operation_t = stdexec::__t<_opstate<stdexec::__id<Receiver>>>;
+          using operation_t = STDEXEC::__t<_opstate<STDEXEC::__id<Receiver>>>;
 
           using completion_signatures =
-            stdexec::completion_signatures<set_value_t(), set_stopped_t()>;
+            STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
           [[nodiscard]]
           auto get_env() const noexcept -> env {
@@ -1112,13 +1112,13 @@ namespace exec {
         this->execute_ = [](task_base* t, const std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<__t*>(t);
           auto stoken = get_stop_token(get_env(op.rcvr_));
-          if constexpr (stdexec::unstoppable_token<decltype(stoken)>) {
-            stdexec::set_value(static_cast<Receiver&&>(op.rcvr_));
+          if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>) {
+            STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
           } else {
             if (stoken.stop_requested()) {
-              stdexec::set_stopped(static_cast<Receiver&&>(op.rcvr_));
+              STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
             } else {
-              stdexec::set_value(static_cast<Receiver&&>(op.rcvr_));
+              STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
             }
           }
         };
@@ -1152,20 +1152,20 @@ namespace exec {
 
       template <class Sender, class... Env>
       using _with_error_invoke_t = __if_c<
-        __v<__value_types_t<
+        __value_types_t<
           __completion_signatures_of_t<Sender, Env...>,
           _is_nothrow_bulk_fn<Shape, Fun>,
           __q<__mand>
-        >>,
+        >::value,
         completion_signatures<>,
         __eptr_completion
       >;
 
       template <class... Tys>
-      using _set_value_t = completion_signatures<set_value_t(stdexec::__decay_t<Tys>...)>;
+      using _set_value_t = completion_signatures<set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using _completions_t = stdexec::transform_completion_signatures<
+      using _completions_t = STDEXEC::transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         _with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
         _set_value_t
@@ -1203,11 +1203,11 @@ namespace exec {
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return stdexec::get_env(sndr_);
+        return STDEXEC::get_env(sndr_);
       }
     };
 
-    //! The customized operation state for `stdexec::bulk` operations
+    //! The customized operation state for `STDEXEC::bulk` operations
     template <
       bool Parallelize,
       class Shape,
@@ -1237,7 +1237,7 @@ namespace exec {
             };
 
             auto completion = [&](auto&... args) {
-              stdexec::set_value(static_cast<Receiver&&>(sh_state.rcvr_), std::move(args)...);
+              STDEXEC::set_value(static_cast<Receiver&&>(sh_state.rcvr_), std::move(args)...);
             };
 
             if constexpr (MayThrow) {
@@ -1258,7 +1258,7 @@ namespace exec {
 
               if (is_last_thread) {
                 if (sh_state.exception_) {
-                  stdexec::set_error(
+                  STDEXEC::set_error(
                     static_cast<Receiver&&>(sh_state.rcvr_), std::move(sh_state.exception_));
                 } else {
                   sh_state.apply(completion);
@@ -1302,7 +1302,7 @@ namespace exec {
       auto num_agents_required() const noexcept -> std::uint32_t {
         if constexpr (Parallelize) {
           return static_cast<std::uint32_t>(
-            std::min(shape_, static_cast<Shape>(pool_.available_parallelism())));
+            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
         } else {
           return static_cast<std::uint32_t>(1);
         }
@@ -1333,7 +1333,7 @@ namespace exec {
       }
     };
 
-    //! A customized receiver to allow parallel execution of `stdexec::bulk` operations:
+    //! A customized receiver to allow parallel execution of `STDEXEC::bulk` operations:
     template <
       bool Parallelize,
       class Shape,
@@ -1374,7 +1374,7 @@ namespace exec {
         }
         STDEXEC_CATCH_ALL {
           if constexpr (MayThrow) {
-            stdexec::set_error(std::move(state.rcvr_), std::current_exception());
+            STDEXEC::set_error(std::move(state.rcvr_), std::current_exception());
           }
         }
 
@@ -1382,23 +1382,23 @@ namespace exec {
           enqueue();
         } else {
           state.apply(
-            [&](auto&... args) { stdexec::set_value(std::move(state.rcvr_), std::move(args)...); });
+            [&](auto&... args) { STDEXEC::set_value(std::move(state.rcvr_), std::move(args)...); });
         }
       }
 
       template <class Error>
       void set_error(Error&& error) noexcept {
         shared_state& state = shared_state_;
-        stdexec::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(error));
+        STDEXEC::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(error));
       }
 
       void set_stopped() noexcept {
         shared_state& state = shared_state_;
-        stdexec::set_stopped(static_cast<Receiver&&>(state.rcvr_));
+        STDEXEC::set_stopped(static_cast<Receiver&&>(state.rcvr_));
       }
 
       auto get_env() const noexcept -> env_of_t<Receiver> {
-        return stdexec::get_env(shared_state_.rcvr_);
+        return STDEXEC::get_env(shared_state_.rcvr_);
       }
     };
 
@@ -1412,12 +1412,12 @@ namespace exec {
     >::__t {
       using __id = _bulk_opstate;
 
-      static constexpr bool may_throw = !__v<__value_types_of_t<
+      static constexpr bool may_throw = !__value_types_of_t<
         CvrefSender,
         env_of_t<Receiver>,
         _is_nothrow_bulk_fn<Shape, Fun>,
         __q<__mand>
-      >>;
+      >::value;
 
       using receiver_t =
         _bulk_receiver_t<Parallelize, Shape, Fun, may_throw, CvrefSender, Receiver>;
@@ -1429,12 +1429,12 @@ namespace exec {
       inner_opstate_t inner_op_;
 
       void start() & noexcept {
-        stdexec::start(inner_op_);
+        STDEXEC::start(inner_op_);
       }
 
       __t(_static_thread_pool& pool, Shape shape, Fun fun, CvrefSender&& sndr, Receiver rcvr)
         : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun)
-        , inner_op_{stdexec::connect(static_cast<CvrefSender&&>(sndr), receiver_t{shared_state_})} {
+        , inner_op_{STDEXEC::connect(static_cast<CvrefSender&&>(sndr), receiver_t{shared_state_})} {
       }
     };
 
@@ -1443,7 +1443,7 @@ namespace exec {
       template <class Rcvr>
       auto get_allocator(const Rcvr& rcvr) {
         if constexpr (__callable<get_allocator_t, env_of_t<Rcvr>>) {
-          return stdexec::get_allocator(stdexec::get_env(rcvr));
+          return STDEXEC::get_allocator(STDEXEC::get_env(rcvr));
         } else {
           return std::allocator<char>{};
         }
@@ -1466,11 +1466,11 @@ namespace exec {
       template <class Range, class ItemReceiverId>
       struct item_operation {
         class __t : private task_base {
-          using ItemReceiver = stdexec::__t<ItemReceiverId>;
+          using ItemReceiver = STDEXEC::__t<ItemReceiverId>;
 
           static void execute_(task_base* base, std::uint32_t /* tid */) noexcept {
             auto op = static_cast<__t*>(base);
-            stdexec::set_value(static_cast<ItemReceiver&&>(op->item_receiver_), *op->it_);
+            STDEXEC::set_value(static_cast<ItemReceiver&&>(op->item_receiver_), *op->it_);
           }
 
           ItemReceiver item_receiver_;
@@ -1509,7 +1509,7 @@ namespace exec {
           using __id = item_sender;
           using sender_concept = sender_t;
           using completion_signatures =
-            stdexec::completion_signatures<set_value_t(std::ranges::range_reference_t<Range>)>;
+            STDEXEC::completion_signatures<set_value_t(std::ranges::range_reference_t<Range>)>;
 
           operation_base<Range>* op_;
           std::ranges::iterator_t<Range> it_;
@@ -1530,7 +1530,7 @@ namespace exec {
           template <receiver ItemReceiver>
             requires receiver_of<ItemReceiver, completion_signatures>
           auto connect(ItemReceiver rcvr) const noexcept
-            -> stdexec::__t<item_operation<Range, stdexec::__id<ItemReceiver>>> {
+            -> STDEXEC::__t<item_operation<Range, STDEXEC::__id<ItemReceiver>>> {
             return {static_cast<ItemReceiver&&>(rcvr), it_, op_};
           }
         };
@@ -1548,7 +1548,7 @@ namespace exec {
 
       template <class Range, class ReceiverId>
       struct next_receiver {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         struct __t {
           using __id = next_receiver;
@@ -1558,36 +1558,36 @@ namespace exec {
           void set_value() noexcept {
             std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
             if (countdown == 1) {
-              stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
+              STDEXEC::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }
           }
 
           void set_stopped() noexcept {
             std::size_t countdown = op_->countdown_.fetch_sub(1, __std::memory_order_relaxed);
             if (countdown == 1) {
-              stdexec::set_value(static_cast<Receiver&&>(op_->rcvr_));
+              STDEXEC::set_value(static_cast<Receiver&&>(op_->rcvr_));
             }
           }
 
           auto get_env() const noexcept -> env_of_t<Receiver> {
-            return stdexec::get_env(op_->rcvr_);
+            return STDEXEC::get_env(op_->rcvr_);
           }
         };
       };
 
       template <class Range, class ReceiverId>
       struct operation {
-        using Receiver = stdexec::__t<ReceiverId>;
+        using Receiver = STDEXEC::__t<ReceiverId>;
 
         class __t : operation_base_with_receiver<Range, Receiver> {
           using allocator_t = allocator_of_t<const Receiver&>;
-          using item_sender_t = stdexec::__t<item_sender<Range>>;
+          using item_sender_t = STDEXEC::__t<item_sender<Range>>;
           using next_sender_t = next_sender_of_t<Receiver, item_sender_t>;
-          using next_receiver_t = stdexec::__t<next_receiver<Range, ReceiverId>>;
+          using next_receiver_t = STDEXEC::__t<next_receiver<Range, ReceiverId>>;
           using item_operation_t = connect_result_t<next_sender_t, next_receiver_t>;
 
           using item_allocator_t = std::allocator_traits<allocator_t>::template rebind_alloc<
-            stdexec::__manual_lifetime<item_operation_t>
+            STDEXEC::__manual_lifetime<item_operation_t>
           >;
 
           std::vector<__manual_lifetime<item_operation_t>, item_allocator_t> items_;
@@ -1618,17 +1618,17 @@ namespace exec {
             std::size_t nthreads = this->pool_.available_parallelism();
             bwos_params params = this->pool_.params();
             std::size_t local_size = params.blockSize * params.numBlocks;
-            std::size_t chunk_size = std::min(size / nthreads, local_size * nthreads);
+            std::size_t chunk_size = (std::min) (size / nthreads, local_size * nthreads);
             auto& remote_queue = *this->pool_.get_remote_queue();
             auto it = std::ranges::begin(this->range_);
             std::size_t i0 = 0;
             while (i0 + chunk_size < size) {
               for (std::size_t i = i0; i < i0 + chunk_size; ++i) {
                 items_[i].__construct_from(
-                  stdexec::connect,
+                  STDEXEC::connect,
                   set_next(this->rcvr_, item_sender_t{this, it + i}),
                   next_receiver_t{this});
-                stdexec::start(items_[i].__get());
+                STDEXEC::start(items_[i].__get());
               }
 
               std::unique_lock lock{this->start_mutex_};
@@ -1638,10 +1638,10 @@ namespace exec {
             }
             for (std::size_t i = i0; i < size; ++i) {
               items_[i].__construct_from(
-                stdexec::connect,
+                STDEXEC::connect,
                 set_next(this->rcvr_, item_sender_t{this, it + i}),
                 next_receiver_t{this});
-              stdexec::start(items_[i].__get());
+              STDEXEC::start(items_[i].__get());
             }
             std::unique_lock lock{this->start_mutex_};
             this->has_started_ = true;
@@ -1660,13 +1660,13 @@ namespace exec {
 
         using sender_concept = sequence_sender_t;
 
-        using completion_signatures = stdexec::completion_signatures<
+        using completion_signatures = STDEXEC::completion_signatures<
           set_value_t(),
           set_error_t(std::exception_ptr),
           set_stopped_t()
         >;
 
-        using item_types = exec::item_types<stdexec::__t<item_sender<Range>>>;
+        using item_types = exec::item_types<STDEXEC::__t<item_sender<Range>>>;
 
         __t(Range range, _static_thread_pool& pool)
           : range_(static_cast<Range&&>(range))
@@ -1675,14 +1675,14 @@ namespace exec {
 
         template <exec::sequence_receiver_of<item_types> Receiver>
         auto subscribe(Receiver rcvr) && noexcept
-          -> stdexec::__t<operation<Range, stdexec::__id<Receiver>>> {
+          -> STDEXEC::__t<operation<Range, STDEXEC::__id<Receiver>>> {
           return {static_cast<Range&&>(range_), *pool_, static_cast<Receiver&&>(rcvr)};
         }
 
         template <exec::sequence_receiver_of<item_types> Receiver>
           requires __decay_copyable<Range const &>
         auto subscribe(Receiver rcvr) const & noexcept
-          -> stdexec::__t<operation<Range, stdexec::__id<Receiver>>> {
+          -> STDEXEC::__t<operation<Range, STDEXEC::__id<Receiver>>> {
           return {range_, *pool_, static_cast<Receiver&&>(rcvr)};
         }
       };
@@ -1734,7 +1734,7 @@ namespace exec {
     struct schedule_all_t {
       template <class Range>
       auto operator()(static_thread_pool& pool, Range&& range) const
-        -> stdexec::__t<schedule_all_::sequence<__decay_t<Range>>> {
+        -> STDEXEC::__t<schedule_all_::sequence<__decay_t<Range>>> {
         return {static_cast<Range&&>(range), pool};
       }
     };

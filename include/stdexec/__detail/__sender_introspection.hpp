@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <exception> // IWYU pragma: keep for std::terminate
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __detail {
     // Accessor for the "data" field of a sender
     struct __get_data {
@@ -104,7 +104,7 @@ namespace stdexec {
   using __child_of = __children_of<_Sender, __q<__mfront>>;
 
   template <class _Sender>
-  inline constexpr std::size_t __nbr_children_of = __v<__children_of<_Sender, __msize>>;
+  inline constexpr std::size_t __nbr_children_of = __children_of<_Sender, __msize>::value;
 
   template <class _Tp>
     requires __mvalid<tag_of_t, _Tp>
@@ -118,4 +118,4 @@ namespace stdexec {
 
   template <class _Sender, class _Tag>
   concept sender_expr_for = sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
-} // namespace stdexec
+} // namespace STDEXEC

@@ -38,8 +38,8 @@ namespace execpools {
 
    private:
     [[nodiscard]]
-    static constexpr auto forward_progress_guarantee() -> stdexec::forward_progress_guarantee {
-      return stdexec::forward_progress_guarantee::parallel;
+    static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee {
+      return STDEXEC::forward_progress_guarantee::parallel;
     }
 
     friend execpools::thread_pool_base<asio_thread_pool>;

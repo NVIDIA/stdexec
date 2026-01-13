@@ -19,7 +19,7 @@
 
 #include <catch2/catch.hpp>
 
-using namespace stdexec;
+using namespace STDEXEC;
 using namespace exec;
 
 namespace {
@@ -40,7 +40,7 @@ namespace {
   }
 
   struct count_set_next_receiver_t {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
     int& count_invocations_;
 
     auto set_next(auto /* item */) & noexcept {
@@ -61,7 +61,7 @@ namespace {
 
     int count{0};
     auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
-    stdexec::start(op);
+    STDEXEC::start(op);
     CHECK(count == 0);
   }
 } // namespace

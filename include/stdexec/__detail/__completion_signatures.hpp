@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __cmplsigs {
@@ -180,7 +180,7 @@ namespace stdexec {
 
   template <__valid_completion_signatures _Sigs>
   inline constexpr bool __sends_stopped =
-    __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped> != 0;
+    __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value != 0;
 
   template <class... _Sigs>
   using __concat_completion_signatures =
@@ -243,11 +243,11 @@ namespace stdexec {
     [[nodiscard]]
     static consteval auto __count(_Tag) noexcept -> std::size_t {
       if constexpr (_Tag{} == set_value) {
-        return __v<typename __partitioned::__t::__count_values>;
+        return __partitioned::__t::__count_values::value;
       } else if constexpr (_Tag{} == set_error) {
-        return __v<typename __partitioned::__t::__count_errors>;
+        return __partitioned::__t::__count_errors::value;
       } else {
-        return __v<typename __partitioned::__t::__count_stopped>;
+        return __partitioned::__t::__count_stopped::value;
       }
     }
 
@@ -295,16 +295,16 @@ namespace stdexec {
         return __value_types_t<
           completion_signatures,
           __qf<set_value_t>,
-          __qq<stdexec::completion_signatures>
+          __qq<STDEXEC::completion_signatures>
         >{};
       } else if constexpr (_Tag{} == set_error) {
         return __error_types_t<
           completion_signatures,
-          __qq<stdexec::completion_signatures>,
+          __qq<STDEXEC::completion_signatures>,
           __qf<set_error_t>
         >{};
       } else {
-        return __stopped_types_t<completion_signatures, __qq<stdexec::completion_signatures>>{};
+        return __stopped_types_t<completion_signatures, __qq<STDEXEC::completion_signatures>>{};
       }
     }
 
@@ -364,15 +364,14 @@ namespace stdexec {
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_value_t, _Sigs> =
-      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_values>;
+      __cmplsigs::__partitions_of_t<_Sigs>::__count_values::value;
 
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_error_t, _Sigs> =
-      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_errors>;
-
+      __cmplsigs::__partitions_of_t<_Sigs>::__count_errors::value;
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_stopped_t, _Sigs> =
-      __v<typename __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped>;
+      __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
   } // namespace __detail
 
   // Below is the definition of the STDEXEC_COMPLSIGS_LET portability macro. It
@@ -410,7 +409,7 @@ namespace stdexec {
 
 #  define STDEXEC_COMPLSIGS_LET(...)                                                               \
     if constexpr (STDEXEC_CAT(STDEXEC_PP_EXPAND_AUTO_, __VA_ARGS__);                               \
-                  !stdexec::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
+                  !STDEXEC::__valid_completion_signatures<decltype(STDEXEC_COMPLSIGS_LET_ID(       \
                     __VA_ARGS__))>) {                                                              \
       return STDEXEC_COMPLSIGS_LET_ID(__VA_ARGS__);                                                \
     } else
@@ -434,4 +433,4 @@ namespace stdexec {
   }
 
 #endif // ^^^ constexpr exceptions ^^^
-} // namespace stdexec
+} // namespace STDEXEC

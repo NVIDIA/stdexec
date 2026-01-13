@@ -40,8 +40,8 @@ namespace exec {
 
     template <class Rcvr, class OpStateId, class Index>
     struct _rcvr {
-      using receiver_concept = stdexec::receiver_t;
-      using _opstate_t = stdexec::__t<OpStateId>;
+      using receiver_concept = STDEXEC::receiver_t;
+      using _opstate_t = STDEXEC::__t<OpStateId>;
       _opstate_t* _opstate;
 
       template <class... Args>
@@ -53,16 +53,16 @@ namespace exec {
       template <class Error>
       STDEXEC_ATTRIBUTE(host, device)
       void set_error(Error&& err) && noexcept {
-        stdexec::set_error(static_cast<Rcvr&&>(_opstate->_rcvr), static_cast<Error&&>(err));
+        STDEXEC::set_error(static_cast<Rcvr&&>(_opstate->_rcvr), static_cast<Error&&>(err));
       }
 
       STDEXEC_ATTRIBUTE(host, device) void set_stopped() && noexcept {
-        stdexec::set_stopped(static_cast<Rcvr&&>(_opstate->_rcvr));
+        STDEXEC::set_stopped(static_cast<Rcvr&&>(_opstate->_rcvr));
       }
 
       // TODO: use the predecessor's completion scheduler as the current scheduler here.
-      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> stdexec::env_of_t<Rcvr> {
-        return stdexec::get_env(_opstate->_rcvr);
+      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr> {
+        return STDEXEC::get_env(_opstate->_rcvr);
       }
     };
 
@@ -79,35 +79,35 @@ namespace exec {
 
     template <class Rcvr, class Sender0, class... Senders>
     struct _opstate<Rcvr, Sender0, Senders...> {
-      using operation_state_concept = stdexec::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_t;
 
       // We will be connecting the first sender in the opstate constructor, so we don't need to
-      // store it in the opstate. The use of `stdexec::__ignore` causes the first sender to not
+      // store it in the opstate. The use of `STDEXEC::__ignore` causes the first sender to not
       // be stored.
-      using _senders_tuple_t = stdexec::__tuple<stdexec::__ignore, Senders...>;
+      using _senders_tuple_t = STDEXEC::__tuple<STDEXEC::__ignore, Senders...>;
 
       template <size_t Idx>
-      using _rcvr_t = _seq::_rcvr<Rcvr, stdexec::__id<_opstate>, stdexec::__msize_t<Idx>>;
+      using _rcvr_t = _seq::_rcvr<Rcvr, STDEXEC::__id<_opstate>, STDEXEC::__msize_t<Idx>>;
 
       template <class Sender, class Idx>
-      using _child_opstate_t = stdexec::connect_result_t<Sender, _rcvr_t<stdexec::__v<Idx>>>;
+      using _child_opstate_t = STDEXEC::connect_result_t<Sender, _rcvr_t<Idx::value>>;
 
-      using _mk_child_ops_variant_fn = stdexec::__mzip_with2<
-        stdexec::__q2<_child_opstate_t>,
-        stdexec::__qq<stdexec::__variant_for>
+      using _mk_child_ops_variant_fn = STDEXEC::__mzip_with2<
+        STDEXEC::__q2<_child_opstate_t>,
+        STDEXEC::__qq<STDEXEC::__variant_for>
       >;
 
-      using _ops_variant_t = stdexec::__minvoke<
+      using _ops_variant_t = STDEXEC::__minvoke<
         _mk_child_ops_variant_fn,
-        stdexec::__tuple<Sender0, Senders...>,
-        stdexec::__make_indices<sizeof...(Senders) + 1>
+        STDEXEC::__tuple<Sender0, Senders...>,
+        STDEXEC::__make_indices<sizeof...(Senders) + 1>
       >;
 
       template <class CvrefSndrs>
       STDEXEC_ATTRIBUTE(host, device)
       explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
         : _rcvr{static_cast<Rcvr&&>(rcvr)}
-        , _sndrs{stdexec::__apply(
+        , _sndrs{STDEXEC::__apply(
             __convert_tuple_fn<_senders_tuple_t>{},
             static_cast<CvrefSndrs&&>(sndrs))} // move all but the first sender into the opstate.
       {
@@ -115,30 +115,30 @@ namespace exec {
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template emplace_from_at<0>(
-          stdexec::connect, stdexec::__get<0>(static_cast<CvrefSndrs&&>(sndrs)), _rcvr_t<0>{this});
+          STDEXEC::connect, STDEXEC::__get<0>(static_cast<CvrefSndrs&&>(sndrs)), _rcvr_t<0>{this});
       }
 
       template <class Index, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
       void _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
         STDEXEC_TRY {
-          constexpr size_t Idx = stdexec::__v<Index> + 1;
+          constexpr size_t Idx = Index::value + 1;
           if constexpr (Idx == sizeof...(Senders) + 1) {
-            stdexec::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
+            STDEXEC::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {
-            auto& sndr = stdexec::__get<Idx>(_sndrs);
+            auto& sndr = STDEXEC::__get<Idx>(_sndrs);
             auto& op = _ops.template emplace_from_at<Idx>(
-              stdexec::connect, std::move(sndr), _rcvr_t<Idx>{this});
-            stdexec::start(op);
+              STDEXEC::connect, std::move(sndr), _rcvr_t<Idx>{this});
+            STDEXEC::start(op);
           }
         }
         STDEXEC_CATCH_ALL {
-          stdexec::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
+          STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
         }
       }
 
       STDEXEC_ATTRIBUTE(host, device) void start() & noexcept {
-        stdexec::start(_ops.template get<0>());
+        STDEXEC::start(_ops.template get<0>());
       }
 
       Rcvr _rcvr;
@@ -159,37 +159,37 @@ namespace exec {
 
       template <class State, class Head, class... Tail>
       struct _fold_left<State, Head, Tail...> {
-        using __t = stdexec::__gather_completion_signatures<
-          stdexec::__completion_signatures_of_t<Head, Env...>,
-          stdexec::set_value_t,
-          stdexec::__mconst<stdexec::completion_signatures<>>::__f,
-          stdexec::__cmplsigs::__default_completion,
-          stdexec::__mtry_q<stdexec::__concat_completion_signatures>::__f,
-          stdexec::__t<_fold_left<State, Tail...>>
+        using __t = STDEXEC::__gather_completion_signatures<
+          STDEXEC::__completion_signatures_of_t<Head, Env...>,
+          STDEXEC::set_value_t,
+          STDEXEC::__mconst<STDEXEC::completion_signatures<>>::__f,
+          STDEXEC::__cmplsigs::__default_completion,
+          STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures>::__f,
+          STDEXEC::__t<_fold_left<State, Tail...>>
         >;
       };
 
       template <class Head>
       struct _fold_left<void, Head> {
-        using __t = stdexec::__mtry_q<stdexec::__concat_completion_signatures>::__f<
-          stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
-          stdexec::__completion_signatures_of_t<Head, Env...>
+        using __t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures>::__f<
+          STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
+          STDEXEC::__completion_signatures_of_t<Head, Env...>
         >;
       };
 
       template <class... Sender>
-      using __f = stdexec::__t<_fold_left<void, Sender...>>;
+      using __f = STDEXEC::__t<_fold_left<void, Sender...>>;
     };
 
     template <class Sender0, class... Senders>
     struct _sndr<Sender0, Senders...> {
-      using sender_concept = stdexec::sender_t;
+      using sender_concept = STDEXEC::sender_t;
 
       template <class Self, class... Env>
       using _completions_t =
-        stdexec::__minvoke<_completions<Env...>, stdexec::__copy_cvref_t<Self, Sender0>, Senders...>;
+        STDEXEC::__minvoke<_completions<Env...>, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>;
 
-      template <stdexec::__decay_copyable Self, class... Env>
+      template <STDEXEC::__decay_copyable Self, class... Env>
       STDEXEC_ATTRIBUTE(host, device)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) {
         return _completions_t<Self, Env...>{};
@@ -197,17 +197,17 @@ namespace exec {
       STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <class Self, class Rcvr>
-        requires stdexec::__decay_copyable<Self>
+        requires STDEXEC::__decay_copyable<Self>
       STDEXEC_ATTRIBUTE(host, device)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
-        return _opstate<Rcvr, stdexec::__copy_cvref_t<Self, Sender0>, Senders...>{
+        return _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>{
           static_cast<Rcvr&&>(rcvr), static_cast<Self&&>(self)._sndrs};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) sequence_t _tag;
-      STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) stdexec::__ignore _ignore;
-      stdexec::__tuple<Sender0, Senders...> _sndrs;
+      STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) STDEXEC::__ignore _ignore;
+      STDEXEC::__tuple<Sender0, Senders...> _sndrs;
     };
 
     template <class Sender>
@@ -235,7 +235,7 @@ namespace std {
 
   template <size_t I, class... Senders>
   struct tuple_element<I, exec::_seq::_sndr<Senders...>> {
-    using type = stdexec::__m_at_c<I, exec::sequence_t, stdexec::__, Senders...>;
+    using type = STDEXEC::__m_at_c<I, exec::sequence_t, STDEXEC::__, Senders...>;
   };
 } // namespace std
 

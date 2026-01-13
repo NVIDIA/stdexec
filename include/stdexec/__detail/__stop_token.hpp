@@ -27,7 +27,7 @@ template <class _Callback>
 class stop_callback;
 STDEXEC_NAMESPACE_STD_END
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __stok {
     template <template <class> class>
     struct __check_type_alias_exists;
@@ -101,4 +101,4 @@ namespace stdexec {
 
     auto operator==(const never_stop_token&) const noexcept -> bool = default;
   };
-} // namespace stdexec
+} // namespace STDEXEC

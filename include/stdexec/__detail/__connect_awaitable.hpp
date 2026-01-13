@@ -28,7 +28,7 @@
 #include <exception>
 #include <utility>
 
-namespace stdexec {
+namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
@@ -92,14 +92,14 @@ namespace stdexec {
     template <class _ReceiverId>
     struct __operation {
       struct __t : __operation_base {
-        using promise_type = stdexec::__t<__promise<_ReceiverId>>;
+        using promise_type = STDEXEC::__t<__promise<_ReceiverId>>;
         using __operation_base::__operation_base;
       };
     };
 
     template <class _ReceiverId>
     struct __promise {
-      using _Receiver = stdexec::__t<_ReceiverId>;
+      using _Receiver = STDEXEC::__t<_ReceiverId>;
 
       struct __t
         : __promise_base
@@ -117,21 +117,21 @@ namespace stdexec {
 #  endif
 
         auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
-          stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
           // the awaitable.
           return __std::noop_coroutine();
         }
 
-        auto get_return_object() noexcept -> stdexec::__t<__operation<_ReceiverId>> {
-          return stdexec::__t<__operation<_ReceiverId>>{
+        auto get_return_object() noexcept -> STDEXEC::__t<__operation<_ReceiverId>> {
+          return STDEXEC::__t<__operation<_ReceiverId>>{
             __std::coroutine_handle<__t>::from_promise(*this)};
         }
 
         // Pass through the get_env receiver query
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return stdexec::get_env(__rcvr_);
+          return STDEXEC::get_env(__rcvr_);
         }
 
         _Receiver& __rcvr_;
@@ -221,4 +221,4 @@ namespace stdexec {
   struct __connect_awaitable_t { };
 #endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};
-} // namespace stdexec
+} // namespace STDEXEC

@@ -24,11 +24,11 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-/// To hook a customization point like stdexec::get_env, first bring the names
-/// in stdexec::tags into scope:
+/// To hook a customization point like STDEXEC::get_env, first bring the names
+/// in STDEXEC::tags into scope:
 ///
 /// @code
-/// using namespace stdexec::tags;
+/// using namespace STDEXEC::tags;
 /// @endcode
 ///
 /// Then define a member function like this:
@@ -67,12 +67,12 @@
 #define STDEXEC_MEMFN_DECL_PROBE_auto    STDEXEC_PROBE(~, 1)
 #define STDEXEC_MEMFN_DECL_PROBE_void    STDEXEC_PROBE(~, 2)
 
-#define STDEXEC_MEMFN_DECL_RETURN_0(...) ::stdexec::__arg_type_t<void(__VA_ARGS__())>
+#define STDEXEC_MEMFN_DECL_RETURN_0(...) ::STDEXEC::__arg_type_t<void(__VA_ARGS__())>
 #define STDEXEC_MEMFN_DECL_RETURN_1(...) auto
 #define STDEXEC_MEMFN_DECL_RETURN_2(...) void
 
 #define STDEXEC_MEMFN_DECL_TAG_00(...)                                                             \
-  const ::stdexec::__tag_type_t<__VA_ARGS__##_t::*>&, STDEXEC_MEMFN_DECL_ARGS
+  const ::STDEXEC::__tag_type_t<__VA_ARGS__##_t::*>&, STDEXEC_MEMFN_DECL_ARGS
 #define STDEXEC_MEMFN_DECL_TAG_10(...)                                                             \
   const STDEXEC_EAT_AUTO_##__VA_ARGS__##_t&, STDEXEC_MEMFN_DECL_ARGS
 #define STDEXEC_MEMFN_DECL_TAG_20(...)                                                             \
@@ -81,7 +81,7 @@
 #define STDEXEC_MEMFN_DECL_TAG_11(...) STDEXEC_MEMFN_DECL_QUERY
 #define STDEXEC_MEMFN_DECL_TAG_21(...) STDEXEC_MEMFN_DECL_QUERY
 
-#define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_CAT(_TAG, _t) = STDEXEC_CAT(stdexec::_TAG, _t)
+#define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_CAT(_TAG, _t) = STDEXEC_CAT(STDEXEC::_TAG, _t)
 
 #if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 14'00)
 #  define STDEXEC_CUSTOM                                                                           \
@@ -98,7 +98,7 @@
 #  pragma clang deprecated(STDEXEC_MEMFN_DECL)
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
   template <class>
   struct __arg_type;
 
@@ -122,12 +122,12 @@ namespace stdexec {
   using __tag_type_t = __tag_type<_Fn>::type;
 
   namespace tags {
-    using stdexec::set_value_t;
-    using stdexec::set_error_t;
-    using stdexec::set_stopped_t;
-    using stdexec::connect_t;
-    using stdexec::start_t;
-    using stdexec::get_env_t;
-    using stdexec::get_completion_signatures_t;
+    using STDEXEC::set_value_t;
+    using STDEXEC::set_error_t;
+    using STDEXEC::set_stopped_t;
+    using STDEXEC::connect_t;
+    using STDEXEC::start_t;
+    using STDEXEC::get_env_t;
+    using STDEXEC::get_completion_signatures_t;
   } // namespace tags
-} // namespace stdexec
+} // namespace STDEXEC

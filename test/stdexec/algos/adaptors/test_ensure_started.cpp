@@ -17,13 +17,13 @@
 
 #include <catch2/catch.hpp>
 
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
-#include <test_common/schedulers.hpp>
+#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 using exec::async_scope;
 
 namespace {

@@ -40,7 +40,7 @@ namespace asioexec {
     //  aren't reflective of the actual cv- & ref-qualifications with which the
     //  values will actually be sent. This means that one or more conversions may be
     //  required to actually send the values correctly which may throw and which
-    //  therefore must occur before the call to ::stdexec::set_value.
+    //  therefore must occur before the call to ::STDEXEC::set_value.
 
     //  The technique used to achieve this is to utilize an unevaluated call against
     //  overload_set to determine the matching Asio signature. Then
@@ -56,7 +56,7 @@ namespace asioexec {
     };
 
     template <typename... Args>
-    struct has_function_call_operator<::stdexec::set_value_t(Args...)> {
+    struct has_function_call_operator<::STDEXEC::set_value_t(Args...)> {
       std::tuple<Args...> operator()(Args...) const;
     };
 
@@ -64,7 +64,7 @@ namespace asioexec {
     struct overload_set;
 
     template <typename... Signatures>
-    struct overload_set<::stdexec::completion_signatures<Signatures...>>
+    struct overload_set<::STDEXEC::completion_signatures<Signatures...>>
       : has_function_call_operator<Signatures>... {
       using has_function_call_operator<Signatures>::operator()...;
     };
@@ -107,7 +107,7 @@ namespace asioexec {
 
     template <typename Tuple, typename Receiver, std::size_t... Ns, typename... Args>
     constexpr void set_value_impl(Receiver&& r, std::index_sequence<Ns...>, Args&&... args) {
-      ::stdexec::set_value(
+      ::STDEXEC::set_value(
         static_cast<Receiver&&>(r),
         completion_token::convert<std::tuple_element_t<Ns, Tuple>>(static_cast<Args&&>(args))...);
     }
@@ -126,14 +126,14 @@ namespace asioexec {
 
     template <typename... Args>
     struct signature<void(Args...)> {
-      using type = ::stdexec::set_value_t(Args...);
+      using type = ::STDEXEC::set_value_t(Args...);
     };
 
     template <typename... Signatures>
-    using completion_signatures = ::stdexec::completion_signatures<
+    using completion_signatures = ::STDEXEC::completion_signatures<
       typename signature<Signatures>::type...,
-      ::stdexec::set_error_t(std::exception_ptr),
-      ::stdexec::set_stopped_t()
+      ::STDEXEC::set_error_t(std::exception_ptr),
+      ::STDEXEC::set_stopped_t()
     >;
 
     template <typename, typename>
@@ -182,9 +182,9 @@ namespace asioexec {
               l_.unlock();
               self_.callback_.reset();
               if (self_.ex_) {
-                ::stdexec::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
+                ::STDEXEC::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
               } else {
-                ::stdexec::set_stopped(static_cast<Receiver&&>(self_.r_));
+                ::STDEXEC::set_stopped(static_cast<Receiver&&>(self_.r_));
               }
             }
           }
@@ -231,8 +231,8 @@ namespace asioexec {
         operation_state_base& self_;
       };
      public:
-      std::optional<::stdexec::stop_callback_for_t<
-        ::stdexec::stop_token_of_t<::stdexec::env_of_t<Receiver>>,
+      std::optional<::STDEXEC::stop_callback_for_t<
+        ::STDEXEC::stop_token_of_t<::STDEXEC::env_of_t<Receiver>>,
         on_stop_request_
       >>
         callback_;
@@ -274,14 +274,14 @@ namespace asioexec {
         }
         self_->callback_.reset();
         if (self_->ex_) {
-          ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
+          ::STDEXEC::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
         } else {
           STDEXEC_TRY {
             completion_token::set_value<Signatures>(
               static_cast<Receiver&&>(self_->r_), static_cast<Args&&>(args)...);
           }
           STDEXEC_CATCH_ALL {
-            ::stdexec::set_error(static_cast<Receiver&&>(self_->r_), std::current_exception());
+            ::STDEXEC::set_error(static_cast<Receiver&&>(self_->r_), std::current_exception());
           }
         }
         //  Makes destructor a no op, the operation is complete so there's nothing
@@ -343,7 +343,7 @@ namespace asioexec {
         //  lifetime so we can't proceed into the branch
         if (frame) {
           base_::callback_.emplace(
-            ::stdexec::get_stop_token(::stdexec::get_env(base_::r_)),
+            ::STDEXEC::get_stop_token(::STDEXEC::get_env(base_::r_)),
             typename base_::on_stop_request_{*this});
         }
       }
@@ -353,7 +353,7 @@ namespace asioexec {
     class sender {
       using args_type_ = std::tuple<std::decay_t<Args>...>;
      public:
-      using sender_concept = ::stdexec::sender_t;
+      using sender_concept = ::STDEXEC::sender_t;
 
       template <typename T, typename... Us>
         requires std::constructible_from<Initiation, T>
@@ -380,9 +380,9 @@ namespace asioexec {
       }
 
       template <typename Receiver>
-        requires ::stdexec::receiver_of<
+        requires ::STDEXEC::receiver_of<
           std::remove_cvref_t<Receiver>,
-          ::stdexec::completion_signatures_of_t<const sender&, ::stdexec::env_of_t<Receiver>>
+          ::STDEXEC::completion_signatures_of_t<const sender&, ::STDEXEC::env_of_t<Receiver>>
         >
       constexpr auto connect(Receiver&& receiver) const & noexcept(
         std::is_nothrow_constructible_v<
@@ -396,9 +396,9 @@ namespace asioexec {
       }
 
       template <typename Receiver>
-        requires ::stdexec::receiver_of<
+        requires ::STDEXEC::receiver_of<
           std::remove_cvref_t<Receiver>,
-          ::stdexec::completion_signatures_of_t<sender, ::stdexec::env_of_t<Receiver>>
+          ::STDEXEC::completion_signatures_of_t<sender, ::STDEXEC::env_of_t<Receiver>>
         >
       constexpr auto connect(Receiver&& receiver) && noexcept(
         std::is_nothrow_constructible_v<
@@ -553,18 +553,18 @@ namespace ASIOEXEC_ASIO_NAMESPACE {
   };
 
   template <typename Signatures, typename Receiver, typename Allocator>
-    requires requires(const Receiver& r) { ::stdexec::get_allocator(::stdexec::get_env(r)); }
+    requires requires(const Receiver& r) { ::STDEXEC::get_allocator(::STDEXEC::get_env(r)); }
   struct associated_allocator<
     ::asioexec::detail::completion_token::completion_handler<Signatures, Receiver>,
     Allocator
   > {
-    using type = std::remove_cvref_t<decltype(::stdexec::get_allocator(
-      ::stdexec::get_env(std::declval<const Receiver&>())))>;
+    using type = std::remove_cvref_t<decltype(::STDEXEC::get_allocator(
+      ::STDEXEC::get_env(std::declval<const Receiver&>())))>;
 
     static type get(
       const ::asioexec::detail::completion_token::completion_handler<Signatures, Receiver>& h,
       const Allocator&) noexcept {
-      return ::stdexec::get_allocator(::stdexec::get_env(h.state().r_));
+      return ::STDEXEC::get_allocator(::STDEXEC::get_env(h.state().r_));
     }
   };
 

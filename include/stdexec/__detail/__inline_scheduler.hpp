@@ -22,7 +22,7 @@
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   struct __inline_attrs {
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept {
@@ -42,7 +42,7 @@ namespace stdexec {
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void start() noexcept {
-        stdexec::set_value(static_cast<_Receiver&&>(__rcvr_));
+        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
       }
 
       _Receiver __rcvr_;
@@ -53,7 +53,7 @@ namespace stdexec {
       using __t = __sender;
 
       using sender_concept = sender_t;
-      using completion_signatures = stdexec::completion_signatures<set_value_t()>;
+      using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
       template <class _Receiver>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
@@ -84,4 +84,4 @@ namespace stdexec {
   };
 
   static_assert(__is_scheduler_affine<schedule_result_t<inline_scheduler>>);
-} // namespace stdexec
+} // namespace STDEXEC

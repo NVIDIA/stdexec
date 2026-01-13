@@ -5,7 +5,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_set>
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 TEST_CASE(
   "static_thread_pool::get_scheduler_on_thread Test start on a specific thread",

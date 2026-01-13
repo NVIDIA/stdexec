@@ -46,7 +46,7 @@ namespace exec::__system_context_default_impl {
   schedule:
   - __recv::__r_ (receiver*) -- 8
   - __recv::__op_ (__operation*) -- 8
-  - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 56 (when connected with an empty receiver)
+  - __operation::__inner_op_ (STDEXEC::connect_result_t<_Sender, __recv<_Sender>>) -- 56 (when connected with an empty receiver)
   - __operation::__on_heap_ (bool) -- optimized away
   ---------------------
   Total: 72; extra 16 bytes compared to internal operation state.
@@ -54,7 +54,7 @@ namespace exec::__system_context_default_impl {
   extra for bulk:
   - __recv::__r_ (receiver*) -- 8
   - __recv::__op_ (__operation*) -- 8
-  - __operation::__inner_op_ (stdexec::connect_result_t<_Sender, __recv<_Sender>>) -- 128 (when connected with an empty receiver & fun)
+  - __operation::__inner_op_ (STDEXEC::connect_result_t<_Sender, __recv<_Sender>>) -- 128 (when connected with an empty receiver & fun)
   - __operation::__on_heap_ (bool) -- optimized away
   - __bulk_unchunked_functor::__r_ (bulk_item_receiver*) - 8
   ---------------------
@@ -67,7 +67,7 @@ namespace exec::__system_context_default_impl {
 
   template <class _Sender>
   struct __recv {
-    using receiver_concept = stdexec::receiver_t;
+    using receiver_concept = STDEXEC::receiver_t;
 
     //! The operation state on the frontend.
     receiver* __r_;
@@ -101,9 +101,9 @@ namespace exec::__system_context_default_impl {
 
     [[nodiscard]]
     auto get_env() const noexcept -> decltype(auto) {
-      auto __o = __r_->try_query<stdexec::inplace_stop_token>();
-      stdexec::inplace_stop_token __st = __o ? *__o : stdexec::inplace_stop_token{};
-      return stdexec::prop{stdexec::get_stop_token, __st};
+      auto __o = __r_->try_query<STDEXEC::inplace_stop_token>();
+      STDEXEC::inplace_stop_token __st = __o ? *__o : STDEXEC::inplace_stop_token{};
+      return STDEXEC::prop{STDEXEC::get_stop_token, __st};
     }
   };
 
@@ -126,7 +126,7 @@ namespace exec::__system_context_default_impl {
   template <typename _Sender>
   struct __operation {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
-    stdexec::connect_result_t<_Sender, __recv<_Sender>> __inner_op_;
+    STDEXEC::connect_result_t<_Sender, __recv<_Sender>> __inner_op_;
     /// True if the operation is on the heap, false if it is in the preallocated space.
     bool __on_heap_;
 
@@ -145,7 +145,7 @@ namespace exec::__system_context_default_impl {
 
     //! Starts the operation that will schedule work on the system scheduler.
     void start() & noexcept {
-      stdexec::start(__inner_op_);
+      STDEXEC::start(__inner_op_);
     }
 
     /// Destructs the operation; frees any allocated memory.
@@ -159,7 +159,7 @@ namespace exec::__system_context_default_impl {
 
    private:
     __operation(_Sender __sndr, receiver* __completion, bool __on_heap)
-      : __inner_op_(stdexec::connect(std::move(__sndr), __recv<_Sender>{__completion, this}))
+      : __inner_op_(STDEXEC::connect(std::move(__sndr), __recv<_Sender>{__completion, this}))
       , __on_heap_(__on_heap) {
     }
   };
@@ -227,23 +227,23 @@ namespace exec::__system_context_default_impl {
     };
 
     using __schedule_operation_t =
-      __operation<decltype(stdexec::schedule(std::declval<__pool_scheduler_t>()))>;
+      __operation<decltype(STDEXEC::schedule(std::declval<__pool_scheduler_t>()))>;
 
-    using __schedule_bulk_chunked_operation_t = __operation<decltype(stdexec::bulk(
-      stdexec::schedule(std::declval<__pool_scheduler_t>()),
-      stdexec::par,
+    using __schedule_bulk_chunked_operation_t = __operation<decltype(STDEXEC::bulk(
+      STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
+      STDEXEC::par,
       std::declval<uint32_t>(),
       std::declval<__bulk_chunked_functor>()))>;
-    using __schedule_bulk_unchunked_operation_t = __operation<decltype(stdexec::bulk(
-      stdexec::schedule(std::declval<__pool_scheduler_t>()),
-      stdexec::par,
+    using __schedule_bulk_unchunked_operation_t = __operation<decltype(STDEXEC::bulk(
+      STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
+      STDEXEC::par,
       std::declval<uint32_t>(),
       std::declval<__bulk_unchunked_functor>()))>;
 
    public:
     void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
       STDEXEC_TRY {
-        auto __sndr = stdexec::schedule(__pool_scheduler_);
+        auto __sndr = STDEXEC::schedule(__pool_scheduler_);
         auto __os =
           __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
         __os->start();
@@ -266,9 +266,9 @@ namespace exec::__system_context_default_impl {
                                 : 1;
         uint32_t __num_chunks = (__size + __chunk_size - 1) / __chunk_size;
 
-        auto __sndr = stdexec::bulk(
-          stdexec::schedule(__pool_scheduler_),
-          stdexec::par,
+        auto __sndr = STDEXEC::bulk(
+          STDEXEC::schedule(__pool_scheduler_),
+          STDEXEC::par,
           __num_chunks,
           __bulk_chunked_functor{
             &__r, __chunker{__chunk_size, __size}
@@ -287,9 +287,9 @@ namespace exec::__system_context_default_impl {
       std::span<std::byte> __storage,
       bulk_item_receiver& __r) noexcept override {
       STDEXEC_TRY {
-        auto __sndr = stdexec::bulk(
-          stdexec::schedule(__pool_scheduler_),
-          stdexec::par,
+        auto __sndr = STDEXEC::bulk(
+          STDEXEC::schedule(__pool_scheduler_),
+          STDEXEC::par,
           __size,
           __bulk_unchunked_functor{&__r});
         auto __os = __schedule_bulk_unchunked_operation_t::__construct_maybe_alloc(
@@ -322,7 +322,7 @@ namespace exec::__system_context_default_impl {
 
       // Otherwise, create a new instance using the factory.
       // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
-      auto __new_instance = __factory_.load(stdexec::__std::memory_order_relaxed)();
+      auto __new_instance = __factory_.load(STDEXEC::__std::memory_order_relaxed)();
 
       // Store the newly created instance.
       __acquire_instance_lock();
@@ -348,9 +348,9 @@ namespace exec::__system_context_default_impl {
     }
 
    private:
-    stdexec::__std::atomic<bool> __instance_locked_{false};
+    STDEXEC::__std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
-    stdexec::__std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
+    STDEXEC::__std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
@@ -358,13 +358,13 @@ namespace exec::__system_context_default_impl {
     }
 
     void __acquire_instance_lock() {
-      while (__instance_locked_.exchange(true, stdexec::__std::memory_order_acquire)) {
+      while (__instance_locked_.exchange(true, STDEXEC::__std::memory_order_acquire)) {
         // Spin until we acquire the lock.
       }
     }
 
     void __release_instance_lock() {
-      __instance_locked_.store(false, stdexec::__std::memory_order_release);
+      __instance_locked_.store(false, STDEXEC::__std::memory_order_release);
     }
   };
 

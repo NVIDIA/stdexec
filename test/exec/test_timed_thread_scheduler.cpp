@@ -44,7 +44,7 @@ namespace {
   TEST_CASE("timed_thread_scheduler - schedule", "[timed_thread_scheduler][schedule]") {
     exec::timed_thread_context context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    CHECK(stdexec::sync_wait(stdexec::schedule(scheduler)));
+    CHECK(STDEXEC::sync_wait(STDEXEC::schedule(scheduler)));
   }
 
   TEST_CASE("timed_thread_scheduler - schedule_at", "[timed_thread_scheduler][schedule_at]") {
@@ -52,14 +52,14 @@ namespace {
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto now = exec::now(scheduler);
     auto tp = now + std::chrono::milliseconds(10);
-    CHECK(stdexec::sync_wait(exec::schedule_at(scheduler, tp)));
+    CHECK(STDEXEC::sync_wait(exec::schedule_at(scheduler, tp)));
   }
 
   TEST_CASE("timed_thread_scheduler - schedule_after", "[timed_thread_scheduler][schedule_at]") {
     exec::timed_thread_context context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto duration = std::chrono::milliseconds(10);
-    CHECK(stdexec::sync_wait(exec::schedule_after(scheduler, duration)));
+    CHECK(STDEXEC::sync_wait(exec::schedule_after(scheduler, duration)));
   }
 
   TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]") {
@@ -68,10 +68,10 @@ namespace {
     auto duration1 = std::chrono::milliseconds(10);
     auto duration2 = std::chrono::seconds(5);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 2; }));
+      exec::schedule_after(scheduler, duration1) | STDEXEC::then([] { return 1; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 2; }));
     auto t0 = std::chrono::steady_clock::now();
-    auto [n] = stdexec::sync_wait(std::move(shorter)).value();
+    auto [n] = STDEXEC::sync_wait(std::move(shorter)).value();
     auto t1 = std::chrono::steady_clock::now();
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
@@ -84,15 +84,15 @@ namespace {
     auto duration1 = std::chrono::milliseconds(10);
     auto duration2 = std::chrono::seconds(5);
     auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1) | stdexec::then([] { return 1; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 2; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 3; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 4; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 5; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 6; }),
-      exec::schedule_after(scheduler, duration2) | stdexec::then([] { return 7; }));
+      exec::schedule_after(scheduler, duration1) | STDEXEC::then([] { return 1; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 2; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 3; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 4; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 5; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 6; }),
+      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 7; }));
     auto t0 = std::chrono::steady_clock::now();
-    auto [n] = stdexec::sync_wait(std::move(shorter)).value();
+    auto [n] = STDEXEC::sync_wait(std::move(shorter)).value();
     auto t1 = std::chrono::steady_clock::now();
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
@@ -112,9 +112,9 @@ namespace {
     auto t0 = std::chrono::steady_clock::now();
     for (int i = 0; i < ntimers; ++i) {
       scope
-        .spawn(exec::schedule_at(scheduler, deadline) | stdexec::then([&counter] { ++counter; }));
+        .spawn(exec::schedule_at(scheduler, deadline) | STDEXEC::then([&counter] { ++counter; }));
     }
-    CHECK(stdexec::sync_wait(scope.on_empty()));
+    CHECK(STDEXEC::sync_wait(scope.on_empty()));
     auto t1 = std::chrono::steady_clock::now();
     CHECK(counter == ntimers);
     auto duration = t1 - t0;

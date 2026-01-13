@@ -27,7 +27,7 @@
 #include "__transform_sender.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
@@ -43,7 +43,7 @@ namespace stdexec {
         if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
           return static_cast<_Sender&&>(__sndr);
         } else {
-          return stdexec::transform_sender(
+          return STDEXEC::transform_sender(
             __make_sexpr<ensure_started_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
         }
       }
@@ -105,4 +105,4 @@ namespace stdexec {
         }
       };
   };
-} // namespace stdexec
+} // namespace STDEXEC

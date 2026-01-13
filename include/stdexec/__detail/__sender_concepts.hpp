@@ -27,7 +27,7 @@
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
 
-namespace stdexec {
+namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
   struct sender_t {
@@ -59,7 +59,7 @@ namespace stdexec {
   concept sender_in =
     (sizeof...(_Env) <= 1) //
     && sender<_Sender>     //
-    && __constant_completion_signatures<stdexec::get_completion_signatures<_Sender, _Env...>()>;
+    && __constant_completion_signatures<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
@@ -90,11 +90,11 @@ namespace stdexec {
 
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...> //
-                 && __v<__count_of<_Tag, _Sender, _Env...>> != 0;
+                 && __count_of<_Tag, _Sender, _Env...>::value != 0;
 
   template <class _Tag, class _Sender, class... _Env>
   concept __never_sends = sender_in<_Sender, _Env...> //
-                       && __v<__count_of<_Tag, _Sender, _Env...>> == 0;
+                       && __count_of<_Tag, _Sender, _Env...>::value == 0;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...> //
@@ -137,4 +137,4 @@ namespace stdexec {
 #endif
     }
   }
-} // namespace stdexec
+} // namespace STDEXEC

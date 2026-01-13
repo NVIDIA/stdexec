@@ -22,7 +22,7 @@
 #include <initializer_list>
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   constexpr std::size_t __npos = ~0UL;
 
   template <class...>
@@ -179,10 +179,10 @@ namespace stdexec {
       _Ty __value;
     };
   };
-} // namespace stdexec
+} // namespace STDEXEC
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 2021'10L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
 #else
-#  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : stdexec::__decay_copy(__VA_ARGS__))
+#  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : STDEXEC::__decay_copy(__VA_ARGS__))
 #endif

@@ -29,7 +29,7 @@
 
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __detail {
     template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_transform_sender =
@@ -459,27 +459,27 @@ namespace stdexec {
 #endif
 
   inline constexpr get_domain_t get_domain{};
-} // namespace stdexec
+} // namespace STDEXEC
 
-// Specializations of std::common_type for stdexec::indeterminate_domain
+// Specializations of std::common_type for STDEXEC::indeterminate_domain
 namespace std {
 
   template <class... _Ds, class _Domain>
-  struct common_type<::stdexec::indeterminate_domain<_Ds...>, _Domain> {
-    using type = ::stdexec::__detail::__make_domain_t<_Ds..., _Domain>;
+  struct common_type<::STDEXEC::indeterminate_domain<_Ds...>, _Domain> {
+    using type = ::STDEXEC::__detail::__make_domain_t<_Ds..., _Domain>;
   };
 
   template <class _Domain, class... _Ds>
-  struct common_type<_Domain, ::stdexec::indeterminate_domain<_Ds...>> {
-    using type = ::stdexec::__detail::__make_domain_t<_Ds..., _Domain>;
+  struct common_type<_Domain, ::STDEXEC::indeterminate_domain<_Ds...>> {
+    using type = ::STDEXEC::__detail::__make_domain_t<_Ds..., _Domain>;
   };
 
   template <class... _As, class... _Bs>
   struct common_type<
-    ::stdexec::indeterminate_domain<_As...>,
-    ::stdexec::indeterminate_domain<_Bs...>
+    ::STDEXEC::indeterminate_domain<_As...>,
+    ::STDEXEC::indeterminate_domain<_Bs...>
   > {
-    using type = ::stdexec::__detail::__make_domain_t<_As..., _Bs...>;
+    using type = ::STDEXEC::__detail::__make_domain_t<_As..., _Bs...>;
   };
 
 } // namespace std

@@ -56,7 +56,7 @@
 // The shared state should add-ref itself when the input async
 // operation is started and release itself when its completion
 // is notified.
-namespace stdexec::__shared {
+namespace STDEXEC::__shared {
   template <class _BaseEnv>
   using __env_t = __join_env_t<
     prop<get_stop_token_t, inplace_stop_token>,
@@ -76,7 +76,7 @@ namespace stdexec::__shared {
   template <class _Receiver>
   auto __make_notify_visitor(_Receiver& __rcvr) noexcept {
     return [&]<class _Tuple>(_Tuple&& __tupl) noexcept -> void {
-      stdexec::__apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
+      STDEXEC::__apply(__notify_fn<_Receiver>{__rcvr}, static_cast<_Tuple&&>(__tupl));
     };
   }
 
@@ -139,7 +139,7 @@ namespace stdexec::__shared {
       // first sets __waiters_ to the completed state. As a result, the attempt to remove `this`
       // from the waiters list above will fail and this stop request is ignored.
       std::exchange(__sh_state_, nullptr)->__detach();
-      stdexec::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
+      STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
     }
 
     // This is called from __shared_state::__notify_waiters when the input async operation
@@ -175,8 +175,8 @@ namespace stdexec::__shared {
 
   template <class _CvrefSenderId, class _EnvId>
   struct __receiver {
-    using _CvrefSender = stdexec::__cvref_t<_CvrefSenderId>;
-    using _Env = stdexec::__t<_EnvId>;
+    using _CvrefSender = STDEXEC::__cvref_t<_CvrefSenderId>;
+    using _Env = STDEXEC::__t<_EnvId>;
 
     struct __t {
       using receiver_concept = receiver_t;
@@ -207,7 +207,7 @@ namespace stdexec::__shared {
     };
   };
 
-  //! Heap-allocatable shared state for things like `stdexec::split`.
+  //! Heap-allocatable shared state for things like `STDEXEC::split`.
   template <class _CvrefSender, class _Env>
   struct __shared_state {
     static_assert(__decays_to<_CvrefSender, _CvrefSender>);
@@ -298,7 +298,7 @@ namespace stdexec::__shared {
           // 3. Sets the "is running" bit in the ref count to 0.
           __notify_waiters();
         } else {
-          stdexec::start(__shared_op_);
+          STDEXEC::start(__shared_op_);
         }
       }
     }
@@ -457,7 +457,7 @@ namespace stdexec::__shared {
       // at any point after the callback is registered. Beware. We are guaranteed, however, that
       // __local_state::operator() will not complete the operation or decrement the shared state's
       // ref count until after __self has been added to the waiters list.
-      const auto __stok = stdexec::get_stop_token(stdexec::get_env(__rcvr));
+      const auto __stok = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr));
       __self.__on_stop_.emplace(__stok, __self);
 
       // We haven't put __self in the waiters list yet and we are holding a ref count to
@@ -477,7 +477,7 @@ namespace stdexec::__shared {
       // Complete synchronously with set_stopped().
       __self.__on_stop_.reset();
       std::exchange(__self.__sh_state_, nullptr)->__detach();
-      stdexec::set_stopped(static_cast<_Receiver&&>(__rcvr));
+      STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr));
     };
   };
-} // namespace stdexec::__shared
+} // namespace STDEXEC::__shared

@@ -1,11 +1,11 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include "common.cuh"
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
-#include "common.cuh"
 
-namespace ex = stdexec;
+namespace ex = STDEXEC;
 
 using nvexec::is_on_gpu;
 
@@ -29,7 +29,7 @@ namespace {
                    flags.set();
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -47,7 +47,7 @@ namespace {
                    }
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -66,7 +66,7 @@ namespace {
                    }
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -81,7 +81,7 @@ namespace {
 
                  return 0;
                });
-    const auto [result] = stdexec::sync_wait(std::move(snd)).value();
+    const auto [result] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(result == 42);
   }
@@ -102,7 +102,7 @@ namespace {
                    flags.set(1);
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -123,7 +123,7 @@ namespace {
                      flags.set(0);
                    }
                  });
-      stdexec::sync_wait(std::move(snd));
+      STDEXEC::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -140,7 +140,7 @@ namespace {
                      flags.set();
                    }
                  });
-      stdexec::sync_wait(std::move(snd)).value();
+      STDEXEC::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -157,7 +157,7 @@ namespace {
                      flags.set();
                    }
                  });
-      stdexec::sync_wait(std::move(snd));
+      STDEXEC::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -174,7 +174,7 @@ namespace {
                      flags.set();
                    }
                  });
-      stdexec::sync_wait(std::move(snd)).value();
+      STDEXEC::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -194,7 +194,7 @@ namespace {
                    flags.set();
                  }
                });
-    stdexec::sync_wait(std::move(snd));
+    STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -291,8 +291,8 @@ namespace {
     {
       auto snd = ex::schedule(stream_ctx.get_scheduler())
                | ex::then([handle]() -> tracer_t { return tracer_t{handle}; })
-               | ex::then([](tracer_t &&) {});
-      stdexec::sync_wait(std::move(snd));
+               | ex::then([](tracer_t &&) { });
+      STDEXEC::sync_wait(std::move(snd));
     }
 
     REQUIRE(handle.alive() == 0);

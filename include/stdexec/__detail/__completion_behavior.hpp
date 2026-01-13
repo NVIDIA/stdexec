@@ -27,7 +27,7 @@
 #include <compare>
 #include <type_traits>
 
-namespace stdexec {
+namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_behavior
   struct min_t;
@@ -74,7 +74,7 @@ namespace stdexec {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(completion_behavior::__constant_t<_CBs>...) const noexcept {
         constexpr auto __behavior = static_cast<behavior>(
-          stdexec::__umax({static_cast<std::size_t>(_CBs)...}));
+          STDEXEC::__umax({static_cast<std::size_t>(_CBs)...}));
 
         if constexpr (__behavior == completion_behavior::unknown) {
           return completion_behavior::unknown;
@@ -143,7 +143,7 @@ namespace stdexec {
     };
   } // namespace __queries
 
-  [[deprecated("use stdexec::completion_behavior::weakest instead")]]
+  [[deprecated("use STDEXEC::completion_behavior::weakest instead")]]
   inline constexpr const auto& min = completion_behavior::weakest;
 
   template <class... _CBs>
@@ -166,4 +166,4 @@ namespace stdexec {
       __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, const _Env&...>;
     return __behavior_t{};
   }
-} // namespace stdexec
+} // namespace STDEXEC

@@ -29,7 +29,7 @@
 #  include <stop_token> // IWYU pragma: export
 #endif
 
-namespace stdexec {
+namespace STDEXEC {
   namespace __stok {
     struct __inplace_stop_callback_base {
       void __execute() noexcept {
@@ -396,4 +396,4 @@ namespace stdexec {
   using in_place_stop_callback
     [[deprecated("in_place_stop_callback has been renamed inplace_stop_callback")]] =
       inplace_stop_callback<_Fun>;
-} // namespace stdexec
+} // namespace STDEXEC
