@@ -18,14 +18,18 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "../stop_token.hpp"
 #include "__basic_sender.hpp"
+#include "__completion_behavior.hpp"
 #include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
 #include "__optional.hpp"
+#include "__queries.hpp"
 #include "__receivers.hpp"
+#include "__schedulers.hpp"
 #include "__submit.hpp" // IWYU pragma: keep
 
 #include <exception>
@@ -163,7 +167,7 @@ namespace STDEXEC {
     }
 
     template <class _Tag>
-    //STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto get_stop_token_t::operator()() const noexcept {
       return read_env(get_stop_token);
     }

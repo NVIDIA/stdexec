@@ -394,12 +394,12 @@ namespace STDEXEC {
   using __on::on_t;
   extern const on_t on;
 
-  namespace __detail {
-    struct __sexpr_apply_t;
-  } // namespace __detail
+  // namespace __detail {
+  //   struct __sexpr_apply_t;
+  // } // namespace __detail
 
-  using __detail::__sexpr_apply_t;
-  extern const __sexpr_apply_t __sexpr_apply;
+  // using __detail::__sexpr_apply_t;
+  // extern const __sexpr_apply_t __sexpr_apply;
 } // namespace STDEXEC
 
 template <class...>

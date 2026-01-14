@@ -92,7 +92,7 @@ namespace exec {
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(__sexpr_apply(static_cast<_Sender &&>(__sndr), STDEXEC::__detail::__get_data())) {
+        : __pair_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
@@ -208,11 +208,11 @@ namespace exec {
 
       template <class _Sender, bool _NoThrow = __nothrow_decay_copyable<_Sender>>
       auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) noexcept(_NoThrow) {
-        return __sexpr_apply(
-          static_cast<_Sender &&>(__sndr),
+        return __apply(
           []<class _Child>(__ignore, std::size_t __count, _Child __child) noexcept(_NoThrow) {
             return __make_sexpr<__repeat_n_tag>(__child_count_pair{std::move(__child), __count});
-          });
+          },
+          static_cast<_Sender &&>(__sndr));
       }
     };
   } // namespace __repeat_n

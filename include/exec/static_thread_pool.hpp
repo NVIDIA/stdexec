@@ -298,7 +298,7 @@ namespace exec {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
             auto sched = STDEXEC::get_completion_scheduler<set_value_t>(get_env(sndr), env);
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
-            return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_bulk{*sched.pool_});
+            return __apply(_transform_bulk{*sched.pool_}, static_cast<Sender&&>(sndr));
           } else {
             return STDEXEC::__not_a_sender<
               STDEXEC::_WHAT_<>(
@@ -318,7 +318,7 @@ namespace exec {
         auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
             auto sched = STDEXEC::get_scheduler(env);
-            return __sexpr_apply(static_cast<Sender&&>(sndr), _transform_iterate{*sched.pool_});
+            return __apply(_transform_iterate{*sched.pool_}, static_cast<Sender&&>(sndr));
           } else {
             return STDEXEC::__not_a_sender<
               STDEXEC::_WHAT_<>(

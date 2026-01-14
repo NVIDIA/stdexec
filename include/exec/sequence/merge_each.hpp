@@ -1288,10 +1288,10 @@ namespace exec {
 
       static constexpr auto subscribe =
         []<class _Sequence, receiver _Receiver>(_Sequence&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_callable<__sexpr_apply_t, _Sequence, __subscribe_fn<_Receiver>>)
-        -> __sexpr_apply_result_t<_Sequence, __subscribe_fn<_Receiver>> {
+          __nothrow_applicable<__subscribe_fn<_Receiver>, _Sequence>)
+        -> __apply_result_t<__subscribe_fn<_Receiver>, _Sequence> {
         static_assert(sender_expr_for<_Sequence, merge_each_t>);
-        return __sexpr_apply(static_cast<_Sequence&&>(__sndr), __subscribe_fn<_Receiver>{__rcvr});
+        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Sequence&&>(__sndr));
       };
     };
   } // namespace __merge_each

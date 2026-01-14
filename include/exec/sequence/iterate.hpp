@@ -190,9 +190,9 @@ namespace exec {
       >
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
-        noexcept(__nothrow_callable<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>>)
-          -> __call_result_t<__sexpr_apply_t, _SeqExpr, __subscribe_fn<_Receiver>> {
-        return __sexpr_apply(static_cast<_SeqExpr&&>(__seq), __subscribe_fn<_Receiver>{__rcvr});
+        noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _SeqExpr>)
+          -> __apply_result_t<__subscribe_fn<_Receiver>, _SeqExpr> {
+        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_SeqExpr&&>(__seq));
       }
 
       template <class, class...>

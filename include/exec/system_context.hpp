@@ -712,8 +712,8 @@ namespace exec {
     const _Env& __env) const noexcept {
     if constexpr (STDEXEC::__completes_on<_Sender, parallel_scheduler, _Env>) {
       auto __sched = STDEXEC::get_scheduler(__env);
-      return STDEXEC::__sexpr_apply(
-        static_cast<_Sender&&>(__sndr), __transform_parallel_bulk_sender{__sched});
+      return STDEXEC::__apply(
+        __transform_parallel_bulk_sender{__sched}, static_cast<_Sender&&>(__sndr));
     } else {
       return STDEXEC::__not_a_sender<
         STDEXEC::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),

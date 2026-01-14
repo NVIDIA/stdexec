@@ -87,14 +87,10 @@ namespace nvexec {
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : STDEXEC::default_domain {
     template <STDEXEC::sender_expr Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
-      requires STDEXEC::__callable<
-        STDEXEC::__sexpr_apply_t,
-        Sender,
-        _strm::transform_sender_for<Tag, Env>
-      >
+      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag, Env>, Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
-      return STDEXEC::__sexpr_apply(
-        static_cast<Sender&&>(sndr), _strm::transform_sender_for<Tag, Env>{env});
+      return STDEXEC::__apply(
+        _strm::transform_sender_for<Tag, Env>{env}, static_cast<Sender&&>(sndr));
     }
 
     template <class Tag, STDEXEC::sender Sender, class... Args>
