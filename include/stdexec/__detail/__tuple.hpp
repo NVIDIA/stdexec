@@ -395,9 +395,18 @@ namespace STDEXEC {
   //
   // __tuple_element_t
   //
+  namespace __detail {
+    template <class _Index, class _Tuple>
+    using __tuple_element_t = decltype(__tt::__remove_rvalue_reference_fn(
+      STDEXEC::__get<_Index::value>(__declval<_Tuple>())));
+
+    template <size_t _Index, class _Tuple>
+      requires __mvalid<__tuple_element_t, __msize_t<_Index>, _Tuple>
+    extern __declfn_t<__tuple_element_t<__msize_t<_Index>, _Tuple>> __tuple_element_v;
+  } // namespace __detail
+
   template <size_t _Index, class _Tuple>
-  using __tuple_element_t = decltype(__tt::__remove_rvalue_reference_fn(
-    STDEXEC::__get<_Index>(__declval<_Tuple>())));
+  using __tuple_element_t = decltype(__detail::__tuple_element_v<_Index, _Tuple>());
 
   //
   // __cat_apply(fn, tups...)

@@ -25,6 +25,11 @@
 #include <exception> // IWYU pragma: keep for std::terminate
 
 namespace STDEXEC {
+  namespace {
+    template <auto _Descriptor>
+    struct __sexpr;
+  } // namespace
+
   namespace __detail {
     // A type that describes a sender's metadata
     template <class _Tag, class _Data, class... _Child>
@@ -43,10 +48,17 @@ namespace STDEXEC {
 
     template <class _Sender>
     using __desc_of = STDEXEC_REMOVE_REFERENCE(_Sender)::__desc_t;
+
+    template <class _Sender>
+    using __tag_of = __desc_of<_Sender>::__tag;
+
+    template <class _Sender>
+      requires __mvalid<__tag_of, _Sender>
+    extern __tag_of<_Sender> __tag_of_v;
   } // namespace __detail
 
   template <class _Sender>
-  using tag_of_t = __detail::__desc_of<_Sender>::__tag;
+  using tag_of_t = decltype(__detail::__tag_of_v<_Sender>);
 
   template <class _Sender>
   using __data_of = __tuple_element_t<1, _Sender>;
@@ -57,21 +69,26 @@ namespace STDEXEC {
     typename __detail::__desc_of<_Sender>::__children
   >;
 
-  template <class _Ny, class _Sender>
-  using __nth_child_of = __children_of<_Sender, __mbind_front_q<__m_at, _Ny>>;
-
   template <std::size_t _Ny, class _Sender>
-  using __nth_child_of_c = __children_of<_Sender, __mbind_front_q<__m_at, __msize_t<_Ny>>>;
+  using __nth_child_of_c = __tuple_element_t<_Ny + 2, _Sender>;
+
+  template <class _Ny, class _Sender>
+  using __nth_child_of = __nth_child_of_c<_Ny::value, _Sender>;
 
   template <class _Sender>
-  using __child_of = __children_of<_Sender, __q<__mfront>>;
+  using __child_of = __tuple_element_t<2, _Sender>;
 
   template <class _Sender>
-  inline constexpr std::size_t __nbr_children_of = __children_of<_Sender, __msize>::value;
+  inline constexpr std::size_t __nbr_children_of = __tuple_size_v<_Sender> - 2;
 
-  template <class _Sender>
-    requires __mvalid<tag_of_t, _Sender>
-  struct __muncurry_<_Sender> : __detail::__desc_of<_Sender> { };
+  template <auto _Descriptor>
+  struct __muncurry_<__sexpr<_Descriptor>> : decltype(_Descriptor()){};
+
+  template <auto _Descriptor>
+  struct __muncurry_<__sexpr<_Descriptor> &> : decltype(_Descriptor()){};
+
+  template <auto _Descriptor>
+  struct __muncurry_<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
   template <class _Sender>
   concept sender_expr = __mvalid<tag_of_t, _Sender>;

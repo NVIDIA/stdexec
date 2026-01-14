@@ -450,17 +450,17 @@ namespace STDEXEC::__std {
 #if STDEXEC_HAS_BUILTIN(__remove_reference)
 namespace STDEXEC {
   template <class Ty>
-  using _remove_reference_t = __remove_reference(Ty);
+  using __unref_t = __remove_reference(Ty);
 } // namespace STDEXEC
 
-#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::_remove_reference_t<__VA_ARGS__>
+#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
 namespace STDEXEC {
   template <class Ty>
-  using _remove_reference_t = __remove_reference_t(Ty);
+  using __unref_t = __remove_reference_t(Ty);
 } // namespace STDEXEC
 
-#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::_remove_reference_t<__VA_ARGS__>
+#  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #else
 #  define STDEXEC_REMOVE_REFERENCE(...) ::std::remove_reference_t<__VA_ARGS__>
 #endif
