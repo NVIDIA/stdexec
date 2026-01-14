@@ -170,7 +170,7 @@ namespace exec {
       }
 
       template <class _Error>
-        requires(!same_as<_Error, _ErrorStorage>)
+        requires(!__std::same_as<_Error, _ErrorStorage>)
       void
         store_error(_Error&& __error) noexcept(__nothrow_callable<
                                                decltype(&_ErrorStorage::template emplace<_Error>),

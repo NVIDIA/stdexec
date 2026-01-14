@@ -46,7 +46,7 @@ namespace STDEXEC {
     // A simplified version of std::optional for better compile times
     template <class _Tp>
     struct __optional {
-      static_assert(destructible<_Tp>);
+      static_assert(__std::destructible<_Tp>);
 
       union {
         _Tp __value_;
@@ -63,13 +63,13 @@ namespace STDEXEC {
       __optional(__optional&&) = delete; // immovable for simplicity's sake
 
       template <__not_decays_to<__optional> _Up>
-        requires constructible_from<_Tp, _Up>
+        requires __std::constructible_from<_Tp, _Up>
       __optional(_Up&& __val) noexcept(__nothrow_constructible_from<_Tp, _Up>) {
         emplace(static_cast<_Up&&>(__val));
       }
 
       template <class... _Us>
-        requires constructible_from<_Tp, _Us...>
+        requires __std::constructible_from<_Tp, _Us...>
       __optional(std::in_place_t, _Us&&... __us)
         noexcept(__nothrow_constructible_from<_Tp, _Us...>) {
         emplace(static_cast<_Us&&>(__us)...);
@@ -95,7 +95,7 @@ namespace STDEXEC {
       // 5. Return a reference to the new object -- which may be invalid! Calling code
       //    must be aware of the danger.
       template <class... _Us>
-        requires constructible_from<_Tp, _Us...>
+        requires __std::constructible_from<_Tp, _Us...>
       auto emplace(_Us&&... __us) noexcept(__nothrow_constructible_from<_Tp, _Us...>) -> _Tp& {
         reset();
         auto __sg = __mk_has_value_guard(__has_value_);
@@ -106,7 +106,7 @@ namespace STDEXEC {
       }
 
       template <class _Fn, class... _Args>
-        requires same_as<_Tp, __call_result_t<_Fn, _Args...>>
+        requires __std::same_as<_Tp, __call_result_t<_Fn, _Args...>>
       auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>)
         -> _Tp& {
         reset();

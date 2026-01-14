@@ -28,7 +28,7 @@
 namespace STDEXEC {
   // [exec.queries.queryable]
   template <class T>
-  concept queryable = destructible<T>;
+  concept queryable = __std::destructible<T>;
 
   template <class _Env, class _Query, class... _Args>
   concept __member_queryable_with =
@@ -134,7 +134,7 @@ namespace STDEXEC {
         if constexpr (__queryable_with<_Query, forwarding_query_t>) {
           return __query<forwarding_query_t>()(_Query());
         } else {
-          return derived_from<_Query, forwarding_query_t>;
+          return __std::derived_from<_Query, forwarding_query_t>;
         }
       }
     };

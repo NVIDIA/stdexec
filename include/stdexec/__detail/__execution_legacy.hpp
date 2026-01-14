@@ -25,16 +25,22 @@ namespace STDEXEC {
 
 #if STDEXEC_HAS_EXECUTION_POLICY()
 
-  using sequenced_policy = std::execution::sequenced_policy;
-  using parallel_policy = std::execution::parallel_policy;
-  using parallel_unsequenced_policy = std::execution::parallel_unsequenced_policy;
+  // Import the execution policies from std::execution. The __policy namespace is used to
+  // avoid name clashes if the macro STDEXEC expands to std::execution.
+  namespace __policy {
+    using std::execution::sequenced_policy;
+    using std::execution::parallel_policy;
+    using std::execution::parallel_unsequenced_policy;
 
-  constexpr auto seq = std::execution::seq;
-  constexpr auto par = std::execution::par;
-  constexpr auto par_unseq = std::execution::par_unseq;
+    using std::execution::seq;
+    using std::execution::par;
+    using std::execution::par_unseq;
 
-  using std::is_execution_policy_v;
-  using std::is_execution_policy;
+    using std::is_execution_policy_v;
+    using std::is_execution_policy;
+  } // namespace __policy
+
+  using namespace __policy;
 
 #else
 
@@ -65,9 +71,12 @@ namespace STDEXEC {
 
 #if STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY()
 
-  using unsequenced_policy = std::execution::unsequenced_policy;
+  namespace __policy {
+    using std::execution::unsequenced_policy;
+    using std::execution::unseq;
+  } // namespace __policy
 
-  constexpr auto unseq = std::execution::unseq;
+  using namespace __policy;
 
 #else
 

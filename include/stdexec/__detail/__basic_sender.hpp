@@ -41,32 +41,29 @@ namespace STDEXEC {
     using __impl_of = decltype((__declval<_Sender>().__impl_));
   } // namespace __detail
 
-  // template <class _Descriptor>
-  // inline constexpr auto __descriptor_fn_v = _Descriptor{};
+#if STDEXEC_EDG()
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)                                                 \
+    ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
+#else // ^^^ EDG ^^^ / vvv !EDG vvv
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor) ([] { return _Descriptor(); })
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
+#endif
 
-#if STDEXEC_NVHPC()
-  template <
-    class _Descriptor,
-    auto _DescriptorFn = ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
-  >
-  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#if STDEXEC_DEMANGLE_SENDER_NAMES || STDEXEC_MSVC()
+  template <class _Descriptor>
+  inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #else
-  template <class _Descriptor, auto _DescriptorFn = ([] { return _Descriptor(); })>
+  template <class _Descriptor, auto _DescriptorFn = STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)>
   inline constexpr auto __descriptor_fn_v = _DescriptorFn;
 #endif
 
   template <class _Tag, class _Data, class... _Child>
-  inline constexpr auto __descriptor_fn() {
+  consteval auto __descriptor_fn() noexcept {
     return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
   }
-
-#if STDEXEC_EDG()
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
-#else
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
-#endif
 
   template <class _Tag>
   struct __sexpr_impl;
@@ -229,7 +226,7 @@ namespace STDEXEC {
     };
 
     template <class _Sexpr, class _Receiver>
-    concept __state_uses_receiver = derived_from<
+    concept __state_uses_receiver = __std::derived_from<
       __state_t<_Sexpr, _Receiver>,
       __enable_receiver_from_this<_Sexpr, _Receiver, __state_t<_Sexpr, _Receiver>>
     >;

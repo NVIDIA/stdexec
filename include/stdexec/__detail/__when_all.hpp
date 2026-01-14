@@ -225,7 +225,7 @@ namespace STDEXEC {
         // All child operations have completed and arrived at the barrier.
         switch (__state_.load(__std::memory_order_relaxed)) {
         case __started:
-          if constexpr (!same_as<_ValuesTuple, __ignore>) {
+          if constexpr (!__std::same_as<_ValuesTuple, __ignore>) {
             // All child operations completed successfully:
             __when_all::__set_values(__rcvr, __values_);
           }

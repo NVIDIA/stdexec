@@ -39,7 +39,7 @@ namespace exec {
                                       && requires(_Promise& __promise) {
                                            {
                                              __promise.disposition()
-                                           } -> convertible_to<task_disposition>;
+                                           } -> __std::convertible_to<task_disposition>;
                                          };
 
     struct __get_disposition {

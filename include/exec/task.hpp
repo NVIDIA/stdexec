@@ -481,7 +481,7 @@ namespace exec {
      public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
-      // requires constructible_from<
+      // requires __std::constructible_from<
       //   awaiter_context_t<__promise, _ParentPromise>,
       //   __promise_context_t&,
       //   _ParentPromise&

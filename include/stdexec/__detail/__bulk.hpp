@@ -173,7 +173,12 @@ namespace STDEXEC {
 
     template <class _AlgoTag>
     struct __generic_bulk_t { // NOLINT(bugprone-crtp-constructor-accessibility)
-      template <sender _Sender, typename _Policy, integral _Shape, copy_constructible _Fun>
+      template <
+        sender _Sender,
+        typename _Policy,
+        __std::integral _Shape,
+        __std::copy_constructible _Fun
+      >
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(host, device)
       auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
@@ -182,7 +187,7 @@ namespace STDEXEC {
           __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
       }
 
-      template <typename _Policy, integral _Shape, copy_constructible _Fun>
+      template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(always_inline)
       auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
@@ -193,7 +198,7 @@ namespace STDEXEC {
           static_cast<_Fun&&>(__fun));
       }
 
-      template <sender _Sender, integral _Shape, copy_constructible _Fun>
+      template <sender _Sender, __std::integral _Shape, __std::copy_constructible _Fun>
       [[deprecated(
         "The bulk algorithm now requires an execution policy such as STDEXEC::par as an "
         "argument.")]]
@@ -206,7 +211,7 @@ namespace STDEXEC {
           static_cast<_Fun&&>(__fun));
       }
 
-      template <integral _Shape, copy_constructible _Fun>
+      template <__std::integral _Shape, __std::copy_constructible _Fun>
       [[deprecated(
         "The bulk algorithm now requires an execution policy such as STDEXEC::par as an "
         "argument.")]]
@@ -293,7 +298,7 @@ namespace STDEXEC {
           _Receiver& __rcvr,
           _Tag,
           _Args&&... __args) noexcept -> void {
-        if constexpr (same_as<_Tag, set_value_t>) {
+        if constexpr (__std::same_as<_Tag, set_value_t>) {
           // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__shape_);
           if constexpr (noexcept(__state.__fun_(__shape_t{}, __shape_t{}, __args...))) {
@@ -326,7 +331,7 @@ namespace STDEXEC {
           _Receiver& __rcvr,
           _Tag,
           _Args&&... __args) noexcept -> void {
-        if constexpr (std::same_as<_Tag, set_value_t>) {
+        if constexpr (__std::same_as<_Tag, set_value_t>) {
           using __shape_t = decltype(__state.__shape_);
           if constexpr (noexcept(__state.__fun_(__shape_t{}, __args...))) {
             // The noexcept version that doesn't need try/catch:

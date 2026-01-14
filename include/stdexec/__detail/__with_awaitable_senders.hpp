@@ -129,7 +129,7 @@ namespace STDEXEC {
     template <class _Value>
     [[nodiscard]]
     auto await_transform(_Value&& __val) -> __call_result_t<as_awaitable_t, _Value, _Promise&> {
-      static_assert(derived_from<_Promise, with_awaitable_senders>);
+      static_assert(__std::derived_from<_Promise, with_awaitable_senders>);
       return as_awaitable(static_cast<_Value&&>(__val), static_cast<_Promise&>(*this));
     }
   };

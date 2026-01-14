@@ -122,7 +122,7 @@ namespace exec {
           auto __arg_copy = (0, ..., static_cast<_Args &&>(__args)); // copy any arg...
           __child_op_.reset(); // ... because this could potentially invalidate it.
 
-          if constexpr (same_as<_Tag, set_value_t>) {
+          if constexpr (__std::same_as<_Tag, set_value_t>) {
             if (--__pair_.__count_ == 0) {
               STDEXEC::set_value(std::move(this->__receiver()));
             } else {

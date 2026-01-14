@@ -203,7 +203,7 @@ namespace exec {
   template <class _Sequence>
   concept __enable_sequence_sender =
     requires { typename _Sequence::sender_concept; } //
-    && STDEXEC::derived_from<typename _Sequence::sender_concept, sequence_sender_t>;
+    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_t>;
 
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;

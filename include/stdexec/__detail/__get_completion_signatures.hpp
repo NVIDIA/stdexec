@@ -289,7 +289,7 @@ namespace STDEXEC {
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
   concept __is_dependent_sender =
-    derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;
+    __std::derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
   // When asked for its completions without an envitonment, a dependent sender
   // will throw an exception of a type derived from `dependent_sender_error`.

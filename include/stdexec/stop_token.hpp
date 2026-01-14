@@ -178,7 +178,7 @@ namespace STDEXEC {
   class inplace_stop_callback : __stok::__inplace_stop_callback_base {
    public:
     template <class _Fun2>
-      requires constructible_from<_Fun, _Fun2>
+      requires __std::constructible_from<_Fun, _Fun2>
     explicit inplace_stop_callback(inplace_stop_token __token, _Fun2&& __fun)
       noexcept(__nothrow_constructible_from<_Fun, _Fun2>)
       : __stok::__inplace_stop_callback_base(

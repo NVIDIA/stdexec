@@ -117,5 +117,5 @@ namespace STDEXEC {
   concept sender_expr = __mvalid<tag_of_t, _Sender>;
 
   template <class _Sender, class _Tag>
-  concept sender_expr_for = sender_expr<_Sender> && same_as<tag_of_t<_Sender>, _Tag>;
+  concept sender_expr_for = sender_expr<_Sender> && __std::same_as<tag_of_t<_Sender>, _Tag>;
 } // namespace STDEXEC

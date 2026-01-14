@@ -107,7 +107,7 @@ namespace STDEXEC {
           __nothrow_member_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
           "The get_completion_behavior query must be noexcept.");
         static_assert(
-          convertible_to<__result_t, completion_behavior::behavior>,
+          __std::convertible_to<__result_t, completion_behavior::behavior>,
           "The get_completion_behavior query must return one of the static member variables in "
           "execution::completion_behavior.");
         return __result_t{};

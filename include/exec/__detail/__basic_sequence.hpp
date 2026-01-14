@@ -57,7 +57,7 @@ namespace exec {
             static_cast<_Child&&>(__child)...)) {
     }
 
-    template <STDEXEC::same_as<__seqexpr> _Self = __seqexpr>
+    template <STDEXEC::__std::same_as<__seqexpr> _Self = __seqexpr>
     auto get_env() const noexcept -> decltype(_Self::__tag().get_env(*this)) {
       static_assert(noexcept(_Self::__tag().get_env(*this)));
       return _Self::__tag().get_env(*this);

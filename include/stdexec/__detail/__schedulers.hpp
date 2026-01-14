@@ -22,6 +22,7 @@
 #include "__config.hpp"
 #include "__domain.hpp"
 #include "__query.hpp"
+#include "__utility.hpp"
 
 namespace STDEXEC {
   // scheduler concept opt-in tag
@@ -72,8 +73,8 @@ namespace STDEXEC {
   // [exec.sched]
   template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler> //
-                   && equality_comparable<__decay_t<_Scheduler>>
-                   && copy_constructible<__decay_t<_Scheduler>>
+                   && __std::equality_comparable<__decay_t<_Scheduler>>
+                   && __std::copy_constructible<__decay_t<_Scheduler>>
                    && std::is_nothrow_move_constructible_v<__decay_t<_Scheduler>>;
 
   template <scheduler _Scheduler>
@@ -286,7 +287,8 @@ namespace STDEXEC {
       template <class _Attrs>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr void __validate() noexcept {
-        static_assert(same_as<bool, __call_result_t<execute_may_block_caller_t, const _Attrs&>>);
+        static_assert(
+          __std::same_as<bool, __call_result_t<execute_may_block_caller_t, const _Attrs&>>);
         static_assert(__nothrow_callable<execute_may_block_caller_t, const _Attrs&>);
       }
     };
@@ -301,7 +303,7 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr void __validate() noexcept {
         using __result_t = __call_result_t<get_forward_progress_guarantee_t, const _Attrs&>;
-        static_assert(same_as<forward_progress_guarantee, __result_t>);
+        static_assert(__std::same_as<forward_progress_guarantee, __result_t>);
         static_assert(__nothrow_callable<get_forward_progress_guarantee_t, const _Attrs&>);
       }
     };

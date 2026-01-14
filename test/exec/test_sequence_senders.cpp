@@ -48,12 +48,12 @@ namespace {
     STATIC_REQUIRE(sender<some_sender_of<set_value_t()>>);
     STATIC_REQUIRE(sender_in<some_sender_of<set_value_t()>, env<>>);
     STATIC_REQUIRE(
-      same_as<
+      std::same_as<
         completion_signatures_of_t<some_sender_of<set_value_t()>>,
         completion_signatures<set_value_t()>
       >);
     STATIC_REQUIRE(
-      same_as<
+      std::same_as<
         completion_signatures_of_t<some_sender_of<set_value_t(int)>>,
         completion_signatures<set_value_t(int)>
       >);

@@ -151,7 +151,7 @@ namespace STDEXEC::__shared {
       auto* const __self = static_cast<__local_state*>(__base);
 
       // The split algorithm sends by T const&. ensure_started sends by T&&.
-      constexpr bool __is_split = same_as<__split::__split_t, _Tag>;
+      constexpr bool __is_split = __std::same_as<__split::__split_t, _Tag>;
       using __variant_t = decltype(__self->__sh_state_->__results_);
       using __cv_variant_t = __if_c<__is_split, const __variant_t&, __variant_t>;
 
@@ -385,7 +385,7 @@ namespace STDEXEC::__shared {
   // split completes with const T&. ensure_started completes with T&&.
   template <class _Tag>
   using __cvref_results_t =
-    __mcompose<__if_c<same_as<_Tag, __split::__split_t>, __cpclr, __cp>, __q<__decay_t>>;
+    __mcompose<__if_c<__std::same_as<_Tag, __split::__split_t>, __cpclr, __cp>, __q<__decay_t>>;
 
   // NOTE: the use of __mapply in the return type below takes advantage of the fact that _ShState
   // denotes an instance of the __shared_state template, which is parameterized on the

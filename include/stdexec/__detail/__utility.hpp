@@ -74,6 +74,7 @@ namespace STDEXEC {
     auto operator=(const __move_only&) -> __move_only& = delete;
   };
 
+  // Helper to combine multiple function objects into one overload set
   template <class... _Fns>
   struct __overload : _Fns... {
     using _Fns::operator()...;
@@ -81,6 +82,11 @@ namespace STDEXEC {
 
   template <class... _Fns>
   __overload(_Fns...) -> __overload<_Fns...>;
+
+  // Helper to make a type ill-formed if it is one of the given types
+  template <class _Ty, class... _Us>
+    requires __none_of<_Ty, _Us...>
+  using __unless_one_of_t = _Ty;
 
   // Helper to select overloads by priority:
   template <int _Iy>

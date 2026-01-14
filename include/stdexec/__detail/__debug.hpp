@@ -190,7 +190,7 @@ namespace STDEXEC {
           using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
           using _Operation = connect_result_t<_Sender, _Receiver>;
           //static_assert(receiver_of<_Receiver, _Sigs>);
-          if constexpr (!same_as<_Operation, __debug_operation>) {
+          if constexpr (!__std::same_as<_Operation, __debug_operation>) {
             if (sizeof(_Sender) == ~0u) { // never true
               auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
               STDEXEC::start(__op);
@@ -208,10 +208,10 @@ namespace STDEXEC {
         if constexpr (sender_in<_Sender, _Env>) {
           using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;
           using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
-          if constexpr (!same_as<_Sigs, __debug::__completion_signatures>) {
+          if constexpr (!__std::same_as<_Sigs, __debug::__completion_signatures>) {
             using _Operation = connect_result_t<_Sender, _Receiver>;
             //static_assert(receiver_of<_Receiver, _Sigs>);
-            if constexpr (!same_as<_Operation, __debug_operation>) {
+            if constexpr (!__std::same_as<_Operation, __debug_operation>) {
               if (sizeof(_Sender) == ~0ul) { // never true
                 auto __op = connect(static_cast<_Sender&&>(__sndr), _Receiver{});
                 STDEXEC::start(__op);

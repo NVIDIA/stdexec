@@ -180,7 +180,7 @@ namespace STDEXEC {
         using __result_t = __await_result_t<_Awaitable, __promise_t<_Receiver>>;
         std::exception_ptr __eptr;
         STDEXEC_TRY {
-          if constexpr (same_as<__result_t, void>)
+          if constexpr (__std::same_as<__result_t, void>)
             co_await (
               co_await static_cast<_Awaitable&&>(__awaitable),
               __co_call(set_value, static_cast<_Receiver&&>(__rcvr)));

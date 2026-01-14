@@ -48,7 +48,7 @@ namespace STDEXEC {
   template <class _Token>
   concept __stoppable_token =
     __nothrow_copy_constructible<_Token> && __nothrow_move_constructible<_Token>
-    && equality_comparable<_Token> && requires(const _Token& __token) {
+    && __std::equality_comparable<_Token> && requires(const _Token& __token) {
          { __token.stop_requested() } noexcept -> __boolean_testable_;
          { __token.stop_possible() } noexcept -> __boolean_testable_;
        }
@@ -69,11 +69,14 @@ namespace STDEXEC {
   concept stoppable_token = bool(__stoppable_token_or<_Token>);
 
   template <class _Token, typename _Callback, typename _Initializer = _Callback>
-  concept stoppable_token_for =
-    stoppable_token<_Token> && __callable<_Callback>
-    && requires { typename stop_callback_for_t<_Token, _Callback>; }
-    && constructible_from<_Callback, _Initializer>
-    && constructible_from<stop_callback_for_t<_Token, _Callback>, const _Token&, _Initializer>;
+  concept stoppable_token_for = stoppable_token<_Token> && __callable<_Callback>
+                             && requires { typename stop_callback_for_t<_Token, _Callback>; }
+                             && __std::constructible_from<_Callback, _Initializer>
+                             && __std::constructible_from<
+                                  stop_callback_for_t<_Token, _Callback>,
+                                  const _Token&,
+                                  _Initializer
+                             >;
 
   template <class _Token>
   concept unstoppable_token = stoppable_token<_Token> && requires {

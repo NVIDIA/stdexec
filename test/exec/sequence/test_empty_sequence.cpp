@@ -30,13 +30,13 @@ namespace {
     using empty_t = decltype(empty_sequence());
     STATIC_REQUIRE(sequence_sender<empty_t, env<>>);
     STATIC_REQUIRE(
-      same_as<
+      std::same_as<
         __sequence_completion_signatures_of_t<empty_t, env<>>,
         completion_signatures<set_value_t()>
       >);
     STATIC_REQUIRE(
-      same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
-    STATIC_REQUIRE(same_as<item_types_of_t<empty_t, env<>>, item_types<>>);
+      std::same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(std::same_as<item_types_of_t<empty_t, env<>>, item_types<>>);
   }
 
   struct count_set_next_receiver_t {

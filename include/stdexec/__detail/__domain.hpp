@@ -24,7 +24,6 @@
 #include "__execution_fwd.hpp"
 #include "__meta.hpp"
 #include "__sender_introspection.hpp"
-
 #include "__utility.hpp"
 
 #include <type_traits>

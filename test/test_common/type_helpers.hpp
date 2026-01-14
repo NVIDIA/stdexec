@@ -33,7 +33,7 @@ namespace {
 
   template <class Needles, class Haystack>
   concept set_equivalent =
-    ex::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>>
+    std::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>>
     && all_contained_in<Needles, Haystack>;
 
   template <const auto& Tag, class... Args>
@@ -98,7 +98,7 @@ namespace {
   template <class ExpectedEnvType, class S>
   inline void check_env_type(S&& snd) {
     using actual_t = decltype(ex::get_env(snd));
-    static_assert(ex::same_as<actual_t, ExpectedEnvType>);
+    static_assert(std::same_as<actual_t, ExpectedEnvType>);
   }
 
   //! Check that the error_types of a sender matches the expected type

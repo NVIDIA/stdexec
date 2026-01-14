@@ -121,7 +121,7 @@ namespace exec {
 
     template <class _Promise>
     concept __has_continuation = requires(_Promise& __promise, __coroutine_handle<> __c) {
-      { __promise.continuation() } -> convertible_to<__coroutine_handle<>>;
+      { __promise.continuation() } -> __std::convertible_to<__coroutine_handle<>>;
       { __promise.set_continuation(__c) };
     };
 

@@ -102,7 +102,7 @@ namespace nvexec::_strm {
           auto arg_copy = (0, ..., static_cast<Args&&>(args)); // copy any arg...
           inner_opstate_.reset(); // ... because this could potentially invalidate it.
 
-          if constexpr (same_as<Tag, STDEXEC::set_value_t>) {
+          if constexpr (__std::same_as<Tag, STDEXEC::set_value_t>) {
             if (--count_ == 0) {
               this->propagate_completion_signal(STDEXEC::set_value);
             } else {

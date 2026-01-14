@@ -466,7 +466,7 @@ namespace execpools {
 
     [[nodiscard]]
     auto available_parallelism() const -> std::uint32_t {
-      return static_cast<DerivedPoolType&>(*this).available_parallelism();
+      return static_cast<const DerivedPoolType&>(*this).available_parallelism();
     }
 
    private:

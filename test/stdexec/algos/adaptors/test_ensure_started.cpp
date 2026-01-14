@@ -282,7 +282,7 @@ namespace {
     CHECK_FALSE(called);
     auto snd2 = ex::ensure_started(std::move(snd1));
     auto snd = ex::ensure_started(std::move(snd2));
-    STATIC_REQUIRE(ex::same_as<decltype(snd2), decltype(snd)>);
+    STATIC_REQUIRE(std::same_as<decltype(snd2), decltype(snd)>);
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
@@ -326,7 +326,7 @@ namespace {
     using Snd = decltype(snd2);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
-    static_assert(ex::same_as<ex::env_of_t<Snd>, ex::env<>>);
+    static_assert(std::same_as<ex::env_of_t<Snd>, ex::env<>>);
     (void) snd1;
     (void) snd2;
   }

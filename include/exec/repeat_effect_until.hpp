@@ -120,7 +120,7 @@ namespace exec {
 
       template <class _Tag, class... _Args>
       void __complete(_Tag, _Args &&...__args) noexcept {
-        if constexpr (same_as<_Tag, set_value_t>) {
+        if constexpr (__std::same_as<_Tag, set_value_t>) {
           // If the sender completed with true, we're done
           STDEXEC_TRY {
             if constexpr ((__compile_time_bool_of<_Args, true> && ...)) {
@@ -170,7 +170,7 @@ namespace exec {
     using __values_t =
       // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
       std::conditional_t<
-        ((sizeof...(_Args) == 1) && (convertible_to<_Args, bool> && ...)),
+        ((sizeof...(_Args) == 1) && (__std::convertible_to<_Args, bool> && ...)),
         std::conditional_t<
           (__compile_time_bool_of<_Args, false> && ...),
           completion_signatures<>,

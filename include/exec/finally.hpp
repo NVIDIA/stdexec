@@ -216,7 +216,10 @@ namespace exec {
       using __id = __operation_state;
 
       template <class... _Args>
-        requires constructible_from<__result_variant<__signatures>, __decayed_std_tuple<_Args...>>
+        requires __std::constructible_from<
+          __result_variant<__signatures>,
+          __decayed_std_tuple<_Args...>
+        >
       void __store_result_and_start_next_op(_Args&&... __args) {
         this->__result_.__construct(
           std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);

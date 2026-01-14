@@ -30,6 +30,9 @@
 #define STDEXEC_PP_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
 #define STDEXEC_PP_EAT(...)
 
+#define STDEXEC_PP_IS_EMPTY_I(_BIT, ...) _BIT
+#define STDEXEC_PP_IS_EMPTY(...)         STDEXEC_PP_IS_EMPTY_I(__VA_OPT__(0, ) 1)
+
 #define STDEXEC_PP_IIF_0(_YP, ...)       __VA_ARGS__
 #define STDEXEC_PP_IIF_1(_YP, ...)       _YP
 #define STDEXEC_PP_IIF_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)

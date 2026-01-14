@@ -338,7 +338,7 @@ namespace exec {
             } else {
               std::visit(
                 [this, &__guard]<class _Tup>(_Tup& __tup) {
-                  if constexpr (same_as<_Tup, std::monostate>) {
+                  if constexpr (__std::same_as<_Tup, std::monostate>) {
                     std::terminate();
                   } else {
                     std::apply(
@@ -465,13 +465,13 @@ namespace exec {
       }
 
       template <class _Uy>
-        requires convertible_to<_Uy*, _Ty*>
+        requires __std::convertible_to<_Uy*, _Ty*>
       __dynamic_delete(std::default_delete<_Uy>)
         : __delete_([](_Ty* __p) { delete static_cast<_Uy*>(__p); }) {
       }
 
       template <class _Uy>
-        requires convertible_to<_Uy*, _Ty*>
+        requires __std::convertible_to<_Uy*, _Ty*>
       auto operator=(std::default_delete<_Uy> __d) -> __dynamic_delete& {
         __delete_ = __dynamic_delete{__d}.__delete_;
         return *this;

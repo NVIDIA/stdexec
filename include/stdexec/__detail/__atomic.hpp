@@ -16,20 +16,18 @@
 #pragma once
 
 #include "__config.hpp"
+#include "__concepts.hpp" // IWYU pragma: keep for __std::integral
 
 #if __has_include(<cuda/std/atomic>)
 #  include <cuda/std/atomic>
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 1
 #else
 #  include <atomic>
-#  if __cpp_lib_atomic_ref < 2018'06L
-#    include <concepts>
-#  endif
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #endif
 
 namespace STDEXEC::__std {
-#if __has_include(<cuda/std/atomic>)
+#if STDEXEC_HAS_CUDA_STD_ATOMIC()
 
   using cuda::std::atomic;
   using cuda::std::atomic_ref;
@@ -72,11 +70,11 @@ namespace STDEXEC::__std {
 
   // clang-12 does not know about std::atomic_ref yet
   // Here we implement only what we need
-  template <std::integral _Ty>
+  template <integral _Ty>
   class atomic_ref {
     _Ty* __ptr_;
 
-    static constexpr int __map_memory_order(__std::memory_order __order) {
+    static constexpr int __map_memory_order(memory_order __order) {
       return __atomic_flag_map[static_cast<int>(__order)];
     }
 
@@ -91,11 +89,11 @@ namespace STDEXEC::__std {
     atomic_ref(atomic_ref&&) = delete;
     atomic_ref& operator=(atomic_ref&&) = delete;
 
-    _Ty load(__std::memory_order __order = __std::memory_order_seq_cst) const noexcept {
+    _Ty load(memory_order __order = memory_order_seq_cst) const noexcept {
       return __atomic_load_n(__ptr_, __map_memory_order(__order));
     }
 
-    void store(_Ty __desired, __std::memory_order __order = __std::memory_order_seq_cst) noexcept {
+    void store(_Ty __desired, memory_order __order = memory_order_seq_cst) noexcept {
       __atomic_store_n(__ptr_, __desired, __map_memory_order(__order));
     }
   };

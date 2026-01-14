@@ -93,7 +93,7 @@ namespace {
     "[sequence_senders][any_sequence_of][empty_sequence]") {
     using Completions = STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>;
     STATIC_REQUIRE(
-      STDEXEC::constructible_from<
+      std::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
         decltype(exec::empty_sequence())
       >);
@@ -106,7 +106,7 @@ namespace {
   TEST_CASE("any_sequence_of - works with just(42)", "[sequence_senders][any_sequence_of]") {
     using Completions = STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>;
     STATIC_REQUIRE(
-      STDEXEC::constructible_from<
+      std::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
         decltype(STDEXEC::just(42))
       >);
@@ -119,12 +119,12 @@ namespace {
     using CompletionsFalse = STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>;
     using Completions = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
     STATIC_REQUIRE_FALSE(
-      STDEXEC::constructible_from<
+      std::constructible_from<
         exec::any_sequence_receiver_ref<CompletionsFalse>::any_sender<>,
         decltype(STDEXEC::just())
       >);
     STATIC_REQUIRE(
-      STDEXEC::constructible_from<
+      std::constructible_from<
         exec::any_sequence_receiver_ref<Completions>::any_sender<>,
         decltype(STDEXEC::just())
       >);
@@ -139,7 +139,7 @@ namespace {
     auto env = STDEXEC::get_env(any_sequence);
     using env_t = decltype(env);
     STATIC_REQUIRE(
-      STDEXEC::same_as<
+      std::same_as<
         env_t,
         STDEXEC::__t<exec::__any::__sender_env<Completions, STDEXEC::__types<>, STDEXEC::__types<>>>
       >);

@@ -147,11 +147,55 @@
 #  define STDEXEC_EXEC_CHECK_DISABLE
 #endif
 
+// The following macros are used to define a namespace alias for the standard library.
+// It is used when forward-declaring a standard library type or function, which is not
+// portable but sometimes necessary to avoid pulling in a large header when a fwd decl
+// would do.
+#if defined(_LIBCPP_VERSION)
+#  define STDEXEC_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
+#  define STDEXEC_NAMESPACE_STD_END   _LIBCPP_END_NAMESPACE_STD
+#elif defined(__GLIBCXX__)
+#  define STDEXEC_NAMESPACE_STD_BEGIN                                                              \
+    namespace std {                                                                                \
+      _GLIBCXX_BEGIN_NAMESPACE_VERSION
+#  define STDEXEC_NAMESPACE_STD_END                                                                \
+    _GLIBCXX_END_NAMESPACE_VERSION                                                                 \
+    }
+#elif defined(_MSVC_STL_VERSION)
+#  define STDEXEC_NAMESPACE_STD_BEGIN _STD_BEGIN
+#  define STDEXEC_NAMESPACE_STD_END   _STD_END
+#else
+#  define STDEXEC_NAMESPACE_STD_BEGIN namespace std {
+#  define STDEXEC_NAMESPACE_STD_END   }
+#endif
+
+STDEXEC_NAMESPACE_STD_BEGIN
+namespace execution {
+}
+STDEXEC_NAMESPACE_STD_END
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if !defined(STDEXEC_NAMESPACE)
 #  define STDEXEC stdexec
 #else
 #  define STDEXEC STDEXEC_NAMESPACE
+#endif
+
+// Detect if stdexec is being defined within namespace std
+#define STDEXEC_NAMESPACE_IS_WITHIN_STD_PROBE_std STDEXEC_PP_PROBE(~, 1)
+#define STDEXEC_NAMESPACE_IS_WITHIN_STD()                                                          \
+  STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_NAMESPACE_IS_WITHIN_STD_PROBE_, STDEXEC))
+
+#define STDEXEC_NAMESPACE_IS_STD_CHECK_I(_0, _1, ...) STDEXEC_PP_IS_EMPTY(__VA_ARGS__)
+#define STDEXEC_NAMESPACE_IS_STD_CHECK(...)           STDEXEC_NAMESPACE_IS_STD_CHECK_I(__VA_ARGS__)
+#define STDEXEC_NAMESPACE_IS_STD_0()                  0
+#define STDEXEC_NAMESPACE_IS_STD_1()                                                               \
+  STDEXEC_NAMESPACE_IS_STD_CHECK(STDEXEC_PP_CAT(STDEXEC_NAMESPACE_IS_WITHIN_STD_PROBE_, STDEXEC))
+#define STDEXEC_NAMESPACE_IS_STD()                                                                 \
+  STDEXEC_PP_CAT(STDEXEC_NAMESPACE_IS_STD_, STDEXEC_NAMESPACE_IS_WITHIN_STD())()
+
+#if STDEXEC_NAMESPACE_IS_STD()
+#  error stdexec cannot be defined directly in namespace std, but a namespace nested inside std is allowed.
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,9 +230,9 @@ namespace STDEXEC::__std {
 //
 //   STDEXEC_ATTRIBUTE(attr1, attr2, ...)
 //   void foo() { ... }
-#define STDEXEC_ATTRIBUTE(...) STDEXEC_PP_FOR_EACH(STDEXEC__ATTRIBUTE_DETAIL, __VA_ARGS__)
-#define STDEXEC__ATTRIBUTE_DETAIL(_ATTR)                                                           \
+#define STDEXEC_ATTRIBUTE_I(_ATTR)                                                                 \
   STDEXEC_PP_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
+#define STDEXEC_ATTRIBUTE(...) STDEXEC_PP_FOR_EACH(STDEXEC_ATTRIBUTE_I, __VA_ARGS__)
 
 // unknown attributes are treated like C++-style attributes
 #define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
@@ -665,7 +709,7 @@ namespace STDEXEC {
 /// function like this:
 ///
 /// @code
-/// template <same_as<self_t> Self, class Receiver>
+/// template <__std::same_as<self_t> Self, class Receiver>
 /// STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr) {
 ///   return ...;
 /// }
@@ -680,8 +724,8 @@ namespace STDEXEC {
 #else
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                         \
-    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__) STDEXEC_PP_RPAREN)  \
-      STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)            \
+                               STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                          \
     STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
@@ -692,7 +736,7 @@ namespace STDEXEC {
       auto _FN(Ts&&... ts)                                                                         \
       && STDEXEC_AUTO_RETURN(                                                                      \
         decltype(STDEXEC::__get_self<Ts...>(                                                       \
-          *this))::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))          \
+          *this))::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))       \
                                                                                                    \
         template <class... Ts>                                                                     \
         STDEXEC_ATTRIBUTE(always_inline)                                                           \
@@ -713,28 +757,6 @@ namespace STDEXEC {
 } // namespace STDEXEC
 
 #endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
-
-// The following macros are used to define a namespace alias for the standard library.
-// It is used when forward-declaring a standard library type or function, which is not
-// portable but sometimes necessary to avoid pulling in a large header when a fwd decl
-// would do.
-#if defined(_LIBCPP_VERSION)
-#  define STDEXEC_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
-#  define STDEXEC_NAMESPACE_STD_END   _LIBCPP_END_NAMESPACE_STD
-#elif defined(__GLIBCXX__)
-#  define STDEXEC_NAMESPACE_STD_BEGIN                                                              \
-    namespace std {                                                                                \
-      _GLIBCXX_BEGIN_NAMESPACE_VERSION
-#  define STDEXEC_NAMESPACE_STD_END                                                                \
-    _GLIBCXX_END_NAMESPACE_VERSION                                                                 \
-    }
-#elif defined(_MSVC_STL_VERSION)
-#  define STDEXEC_NAMESPACE_STD_BEGIN _STD_BEGIN
-#  define STDEXEC_NAMESPACE_STD_END   _STD_END
-#else
-#  define STDEXEC_NAMESPACE_STD_BEGIN namespace std {
-#  define STDEXEC_NAMESPACE_STD_END   }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && !defined(STDEXEC_CLANG_TIDY_INVOKED)
