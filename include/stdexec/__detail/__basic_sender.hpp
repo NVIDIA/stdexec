@@ -234,8 +234,8 @@ namespace STDEXEC {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
-        noexcept(__noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>)
+      explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
+        __state_t(__sexpr_impl<__tag_t>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))))
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
@@ -525,6 +525,9 @@ namespace STDEXEC {
   template <class _Tag, class _Data, class... _Child>
   using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
   //! A tagged function-object
@@ -544,6 +547,8 @@ namespace STDEXEC {
 
   template <class _Tag>
   inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
+
+  STDEXEC_PRAGMA_POP()
 
   // The __demangle_t utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
