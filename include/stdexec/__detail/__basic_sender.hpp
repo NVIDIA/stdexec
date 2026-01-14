@@ -493,7 +493,7 @@ namespace STDEXEC {
       // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
       using __id = __sexpr;
       using __t = __sexpr;
-      using __desc_t = __result_of<_DescriptorFn>;
+      using __desc_t = decltype(_DescriptorFn());
       using __tag_t = __desc_t::__tag;
       using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
