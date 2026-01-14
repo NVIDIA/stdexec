@@ -370,8 +370,8 @@ namespace STDEXEC {
 
       static constexpr auto get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver& __rcvr) noexcept
-        -> __sexpr_apply_result_t<_Self, __mk_state_fn_t<_Receiver>> {
-        return __sexpr_apply(static_cast<_Self&&>(__self), __when_all::__mk_state_fn(__rcvr));
+        -> __apply_result_t<__mk_state_fn_t<_Receiver>, _Self> {
+        return __apply(__when_all::__mk_state_fn(__rcvr), static_cast<_Self&&>(__self));
       };
 
       static constexpr auto start = []<class _State, class _Receiver, class... _Operations>(
@@ -469,11 +469,11 @@ namespace STDEXEC {
       template <class _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
             return when_all_t()(into_variant(static_cast<_Child&&>(__child))...);
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
     };
 
@@ -501,12 +501,12 @@ namespace STDEXEC {
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         // transform transfer_when_all(sch, sndrs...) into
         // continues_on(when_all(sndrs...), sch).
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             return continues_on(
               when_all_t()(static_cast<_Child&&>(__child)...), static_cast<_Data&&>(__data));
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
     };
 
@@ -537,12 +537,12 @@ namespace STDEXEC {
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
         // transform the transfer_when_all_with_variant(sch, sndrs...) into
         // transfer_when_all(sch, into_variant(sndrs...))
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
             return transfer_when_all_t()(
               static_cast<_Data&&>(__data), into_variant(static_cast<_Child&&>(__child))...);
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
     };
 

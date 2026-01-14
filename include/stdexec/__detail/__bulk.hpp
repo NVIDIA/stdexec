@@ -251,7 +251,7 @@ namespace STDEXEC {
 
       template <class _Sender>
       static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
+        return __apply(__transform_sender_fn(), static_cast<_Sender&&>(__sndr));
       }
     };
 

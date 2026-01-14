@@ -120,8 +120,8 @@ namespace exec {
           auto sched =
             STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr), env);
           static_assert(std::is_same_v<decltype(sched), libdispatch_scheduler>);
-          return STDEXEC::__sexpr_apply(
-            std::forward<Sender>(sndr), __libdispatch_bulk::transform_bulk{*sched.queue_});
+          return STDEXEC::__apply(
+            __libdispatch_bulk::transform_bulk{*sched.queue_}, std::forward<Sender>(sndr));
         } else {
           return STDEXEC::__not_a_sender<
             STDEXEC::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER),

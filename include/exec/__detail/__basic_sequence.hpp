@@ -31,76 +31,53 @@ namespace exec {
     using __t = __basic_sequence_sender;
   };
 
-  template <auto _DescriptorFn, class = STDEXEC::__anon>
-  struct __seqexpr {
-    using sender_concept = sequence_sender_t;
-    using __t = __seqexpr;
-    using __id = __seqexpr;
-    using __desc_t = decltype(_DescriptorFn());
-    using __tag_t = __desc_t::__tag;
-    using __captures_t =
-      STDEXEC::__minvoke<__desc_t, STDEXEC::__q<STDEXEC::__detail::__captures_t>>;
+  namespace {
+    template <auto _DescriptorFn>
+    struct __seqexpr
+      : STDEXEC::__minvoke<decltype(_DescriptorFn()), STDEXEC::__qq<STDEXEC::__tuple>> {
+      using sender_concept = sequence_sender_t;
+      using __t = __seqexpr;
+      using __id = __seqexpr;
+      using __desc_t = decltype(_DescriptorFn());
+      using __tag_t = __desc_t::__tag;
 
-    static constexpr auto __tag() noexcept -> __tag_t {
-      return {};
-    }
+      static constexpr auto __tag() noexcept -> __tag_t {
+        return {};
+      }
 
-    mutable __captures_t __impl_;
+      template <class _Self = __seqexpr>
+      auto get_env() const noexcept -> decltype(_Self::__tag().get_env(*this)) {
+        static_assert(noexcept(_Self::__tag().get_env(*this)));
+        return _Self::__tag().get_env(*this);
+      }
+
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(STDEXEC::__decays_to_derived_from<_Self, __seqexpr>);
+        return __tag_t::template get_completion_signatures<_Self, _Env...>();
+      }
+
+      template <class _Self, class... _Env>
+      static consteval auto get_item_types() {
+        static_assert(STDEXEC::__decays_to_derived_from<_Self, __seqexpr>);
+        return __tag_t::template get_item_types<_Self, _Env...>();
+      }
+
+      template <class _Self, STDEXEC::receiver _Receiver>
+      static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
+        __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
+        -> decltype(__self.__tag()
+                      .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))) {
+        static_assert(STDEXEC::__decays_to_derived_from<_Self, __seqexpr>);
+        return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
+      }
+    };
 
     template <class _Tag, class _Data, class... _Child>
     STDEXEC_ATTRIBUTE(host, device)
-    explicit __seqexpr(_Tag, _Data&& __data, _Child&&... __child)
-      : __impl_(
-          STDEXEC::__detail::__captures(
-            _Tag(),
-            static_cast<_Data&&>(__data),
-            static_cast<_Child&&>(__child)...)) {
-    }
-
-    template <STDEXEC::__std::same_as<__seqexpr> _Self = __seqexpr>
-    auto get_env() const noexcept -> decltype(_Self::__tag().get_env(*this)) {
-      static_assert(noexcept(_Self::__tag().get_env(*this)));
-      return _Self::__tag().get_env(*this);
-    }
-
-    template <STDEXEC::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
-    static consteval auto get_completion_signatures() {
-      return __tag_t::template get_completion_signatures<_Self, _Env...>();
-    }
-
-    template <STDEXEC::__decays_to_derived_from<__seqexpr> _Self, class... _Env>
-    static consteval auto get_item_types() {
-      return __tag_t::template get_item_types<_Self, _Env...>();
-    }
-
-    template <STDEXEC::__decays_to_derived_from<__seqexpr> _Self, STDEXEC::receiver _Receiver>
-    static auto subscribe(_Self&& __self, _Receiver&& __rcvr) noexcept(noexcept(
-      __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))))
-      -> decltype(__self.__tag()
-                    .subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))) {
-      return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
-    }
-
-    template <class _Sequence, class _ApplyFn>
-    static auto apply(_Sequence&& __sequence, _ApplyFn&& __fun)
-      noexcept(STDEXEC::__nothrow_callable<
-               STDEXEC::__detail::__impl_of<_Sequence>,
-               STDEXEC::__copy_cvref_fn<_Sequence>,
-               _ApplyFn
-      >)
-        -> STDEXEC::__call_result_t<
-          STDEXEC::__detail::__impl_of<_Sequence>,
-          STDEXEC::__copy_cvref_fn<_Sequence>,
-          _ApplyFn
-        > {
-      return static_cast<_Sequence&&>(__sequence)
-        .__impl_(STDEXEC::__copy_cvref_fn<_Sequence>(), static_cast<_ApplyFn&&>(__fun));
-    }
-  };
-
-  template <class _Tag, class _Data, class... _Child>
-  STDEXEC_ATTRIBUTE(host, device)
-  __seqexpr(_Tag, _Data, _Child...) -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+    __seqexpr(_Tag, _Data, _Child...)
+      -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+  } // namespace
 
   template <class _Tag, class _Data, class... _Child>
   using __seqexpr_t = __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;

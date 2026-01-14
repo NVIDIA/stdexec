@@ -46,10 +46,14 @@ namespace exec {
       constexpr connect_result_t<__child_of<_Sender>, _Receiver>
         operator()(_Sender&& __sndr, _Receiver __rcvr) const noexcept(
           noexcept(STDEXEC::connect(__declval<__child_of<_Sender>>(), (_Receiver&&) __rcvr))) {
-        return __sexpr_apply((_Sender&&) __sndr, [&](auto, const auto&, auto&& __child) {
-          return STDEXEC::connect((decltype(__child)&&) __child, (_Receiver&&) __rcvr);
-        });
+        return __apply(
+          [&]<class _Child>(auto, const auto&, _Child&& __child) {
+            return STDEXEC::connect(
+              static_cast<_Child&&>(__child), static_cast<_Receiver&&>(__rcvr));
+          },
+          static_cast<_Sender&&>(__sndr));
       }
+
       template <class _Sender, class _Receiver>
       constexpr __op_state<_Sender, _Receiver> operator()(_Sender&& __sndr, _Receiver __rcvr) const
         noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>) {

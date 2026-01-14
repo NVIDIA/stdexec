@@ -214,9 +214,9 @@ namespace exec {
 
       template <sender_expr_for<merge_t> _Self, receiver _Receiver>
       static auto subscribe(_Self&& __self, _Receiver __rcvr)
-        noexcept(__nothrow_callable<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>>)
-          -> __sexpr_apply_result_t<_Self, __subscribe_fn<_Receiver>> {
-        return __sexpr_apply(static_cast<_Self&&>(__self), __subscribe_fn<_Receiver>{__rcvr});
+        noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _Self>)
+          -> __apply_result_t<__subscribe_fn<_Receiver>, _Self> {
+        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Self&&>(__self));
       }
     };
   } // namespace __merge

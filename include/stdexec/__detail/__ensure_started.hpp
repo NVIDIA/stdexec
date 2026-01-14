@@ -61,8 +61,7 @@ namespace STDEXEC {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           [&]<class _Env2, class _Child>(__ignore, _Env2&& __env, _Child&& __child) {
             // TODO(ericniebler): should we join the env passed to ensure_started with the
             // env of the receiver?
@@ -74,7 +73,8 @@ namespace STDEXEC {
             __sh_state->__try_start(); // cannot throw
 
             return __make_sexpr<__ensure_started_t>(__box{__ensure_started_t(), __sh_state});
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Sender, class _Env>

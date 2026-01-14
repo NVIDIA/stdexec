@@ -259,16 +259,16 @@ namespace exec {
 
       template <sender_expr_for<transform_each_t> _Self, receiver _Receiver>
       static auto subscribe(_Self&& __self, _Receiver __rcvr)
-        noexcept(__nothrow_callable<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>>)
-          -> __call_result_t<__sexpr_apply_t, _Self, __subscribe_fn<_Receiver>> {
-        return __sexpr_apply(static_cast<_Self&&>(__self), __subscribe_fn<_Receiver>{__rcvr});
+        noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _Self>)
+          -> __apply_result_t<__subscribe_fn<_Receiver>, _Self> {
+        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Self&&>(__self));
       }
 
       template <sender_expr_for<transform_each_t> _Sexpr>
       static auto get_env(const _Sexpr& __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>> {
-        return __sexpr_apply(__sexpr, []<class _Child>(__ignore, __ignore, const _Child& __child) {
+        return __apply([]<class _Child>(__ignore, __ignore, const _Child& __child) {
           return STDEXEC::get_env(__child);
-        });
+        }, __sexpr);
       }
     };
   } // namespace __transform_each

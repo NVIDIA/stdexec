@@ -60,7 +60,7 @@ namespace STDEXEC {
         if constexpr (!__decay_copyable<_Sender>) {
           return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
         } else {
-          return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn());
+          return __apply(__transform_sender_fn(), static_cast<_Sender&&>(__sndr));
         }
       }
     };

@@ -89,8 +89,7 @@ namespace exec {
       trampoline_scheduler __sched_;
 
       __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(
-            __sexpr_apply(static_cast<_Sender &&>(__sndr), STDEXEC::__detail::__get_data())) {
+        : __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
         __connect();
       }
 
@@ -227,10 +226,11 @@ namespace exec {
 
       template <class _Sender>
       auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
-        return __sexpr_apply(
-          static_cast<_Sender &&>(__sndr), []<class _Child>(__ignore, __ignore, _Child __child) {
+        return STDEXEC::__apply(
+          []<class _Child>(__ignore, __ignore, _Child __child) {
             return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
-          });
+          },
+          static_cast<_Sender &&>(__sndr));
       }
     };
 
@@ -255,9 +255,9 @@ namespace exec {
 
       template <class _Sender>
       auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
-        return __sexpr_apply(static_cast<_Sender &&>(__sndr), [](__ignore, __ignore, auto __child) {
+        return STDEXEC::__apply([](__ignore, __ignore, auto __child) {
           return repeat_effect_until_t{}(STDEXEC::then(std::move(__child), _never{}));
-        });
+        }, static_cast<_Sender &&>(__sndr));
       }
     };
   } // namespace __repeat_effect

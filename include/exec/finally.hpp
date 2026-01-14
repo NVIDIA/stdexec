@@ -313,15 +313,15 @@ namespace exec {
 
       template <class _Sender>
       static auto transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, __ignore) {
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           []<class _Initial, class _Final>(
             __ignore, __ignore, _Initial&& __initial, _Final&& __final) {
             using __result_sndr_t =
               __t<__sender<__id<__decay_t<_Initial>>, __id<__decay_t<_Final>>>>;
             return __result_sndr_t{
               static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final)};
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
     };
   } // namespace __final

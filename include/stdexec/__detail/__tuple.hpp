@@ -95,24 +95,6 @@ namespace STDEXEC {
       _Ty __value;
     };
 
-    template <class _Ty>
-    concept __empty = STDEXEC_IS_EMPTY(_Ty) && STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(_Ty)
-                   && STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
-
-    template <__empty _Ty>
-    inline _Ty __value{};
-
-    // A specialization for empty types so that they don't take up space.
-    template <__empty _Ty, std::size_t _Idx>
-    struct __box<_Ty, _Idx> {
-      __box() = default;
-
-      constexpr __box(__not_decays_to<__box> auto&&) noexcept {
-      }
-
-      static constexpr _Ty& __value = __tup::__value<_Ty>;
-    };
-
     template <class _Index, class... _Ts>
     struct __tupl_base;
 
@@ -326,7 +308,7 @@ namespace STDEXEC {
   inline constexpr __tup::__apply_t __apply{};
 
   template <class _Fn, class _Tuple, class... _Us>
-  using __apply_result_t = __result_of<__apply, _Fn, _Tuple, _Us...>;
+  using __apply_result_t = __call_result_t<__tup::__apply_t, _Fn, _Tuple, _Us...>;
 
   template <class _Fn, class _Tuple, class... _Us>
   concept __applicable = __tup::__applicable_v<_Fn, _Tuple, _Us...>;
@@ -413,9 +395,18 @@ namespace STDEXEC {
   //
   // __tuple_element_t
   //
+  namespace __detail {
+    template <class _Index, class _Tuple>
+    using __tuple_element_t = decltype(__tt::__remove_rvalue_reference_fn(
+      STDEXEC::__get<_Index::value>(__declval<_Tuple>())));
+
+    template <size_t _Index, class _Tuple>
+      requires __mvalid<__tuple_element_t, __msize_t<_Index>, _Tuple>
+    extern __declfn_t<__tuple_element_t<__msize_t<_Index>, _Tuple>> __tuple_element_v;
+  } // namespace __detail
+
   template <size_t _Index, class _Tuple>
-  using __tuple_element_t = decltype(__tt::__remove_rvalue_reference_fn(
-    STDEXEC::__get<_Index>(__declval<_Tuple>())));
+  using __tuple_element_t = decltype(__detail::__tuple_element_v<_Index, _Tuple>());
 
   //
   // __cat_apply(fn, tups...)

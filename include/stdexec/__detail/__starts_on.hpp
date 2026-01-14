@@ -57,13 +57,13 @@ namespace STDEXEC {
 
       template <__decay_copyable _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
-        return __sexpr_apply(
-          static_cast<_Sender&&>(__sndr),
+        return __apply(
           []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
             // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
             return let_value(
               continues_on(just(), __data), __detail::__always{static_cast<_Child&&>(__child)});
-          });
+          },
+          static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Sender, class _Env>

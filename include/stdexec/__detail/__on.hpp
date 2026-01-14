@@ -151,7 +151,7 @@ namespace STDEXEC {
       template <class _Sender, class _Env>
       STDEXEC_ATTRIBUTE(always_inline)
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
-        return __sexpr_apply(static_cast<_Sender&&>(__sndr), __transform_sender_fn<_Sender>(__env));
+        return __apply(__transform_sender_fn<_Sender>(__env), static_cast<_Sender&&>(__sndr));
       }
     };
   } // namespace __on

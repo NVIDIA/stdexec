@@ -62,11 +62,6 @@ namespace STDEXEC {
       constexpr auto query(__root_t) const noexcept -> bool {
         return true;
       }
-
-      // static constexpr auto query(__debug::__is_debug_env_t) noexcept -> bool
-      // {
-      //   return true;
-      // }
     };
 
     // What should sync_wait(just_stopped()) return?
@@ -99,8 +94,8 @@ namespace STDEXEC {
         std::optional<std::tuple<_Values...>>* __values_;
 
         template <class... _As>
-          requires __std::constructible_from<std::tuple<_Values...>, _As...>
         void set_value(_As&&... __as) noexcept {
+          static_assert(__std::constructible_from<std::tuple<_Values...>, _As...>);
           STDEXEC_TRY {
             __values_->emplace(static_cast<_As&&>(__as)...);
           }
@@ -192,58 +187,59 @@ namespace STDEXEC {
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
-      template <class _Sender>
+      template <sender_in<__env> _Sender>
       auto operator()(_Sender&& __sndr) const {
-        if constexpr (!sender_in<_Sender, __env>) {
-          STDEXEC::__diagnose_sender_concept_failure<_Sender, __env>();
-        } else {
-          using __domain_t = __completion_domain_of_t<set_value_t, _Sender, __env>;
-          constexpr auto __success_completion_count =
-            __count_of<set_value_t, _Sender, __env>::value;
+        using __domain_t = __completion_domain_of_t<set_value_t, _Sender, __env>;
+        constexpr auto __success_completion_count = __count_of<set_value_t, _Sender, __env>::value;
 
-          static_assert(
-            __success_completion_count != 0,
-            "The argument to STDEXEC::sync_wait() is a sender that cannot complete successfully. "
-            "STDEXEC::sync_wait() requires a sender that can complete successfully in exactly one "
-            "way. In other words, the sender's completion signatures must include exactly one "
-            "signature of the form `set_value_t(value-types...)`.");
+        static_assert(
+          __success_completion_count != 0,
+          "The argument to STDEXEC::sync_wait() is a sender that cannot complete successfully. "
+          "STDEXEC::sync_wait() requires a sender that can complete successfully in exactly one "
+          "way. In other words, the sender's completion signatures must include exactly one "
+          "signature of the form `set_value_t(value-types...)`.");
 
-          static_assert(
-            __success_completion_count <= 1,
-            "The sender passed to STDEXEC::sync_wait() can complete successfully in "
-            "more than one way. Use STDEXEC::sync_wait_with_variant() instead.");
+        static_assert(
+          __success_completion_count <= 1,
+          "The sender passed to STDEXEC::sync_wait() can complete successfully in "
+          "more than one way. Use STDEXEC::sync_wait_with_variant() instead.");
 
-          if constexpr (1 == __success_completion_count) {
-            using __sync_wait_receiver = __receiver_t<_Sender>;
-            constexpr bool __no_custom_sync_wait = __same_as<__domain_t, default_domain>;
-            if constexpr (__no_custom_sync_wait && sender_to<_Sender, __sync_wait_receiver>) {
-              // using __connect_result = connect_result_t<_Sender, __sync_wait_receiver>;
-              // if constexpr (!operation_state<__connect_result>) {
-              //   static_assert(
-              //     operation_state<__connect_result>,
-              //     "The `connect` member function of the sender passed to STDEXEC::sync_wait() does "
-              //     "not return an operation state. An operation state is required to have a "
-              //     "no-throw .start() member function.");
-              // } else
-              {
+        if constexpr (1 == __success_completion_count) {
+          if constexpr (__same_as<__domain_t, default_domain>) {
+            if constexpr (sender_to<_Sender, __receiver_t<_Sender>>) {
+              using __opstate_t = connect_result_t<_Sender, __receiver_t<_Sender>>;
+              if constexpr (operation_state<__opstate_t>) {
                 // success path, dispatch to the default domain's sync_wait
                 return default_domain().apply_sender(*this, static_cast<_Sender&&>(__sndr));
+              } else {
+                static_assert(
+                  operation_state<__opstate_t>,
+                  "The `connect` member function of the sender passed to STDEXEC::sync_wait() "
+                  "does not return an operation state. An operation state is required to have a "
+                  "no-throw .start() member function.");
               }
-            } else if constexpr (__no_custom_sync_wait) {
-              static_assert(
-                sender_to<_Sender, __sync_wait_receiver>,
-                STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
-            } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _Sender>) {
-              static_assert(
-                __has_implementation_for<sync_wait_t, __domain_t, _Sender>,
-                "The sender passed to STDEXEC::sync_wait() has a domain that does not provide a "
-                "usable implementation for sync_wait().");
             } else {
-              // success path, dispatch to the custom domain's sync_wait
-              return STDEXEC::apply_sender(__domain_t(), *this, static_cast<_Sender&&>(__sndr));
+              static_assert(
+                sender_to<_Sender, __receiver_t<_Sender>>,
+                STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
             }
+          } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _Sender>) {
+            static_assert(
+              __has_implementation_for<sync_wait_t, __domain_t, _Sender>,
+              "The sender passed to STDEXEC::sync_wait() has a domain that does not provide a "
+              "usable implementation for sync_wait().");
+          } else {
+            // success path, dispatch to the custom domain's sync_wait
+            return STDEXEC::apply_sender(__domain_t(), *this, static_cast<_Sender&&>(__sndr));
           }
         }
+      }
+
+      template <class _Sender>
+      auto operator()(_Sender&&) const {
+        STDEXEC::__diagnose_sender_concept_failure<_Sender, __env>();
+        // dummy return type to silence follow-on errors
+        return std::optional<std::tuple<int>>{};
       }
 
       // clang-format off

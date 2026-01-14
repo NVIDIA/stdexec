@@ -162,7 +162,7 @@ namespace STDEXEC::__shared {
     }
 
     static auto __get_sh_state(_CvrefSender& __sndr) noexcept {
-      auto __box = __sndr.apply(static_cast<_CvrefSender&&>(__sndr), __detail::__get_data());
+      auto __box = STDEXEC::__get<1>(static_cast<_CvrefSender&&>(__sndr));
       return std::exchange(__box.__sh_state_, nullptr);
     }
 
