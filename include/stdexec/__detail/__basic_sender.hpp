@@ -41,32 +41,29 @@ namespace STDEXEC {
     using __impl_of = decltype((__declval<_Sender>().__impl_));
   } // namespace __detail
 
-  // template <class _Descriptor>
-  // inline constexpr auto __descriptor_fn_v = _Descriptor{};
+#if STDEXEC_EDG()
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)                                                 \
+    ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
+#else // ^^^ EDG ^^^ / vvv !EDG vvv
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor) ([] { return _Descriptor(); })
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
+    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
+#endif
 
-#if STDEXEC_NVHPC()
-  template <
-    class _Descriptor,
-    auto _DescriptorFn = ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
-  >
-  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
+#if STDEXEC_DEMANGLE_SENDER_NAMES || STDEXEC_MSVC()
+  template <class _Descriptor>
+  inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #else
-  template <class _Descriptor, auto _DescriptorFn = ([] { return _Descriptor(); })>
+  template <class _Descriptor, auto _DescriptorFn = STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)>
   inline constexpr auto __descriptor_fn_v = _DescriptorFn;
 #endif
 
   template <class _Tag, class _Data, class... _Child>
-  inline constexpr auto __descriptor_fn() {
+  consteval auto __descriptor_fn() noexcept {
     return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
   }
-
-#if STDEXEC_EDG()
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
-#else
-#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
-#endif
 
   template <class _Tag>
   struct __sexpr_impl;
@@ -496,7 +493,7 @@ namespace STDEXEC {
       // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
       using __id = __sexpr;
       using __t = __sexpr;
-      using __desc_t = decltype(_DescriptorFn());
+      using __desc_t = __result_of<_DescriptorFn>;
       using __tag_t = __desc_t::__tag;
       using __captures_t = __minvoke<__desc_t, __q<__detail::__captures_t>>;
 
