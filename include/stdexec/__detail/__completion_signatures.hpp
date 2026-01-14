@@ -174,7 +174,7 @@ namespace STDEXEC {
   using __error_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
 
-  template <class _Sigs, class _Variant, class _Type = set_stopped_t()>
+  template <class _Sigs, class _Variant, class _Type = __fn_t<set_stopped_t>>
   using __stopped_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
 
