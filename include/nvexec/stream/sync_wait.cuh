@@ -19,6 +19,8 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include "common.cuh"
+
 #include <concepts>
 #include <exception>
 #include <new>
@@ -26,8 +28,6 @@
 #include <tuple> // IWYU pragma: keep
 #include <utility>
 #include <variant>
-
-#include "common.cuh"
 
 namespace nvexec::_strm {
   namespace _sync_wait {

@@ -135,6 +135,8 @@ namespace STDEXEC {
           static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
       };
 
+      static constexpr auto submit = []{};
+
       static constexpr auto start = []<class _StartTag = start_t, class... _ChildOps>(
                                       __ignore,
                                       __ignore,
@@ -435,10 +437,6 @@ namespace STDEXEC {
 
   using __detail::__enable_receiver_from_this;
 
-  template <class _Tag>
-  using __get_attrs_fn =
-    __result_of<__detail::__drop_front, __mtypeof<__sexpr_impl<_Tag>::get_attrs>>;
-
   //! A dummy type used only for diagnostic purposes.
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class...>
@@ -463,19 +461,15 @@ namespace STDEXEC {
       using __desc_t = decltype(_DescriptorFn());
       using __tag_t = __desc_t::__tag;
 
-      template <class _Self>
-      using __impl = __sexpr_impl<__meval<__msecond, _Self, __tag_t>>;
-
-      template <class _Self = __sexpr>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto get_env() const noexcept -> decltype(auto) {
-        return __apply(__detail::__drop_front(__impl<_Self>::get_attrs), *this);
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      constexpr auto get_env() const noexcept -> decltype(auto) {
+        return __apply(__detail::__drop_front(__sexpr_impl<__tag_t>::get_attrs), *this);
       }
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
         static_assert(__decays_to_derived_from<_Self, __sexpr>);
-        using __impl_t = __mtypeof<__impl<_Self>::get_completion_signatures>;
+        using __impl_t = __mtypeof<__sexpr_impl<__tag_t>::get_completion_signatures>;
         using __detail::__has_static_consteval_get_completion_signatures;
 
         if constexpr (__has_static_consteval_get_completion_signatures<__tag_t, _Self, _Env...>) {
@@ -489,30 +483,42 @@ namespace STDEXEC {
         }
       }
 
+      // Non-standard extension:
       template <class _Self, receiver _Receiver>
-      STDEXEC_ATTRIBUTE(always_inline)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver&& __rcvr)
-        noexcept(__noexcept_of<__impl<_Self>::connect, _Self, _Receiver>)
-      // -> __msecond<
-      //   __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
-      //   __result_of<__impl<_Self>::connect, _Self, _Receiver>
-      // >
-      {
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      static constexpr auto static_connect(_Self&& __self, _Receiver __rcvr)
+        noexcept(__noexcept_of<__sexpr_impl<__tag_t>::connect, _Self, _Receiver>)
+          -> __result_of<__sexpr_impl<__tag_t>::connect, _Self, _Receiver> {
         static_assert(__decays_to_derived_from<_Self, __sexpr>);
-        return __impl<_Self>::connect(
+        return __sexpr_impl<__tag_t>::connect(
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
-      STDEXEC_EXPLICIT_THIS_END(connect)
+
+      template <receiver _Receiver>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      constexpr auto connect(_Receiver __rcvr) && noexcept(
+        __noexcept_of<__sexpr_impl<__tag_t>::connect, __sexpr, _Receiver>)
+        -> __result_of<__sexpr_impl<__tag_t>::connect, __sexpr, _Receiver> {
+        return __sexpr_impl<__tag_t>::connect(
+          static_cast<__sexpr&&>(*this), static_cast<_Receiver&&>(__rcvr));
+      }
+
+      template <receiver _Receiver>
+        requires __std::copy_constructible<__sexpr>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      constexpr auto connect(_Receiver __rcvr) const & noexcept(
+        __noexcept_of<__sexpr_impl<__tag_t>::connect, __sexpr const &, _Receiver>)
+        -> __result_of<__sexpr_impl<__tag_t>::connect, __sexpr const &, _Receiver> {
+        return __sexpr_impl<__tag_t>::connect(*this, static_cast<_Receiver&&>(__rcvr));
+      }
 
       template <class _Self, receiver _Receiver>
-      STDEXEC_ATTRIBUTE(always_inline)
-      static auto submit(_Self&& __self, _Receiver&& __rcvr)
-        noexcept(__noexcept_of<__impl<_Self>::submit, _Self, _Receiver>) -> __msecond<
-          __enable_if<__decays_to_derived_from<_Self, __sexpr>>,
-          __result_of<__impl<_Self>::submit, _Self, _Receiver>
-        > {
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+      static constexpr auto submit(_Self&& __self, _Receiver __rcvr)
+        noexcept(__noexcept_of<__sexpr_impl<__tag_t>::submit, _Self, _Receiver>)
+          -> __result_of<__sexpr_impl<__tag_t>::submit, _Self, _Receiver> {
         static_assert(__decays_to_derived_from<_Self, __sexpr>);
-        return __impl<_Self>::submit(
+        return __sexpr_impl<__tag_t>::submit(
           static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
       }
     };
