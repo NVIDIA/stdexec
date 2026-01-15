@@ -237,7 +237,7 @@ namespace STDEXEC {
 
       template <class _Sender>
       auto operator()(_Sender&&) const {
-        STDEXEC::__diagnose_sender_concept_failure<_Sender, __env>();
+        STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_Sender>, __env>();
         // dummy return type to silence follow-on errors
         return std::optional<std::tuple<int>>{};
       }

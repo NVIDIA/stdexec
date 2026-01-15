@@ -135,7 +135,8 @@ namespace STDEXEC {
           static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
       };
 
-      static constexpr auto submit = []{};
+      static constexpr auto submit = [] {
+      };
 
       static constexpr auto start = []<class _StartTag = start_t, class... _ChildOps>(
                                       __ignore,
@@ -330,10 +331,17 @@ namespace STDEXEC {
     template <std::size_t _Idx, class _Descriptor>
     concept __in_range = (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));
 
-    template <class _Tag, class _Self, class... _Env>
-    concept __has_new_get_completion_signatures = requires {
-      __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>();
+    template <class _Tag>
+    concept __has_get_completion_signatures_lambda = requires {
+      static_cast<const void*>(&__sexpr_impl<_Tag>::get_completion_signatures);
     };
+
+    template <class _Tag, class _Self, class... _Env>
+    concept __has_new_get_completion_signatures =
+      // [WAR]: GCC hard-errors in the requires clause if
+      // __sexpr_impl<_Tag>::get_completion_signatures is not a function template.
+      STDEXEC_PP_WHEN(STDEXEC_GCC(), !__has_get_completion_signatures_lambda<_Tag> &&)
+      requires { __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>(); };
 
     template <class _Tag, class _Self, class... _Env>
     concept __has_old_get_completion_signatures = requires(__declfn_t<_Self> __self) {
@@ -442,13 +450,17 @@ namespace STDEXEC {
 
   using __detail::__enable_receiver_from_this;
 
+  template <class _Tag, class _Data, class... _Child>
+  using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
+
   //! A dummy type used only for diagnostic purposes.
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
-  template <class...>
+  template <class _Tag, class _Data, class... _Child>
   struct __basic_sender {
     // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
     using __id = __basic_sender;
     using __t = __basic_sender;
+    using __mangled = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
   };
 
   namespace {
@@ -531,9 +543,6 @@ namespace STDEXEC {
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
       __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
   } // anonymous namespace
-
-  template <class _Tag, class _Data, class... _Child>
-  using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")

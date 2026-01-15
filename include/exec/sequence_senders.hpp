@@ -916,8 +916,8 @@ namespace exec {
         static_assert(
           __well_formed_item_senders<_Sequence>,
           STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE);
-        //} else {
-        //  STDEXEC::__diagnose_sender_concept_failure<_Sequence, _Env...>();
+      } else {
+        STDEXEC::__diagnose_sender_concept_failure<STDEXEC::__demangle_t<_Sequence>, _Env...>();
       }
     }
   }

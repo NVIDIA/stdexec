@@ -108,20 +108,21 @@ namespace STDEXEC {
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>
-  static constexpr auto __diagnose_sender_concept_failure() noexcept {
-    if constexpr (!enable_sender<__decay_t<_Sender>>) {
-      static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-    } else if constexpr (!__std::move_constructible<__decay_t<_Sender>>) {
+  constexpr auto __diagnose_sender_concept_failure() noexcept {
+    using __sndr_t = __remangle_t<_Sender>;
+    if constexpr (!enable_sender<__decay_t<__sndr_t>>) {
+      static_assert(enable_sender<__sndr_t>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
+    } else if constexpr (!__std::move_constructible<__decay_t<__sndr_t>>) {
       static_assert(
-        __std::move_constructible<__decay_t<_Sender>>,
+        __std::move_constructible<__decay_t<__sndr_t>>,
         "The sender type is not move-constructible.");
-    } else if constexpr (!__std::constructible_from<__decay_t<_Sender>, _Sender>) {
+    } else if constexpr (!__std::constructible_from<__decay_t<__sndr_t>, __sndr_t>) {
       static_assert(
-        __decay_copyable<_Sender>,
+        __decay_copyable<__sndr_t>,
         "The sender cannot be decay-copied. Did you forget a std::move?");
     } else {
-      using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
-      if constexpr (__same_as<_Completions, __unrecognized_sender_error<_Sender, _Env...>>) {
+      using _Completions = __completion_signatures_of_t<__sndr_t, _Env...>;
+      if constexpr (__same_as<_Completions, __unrecognized_sender_error<__sndr_t, _Env...>>) {
         static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
       } else if constexpr (__merror<_Completions>) {
         static_assert(

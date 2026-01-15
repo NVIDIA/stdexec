@@ -195,7 +195,7 @@ namespace STDEXEC {
             }
           }
         } else {
-          STDEXEC::__diagnose_sender_concept_failure<_Sender, _Env>();
+          STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_Sender>, _Env>();
         }
       }
     }
@@ -217,7 +217,7 @@ namespace STDEXEC {
             }
           }
         } else {
-          STDEXEC::__diagnose_sender_concept_failure<_Sender, _Env>();
+          STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_Sender>, _Env>();
         }
       }
     }
