@@ -25,7 +25,7 @@
 #include <string_view>
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// __type_info and TYPEID
+// __type_info, __mtypeid, and __mtypeof
 
 namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -39,8 +39,8 @@ namespace STDEXEC {
     }
 
     [[nodiscard]]
-    constexpr const char *name() const noexcept {
-      return __name_.data();
+    constexpr std::string_view name() const noexcept {
+      return __name_;
     }
 
     auto operator==(const __type_info &) const noexcept -> bool = default;
@@ -50,6 +50,14 @@ namespace STDEXEC {
     std::string_view __name_;
   };
 
+  namespace __detail {
+    template <class _Ty>
+    inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>};
+
+    template <class _Ty>
+    inline constexpr const __type_info &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
+  } // namespace __detail
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_index
   struct __type_index {
@@ -58,8 +66,8 @@ namespace STDEXEC {
     }
 
     [[nodiscard]]
-    constexpr char const *name() const noexcept {
-      return __info_->name();
+    constexpr std::string_view name() const noexcept {
+      return (*__info_).name();
     }
 
     [[nodiscard]]
@@ -76,12 +84,6 @@ namespace STDEXEC {
   };
 
   namespace __detail {
-    template <class _Ty>
-    inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>};
-
-    template <class _Ty>
-    inline constexpr const __type_info &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
-
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wnon-template-friend")
     STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)

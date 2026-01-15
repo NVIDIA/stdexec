@@ -23,6 +23,7 @@
 #include <cassert>
 #include <compare>
 #include <cstddef>
+#include <source_location> // IWYU pragma: keep for std::source_location::current
 #include <string_view>
 #include <type_traits>
 
@@ -815,23 +816,27 @@ namespace STDEXEC {
       return __sv.substr(__start, __len);
     }
 
-    template <class T>
+    template <class _Ty>
     [[nodiscard]]
     consteval std::string_view __get_pretty_name_helper() noexcept {
+#if STDEXEC_EDG()
       return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
+#else
+      return __detail::__find_pretty_name(std::source_location::current().function_name());
+#endif
     }
 
-    template <class T>
+    template <class _Ty>
     [[nodiscard]]
     consteval std::string_view __get_pretty_name() noexcept {
-      return __detail::__get_pretty_name_helper<typename __xyzzy<T>::__plugh>();
+      return __detail::__get_pretty_name_helper<typename __xyzzy<_Ty>::__plugh>();
     }
   } // namespace __detail
 
   ////////////////////////////////////////////////////////////////////////////////////////////
-  // __mnameof: get the pretty name of a type T as a string_view at compile time
-  template <class T>
-  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<T>>();
+  // __mnameof: get the pretty name of a type _Ty as a string_view at compile time
+  template <class _Ty>
+  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
 
   static_assert(__mnameof<int> == "int");
 
@@ -841,13 +846,13 @@ namespace STDEXEC {
   concept __has_id = requires { typename _Ty::__id; };
 
   //! Identity mapping `_Ty` to itself.
-  //! That is, `__same_as<T, typename _Id<T>::__t>`.
+  //! That is, `__same_as<_Ty, typename _Id<_Ty>::__t>`.
   template <class _Ty>
   struct _Id {
     using __t = _Ty;
 
     // Uncomment the line below to find any code that likely misuses the
-    // ADL isolation mechanism. In particular, '__id<T>' when T is a
+    // ADL isolation mechanism. In particular, '__id<_Ty>' when _Ty is a
     // reference is a likely misuse. The static_assert below will trigger
     // when the type passed to the __id alias template is a reference to
     // a type that is setup to use ADL isolation.
