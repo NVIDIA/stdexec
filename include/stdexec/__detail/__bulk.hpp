@@ -273,16 +273,17 @@ namespace STDEXEC {
           return __fwd_env(STDEXEC::get_env(__child));
         };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept -> __completion_signatures<
-                                                                          _AlgoTag,
-                                                                          __fun_t<_Sender>,
-                                                                          __shape_t<_Sender>,
-                                                                          __child_of<_Sender>,
-                                                                          _Env...
-                                                                        > {
-        static_assert(sender_expr_for<_Sender, bulk_t>);
-        return {};
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Sender, _AlgoTag>);
+        // TODO: port this to use constant evaluation
+        return __completion_signatures<
+          _AlgoTag,
+          __fun_t<_Sender>,
+          __shape_t<_Sender>,
+          __child_of<_Sender>,
+          _Env...
+        >{};
       };
     };
 

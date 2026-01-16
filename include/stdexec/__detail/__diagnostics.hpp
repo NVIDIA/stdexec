@@ -205,6 +205,9 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(host, device)
     auto operator,(_ERROR_<Other...>&) -> _ERROR_<Other...>&;
 
+    using __t = _ERROR_;
+    using __id = _ERROR_;
+
     using __partitioned = _ERROR_;
 
     template <class, class>

@@ -351,15 +351,25 @@ namespace {
 
   //! Scheduler that returns a sender that always completes with cancellation.
   struct stopped_scheduler {
+   private:
+    struct sender;
+
+   public:
     using __id = stopped_scheduler;
     using __t = stopped_scheduler;
+
+    auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
 
     [[nodiscard]]
     auto schedule() const noexcept {
       return sender{};
     }
 
-    auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
+    template <ex::__one_of<ex::set_value_t, ex::set_stopped_t> Tag>
+    [[nodiscard]]
+    auto query(ex::get_completion_scheduler_t<Tag>) const noexcept {
+      return stopped_scheduler{};
+    }
 
    private:
     template <class Receiver>

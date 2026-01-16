@@ -23,7 +23,6 @@
 #include "__continues_on.hpp"
 #include "__just.hpp"
 #include "__schedulers.hpp"
-#include "__sender_introspection.hpp"
 #include "__tuple.hpp"
 
 STDEXEC_PRAGMA_PUSH()

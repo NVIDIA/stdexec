@@ -59,12 +59,20 @@ namespace STDEXEC {
         return __sync_attrs{__child};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() //
+      -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, then_t>);
+        // TODO: update this to use constant evaluation:
         return {};
       };
+
+      // template <class _Sender, class... _Env>
+      // static consteval auto get_completion_signatures() //
+      // -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+      //   static_assert(sender_expr_for<_Sender, then_t>);
+      //   return {};
+      // }
 
       struct __complete_fn {
         template <class _Tag, class _State, class _Receiver, class... _Args>

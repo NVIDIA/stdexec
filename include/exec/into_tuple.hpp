@@ -62,10 +62,11 @@ namespace exec {
     >;
 
     struct __into_tuple_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept {
-          return __completions_t<__child_of<_Sender>, _Env...>{};
-        };
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        // TODO: port this to use constant evaluation
+        return __completions_t<__child_of<_Sender>, _Env...>{};
+      }
 
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender &&, _Receiver &) {

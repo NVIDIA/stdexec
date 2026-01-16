@@ -21,6 +21,7 @@
 #include "__awaitable.hpp"
 #include "__completion_signatures.hpp" // IWYU pragma: export
 #include "__diagnostics.hpp"
+#include "__env.hpp"
 #include "__meta.hpp"
 #include "__tag_invoke.hpp"
 #include "__tuple.hpp" // IWYU pragma: keep for __tuple
@@ -273,6 +274,17 @@ namespace STDEXEC {
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  // __get_child_completion_signatures
+  template <class _Parent, class _Child, class... _Env>
+  [[nodiscard]]
+  consteval auto __get_child_completion_signatures() {
+    return STDEXEC::get_completion_signatures<
+      __copy_cvref_t<_Parent, _Child>,
+      __fwd_env_t<_Env>...
+    >();
+  }
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>

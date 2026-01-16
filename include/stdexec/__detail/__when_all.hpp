@@ -337,28 +337,28 @@ namespace STDEXEC {
 
     struct __when_all_impl : __sexpr_defaults {
       template <class _Self, class... _Env>
-      using __error_t = std::conditional_t<
-        sizeof...(_Env) == 0,
-        __dependent_sender_error<_Self>,
-        __mexception<
-          _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-          __children_of<_Self, __qq<_WITH_SENDERS_>>,
-          _WITH_ENVIRONMENT_<_Env>...
-        >
-      >;
-
-      template <class _Self, class... _Env>
       using __completions_t = __children_of<_Self, __when_all::__completions_t<__env_t<_Env>...>>;
 
       static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
         return __when_all::__attrs<_Child...>{};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept {
-          static_assert(sender_expr_for<_Self, when_all_t>);
-          return __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>();
-        };
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Self, when_all_t>);
+        if constexpr (__mvalid<__completions_t, _Self, _Env...>) {
+          // TODO: update this to use constant evaluation:
+          return __completions_t<_Self, _Env...>{};
+        } else if constexpr (sizeof...(_Env) == 0) {
+          return STDEXEC::__dependent_sender_error<_Self>();
+        } else {
+          return STDEXEC::__invalid_completion_signature<
+            _INVALID_ARGUMENTS_TO_WHEN_ALL_,
+            __children_of<_Self, __qq<_WITH_SENDERS_>>,
+            _WITH_ENVIRONMENT_<_Env>...
+          >();
+        }
+      }
 
       static constexpr auto get_env =
         []<class _State, class _Receiver>(

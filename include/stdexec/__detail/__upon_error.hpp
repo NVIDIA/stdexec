@@ -58,10 +58,11 @@ namespace STDEXEC {
     };
 
     struct __upon_error_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() //
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, upon_error_t>);
+        // TODO: update this to use constant evaluation:
         return {};
       };
 

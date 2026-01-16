@@ -21,7 +21,6 @@
 #include "__basic_sender.hpp"
 #include "__completion_signatures_of.hpp"
 #include "__sender_introspection.hpp"
-#include "__type_traits.hpp"
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -35,11 +34,11 @@ namespace STDEXEC {
     };
 
     struct __schedule_from_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completion_signatures_of_t<__copy_cvref_t<_Sender, __child_of<_Sender>>, _Env...> {
-        return {};
-      };
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Sender, schedule_from_t>);
+        return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
+      }
     };
   } // namespace __schfr
 

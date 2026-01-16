@@ -333,12 +333,13 @@ namespace STDEXEC {
         return __attrs{__data, __child};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...) noexcept
-        -> __completions_t<__scheduler_t<_Sender, _Env...>, __child_of<_Sender>, _Env...> {
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() //
+      -> __completions_t<__scheduler_t<_Sender, _Env...>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
+        // TODO: update this to use constant evaluation:
         return {};
-      };
+      }
 
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr)

@@ -58,28 +58,27 @@ namespace STDEXEC {
       template <class _Ty>
       using __set_error_t = completion_signatures<set_error_t(_Ty)>;
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
-        requires __mvalid<__completion_signatures_of_t, __child_of<_Self>, _Env...>
-      {
+      template <class _Self, class... _Env>
+      static constexpr auto get_completion_signatures() {
         static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
-        using _Completions = __completion_signatures_of_t<__child_of<_Self>, _Env...>;
-        if constexpr (!__valid_completion_signatures<_Completions>) {
-          return _Completions();
-        } else if constexpr (__single_value_sender<__child_of<_Self>, _Env...>) {
-          return transform_completion_signatures<
-            _Completions,
-            completion_signatures<set_error_t(std::exception_ptr)>,
-            __set_value_t,
-            __set_error_t,
-            completion_signatures<>
-          >();
-        } else {
-          return _ERROR_<
-            _WHAT_<>(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
-            _IN_ALGORITHM_(stopped_as_optional_t),
-            _WITH_SENDER_<__child_of<_Self>>
-          >();
+        STDEXEC_COMPLSIGS_LET(
+          __completions, STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>()) {
+          using _Completions = decltype(__completions);
+          if constexpr (__single_value_sender<__child_of<_Self>, _Env...>) {
+            return transform_completion_signatures<
+              _Completions,
+              completion_signatures<set_error_t(std::exception_ptr)>,
+              __set_value_t,
+              __set_error_t,
+              completion_signatures<>
+            >();
+          } else {
+            return STDEXEC::__invalid_completion_signature<
+              _WHAT_<>(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
+              _IN_ALGORITHM_(stopped_as_optional_t),
+              _WITH_SENDER_<__child_of<_Self>>
+            >();
+          }
         }
       };
 

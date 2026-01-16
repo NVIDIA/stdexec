@@ -156,12 +156,12 @@ namespace STDEXEC {
           _SetTag()(std::move(__rcvr), static_cast<_Args&&>(__args)...);
         };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&, auto&&...) noexcept {
-          static_assert(
-            __mnever<tag_of_t<_Sender>>,
-            "No customization of get_completion_signatures for this sender tag type.");
-        };
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(
+          __mnever<tag_of_t<_Sender>>,
+          "No customization of get_completion_signatures for this sender tag type.");
+      }
     };
 
     template <class _Sexpr, class _Receiver>
