@@ -172,8 +172,6 @@ namespace STDEXEC {
 
     template <class _Receiver>
     struct __receiver_box {
-      _Receiver __rcvr_;
-
       STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() & noexcept -> _Receiver& {
         return this->__rcvr_;
       }
@@ -181,6 +179,8 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() const & noexcept -> const _Receiver& {
         return this->__rcvr_;
       }
+
+      _Receiver __rcvr_;
     };
 
     template <class _Sexpr, class _Receiver>
@@ -188,7 +188,7 @@ namespace STDEXEC {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      __state_box(_Sexpr&& __sndr, _Receiver& __rcvr)
+      explicit __state_box(_Sexpr&& __sndr, _Receiver& __rcvr)
         noexcept(__noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>) {
         ::new (static_cast<void*>(__buf_)) auto(
           __sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr));
@@ -325,27 +325,9 @@ namespace STDEXEC {
       };
     };
 
-    template <class, class, class... _Child>
-    using __tuple_size_t = char[sizeof...(_Child) + 2]; // NOLINT(modernize-avoid-c-arrays)
-
-    template <std::size_t _Idx, class _Descriptor>
-    concept __in_range = (_Idx < sizeof(__minvoke<_Descriptor, __q<__tuple_size_t>>));
-
-    template <class _Tag>
-    concept __has_get_completion_signatures_lambda = requires {
-      static_cast<const void*>(&__sexpr_impl<_Tag>::get_completion_signatures);
-    };
-
     template <class _Tag, class _Self, class... _Env>
-    concept __has_new_get_completion_signatures =
-      // [WAR]: GCC hard-errors in the requires clause if
-      // __sexpr_impl<_Tag>::get_completion_signatures is not a function template.
-      STDEXEC_PP_WHEN(STDEXEC_GCC(), !__has_get_completion_signatures_lambda<_Tag> &&)
-      requires { __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>(); };
-
-    template <class _Tag, class _Self, class... _Env>
-    concept __has_old_get_completion_signatures = requires(__declfn_t<_Self> __self) {
-      __sexpr_impl<_Tag>::get_completion_signatures(__self(), __declval<_Env>()...);
+    concept __has_get_completion_signatures = requires {
+      __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>();
     };
   } // namespace __detail
 
@@ -486,12 +468,10 @@ namespace STDEXEC {
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
         using namespace __detail;
-        if constexpr (__has_new_get_completion_signatures<__tag_t, _Self, _Env...>) {
+        if constexpr (__has_get_completion_signatures<__tag_t, _Self, _Env...>) {
           return __sexpr_impl<__tag_t>::template get_completion_signatures<_Self, _Env...>();
-        } else if constexpr (__has_new_get_completion_signatures<__tag_t, _Self>) {
+        } else if constexpr (__has_get_completion_signatures<__tag_t, _Self>) {
           return __sexpr_impl<__tag_t>::template get_completion_signatures<_Self>();
-        } else if constexpr (__has_old_get_completion_signatures<__tag_t, _Self, _Env...>) {
-          return __result_of<__sexpr_impl<__tag_t>::get_completion_signatures, _Self, _Env...>();
         } else if constexpr (sizeof...(_Env) == 0) {
           return __dependent_sender<_Self>();
         } else {
@@ -528,6 +508,7 @@ namespace STDEXEC {
         return __sexpr_impl<__tag_t>::connect(*this, static_cast<_Receiver&&>(__rcvr));
       }
 
+      // Non-standard extension:
       template <class _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
       static constexpr auto submit(_Self&& __self, _Receiver __rcvr)

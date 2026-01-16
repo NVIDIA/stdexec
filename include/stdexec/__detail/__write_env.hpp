@@ -52,27 +52,14 @@ namespace STDEXEC {
         return __env::__join(__state, STDEXEC::get_env(__rcvr));
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
-        -> __completion_signatures_of_t<
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Self, write_env_t>);
+        return STDEXEC::get_completion_signatures<
           __child_of<_Self>,
           __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
-        > {
-        static_assert(sender_expr_for<_Self, write_env_t>);
-        return {};
-      };
-
-      // TODO: figure out why this doesn't work
-      // template <class _Self, class... _Env>
-      // static consteval auto get_completion_signatures()
-      //   -> __completion_signatures_of_t<
-      //     __child_of<_Self>,
-      //     __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
-      //   > {
-      //   static_assert(sender_expr_for<_Self, write_env_t>);
-      //   // TODO: update this to use constant evaluation:
-      //   return {};
-      // }
+        >();
+      }
     };
   } // namespace __write
 
