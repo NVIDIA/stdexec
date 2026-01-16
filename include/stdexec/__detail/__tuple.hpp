@@ -345,7 +345,11 @@ namespace STDEXEC {
     constexpr auto __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
     static_assert(_Index < __size, "Index out of bounds in __get");
 
-    if constexpr (_Index == 0) {
+    // Only use __valN accessors for tuples with <= 8 elements (which have specialized storage)
+    // Larger tuples use __box base class and need __tup::__get
+    if constexpr (__size > 8) {
+      return __tup::__get<_Index>(static_cast<_Tuple&&>(__tupl));
+    } else if constexpr (_Index == 0) {
       return static_cast<_Tuple&&>(__tupl).__val0;
     } else if constexpr (_Index == 1) {
       return static_cast<_Tuple&&>(__tupl).__val1;
@@ -361,10 +365,6 @@ namespace STDEXEC {
       return static_cast<_Tuple&&>(__tupl).__val6;
     } else if constexpr (_Index == 7) {
       return static_cast<_Tuple&&>(__tupl).__val7;
-    } else if constexpr (_Index == 8) {
-      return static_cast<_Tuple&&>(__tupl).__val8;
-    } else {
-      return __tup::__get<_Index>(static_cast<_Tuple&&>(__tupl));
     }
   }
 
