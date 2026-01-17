@@ -494,11 +494,9 @@ namespace exec_old {
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <stdexec::__decays_to<bulk_sender> Self, class Env>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&)
-      -> completion_signatures<Self, Env> {
+    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env> {
       return {};
     }
-    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
     auto get_env() const noexcept -> stdexec::env_of_t<const Sender&> {
       return stdexec::get_env(sndr_);

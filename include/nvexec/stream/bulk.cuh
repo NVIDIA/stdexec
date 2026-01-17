@@ -145,11 +145,9 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
-        -> _completion_signatures_t<Self, Env...> {
+      static consteval auto get_completion_signatures() -> _completion_signatures_t<Self, Env...> {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};
@@ -392,11 +390,9 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__t> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
-        -> _completion_signatures_t<Self, Env...> {
+      static consteval auto get_completion_signatures() -> _completion_signatures_t<Self, Env...> {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender> {
         return {&sndr_};

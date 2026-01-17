@@ -45,21 +45,6 @@ namespace STDEXEC {
     inline constexpr __mstring __query_failed_diag =
       "The current execution environment doesn't have a value for the given query."_mstr;
 
-    template <class _Tag, class _Env>
-    using __query_failed_error = __mexception<
-      _NOT_CALLABLE_<"In STDEXEC::read_env()..."_mstr, __query_failed_diag>,
-      _WITH_QUERY_<_Tag>,
-      _WITH_ENVIRONMENT_<_Env>
-    >;
-
-    template <class _Tag, class _Env>
-      requires __callable<_Tag, _Env>
-    using __completions_t = __if_c<
-      __nothrow_callable<_Tag, _Env>,
-      completion_signatures<set_value_t(__call_result_t<_Tag, _Env>)>,
-      completion_signatures<set_value_t(__call_result_t<_Tag, _Env>), set_error_t(std::exception_ptr)>
-    >;
-
     template <class _Tag, class _Ty>
     struct __state {
       using __query = _Tag;
@@ -74,6 +59,23 @@ namespace STDEXEC {
       using __result = _Ty;
     };
 
+    template <class _Tag>
+    struct __attrs {
+      template <class _Env>
+        requires __callable<_Tag, _Env>
+      STDEXEC_ATTRIBUTE(nodiscard)
+      constexpr auto query(get_completion_behavior_t<set_value_t>, const _Env&) const noexcept {
+        return completion_behavior::inline_completion;
+      }
+
+      template <class _Env>
+        requires __callable<_Tag, _Env> && (!__nothrow_callable<_Tag, _Env>)
+      STDEXEC_ATTRIBUTE(nodiscard)
+      constexpr auto query(get_completion_behavior_t<set_error_t>, const _Env&) const noexcept {
+        return completion_behavior::inline_completion;
+      }
+    };
+
     struct read_env_t {
       template <class _Tag>
       constexpr auto operator()(_Tag) const noexcept {
@@ -82,23 +84,27 @@ namespace STDEXEC {
     };
 
     struct __read_env_impl : __sexpr_defaults {
-      template <class _Tag, class _Env>
-      using __completions_t =
-        __minvoke<__mtry_catch_q<__read::__completions_t, __q<__query_failed_error>>, _Tag, _Env>;
-
-      static constexpr auto get_attrs = [](__ignore) noexcept
-        -> env<
-          cprop<get_completion_behavior_t<set_value_t>, completion_behavior::inline_completion>,
-          cprop<get_completion_behavior_t<set_stopped_t>, completion_behavior::inline_completion>,
-          cprop<get_completion_behavior_t<set_error_t>, completion_behavior::inline_completion>
-        > {
-        return {};
+      static constexpr auto get_attrs = []<class _Tag>(_Tag) noexcept {
+        return __attrs<_Tag>{};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class _Env>(const _Self&, _Env&&) noexcept
-        -> __completions_t<__data_of<_Self>, _Env> {
-        return {};
+      template <class _Self, class _Env>
+      static consteval auto get_completion_signatures() {
+        using __query_t = __data_of<_Self>;
+        if constexpr (__callable<__query_t, _Env>) {
+          using __result_t = __call_result_t<__query_t, _Env>;
+          if constexpr (__nothrow_callable<__query_t, _Env>) {
+            return completion_signatures<set_value_t(__result_t)>();
+          } else {
+            return completion_signatures<set_value_t(__result_t), set_error_t(std::exception_ptr)>();
+          }
+        } else {
+          return STDEXEC::__invalid_completion_signature<
+            _NOT_CALLABLE_<"In STDEXEC::read_env()..."_mstr, __query_failed_diag>,
+            _WITH_QUERY_<__query_t>,
+            _WITH_ENVIRONMENT_<_Env>
+          >();
+        }
       };
 
       static constexpr auto get_state =

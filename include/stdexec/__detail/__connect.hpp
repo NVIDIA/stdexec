@@ -70,7 +70,7 @@ namespace STDEXEC {
           using __checked_signatures
             [[maybe_unused]] = completion_signatures_of_t<_Sender, env_of_t<_Receiver>>;
         } else {
-          __diagnose_sender_concept_failure<_Sender, env_of_t<_Receiver>>();
+          __diagnose_sender_concept_failure<__demangle_t<_Sender>, env_of_t<_Receiver>>();
         }
         return true;
       }

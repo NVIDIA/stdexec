@@ -197,10 +197,10 @@ namespace exec {
     struct __repeat_effect_until_tag { };
 
     struct __repeat_effect_until_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender &&, _Env &&...) noexcept
-        -> __completions_t<__data_of<_Sender>, _Env...> {
-        return {};
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        // TODO: port this to use constant evaluation
+        return __completions_t<__data_of<_Sender>, _Env...>{};
       };
 
       static constexpr auto get_state =
@@ -225,7 +225,7 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
+      static auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
         return STDEXEC::__apply(
           []<class _Child>(__ignore, __ignore, _Child __child) {
             return __make_sexpr<__repeat_effect_until_tag>(std::move(__child));
@@ -254,10 +254,12 @@ namespace exec {
       }
 
       template <class _Sender>
-      auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
-        return STDEXEC::__apply([](__ignore, __ignore, auto __child) {
-          return repeat_effect_until_t{}(STDEXEC::then(std::move(__child), _never{}));
-        }, static_cast<_Sender &&>(__sndr));
+      static auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
+        return STDEXEC::__apply(
+          [](__ignore, __ignore, auto __child) {
+            return repeat_effect_until_t{}(STDEXEC::then(std::move(__child), _never{}));
+          },
+          static_cast<_Sender &&>(__sndr));
       }
     };
   } // namespace __repeat_effect
@@ -276,10 +278,16 @@ namespace STDEXEC {
 
   template <>
   struct __sexpr_impl<exec::repeat_effect_until_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender>(
-        _Sender &&) noexcept -> exec::__repeat_effect::__completions_t<__data_of<_Sender>> {
-      return {};
-    };
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      static_assert(sender_expr_for<_Sender, exec::repeat_effect_until_t>);
+      using __sndr_t = __detail::__transform_sender_result_t<
+        exec::repeat_effect_until_t,
+        set_value_t,
+        _Sender,
+        env<>
+      >;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    }
   };
 } // namespace STDEXEC

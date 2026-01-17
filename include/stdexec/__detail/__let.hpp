@@ -284,7 +284,7 @@ namespace STDEXEC {
       using __env2_t =
         __let::__env2_t<_SetTag, env_of_t<const _Sender&>, env_of_t<const _Receiver&>>;
       using __second_rcvr_t = __receiver_with_env_t<_Receiver, __env2_t>;
-      template <typename _Tag, typename... _Args>
+      template <class _Tag, class... _Args>
       constexpr void __impl(_Receiver& __rcvr, _Tag __tag, _Args&&... __args) noexcept {
         if constexpr (std::is_same_v<_SetTag, _Tag>) {
           using __sender_t = __call_result_t<_Fun, __decay_t<_Args>&...>;
@@ -316,15 +316,15 @@ namespace STDEXEC {
         using receiver_concept = ::STDEXEC::receiver_t;
         __let_state& __state;
         _Receiver& __rcvr;
-        template <typename... _Args>
+        template <class... _Args>
         constexpr void set_value(_Args&&... __args) noexcept {
           __state.__impl(__rcvr, ::STDEXEC::set_value, static_cast<_Args&&>(__args)...);
         }
-        template <typename... _Args>
+        template <class... _Args>
         constexpr void set_error(_Args&&... __args) noexcept {
           __state.__impl(__rcvr, ::STDEXEC::set_error, static_cast<_Args&&>(__args)...);
         }
-        template <typename... _Args>
+        template <class... _Args>
         constexpr void set_stopped(_Args&&... __args) noexcept {
           __state.__impl(__rcvr, ::STDEXEC::set_stopped, static_cast<_Args&&>(__args)...);
         }
@@ -564,9 +564,9 @@ namespace STDEXEC {
     template <class _Sender, class _Fun>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __data_t(_Sender, _Fun) -> __data_t<_Sender, _Fun>;
 
-    template <typename _Sender>
+    template <class _Sender>
     using __sender_of = decltype((__declval<__data_of<_Sender>>().__sndr));
-    template <typename _Sender>
+    template <class _Sender>
     using __fun_of = decltype((__declval<__data_of<_Sender>>().__fun));
 
     //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
@@ -585,16 +585,16 @@ namespace STDEXEC {
       }
 
       template <class _Sender>
-      auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        if constexpr (!__movable_value<_Sender>) {
-          return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
-        } else {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+        if constexpr (__decay_copyable<_Sender>) {
           return __apply(
-            []<class _Fun, class _Child>(__ignore, _Fun&& __fun, _Child&& __child) {
+            []<class _Fun, class _Child>(__let_t<_SetTag>, _Fun&& __fun, _Child&& __child) {
               return __make_sexpr<__let_tag<_SetTag>>(
                 __data_t{static_cast<_Child&&>(__child), static_cast<_Fun&&>(__fun)});
             },
             static_cast<_Sender&&>(__sndr));
+        } else {
+          return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
         }
       }
     };
@@ -607,18 +607,22 @@ namespace STDEXEC {
           return STDEXEC::get_env(__data.__sndr);
         };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class _Env>(_Self&&, _Env&&...) noexcept {
-          static_assert(sender_expr_for<_Self, __let_tag<_SetTag>>);
-          if constexpr (__decay_copyable<_Self>) {
-            using __fn_t = __decay_t<__fun_of<_Self>>;
-            using __result_t =
-              __completions_t<__let_tag<_SetTag>, __fn_t, __sender_of<_Self>, _Env>;
-            return __result_t{};
-          } else {
-            return __mexception<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Self>>{};
-          }
-        };
+      template <class _Sender, class _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Sender, __let_tag<_SetTag>>);
+        if constexpr (__decay_copyable<_Sender>) {
+          using __fn_t = __decay_t<__fun_of<_Sender>>;
+          // TODO: update this to use constant evaluation
+          using __result_t =
+            __completions_t<__let_tag<_SetTag>, __fn_t, __sender_of<_Sender>, _Env>;
+          return __result_t{};
+        } else {
+          return STDEXEC::__invalid_completion_signature<
+            _SENDER_TYPE_IS_NOT_COPYABLE_,
+            _WITH_SENDER_<_Sender>
+          >();
+        }
+      }
 
       static constexpr auto get_state =
         []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, _Receiver& __rcvr)
@@ -641,7 +645,7 @@ namespace STDEXEC {
       };
 
       static constexpr auto start =
-        []<typename _State, typename _Receiver>(_State& __state, _Receiver&) noexcept {
+        []<class _State, class _Receiver>(_State& __state, _Receiver&) noexcept {
           ::STDEXEC::start(__state.__storage_.template get<1>());
         };
     };
@@ -656,9 +660,12 @@ namespace STDEXEC {
 
   template <class _SetTag>
   struct __sexpr_impl<__let::__let_t<_SetTag>> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-    };
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      static_assert(sender_expr_for<_Sender, __let::__let_t<_SetTag>>);
+      using __sndr_t =
+        __detail::__transform_sender_result_t<__let::__let_t<_SetTag>, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    }
   };
 } // namespace STDEXEC

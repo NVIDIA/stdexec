@@ -64,16 +64,15 @@ struct _then_sender {
   using _set_value_t =
     stdexec::completion_signatures<stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
 
-  template <class Env>
-  using _completions_t = stdexec::transform_completion_signatures_of<
-    S,
-    Env,
+  template <class... Env>
+  using _completions_t = stdexec::transform_completion_signatures<
+    stdexec::completion_signatures_of_t<S, Env...>,
     stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
     _set_value_t
   >;
 
-  template <class Env>
-  auto get_completion_signatures(Env&&) && -> _completions_t<Env> {
+  template <class, class... Env>
+  static consteval auto get_completion_signatures() -> _completions_t<Env...> {
     return {};
   }
 

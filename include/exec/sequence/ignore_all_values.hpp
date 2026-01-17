@@ -317,12 +317,12 @@ namespace exec {
       template <class _Sequence, class... _Env>
       using __completion_sigs = __sequence_completion_signatures_of_t<_Sequence, _Env...>;
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender, class... _Env>(_Sender&&, _Env&&...)
-        -> __completion_sigs<__child_of<_Sender>, _Env...> {
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
-        return {};
-      };
+        // TODO: port this to use constant evaluation
+        return __completion_sigs<__child_of<_Sender>, _Env...>{};
+      }
 
       template <class _Child, class _Receiver>
       using _ResultVariant = __result_variant_t<_Child, env_of_t<_Receiver>>;

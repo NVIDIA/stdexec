@@ -357,8 +357,8 @@ namespace nvexec::_strm {
       template <class Ty>
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
-      template <class Env>
-      auto get_completion_signatures(Env&&) && -> __try_make_completion_signatures<
+      template <class _Self, class... Env>
+      static consteval auto get_completion_signatures() -> __try_make_completion_signatures<
         Sender,
         _ensure_started::env_t,
         completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,

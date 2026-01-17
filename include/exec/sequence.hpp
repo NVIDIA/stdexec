@@ -191,10 +191,9 @@ namespace exec {
 
       template <STDEXEC::__decay_copyable Self, class... Env>
       STDEXEC_ATTRIBUTE(host, device)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...) {
+      static consteval auto get_completion_signatures() {
         return _completions_t<Self, Env...>{};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       template <class Self, class Rcvr>
         requires STDEXEC::__decay_copyable<Self>

@@ -78,12 +78,12 @@ namespace {
     };
 
     [[nodiscard]]
-    auto get_attrs() const noexcept -> attrs {
+    auto get_env() const noexcept -> attrs {
       return {};
     }
 
-    template <class... Env>
-    constexpr auto get_completion_signatures(const Env&...) && noexcept {
+    template <std::same_as<fallible_just> Self>
+    static consteval auto get_completion_signatures() noexcept {
       return ex::completion_signatures<
         ex::set_value_t(Values...),
         ex::set_error_t(std::exception_ptr)

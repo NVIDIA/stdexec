@@ -16,7 +16,7 @@
  */
 #pragma once
 
-// The original idea is taken from libunifex and adapted to stdexec.
+// The original idea is taken from libunifex and adapted to STDEXEC.
 
 #include "../stdexec/coroutine.hpp"
 #include "../stdexec/execution.hpp"

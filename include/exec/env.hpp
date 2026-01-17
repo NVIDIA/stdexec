@@ -126,8 +126,8 @@ namespace exec {
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <class _Env>
-      constexpr auto get_completion_signatures(_Env&&) -> __completions_t<_Env> {
+      template <class, class _Env>
+      static consteval auto get_completion_signatures() -> __completions_t<_Env> {
         return {};
       }
     };
@@ -166,12 +166,10 @@ namespace exec {
         }
 
         template <__decays_to<__t> _Self, class... _Env>
-        constexpr STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...)
+        static consteval auto get_completion_signatures()
           -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
           return {};
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
         template <__decays_to<__t> _Self, class _Receiver>
           requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>

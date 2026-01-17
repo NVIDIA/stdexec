@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include "__execution_fwd.hpp"
+
+// include these after __execution_fwd.hpp
 #include "__meta.hpp"
 
 #include <exception> // IWYU pragma: keep for std::exception
@@ -182,6 +185,8 @@ namespace STDEXEC {
     char const * what_;
   };
 
+  // A specialization of _ERROR_ to be used to report dependent sender. It inherits
+  // from dependent_sender_error.
   template <class... _What>
   struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error {
     constexpr _ERROR_() noexcept
@@ -200,6 +205,9 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(host, device)
     auto operator,(_ERROR_<Other...>&) -> _ERROR_<Other...>&;
 
+    using __t = _ERROR_;
+    using __id = _ERROR_;
+
     using __partitioned = _ERROR_;
 
     template <class, class>
@@ -212,25 +220,27 @@ namespace STDEXEC {
     using __stopped_types = _ERROR_;
   };
 
+  // By making __dependent_sender_error an alias for _ERROR_<...>, we ensure that
+  // it will get propagated correctly through various metafunctions.
   template <class _Sender>
   using __dependent_sender_error = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct __not_a_sender {
     using sender_concept = sender_t;
 
-    template <class Self>
-    constexpr auto get_completion_signatures(Self&&) const noexcept {
-      return __mexception<_What, _With...>();
+    template <class _Self>
+    static consteval auto get_completion_signatures() {
+      return STDEXEC::__invalid_completion_signature<_What...>();
     }
   };
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct __not_a_scheduler {
     using scheduler_concept = scheduler_t;
 
     auto schedule() noexcept {
-      return __not_a_sender<_What, _With...>{};
+      return __not_a_sender<_What...>{};
     }
 
     constexpr bool operator==(const __not_a_scheduler&) const noexcept = default;
@@ -300,8 +310,8 @@ namespace STDEXEC {
   "     public:\n"                                                                                 \
   "       using sender_concept        = STDEXEC::sender_t;\n"                                      \
   "\n"                                                                                             \
-  "       template <class... _Env>\n"                                                              \
-  "       auto get_completion_signatures(_Env&&...) -> STDEXEC::completion_signatures<\n"          \
+  "       template <class Self, class... Env>\n"                                                   \
+  "       static consteval auto get_completion_signatures() -> STDEXEC::completion_signatures<\n"  \
   "         // This sender can complete successfully with an int and a float...\n"                 \
   "         STDEXEC::set_value_t(int, float),\n"                                                   \
   "         // ... or in error with a std::exception_ptr.\n"                                       \
@@ -333,14 +343,14 @@ namespace STDEXEC {
   "  public:\n"                                                                                    \
   "    using sender_concept = STDEXEC::sender_t;\n"                                                \
   "\n"                                                                                             \
-  "    template <class... _Env>\n"                                                                 \
-  "    auto get_completion_signatures(_Env&&...) -> STDEXEC::completion_signatures<\n"             \
+  "    template <class Self, class... Env>\n"                                                      \
+  "    static consteval auto get_completion_signatures() -> STDEXEC::completion_signatures<\n"     \
   "      // This sender can complete successfully with an int and a float...\n"                    \
   "      STDEXEC::set_value_t(int, float),\n"                                                      \
   "      // ... or in error with a std::exception_ptr.\n"                                          \
   "      STDEXEC::set_error_t(std::exception_ptr)>\n"                                              \
   "    {\n"                                                                                        \
-  "    return {};\n"                                                                               \
+  "      return {};\n"                                                                             \
   "    }\n"                                                                                        \
   "    ...\n"                                                                                      \
   "  };\n"

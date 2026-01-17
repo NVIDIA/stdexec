@@ -487,11 +487,9 @@ namespace nvexec::_strm {
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<type> Self, class... Env>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, Env&&...)
-        -> completion_sigs<Self, Env...> {
+      static consteval auto get_completion_signatures() -> completion_sigs<Self, Env...> {
         return {};
       }
-      STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
       [[nodiscard]]
       auto get_env() const noexcept -> const attrs& {

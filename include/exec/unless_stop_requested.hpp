@@ -72,17 +72,18 @@ namespace exec {
     };
 
     struct __unless_stop_requested_impl : __sexpr_defaults {
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class _Env>(_Self&&, _Env&&) noexcept
-        -> __completions<__child_of<_Self>, _Env> {
+      template <class _Self, class _Env>
+      static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Self, unless_stop_requested_t>);
-        return {};
+        // TODO: port this to use constant evaluation
+        return __completions<__child_of<_Self>, _Env>{};
       };
 
-      static constexpr auto start = []<class _State, class _Receiver, class _Operation>(
-                                      _State&,
-                                      _Receiver& __rcvr,
-                                      _Operation& __child_op) noexcept -> void {
+      static constexpr auto start = //
+        []<class _State, class _Receiver, class _Operation>(
+          _State&,
+          _Receiver& __rcvr,
+          _Operation& __child_op) noexcept -> void {
         static_assert(!__unstoppable_receiver<_Receiver>);
         if (get_stop_token(STDEXEC::get_env(__rcvr)).stop_requested()) {
           STDEXEC::set_stopped((_Receiver&&) __rcvr);

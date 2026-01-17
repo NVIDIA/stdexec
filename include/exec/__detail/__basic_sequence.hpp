@@ -74,7 +74,7 @@ namespace exec {
     };
 
     template <class _Tag, class _Data, class... _Child>
-    STDEXEC_ATTRIBUTE(host, device)
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __seqexpr(_Tag, _Data, _Child...)
       -> __seqexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
   } // namespace

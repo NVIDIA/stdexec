@@ -97,11 +97,10 @@ namespace STDEXEC {
         }
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Self, class... _Env>(_Self&&, _Env&&...) noexcept
-        -> __completions<__child_of<_Self>, _Env...> {
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Self, into_variant_t>);
-        return {};
+        return __completions<__child_of<_Self>, _Env...>{};
       };
     };
   } // namespace __into_variant

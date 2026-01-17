@@ -628,11 +628,9 @@ namespace exec {
 
     /// Gets the completion signatures for this sender.
     template <STDEXEC::__decays_to<__parallel_bulk_sender> _Self, class... _Env>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this _Self&&, _Env&&...)
-      -> __completions_t<_Self, _Env...> {
+    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...> {
       return {};
     }
-    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
    private:
     /// The underlying implementation of the scheduler we are using.

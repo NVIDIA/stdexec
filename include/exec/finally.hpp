@@ -16,58 +16,42 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__manual_lifetime.hpp"
 #include "../stdexec/execution.hpp"
+
+// include these after execution.hpp
+#include "../stdexec/__detail/__manual_lifetime.hpp"
+
+#include "completion_signatures.hpp"
 
 namespace exec {
   namespace __final {
     using namespace STDEXEC;
 
     template <class _Sigs>
-    using __result_variant =
-      __for_each_completion_signature<_Sigs, __decayed_std_tuple, __std_variant>;
+    using __result_variant = __for_each_completion_signature<_Sigs, __decayed_tuple, __variant_for>;
 
     template <class _ResultType, class _ReceiverId>
     struct __final_operation_base {
       using _Receiver = __t<_ReceiverId>;
 
       _Receiver __receiver_{};
-      STDEXEC::__manual_lifetime<_ResultType> __result_{};
+      __manual_lifetime<_ResultType> __result_{};
     };
 
-    template <class... _Args>
-    using __as_rvalues = completion_signatures<set_value_t(__decay_t<_Args>...)>;
-
-    template <class _InitialSender, class _FinalSender, class... _Env>
-    using __completion_signatures_t = transform_completion_signatures<
-      __completion_signatures_of_t<_InitialSender, _Env...>,
-      transform_completion_signatures<
-        __completion_signatures_of_t<_FinalSender, _Env...>,
-        completion_signatures<set_error_t(std::exception_ptr)>,
-        __mconst<completion_signatures<>>::__f
-      >, // swallow the final sender's value completions
-      __as_rvalues
-    >;
-
-    template <class _Receiver>
     struct __applier {
-      _Receiver __receiver_;
-
-      template <class _Tag, class... _Args>
-      void operator()(_Tag __tag, _Args&&... __args) noexcept {
-        __tag(static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
+      // We intentially take the arguments by value so they will still be valid
+      // after we clear the result storage.
+      template <class _OpState, class _Tag, class... _Args>
+      void operator()(_OpState* __op, _Tag __tag, _Args... __args) noexcept {
+        __op->__result_.__destroy();
+        __tag(std::move(__op->__receiver_), static_cast<_Args&&>(__args)...);
       }
     };
 
-    template <class _Receiver>
     struct __visitor {
-      _Receiver __receiver_;
-
-      template <class _Tuple>
-      void operator()(_Tuple&& __tuple) noexcept {
-        std::apply(
-          __applier<_Receiver>{static_cast<_Receiver&&>(__receiver_)},
-          static_cast<_Tuple&&>(__tuple));
+      template <class _OpState, class _Tuple>
+      void operator()(_OpState* __op, _Tuple&& __tuple) noexcept {
+        STDEXEC::__apply(__applier{}, static_cast<_Tuple&&>(__tuple), __op);
       }
     };
 
@@ -78,7 +62,7 @@ namespace exec {
       class __t {
        public:
         using __id = __final_receiver;
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = receiver_t;
 
         explicit __t(__final_operation_base<_ResultType, _ReceiverId>* __op) noexcept
           : __op_{__op} {
@@ -89,21 +73,12 @@ namespace exec {
         }
 
         void set_value() noexcept {
-          if constexpr (std::is_nothrow_move_constructible_v<_ResultType>) {
-            _ResultType __result = static_cast<_ResultType&&>(__op_->__result_.__get());
-            __op_->__result_.__destroy();
-            std::visit(
-              __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
-              static_cast<_ResultType&&>(__result));
-          } else {
-            STDEXEC_TRY {
-              _ResultType __result = static_cast<_ResultType&&>(__op_->__result_.__get());
-              __op_->__result_.__destroy();
-              std::visit(
-                __visitor<_Receiver>{static_cast<_Receiver&&>(__op_->__receiver_)},
-                static_cast<_ResultType&&>(__result));
-            }
-            STDEXEC_CATCH_ALL {
+          STDEXEC_TRY {
+            auto& __result = __op_->__result_.__get();
+            __result.visit(__visitor{}, static_cast<_ResultType&&>(__result), __op_);
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__mapply_q<__nothrow_decay_copyable_t, _ResultType>::value) {
               STDEXEC::set_error(
                 static_cast<_Receiver&&>(__op_->__receiver_), std::current_exception());
             }
@@ -151,7 +126,7 @@ namespace exec {
       class __t {
        public:
         using __id = __initial_receiver;
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = receiver_t;
 
         explicit __t(__base_op_t* __op) noexcept
           : __op_(__op) {
@@ -206,44 +181,48 @@ namespace exec {
         STDEXEC::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
 
       struct __initial_op_t {
+        explicit __initial_op_t(
+          _InitialSender&& __sndr,
+          _FinalSender&& __final,
+          __initial_receiver_t __rcvr)
+          : __sndr_{static_cast<_FinalSender&&>(__final)}
+          , __initial_operation_{STDEXEC::connect(
+              static_cast<_InitialSender&&>(__sndr),
+              static_cast<__initial_receiver_t&&>(__rcvr))} {
+        }
+
         _FinalSender __sndr_;
         connect_result_t<_InitialSender, __initial_receiver_t> __initial_operation_;
       };
 
-      std::variant<__initial_op_t, __final_op_t> __op_;
+      __variant_for<__initial_op_t, __final_op_t> __op_;
 
      public:
       using __id = __operation_state;
 
       template <class... _Args>
-        requires __std::constructible_from<
-          __result_variant<__signatures>,
-          __decayed_std_tuple<_Args...>
-        >
       void __store_result_and_start_next_op(_Args&&... __args) {
-        this->__result_.__construct(
-          std::in_place_type<__decayed_std_tuple<_Args...>>, static_cast<_Args&&>(__args)...);
+        this->__result_.__construct()
+          .template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
-        auto __final = static_cast<_FinalSender&&>(std::get_if<0>(&__op_)->__sndr_);
-        __final_op_t& __final_op = __op_.template emplace<1>(__emplace_from{[&] {
-          return STDEXEC::connect(static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
-        }});
+        auto __final = static_cast<_FinalSender&&>(__op_.template get<0>().__sndr_);
+        __final_op_t& __final_op = __op_.template emplace_from_at<1>(
+          STDEXEC::connect, static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         STDEXEC::start(__final_op);
       }
 
-      __t(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
+      explicit __t(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
         : __base_t{{static_cast<_Receiver&&>(__receiver)}}
-        , __op_(std::in_place_index<0>, __emplace_from{[&] {
-                  return __initial_op_t{
-                    static_cast<_FinalSender&&>(__final),
-                    STDEXEC::connect(
-                      static_cast<_InitialSender&&>(__initial), __initial_receiver_t{this})};
-                }}) {
+        , __op_() {
+        __op_.template emplace<0>(
+          static_cast<_InitialSender&&>(__initial),
+          static_cast<_FinalSender&&>(__final),
+          __initial_receiver_t{this});
       }
 
       void start() & noexcept {
         STDEXEC_ASSERT(__op_.index() == 0);
-        STDEXEC::start(std::get_if<0>(&__op_)->__initial_operation_);
+        STDEXEC::start(__op_.template get<0>().__initial_operation_);
       }
     };
 
@@ -257,25 +236,14 @@ namespace exec {
         __operation_state<__cvref_id<_Self, _InitialSender>, __id<_FinalSender>, __id<_Receiver>>
       >;
 
-      class __t {
-        _InitialSender __initial_sndr_;
-        _FinalSender __final_sndr_;
-
-       public:
+      struct __t {
         using __id = __sender;
-        using sender_concept = STDEXEC::sender_t;
-
-        template <__decays_to<_InitialSender> _Initial, __decays_to<_FinalSender> _Final>
-        __t(_Initial&& __initial, _Final&& __final)
-          noexcept(__nothrow_decay_copyable<_Initial> && __nothrow_decay_copyable<_Final>)
-          : __initial_sndr_{static_cast<_Initial&&>(__initial)}
-          , __final_sndr_{static_cast<_Final&&>(__final)} {
-        }
+        using sender_concept = sender_t;
 
         template <__decays_to<__t> _Self, class _Rec>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Rec&& __receiver) noexcept
           -> __op_t<_Self, _Rec> {
-          return {
+          return __op_t<_Self, _Rec>{
             static_cast<_Self&&>(__self).__initial_sndr_,
             static_cast<_Self&&>(__self).__final_sndr_,
             static_cast<_Rec&&>(__receiver)};
@@ -283,20 +251,44 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decays_to<__t> _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept
-          -> __completion_signatures_t<__copy_cvref_t<_Self, _InitialSender>, _FinalSender, _Env...> {
-          return {};
+          requires __decay_copyable<__copy_cvref_t<_Self, _FinalSender>>
+        static consteval auto get_completion_signatures() {
+          STDEXEC_COMPLSIGS_LET(
+            __initial_completions,
+            exec::get_child_completion_signatures<_Self, _InitialSender, _Env...>()) {
+            STDEXEC_COMPLSIGS_LET(
+              __final_completions,
+              STDEXEC::get_completion_signatures<_FinalSender, __fwd_env_t<_Env>...>()) {
+              // The finally sender's completion signatures are ...
+              return exec::concat_completion_signatures(
+                // ... the initial sender's completions with value types decayed ...
+                exec::transform_completion_signatures(
+                  __initial_completions, exec::decay_arguments<set_value_t>()),
+                // ... and the finally sender's error and stopped completions ...
+                exec::transform_completion_signatures(
+                  __final_completions, exec::ignore_completion()),
+                // ... and a set_error(exception_ptr) (TODO: only needed if the
+                // values of the initial sender are not nothrow decay copyable).
+                completion_signatures<set_error_t(std::exception_ptr)>());
+            }
+          }
         }
+
         template <__decays_to<__t> _Self, class... _Env>
-          requires(!__decay_copyable<__copy_cvref_t<_Self, _FinalSender>>)
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, _Env&&...) noexcept {
-          return _ERROR_<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_FinalSender>>{};
+        static consteval auto get_completion_signatures() {
+          return exec::invalid_completion_signature<
+            _SENDER_TYPE_IS_NOT_COPYABLE_,
+            _WITH_SENDER_<_FinalSender>
+          >();
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
+
+        _InitialSender __initial_sndr_;
+        _FinalSender __final_sndr_;
       };
     };
+
+    template <class _InitialSender, class _FinalSender>
+    using __sender_t = __t<__sender<__id<_InitialSender>, __id<_FinalSender>>>;
 
     struct finally_t {
       template <sender _Initial, sender _Final>
@@ -312,13 +304,11 @@ namespace exec {
       }
 
       template <class _Sender>
-      static auto transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, __ignore) {
+      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         return __apply(
           []<class _Initial, class _Final>(
             __ignore, __ignore, _Initial&& __initial, _Final&& __final) {
-            using __result_sndr_t =
-              __t<__sender<__id<__decay_t<_Initial>>, __id<__decay_t<_Final>>>>;
-            return __result_sndr_t{
+            return __sender_t<_Initial, _Final>{
               static_cast<_Initial&&>(__initial), static_cast<_Final&&>(__final)};
           },
           static_cast<_Sender&&>(__sndr));
@@ -333,9 +323,11 @@ namespace exec {
 namespace STDEXEC {
   template <>
   struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
-    static constexpr auto get_completion_signatures =
-      []<class _Sender, class... _Env>(_Sender&&, const _Env&...) noexcept
-      -> __completion_signatures_of_t<transform_sender_result_t<_Sender, _Env...>, _Env...> {
-    };
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      using __sndr_t =
+        __detail::__transform_sender_result_t<exec::finally_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    }
   };
 } // namespace STDEXEC

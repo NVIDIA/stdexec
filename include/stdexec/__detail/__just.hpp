@@ -40,11 +40,11 @@ namespace STDEXEC {
         return {};
       };
 
-      static constexpr auto get_completion_signatures =
-        []<class _Sender>(_Sender&&, auto&&...) noexcept {
-          static_assert(sender_expr_for<_Sender, _JustTag>);
-          return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
-        };
+      template <class _Sender, class... _Env>
+      static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Sender, _JustTag>);
+        return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
+      }
 
       static constexpr auto start =
         []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {

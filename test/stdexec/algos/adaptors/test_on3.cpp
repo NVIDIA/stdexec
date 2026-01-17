@@ -62,7 +62,7 @@ namespace {
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <ex::__decays_to<get_env_sender> Self, class Env>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto get_completion_signatures)(this Self&&, const Env&) {
+    static consteval auto get_completion_signatures() {
       return ex::__try_make_completion_signatures<
         ex::__copy_cvref_t<Self, Sndr>,
         Env,
@@ -70,7 +70,6 @@ namespace {
         ex::__mconst<ex::completion_signatures<>>
       >{};
     }
-    STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
   };
 
   struct probe_env_t {

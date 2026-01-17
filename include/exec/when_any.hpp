@@ -267,19 +267,17 @@ namespace exec {
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <__decay_copyable _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
+        static consteval auto get_completion_signatures() {
           return __completions_t<_Self, _Env...>{};
         }
+
         template <class _Self, class... _Env>
-        STDEXEC_EXPLICIT_THIS_BEGIN(
-          auto get_completion_signatures)(this _Self&&, const _Env&...) noexcept {
-          return __mexception<
+        static consteval auto get_completion_signatures() {
+          return STDEXEC::__invalid_completion_signature<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
             _WITH_SENDERS_<STDEXEC::__t<_SenderIds>>...
-          >{};
+          >();
         }
-        STDEXEC_EXPLICIT_THIS_END(get_completion_signatures)
 
        private:
         __senders_tuple __senders_;
