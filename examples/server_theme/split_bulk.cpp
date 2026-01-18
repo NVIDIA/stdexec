@@ -36,9 +36,9 @@
  */
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>

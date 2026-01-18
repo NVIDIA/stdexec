@@ -15,33 +15,28 @@
  * limitations under the License.
  */
 
-#include <stdexec/execution.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <stdexec/execution.hpp>
 
 #include <iostream>
 
 namespace ex = stdexec;
 
-struct receiver_t
-{
+struct receiver_t {
   using receiver_concept = ex::receiver_t;
 
-  void set_value() && noexcept
-  {
+  void set_value() && noexcept {
   }
 
   template <class... As>
-  void set_value(As...) && noexcept
-  {
+  void set_value(As...) && noexcept {
   }
 
   template <class Error>
-  void set_error(Error) && noexcept
-  {
+  void set_error(Error) && noexcept {
   }
 
-  void set_stopped() && noexcept
-  {
+  void set_stopped() && noexcept {
   }
 };
 
@@ -114,10 +109,10 @@ struct expect_value_receiver_ex {
   }
 };
 
-  template <ex::scheduler Sched = ex::inline_scheduler>
-  inline auto _with_scheduler(Sched sched = {}) {
-    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
-  }
+template <ex::scheduler Sched = ex::inline_scheduler>
+inline auto _with_scheduler(Sched sched = {}) {
+  return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
+}
 
 int main() {
   exec::static_thread_pool pool(3);
@@ -130,7 +125,7 @@ int main() {
   // fails
   // check_if_starts_inline_and_completes_on_pool(ex::starts_on(sched, ex::just()), receiver_t{});
 
-  #if 0
+#if 0
   print(
     ex::get_completion_domain<ex::set_value_t>(
       ex::get_env(
@@ -146,17 +141,17 @@ int main() {
     std::cout << "   " << i << ": " << std::this_thread::get_id() << "\n";
   });
   ex::sync_wait(snd);
-  #else
+#else
 
   [[maybe_unused]]
   bool called{false};
   // launch some work on the thread pool
-  ex::sender auto snd = 
-      ex::starts_on(sched, ex::just()) 
-    //  ex::just() | ex::continues_on(sched) | ex::let_value([]() { return ex::just(); }) 
+  ex::sender auto snd =
+    ex::starts_on(sched, ex::just())
+    //  ex::just() | ex::continues_on(sched) | ex::let_value([]() { return ex::just(); })
     | ex::continues_on(ex::inline_scheduler{});
   ex::sync_wait(std::move(snd));
-  #endif
+#endif
 
   return 0;
 }

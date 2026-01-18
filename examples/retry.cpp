@@ -15,8 +15,8 @@
  */
 
 // Pull in the reference implementation of P2300:
-#include <stdexec/execution.hpp>
 #include "./algorithms/retry.hpp"
+#include <stdexec/execution.hpp>
 
 #include <cstdio>
 

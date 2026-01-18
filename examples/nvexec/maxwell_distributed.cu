@@ -17,14 +17,14 @@
 // This file causes clangd to crash during parsing
 #if !defined(STDEXEC_CLANGD_INVOKED)
 
-#include "maxwell/snr.cuh"           // IWYU pragma: keep
-#include "nvexec/stream_context.cuh" // IWYU pragma: keep
+#  include "maxwell/snr.cuh"           // IWYU pragma: keep
+#  include "nvexec/stream_context.cuh" // IWYU pragma: keep
 
-#if !__has_include(<mpi.h>)
-#  error This example requires MPI to be available
-#else
-#  include <mpi.h>
-#  include <vector>
+#  if !__has_include(<mpi.h>)
+#    error This example requires MPI to be available
+#  else
+#    include <mpi.h>
+#    include <vector>
 
 static auto even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept
   -> std::pair<std::size_t, std::size_t> {
@@ -489,7 +489,7 @@ auto main(int argc, char *argv[]) -> int {
   MPI_Barrier(MPI_COMM_WORLD);
   const auto begin = std::chrono::system_clock::now();
 
-#  if defined(OVERLAP)
+#    if defined(OVERLAP)
   const std::size_t border_cells = N;
   const std::size_t bulk_cells = accessor.own_cells() - border_cells;
 
@@ -515,7 +515,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#  else // ^^ defined(OVERLAP) ^^ // vv !defined(OVERLAP) vv
+#    else  // ^^ defined(OVERLAP) ^^ // vv !defined(OVERLAP) vv
   for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
     auto compute_h =
       ex::just()
@@ -534,7 +534,7 @@ auto main(int argc, char *argv[]) -> int {
   }
 
   write();
-#  endif // defined(OVERLAP)
+#    endif // defined(OVERLAP)
 
   MPI_Barrier(MPI_COMM_WORLD);
   const auto end = std::chrono::system_clock::now();
@@ -552,6 +552,6 @@ auto main(int argc, char *argv[]) -> int {
 
   MPI_Finalize();
 }
-#endif
+#  endif
 
 #endif // !defined(STDEXEC_CLANGD_INVOKED)

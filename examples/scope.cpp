@@ -15,8 +15,8 @@
  */
 
 // Pull in the reference implementation of P2300:
-#include <stdexec/execution.hpp>
 #include <exec/async_scope.hpp>
+#include <stdexec/execution.hpp>
 
 #include "exec/static_thread_pool.hpp"
 

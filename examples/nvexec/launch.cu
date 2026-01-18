@@ -18,8 +18,8 @@
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
-#include <numeric>
 #include <cub/cub.cuh>
+#include <numeric>
 
 #include <thrust/device_vector.h>
 

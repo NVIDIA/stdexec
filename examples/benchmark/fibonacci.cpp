@@ -17,8 +17,8 @@
 #include <cstdlib>
 #include <iostream>
 
-#include <execpools/tbb/tbb_thread_pool.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <execpools/tbb/tbb_thread_pool.hpp>
 
 #include <exec/any_sender_of.hpp>
 #include <stdexec/execution.hpp>

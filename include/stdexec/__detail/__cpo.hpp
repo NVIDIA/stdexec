@@ -39,7 +39,7 @@
 /// }
 /// @endcode
 #define STDEXEC_MEMFN_DECL_IMPL(...)                                                               \
-  friend STDEXEC_PP_EVAL(                                                                             \
+  friend STDEXEC_PP_EVAL(                                                                          \
     STDEXEC_MEMFN_DECL_TAG_INVOKE, STDEXEC_MEMFN_DECL_WHICH(__VA_ARGS__), __VA_ARGS__)
 
 #define STDEXEC_MEMFN_DECL_WHICH(_A1, ...)                                                         \
@@ -81,7 +81,8 @@
 #define STDEXEC_MEMFN_DECL_TAG_11(...) STDEXEC_MEMFN_DECL_QUERY
 #define STDEXEC_MEMFN_DECL_TAG_21(...) STDEXEC_MEMFN_DECL_QUERY
 
-#define STDEXEC_MEMFN_FRIEND(_TAG)     using STDEXEC_PP_CAT(_TAG, _t) = STDEXEC_PP_CAT(STDEXEC::_TAG, _t)
+#define STDEXEC_MEMFN_FRIEND(_TAG)                                                                 \
+  using STDEXEC_PP_CAT(_TAG, _t) = STDEXEC_PP_CAT(STDEXEC::_TAG, _t)
 
 #if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 14'00)
 #  define STDEXEC_CUSTOM                                                                           \

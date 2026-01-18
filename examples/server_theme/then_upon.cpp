@@ -36,11 +36,11 @@
  */
 
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <sstream>
 
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>

@@ -51,7 +51,8 @@ namespace exec {
       inplace_stop_source __stop_source_{};
       mutable std::mutex __lock_{};
       mutable __std::atomic_ptrdiff_t __active_ = 0;
-      mutable __std::atomic_ptrdiff_t __pending_notifiers_ = 0;  // Track in-flight __complete() calls
+      mutable __std::atomic_ptrdiff_t __pending_notifiers_ =
+        0; // Track in-flight __complete() calls
       mutable __intrusive_queue<&__task::__next_> __waiters_{};
 
       ~__impl() {
@@ -89,8 +90,9 @@ namespace exec {
           // Also check __pending_notifiers_ to avoid race with in-flight __complete() calls.
           // A __complete() that did fetch_sub but hasn't locked the mutex yet will have
           // incremented __pending_notifiers_, preventing us from completing immediately.
-          if (__active.load(__std::memory_order_acquire) != 0
-              || __pending.load(__std::memory_order_acquire) != 0) {
+          if (
+            __active.load(__std::memory_order_acquire) != 0
+            || __pending.load(__std::memory_order_acquire) != 0) {
             __waiters.push_back(this);
             return;
           }

@@ -15,13 +15,13 @@
  */
 
 #include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
 #include <exec/sequence.hpp>
-#include <test_common/type_helpers.hpp>
+#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/type_helpers.hpp>
 
-#include <memory>
 #include <exception>
+#include <memory>
 
 namespace {
   struct big {

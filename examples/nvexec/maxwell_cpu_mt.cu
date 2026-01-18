@@ -17,13 +17,13 @@
 // This file causes clangd to crash during parsing
 #if !defined(STDEXEC_CLANGD_INVOKED)
 
-#include "maxwell/snr.cuh"
-#include "maxwell/std.cuh"
-#include "maxwell/stdpar.cuh" // IWYU pragma: keep
+#  include "maxwell/snr.cuh"
+#  include "maxwell/std.cuh"
+#  include "maxwell/stdpar.cuh" // IWYU pragma: keep
 
-#include "../../include/exec/static_thread_pool.hpp"
+#  include "../../include/exec/static_thread_pool.hpp"
 
-#include <iostream>
+#  include <iostream>
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);
@@ -75,7 +75,7 @@ auto main(int argc, char *argv[]) -> int {
     run_std(dt, write_vtk, n_iterations, grid, "CPU (std)");
   }
 
-#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
+#  if STDEXEC_HAS_PARALLEL_ALGORITHMS()
   if (value(params, "run-stdpar")) {
     const bool gpu = is_gpu_policy(stdexec::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
@@ -86,7 +86,7 @@ auto main(int argc, char *argv[]) -> int {
 
     run_stdpar(dt, write_vtk, n_iterations, grid, stdexec::par_unseq, method);
   }
-#endif
+#  endif
 }
 
 #endif // !defined(STDEXEC_CLANGD_INVOKED)

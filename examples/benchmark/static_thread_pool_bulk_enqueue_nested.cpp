@@ -18,8 +18,8 @@
 #include <exec/static_thread_pool.hpp>
 
 #if STDEXEC_HAS_STD_RANGES()
-#  include <ranges>
 #  include <exec/sequence/ignore_all_values.hpp>
+#  include <ranges>
 
 struct RunThread {
   void operator()(

@@ -17,9 +17,9 @@
 // This file causes clangd to crash during parsing
 #if !defined(STDEXEC_CLANGD_INVOKED)
 
-#include "maxwell/snr.cuh"
-#include "maxwell/stdpar.cuh" // IWYU pragma: keep
-#include "maxwell/cuda.cuh"
+#  include "maxwell/cuda.cuh"
+#  include "maxwell/snr.cuh"
+#  include "maxwell/stdpar.cuh" // IWYU pragma: keep
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);
@@ -71,7 +71,7 @@ auto main(int argc, char *argv[]) -> int {
     run_snr_on("GPU (snr cuda stream)", stream_ctx.get_scheduler());
   }
 
-#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
+#  if STDEXEC_HAS_PARALLEL_ALGORITHMS()
   if (value(params, "run-stdpar")) {
     const bool gpu = is_gpu_policy(stdexec::par_unseq);
     std::string_view method = gpu ? "GPU (stdpar)" : "CPU (stdpar)";
@@ -82,7 +82,7 @@ auto main(int argc, char *argv[]) -> int {
 
     run_stdpar(dt, write_vtk, n_iterations, grid, stdexec::par_unseq, method);
   }
-#endif // STDEXEC_HAS_PARALLEL_ALGORITHMS()
+#  endif // STDEXEC_HAS_PARALLEL_ALGORITHMS()
 }
 
 #endif // !defined(STDEXEC_CLANGD_INVOKED)

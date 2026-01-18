@@ -236,22 +236,21 @@ namespace STDEXEC {
   constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept //
     -> __well_formed_completions auto;
 
-  #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
-    template <class... _What, class... _Values>
-    consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...>;
+  template <class... _What, class... _Values>
+  consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...>;
 
-  #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
-    // C++26, https://wg21.link/p3068
-    template <class _What, class... _More, class... _Values>
-    consteval auto __invalid_completion_signature(_Values...)
-      -> completion_signatures<>;
+  // C++26, https://wg21.link/p3068
+  template <class _What, class... _More, class... _Values>
+  consteval auto __invalid_completion_signature(_Values...) -> completion_signatures<>;
 
-  #endif // ^^^ constexpr exceptions ^^^
+#endif // ^^^ constexpr exceptions ^^^
 
-    template <class... _What>
-    consteval auto __invalid_completion_signature(__mexception<_What...>);
+  template <class... _What>
+  consteval auto __invalid_completion_signature(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {

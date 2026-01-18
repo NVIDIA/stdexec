@@ -61,7 +61,7 @@ namespace STDEXEC {
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() //
-      -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, then_t>);
         // TODO: update this to use constant evaluation:
         return {};

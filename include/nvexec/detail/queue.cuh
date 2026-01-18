@@ -24,8 +24,8 @@
 
 #include "config.cuh"
 #include "cuda_atomic.cuh" // IWYU pragma: keep
-#include "throw_on_cuda_error.cuh"
 #include "memory.cuh"
+#include "throw_on_cuda_error.cuh"
 
 namespace nvexec::_strm::queue {
   struct task_base_t {
@@ -68,7 +68,8 @@ namespace nvexec::_strm::queue {
 
   struct root_task_t : task_base_t {
     root_task_t() {
-      this->execute_ = [](task_base_t*) noexcept {};
+      this->execute_ = [](task_base_t*) noexcept {
+      };
       this->free_ = [](task_base_t* t) noexcept {
         STDEXEC_ASSERT_CUDA_API(cudaFree(static_cast<void*>(t->atom_next_)));
       };
