@@ -220,8 +220,9 @@ namespace STDEXEC {
             &__loop_->__task_count_, &__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
         }
 
+        template <class, class...>
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        static constexpr auto get_completion_signatures(__ignore) noexcept {
+        static consteval auto get_completion_signatures() noexcept {
           return completion_signatures<set_value_t(), set_stopped_t()>{};
         }
 

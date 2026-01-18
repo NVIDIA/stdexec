@@ -190,8 +190,7 @@ namespace exec {
       using __op_base_t = __op_base<_Receiver, __result_t>;
 
       static constexpr bool __nothrow_construct =
-        __nothrow_move_constructible<_Receiver>
-        && (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
+        (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
 
       class __t : __op_base_t {
         using __opstate_tuple =

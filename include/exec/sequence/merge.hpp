@@ -127,96 +127,69 @@ namespace exec {
       };
     };
 
-    template <class _Receiver>
-    struct __subscribe_fn {
-      _Receiver& __rcvr_;
-
-      template <class... _Sequences>
-      auto operator()(__ignore, __ignore, _Sequences... __sequences)
-        noexcept(__nothrow_decay_copyable<_Sequences...> && __nothrow_move_constructible<_Receiver>)
-          -> __t<__operation<__id<_Receiver>, _Sequences...>> {
-        return {static_cast<_Receiver&&>(__rcvr_), static_cast<_Sequences&&>(__sequences)...};
-      }
-    };
-
     struct merge_t {
+     private:
+      struct __subscribe_fn {
+        template <class _Receiver, class... _Sequences>
+        auto operator()(_Receiver& __rcvr, __ignore, __ignore, _Sequences... __sequences)
+          noexcept(__nothrow_decay_copyable<_Sequences...>)
+            -> __t<__operation<__id<_Receiver>, _Sequences...>> {
+          return {static_cast<_Receiver&&>(__rcvr), static_cast<_Sequences&&>(__sequences)...};
+        }
+      };
+
+      template <class... _Env>
+      static consteval auto __mk_item_transform() {
+        return []<class _ItemSender>() {
+          return exec::__sequence_completion_signatures_of<_ItemSender, _Env...>();
+        };
+      }
+
+      static consteval auto __mk_unique_concat_items() {
+        return []<class... _ItemLists>(_ItemLists...) {
+          return STDEXEC::__minvoke<
+            STDEXEC::__mconcat<STDEXEC::__munique<STDEXEC::__qq<exec::item_types>>>,
+            _ItemLists...
+          >();
+        };
+      }
+
+      template <class... _Env>
+      static consteval auto __mk_get_item_types() {
+        return []<class _ItemSender>() {
+          return exec::get_item_types<_ItemSender, _Env...>();
+        };
+      }
+
+     public:
       template <class... _Sequences>
       auto operator()(_Sequences&&... __sequences) const
         noexcept(__nothrow_decay_copyable<_Sequences...>) -> __well_formed_sequence_sender auto {
         return make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...);
       }
 
-      template <class _Error>
-      using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
-
-      struct _INVALID_ARGUMENTS_TO_MERGE_ { };
-
       template <class _Self, class... _Env>
-      using __error_t = std::conditional_t<
-        sizeof...(_Env) == 0,
-        __dependent_sender_error<_Self>,
-        __mexception<
-          _INVALID_ARGUMENTS_TO_MERGE_,
-          __children_of<_Self, __q<_WITH_SEQUENCES_>>,
-          _WITH_ENVIRONMENT_<_Env>...
-        >
-      >;
-
-      template <class... _Env>
-      struct __completions_fn_t {
-        template <class... _Sequences>
-        using __f = __meval<
-          __concat_completion_signatures,
-          completion_signatures<set_stopped_t()>,
-          __sequence_completion_signatures_of_t<_Sequences, _Env...>...
-        >;
-      };
-
-      template <class _Self, class... _Env>
-      using __completions_t = __children_of<_Self, __completions_fn_t<_Env...>>;
-
-      template <sender_expr_for<merge_t> _Self, class... _Env>
       static consteval auto get_completion_signatures() noexcept {
-        using __result_t =
-          __minvoke<__mtry_catch<__q<__completions_t>, __q<__error_t>>, _Self, _Env...>;
-        if constexpr (__ok<__result_t>) {
-          return __result_t();
-        } else {
-          return STDEXEC::__invalid_completion_signature(__result_t());
-        }
+        static_assert(STDEXEC::sender_expr_for<_Self, merge_t>);
+        auto __items = STDEXEC::__children_of<_Self, STDEXEC::__qq<item_types>>();
+        return exec::concat_completion_signatures(
+          completion_signatures<set_stopped_t()>(),
+          __items.__transform(__mk_item_transform<_Env...>(), exec::concat_completion_signatures));
       }
-
-      template <class... _Env>
-      struct __items_fn_t {
-
-        template <class... _Sequences>
-        using __f = STDEXEC::__mapply<
-          STDEXEC::__munique<STDEXEC::__q<exec::item_types>>,
-          STDEXEC::__minvoke<
-            STDEXEC::__mconcat<STDEXEC::__qq<exec::item_types>>,
-            __item_types_of_t<_Sequences, _Env...>...
-          >
-        >;
-      };
 
       template <class _Self, class... _Env>
-      using __items_t = __children_of<_Self, __items_fn_t<_Env...>>;
-
-      template <sender_expr_for<merge_t> _Self, class... _Env>
       static consteval auto get_item_types() {
-        using __result_t = __minvoke<__mtry_catch<__q<__items_t>, __q<__error_t>>, _Self, _Env...>;
-        if constexpr (__ok<__result_t>) {
-          return __result_t();
-        } else {
-          return exec::__invalid_item_types(__result_t());
-        }
+        static_assert(sender_expr_for<_Self, merge_t>);
+        auto __items = STDEXEC::__children_of<_Self, STDEXEC::__qq<item_types>>();
+        return __items.__transform(__mk_get_item_types<_Env...>(), __mk_unique_concat_items());
       }
 
-      template <sender_expr_for<merge_t> _Self, receiver _Receiver>
+      template <class _Self, receiver _Receiver>
       static auto subscribe(_Self&& __self, _Receiver __rcvr)
-        noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _Self>)
-          -> __apply_result_t<__subscribe_fn<_Receiver>, _Self> {
-        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Self&&>(__self));
+        noexcept(__nothrow_applicable<__subscribe_fn, _Self, _Receiver&>)
+          -> __apply_result_t<__subscribe_fn, _Self, _Receiver&> {
+        static_assert(sender_expr_for<_Self, merge_t>);
+        return STDEXEC::__apply(__subscribe_fn{}, static_cast<_Self&&>(__self), __rcvr);
       }
     };
   } // namespace __merge

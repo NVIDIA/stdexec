@@ -25,6 +25,21 @@
 #include "stdexec/__detail/__meta.hpp"
 
 namespace exec {
+  template <class _Transform>
+  struct _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_;
+
+  template <class _Transform>
+  struct _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_;
+
+  template <class _Transform>
+  struct _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_;
+
+  template <class _Closure>
+  struct _WITH_ADAPTOR_;
+
+  template <class _Sender>
+  struct _WITH_ITEM_SENDER_;
+
   namespace __transform_each {
     using namespace STDEXEC;
 
@@ -102,50 +117,14 @@ namespace exec {
       _Receiver& __rcvr_;
 
       template <class _Adaptor, class _Sequence>
-      auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence) noexcept(
-        __nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>
-        && __nothrow_move_constructible<_Receiver>)
-        -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
+      auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence)
+        noexcept(__nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>)
+          -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
         return {
           static_cast<_Sequence&&>(__sequence),
           static_cast<_Receiver&&>(__rcvr_),
           static_cast<_Adaptor&&>(__adaptor)};
       }
-    };
-
-    template <class _Adaptor>
-    struct _NOT_CALLABLE_ADAPTOR_ { };
-
-    template <class _Item>
-    struct _WITH_ITEM_SENDER_ { };
-
-    template <class _Adaptor>
-    struct __try_adaptor_calls_t {
-
-      template <class _Item>
-      auto __try_adaptor_for_item(_Item*) -> STDEXEC::__mexception<
-        _NOT_CALLABLE_ADAPTOR_<_Adaptor&>,
-        _WITH_ITEM_SENDER_<STDEXEC::__demangle_t<_Item>>
-      >;
-
-      template <class _Item>
-        requires STDEXEC::__callable<_Adaptor&, _Item>
-      auto __try_adaptor_for_item(_Item*) -> STDEXEC::__msuccess;
-
-      template <class... _Items>
-      auto operator()(item_types<_Items...>*) -> decltype((
-        STDEXEC::__msuccess(),
-        ...,
-        __try_adaptor_for_item(static_cast<_Items*>(nullptr))));
-    };
-
-    template <class _Adaptor, class _Items>
-    using __try_adaptor_calls_result_t =
-      __call_result_t<__try_adaptor_calls_t<STDEXEC::__decay_t<_Adaptor>>, _Items>;
-
-    template <class _Adaptor, class _Items>
-    concept __callable_adaptor_for = requires(_Items* __items) {
-      { __try_adaptor_calls_t<STDEXEC::__decay_t<_Adaptor>>{}(__items) } -> STDEXEC::__ok;
     };
 
     struct transform_each_t {
@@ -165,91 +144,42 @@ namespace exec {
       }
 
       template <class _Self, class... _Env>
-      using __completion_sigs_t = __sequence_completion_signatures_of_t<__child_of<_Self>, _Env...>;
-
-      template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Self, transform_each_t>);
-        using __result_t = __completion_sigs_t<_Self, _Env...>;
-        if constexpr (__ok<__result_t>) {
-          return __result_t();
-        } else {
-          return STDEXEC::__invalid_completion_signature(__result_t());
-        }
+        return exec::__sequence_completion_signatures_of<__child_of<_Self>, _Env...>();
+      }
+
+      static consteval auto __collect_item_types() {
+        return []<class... _Senders>(STDEXEC::__mtype<_Senders>...) {
+          return STDEXEC::__minvoke<STDEXEC::__munique<STDEXEC::__qq<item_types>>, _Senders...>();
+        };
       }
 
       template <class _Self, class... _Env>
-      using __item_types_t = STDEXEC::__mapply<
-        STDEXEC::__mtransform<
-          STDEXEC::__mbind_front_q<__call_result_t, __data_of<_Self>&>,
-          STDEXEC::__munique<STDEXEC::__q<item_types>>
-        >,
-        __item_types_of_t<__child_of<_Self>, _Env...>
-      >;
-
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_ { };
-
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
-             && (!__callable_adaptor_for<
-                 __data_of<_Self>,
-                 __item_types_of_t<__child_of<_Self>, _Env...>
-             >)
       static consteval auto get_item_types() {
-        return exec::__invalid_item_types<
-          _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-          _WITH_SEQUENCE_<__child_of<_Self>>,
-          _WITH_ENVIRONMENT_<_Env...>,
-          _WITH_TYPE_<__try_adaptor_calls_result_t<
-            __data_of<_Self>,
-            __item_types_of_t<__child_of<_Self>, _Env...>
-          >>
-        >();
-      }
+        static_assert(sender_expr_for<_Self, transform_each_t>);
+        using __closure_t = STDEXEC::__decay_t<__data_of<_Self>>&;
+        auto __child_items = exec::get_item_types<__child_of<_Self>, _Env...>();
 
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_ { };
-
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && (!__mvalid<__item_types_of_t, __child_of<_Self>, _Env...>)
-      static consteval auto get_item_types() {
-        return exec::__invalid_item_types<
-          _TRANSFORM_EACH_ITEM_TYPES_OF_THE_CHILD_ARE_INVALID_<_Self>,
-          _WITH_SEQUENCE_<__child_of<_Self>>,
-          _WITH_ENVIRONMENT_<_Env...>
-        >();
-      }
-
-      template <class _Transform>
-      struct _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_ { };
-
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires(!__mvalid<__item_types_t, _Self, _Env...>)
-             && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
-             && __callable_adaptor_for<
-                  __data_of<_Self>,
-                  __item_types_of_t<__child_of<_Self>, _Env...>
-             >
-      static consteval auto get_item_types() {
-        return exec::__invalid_item_types<
-          _TRANSFORM_EACH_ITEM_TYPES_CALCULATION_FAILED_<_Self>,
-          _WITH_SEQUENCE_<__child_of<_Self>>,
-          _WITH_ENVIRONMENT_<_Env...>
-        >();
-      }
-
-      template <sender_expr_for<transform_each_t> _Self, class... _Env>
-        requires __mvalid<__item_types_t, _Self, _Env...>
-              && __mvalid<__item_types_of_t, __child_of<_Self>, _Env...>
-              && __callable_adaptor_for<
-                   __data_of<_Self>,
-                   __item_types_of_t<__child_of<_Self>, _Env...>
-              >
-      static consteval auto get_item_types() noexcept -> __item_types_t<_Self, _Env...> {
-        return {};
+        if constexpr (STDEXEC::__merror<decltype(__child_items)>) {
+          return exec::__invalid_item_types(__child_items);
+        } else {
+          return __child_items.__transform(
+            []<class _ItemSender>() {
+              if constexpr (!__callable<__closure_t, _ItemSender>) {
+                return exec::__invalid_item_types<
+                  _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
+                  _WITH_SEQUENCE_<__child_of<_Self>>,
+                  _WITH_ENVIRONMENT_<_Env>...,
+                  _WITH_ADAPTOR_<__data_of<_Self>>,
+                  _WITH_ITEM_SENDER_<STDEXEC::__demangle_t<_ItemSender>>
+                >();
+              } else {
+                return STDEXEC::__mtype<__call_result_t<__closure_t, _ItemSender>>();
+              }
+            },
+            __collect_item_types());
+        }
       }
 
       template <class _Self, class _Receiver>
@@ -267,9 +197,11 @@ namespace exec {
 
       template <sender_expr_for<transform_each_t> _Sexpr>
       static auto get_env(const _Sexpr& __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>> {
-        return __apply([]<class _Child>(__ignore, __ignore, const _Child& __child) {
-          return STDEXEC::get_env(__child);
-        }, __sexpr);
+        return __apply(
+          []<class _Child>(__ignore, __ignore, const _Child& __child) {
+            return STDEXEC::get_env(__child);
+          },
+          __sexpr);
       }
     };
   } // namespace __transform_each

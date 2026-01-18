@@ -152,8 +152,7 @@ namespace exec {
       using __operation_t = __t<__operation<__decay_t<_Range>, _ReceiverId>>;
 
       template <class _Range>
-      auto operator()(__ignore, _Range&& __range) noexcept(__nothrow_move_constructible<_Receiver>)
-        -> __operation_t<_Range> {
+      auto operator()(__ignore, _Range&& __range) noexcept -> __operation_t<_Range> {
         return {
           {std::ranges::begin(__range), std::ranges::end(__range)},
           static_cast<_Receiver&&>(__rcvr_)

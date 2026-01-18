@@ -17,6 +17,7 @@
 
 #include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__tuple.hpp" // IWYU pragma: keep for STDEXEC::__tuple
 
 namespace exec {
@@ -76,20 +77,33 @@ namespace exec {
     return {};
   }
 
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // concat_completion_signatures
   namespace detail {
     struct concat_completion_signatures_t {
-      template <class... Sigs>
+      template <STDEXEC::__valid_completion_signatures... Sigs>
       [[nodiscard]]
-      consteval auto
-        operator()(Sigs...) const noexcept -> STDEXEC::__concat_completion_signatures<Sigs...> {
+      consteval auto operator()(Sigs...) const noexcept //
+        -> STDEXEC::__concat_completion_signatures<Sigs...> {
         return {};
+      }
+
+      template <class... Errors>
+      [[nodiscard]]
+      consteval auto operator()(Errors...) const noexcept {
+        return (Errors{}, ...); // NB: uses overloaded comma operator on _ERROR_ type to produce an
+                                // error type
       }
     };
   } // namespace detail
 
   inline constexpr detail::concat_completion_signatures_t concat_completion_signatures{};
+
+  STDEXEC_PRAGMA_POP()
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // invalid_completion_signature
