@@ -20,8 +20,8 @@
 #include <cuda/std/tuple>
 #include <thrust/universal_vector.h>
 
-#include "nvexec/detail/variant.cuh"
 #include "common.cuh"
+#include "nvexec/detail/variant.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)

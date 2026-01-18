@@ -14,8 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "./common.hpp"
 #include "./static_thread_pool_old.hpp"
+#include "./common.hpp"
 
 #include <utility> // IWYU pragma: keep for std::ignore
 

@@ -844,7 +844,7 @@ namespace STDEXEC {
   template <class _Ty>
   inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
 
-  static_assert(__mnameof<int> == "int");
+  static_assert(__mnameof<void> == "void");
 
   //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
   //! See MAINTAINERS.md#class-template-parameters.

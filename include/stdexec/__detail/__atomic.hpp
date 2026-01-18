@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include "__config.hpp"
 #include "__concepts.hpp" // IWYU pragma: keep for __std::integral
+#include "__config.hpp"
 
 #if __has_include(<cuda/std/atomic>)
 #  include <cuda/std/atomic>

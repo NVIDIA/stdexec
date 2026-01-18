@@ -506,9 +506,7 @@ namespace STDEXEC {
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
 #elif STDEXEC_CLANG() && defined(__CUDA__) && defined(__CUDA_ARCH__)
-#  define STDEXEC_TERMINATE()                                                                      \
-    __trap();                                                                                      \
-    __builtin_unreachable()
+#  define STDEXEC_TERMINATE() (__trap(), __builtin_unreachable())
 #else
 #  define STDEXEC_TERMINATE() std::terminate()
 #endif

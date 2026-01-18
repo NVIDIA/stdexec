@@ -16,8 +16,8 @@
 #pragma once
 
 #if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
-#  include <unistd.h>
 #  include <sys/wait.h>
+#  include <unistd.h>
 #  define REQUIRE_TERMINATE __require_terminate
 #endif
 

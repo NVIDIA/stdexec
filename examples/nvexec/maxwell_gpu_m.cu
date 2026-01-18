@@ -17,7 +17,7 @@
 // This file causes clangd to crash during parsing
 #if !defined(STDEXEC_CLANGD_INVOKED)
 
-#include "maxwell/snr.cuh"
+#  include "maxwell/snr.cuh"
 
 auto main(int argc, char *argv[]) -> int {
   auto params = parse_cmd(argc, argv);

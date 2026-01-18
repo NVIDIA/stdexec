@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <nvexec/stream_context.cuh>
-#include <nvexec/nvtx.cuh>
 #include <cstdio>
+#include <nvexec/nvtx.cuh>
+#include <nvexec/stream_context.cuh>
 
 // clang-format off
 

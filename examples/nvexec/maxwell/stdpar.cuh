@@ -23,8 +23,8 @@
 #if STDEXEC_HAS_PARALLEL_ALGORITHMS()
 
 #  if STDEXEC_CUDA_COMPILATION()
-#    include "../include/nvexec/stream/common.cuh"
 #    include "../include/nvexec/detail/throw_on_cuda_error.cuh"
+#    include "../include/nvexec/stream/common.cuh"
 #  endif
 
 #  include <thrust/iterator/counting_iterator.h>
@@ -42,9 +42,9 @@ auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool {
   STDEXEC_ASSERT_CUDA_API(cudaFreeHost(flag));
 
   return h_flag;
-#else
+#  else
   return false;
-#endif
+#  endif
 }
 
 template <class Policy>
