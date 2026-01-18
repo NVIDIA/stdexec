@@ -16,16 +16,15 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__completion_signatures_of.hpp"
-#include "../../stdexec/__detail/__execution_fwd.hpp"
-#include "../../stdexec/__detail/__meta.hpp"
-#include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
 
 #include "../__detail/__basic_sequence.hpp"
 #include "../sequence_senders.hpp"
 #include "ignore_all_values.hpp"
 #include "transform_each.hpp"
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 
 namespace exec {
   namespace __merge {
@@ -197,3 +196,5 @@ namespace exec {
   using __merge::merge_t;
   inline constexpr merge_t merge{};
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()

@@ -23,6 +23,9 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "completion_signatures.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
+
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
   "A sequence sender must provide a `subscribe` member function that takes a receiver as an\n"     \
@@ -1041,3 +1044,5 @@ namespace exec {
     }
   } // namespace __debug
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()

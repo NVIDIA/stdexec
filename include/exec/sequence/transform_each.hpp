@@ -24,6 +24,9 @@
 #include "stdexec/__detail/__diagnostics.hpp"
 #include "stdexec/__detail/__meta.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
+
 namespace exec {
   template <class _Transform>
   struct _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_;
@@ -209,3 +212,5 @@ namespace exec {
   using __transform_each::transform_each_t;
   inline constexpr transform_each_t transform_each{};
 } // namespace exec
+
+STDEXEC_PRAGMA_POP()
