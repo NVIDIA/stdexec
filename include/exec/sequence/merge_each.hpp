@@ -315,7 +315,7 @@ namespace exec {
       using __interface_t = __operation_base_interface<__error_storage_t>;
 
       using __error_sender_t = __merge_each::__error_sender_t<__error_storage_t>;
-      using __error_next_sender_t = next_sender_of_t<_Receiver&, __error_sender_t>;
+      using __error_next_sender_t = next_sender_of_t<_Receiver, __error_sender_t>;
       using __env_fn_t = __env_fn<_Receiver>;
       using __error_next_receiver_t = __error_next_receiver<_ErrorStorage, __env_fn_t>;
       using __error_op_t =
@@ -329,7 +329,7 @@ namespace exec {
       __nested_stop_t __nested_stop_{};
       STDEXEC::__optional<__error_op_t> __error_op_{};
 
-      __operation_base(_Receiver __receiver) noexcept(__nothrow_move_constructible<_Receiver>)
+      __operation_base(_Receiver __receiver) noexcept
         : __interface_t{&__error_storage_}
         , __receiver_{static_cast<_Receiver&&>(__receiver)} {
         __interface_t::__token_ = __nested_stop_.get_token();
@@ -1166,8 +1166,8 @@ namespace exec {
         using __op_t = subscribe_result_t<_Sequence, __receiver>;
         __op_t __op_;
 
-        __t(_Receiver __rcvr, _Sequence __sequence) noexcept(
-          __nothrow_subscribable<_Sequence, __receiver> && __nothrow_move_constructible<_Receiver>)
+        __t(_Receiver __rcvr, _Sequence __sequence)
+          noexcept(__nothrow_subscribable<_Sequence, __receiver>)
           : __base_t{static_cast<_Receiver&&>(__rcvr)}
           , __op_{subscribe(static_cast<_Sequence&&>(__sequence), __receiver{this})} {
         }

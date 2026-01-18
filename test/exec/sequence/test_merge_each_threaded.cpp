@@ -88,12 +88,14 @@ namespace {
   static constexpr auto then_each = [](auto f) {
     return exec::transform_each(ex::then(f));
   };
+
   // a sequence adaptor that schedules each item to complete
   // on the specified scheduler
   [[maybe_unused]]
   static constexpr auto continues_each_on = [](auto sched) {
     return exec::transform_each(ex::continues_on(sched));
   };
+
   // a sequence adaptor that schedules each item to complete
   // on the specified scheduler after the specified duration
   [[maybe_unused]]
@@ -104,6 +106,7 @@ namespace {
     auto delay_adaptor = STDEXEC::__closure(delay_value, sched, after);
     return exec::transform_each(delay_adaptor);
   };
+
   // a sequence adaptor that applies a function to each item
   // the function must produce a sequence
   // all the sequences returned from the function are merged
@@ -116,6 +119,7 @@ namespace {
     };
     return STDEXEC::__closure(map_merge, static_cast<decltype(f)&&>(f));
   };
+
   // when_all requires a successful completion
   // however stop_after_on has no successful completion
   // this uses variant_sender to add a successful completion
@@ -125,12 +129,14 @@ namespace {
     -> variant_sender<STDEXEC::__call_result_t<ex::just_t>, decltype(sender)> {
     return {static_cast<decltype(sender)&&>(sender)};
   };
+
   // with_stop_token_from adds get_stop_token query, that returns the
   // token for the provided stop_source, to the receiver env
   [[maybe_unused]]
   static constexpr auto with_stop_token_from = [](auto& stop_source) noexcept {
     return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
   };
+
   // log_start completes with the provided sequence after printing provided string
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message) {
@@ -142,6 +148,7 @@ namespace {
       }),
       ex::just(sequence));
   };
+
   // log_sequence prints the message when each value in the sequence is emitted
   [[maybe_unused]]
   auto log_sequence = [](auto sequence, auto message) {
@@ -150,6 +157,7 @@ namespace {
              return value;
            });
   };
+
   // emits_stopped completes with set_stopped after printing info
   [[maybe_unused]]
   auto emits_stopped = []() {
@@ -158,6 +166,7 @@ namespace {
              return ex::just_stopped();
            });
   };
+
   // emits_error completes with set_error(error) after printing info
   [[maybe_unused]]
   auto emits_error = [](auto error) {
@@ -179,7 +188,8 @@ namespace {
   struct as_sequence_t : Sender {
     using sender_concept = sequence_sender_t;
     using item_types = exec::item_types<Sender>;
-    auto subscribe(auto receiver) {
+    template <ex::receiver Receiver>
+    auto subscribe(Receiver receiver) {
       return connect(set_next(receiver, *static_cast<Sender*>(this)), receiver);
     }
   };

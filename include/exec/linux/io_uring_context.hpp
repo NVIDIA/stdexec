@@ -1115,10 +1115,10 @@ namespace exec {
           return __env_;
         }
 
+        template <class>
         [[nodiscard]]
-        auto
-          get_completion_signatures(STDEXEC::__ignore = {}) const noexcept -> __completion_sigs_t {
-          return {};
+        static consteval auto get_completion_signatures() noexcept {
+          return __completion_sigs_t{};
         }
 
         template <STDEXEC::receiver_of<__completion_sigs_t> _Receiver>
@@ -1149,10 +1149,10 @@ namespace exec {
           return __env_;
         }
 
+        template <class>
         [[nodiscard]]
-        auto
-          get_completion_signatures(STDEXEC::__ignore = {}) const noexcept -> __completion_sigs_t {
-          return {};
+        static consteval auto get_completion_signatures() noexcept -> __completion_sigs_t {
+          return __completion_sigs_t{};
         }
 
         template <STDEXEC::receiver_of<__completion_sigs_t> _Receiver>

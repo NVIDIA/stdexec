@@ -149,8 +149,7 @@ namespace exec {
           using __id = __operation;
           STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __receiver_;
 
-          explicit __t(_Receiver __rcvr, std::size_t __max_size, std::size_t __max_depth)
-            noexcept(__nothrow_move_constructible<_Receiver>)
+          explicit __t(_Receiver __rcvr, std::size_t __max_size, std::size_t __max_depth) noexcept
             : __operation_base(&__t::__execute_impl, __max_size, __max_depth)
             , __receiver_(static_cast<_Receiver&&>(__rcvr)) {
           }
@@ -187,8 +186,7 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        auto connect(_Receiver __rcvr) const noexcept(__nothrow_move_constructible<_Receiver>)
-          -> __operation_t<_Receiver> {
+        auto connect(_Receiver __rcvr) const noexcept -> __operation_t<_Receiver> {
           return __operation_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), __max_recursion_size_, __max_recursion_depth_};
         }

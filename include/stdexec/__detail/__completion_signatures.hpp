@@ -216,6 +216,10 @@ namespace STDEXEC {
   //! @endcode
   template <class... _Sigs>
   struct completion_signatures {
+    static_assert(
+      (__completion_signature<_Sigs> && ...),
+      "All types in completion_signatures must be valid completion signatures.");
+
     //! @brief Partitioned view of the completion signatures for efficient querying.
     struct __partitioned {
       // This is defined in a nested struct to avoid computing these types if they are not
