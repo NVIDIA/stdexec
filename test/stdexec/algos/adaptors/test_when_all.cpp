@@ -62,6 +62,36 @@ namespace {
     wait_for_value(std::move(snd), 2, 3, 5, 7, 11);
   }
 
+  TEST_CASE("when_all with 8 senders", "[adaptors][when_all]") {
+    // 8 senders is the boundary case for the optimized tuple specializations
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just(3),
+      ex::just(5),
+      ex::just(7),
+      ex::just(11),
+      ex::just(13),
+      ex::just(17),
+      ex::just(19));
+    wait_for_value(std::move(snd), 2, 3, 5, 7, 11, 13, 17, 19);
+  }
+
+  TEST_CASE("when_all with 10 senders", "[adaptors][when_all]") {
+    // 10 senders uses the generic tuple with __box storage
+    ex::sender auto snd = ex::when_all(
+      ex::just(2),
+      ex::just(3),
+      ex::just(5),
+      ex::just(7),
+      ex::just(11),
+      ex::just(13),
+      ex::just(17),
+      ex::just(19),
+      ex::just(23),
+      ex::just(29));
+    wait_for_value(std::move(snd), 2, 3, 5, 7, 11, 13, 17, 19, 23, 29);
+  }
+
   TEST_CASE("when_all with just one sender", "[adaptors][when_all]") {
     ex::sender auto snd = ex::when_all(ex::just(2));
     wait_for_value(std::move(snd), 2);
