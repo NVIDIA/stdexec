@@ -68,6 +68,7 @@ set(exec_test_sources
     test_unless_stop_requested.cpp
     test_invoke.cpp
     test_exit_scope_sender.cpp
+    test_enter_scope_sender.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
