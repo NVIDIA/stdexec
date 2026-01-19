@@ -60,7 +60,7 @@ namespace exec {
 
     template <class Completions>
     using _variant_t = STDEXEC::__mset_insert<
-      STDEXEC::__for_each_completion_signature<
+      STDEXEC::__for_each_completion_signature_t<
         Completions,
         STDEXEC::__decayed_tuple,
         STDEXEC::__mset

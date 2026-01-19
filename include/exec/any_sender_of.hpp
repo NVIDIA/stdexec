@@ -1249,7 +1249,7 @@ namespace exec {
       template <auto... _SchedulerQueries>
       class any_scheduler {
         // Add the required set_value_t() completions to the schedule-sender.
-        using __schedule_completions = STDEXEC::__concat_completion_signatures<
+        using __schedule_completions = STDEXEC::__concat_completion_signatures_t<
           _Completions,
           STDEXEC::completion_signatures<STDEXEC::set_value_t()>
         >;

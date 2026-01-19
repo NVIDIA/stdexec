@@ -49,7 +49,7 @@ namespace STDEXEC {
     //        ...
     //   >
     template <class _CvrefSender, class _Env>
-    using __results_of = __for_each_completion_signature<
+    using __results_of = __for_each_completion_signature_t<
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __decayed_tuple,
       __munique<__qq<STDEXEC::__variant_for>>::__f
@@ -62,13 +62,13 @@ namespace STDEXEC {
     using __decay_error_sig = set_error_t (*)(__decay_t<_Error>);
 
     template <class _Scheduler, class _Completions, class... _Env>
-    using __completions_impl_t = __mtry_q<__concat_completion_signatures>::__f<
-      __transform_completion_signatures<
+    using __completions_impl_t = __mtry_q<__concat_completion_signatures_t>::__f<
+      __transform_completion_signatures_t<
         _Completions,
         __decay_value_sig,
         __decay_error_sig,
         set_stopped_t (*)(),
-        __completion_signature_ptrs
+        __completion_signature_ptrs_t
       >,
       transform_completion_signatures<
         __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
@@ -179,12 +179,9 @@ namespace STDEXEC {
       static consteval bool __has_decay_copy_errors() noexcept {
         if constexpr (__same_as<_SetTag, set_error_t>) {
           if constexpr (__sends<set_value_t, _Sender, __fwd_env_t<_Env>...>) {
-            using __completions_t = completion_signatures_of_t<_Sender, __fwd_env_t<_Env>...>;
-            return !__value_types_t<
-              __completions_t,
-              __qq<__nothrow_decay_copyable_t>,
-              __qq<__mand_t>
-            >::value;
+            return !__cmplsigs::__partitions_of_t<
+              completion_signatures_of_t<_Sender, __fwd_env_t<_Env>...>
+            >::__nothrow_decay_copyable::__values::value;
           }
         }
         return false;
@@ -301,12 +298,11 @@ namespace STDEXEC {
       template <class _Tag, class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_behavior_t<_Tag>, const _Env&...) const noexcept {
-        constexpr auto cb_sched = STDEXEC::get_completion_behavior<
-          _Tag,
-          schedule_result_t<_Scheduler>,
-          __fwd_env_t<_Env>...
-        >();
-        constexpr auto cb_sndr = STDEXEC::get_completion_behavior<_Tag, _Sender, _Env...>();
+        using _SchSender = schedule_result_t<_Scheduler>;
+        constexpr auto cb_sched =
+          STDEXEC::get_completion_behavior<_Tag, _SchSender, __fwd_env_t<_Env>...>();
+        constexpr auto cb_sndr =
+          STDEXEC::get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
         return completion_behavior::weakest(cb_sched, cb_sndr);
       }
 
@@ -324,32 +320,62 @@ namespace STDEXEC {
     };
 
     struct __continues_on_impl : __sexpr_defaults {
+     private:
       template <class _Sender, class... _Env>
-      using __scheduler_t = __decay_t<
-        __call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_Sender>, _Env...>
-      >;
+      using __scheduler_t = __decay_t<__data_of<_Sender>>;
 
+      template <class _Child, class... _Env>
+      static consteval auto __get_child_completions() {
+        STDEXEC_COMPLSIGS_LET(
+          __child_completions, STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>()) {
+          // continues_on has the completions of the child sender, but with value and
+          // error result types decayed.
+          return __transform_completion_signatures(
+            __child_completions,
+            __decay_arguments<set_value_t, continues_on_t>(),
+            __decay_arguments<set_error_t, continues_on_t>());
+        }
+      }
+
+      template <class _Scheduler, class... _Env>
+      static consteval auto __get_scheduler_completions() {
+        using __sndr_t = schedule_result_t<_Scheduler>;
+        STDEXEC_COMPLSIGS_LET(
+          __sched_completions,
+          STDEXEC::get_completion_signatures<__sndr_t, __fwd_env_t<_Env>...>()) {
+          // The scheduler contributes only error and stopped completions; we ignore value
+          // completions here
+          return __transform_completion_signatures(__sched_completions, __ignore_completion());
+        }
+      }
+
+
+     public:
       static constexpr auto get_attrs = [](const auto& __data, const auto& __child) noexcept {
         return __attrs{__data, __child};
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() //
-        -> __completions_t<__scheduler_t<_Sender, _Env...>, __child_of<_Sender>, _Env...> {
+      static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
-        // TODO: update this to use constant evaluation:
-        return {};
+        using __scheduler_t = __decay_t<__data_of<_Sender>>;
+        using __child_t = __child_of<_Sender>;
+        auto __child_completions = __get_child_completions<__child_t, _Env...>();
+        return __concat_completion_signatures(
+          __child_completions,
+          __get_scheduler_completions<__scheduler_t, _Env...>(),
+          __eptr_completion_unless_t<
+            __nothrow_decay_copyable_results_t<decltype(__child_completions)>
+          >());
       }
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver& __rcvr)
-        requires sender_in<__child_of<_Sender>, env_of_t<_Receiver>>
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&)
+        requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
-        auto __sched =
-          get_completion_scheduler<set_value_t>(STDEXEC::get_env(__sndr), STDEXEC::get_env(__rcvr));
-        using _Scheduler = decltype(__sched);
-        return __state<_Scheduler, _Sender, _Receiver>{__sched};
+        auto __sched = STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr));
+        return __state<decltype(__sched), _Sender, _Receiver>{__sched};
       };
 
       static constexpr auto complete =

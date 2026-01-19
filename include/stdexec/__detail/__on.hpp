@@ -55,10 +55,10 @@ namespace STDEXEC {
 
       template <class>
       static consteval auto get_completion_signatures() {
-        return STDEXEC::__invalid_completion_signature<
+        return STDEXEC::__throw_compile_time_error<
           _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
-          _WITH_SENDER_<_Sender>,
-          _WITH_ENVIRONMENT_<_Env>
+          _WITH_PRETTY_SENDER_<_Sender>,
+          _WITH_ENVIRONMENT_(_Env)
         >();
       }
     };

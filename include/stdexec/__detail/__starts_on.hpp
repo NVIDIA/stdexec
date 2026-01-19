@@ -68,7 +68,7 @@ namespace STDEXEC {
 
       template <class _Sender>
       static auto transform_sender(set_value_t, _Sender&&, __ignore) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
       }
     };
   } // namespace __starts_on_ns

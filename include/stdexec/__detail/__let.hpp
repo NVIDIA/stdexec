@@ -134,7 +134,7 @@ namespace STDEXEC {
     template <class _Sender, class... _Env>
     using __try_completion_signatures_of_t = __meval_or<
       __completion_signatures_of_t,
-      __unrecognized_sender_error<_Sender, _Env...>,
+      __unrecognized_sender_error_t<_Sender, _Env...>,
       _Sender,
       _Env...
     >;
@@ -145,8 +145,8 @@ namespace STDEXEC {
         __in_which_let_msg<_SetTag>,
         "The function must return a valid sender for the current environment"_mstr
       >,
-      _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_JoinEnv2>...,
+      _WITH_PRETTY_SENDER_<_Sender>,
+      __fn_t<_WITH_ENVIRONMENT_, _JoinEnv2>...,
       __mapply_q<_NESTED_ERROR_, __try_completion_signatures_of_t<_Sender, _JoinEnv2...>>
     >;
 
@@ -205,7 +205,7 @@ namespace STDEXEC {
 
       template <class... _Args>
       using __f = __mcall<
-        __mtry_q<__concat_completion_signatures>,
+        __mtry_q<__concat_completion_signatures_t>,
         __completion_signatures_of_t<
           __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
           _JoinEnv2
@@ -215,7 +215,7 @@ namespace STDEXEC {
     };
 
     template <class _LetTag, class _Fun, class _CvrefSender, class _Env>
-    using __completions_t = __gather_completion_signatures<
+    using __completions_t = __gather_completion_signatures_t<
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __t<_LetTag>,
       __transform_signal_fn<
@@ -224,7 +224,7 @@ namespace STDEXEC {
         __result_env_t<__t<_LetTag>, env_of_t<_CvrefSender>, _Env>
       >::template __f,
       __cmplsigs::__default_completion,
-      __mtry_q<__concat_completion_signatures>::__f
+      __mtry_q<__concat_completion_signatures_t>::__f
     >;
 
     template <__mstring _Where, __mstring _What>
@@ -240,7 +240,7 @@ namespace STDEXEC {
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
-        using __f = __mexception<__no_common_domain_t<_SetTag>, _WITH_SENDERS_<_Senders...>>;
+        using __f = __mexception<__no_common_domain_t<_SetTag>, _WITH_PRETTY_SENDERS_<_Senders...>>;
       };
 
       // TODO(ericniebler): this needs to be updated:
@@ -594,7 +594,7 @@ namespace STDEXEC {
             },
             static_cast<_Sender&&>(__sndr));
         } else {
-          return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
+          return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
         }
       }
     };
@@ -617,9 +617,9 @@ namespace STDEXEC {
             __completions_t<__let_tag<_SetTag>, __fn_t, __sender_of<_Sender>, _Env>;
           return __result_t{};
         } else {
-          return STDEXEC::__invalid_completion_signature<
+          return STDEXEC::__throw_compile_time_error<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
-            _WITH_SENDER_<_Sender>
+            _WITH_PRETTY_SENDER_<_Sender>
           >();
         }
       }

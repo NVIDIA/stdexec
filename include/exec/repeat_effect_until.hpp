@@ -175,7 +175,7 @@ namespace exec {
           completion_signatures<>,
           completion_signatures<set_value_t()>
         >,
-        __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_SENDER_<_Sender>>
+        __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_PRETTY_SENDER_<_Sender>>
       >;
 
     template <class...>

@@ -216,8 +216,6 @@ namespace STDEXEC {
 
   template <class... _What>
   struct _ERROR_ {
-    auto operator,(__msuccess) const noexcept -> _ERROR_;
-
     using __t = _ERROR_;
     using __id = _ERROR_;
 
@@ -231,6 +229,19 @@ namespace STDEXEC {
 
     template <class, class>
     using __stopped_types = _ERROR_;
+
+    using __decay_copyable = _ERROR_;
+    using __nothrow_decay_copyable = _ERROR_;
+    using __values = _ERROR_;
+    using __errors = _ERROR_;
+    using __all = _ERROR_;
+
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator+() const -> _ERROR_;
+
+    template <class _Ty>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(const _Ty &) const -> _ERROR_;
   };
 
   template <__mstring... _What>
@@ -249,7 +260,7 @@ namespace STDEXEC {
   using __ok_t = decltype(__ok_v<_Ty>);
 
   template <class... _Ts>
-  using __disp = decltype((__msuccess(), ..., __ok_t<_Ts>()));
+  using __mfind_error = decltype((__msuccess(), ..., __ok_t<_Ts>()));
 
   template <class _Arg>
   concept __ok = STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
@@ -327,7 +338,7 @@ namespace STDEXEC {
 
   struct __disp_q {
     template <class... _Args>
-    using __f = __disp<_Args...>;
+    using __f = __mfind_error<_Args...>;
   };
 
   template <>
@@ -342,7 +353,7 @@ namespace STDEXEC {
   template <>
   struct __i<false, true> {
     template <template <class...> class, class... _Args>
-    using __g = __disp<_Args...>;
+    using __g = __mfind_error<_Args...>;
 
     template <class>
     using __f = __disp_q;

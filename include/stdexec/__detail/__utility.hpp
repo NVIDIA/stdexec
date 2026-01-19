@@ -95,10 +95,20 @@ namespace STDEXEC {
   template <>
   struct __priority<0> { };
 
+  inline constexpr auto __umin(std::initializer_list<std::size_t> __il) noexcept -> std::size_t {
+    std::size_t __m = 0;
+    for (std::size_t __i: __il) {
+      if (__i < __m) {
+        __m = __i;
+      }
+    }
+    return __m;
+  }
+
   inline constexpr auto __umax(std::initializer_list<std::size_t> __il) noexcept -> std::size_t {
     std::size_t __m = 0;
     for (std::size_t __i: __il) {
-      if (__i > __m) {
+      if (__m < __i) {
         __m = __i;
       }
     }

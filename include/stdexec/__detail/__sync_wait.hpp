@@ -169,8 +169,8 @@ namespace STDEXEC {
     template <__mstring _Diagnostic, class _Sender, class _Env = __env>
     using __sync_wait_error = __mexception<
       __invalid_argument_to_sync_wait<_Diagnostic>,
-      _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env>
+      _WITH_PRETTY_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_(_Env)
     >;
 
     template <class _Sender, class>

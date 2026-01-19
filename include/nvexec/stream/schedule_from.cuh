@@ -198,8 +198,8 @@ namespace nvexec {
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::schedule_from_t),
             // STDEXEC::_TO_FIX_THIS_ERROR_(
             //   ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM),
-            STDEXEC::_WITH_SENDER_<Sender>,
-            STDEXEC::_WITH_ENVIRONMENT_<Env>
+            STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+            STDEXEC::_WITH_ENVIRONMENT_(Env)
           >{};
         }
       }

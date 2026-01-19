@@ -31,7 +31,7 @@ namespace exec {
 
     template <class _Env>
     using __no_scheduler_error =
-      __mexception<_INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_<_Env>>;
+      __mexception<_INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_(_Env)>;
 
     template <class _Env>
     using __schedule_sender_t = schedule_result_t<__call_result_t<get_scheduler_t, _Env>>;

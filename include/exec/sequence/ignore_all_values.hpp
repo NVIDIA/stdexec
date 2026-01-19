@@ -234,7 +234,7 @@ namespace exec {
     };
 
     template <class _Sigs>
-    using __result_variant_ = __transform_completion_signatures<
+    using __result_variant_ = __transform_completion_signatures_t<
       _Sigs,
       __mconst<__types<>>::__f,
       __mcompose_q<__types, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,

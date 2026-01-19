@@ -32,8 +32,8 @@ namespace exec {
     template <class _Sender, class _Env>
     using __too_many_completions_error = __mexception<
       _INVALID_ARGUMENT_TO_INTO_TUPLE_<>,
-      _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env>
+      _WITH_PRETTY_SENDER_<_Sender>,
+      _WITH_ENVIRONMENT_(_Env)
     >;
 
     template <class _Sender, class... _Env>

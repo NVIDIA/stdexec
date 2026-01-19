@@ -129,8 +129,8 @@ namespace exec {
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::bulk_t),
             STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_LIBDISPATCH_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-            STDEXEC::_WITH_SENDER_<Sender>,
-            STDEXEC::_WITH_ENVIRONMENT_<Env>
+            STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+            STDEXEC::_WITH_ENVIRONMENT_(Env)
           >();
         }
       }

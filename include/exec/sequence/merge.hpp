@@ -106,10 +106,7 @@ namespace exec {
       struct __t : __operation_base<_Receiver> {
         using __id = __operation;
 
-        connect_result_t<result_sender_t<_ReceiverId>, STDEXEC::__t<__result_receiver<_ReceiverId>>>
-          __op_result_;
-
-        __t(_Receiver __rcvr, _Sequences... __sequences)
+        explicit __t(_Receiver __rcvr, _Sequences... __sequences)
           : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
           , __op_result_{STDEXEC::connect(
               STDEXEC::when_all(
@@ -123,6 +120,9 @@ namespace exec {
         void start() & noexcept {
           STDEXEC::start(__op_result_);
         }
+
+        connect_result_t<result_sender_t<_ReceiverId>, STDEXEC::__t<__result_receiver<_ReceiverId>>>
+          __op_result_;
       };
     };
 
@@ -133,7 +133,8 @@ namespace exec {
         auto operator()(_Receiver& __rcvr, __ignore, __ignore, _Sequences... __sequences)
           noexcept(__nothrow_decay_copyable<_Sequences...>)
             -> __t<__operation<__id<_Receiver>, _Sequences...>> {
-          return {static_cast<_Receiver&&>(__rcvr), static_cast<_Sequences&&>(__sequences)...};
+          return __t<__operation<__id<_Receiver>, _Sequences...>>{
+            static_cast<_Receiver&&>(__rcvr), static_cast<_Sequences&&>(__sequences)...};
         }
       };
 

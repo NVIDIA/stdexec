@@ -77,8 +77,8 @@ namespace STDEXEC {
     template <class _Sender, class... _Env>
     using __too_many_value_completions_error = __mexception<
       _INVALID_WHEN_ALL_ARGUMENT_<>,
-      _WITH_SENDER_<_Sender>,
-      _WITH_ENVIRONMENT_<_Env>...
+      _WITH_PRETTY_SENDER_<_Sender>,
+      __fn_t<_WITH_ENVIRONMENT_, _Env>...
     >;
 
     template <class... _Args>
@@ -88,7 +88,7 @@ namespace STDEXEC {
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results = __for_each_completion_signature<
+    using __nothrow_decay_copyable_results = __for_each_completion_signature_t<
       __completion_signatures_of_t<_Sender, _Env...>,
       __all_nothrow_decay_copyable,
       __mand_t
@@ -128,15 +128,15 @@ namespace STDEXEC {
 
       template <class... _Senders>
       using __f = __meval<
-        __concat_completion_signatures,
+        __concat_completion_signatures_t,
         __meval<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results<_Senders...>>,
         __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-        __transform_completion_signatures<
+        __transform_completion_signatures_t<
           __completion_signatures_of_t<_Senders, _Env...>,
           __mconst<completion_signatures<>>::__f,
           __set_error_t,
           completion_signatures<set_stopped_t()>,
-          __concat_completion_signatures
+          __concat_completion_signatures_t
         >...
       >;
     };
@@ -350,12 +350,12 @@ namespace STDEXEC {
           // TODO: update this to use constant evaluation:
           return __completions_t<_Self, _Env...>{};
         } else if constexpr (sizeof...(_Env) == 0) {
-          return STDEXEC::__dependent_sender_error<_Self>();
+          return STDEXEC::__dependent_sender<_Self>();
         } else {
-          return STDEXEC::__invalid_completion_signature<
+          return STDEXEC::__throw_compile_time_error<
             _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-            __children_of<_Self, __qq<_WITH_SENDERS_>>,
-            _WITH_ENVIRONMENT_<_Env>...
+            __children_of<_Self, __qq<_WITH_PRETTY_SENDERS_>>,
+            __fn_t<_WITH_ENVIRONMENT_, _Env>...
           >();
         }
       }

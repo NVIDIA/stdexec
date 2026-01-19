@@ -113,7 +113,7 @@ namespace exec {
       }
 
       template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args &&...__args) noexcept { // Intentionally by value...
+      void __complete(_Tag, _Args &&...__args) noexcept {
         static_assert(sizeof...(_Args) <= 1);
         static_assert(sizeof...(_Args) == 0 || std::is_same_v<_Tag, STDEXEC::set_error_t>);
         STDEXEC_ASSERT(__pair_.__count_ > 0);
@@ -157,7 +157,7 @@ namespace exec {
         __mexception<
           _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_,
           _WHERE_(_IN_ALGORITHM_, repeat_n_t),
-          _WITH_SENDER_<_Sender>
+          _WITH_PRETTY_SENDER_<_Sender>
         >
       >;
 

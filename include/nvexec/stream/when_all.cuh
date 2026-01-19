@@ -83,7 +83,7 @@ namespace nvexec::_strm {
       requires(valid_child_sender<Senders, Env...> && ...)
     struct completions<__types<Env...>, Senders...> {
       using non_values = __meval<
-        __concat_completion_signatures,
+        __concat_completion_signatures_t,
         completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
         transform_completion_signatures<
           __completion_signatures_of_t<Senders, Env...>,
@@ -176,7 +176,7 @@ namespace nvexec::_strm {
       >>;
 
       template <class Completions>
-      using sends_values = __gather_completion_signatures<
+      using sends_values = __gather_completion_signatures_t<
         Completions,
         set_value_t,
         __mconst<__mbool<true>>::__f,

@@ -190,7 +190,7 @@ namespace STDEXEC {
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
     auto __try_completion(_Tag (*)(_Args...))
-      -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_<_Receiver>>;
+      -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_(_Receiver)>;
 
     template <class _Receiver, class _Tag, class... _Args>
       requires __callable<_Tag, _Receiver, _Args...>

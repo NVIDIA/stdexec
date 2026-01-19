@@ -251,7 +251,7 @@ namespace exec {
           if constexpr (__ok<__result_t>) {
             return __result_t();
           } else {
-            return STDEXEC::__invalid_completion_signature(__result_t());
+            return STDEXEC::__throw_compile_time_error(__result_t());
           }
         }
 
@@ -329,7 +329,7 @@ namespace exec {
       __nested_stop_t __nested_stop_{};
       STDEXEC::__optional<__error_op_t> __error_op_{};
 
-      __operation_base(_Receiver __receiver) noexcept
+      explicit __operation_base(_Receiver __receiver) noexcept
         : __interface_t{&__error_storage_}
         , __receiver_{static_cast<_Receiver&&>(__receiver)} {
         __interface_t::__token_ = __nested_stop_.get_token();
@@ -620,7 +620,7 @@ namespace exec {
           if constexpr (__ok<__result_t>) {
             return __result_t();
           } else {
-            return STDEXEC::__invalid_completion_signature(__result_t());
+            return STDEXEC::__throw_compile_time_error(__result_t());
           }
         }
 
@@ -765,13 +765,13 @@ namespace exec {
       template <class... _Args>
       using __f = std::conditional_t<
         sizeof...(_Env) == 0 && sizeof...(_Args) == 1 && (dependent_sender<_Args> && ...),
-        STDEXEC::__mexception<dependent_sender_error, _WITH_SENDER_<_Args>...>,
+        STDEXEC::__mexception<dependent_sender_error, _WITH_PRETTY_SENDER_<_Args>...>,
         STDEXEC::__mexception<
           _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_,
-          _WITH_SEQUENCE_<_Sequence>,
-          _WITH_SENDER_<_Sender>,
-          _WITH_ENVIRONMENT_<_Env>...,
-          _WITH_ARGUMENTS_<_Args...>
+          _WITH_PRETTY_SEQUENCE_<_Sequence>,
+          _WITH_PRETTY_SENDER_<_Sender>,
+          __fn_t<_WITH_ENVIRONMENT_, _Env>...,
+          _WITH_ARGUMENTS_(_Args...)
         >
       >;
     };
@@ -803,7 +803,7 @@ namespace exec {
       template <class _Sequence, class _Sender, class... _Env>
       struct __gather_sequences_t {
         template <class _Completions>
-        using __f = STDEXEC::__gather_completion_signatures<
+        using __f = STDEXEC::__gather_completion_signatures_t<
           _Completions,
           STDEXEC::set_value_t,
           // if set_value
@@ -846,7 +846,6 @@ namespace exec {
 
       template <class... _Env>
       struct __all_nested_values_t {
-
         template <class... _Sequences>
         using __f = STDEXEC::__minvoke<
           STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__types>>,
@@ -1258,7 +1257,7 @@ namespace exec {
       struct __completions_fn {
         template <class... _Sequences>
         using __f = __minvoke<
-          __mtry_q<__concat_completion_signatures>,
+          __mtry_q<__concat_completion_signatures_t>,
           completion_signatures<set_stopped_t()>,
           __completion_signatures_of_t<__child_of<_Self>, _Env...>,
           __completion_signatures_of_t<_Sequences, _Env...>...
@@ -1273,6 +1272,7 @@ namespace exec {
 
       template <sender_expr_for<merge_each_t> _Self, class... _Env>
       static consteval auto get_completion_signatures() {
+        // TODO: update this to use constant evaluation:
         using __result_t = __minvoke<
           __mtry_q<__completions_t>,
           _Self,
@@ -1282,7 +1282,7 @@ namespace exec {
           static_assert(__valid_completion_signatures<__result_t>);
           return __result_t();
         } else {
-          return STDEXEC::__invalid_completion_signature(__result_t());
+          return STDEXEC::__throw_compile_time_error(__result_t());
         }
       }
 

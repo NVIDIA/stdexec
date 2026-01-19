@@ -71,37 +71,6 @@ namespace STDEXEC {
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.getcomplsigs]
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
-
-  template <class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...> {
-    return {};
-  }
-
-#else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
-
-  // C++26, https://wg21.link/p3068
-  template <class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto __invalid_completion_signature([[maybe_unused]] _Values... __values)
-    -> completion_signatures<> {
-    if constexpr (__same_as<_What, dependent_sender_error>) {
-      throw __mexception<dependent_sender_error, _More...>();
-    } else if constexpr (sizeof...(_Values) == 1) {
-      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
-    } else {
-      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
-    }
-  }
-
-#endif // ^^^ constexpr exceptions ^^^
-
-  template <class... _What>
-  [[nodiscard]]
-  consteval auto __invalid_completion_signature(__mexception<_What...>) {
-    return STDEXEC::__invalid_completion_signature<_What...>();
-  }
 
   // Returns _Sender if sizeof...(_Env) == 0, otherwise it is the result of applying
   // transform_sender_result_t to _Sender with _Env.
@@ -140,15 +109,15 @@ namespace STDEXEC {
       requires(!__valid_completion_signatures<_Completions>)
     consteval auto __checked_complsigs(__types<_Sender, _Env...>*) {
       if constexpr (__merror<_Completions>) {
-        return STDEXEC::__invalid_completion_signature(_Completions());
+        return STDEXEC::__throw_compile_time_error(_Completions());
       } else if constexpr (STDEXEC_IS_BASE_OF(dependent_sender_error, _Completions)) {
         return _Completions();
       } else {
-        return __invalid_completion_signature<
+        return __throw_compile_time_error<
           _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
           _WITH_COMPLETION_SIGNATURES_(_Completions),
-          _WITH_SENDER_<_Sender>,
-          _WITH_ENVIRONMENT_<_Env>...
+          _WITH_PRETTY_SENDER_<_Sender>,
+          __fn_t<_WITH_ENVIRONMENT_, _Env>...
         >();
       }
     }
@@ -226,7 +195,7 @@ namespace STDEXEC {
         using _Completions [[maybe_unused]] = decltype(STDEXEC_GET_COMPLSIGS(_Sender, _Env...));
         return __debug::__completion_signatures();
       } else {
-        return __unrecognized_sender_error<_Sender, _Env...>();
+        return __unrecognized_sender_error_t<_Sender, _Env...>();
       }
     }
 
@@ -251,7 +220,7 @@ namespace STDEXEC {
     using _NewSender = __maybe_transform_sender_t<_Sender, _Env...>;
     if constexpr (__merror<_NewSender>) {
       // Computing the type of the transformed sender returned an error type. Propagate it.
-      return STDEXEC::__invalid_completion_signature(_NewSender());
+      return STDEXEC::__throw_compile_time_error(_NewSender());
     } else {
       return __cmplsigs::__get_completion_signatures_helper<_NewSender, _Env...>();
     }

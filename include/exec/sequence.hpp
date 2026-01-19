@@ -159,19 +159,19 @@ namespace exec {
 
       template <class State, class Head, class... Tail>
       struct _fold_left<State, Head, Tail...> {
-        using __t = STDEXEC::__gather_completion_signatures<
+        using __t = STDEXEC::__gather_completion_signatures_t<
           STDEXEC::__completion_signatures_of_t<Head, Env...>,
           STDEXEC::set_value_t,
           STDEXEC::__mconst<STDEXEC::completion_signatures<>>::__f,
           STDEXEC::__cmplsigs::__default_completion,
-          STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures>::__f,
+          STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f,
           STDEXEC::__t<_fold_left<State, Tail...>>
         >;
       };
 
       template <class Head>
       struct _fold_left<void, Head> {
-        using __t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures>::__f<
+        using __t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
           STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
           STDEXEC::__completion_signatures_of_t<Head, Env...>
         >;
