@@ -124,8 +124,8 @@ namespace STDEXEC {
           return __declfn<_Result, _NothrowTfxSender>();
         } else {
           return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_<
-            _WITH_SENDER_<__demangle_t<_TfxSender>>,
-            _WITH_RECEIVER_<_Receiver>
+            _WITH_PRETTY_SENDER_<_TfxSender>,
+            _WITH_RECEIVER_(_Receiver)
           >();
         }
       }

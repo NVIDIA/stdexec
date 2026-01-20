@@ -99,10 +99,10 @@ namespace STDEXEC {
             return completion_signatures<set_value_t(__result_t), set_error_t(std::exception_ptr)>();
           }
         } else {
-          return STDEXEC::__invalid_completion_signature<
+          return STDEXEC::__throw_compile_time_error<
             _NOT_CALLABLE_<"In STDEXEC::read_env()..."_mstr, __query_failed_diag>,
-            _WITH_QUERY_<__query_t>,
-            _WITH_ENVIRONMENT_<_Env>
+            _WITH_QUERY_(__query_t),
+            _WITH_ENVIRONMENT_(_Env)
           >();
         }
       };

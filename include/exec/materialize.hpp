@@ -95,7 +95,7 @@ namespace exec {
         using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
         template <class _Self, class... _Env>
-        using __completions_t = __transform_completion_signatures<
+        using __completions_t = __transform_completion_signatures_t<
           __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
           __materialize_value,
           __materialize_error,

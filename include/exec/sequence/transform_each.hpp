@@ -40,8 +40,10 @@ namespace exec {
   template <class _Closure>
   struct _WITH_ADAPTOR_;
 
+  struct _WITH_ITEM_SENDER_ { };
+
   template <class _Sender>
-  struct _WITH_ITEM_SENDER_;
+  using _WITH_PRETTY_ITEM_SENDER_ = _WITH_ITEM_SENDER_(STDEXEC::__demangle_t<_Sender>);
 
   namespace __transform_each {
     using namespace STDEXEC;
@@ -172,10 +174,10 @@ namespace exec {
               if constexpr (!__callable<__closure_t, _ItemSender>) {
                 return exec::__invalid_item_types<
                   _TRANSFORM_EACH_ADAPTOR_INVOCATION_FAILED_<_Self>,
-                  _WITH_SEQUENCE_<__child_of<_Self>>,
-                  _WITH_ENVIRONMENT_<_Env>...,
+                  _WITH_PRETTY_SEQUENCE_<__child_of<_Self>>,
+                  __fn_t<_WITH_ENVIRONMENT_, _Env>...,
                   _WITH_ADAPTOR_<__data_of<_Self>>,
-                  _WITH_ITEM_SENDER_<STDEXEC::__demangle_t<_ItemSender>>
+                  _WITH_PRETTY_ITEM_SENDER_<_ItemSender>
                 >();
               } else {
                 return STDEXEC::__mtype<__call_result_t<__closure_t, _ItemSender>>();

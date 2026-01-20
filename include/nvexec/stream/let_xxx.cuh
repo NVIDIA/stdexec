@@ -240,7 +240,7 @@ namespace nvexec::_strm {
       using __completions = __mapply<
         __mtransform<
           __mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, StreamEnv...>,
-          __mtry_q<__concat_completion_signatures>
+          __mtry_q<__concat_completion_signatures_t>
         >,
         __completion_signatures_of_t<Sender, StreamEnv...>
       >;

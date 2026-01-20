@@ -33,6 +33,9 @@
 #include <type_traits> // IWYU pragma: keep for is_standard_layout
 #include <utility>     // for tuple_size/tuple_element
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
@@ -48,7 +51,7 @@ namespace STDEXEC {
     STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
 #endif
 
-#if STDEXEC_DEMANGLE_SENDER_NAMES || STDEXEC_MSVC()
+#if defined(STDEXEC_DEMANGLE_SENDER_NAMES) || STDEXEC_MSVC()
   template <class _Descriptor>
   inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #else
@@ -475,7 +478,7 @@ namespace STDEXEC {
         } else if constexpr (sizeof...(_Env) == 0) {
           return __dependent_sender<_Self>();
         } else {
-          return __invalid_completion_signature(__unrecognized_sender_error<_Self, _Env...>());
+          return __throw_compile_time_error(__unrecognized_sender_error_t<_Self, _Env...>());
         }
       }
 
@@ -525,9 +528,6 @@ namespace STDEXEC {
       __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
   } // anonymous namespace
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
   //! A tagged function-object
@@ -547,8 +547,6 @@ namespace STDEXEC {
 
   template <class _Tag>
   inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
-
-  STDEXEC_PRAGMA_POP()
 
   // The __demangle_t utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
@@ -583,3 +581,5 @@ namespace STDEXEC {
     extern __id_name __demangle_v<_Sender>;
   } // namespace __detail
 } // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

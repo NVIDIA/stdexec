@@ -36,7 +36,7 @@ namespace STDEXEC {
       _Ty __val_;
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
+      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Ty>) -> _Ty {
         return static_cast<_Ty&&>(__val_);
       }
     };
@@ -57,18 +57,15 @@ namespace STDEXEC {
 
       template <__decay_copyable _Sender>
       static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        return __apply(
-          []<class _Data, class _Child>(__ignore, _Data&& __data, _Child&& __child) -> auto {
-            // This is the heart of starts_on: It uses `let_value` to schedule `__child` on the given scheduler:
-            return let_value(
-              continues_on(just(), __data), __detail::__always{static_cast<_Child&&>(__child)});
-          },
-          static_cast<_Sender&&>(__sndr));
+        auto& [__tag, __sched, __child] = __sndr;
+        return let_value(
+          continues_on(just(), __sched),
+          __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
       }
 
       template <class _Sender>
       static auto transform_sender(set_value_t, _Sender&&, __ignore) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>{};
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
       }
     };
   } // namespace __starts_on_ns

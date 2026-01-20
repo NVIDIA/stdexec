@@ -36,7 +36,7 @@ namespace STDEXEC {
 
     template <class _Sig, template <class...> class _Tuple>
     using __for_each_sig_t = decltype(__cmplsigs::__for_each_sig<_Tuple>(
-      static_cast<_Sig *>(nullptr)));
+      static_cast<_Sig*>(nullptr)));
 
     template <
       template <class...> class _Tuple,
@@ -44,14 +44,14 @@ namespace STDEXEC {
       class... _More,
       class... _What
     >
-    auto __for_each_completion_signature_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
+    auto __for_each_completion_signature_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
     template <
       template <class...> class _Tuple,
       template <class...> class _Variant,
       class... _More,
       class... _Sigs
     >
-    auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
+    auto __for_each_completion_signature_fn(completion_signatures<_Sigs...>**)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
   } // namespace __cmplsigs
 
@@ -61,9 +61,9 @@ namespace STDEXEC {
     template <class...> class _Variant,
     class... _More
   >
-  using __for_each_completion_signature =
+  using __for_each_completion_signature_t =
     decltype(__cmplsigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
-      static_cast<_Sigs **>(nullptr)));
+      static_cast<_Sigs**>(nullptr)));
 
   namespace __cmplsigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ namespace STDEXEC {
       class _SetStp
     >
     using __transform_sig_t = decltype(__cmplsigs::__transform_sig<_SetVal, _SetErr, _SetStp>(
-      static_cast<_Sig *>(nullptr)));
+      static_cast<_Sig*>(nullptr)));
 
     template <
       template <class...> class _SetVal,
@@ -103,7 +103,7 @@ namespace STDEXEC {
       class... _More,
       class... _What
     >
-    auto __transform_sigs_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
+    auto __transform_sigs_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
 
     template <
       template <class...> class _SetVal,
@@ -113,7 +113,7 @@ namespace STDEXEC {
       class... _More,
       class... _Sigs
     >
-    auto __transform_sigs_fn(completion_signatures<_Sigs...> **)
+    auto __transform_sigs_fn(completion_signatures<_Sigs...>**)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
   } // namespace __cmplsigs
 
@@ -125,13 +125,13 @@ namespace STDEXEC {
     template <class...> class _Variant,
     class... _More
   >
-  using __transform_completion_signatures =
+  using __transform_completion_signatures_t =
     decltype(__cmplsigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
-      static_cast<_Sigs **>(nullptr)));
+      static_cast<_Sigs**>(nullptr)));
 
   namespace __cmplsigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    template <class _WantedTag>
+    template <class _WantedTag, bool = true>
     struct __gather_sigs_fn;
 
     template <>
@@ -143,7 +143,7 @@ namespace STDEXEC {
         template <class...> class _Variant,
         class... _More
       >
-      using __f = __transform_completion_signatures<
+      using __f = __transform_completion_signatures_t<
         _Sigs,
         _Then,
         __mbind_front_q<_Else, set_error_t>::template __f,
@@ -162,7 +162,7 @@ namespace STDEXEC {
         template <class...> class _Variant,
         class... _More
       >
-      using __f = __transform_completion_signatures<
+      using __f = __transform_completion_signatures_t<
         _Sigs,
         __mbind_front_q<_Else, set_value_t>::template __f,
         _Then,
@@ -181,7 +181,7 @@ namespace STDEXEC {
         template <class...> class _Variant,
         class... _More
       >
-      using __f = __transform_completion_signatures<
+      using __f = __transform_completion_signatures_t<
         _Sigs,
         __mbind_front_q<_Else, set_value_t>::template __f,
         __mbind_front_q<_Else, set_error_t>::template __f,
@@ -189,6 +189,18 @@ namespace STDEXEC {
         _Variant,
         _More...
       >;
+    };
+
+    template <class _WantedTag>
+    struct __gather_sigs_fn<_WantedTag, false> {
+      template <
+        class _Error,
+        template <class...> class,
+        template <class...> class,
+        template <class...> class,
+        class...
+      >
+      using __f = _Error;
     };
 
     template <class... _Values>
@@ -209,8 +221,10 @@ namespace STDEXEC {
     template <class...> class _Variant,
     class... _More
   >
-  using __gather_completion_signatures =
-    __cmplsigs::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
+  using __gather_completion_signatures_t = __cmplsigs::__gather_sigs_fn<
+    _WantedTag,
+    __ok<_Sigs>
+  >::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures
@@ -281,12 +295,12 @@ namespace STDEXEC {
     template <class...> class _ErrorTransform = __cmplsigs::__default_set_error,
     class _StoppedSigs = completion_signatures<set_stopped_t()>
   >
-  using transform_completion_signatures = __transform_completion_signatures<
+  using transform_completion_signatures = __transform_completion_signatures_t<
     _Sigs,
     _ValueTransform,
     _ErrorTransform,
     _StoppedSigs,
-    __mtry_q<__concat_completion_signatures>::__f,
+    __mtry_q<__concat_completion_signatures_t>::__f,
     _MoreSigs
   >;
 
@@ -306,6 +320,187 @@ namespace STDEXEC {
     _StoppedSigs
   >;
 
+  struct _IN_TRANSFORM_COMPLETION_SIGNATURES_;
+  struct _A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION_;
+  struct _COULD_NOT_CALL_THE_TRANSFORM_FUNCTION_WITH_THE_GIVEN_TEMPLATE_ARGUMENTS_;
+
+  namespace __cmplsigs {
+    template <class _Fn, class... _Args>
+    using __transform_result_t = decltype(__declval<_Fn>().template operator()<_Args...>());
+
+    template <class _SetTag, class... _Args, class _Fn>
+    [[nodiscard]]
+    consteval auto
+      __transform_expr(const _Fn& __fn) -> __transform_result_t<const _Fn&, _SetTag, _Args...> {
+      return __fn.template operator()<_SetTag, _Args...>();
+    }
+
+    template <class _Fn>
+    [[nodiscard]]
+    consteval auto __transform_expr(const _Fn& __fn) -> __call_result_t<const _Fn&> {
+      return __fn();
+    }
+
+    template <class _Fn, class... _Args>
+    using __transform_expr_t = decltype(__cmplsigs::__transform_expr<_Args...>(
+      __declval<const _Fn&>()));
+
+    // transform_completion_signatures:
+    template <class... _Args, class _Fn>
+    [[nodiscard]]
+    consteval auto __apply_transform(const _Fn& __fn) {
+      if constexpr (__mvalid<__transform_expr_t, _Fn, _Args...>) {
+        using __completions_t = __transform_expr_t<_Fn, _Args...>;
+        if constexpr (__well_formed_completions<__completions_t>) {
+          return __cmplsigs::__transform_expr<_Args...>(__fn);
+        } else {
+          (void) __cmplsigs::__transform_expr<_Args...>(__fn); // potentially throwing
+          return STDEXEC::__throw_compile_time_error<
+            _IN_TRANSFORM_COMPLETION_SIGNATURES_,
+            _A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION_,
+            _WITH_FUNCTION_(_Fn),
+            _WITH_ARGUMENTS_(_Args...)
+          >();
+        }
+      } else {
+        return STDEXEC::__throw_compile_time_error<
+          _IN_TRANSFORM_COMPLETION_SIGNATURES_,
+          _COULD_NOT_CALL_THE_TRANSFORM_FUNCTION_WITH_THE_GIVEN_TEMPLATE_ARGUMENTS_,
+          _WITH_FUNCTION_(_Fn),
+          _WITH_ARGUMENTS_(_Args...)
+        >();
+      }
+    }
+
+    template <class _ValueFn, class _ErrorFn, class _StoppedFn>
+    struct __transform_one {
+      template <class _SetTag, class... _Args>
+      [[nodiscard]]
+      consteval auto operator()(_SetTag (*)(_Args...)) const {
+        if constexpr (_SetTag() == set_value) {
+          return __cmplsigs::__apply_transform<_Args...>(__value_fn);
+        } else if constexpr (_SetTag() == set_error) {
+          return __cmplsigs::__apply_transform<_Args...>(__error_fn);
+        } else {
+          return __cmplsigs::__apply_transform<_Args...>(__stopped_fn);
+        }
+      }
+
+      _ValueFn __value_fn;
+      _ErrorFn __error_fn;
+      _StoppedFn __stopped_fn;
+    };
+
+    template <class _TransformOne>
+    struct __transform_all_fn {
+      _TransformOne __tfx1;
+
+      template <class... Sigs>
+      [[nodiscard]]
+      consteval auto operator()(Sigs*... sigs) const {
+        return __concat_completion_signatures(__tfx1(sigs)...);
+      }
+    };
+
+    template <class _TransformOne>
+    __transform_all_fn(_TransformOne) -> __transform_all_fn<_TransformOne>;
+  } // namespace __cmplsigs
+
+  template <class _SetTag>
+  struct __keep_completion {
+    template <class... _Ts>
+    consteval auto operator()() const noexcept -> completion_signatures<_SetTag(_Ts...)> {
+      return {};
+    }
+  };
+
+  struct __ignore_completion {
+    template <class...>
+    consteval auto operator()() const noexcept -> completion_signatures<> {
+      return {};
+    }
+  };
+
+  template <class _SetTag, class _Fn, class... _AlgoTag>
+  struct __transform_arguments {
+    template <class... _Args>
+    consteval auto operator()() const noexcept {
+      if constexpr ((__minvocable<_Fn, _Args> && ...)) {
+        return completion_signatures<_SetTag(__minvoke<_Fn, _Args>...)>();
+      } else {
+        return (__check_transform<_Args>(), ...);
+      }
+    }
+
+   private:
+    template <class _Arg>
+    static consteval auto __check_transform() {
+      if constexpr (__minvocable<_Fn, _Arg>) {
+        return __msuccess();
+      } else {
+        return STDEXEC::__throw_compile_time_error<
+          _IN_ALGORITHM_(_AlgoTag)...,
+          _NOT_CALLABLE_<
+            "The given transform meta-function is not callable with the argument type"_mstr
+          >,
+          _WITH_ARGUMENTS_(_Arg),
+          _WITH_METAFUNCTION_(_Fn)
+        >();
+      }
+    }
+  };
+
+  template <class _SetTag, class... _AlgoTag>
+  struct __decay_arguments {
+    template <class... _Args>
+    consteval auto operator()() const noexcept {
+      if constexpr (__decay_copyable<_Args...>) {
+        return completion_signatures<_SetTag(__decay_t<_Args>...)>();
+      } else {
+        // NB: this uses an overloaded comma operator on the _ERROR_ type to find an error
+        // in a pack of types.
+        return (__check_decay<_Args>(), ...);
+      }
+    }
+
+   private:
+    template <class _Arg>
+    static consteval auto __check_decay() {
+      if constexpr (__decay_copyable<_Arg>) {
+        return __msuccess();
+      } else {
+        return STDEXEC::__throw_compile_time_error<
+          _IN_ALGORITHM_(_AlgoTag)...,
+          _TYPE_IS_NOT_DECAY_COPYABLE_,
+          _WITH_TYPE_<_Arg>
+        >();
+      }
+    }
+  };
+
+  template <
+    class _Completions,
+    class _ValueFn = __keep_completion<set_value_t>,
+    class _ErrorFn = __keep_completion<set_error_t>,
+    class _StoppedFn = __keep_completion<set_stopped_t>,
+    class _ExtraSigs = completion_signatures<>
+  >
+  consteval auto __transform_completion_signatures(
+    _Completions,
+    _ValueFn __value_fn = {},
+    _ErrorFn __error_fn = {},
+    _StoppedFn __stopped_fn = {},
+    _ExtraSigs = {}) {
+    STDEXEC_COMPLSIGS_LET(__completions, _Completions{}) {
+      STDEXEC_COMPLSIGS_LET(__extra_sigs, _ExtraSigs{}) {
+        __cmplsigs::__transform_one<_ValueFn, _ErrorFn, _StoppedFn> __tfx1{
+          __value_fn, __error_fn, __stopped_fn};
+        return __concat_completion_signatures(
+          __completions.__apply(__cmplsigs::__transform_all_fn(__tfx1)), __extra_sigs);
+      }
+    }
+  }
+
   using __eptr_completion = completion_signatures<set_error_t(std::exception_ptr)>;
 
   template <class _NoExcept>
@@ -322,12 +517,12 @@ namespace STDEXEC {
     class _SetError = __qq<__cmplsigs::__default_set_error>,
     class _SetStopped = completion_signatures<set_stopped_t()>
   >
-  using __try_make_completion_signatures = __transform_completion_signatures<
+  using __try_make_completion_signatures = __transform_completion_signatures_t<
     __completion_signatures_of_t<_Sender, _Env>,
     _SetValue::template __f,
     _SetError::template __f,
     _SetStopped,
-    __mtry_q<__concat_completion_signatures>::__f,
+    __mtry_q<__concat_completion_signatures_t>::__f,
     _More
   >;
 
@@ -338,7 +533,7 @@ namespace STDEXEC {
 
   template <class _Catch, class _Tag, class _Fun, class _Sender, class... _Env>
   using __with_error_invoke_t = __if<
-    __gather_completion_signatures<
+    __gather_completion_signatures_t<
       __completion_signatures_of_t<_Sender, _Env...>,
       _Tag,
       __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>::template __f,
@@ -357,9 +552,9 @@ namespace STDEXEC {
 
   template <class _Completions>
   using __decay_copyable_results_t =
-    __for_each_completion_signature<_Completions, __decay_copyable_t, __mand_t>;
+    __cmplsigs::__partitions_of_t<_Completions>::__decay_copyable::__all;
 
   template <class _Completions>
   using __nothrow_decay_copyable_results_t =
-    __for_each_completion_signature<_Completions, __nothrow_decay_copyable_t, __mand_t>;
+    __cmplsigs::__partitions_of_t<_Completions>::__nothrow_decay_copyable::__all;
 } // namespace STDEXEC

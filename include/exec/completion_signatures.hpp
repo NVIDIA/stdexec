@@ -18,7 +18,7 @@
 #include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
-#include "../stdexec/__detail/__tuple.hpp" // IWYU pragma: keep for STDEXEC::__tuple
+#include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
 namespace exec {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,173 +77,46 @@ namespace exec {
     return {};
   }
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
-
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // concat_completion_signatures
-  namespace detail {
-    struct concat_completion_signatures_t {
-      template <STDEXEC::__valid_completion_signatures... Sigs>
-      [[nodiscard]]
-      consteval auto operator()(Sigs...) const noexcept //
-        -> STDEXEC::__concat_completion_signatures<Sigs...> {
-        return {};
-      }
-
-      template <class... Errors>
-      [[nodiscard]]
-      consteval auto operator()(Errors...) const noexcept {
-        return (Errors{}, ...); // NB: uses overloaded comma operator on _ERROR_ type to produce an
-                                // error type
-      }
-    };
-  } // namespace detail
-
-  inline constexpr detail::concat_completion_signatures_t concat_completion_signatures{};
-
-  STDEXEC_PRAGMA_POP()
+  inline constexpr STDEXEC::__detail::__concat_completion_signatures_fn
+    concat_completion_signatures{};
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // invalid_completion_signature
+  // throw_compile_time_error
   template <class... What, class... Values>
   [[nodiscard]]
-  consteval auto invalid_completion_signature(Values... vals) {
-    return STDEXEC::__invalid_completion_signature<What...>(static_cast<Values&&>(vals)...);
+  consteval auto throw_compile_time_error(Values... vals) {
+    return STDEXEC::__throw_compile_time_error<What...>(static_cast<Values&&>(vals)...);
   }
 
-  struct IN_TRANSFORM_COMPLETION_SIGNATURES;
-  struct A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION;
-  struct COULD_NOT_CALL_THE_TRANSFORM_FUNCTION_WITH_THE_GIVEN_TEMPLATE_ARGUMENTS;
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // transform_completion_signatures
+  template <class _SetTag>
+  using keep_completion = STDEXEC::__keep_completion<_SetTag>;
 
-  namespace detail {
-    template <class Fn, class... As>
-    using meta_call_result_t = decltype(STDEXEC::__declval<Fn>().template operator()<As...>());
+  using ignore_completion = STDEXEC::__ignore_completion;
 
-    template <class Ay, class... As, class Fn>
-    [[nodiscard]]
-    consteval auto _transform_expr(const Fn& fn) -> meta_call_result_t<const Fn&, Ay, As...> {
-      return fn.template operator()<Ay, As...>();
-    }
+  template <class _SetTag, class _Fn, class... _AlgoTag>
+  using transform_arguments = STDEXEC::__transform_arguments<_SetTag, _Fn, _AlgoTag...>;
 
-    template <class Fn>
-    [[nodiscard]]
-    consteval auto _transform_expr(const Fn& fn) -> STDEXEC::__call_result_t<const Fn&> {
-      return fn();
-    }
-
-    template <class Fn, class... As>
-    using _transform_expr_t = decltype(detail::_transform_expr<As...>(
-      STDEXEC::__declval<const Fn&>()));
-
-    // transform_completion_signatures:
-    template <class... As, class Fn>
-    [[nodiscard]]
-    consteval auto _apply_transform(const Fn& fn) {
-      if constexpr (STDEXEC::__mvalid<_transform_expr_t, Fn, As...>) {
-        using _completions_t = _transform_expr_t<Fn, As...>;
-        if constexpr (STDEXEC::__well_formed_completions<_completions_t>) {
-          return detail::_transform_expr<As...>(fn);
-        } else {
-          (void) detail::_transform_expr<As...>(fn); // potentially throwing
-          return invalid_completion_signature<
-            IN_TRANSFORM_COMPLETION_SIGNATURES,
-            A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
-            STDEXEC::_WITH_FUNCTION_<Fn>,
-            STDEXEC::_WITH_ARGUMENTS_<As...>
-          >();
-        }
-      } else {
-        return invalid_completion_signature<
-          IN_TRANSFORM_COMPLETION_SIGNATURES,
-          COULD_NOT_CALL_THE_TRANSFORM_FUNCTION_WITH_THE_GIVEN_TEMPLATE_ARGUMENTS,
-          STDEXEC::_WITH_FUNCTION_<Fn>,
-          STDEXEC::_WITH_ARGUMENTS_<As...>
-        >();
-      }
-    }
-
-    template <class ValueFn, class ErrorFn, class StoppedFn>
-    struct _transform_one {
-      ValueFn value_fn;
-      ErrorFn error_fn;
-      StoppedFn stopped_fn;
-
-      template <class Tag, class... Ts>
-      [[nodiscard]]
-      consteval auto operator()(Tag (*)(Ts...)) const {
-        if constexpr (Tag{} == STDEXEC::set_value) {
-          return detail::_apply_transform<Ts...>(value_fn);
-        } else if constexpr (Tag{} == STDEXEC::set_error) {
-          return detail::_apply_transform<Ts...>(error_fn);
-        } else {
-          return detail::_apply_transform<Ts...>(stopped_fn);
-        }
-      }
-    };
-
-    template <class TransformOne>
-    struct _transform_all_fn {
-      TransformOne tfx1;
-
-      template <class... Sigs>
-      [[nodiscard]]
-      consteval auto operator()(Sigs*... sigs) const {
-        return concat_completion_signatures(tfx1(sigs)...);
-      }
-    };
-
-    template <class TransformOne>
-    _transform_all_fn(TransformOne) -> _transform_all_fn<TransformOne>;
-  } // namespace detail
-
-  template <class Tag>
-  struct keep_completion {
-    template <class... Ts>
-    consteval auto operator()() const noexcept -> STDEXEC::completion_signatures<Tag(Ts...)> {
-      return {};
-    }
-  };
-
-  struct ignore_completion {
-    template <class... Ts>
-    consteval auto operator()() const noexcept -> STDEXEC::completion_signatures<> {
-      return {};
-    }
-  };
-
-  template <class Tag, class Fn>
-  struct transform_arguments {
-    template <class... Ts>
-    consteval auto operator()() const noexcept
-      -> STDEXEC::completion_signatures<Tag(STDEXEC::__minvoke<Fn, Ts>...)> {
-      return {};
-    }
-  };
-
-  template <class Tag>
-  struct decay_arguments : transform_arguments<Tag, STDEXEC::__q1<STDEXEC::__decay_t>> { };
+  template <class _SetTag, class... _AlgoTag>
+  using decay_arguments = STDEXEC::__decay_arguments<_SetTag, _AlgoTag...>;
 
   template <
-    class Completions,
-    class ValueFn = keep_completion<STDEXEC::set_value_t>,
-    class ErrorFn = keep_completion<STDEXEC::set_error_t>,
-    class StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
-    class ExtraSigs = STDEXEC::completion_signatures<>
+    class _Completions,
+    class _ValueFn = keep_completion<STDEXEC::set_value_t>,
+    class _ErrorFn = keep_completion<STDEXEC::set_error_t>,
+    class _StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
+    class _ExtraSigs = STDEXEC::completion_signatures<>
   >
   consteval auto transform_completion_signatures(
-    Completions,
-    ValueFn value_fn = {},
-    ErrorFn error_fn = {},
-    StoppedFn stopped_fn = {},
-    ExtraSigs = {}) {
-    STDEXEC_COMPLSIGS_LET(completions, Completions{}) {
-      STDEXEC_COMPLSIGS_LET(extra_sigs, ExtraSigs{}) {
-        detail::_transform_one<ValueFn, ErrorFn, StoppedFn> tfx1{value_fn, error_fn, stopped_fn};
-        return concat_completion_signatures(
-          completions.__apply(detail::_transform_all_fn{tfx1}), extra_sigs);
-      }
-    }
+    _Completions,
+    _ValueFn __value_fn = {},
+    _ErrorFn __error_fn = {},
+    _StoppedFn __stopped_fn = {},
+    _ExtraSigs = {}) {
+    return STDEXEC::__transform_completion_signatures(
+      _Completions{}, __value_fn, __error_fn, __stopped_fn, _ExtraSigs{});
   }
 } // namespace exec

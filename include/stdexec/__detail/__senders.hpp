@@ -58,7 +58,7 @@ namespace STDEXEC {
 
   template <class _Sender, class _Env = env<>>
   concept __nofail_sender = sender_in<_Sender, _Env> && requires {
-    typename __gather_completion_signatures<
+    typename __gather_completion_signatures_t<
       __completion_signatures_of_t<_Sender, _Env>,
       set_error_t,
       __nofail_t,

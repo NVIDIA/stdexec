@@ -73,8 +73,8 @@ namespace execpools {
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
             STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-            STDEXEC::_WITH_SENDER_<Sender>,
-            STDEXEC::_WITH_ENVIRONMENT_<Env>
+            STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+            STDEXEC::_WITH_ENVIRONMENT_(Env)
           >();
         }
       }

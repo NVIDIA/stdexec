@@ -30,37 +30,35 @@ namespace STDEXEC {
     inline constexpr __mstring __unrecognized_sender_type_diagnostic =
       "The given type cannot be used as a sender with the given environment "
       "because the attempt to compute the completion signatures failed."_mstr;
-
-    template <class _Sender>
-    struct _WITH_SENDER_;
-
-    template <class... _Senders>
-    struct _WITH_SENDERS_;
   } // namespace __errs
 
-  struct _WHERE_;
+  struct _WHERE_ { };
 
-  struct _WHY_;
+  struct _WHY_ { };
 
-  struct _IN_ALGORITHM_;
+  struct _IN_ALGORITHM_ { };
 
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
   template <class _Sender>
-  using _WITH_SENDER_ = __errs::_WITH_SENDER_<__demangle_t<_Sender>>;
+  struct _WITH_SENDER_ { };
 
   template <class... _Senders>
-  using _WITH_SENDERS_ = __errs::_WITH_SENDERS_<__demangle_t<_Senders>...>;
+  struct _WITH_SENDERS_ { };
 
-  template <class _Env>
-  struct _WITH_ENVIRONMENT_;
+  template <class _Sender>
+  using _WITH_PRETTY_SENDER_ = _WITH_SENDER_<__demangle_t<_Sender>>;
+
+  template <class... _Senders>
+  using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_<__demangle_t<_Senders>...>;
+
+  struct _WITH_ENVIRONMENT_ { };
 
   template <class _Ty>
   struct _WITH_TYPE_;
 
-  template <class _Receiver>
-  struct _WITH_RECEIVER_;
+  struct _WITH_RECEIVER_ { };
 
   template <class _Sig>
   struct _MISSING_COMPLETION_SIGNAL_;
@@ -68,20 +66,21 @@ namespace STDEXEC {
   template <class _Sig>
   struct _WITH_COMPLETION_SIGNATURE_;
 
-  struct _WITH_COMPLETION_SIGNATURES_;
+  struct _WITH_COMPLETION_SIGNATURES_ { };
 
-  template <class _Fun>
-  struct _WITH_FUNCTION_;
+  struct _WITH_FUNCTION_ { };
 
-  template <class... _Args>
-  struct _WITH_ARGUMENTS_;
+  struct _WITH_ARGUMENTS_ { };
 
-  template <class _Tag>
-  struct _WITH_QUERY_;
+  struct _WITH_QUERY_ { };
 
-  struct _TO_FIX_THIS_ERROR_;
+  struct _TO_FIX_THIS_ERROR_ { };
 
-  struct _SENDER_TYPE_IS_NOT_COPYABLE_;
+  struct _SENDER_TYPE_IS_NOT_COPYABLE_ { };
+
+  struct _TYPE_IS_NOT_DECAY_COPYABLE_ { };
+
+  struct _WITH_METAFUNCTION_ { };
 
   inline constexpr __mstring __not_callable_diag =
     "The specified function is not callable with the arguments provided."_mstr;
@@ -93,18 +92,22 @@ namespace STDEXEC {
   struct _CANNOT_PIPE_INTO_A_SENDER_ { };
 
   template <class _Sender>
-  using __bad_pipe_sink_t = __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_SENDER_<_Sender>>;
+  using __bad_pipe_sink_t =
+    __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_PRETTY_SENDER_<_Sender>>;
 
   template <__mstring _Context>
   struct __callable_error {
     template <class _Fun, class... _Args>
     using __f =
-      __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_<_Fun>, _WITH_ARGUMENTS_<_Args...>>;
+      __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_(_Fun), _WITH_ARGUMENTS_(_Args...)>;
   };
 
   template <class _Sender, class... _Env>
-  using __unrecognized_sender_error =
-    __mexception<_UNRECOGNIZED_SENDER_TYPE_<>, _WITH_SENDER_<_Sender>, _WITH_ENVIRONMENT_<_Env>...>;
+  using __unrecognized_sender_error_t = __mexception<
+    _UNRECOGNIZED_SENDER_TYPE_<>,
+    _WITH_PRETTY_SENDER_<_Sender>,
+    _WITH_ENVIRONMENT_(_Env)...
+  >;
 
 #if __cpp_lib_constexpr_exceptions >= 2025'02L // constexpr exception types, https://wg21.link/p3378
 
@@ -189,22 +192,6 @@ namespace STDEXEC {
   // from dependent_sender_error.
   template <class... _What>
   struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error {
-    constexpr _ERROR_() noexcept
-      : dependent_sender_error{
-          "This sender needs to know its execution environment before it can know how it will "
-          "complete."} {
-    }
-
-    STDEXEC_ATTRIBUTE(host, device) auto operator+() -> _ERROR_;
-
-    template <class Ty>
-    STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(Ty&) -> _ERROR_&;
-
-    template <class... Other>
-    STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(_ERROR_<Other...>&) -> _ERROR_<Other...>&;
-
     using __t = _ERROR_;
     using __id = _ERROR_;
 
@@ -218,12 +205,34 @@ namespace STDEXEC {
 
     template <class, class>
     using __stopped_types = _ERROR_;
+
+    using __decay_copyable = _ERROR_;
+    using __nothrow_decay_copyable = _ERROR_;
+    using __values = _ERROR_;
+    using __errors = _ERROR_;
+    using __all = _ERROR_;
+
+    constexpr _ERROR_() noexcept
+      : dependent_sender_error{
+          "This sender needs to know its execution environment before it can know how it will "
+          "complete."} {
+    }
+
+    STDEXEC_ATTRIBUTE(host, device) auto operator+() const -> _ERROR_;
+
+    template <class _Ty>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(const _Ty&) const -> _ERROR_;
+
+    template <class... Other>
+    STDEXEC_ATTRIBUTE(host, device)
+    auto operator,(const _ERROR_<Other...>&) const -> _ERROR_<Other...>;
   };
 
-  // By making __dependent_sender_error an alias for _ERROR_<...>, we ensure that
+  // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that
   // it will get propagated correctly through various metafunctions.
   template <class _Sender>
-  using __dependent_sender_error = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
+  using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_PRETTY_SENDER_<_Sender>>;
 
   template <class... _What>
   struct __not_a_sender {
@@ -231,7 +240,7 @@ namespace STDEXEC {
 
     template <class _Self>
     static consteval auto get_completion_signatures() {
-      return STDEXEC::__invalid_completion_signature<_What...>();
+      return STDEXEC::__throw_compile_time_error<_What...>();
     }
   };
 

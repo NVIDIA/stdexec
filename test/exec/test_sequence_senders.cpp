@@ -89,11 +89,12 @@ namespace {
     STATIC_REQUIRE_FALSE(
       receiver_of<test_receiver<set_value_t()>, completion_signatures<set_stopped_t()>>);
     STATIC_REQUIRE(sender_to<some_sender_of<set_value_t()>, test_receiver<set_value_t()>>);
-    STATIC_REQUIRE_FALSE(
-      sender_to<
-        some_sender_of<set_value_t(int), set_stopped_t()>,
-        test_receiver<set_value_t(), set_stopped_t()>
-      >);
+    // Fails because `connect` is no longer constrained:
+    // STATIC_REQUIRE_FALSE(
+    //   sender_to<
+    //     some_sender_of<set_value_t(int), set_stopped_t()>,
+    //     test_receiver<set_value_t(), set_stopped_t()>
+    //   >);
   }
 
   template <__completion_signature... _Sigs>

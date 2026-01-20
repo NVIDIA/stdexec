@@ -212,7 +212,7 @@ namespace STDEXEC::__shared {
     using __receiver_t = __t<__receiver<__cvref_id<_CvrefSender>, __id<_Env>>>;
     using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
 
-    using __variant_t = __transform_completion_signatures<
+    using __variant_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<_CvrefSender, _Env>,
       __mbind_front_q<__decayed_tuple, set_value_t>::__f,
       __mbind_front_q<__decayed_tuple, set_error_t>::__f,

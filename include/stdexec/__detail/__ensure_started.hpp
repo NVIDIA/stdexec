@@ -79,7 +79,7 @@ namespace STDEXEC {
 
       template <class _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&&, const _Env&) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_SENDER_<_Sender>>();
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
       }
     };
   } // namespace __ensure_started
@@ -101,9 +101,9 @@ namespace STDEXEC {
           __detail::__transform_sender_result_t<ensure_started_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       } else {
-        return STDEXEC::__invalid_completion_signature<
+        return STDEXEC::__throw_compile_time_error<
           _SENDER_TYPE_IS_NOT_COPYABLE_,
-          _WITH_SENDER_<_Sender>
+          _WITH_PRETTY_SENDER_<_Sender>
         >();
       }
     }

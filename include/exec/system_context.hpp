@@ -719,8 +719,8 @@ namespace exec {
         STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<_Sender>),
         STDEXEC::_TO_FIX_THIS_ERROR_(
           ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-        STDEXEC::_WITH_SENDER_<_Sender>,
-        STDEXEC::_WITH_ENVIRONMENT_<_Env>
+        STDEXEC::_WITH_PRETTY_SENDER_<_Sender>,
+        STDEXEC::_WITH_ENVIRONMENT_(_Env)
       >();
     }
   }

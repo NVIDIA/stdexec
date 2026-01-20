@@ -74,7 +74,7 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(completion_behavior::__constant_t<_CBs>...) const noexcept {
         constexpr auto __behavior = static_cast<behavior>(
-          STDEXEC::__umax({static_cast<std::size_t>(_CBs)...}));
+          STDEXEC::__umin({static_cast<std::size_t>(_CBs)...}));
 
         if constexpr (__behavior == completion_behavior::unknown) {
           return completion_behavior::unknown;

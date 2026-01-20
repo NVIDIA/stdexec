@@ -171,7 +171,7 @@ namespace nvexec::_strm {
 
       template <class Self, class... Env>
       using __error_completions_t = __meval<
-        __concat_completion_signatures,
+        __concat_completion_signatures_t,
         __with_error_invoke_t<
           __callable_error<"In nvexec::then(Sender, Function)..."_mstr>,
           set_value_t,

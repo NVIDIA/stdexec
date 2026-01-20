@@ -332,7 +332,7 @@ namespace nvexec {
     using decayed_tuple = ::cuda::std::tuple<__decay_t<Ts>...>;
 
     template <class _Sender, class _Env>
-    using variant_storage_t = __for_each_completion_signature<
+    using variant_storage_t = __for_each_completion_signature_t<
       __completion_signatures_of_t<_Sender, _Env>,
       decayed_tuple,
       __munique<__q<_nullable_variant_t>>::__f

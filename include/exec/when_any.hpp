@@ -57,21 +57,21 @@ namespace exec {
       >;
 
       template <class... _CvrefSenders>
-      using __f = __mtry_q<__concat_completion_signatures>::__f<
+      using __f = __mtry_q<__concat_completion_signatures_t>::__f<
         __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
         completion_signatures<set_stopped_t()>,
-        __transform_completion_signatures<
+        __transform_completion_signatures_t<
           __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
           __as_rvalues,
           __as_error,
           set_stopped_t (*)(),
-          __completion_signature_ptrs
+          __completion_signature_ptrs_t
         >...
       >;
     };
 
     template <class _Env, class... _CvrefSenders>
-    using __result_type_t = __for_each_completion_signature<
+    using __result_type_t = __for_each_completion_signature_t<
       __minvoke<__completions_fn<_Env>, _CvrefSenders...>,
       __decayed_tuple,
       __uniqued_variant_for
@@ -272,9 +272,9 @@ namespace exec {
 
         template <class _Self, class... _Env>
         static consteval auto get_completion_signatures() {
-          return STDEXEC::__invalid_completion_signature<
+          return STDEXEC::__throw_compile_time_error<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
-            _WITH_SENDERS_<STDEXEC::__t<_SenderIds>>...
+            _WITH_PRETTY_SENDERS_<STDEXEC::__t<_SenderIds>>...
           >();
         }
 

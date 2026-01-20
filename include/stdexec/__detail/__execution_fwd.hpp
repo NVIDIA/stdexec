@@ -239,18 +239,18 @@ namespace STDEXEC {
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
-  consteval auto __invalid_completion_signature(_Values...) -> __mexception<_What...>;
+  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
 
 #else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _What, class... _More, class... _Values>
-  consteval auto __invalid_completion_signature(_Values...) -> completion_signatures<>;
+  consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
 
 #endif // ^^^ constexpr exceptions ^^^
 
   template <class... _What>
-  consteval auto __invalid_completion_signature(__mexception<_What...>);
+  consteval auto __throw_compile_time_error(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __connect {

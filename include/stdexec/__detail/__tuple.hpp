@@ -366,6 +366,7 @@ namespace STDEXEC {
     } else if constexpr (_Index == 7) {
       return static_cast<_Tuple&&>(__tupl).__val7;
     }
+    STDEXEC_UNREACHABLE();
   }
 
   //

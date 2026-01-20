@@ -122,7 +122,7 @@ namespace STDEXEC {
         "The sender cannot be decay-copied. Did you forget a std::move?");
     } else {
       using _Completions = __completion_signatures_of_t<__sndr_t, _Env...>;
-      if constexpr (__same_as<_Completions, __unrecognized_sender_error<__sndr_t, _Env...>>) {
+      if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<__sndr_t, _Env...>>) {
         static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
       } else if constexpr (__merror<_Completions>) {
         static_assert(

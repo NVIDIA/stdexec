@@ -75,18 +75,17 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
 namespace exec {
-  namespace __errs {
-    template <class _Sequence>
-    struct _WITH_SEQUENCE_;
-
-    template <class... _Sequences>
-    struct _WITH_SEQUENCES_;
-  } // namespace __errs
   template <class _Sequence>
-  using _WITH_SEQUENCE_ = __errs::_WITH_SEQUENCE_<STDEXEC::__demangle_t<_Sequence>>;
+  struct _WITH_SEQUENCE_ { };
 
   template <class... _Sequences>
-  using _WITH_SEQUENCES_ = __errs::_WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
+  struct _WITH_SEQUENCES_ { };
+
+  template <class _Sequence>
+  using _WITH_PRETTY_SEQUENCE_ = _WITH_SEQUENCE_<STDEXEC::__demangle_t<_Sequence>>;
+
+  template <class... _Sequences>
+  using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
   struct sequence_sender_t : STDEXEC::sender_t { };
 
@@ -270,8 +269,8 @@ namespace exec {
   template <class _Sequence, class... _Env>
   using __unrecognized_sequence_error_t = STDEXEC::__mexception<
     _UNRECOGNIZED_SEQUENCE_TYPE_<>,
-    _WITH_SEQUENCE_<_Sequence>,
-    STDEXEC::_WITH_ENVIRONMENT_<_Env>...
+    _WITH_PRETTY_SEQUENCE_<_Sequence>,
+    STDEXEC::_WITH_ENVIRONMENT_(_Env)...
   >;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -362,27 +361,6 @@ namespace exec {
 
   using __sequence_sndr::get_item_types_t; // for backwards compatibility
 
-#if 0
-  template <class _Sequence, class _Env = STDEXEC::env<>>
-  [[nodiscard]]
-  consteval auto get_item_types() {
-    using _NewSequence = STDEXEC::__maybe_transform_sender_t<_Sequence, _Env>;
-    if constexpr (STDEXEC::__merror<_NewSequence>) {
-      return exec::__invalid_item_types(_NewSequence());
-    } else {
-      return __sequence_sndr::__get_item_types_helper<_NewSequence, _Env>();
-    }
-  }
-
-  // Legacy interface:
-  template <class _Sequence, class _Env = STDEXEC::env<>>
-  [[nodiscard]]
-  constexpr auto get_item_types(_Sequence&&, const _Env&) {
-    return exec::get_item_types<_Sequence, _Env>();
-  }
-
-#else
-
   template <class _Sequence, class... _Env>
   [[nodiscard]]
   consteval auto get_item_types() {
@@ -400,8 +378,6 @@ namespace exec {
   constexpr auto get_item_types(_Sequence&&, const _Env&...) {
     return exec::get_item_types<_Sequence, _Env...>();
   }
-
-#endif
 
   template <class _Sequence, class... _Env>
   using __item_types_of_t = decltype(exec::get_item_types<_Sequence, _Env...>());
@@ -423,7 +399,7 @@ namespace exec {
   template <class _Sequence, class _Item>
   auto __check_item(_Item*) -> STDEXEC::__mexception<
     _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_<_Item>,
-    _WITH_SEQUENCE_<_Sequence>
+    _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence, class _Item>
@@ -441,7 +417,7 @@ namespace exec {
     requires(!STDEXEC::__merror<_Items>)
   auto __check_items(_Items*) -> STDEXEC::__mexception<
     _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_<_Items>,
-    _WITH_SEQUENCE_<_Sequence>
+    _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence, class... _Items>
@@ -465,7 +441,7 @@ namespace exec {
     requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__mvalid<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> STDEXEC::__mexception<
     _SEQUENCE_GET_ITEM_TYPES_IS_NOT_WELL_FORMED_,
-    _WITH_SEQUENCE_<_Sequence>
+    _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
   template <class _Sequence>
@@ -549,16 +525,13 @@ namespace exec {
     _Data __data_{};
   };
 
-  template <class _Receiver>
-  struct _WITH_RECEIVER_ { };
-
   template <class _Item>
   struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_ { };
 
   template <class _Receiver, class _Item>
   auto __try_item(_Item*) -> STDEXEC::__mexception<
     _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>,
-    _WITH_RECEIVER_<_Receiver>
+    STDEXEC::_WITH_RECEIVER_(_Receiver)
   >;
 
   template <class _Receiver, class _Item>

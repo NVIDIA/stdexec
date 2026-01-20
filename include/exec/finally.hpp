@@ -28,7 +28,7 @@ namespace exec {
     using namespace STDEXEC;
 
     template <class _Sigs>
-    using __result_variant = __for_each_completion_signature<_Sigs, __decayed_tuple, __variant_for>;
+    using __result_variant = __for_each_completion_signature_t<_Sigs, __decayed_tuple, __variant_for>;
 
     template <class _ResultType, class _ReceiverId>
     struct __final_operation_base {
@@ -112,7 +112,7 @@ namespace exec {
       using __final_receiver_t =
         STDEXEC::__t<__final_receiver<__result_variant<__signatures>, _ReceiverId>>;
       using __final_op_t = connect_result_t<_FinalSender, __final_receiver_t>;
-      class __t;
+      struct __t;
     };
 
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
@@ -176,28 +176,7 @@ namespace exec {
     };
 
     template <class _InitialSenderId, class _FinalSenderId, class _ReceiverId>
-    class __operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>::__t : public __base_t {
-      using __initial_receiver_t =
-        STDEXEC::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
-
-      struct __initial_op_t {
-        explicit __initial_op_t(
-          _InitialSender&& __sndr,
-          _FinalSender&& __final,
-          __initial_receiver_t __rcvr)
-          : __sndr_{static_cast<_FinalSender&&>(__final)}
-          , __initial_operation_{STDEXEC::connect(
-              static_cast<_InitialSender&&>(__sndr),
-              static_cast<__initial_receiver_t&&>(__rcvr))} {
-        }
-
-        _FinalSender __sndr_;
-        connect_result_t<_InitialSender, __initial_receiver_t> __initial_operation_;
-      };
-
-      __variant_for<__initial_op_t, __final_op_t> __op_;
-
-     public:
+    struct __operation_state<_InitialSenderId, _FinalSenderId, _ReceiverId>::__t : __base_t {
       using __id = __operation_state;
 
       template <class... _Args>
@@ -224,6 +203,27 @@ namespace exec {
         STDEXEC_ASSERT(__op_.index() == 0);
         STDEXEC::start(__op_.template get<0>().__initial_operation_);
       }
+
+     private:
+      using __initial_receiver_t =
+        STDEXEC::__t<__initial_receiver<_InitialSenderId, _FinalSenderId, _ReceiverId>>;
+
+      struct __initial_op_t {
+        explicit __initial_op_t(
+          _InitialSender&& __sndr,
+          _FinalSender&& __final,
+          __initial_receiver_t __rcvr)
+          : __sndr_{static_cast<_FinalSender&&>(__final)}
+          , __initial_operation_{STDEXEC::connect(
+              static_cast<_InitialSender&&>(__sndr),
+              static_cast<__initial_receiver_t&&>(__rcvr))} {
+        }
+
+        _FinalSender __sndr_;
+        connect_result_t<_InitialSender, __initial_receiver_t> __initial_operation_;
+      };
+
+      __variant_for<__initial_op_t, __final_op_t> __op_;
     };
 
     template <class _InitialSenderId, class _FinalSenderId>
@@ -276,9 +276,9 @@ namespace exec {
 
         template <__decays_to<__t> _Self, class... _Env>
         static consteval auto get_completion_signatures() {
-          return exec::invalid_completion_signature<
+          return exec::throw_compile_time_error<
             _SENDER_TYPE_IS_NOT_COPYABLE_,
-            _WITH_SENDER_<_FinalSender>
+            _WITH_PRETTY_SENDER_<_FinalSender>
           >();
         }
 
