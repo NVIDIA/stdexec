@@ -36,7 +36,7 @@ namespace STDEXEC {
       _Ty __val_;
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() noexcept(__nothrow_constructible_from<_Ty, _Ty>) -> _Ty {
+      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Ty>) -> _Ty {
         return static_cast<_Ty&&>(__val_);
       }
     };

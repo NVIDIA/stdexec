@@ -194,16 +194,14 @@ namespace STDEXEC {
     template <class _SetTag, class _Fun, class... _JoinEnv2>
     struct __transform_signal_fn {
       template <class... _Args>
-      static constexpr bool __nothrow_connect_v = requires {
-        requires __nothrow_decay_copyable<_Args...>
-                   && __nothrow_callable<_Fun, __decay_t<_Args>&...>;
-        requires(
-          __nothrow_connectable<
-            __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
-            __receiver_archetype<_JoinEnv2>
-          >
-          && ...);
-      };
+      static constexpr bool
+        __nothrow_connect_v = __nothrow_decay_copyable<_Args...>
+                           && __nothrow_callable<_Fun, __decay_t<_Args>&...>
+                           && (__nothrow_connectable<
+                                 __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
+                                 __receiver_archetype<_JoinEnv2>
+                               >
+                               && ...);
 
       template <class... _Args>
       using __f = __mcall<
