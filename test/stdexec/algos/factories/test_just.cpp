@@ -27,6 +27,21 @@ namespace ex = STDEXEC;
 
 namespace {
 
+  constexpr int test_constexpr() noexcept {
+    struct receiver {
+      using receiver_concept = ex::receiver_t;
+      constexpr void set_value(const int i) && noexcept {
+        this->i = i;
+      }
+      int& i;
+    };
+    int i = 0;
+    auto op = ex::connect(ex::just(5), receiver{i});
+    ex::start(op);
+    return i;
+  }
+  static_assert(test_constexpr() == 5);
+
   TEST_CASE("Simple test for just", "[factories][just]") {
     auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));
     ex::start(o1);

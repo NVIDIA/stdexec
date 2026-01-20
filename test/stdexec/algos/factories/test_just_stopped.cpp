@@ -21,6 +21,21 @@
 
 namespace {
 
+  constexpr int test_constexpr() noexcept {
+    struct receiver {
+      using receiver_concept = ex::receiver_t;
+      constexpr void set_stopped() && noexcept {
+        invoked = true;
+      }
+      bool& invoked;
+    };
+    bool invoked = false;
+    auto op = ex::connect(ex::just_stopped(), receiver{invoked});
+    ex::start(op);
+    return invoked;
+  }
+  static_assert(test_constexpr());
+
   TEST_CASE("Simple test for just_stopped", "[factories][just_stopped]") {
     auto op = ex::connect(ex::just_stopped(), expect_stopped_receiver{});
     ex::start(op);

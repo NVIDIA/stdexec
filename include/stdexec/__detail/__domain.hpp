@@ -61,7 +61,7 @@ namespace STDEXEC {
     template <class _OpTag, class _Sender, class _Env>
       requires __detail::__has_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env& __env) const
+    constexpr auto transform_sender(_OpTag, _Sender&& __sndr, const _Env& __env) const
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env> {
       return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender&&>(__sndr), __env);
@@ -69,7 +69,7 @@ namespace STDEXEC {
 
     template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
+    constexpr auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
       noexcept(__nothrow_move_constructible<_Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
     }
@@ -77,7 +77,7 @@ namespace STDEXEC {
     template <class _Tag, class... _Args>
       requires __detail::__has_apply_sender<_Tag, _Args...>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto apply_sender(_Tag, _Args&&... __args) const
+    constexpr auto apply_sender(_Tag, _Args&&... __args) const
       -> __detail::__apply_sender_result_t<_Tag, _Args...> {
       return _Tag().apply_sender(static_cast<_Args&&>(__args)...);
     }

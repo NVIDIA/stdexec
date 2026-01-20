@@ -66,7 +66,7 @@ namespace STDEXEC {
 
       template <__movable_value... _Ts>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
+      constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
         return __make_sexpr<just_t>(__tuple{static_cast<_Ts&&>(__ts)...});
       }
     };
@@ -76,7 +76,7 @@ namespace STDEXEC {
 
       template <__movable_value _Error>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
+      constexpr auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
         return __make_sexpr<just_error_t>(__tuple{static_cast<_Error&&>(__err)});
       }
     };
@@ -86,7 +86,7 @@ namespace STDEXEC {
 
       template <class _Tag = just_stopped_t>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()() const noexcept {
+      constexpr auto operator()() const noexcept {
         return __make_sexpr<_Tag>(__tuple{});
       }
     };

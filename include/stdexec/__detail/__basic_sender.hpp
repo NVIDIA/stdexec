@@ -175,11 +175,11 @@ namespace STDEXEC {
 
     template <class _Receiver>
     struct __receiver_box {
-      STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() & noexcept -> _Receiver& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __rcvr() & noexcept -> _Receiver& {
         return this->__rcvr_;
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() const & noexcept -> const _Receiver& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __rcvr() const & noexcept -> const _Receiver& {
         return this->__rcvr_;
       }
 
@@ -191,21 +191,21 @@ namespace STDEXEC {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      explicit __state_box(_Sexpr&& __sndr, _Receiver& __rcvr)
+      explicit constexpr __state_box(_Sexpr&& __sndr, _Receiver& __rcvr)
         noexcept(__noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>) {
         ::new (static_cast<void*>(__buf_)) auto(
           __sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr));
       }
 
-      ~__state_box() {
+      constexpr ~__state_box() {
         reinterpret_cast<__state_t*>(__buf_)->~__state_t();
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __state() & noexcept -> __state_t& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __state() & noexcept -> __state_t& {
         return *reinterpret_cast<__state_t*>(__buf_);
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __state() const & noexcept -> const __state_t& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __state() const & noexcept -> const __state_t& {
         return *reinterpret_cast<const __state_t*>(__buf_);
       }
 
@@ -240,25 +240,25 @@ namespace STDEXEC {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
+      explicit constexpr __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
         __state_t(__sexpr_impl<__tag_t>::get_state(__declval<_Sexpr>(), __declval<_Receiver&>()))))
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __state_(__sexpr_impl<__tag_t>::get_state(static_cast<_Sexpr&&>(__sndr), __rcvr_)) {
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __state() & noexcept -> __state_t& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __state() & noexcept -> __state_t& {
         return __state_;
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __state() const & noexcept -> const __state_t& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __state() const & noexcept -> const __state_t& {
         return __state_;
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() & noexcept -> _Receiver& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __rcvr() & noexcept -> _Receiver& {
         return __rcvr_;
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) auto __rcvr() const & noexcept -> const _Receiver& {
+      STDEXEC_ATTRIBUTE(always_inline) constexpr auto __rcvr() const & noexcept -> const _Receiver& {
         return __rcvr_;
       }
 
@@ -278,7 +278,7 @@ namespace STDEXEC {
 
       STDEXEC_IMMOVABLE(__op_base);
 
-      __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
+      constexpr __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr)
         noexcept(__noexcept_of<__sexpr_impl<__tag_t>::get_state, _Sexpr, _Receiver&>)
         : __receiver_box<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
         , __state_box<_Sexpr, _Receiver>{static_cast<_Sexpr&&>(__sndr), this->__rcvr_} {
@@ -298,7 +298,7 @@ namespace STDEXEC {
 
       struct __impl {
         template <std::size_t... _Is, class... _Child>
-        auto operator()(__indices<_Is...>, _Child&&... __child) const
+        constexpr auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
             -> __tuple<connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
@@ -308,13 +308,13 @@ namespace STDEXEC {
       };
 
       template <class... _Child>
-      auto operator()(__ignore, __ignore, _Child&&... __child) const
+      constexpr auto operator()(__ignore, __ignore, _Child&&... __child) const
         noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Child...>)
           -> __call_result_t<__impl, __indices_for<_Child...>, _Child...> {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
+      constexpr auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
         return {};
       }
 
@@ -384,7 +384,7 @@ namespace STDEXEC {
     using __state_t = __op_state::__op_base::__state_t;
     using __inner_ops_t = __apply_result_t<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>;
 
-    explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+    constexpr explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
       __nothrow_constructible_from<__detail::__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
       && __nothrow_applicable<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>)
       : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
@@ -393,7 +393,7 @@ namespace STDEXEC {
           static_cast<_Sexpr&&>(__sexpr))) {
     }
 
-    STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
+    STDEXEC_ATTRIBUTE(always_inline) constexpr void start() & noexcept {
       using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
       STDEXEC::__apply(
@@ -405,7 +405,7 @@ namespace STDEXEC {
 
     template <class _Index, class _Tag2, class... _Args>
     STDEXEC_ATTRIBUTE(always_inline)
-    void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
+    constexpr void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
       using __tag_t = __op_state::__tag_t;
       auto&& __rcvr = this->__rcvr();
       using _CompleteFn = __mtypeof<__sexpr_impl<__tag_t>::complete>;
@@ -419,7 +419,7 @@ namespace STDEXEC {
 
     template <class _Index>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto __get_env(_Index) const noexcept
+    constexpr auto __get_env(_Index) const noexcept
       -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
       const auto& __rcvr = this->__rcvr();
       return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state(), __rcvr);
