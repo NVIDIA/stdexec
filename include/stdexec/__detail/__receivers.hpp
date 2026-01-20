@@ -61,7 +61,7 @@ namespace STDEXEC {
       template <class _Receiver, class... _As>
         requires __set_value_member<_Receiver, _As...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
+      constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
         static_assert(
           noexcept(static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...)),
           "set_value member functions must be noexcept");
@@ -79,7 +79,7 @@ namespace STDEXEC {
               || tag_invocable<set_value_t, _Receiver, _As...>
       [[deprecated("the use of tag_invoke for set_value is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
-        void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
+        constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
         static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
       }
@@ -98,7 +98,7 @@ namespace STDEXEC {
       template <class _Receiver, class _Error>
         requires __set_error_member<_Receiver, _Error>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
+      constexpr void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
         static_assert(
           noexcept(static_cast<_Receiver &&>(__rcvr).set_error(static_cast<_Error &&>(__err))),
           "set_error member functions must be noexcept");
@@ -116,7 +116,7 @@ namespace STDEXEC {
               || tag_invocable<set_error_t, _Receiver, _Error>
       [[deprecated("the use of tag_invoke for set_error is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
-        void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
+        constexpr void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
         static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_Error &&>(__err));
       }
@@ -135,7 +135,7 @@ namespace STDEXEC {
       template <class _Receiver>
         requires __set_stopped_member<_Receiver>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr) const noexcept {
+      constexpr void operator()(_Receiver &&__rcvr) const noexcept {
         static_assert(
           noexcept(static_cast<_Receiver &&>(__rcvr).set_stopped()),
           "set_stopped member functions must be noexcept");
@@ -149,7 +149,7 @@ namespace STDEXEC {
         requires __set_stopped_member<_Receiver> || tag_invocable<set_stopped_t, _Receiver>
       [[deprecated("the use of tag_invoke for set_stopped is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
-        void operator()(_Receiver &&__rcvr) const noexcept {
+        constexpr void operator()(_Receiver &&__rcvr) const noexcept {
         static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
         (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr));
       }
