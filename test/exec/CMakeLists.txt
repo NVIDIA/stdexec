@@ -65,6 +65,7 @@ set(exec_test_sources
     test_invoke.cpp
     test_exit_scope_sender.cpp
     test_enter_scope_sender.cpp
+    test_enter_scopes.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
