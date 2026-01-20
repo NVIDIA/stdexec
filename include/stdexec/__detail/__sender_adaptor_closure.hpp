@@ -69,13 +69,14 @@ namespace STDEXEC {
 
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto operator|(_Sender&& __sndr, _Closure&& __clsur) -> __call_result_t<_Closure, _Sender> {
+    constexpr auto
+      operator|(_Sender&& __sndr, _Closure&& __clsur) -> __call_result_t<_Closure, _Sender> {
       return static_cast<_Closure&&>(__clsur)(static_cast<_Sender&&>(__sndr));
     }
 
     template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto operator|(_T0&& __t0, _T1&& __t1) -> __compose<__decay_t<_T0>, __decay_t<_T1>> {
+    constexpr auto operator|(_T0&& __t0, _T1&& __t1) -> __compose<__decay_t<_T0>, __decay_t<_T1>> {
       return {{}, static_cast<_T0&&>(__t0), static_cast<_T1&&>(__t1)};
     }
 

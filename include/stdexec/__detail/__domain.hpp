@@ -103,7 +103,7 @@ namespace STDEXEC {
 
   template <class... _Domains>
   struct indeterminate_domain {
-    indeterminate_domain() = default;
+    constexpr indeterminate_domain() = default;
 
     STDEXEC_ATTRIBUTE(host, device)
     constexpr indeterminate_domain(__ignore) noexcept {
@@ -247,7 +247,7 @@ namespace STDEXEC {
     //! @brief A wrapper around an environment that hides a set of queries.
     template <class _Env, class... _Queries>
     struct __hide_query {
-      explicit constexpr __hide_query(_Env&& __env, _Queries...) noexcept
+      constexpr explicit __hide_query(_Env&& __env, _Queries...) noexcept
         : __env_{static_cast<_Env&&>(__env)} {
       }
 
@@ -264,19 +264,20 @@ namespace STDEXEC {
     };
 
     template <class _Env, class... _Queries>
-    __hide_query(_Env&&, _Queries...) -> __hide_query<_Env, _Queries...>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __hide_query(_Env&&, _Queries...) -> __hide_query<_Env, _Queries...>;
 
     //! @brief A wrapper around an environment that hides the get_scheduler and get_domain
     //! queries.
     template <class _Env>
     struct __hide_scheduler : __hide_query<_Env, get_scheduler_t, get_domain_t> {
-      explicit constexpr __hide_scheduler(_Env&& __env) noexcept
+      constexpr explicit __hide_scheduler(_Env&& __env) noexcept
         : __hide_query<_Env, get_scheduler_t, get_domain_t>{static_cast<_Env&&>(__env), {}, {}} {
       }
     };
 
     template <class _Env>
-    __hide_scheduler(_Env&&) -> __hide_scheduler<_Env>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __hide_scheduler(_Env&&) -> __hide_scheduler<_Env>;
 
     //////////////////////////////////////////////////////////////////////////////////////////
     //! @brief A query type for asking a sender's attributes for the domain on which that

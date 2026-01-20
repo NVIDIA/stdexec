@@ -36,14 +36,14 @@ namespace STDEXEC {
     void* __front_{&__nil_};
     __std::atomic<_Node*> __nil_ = nullptr;
 
-    void push_back_nil() {
+    constexpr void push_back_nil() {
       __nil_.store(nullptr, __std::memory_order_relaxed);
       auto* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, __std::memory_order_acq_rel));
       (__prev->*_Next).store(&__nil_, __std::memory_order_release);
     }
 
    public:
-    auto push_back(_Node* __new_node) noexcept -> bool {
+    constexpr auto push_back(_Node* __new_node) noexcept -> bool {
       (__new_node->*_Next).store(nullptr, __std::memory_order_relaxed);
       void* __prev_back = __back_.exchange(__new_node, __std::memory_order_acq_rel);
       bool __is_nil = __prev_back == static_cast<void*>(&__nil_);
@@ -55,7 +55,7 @@ namespace STDEXEC {
       return __is_nil;
     }
 
-    auto pop_front() noexcept -> _Node* {
+    constexpr auto pop_front() noexcept -> _Node* {
       if (__front_ == static_cast<void*>(&__nil_)) {
         _Node* __next = __nil_.load(__std::memory_order_acquire);
         if (!__next) {

@@ -145,7 +145,7 @@ namespace STDEXEC {
 
   template <std::size_t _Len>
   struct __mstring {
-    __mstring() = default;
+    constexpr __mstring() = default;
 
 #if STDEXEC_EDG()
     template <std::size_t _Ny, std::size_t... _Is>
@@ -201,7 +201,7 @@ namespace STDEXEC {
   };
 
   template <std::size_t _Len>
-  __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __mstring(const char (&__str)[_Len]) -> __mstring<_Len>;
 
   // Use a standard user-defined string literal template
   template <__mstring _Str>
@@ -237,11 +237,11 @@ namespace STDEXEC {
     using __all = _ERROR_;
 
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator+() const -> _ERROR_;
+    constexpr auto operator+() const -> _ERROR_;
 
     template <class _Ty>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(const _Ty &) const -> _ERROR_;
+    constexpr auto operator,(const _Ty &) const -> _ERROR_;
   };
 
   template <__mstring... _What>
@@ -944,17 +944,17 @@ namespace STDEXEC {
     _Fn __fn_;
     using __t = __call_result_t<_Fn>;
 
-    operator __t() && noexcept(__nothrow_callable<_Fn>) {
+    constexpr operator __t() && noexcept(__nothrow_callable<_Fn>) {
       return static_cast<_Fn &&>(__fn_)();
     }
 
-    auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
+    constexpr auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
       return static_cast<_Fn &&>(__fn_)();
     }
   };
 
   template <class _Fn>
-  __emplace_from(_Fn) -> __emplace_from<_Fn>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __emplace_from(_Fn) -> __emplace_from<_Fn>;
 
   template <class _Fn, class _Continuation, class _List1, class _List2>
   struct __mzip_with2_
@@ -1161,23 +1161,6 @@ namespace STDEXEC {
       requires(sizeof...(_Ts) != 0)
     using __f = __minvoke<__impl<__make_indices<sizeof...(_Ts) - 1>>, _Ts...>;
   };
-
-  template <std::size_t _Np>
-  struct __placeholder {
-    __placeholder() = default;
-
-    constexpr __placeholder(void *) noexcept {
-    }
-
-    constexpr friend auto __get_placeholder_offset(__placeholder) noexcept -> std::size_t {
-      return _Np;
-    }
-  };
-
-  using __0 = __placeholder<0>;
-  using __1 = __placeholder<1>;
-  using __2 = __placeholder<2>;
-  using __3 = __placeholder<3>;
 
 #if defined(__cpp_pack_indexing)
   STDEXEC_PRAGMA_PUSH()

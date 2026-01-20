@@ -21,6 +21,7 @@
 
 namespace {
 
+#if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 12'00
   constexpr int test_constexpr() noexcept {
     struct receiver {
       using receiver_concept = ex::receiver_t;
@@ -35,6 +36,7 @@ namespace {
     return invoked;
   }
   static_assert(test_constexpr());
+#endif
 
   TEST_CASE("Simple test for just_stopped", "[factories][just_stopped]") {
     auto op = ex::connect(ex::just_stopped(), expect_stopped_receiver{});

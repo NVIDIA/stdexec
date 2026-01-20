@@ -32,7 +32,7 @@ namespace exec {
 
        public:
         template <class _Sender, class _Receiver>
-        __t(_Sender&& __sender, _Receiver&& __receiver)
+        constexpr __t(_Sender&& __sender, _Receiver&& __receiver)
           noexcept(__nothrow_connectable<_Sender, _Receiver>)
           : __variant_{
               std::in_place_type<connect_result_t<_Sender, _Receiver>>,
@@ -42,7 +42,7 @@ namespace exec {
               }}} {
         }
 
-        void start() & noexcept {
+        constexpr void start() & noexcept {
           std::visit([](auto& __s) { STDEXEC::start(__s); }, __variant_);
         }
       };
@@ -60,7 +60,7 @@ namespace exec {
         _Receiver __rcvr;
 
         template <class _Sender>
-        auto operator()(_Sender&& __s)
+        constexpr auto operator()(_Sender&& __s)
           -> STDEXEC::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>> {
           return {static_cast<_Sender&&>(__s), static_cast<_Receiver&&>(__rcvr)};
         }
@@ -69,15 +69,15 @@ namespace exec {
       class __t : private std::variant<STDEXEC::__t<_SenderIds>...> {
         using __variant_t = std::variant<STDEXEC::__t<_SenderIds>...>;
 
-        auto base() && noexcept -> __variant_t&& {
+        constexpr auto base() && noexcept -> __variant_t&& {
           return std::move(*this);
         }
 
-        auto base() & noexcept -> __variant_t& {
+        constexpr auto base() & noexcept -> __variant_t& {
           return *this;
         }
 
-        auto base() const & noexcept -> const __variant_t& {
+        constexpr auto base() const & noexcept -> const __variant_t& {
           return *this;
         }
 
@@ -85,7 +85,7 @@ namespace exec {
         using sender_concept = STDEXEC::sender_t;
         using __id = __sender;
 
-        __t() = default;
+        constexpr __t() = default;
 
         template <class _Sender>
           requires __one_of<__decay_t<_Sender>, STDEXEC::__t<_SenderIds>...>

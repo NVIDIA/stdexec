@@ -150,7 +150,7 @@ namespace {
         : throws_after_(throws_after) {
       }
 
-      throwing_move(throwing_move&& other)
+      throwing_move(throwing_move&& other) // NOLINT(bugprone-exception-escape)
         : throws_after_(other.throws_after_) {
         if (throws_after_) {
           --throws_after_;

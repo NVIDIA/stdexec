@@ -31,8 +31,8 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_info
   struct __type_info {
-    __type_info(__type_info &&) = delete;
-    __type_info &operator=(__type_info &&) = delete;
+    constexpr __type_info(__type_info &&) = delete;
+    constexpr __type_info &operator=(__type_info &&) = delete;
 
     constexpr explicit __type_info(std::string_view __name) noexcept
       : __name_(__name) {

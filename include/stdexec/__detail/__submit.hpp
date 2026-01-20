@@ -147,10 +147,10 @@ namespace STDEXEC {
   struct submit_result<_Sender, _Receiver, __submit_result_kind::__submit> {
     using __result_t = __submit_result_t<_Sender, _Receiver>;
 
-    submit_result(_Sender&&, _Receiver&&) noexcept {
+    constexpr submit_result(_Sender&&, _Receiver&&) noexcept {
     }
 
-    void submit(_Sender&& __sndr, _Receiver&& __rcvr) {
+    constexpr void submit(_Sender&& __sndr, _Receiver&& __rcvr) {
       __result_.__emplace_from(
         __submit::__submit, static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
     }
@@ -191,6 +191,7 @@ namespace STDEXEC {
   };
 
   template <class _Sender, class _Receiver>
-  submit_result(_Sender&&, _Receiver) -> submit_result<_Sender, _Receiver>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    submit_result(_Sender&&, _Receiver) -> submit_result<_Sender, _Receiver>;
 
 } // namespace STDEXEC

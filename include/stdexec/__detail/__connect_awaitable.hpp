@@ -28,13 +28,16 @@
 #include <exception>
 #include <utility>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
+
 namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_awaitable_
   namespace __connect_awaitable_ {
     struct __promise_base {
-      auto initial_suspend() noexcept -> __std::suspend_always {
+      constexpr auto initial_suspend() noexcept -> __std::suspend_always {
         return {};
       }
 
@@ -57,15 +60,15 @@ namespace STDEXEC {
     struct __operation_base {
       __std::coroutine_handle<> __coro_;
 
-      explicit __operation_base(__std::coroutine_handle<> __hcoro) noexcept
+      constexpr explicit __operation_base(__std::coroutine_handle<> __hcoro) noexcept
         : __coro_(__hcoro) {
       }
 
-      __operation_base(__operation_base&& __other) noexcept
+      constexpr __operation_base(__operation_base&& __other) noexcept
         : __coro_(std::exchange(__other.__coro_, {})) {
       }
 
-      ~__operation_base() {
+      constexpr ~__operation_base() {
         if (__coro_) {
 #  if STDEXEC_MSVC()
           // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
@@ -107,16 +110,16 @@ namespace STDEXEC {
         using __id = __promise;
 
 #  if STDEXEC_EDG()
-        __t(auto&&, _Receiver&& __rcvr) noexcept
+        constexpr __t(auto&&, _Receiver&& __rcvr) noexcept
           : __rcvr_(__rcvr) {
         }
 #  else
-        explicit __t(auto&, _Receiver& __rcvr) noexcept
+        constexpr explicit __t(auto&, _Receiver& __rcvr) noexcept
           : __rcvr_(__rcvr) {
         }
 #  endif
 
-        auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
+        constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
           STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           // Returning noop_coroutine here causes the __connect_awaitable
           // coroutine to never resume past the point where it co_await's
@@ -124,13 +127,13 @@ namespace STDEXEC {
           return __std::noop_coroutine();
         }
 
-        auto get_return_object() noexcept -> STDEXEC::__t<__operation<_ReceiverId>> {
+        constexpr auto get_return_object() noexcept -> STDEXEC::__t<__operation<_ReceiverId>> {
           return STDEXEC::__t<__operation<_ReceiverId>>{
             __std::coroutine_handle<__t>::from_promise(*this)};
         }
 
         // Pass through the get_env receiver query
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__rcvr_);
         }
 
@@ -147,7 +150,7 @@ namespace STDEXEC {
     struct __connect_awaitable_t {
      private:
       template <class _Fun, class... _Ts>
-      static auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
+      static constexpr auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
         auto __fn = [&, __fun]() noexcept {
           __fun(static_cast<_Ts&&>(__as)...);
         };
@@ -159,7 +162,7 @@ namespace STDEXEC {
             return false;
           }
 
-          void await_suspend(__std::coroutine_handle<>) noexcept {
+          constexpr void await_suspend(__std::coroutine_handle<>) noexcept {
             __fn_();
           }
 
@@ -222,3 +225,5 @@ namespace STDEXEC {
 #endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 } // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

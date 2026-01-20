@@ -32,7 +32,7 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
   namespace __transfer_just {
-    inline auto __make_transform_fn() {
+    inline constexpr auto __make_transform_fn() {
       return []<class _Scheduler, __decay_copyable... _Values>(
                _Scheduler&& __sched, _Values&&... __vals) {
         return continues_on(
@@ -40,7 +40,7 @@ namespace STDEXEC {
       };
     }
 
-    inline auto __transform_sender_fn() {
+    inline constexpr auto __transform_sender_fn() {
       return []<class _Data>(__ignore, _Data&& __data) {
         return STDEXEC::__apply(__make_transform_fn(), static_cast<_Data&&>(__data));
       };
@@ -48,7 +48,7 @@ namespace STDEXEC {
 
     struct transfer_just_t {
       template <scheduler _Scheduler, __movable_value... _Values>
-      auto
+      constexpr auto
         operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
         return __make_sexpr<transfer_just_t>(
           __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
@@ -64,7 +64,7 @@ namespace STDEXEC {
       }
     };
 
-    inline auto __make_attrs_fn() noexcept {
+    inline constexpr auto __make_attrs_fn() noexcept {
       return []<class _Scheduler>(const _Scheduler& __sched, const auto&...) noexcept {
         static_assert(scheduler<_Scheduler>, "transfer_just requires a scheduler");
         return __sched_attrs{std::cref(__sched)};

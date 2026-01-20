@@ -29,7 +29,7 @@ namespace STDEXEC {
   struct __ { };
 
   struct __ignore {
-    __ignore() = default;
+    constexpr __ignore() = default;
 
     STDEXEC_ATTRIBUTE(always_inline) constexpr __ignore(auto&&...) noexcept {
     }
@@ -161,7 +161,7 @@ namespace STDEXEC {
   STDEXEC_PRAGMA_POP()
 
   template <class _Ty>
-  auto __decay_copy(_Ty) noexcept -> _Ty;
+  constexpr auto __decay_copy(_Ty) noexcept -> _Ty;
 
   template <class _Ty>
   struct __indestructible {

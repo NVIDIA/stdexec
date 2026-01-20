@@ -69,8 +69,8 @@ namespace exec {
     // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
     // ```
     template <class Shape>
-    auto
-      even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape> {
+    constexpr auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept //
+      -> std::pair<Shape, Shape> {
       STDEXEC_ASSERT(n >= 0);
       using ushape_t = std::make_unsigned_t<Shape>;
       const auto avg_per_thread = static_cast<ushape_t>(n) / size;
@@ -294,7 +294,8 @@ namespace exec {
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
         template <sender_expr Sender, class Env>
           requires __one_of<tag_of_t<Sender>, bulk_chunked_t, bulk_unchunked_t>
-        auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+        constexpr auto
+          transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
             auto sched = STDEXEC::get_completion_scheduler<set_value_t>(get_env(sndr), env);
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
@@ -315,7 +316,8 @@ namespace exec {
 
 #if STDEXEC_HAS_STD_RANGES()
         template <sender_expr_for<exec::iterate_t> Sender, class Env>
-        auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
+        constexpr auto
+          transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>) {
             auto sched = STDEXEC::get_scheduler(env);
             return __apply(_transform_iterate{*sched.pool_}, static_cast<Sender&&>(sndr));

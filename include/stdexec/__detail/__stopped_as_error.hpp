@@ -30,7 +30,7 @@ namespace STDEXEC {
   namespace __sae {
     struct stopped_as_error_t {
       template <sender _Sender, __movable_value _Error>
-      auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto {
         return let_stopped(
           static_cast<_Sender&&>(__sndr),
           [__err2 = static_cast<_Error&&>(__err)]() mutable noexcept(
@@ -41,7 +41,7 @@ namespace STDEXEC {
 
       template <__movable_value _Error>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Error __err) const noexcept(__nothrow_move_constructible<_Error>) {
+      constexpr auto operator()(_Error __err) const noexcept(__nothrow_move_constructible<_Error>) {
         return __closure(*this, static_cast<_Error&&>(__err));
       }
     };

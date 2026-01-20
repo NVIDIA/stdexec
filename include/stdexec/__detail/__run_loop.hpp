@@ -40,7 +40,8 @@ namespace STDEXEC {
       STDEXEC_ASSERT(__task_count_.load(__std::memory_order_acquire) == 0);
     }
 
-    STDEXEC_ATTRIBUTE(host, device) void run() noexcept {
+    STDEXEC_ATTRIBUTE(host, device)
+    void run() noexcept {
       // execute work items until the __finishing_ flag is set:
       while (!__finishing_.load(__std::memory_order_acquire)) {
         __queue_.wait_for_item();
@@ -52,7 +53,8 @@ namespace STDEXEC {
         ;
     }
 
-    STDEXEC_ATTRIBUTE(host, device) void finish() noexcept {
+    STDEXEC_ATTRIBUTE(host, device)
+    void finish() noexcept {
       // Increment our task count to avoid lifetime issues. This is preventing
       // a use-after-free issue if finish is called from a different thread.
       // We increment the task counter by two to prevent the run loop from
@@ -75,13 +77,14 @@ namespace STDEXEC {
     struct __task : __immovable {
       using __execute_fn_t = void(__task*) noexcept;
 
-      __task() = default;
+      constexpr __task() = default;
       STDEXEC_ATTRIBUTE(host, device)
-      explicit __task(__execute_fn_t* __execute_fn) noexcept
+      constexpr explicit __task(__execute_fn_t* __execute_fn) noexcept
         : __execute_fn_(__execute_fn) {
       }
 
-      STDEXEC_ATTRIBUTE(host, device) void __execute() noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void __execute() noexcept {
         (*__execute_fn_)(this);
       }
 
@@ -95,7 +98,8 @@ namespace STDEXEC {
       __atomic_intrusive_queue<&__task::__next_>* __queue_;
       _Rcvr __rcvr_;
 
-      STDEXEC_ATTRIBUTE(host, device) static void __execute_impl(__task* __p) noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr void __execute_impl(__task* __p) noexcept {
         static_assert(noexcept(get_stop_token(__declval<env_of_t<_Rcvr>>()).stop_requested()));
         auto& __rcvr = static_cast<__opstate_t*>(__p)->__rcvr_;
 
@@ -120,14 +124,16 @@ namespace STDEXEC {
         , __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
       }
 
-      STDEXEC_ATTRIBUTE(host, device) constexpr void start() noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void start() noexcept {
         __task_count_->fetch_add(1, __std::memory_order_release);
         __queue_->push(this);
       }
     };
 
     // Returns true if any tasks were executed.
-    STDEXEC_ATTRIBUTE(host, device) bool __execute_all() noexcept {
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr bool __execute_all() noexcept {
       // Dequeue all tasks at once. This returns an __intrusive_queue.
       auto __queue = __queue_.pop_all();
 
@@ -152,7 +158,7 @@ namespace STDEXEC {
       return true;
     }
 
-    STDEXEC_ATTRIBUTE(host, device) static void __noop_(__task*) noexcept {
+    STDEXEC_ATTRIBUTE(host, device) static constexpr void __noop_(__task*) noexcept {
     }
 
     __std::atomic<std::size_t> __task_count_{0};

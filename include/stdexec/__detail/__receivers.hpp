@@ -189,7 +189,7 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
-    auto __try_completion(_Tag (*)(_Args...))
+    constexpr auto __try_completion(_Tag (*)(_Args...))
       -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_(_Receiver)>;
 
     template <class _Receiver, class _Tag, class... _Args>
@@ -197,7 +197,7 @@ namespace STDEXEC {
     auto __try_completion(_Tag (*)(_Args...)) -> __msuccess;
 
     template <class _Receiver, class... _Sigs>
-    auto __try_completions(completion_signatures<_Sigs...> *) -> decltype((
+    constexpr auto __try_completions(completion_signatures<_Sigs...> *) -> decltype((
       __msuccess(),
       ...,
       __detail::__try_completion<__decay_t<_Receiver>>(static_cast<_Sigs *>(nullptr))));
@@ -215,7 +215,7 @@ namespace STDEXEC {
   /// A utility for calling set_value with the result of a function invocation:
   template <class _Receiver, class _Fun, class... _As>
   STDEXEC_ATTRIBUTE(host, device)
-  void __set_value_invoke(_Receiver &&__rcvr, _Fun &&__fun, _As &&...__as) noexcept {
+  constexpr void __set_value_invoke(_Receiver &&__rcvr, _Fun &&__fun, _As &&...__as) noexcept {
     STDEXEC_TRY {
       if constexpr (__std::same_as<void, __invoke_result_t<_Fun, _As...>>) {
         __invoke(static_cast<_Fun &&>(__fun), static_cast<_As &&>(__as)...);
@@ -234,7 +234,7 @@ namespace STDEXEC {
   }
 
   template <class _Tag, class _Receiver>
-  auto __mk_completion_fn(_Tag, _Receiver &__rcvr) noexcept {
+  constexpr auto __mk_completion_fn(_Tag, _Receiver &__rcvr) noexcept {
     return [&]<class... _Args>(_Args &&...__args) noexcept {
       _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
     };
@@ -248,16 +248,16 @@ namespace STDEXEC {
 
     template <class... _Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_value(_Args &&...) noexcept {
+    constexpr void set_value(_Args &&...) noexcept {
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_error(_Error &&) noexcept {
+    constexpr void set_error(_Error &&) noexcept {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-    void set_stopped() noexcept {
+    constexpr void set_stopped() noexcept {
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, noreturn, host, device)

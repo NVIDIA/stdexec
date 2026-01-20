@@ -36,89 +36,100 @@ namespace STDEXEC {
       using __id = __submit_receiver;
 
       template <class... _As>
-      void set_value(_As&&...) noexcept {
+      constexpr void set_value(_As&&...) noexcept {
       }
 
       template <class _Error>
       [[noreturn]]
-      void set_error(_Error&&) noexcept {
+      constexpr void set_error(_Error&&) noexcept {
         // A detached operation failed. There is noplace for the error to go.
         // This is unrecoverable, so we terminate.
         std::terminate();
       }
 
-      void set_stopped() noexcept {
+      constexpr void set_stopped() noexcept {
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> __root_env {
+      constexpr auto get_env() const noexcept -> __root_env {
         return {};
       }
     };
 
+    template <class _Env>
+    struct __op_base : __immovable {
+      constexpr explicit __op_base(_Env __env) noexcept(__nothrow_move_constructible<_Env>)
+        : __env_(static_cast<_Env&&>(__env)) {
+      }
+
+      virtual ~__op_base() = default;
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Env __env_;
+    };
+
+    // The start_detached receiver deletes the operation state.
+    template <class _Env>
+    struct __receiver {
+      using receiver_concept = receiver_t;
+      using __t = __receiver;
+      using __id = __receiver;
+
+      template <class... _As>
+      constexpr void set_value(_As&&...) noexcept {
+        delete __op_; // NB: invalidates *this
+      }
+
+      template <class _Error>
+      [[noreturn]]
+      constexpr void set_error(_Error&&) noexcept {
+        // A detached operation failed. There is noplace for the error to go.
+        // This is unrecoverable, so we terminate.
+        std::terminate();
+      }
+
+      constexpr void set_stopped() noexcept {
+        delete __op_; // NB: invalidates *this
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> const _Env& {
+        return __op_->__env_;
+      }
+
+      __op_base<_Env>* __op_;
+    };
+
     template <class _SenderId, class _EnvId>
-    struct __operation : __immovable {
+    struct __operation : __op_base<__t<_EnvId>> {
       using _Sender = __cvref_t<_SenderId>;
       using _Env = __t<_EnvId>;
 
-      explicit __operation(connect_t, _Sender&& __sndr, _Env __env)
-        : __env_(static_cast<_Env&&>(__env))
-        , __op_data_(static_cast<_Sender&&>(__sndr), __receiver{this}) {
+      constexpr explicit __operation(connect_t, _Sender&& __sndr, _Env __env)
+        : __op_base<__t<_EnvId>>(static_cast<_Env&&>(__env))
+        , __op_data_(static_cast<_Sender&&>(__sndr), __receiver<_Env>{this}) {
       }
 
-      explicit __operation(_Sender&& __sndr, _Env __env)
+      constexpr explicit __operation(_Sender&& __sndr, _Env __env)
         : __operation(connect, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env)) {
         // If the operation completes synchronously, then the following line will cause
         // the destruction of *this, which is not a problem because we used a delegating
         // constructor, so *this is considered fully constructed.
-        __op_data_.submit(static_cast<_Sender&&>(__sndr), __receiver{this});
+        __op_data_.submit(static_cast<_Sender&&>(__sndr), __receiver<_Env>{this});
       }
 
-      static void __destroy_delete(__operation* __self) noexcept {
-        if constexpr (__callable<get_allocator_t, _Env>) {
-          auto __alloc = STDEXEC::get_allocator(__self->__env_);
-          using _Alloc = decltype(__alloc);
-          using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
-          _OpAlloc __op_alloc{__alloc};
-          std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __self);
-          std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __self, 1);
-        } else {
-          delete __self;
-        }
+      static constexpr void
+        operator delete(__operation* __self, std::destroying_delete_t) noexcept {
+        auto __alloc = __with_default(get_allocator, std::allocator<__operation>())(__self->__env_);
+        using _Alloc = decltype(__alloc);
+        using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<__operation>;
+        _OpAlloc __op_alloc{__alloc};
+        std::allocator_traits<_OpAlloc>::destroy(__op_alloc, __self);
+        std::allocator_traits<_OpAlloc>::deallocate(__op_alloc, __self, 1);
       }
 
-      // The start_detached receiver deletes the operation state.
-      struct __receiver {
-        using receiver_concept = receiver_t;
-        using __t = __receiver;
-        using __id = __receiver;
-
-        template <class... _As>
-        void set_value(_As&&...) noexcept {
-          __operation::__destroy_delete(__op_); // NB: invalidates *this
-        }
-
-        template <class _Error>
-        [[noreturn]]
-        void set_error(_Error&&) noexcept {
-          // A detached operation failed. There is noplace for the error to go.
-          // This is unrecoverable, so we terminate.
-          std::terminate();
-        }
-
-        void set_stopped() noexcept {
-          __operation::__destroy_delete(__op_); // NB: invalidates *this
-        }
-
-        auto get_env() const noexcept -> const _Env& {
-          return __op_->__env_;
-        }
-
-        __operation* __op_;
-      };
-
-      STDEXEC_ATTRIBUTE(no_unique_address) _Env __env_;
-      STDEXEC_ATTRIBUTE(no_unique_address) submit_result<_Sender, __receiver> __op_data_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      submit_result<_Sender, __receiver<_Env>> __op_data_;
     };
 
     template <class _Sender, class _Env>
@@ -177,9 +188,9 @@ namespace STDEXEC {
           STDEXEC::__submit::__submit(static_cast<_Sender&&>(__sndr), __submit_receiver{});
         } else
 #endif
-          if constexpr (__callable<get_allocator_t, _Env>) {
+        {
           // Use the provided allocator if any to allocate the operation state.
-          auto __alloc = get_allocator(__env);
+          auto __alloc = __with_default(get_allocator, std::allocator<_Op>())(__env);
           using _Alloc = decltype(__alloc);
           using _OpAlloc = std::allocator_traits<_Alloc>::template rebind_alloc<_Op>;
           // We use the allocator to allocate the op state and also to construct it.
@@ -194,10 +205,6 @@ namespace STDEXEC {
             __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
           // The operation state is now constructed, dismiss the scope guard.
           __g.__dismiss();
-        } else {
-          // The caller did not provide an allocator, so we use the default allocator.
-          [[maybe_unused]]
-          _Op* __op = new _Op(static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
           // The operation has now started and is responsible for deleting itself when it
           // completes.
         }

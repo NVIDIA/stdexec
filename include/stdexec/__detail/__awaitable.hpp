@@ -89,7 +89,7 @@ namespace STDEXEC {
   };
 
   template <class _Tp>
-  auto __as_lvalue(_Tp&&) -> _Tp&;
+  constexpr auto __as_lvalue(_Tp&&) -> _Tp&;
 
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>

@@ -47,7 +47,7 @@ namespace exec {
       void (*__op_)(void*) noexcept = nullptr;
       void* __ptr_ = nullptr;
 
-      void join() const noexcept {
+      constexpr void join() const noexcept {
         if (__op_) {
           __op_(__ptr_);
         }
@@ -65,12 +65,12 @@ namespace exec {
       STDEXEC::inplace_stop_source __source_{};
       __env_t<_Env> __env_;
 
-      __storage_base(_Env&& __env, std::size_t __pending)
+      constexpr __storage_base(_Env&& __env, std::size_t __pending)
         : __pending_(__pending)
         , __env_(__mkenv(static_cast<_Env&&>(__env), __source_)) {
       }
 
-      void __complete() noexcept {
+      constexpr void __complete() noexcept {
         if (__pending_.fetch_sub(1) == 1) {
           auto __joiner = __joiner_.exchange(nullptr);
           if (__joiner) {
@@ -89,19 +89,19 @@ namespace exec {
         __storage_base<_EnvId>* __stg_;
 
         template <class... _As>
-        void set_value(_As&&...) noexcept {
+        constexpr void set_value(_As&&...) noexcept {
           __stg_->__complete();
         }
 
         template <class _Error>
-        void set_error(_Error&&) noexcept = delete;
+        constexpr void set_error(_Error&&) noexcept = delete;
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           __stg_->__complete();
         }
 
         // Forward all receiever queries.
-        auto get_env() const noexcept -> decltype(auto) {
+        constexpr auto get_env() const noexcept -> decltype(auto) {
           return (__stg_->__env_);
         }
       };
@@ -115,18 +115,18 @@ namespace exec {
       const __storage_base<_EnvId>* __stg_;
       _Receiver __rcvr_;
 
-      static void __join(void* __ptr) noexcept {
+      static constexpr void __join(void* __ptr) noexcept {
         auto& __op = *static_cast<__operation*>(__ptr);
         STDEXEC::set_value(static_cast<_Receiver&&>(__op.__rcvr_));
       }
 
-      __operation(const __storage_base<_EnvId>* __stg, _Receiver&& __rcvr)
+      constexpr __operation(const __storage_base<_EnvId>* __stg, _Receiver&& __rcvr)
         : __joiner{{}, __join, this}
         , __stg_(__stg)
         , __rcvr_(static_cast<_Receiver&&>(__rcvr)) {
       }
 
-      void start() & noexcept {
+      constexpr void start() & noexcept {
         const __joiner* expected = &__empty_joiner_;
         if (!__stg_->__joiner_.compare_exchange_strong(expected, this)) {
           join();
@@ -148,7 +148,7 @@ namespace exec {
         using connect_t = STDEXEC::connect_t;
 
         template <STDEXEC::receiver_of<__completions_t> _Receiver>
-        auto connect(_Receiver __rcvr) const noexcept -> __operation<_EnvId, _Receiver> {
+        constexpr auto connect(_Receiver __rcvr) const noexcept -> __operation<_EnvId, _Receiver> {
           return {__stg_, static_cast<_Receiver&&>(__rcvr)};
         }
 
@@ -175,7 +175,10 @@ namespace exec {
         __op_state_;
 
      public:
-      __storage(_Env&& __env, _AsyncScope& __scope, STDEXEC::__cvref_t<_SenderIds>&&... __sndr)
+      constexpr __storage(
+        _Env&& __env,
+        _AsyncScope& __scope,
+        STDEXEC::__cvref_t<_SenderIds>&&... __sndr)
         : __storage_base<_EnvId>(static_cast<_Env&&>(__env), sizeof...(__sndr))
         , __op_state_{STDEXEC::connect(
             __scope.nest(static_cast<STDEXEC::__cvref_t<_SenderIds>&&>(__sndr)),
@@ -184,17 +187,17 @@ namespace exec {
         STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, __op_state_);
       }
 
-      auto request_stop() noexcept -> bool {
+      constexpr auto request_stop() noexcept -> bool {
         return this->__source_.request_stop();
       }
 
       [[nodiscard]]
-      auto get_token() const noexcept -> STDEXEC::inplace_stop_token {
+      constexpr auto get_token() const noexcept -> STDEXEC::inplace_stop_token {
         return this->__source_.get_token();
       }
 
       [[nodiscard]]
-      auto async_wait() const noexcept -> __sender_t {
+      constexpr auto async_wait() const noexcept -> __sender_t {
         return __sender_t{this};
       }
     };
@@ -209,9 +212,10 @@ namespace exec {
         exec::__scope::__async_scope _AsyncScope,
         STDEXEC::sender... _Sender
       >
-      auto operator()(_Env __env, _AsyncScope& __scope, _Sender&&... __sndr) const noexcept(
-        STDEXEC::__nothrow_move_constructible<std::unwrap_reference_t<_Env>>
-        && (STDEXEC::__nothrow_move_constructible<_Sender> && ...)) {
+      constexpr auto
+        operator()(_Env __env, _AsyncScope& __scope, _Sender&&... __sndr) const noexcept(
+          STDEXEC::__nothrow_move_constructible<std::unwrap_reference_t<_Env>>
+          && (STDEXEC::__nothrow_move_constructible<_Sender> && ...)) {
         using __local_env_t = STDEXEC::__as_root_env_t<std::unwrap_reference_t<_Env>>;
         static_assert(
           !STDEXEC::sender<_Env>,
@@ -233,7 +237,7 @@ namespace exec {
       }
 
       template <exec::__scope::__async_scope _AsyncScope, STDEXEC::sender... _Sender>
-      auto operator()(_AsyncScope& __scope, _Sender&&... __sndr) const
+      constexpr auto operator()(_AsyncScope& __scope, _Sender&&... __sndr) const
         noexcept((STDEXEC::__nothrow_move_constructible<_Sender> && ...)) {
         static_assert(
           !STDEXEC::sender<_AsyncScope>,

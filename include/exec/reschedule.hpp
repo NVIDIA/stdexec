@@ -62,26 +62,26 @@ namespace exec {
         }
 
         [[nodiscard]]
-        auto get_env() const noexcept {
+        constexpr auto get_env() const noexcept {
           return STDEXEC::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 
       [[nodiscard]]
-      auto schedule() const noexcept -> __sender {
+      constexpr auto schedule() const noexcept -> __sender {
         return {};
       }
 
-      auto operator==(const __scheduler&) const noexcept -> bool = default;
+      constexpr auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
     struct __reschedule_t {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const {
+      constexpr auto operator()(_Sender&& __sndr) const {
         return STDEXEC::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
       }
 
-      auto operator()() const {
+      constexpr auto operator()() const {
         return STDEXEC::continues_on(__resched::__scheduler{});
       }
     };

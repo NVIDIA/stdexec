@@ -35,7 +35,7 @@ namespace std {
 namespace STDEXEC {
   // [func.tag_invoke], tag_invoke
   namespace __tag_invoke {
-    void tag_invoke();
+    constexpr void tag_invoke();
 
     // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
     // std::invoke is more expensive at compile time than necessary,

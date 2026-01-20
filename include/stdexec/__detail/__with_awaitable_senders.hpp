@@ -31,10 +31,10 @@ namespace STDEXEC {
   template <>
   class __coroutine_handle<void> : __std::coroutine_handle<> {
    public:
-    __coroutine_handle() = default;
+    constexpr __coroutine_handle() = default;
 
     template <class _Promise>
-    __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
+    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __std::coroutine_handle<>(__coro) {
       if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); }) {
         __stopped_callback_ = [](void* __address) noexcept -> __std::coroutine_handle<> {
@@ -52,12 +52,12 @@ namespace STDEXEC {
     }
 
     [[nodiscard]]
-    auto handle() const noexcept -> __std::coroutine_handle<> {
+    constexpr auto handle() const noexcept -> __std::coroutine_handle<> {
       return *this;
     }
 
     [[nodiscard]]
-    auto unhandled_stopped() const noexcept -> __std::coroutine_handle<> {
+    constexpr auto unhandled_stopped() const noexcept -> __std::coroutine_handle<> {
       return __stopped_callback_(address());
     }
 
@@ -72,51 +72,51 @@ namespace STDEXEC {
   template <class _Promise>
   class __coroutine_handle : public __coroutine_handle<> {
    public:
-    __coroutine_handle() = default;
+    constexpr __coroutine_handle() = default;
 
-    __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
+    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __coroutine_handle<>{__coro} {
     }
 
     [[nodiscard]]
-    static auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle {
+    static constexpr auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle {
       return __coroutine_handle(__std::coroutine_handle<_Promise>::from_promise(__promise));
     }
 
     [[nodiscard]]
-    auto promise() const noexcept -> _Promise& {
+    constexpr auto promise() const noexcept -> _Promise& {
       return __std::coroutine_handle<_Promise>::from_address(address()).promise();
     }
 
     [[nodiscard]]
-    auto handle() const noexcept -> __std::coroutine_handle<_Promise> {
+    constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise> {
       return __std::coroutine_handle<_Promise>::from_address(address());
     }
 
     [[nodiscard]]
-    operator __std::coroutine_handle<_Promise>() const noexcept {
+    constexpr operator __std::coroutine_handle<_Promise>() const noexcept {
       return handle();
     }
   };
 
   struct __with_awaitable_senders_base {
     template <class _OtherPromise>
-    void set_continuation(__std::coroutine_handle<_OtherPromise> __hcoro) noexcept {
+    constexpr void set_continuation(__std::coroutine_handle<_OtherPromise> __hcoro) noexcept {
       static_assert(!__same_as<_OtherPromise, void>);
       __continuation_ = __hcoro;
     }
 
-    void set_continuation(__coroutine_handle<> __continuation) noexcept {
+    constexpr void set_continuation(__coroutine_handle<> __continuation) noexcept {
       __continuation_ = __continuation;
     }
 
     [[nodiscard]]
-    auto continuation() const noexcept -> __coroutine_handle<> {
+    constexpr auto continuation() const noexcept -> __coroutine_handle<> {
       return __continuation_;
     }
 
     [[nodiscard]]
-    auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
+    constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<> {
       return __continuation_.unhandled_stopped();
     }
 
@@ -128,7 +128,8 @@ namespace STDEXEC {
   struct with_awaitable_senders : __with_awaitable_senders_base {
     template <class _Value>
     [[nodiscard]]
-    auto await_transform(_Value&& __val) -> __call_result_t<as_awaitable_t, _Value, _Promise&> {
+    constexpr auto
+      await_transform(_Value&& __val) -> __call_result_t<as_awaitable_t, _Value, _Promise&> {
       static_assert(__std::derived_from<_Promise, with_awaitable_senders>);
       return as_awaitable(static_cast<_Value&&>(__val), static_cast<_Promise&>(*this));
     }

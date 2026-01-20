@@ -177,6 +177,7 @@ namespace STDEXEC {
       }
     };
 
+
     template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
@@ -224,7 +225,7 @@ namespace STDEXEC {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
 
-        __op_state<_Sexpr, _Receiver>* __op_;
+        __op_base<_Sexpr, _Receiver>* __op_;
       };
 
       template <class... _Child>
@@ -238,7 +239,7 @@ namespace STDEXEC {
         return {};
       }
 
-      __op_state<_Sexpr, _Receiver>* __op_;
+      __op_base<_Sexpr, _Receiver>* __op_;
     };
 
     inline constexpr auto __drop_front = []<class _Fn>(_Fn __fn) noexcept {

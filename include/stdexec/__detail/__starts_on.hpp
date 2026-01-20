@@ -50,13 +50,14 @@ namespace STDEXEC {
   namespace __starts_on_ns {
     struct starts_on_t {
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
+      constexpr auto
+        operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         return __make_sexpr<starts_on_t>(
           static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <__decay_copyable _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         auto& [__tag, __sched, __child] = __sndr;
         return let_value(
           continues_on(just(), __sched),
@@ -64,7 +65,7 @@ namespace STDEXEC {
       }
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&&, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
         return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
       }
     };

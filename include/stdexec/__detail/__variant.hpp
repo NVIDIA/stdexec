@@ -62,7 +62,7 @@ namespace STDEXEC {
      public:
       template <class _Fn, class... _Us>
       STDEXEC_ATTRIBUTE(host, device)
-      void visit(_Fn &&, _Us &&...) const noexcept {
+      constexpr void visit(_Fn &&, _Us &&...) const noexcept {
         STDEXEC_ASSERT(false);
       }
 
@@ -97,7 +97,7 @@ namespace STDEXEC {
       using __at = __m_at_c<_Ny, _Ts...>;
 
       // immovable:
-      __variant(__variant &&) = delete;
+      constexpr __variant(__variant &&) = delete;
 
       STDEXEC_ATTRIBUTE(host, device)
       __variant() noexcept = default;

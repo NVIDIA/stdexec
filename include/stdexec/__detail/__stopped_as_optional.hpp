@@ -40,7 +40,7 @@ namespace STDEXEC {
 
     struct stopped_as_optional_t {
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
         return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
       }
 

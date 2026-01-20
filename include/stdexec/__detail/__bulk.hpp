@@ -47,69 +47,72 @@ namespace STDEXEC {
     struct __policy_wrapper {
       _Pol __pol_;
 
-      /*implicit*/ __policy_wrapper(_Pol __pol)
+      /*implicit*/ constexpr __policy_wrapper(_Pol __pol)
         : __pol_{__pol} {
       }
 
       [[nodiscard]]
-      const _Pol& __get() const noexcept {
+      constexpr const _Pol& __get() const noexcept {
         return __pol_;
       }
     };
 
     template <>
     struct __policy_wrapper<sequenced_policy> {
-      /*implicit*/ __policy_wrapper(const sequenced_policy&) {
+      /*implicit*/ constexpr __policy_wrapper(const sequenced_policy&) {
       }
 
       [[nodiscard]]
-      const sequenced_policy& __get() const noexcept {
+      constexpr const sequenced_policy& __get() const noexcept {
         return seq;
       }
     };
 
     template <>
     struct __policy_wrapper<parallel_policy> {
-      /*implicit*/ __policy_wrapper(const parallel_policy&) {
+      /*implicit*/ constexpr __policy_wrapper(const parallel_policy&) {
       }
 
       [[nodiscard]]
-      const parallel_policy& __get() const noexcept {
+      constexpr const parallel_policy& __get() const noexcept {
         return par;
       }
     };
 
     template <>
     struct __policy_wrapper<parallel_unsequenced_policy> {
-      /*implicit*/ __policy_wrapper(const parallel_unsequenced_policy&) {
+      /*implicit*/ constexpr __policy_wrapper(const parallel_unsequenced_policy&) {
       }
 
       [[nodiscard]]
-      const parallel_unsequenced_policy& __get() const noexcept {
+      constexpr const parallel_unsequenced_policy& __get() const noexcept {
         return par_unseq;
       }
     };
 
     template <>
     struct __policy_wrapper<unsequenced_policy> {
-      /*implicit*/ __policy_wrapper(const unsequenced_policy&) {
+      /*implicit*/ constexpr __policy_wrapper(const unsequenced_policy&) {
       }
 
       [[nodiscard]]
-      const unsequenced_policy& __get() const noexcept {
+      constexpr const unsequenced_policy& __get() const noexcept {
         return unseq;
       }
     };
 
     template <class _Pol, class _Shape, class _Fun>
     struct __data {
-      STDEXEC_ATTRIBUTE(no_unique_address) __policy_wrapper<_Pol> __pol_;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __policy_wrapper<_Pol> __pol_;
       _Shape __shape_;
-      STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      _Fun __fun_;
     };
 
     template <class _Pol, class _Shape, class _Fun>
-    __data(const _Pol&, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __data(const _Pol&, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
     template <class _AlgoTag>
     struct __bulk_traits;
@@ -238,7 +241,7 @@ namespace STDEXEC {
     };
 
     template <class _Fun>
-    __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
 
     struct bulk_t : __generic_bulk_t<bulk_t> {
       struct __transform_sender_fn {
@@ -254,7 +257,7 @@ namespace STDEXEC {
       };
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         return __apply(__transform_sender_fn(), static_cast<_Sender&&>(__sndr));
       }
     };

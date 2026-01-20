@@ -25,14 +25,14 @@ namespace exec {
   // make_completion_signatures
   namespace detail {
     template <class Tag, class... As>
-    auto normalize_impl(As&&...) -> Tag (*)(As...);
+    constexpr auto normalize_impl(As&&...) -> Tag (*)(As...);
 
     template <class Tag, class... As>
-    auto normalize(Tag (*)(As...))
+    constexpr auto normalize(Tag (*)(As...))
       -> decltype(detail::normalize_impl<Tag>(STDEXEC::__declval<As>()...));
 
     template <class... Sigs>
-    auto make_unique(Sigs*...)
+    constexpr auto make_unique(Sigs*...)
       -> STDEXEC::__mapply_q<STDEXEC::completion_signatures, STDEXEC::__mmake_set<Sigs...>>;
 
     template <class... Sigs>

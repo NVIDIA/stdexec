@@ -97,7 +97,8 @@ namespace exec {
     };
 
     template <class _Child>
-    __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
     template <class _Sender, class _Receiver>
     struct __repeat_n_state : __repeat_n_state_base<_Receiver> {
@@ -105,7 +106,7 @@ namespace exec {
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __child_t &>;
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
       constexpr explicit __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr)

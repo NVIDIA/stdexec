@@ -37,7 +37,7 @@ namespace STDEXEC {
 
   namespace __detail {
     struct __not_a_variant {
-      __not_a_variant() = delete;
+      constexpr __not_a_variant() = delete;
     };
   } // namespace __detail
 
@@ -413,7 +413,7 @@ namespace STDEXEC {
 
 template <class...>
 [[deprecated]]
-void __print() {
+constexpr void __print() {
 }
 
 template <class...>

@@ -38,7 +38,7 @@ namespace STDEXEC {
     struct __with_await_transform {
       template <class _Ty>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      auto await_transform(_Ty&& __value) noexcept -> _Ty&& {
+      constexpr auto await_transform(_Ty&& __value) noexcept -> _Ty&& {
         return static_cast<_Ty&&>(__value);
       }
 

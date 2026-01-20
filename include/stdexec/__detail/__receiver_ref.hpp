@@ -29,28 +29,28 @@ namespace STDEXEC {
     using receiver_concept = receiver_t;
 
     STDEXEC_ATTRIBUTE(host, device)
-    explicit constexpr __rcvr_ref(_Rcvr& __rcvr) noexcept
+    constexpr explicit __rcvr_ref(_Rcvr& __rcvr) noexcept
       : __rcvr_{std::addressof(__rcvr)} {
     }
 
     template <class... _As>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_value(_As&&... __as) noexcept {
+    constexpr void set_value(_As&&... __as) noexcept {
       STDEXEC::set_value(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_error(_Error&& __err) noexcept {
+    constexpr void set_error(_Error&& __err) noexcept {
       STDEXEC::set_error(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_Error&&>(__err));
     }
 
-    STDEXEC_ATTRIBUTE(host, device) void set_stopped() noexcept {
+    STDEXEC_ATTRIBUTE(host, device) constexpr void set_stopped() noexcept {
       STDEXEC::set_stopped(static_cast<_Rcvr&&>(*__rcvr_));
     }
 
-    [[nodiscard]]
-    STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> _Env {
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    constexpr auto get_env() const noexcept -> _Env {
       static_assert(
         __same_as<_Env, env_of_t<_Rcvr>>, "get_env() must return the same type as env_of_t<_Rcvr>");
       return STDEXEC::get_env(*__rcvr_);

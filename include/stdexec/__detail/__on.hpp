@@ -66,13 +66,14 @@ namespace STDEXEC {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct on_t {
       template <scheduler _Scheduler, sender _Sender>
-      auto operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
+      constexpr auto
+        operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
         return __make_sexpr<on_t>(
           static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
       }
 
       template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
-      auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
+      constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
         -> __well_formed_sender auto {
         return __make_sexpr<on_t>(
           __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
@@ -81,7 +82,7 @@ namespace STDEXEC {
 
       template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
+      constexpr auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const {
         return __closure(
           *this, static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur));
       }
@@ -141,7 +142,7 @@ namespace STDEXEC {
       >;
 
       template <class _Sender, class _OldSched, class _NewSched>
-      static auto __reschedule(
+      static constexpr auto __reschedule(
         _Sender&& __sndr,
         [[maybe_unused]] _OldSched&& __old_sched,
         _NewSched&& __new_sched) {

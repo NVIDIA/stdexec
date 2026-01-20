@@ -55,7 +55,7 @@ namespace STDEXEC {
 
     template <class _Sender, class _Receiver>
     struct _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_ {
-      void operator()() const noexcept = delete;
+      constexpr void operator()() const noexcept = delete;
     };
 
     /////////////////////////////////////////////////////////////////////////////
