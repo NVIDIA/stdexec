@@ -41,15 +41,17 @@ namespace STDEXEC {
   template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
+  template <class _Sender>
   struct _WITH_SENDER_ { };
 
+  template <class... _Senders>
   struct _WITH_SENDERS_ { };
 
   template <class _Sender>
-  using _WITH_PRETTY_SENDER_ = _WITH_SENDER_(__demangle_t<_Sender>);
+  using _WITH_PRETTY_SENDER_ = _WITH_SENDER_<__demangle_t<_Sender>>;
 
   template <class... _Senders>
-  using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_(__demangle_t<_Senders>...);
+  using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_<__demangle_t<_Senders>...>;
 
   struct _WITH_ENVIRONMENT_ { };
 

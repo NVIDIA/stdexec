@@ -131,7 +131,7 @@ namespace STDEXEC {
 
   namespace __cmplsigs {
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    template <class _WantedTag>
+    template <class _WantedTag, bool = true>
     struct __gather_sigs_fn;
 
     template <>
@@ -191,6 +191,18 @@ namespace STDEXEC {
       >;
     };
 
+    template <class _WantedTag>
+    struct __gather_sigs_fn<_WantedTag, false> {
+      template <
+        class _Error,
+        template <class...> class,
+        template <class...> class,
+        template <class...> class,
+        class...
+      >
+      using __f = _Error;
+    };
+
     template <class... _Values>
     using __default_set_value = completion_signatures<set_value_t(_Values...)>;
 
@@ -209,8 +221,10 @@ namespace STDEXEC {
     template <class...> class _Variant,
     class... _More
   >
-  using __gather_completion_signatures_t =
-    __cmplsigs::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
+  using __gather_completion_signatures_t = __cmplsigs::__gather_sigs_fn<
+    _WantedTag,
+    __ok<_Sigs>
+  >::template __f<_Sigs, _Then, _Else, _Variant, _More...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures

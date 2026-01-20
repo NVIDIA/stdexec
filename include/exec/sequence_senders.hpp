@@ -75,15 +75,17 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
 namespace exec {
+  template <class _Sequence>
   struct _WITH_SEQUENCE_ { };
 
+  template <class... _Sequences>
   struct _WITH_SEQUENCES_ { };
 
   template <class _Sequence>
-  using _WITH_PRETTY_SEQUENCE_ = _WITH_SEQUENCE_(STDEXEC::__demangle_t<_Sequence>);
+  using _WITH_PRETTY_SEQUENCE_ = _WITH_SEQUENCE_<STDEXEC::__demangle_t<_Sequence>>;
 
   template <class... _Sequences>
-  using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_(STDEXEC::__demangle_t<_Sequences>...);
+  using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
   struct sequence_sender_t : STDEXEC::sender_t { };
 
