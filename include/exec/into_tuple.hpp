@@ -62,6 +62,13 @@ namespace exec {
     >;
 
     struct __into_tuple_impl : __sexpr_defaults {
+      template <class _Receiver, class _Tuple>
+      struct __state {
+        using __tuple_t = _Tuple;
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        _Receiver __rcvr_;
+      };
+
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
         // TODO: port this to use constant evaluation
@@ -69,28 +76,27 @@ namespace exec {
       }
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender &&, _Receiver &) {
-          return __mtype<__result_tuple_t<__child_of<_Sender>, env_of_t<_Receiver>>>();
+        []<class _Sender, class _Receiver>(_Sender &&, _Receiver &&__rcvr) {
+          using __tuple_t = __result_tuple_t<__child_of<_Sender>, env_of_t<_Receiver>>;
+          return __state<_Receiver, __tuple_t>{static_cast<_Receiver &&>(__rcvr)};
         };
 
-      static constexpr auto complete =
-        []<class _State, class _Receiver, class _Tag, class... _Args>(
-          __ignore,
-          _State,
-          _Receiver &__rcvr,
-          _Tag,
-          _Args &&...__args) noexcept -> void {
+      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+                                         __ignore,
+                                         _State &__state,
+                                         _Tag,
+                                         _Args &&...__args) noexcept -> void {
         if constexpr (__std::same_as<_Tag, set_value_t>) {
-          using __tuple_t = __t<_State>;
+          using __tuple_t = _State::__tuple_t;
           STDEXEC_TRY {
             set_value(
-              static_cast<_Receiver &&>(__rcvr), __tuple_t{static_cast<_Args &&>(__args)...});
+              static_cast<_State &&>(__state).__rcvr_, __tuple_t{static_cast<_Args &&>(__args)...});
           }
           STDEXEC_CATCH_ALL {
-            STDEXEC::set_error(static_cast<_Receiver &&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_State &&>(__state).__rcvr_, std::current_exception());
           }
         } else {
-          _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
+          _Tag()(static_cast<_State &&>(__state).__rcvr_, static_cast<_Args &&>(__args)...);
         }
       };
     };

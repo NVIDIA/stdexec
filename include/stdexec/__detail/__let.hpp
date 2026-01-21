@@ -280,10 +280,11 @@ namespace STDEXEC {
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _Sender, class _Fun, class _Receiver, class... _Tuples>
-    struct __let_state {
+    struct __state {
       using __env2_t =
         __let::__env2_t<_SetTag, env_of_t<const _Sender&>, env_of_t<const _Receiver&>>;
       using __second_rcvr_t = __receiver_with_env_t<_Receiver, __env2_t>;
+
       template <class _Tag, class... _Args>
       constexpr void __impl(_Receiver& __rcvr, _Tag __tag, _Args&&... __args) noexcept {
         if constexpr (std::is_same_v<_SetTag, _Tag>) {
@@ -312,25 +313,30 @@ namespace STDEXEC {
           __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
         }
       }
+
       struct __first_rcvr_t {
         using receiver_concept = ::STDEXEC::receiver_t;
-        __let_state& __state;
-        _Receiver& __rcvr;
+
         template <class... _Args>
         constexpr void set_value(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::STDEXEC::set_value, static_cast<_Args&&>(__args)...);
+          __state_.__impl(__state_.__rcvr_, ::STDEXEC::set_value, static_cast<_Args&&>(__args)...);
         }
         template <class... _Args>
         constexpr void set_error(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::STDEXEC::set_error, static_cast<_Args&&>(__args)...);
+          __state_.__impl(__state_.__rcvr_, ::STDEXEC::set_error, static_cast<_Args&&>(__args)...);
         }
         template <class... _Args>
         constexpr void set_stopped(_Args&&... __args) noexcept {
-          __state.__impl(__rcvr, ::STDEXEC::set_stopped, static_cast<_Args&&>(__args)...);
+          __state_
+            .__impl(__state_.__rcvr_, ::STDEXEC::set_stopped, static_cast<_Args&&>(__args)...);
         }
-        constexpr decltype(auto) get_env() const noexcept {
-          return ::STDEXEC::get_env(__rcvr);
+        // TODO(ericniebler): make this constexpr
+        //constexpr
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return ::STDEXEC::get_env(__state_.__rcvr_);
         }
+
+        __state& __state_;
       };
 
       using __result_variant = __variant_for<__monostate, _Tuples...>;
@@ -340,17 +346,20 @@ namespace STDEXEC {
         __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
       >;
 
-      constexpr explicit __let_state(_Sender&& __sender, _Fun __fn, _Receiver& __r) noexcept(
+      constexpr explicit __state(_Sender&& __sender, _Fun __fn, _Receiver&& __rcvr) noexcept(
         __nothrow_connectable<_Sender, __first_rcvr_t>
         && std::is_nothrow_move_constructible_v<_Fun>)
-        : __fn_(static_cast<_Fun&&>(__fn))
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __fn_(static_cast<_Fun&&>(__fn))
         , __env2_(
             // TODO(ericniebler): this needs a fallback
-            __let::__mk_env2<_SetTag>(::STDEXEC::get_env(__sender), ::STDEXEC::get_env(__r))) {
+            __let::__mk_env2<_SetTag>(::STDEXEC::get_env(__sender), ::STDEXEC::get_env(__rcvr_))) {
         __storage_.emplace_from(
-          ::STDEXEC::connect, static_cast<_Sender&&>(__sender), __first_rcvr_t{*this, __r});
+          ::STDEXEC::connect, static_cast<_Sender&&>(__sender), __first_rcvr_t{*this});
       }
 
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Fun __fn_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -627,13 +636,13 @@ namespace STDEXEC {
       }
 
       static constexpr auto get_state =
-        []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, _Receiver& __rcvr)
+        []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, _Receiver&& __rcvr)
         requires sender_in<__child_of_t<_Sender>, env_of_t<_Receiver>>
       {
         static_assert(sender_expr_for<_Sender, __let_tag<_SetTag>>);
         using _Child = __child_of_t<_Sender>;
         using _Fun = __decay_t<__fn_of_t<_Sender>>;
-        using __mk_let_state = __mbind_front_q<__let_state, _SetTag, _Child, _Fun, _Receiver>;
+        using __mk_let_state = __mbind_front_q<__state, _SetTag, _Child, _Fun, _Receiver>;
         using __let_state_t = __gather_completions_of_t<
           _SetTag,
           _Child,
@@ -643,13 +652,14 @@ namespace STDEXEC {
         >;
         auto&& [__tag, __data] = static_cast<_Sender&&>(__sndr);
         return __let_state_t(
-          __forward_like<_Sender>(__data).__sndr, __forward_like<_Sender>(__data).__fn, __rcvr);
+          __forward_like<_Sender>(__data).__sndr,
+          __forward_like<_Sender>(__data).__fn,
+          static_cast<_Receiver&&>(__rcvr));
       };
 
-      static constexpr auto start =
-        []<class _State, class _Receiver>(_State& __state, _Receiver&) noexcept {
-          ::STDEXEC::start(__state.__storage_.template get<1>());
-        };
+      static constexpr auto start = []<class _State>(_State& __state) noexcept {
+        ::STDEXEC::start(__state.__storage_.template get<1>());
+      };
     };
   } // namespace __let
 

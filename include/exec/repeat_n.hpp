@@ -63,7 +63,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__receiver());
+          return STDEXEC::get_env(__state_->__rcvr_);
         }
       };
     };
@@ -78,12 +78,7 @@ namespace exec {
     __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
     template <class _Sender, class _Receiver>
-    struct __repeat_n_state
-      : STDEXEC::__enable_receiver_from_this<
-          _Sender,
-          _Receiver,
-          __repeat_n_state<_Sender, _Receiver>
-        > {
+    struct __repeat_n_state {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
@@ -91,8 +86,9 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-      __repeat_n_state(_Sender &&__sndr, _Receiver &)
-        : __pair_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
+      __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr)
+        : __rcvr_(static_cast<_Receiver &&>(__rcvr))
+        , __pair_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
         // Q: should we skip __connect() if __count_ == 0?
         __connect();
       }
@@ -106,7 +102,7 @@ namespace exec {
 
       void __start() noexcept {
         if (__pair_.__count_ == 0) {
-          STDEXEC::set_value(static_cast<_Receiver &&>(this->__receiver()));
+          STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
         } else {
           STDEXEC::start(*__child_op_);
         }
@@ -124,26 +120,27 @@ namespace exec {
 
           if constexpr (__std::same_as<_Tag, set_value_t>) {
             if (--__pair_.__count_ == 0) {
-              STDEXEC::set_value(std::move(this->__receiver()));
+              STDEXEC::set_value(std::move(__rcvr_));
             } else {
               STDEXEC::start(__connect());
             }
           } else {
-            _Tag()(std::move(this->__receiver()), static_cast<__decay_t<_Args> &&>(__arg_copy)...);
+            _Tag()(std::move(__rcvr_), static_cast<__decay_t<_Args> &&>(__arg_copy)...);
           }
         }
         STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(std::move(this->__receiver()), std::current_exception());
+          STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
         }
       }
 
+      _Receiver __rcvr_;
       __child_count_pair<__child_t> __pair_;
       STDEXEC::__optional<__child_op_t> __child_op_;
       trampoline_scheduler __sched_;
     };
 
     template <class _Sender, class _Receiver>
-    __repeat_n_state(_Sender &&, _Receiver &) -> __repeat_n_state<_Sender, _Receiver>;
+    __repeat_n_state(_Sender &&, _Receiver) -> __repeat_n_state<_Sender, _Receiver>;
 
     struct repeat_n_t;
     struct _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_;
@@ -186,12 +183,13 @@ namespace exec {
         return __completions_t<__data_of<_Sender>, _Env...>{};
       }
 
-      static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_n_state{static_cast<_Sender &&>(__sndr), __rcvr};
-        };
+      static constexpr auto get_state = []<class _Sender, class _Receiver>(
+                                          _Sender &&__sndr,
+                                          _Receiver &&__rcvr) {
+        return __repeat_n_state{static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr)};
+      };
 
-      static constexpr auto start = [](auto &__state, __ignore) noexcept -> void {
+      static constexpr auto start = [](auto &__state) noexcept -> void {
         __state.__start();
       };
     };

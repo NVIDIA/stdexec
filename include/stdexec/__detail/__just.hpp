@@ -46,18 +46,20 @@ namespace STDEXEC {
         return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
       }
 
-      static constexpr auto start =
-        []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
+      static constexpr auto start = []<class _State>(_State& __state) noexcept -> void {
         STDEXEC::__apply(
-          __tag_t(), static_cast<_State&&>(__state), static_cast<_Receiver&&>(__rcvr));
+          __tag_t(),
+          static_cast<_State&&>(__state).__data_,
+          static_cast<_State&&>(__state).__rcvr_);
       };
 
       static constexpr auto submit =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept -> void {
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept -> void {
         static_assert(sender_expr_for<_Sender, _JustTag>);
-        auto&& __state = get_state(static_cast<_Sender&&>(__sndr), __rcvr);
         STDEXEC::__apply(
-          __tag_t(), static_cast<decltype(__state)>(__state), static_cast<_Receiver&&>(__rcvr));
+          __tag_t(),
+          STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr)),
+          static_cast<_Receiver&&>(__rcvr));
       };
     };
 

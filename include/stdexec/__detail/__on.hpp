@@ -107,6 +107,7 @@ namespace STDEXEC {
       // predecessor sender, so the scheduler we want to restore is the completion
       // scheduler of __child.
       template <__decay_copyable _Sender, class _Env>
+        requires(!scheduler<__data_of<_Sender>>)
       STDEXEC_ATTRIBUTE(always_inline)
       static auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) {
         auto& [__tag, __data, __child] = __sndr;

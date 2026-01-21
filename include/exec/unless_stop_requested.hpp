@@ -80,16 +80,15 @@ namespace exec {
       };
 
       static constexpr auto start = //
-        []<class _State, class _Receiver, class _Operation>(
-          _State&,
-          _Receiver& __rcvr,
-          _Operation& __child_op) noexcept -> void {
-        static_assert(!__unstoppable_receiver<_Receiver>);
-        if (get_stop_token(STDEXEC::get_env(__rcvr)).stop_requested()) {
-          STDEXEC::set_stopped((_Receiver&&) __rcvr);
-          return;
+        []<class _State, class _Operation>(_State& __state, _Operation& __child_op) noexcept
+        -> void {
+        using __receiver_t = _State::__receiver_t;
+        static_assert(!__unstoppable_receiver<__receiver_t>);
+        if (get_stop_token(STDEXEC::get_env(__state.__rcvr_)).stop_requested()) {
+          STDEXEC::set_stopped(static_cast<__receiver_t&&>(__state.__rcvr_));
+        } else {
+          STDEXEC::start(__child_op);
         }
-        STDEXEC::start(__child_op);
       };
 
       static constexpr __connect_fn connect{};

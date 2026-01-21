@@ -292,31 +292,27 @@ namespace STDEXEC {
       //! When setting value, it calls the function with the entire range.
       //! Note: This is not done in parallel. That is customized by the scheduler.
       //! See, e.g., static_thread_pool::bulk_receiver::__t.
-      static constexpr auto complete =
-        []<class _Tag, class _State, class _Receiver, class... _Args>(
-          __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag,
+                                         _Args&&... __args) noexcept -> void {
         if constexpr (__std::same_as<_Tag, set_value_t>) {
           // Intercept set_value and dispatch to the bulk operation.
-          using __shape_t = decltype(__state.__shape_);
-          if constexpr (noexcept(__state.__fun_(__shape_t{}, __shape_t{}, __args...))) {
-            // The noexcept version that doesn't need try/catch:
-            __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
-            _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-          } else {
-            STDEXEC_TRY {
-              __state.__fun_(static_cast<__shape_t>(0), __state.__shape_, __args...);
-              _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            }
-            STDEXEC_CATCH_ALL {
-              STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+          using __shape_t = decltype(__state.__data_.__shape_);
+          using __fun_t = decltype(__state.__data_.__fun_);
+          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, __shape_t, _Args...>;
+          STDEXEC_TRY {
+            __state.__data_.__fun_(static_cast<__shape_t>(0), __state.__data_.__shape_, __args...);
+            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__is_nothrow) {
+              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }
           }
         } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
     };
@@ -325,34 +321,29 @@ namespace STDEXEC {
       //! This implements the core default behavior for `bulk_unchunked`:
       //! When setting value, it loops over the shape and invokes the function.
       //! Note: This is not done in concurrently. That is customized by the scheduler.
-      static constexpr auto complete =
-        []<class _Tag, class _State, class _Receiver, class... _Args>(
-          __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag,
+                                         _Args&&... __args) noexcept -> void {
         if constexpr (__std::same_as<_Tag, set_value_t>) {
-          using __shape_t = decltype(__state.__shape_);
-          if constexpr (noexcept(__state.__fun_(__shape_t{}, __args...))) {
-            // The noexcept version that doesn't need try/catch:
-            for (__shape_t __i{}; __i != __state.__shape_; ++__i) {
-              __state.__fun_(__i, __args...);
+          using __shape_t = decltype(__state.__data_.__shape_);
+          using __fun_t = decltype(__state.__data_.__fun_);
+          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, _Args...>;
+          const auto __shape = __state.__data_.__shape_;
+          STDEXEC_TRY {
+            for (__shape_t __i{}; __i != __shape; ++__i) {
+              __state.__data_.__fun_(__i, __args...);
             }
-            _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-          } else {
-            STDEXEC_TRY {
-              for (__shape_t __i{}; __i != __state.__shape_; ++__i) {
-                __state.__fun_(__i, __args...);
-              }
-              _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-            }
-            STDEXEC_CATCH_ALL {
-              STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__is_nothrow) {
+              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }
           }
         } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
     };
