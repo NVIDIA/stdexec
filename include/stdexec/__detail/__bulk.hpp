@@ -301,13 +301,13 @@ namespace STDEXEC {
           // Intercept set_value and dispatch to the bulk operation.
           using __shape_t = decltype(__state.__data_.__shape_);
           using __fun_t = decltype(__state.__data_.__fun_);
-          constexpr bool __nothrow = __nothrow_callable<__fun_t, __shape_t, __shape_t, _Args...>;
+          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, __shape_t, _Args...>;
           STDEXEC_TRY {
             __state.__data_.__fun_(static_cast<__shape_t>(0), __state.__data_.__shape_, __args...);
             _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow) {
+            if constexpr (!__is_nothrow) {
               STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }
           }
@@ -329,7 +329,7 @@ namespace STDEXEC {
         if constexpr (__std::same_as<_Tag, set_value_t>) {
           using __shape_t = decltype(__state.__data_.__shape_);
           using __fun_t = decltype(__state.__data_.__fun_);
-          constexpr bool __nothrow = __nothrow_callable<__fun_t, __shape_t, _Args...>;
+          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, _Args...>;
           const auto __shape = __state.__data_.__shape_;
           STDEXEC_TRY {
             for (__shape_t __i{}; __i != __shape; ++__i) {
@@ -338,7 +338,7 @@ namespace STDEXEC {
             _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow) {
+            if constexpr (!__is_nothrow) {
               STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }
           }
