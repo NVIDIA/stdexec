@@ -90,7 +90,7 @@ namespace STDEXEC {
       return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void {
         STDEXEC::__apply(
           [&]<class... _Args>(auto __tag, _Args&... __args) noexcept -> void {
-            __tag(std::move(__state->__receiver()), static_cast<_Args&&>(__args)...);
+            __tag(std::move(__state->__rcvr_), static_cast<_Args&&>(__args)...);
           },
           __tupl);
       };
@@ -117,15 +117,15 @@ namespace STDEXEC {
         template <class _Error>
         void set_error(_Error&& __err) noexcept {
           STDEXEC::set_error(
-            static_cast<_Receiver&&>(__state_->__receiver()), static_cast<_Error&&>(__err));
+            static_cast<_Receiver&&>(__state_->__rcvr_), static_cast<_Error&&>(__err));
         }
 
         void set_stopped() noexcept {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__state_->__receiver()));
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__state_->__rcvr_));
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__receiver());
+          return STDEXEC::get_env(__state_->__rcvr_);
         }
 
         __state<_Scheduler, _Sexpr, _Receiver>* __state_;
@@ -136,17 +136,17 @@ namespace STDEXEC {
     using __receiver2 = __t<__rcvr2<__id<_Scheduler>, __id<_Sexpr>, __id<_Receiver>>>;
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state
-      : __enable_receiver_from_this<_Sexpr, _Receiver, __state<_Scheduler, _Sexpr, _Receiver>>
-      , __immovable {
+    struct __state : __immovable {
       using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Scheduler, _Sexpr, _Receiver>;
 
-      explicit __state(_Scheduler __sched)
-        : __data_()
+      explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __data_()
         , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
       }
 
+      _Receiver __rcvr_;
       __variant_t __data_;
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
     };
@@ -370,21 +370,20 @@ namespace STDEXEC {
       }
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&)
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr)
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
         auto __sched = STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr));
-        return __state<decltype(__sched), _Sender, _Receiver>{__sched};
+        return __state<decltype(__sched), _Sender, _Receiver>{
+          __sched, static_cast<_Receiver&&>(__rcvr)};
       };
 
-      static constexpr auto complete =
-        []<class _State, class _Receiver, class _Tag, class... _Args>(
-          __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Tag __tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag __tag,
+                                         _Args&&... __args) noexcept -> void {
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
         if constexpr (__nothrow_callable<__mktuple_t, _Tag, _Args...>) {
@@ -394,7 +393,7 @@ namespace STDEXEC {
             __state.__data_.emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL {
-            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             return;
           }
         }

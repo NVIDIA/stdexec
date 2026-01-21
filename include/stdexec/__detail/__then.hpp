@@ -67,25 +67,17 @@ namespace STDEXEC {
         return {};
       };
 
-      // template <class _Sender, class... _Env>
-      // static consteval auto get_completion_signatures() //
-      // -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
-      //   static_assert(sender_expr_for<_Sender, then_t>);
-      //   return {};
-      // }
-
       struct __complete_fn {
-        template <class _Tag, class _State, class _Receiver, class... _Args>
+        template <class _Tag, class _State, class... _Args>
         STDEXEC_ATTRIBUTE(host, device)
-        void operator()(__ignore, _State& __state, _Receiver& __rcvr, _Tag, _Args&&... __args)
-          const noexcept {
+        void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
             STDEXEC::__set_value_invoke(
-              static_cast<_Receiver&&>(__rcvr),
-              static_cast<_State&&>(__state),
+              static_cast<_State&&>(__state).__rcvr_,
+              static_cast<_State&&>(__state).__data_,
               static_cast<_Args&&>(__args)...);
           } else {
-            _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
           }
         }
       };

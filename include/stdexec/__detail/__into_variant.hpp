@@ -68,32 +68,37 @@ namespace STDEXEC {
       }
     };
 
+    template <class _Receiver, class _Variant>
+    struct __state {
+      using __variant_t = _Variant;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+    };
+
     struct __into_variant_impl : __sexpr_defaults {
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept {
+        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept {
           using __variant_t = value_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>;
-          return __mtype<__variant_t>();
+          return __state<_Receiver, __variant_t>{static_cast<_Receiver&&>(__rcvr)};
         };
 
-      static constexpr auto complete =
-        []<class _State, class _Receiver, class _Tag, class... _Args>(
-          __ignore,
-          _State,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag,
+                                         _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_value_t>) {
-          using __variant_t = __t<_State>;
+          using __variant_t = _State::__variant_t;
           STDEXEC_TRY {
             set_value(
-              static_cast<_Receiver&&>(__rcvr),
+              static_cast<_State&&>(__state).__rcvr_,
               __variant_t{std::tuple<_Args&&...>{static_cast<_Args&&>(__args)...}});
           }
           STDEXEC_CATCH_ALL {
-            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
           }
         } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
 

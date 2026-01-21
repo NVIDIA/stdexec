@@ -17,8 +17,8 @@
 #pragma once
 
 #include "../stdexec/__detail/__basic_sender.hpp"
-#include "../stdexec/__detail/__manual_lifetime.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 
 #include "sequence.hpp"
@@ -59,7 +59,7 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__receiver());
+          return STDEXEC::get_env(__state_->__rcvr_);
         }
       };
     };
@@ -71,50 +71,32 @@ namespace exec {
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Sender, class _Receiver>
-    struct __repeat_effect_state
-      : STDEXEC::__enable_receiver_from_this<
-          _Sender,
-          _Receiver,
-          __repeat_effect_state<_Sender, _Receiver>
-        > {
+    struct __repeat_effect_state {
       using __child_t = __decay_t<__data_of<_Sender>>;
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
       using __child_on_sched_sender_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-      __child_t __child_;
-      bool __has_child_op_ = false;
-      STDEXEC::__manual_lifetime<__child_op_t> __child_op_;
-      trampoline_scheduler __sched_;
-
-      __repeat_effect_state(_Sender &&__sndr, _Receiver &)
-        : __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
+      explicit __repeat_effect_state(_Sender &&__sndr, _Receiver &&__rcvr)
+        : __rcvr_(static_cast<_Receiver &&>(__rcvr))
+        , __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
         __connect();
       }
 
-      ~__repeat_effect_state() {
-        if (__has_child_op_) {
-          __child_op_.__destroy();
-        }
-      }
-
       void __connect() {
-        __child_op_.__construct_from([this] {
-          return STDEXEC::connect(
-            exec::sequence(STDEXEC::schedule(__sched_), __child_), __receiver_t{this});
-        });
-        __has_child_op_ = true;
+        __child_op_.__emplace_from(
+          STDEXEC::connect,
+          exec::sequence(STDEXEC::schedule(__sched_), __child_),
+          __receiver_t{this});
       }
 
       void __destroy() noexcept {
-        __child_op_.__destroy();
-        __has_child_op_ = false;
+        __child_op_.reset();
       }
 
       void __start() noexcept {
-        STDEXEC_ASSERT(__has_child_op_);
-        STDEXEC::start(__child_op_.__get());
+        STDEXEC::start(*__child_op_);
       }
 
       template <class _Tag, class... _Args>
@@ -123,12 +105,12 @@ namespace exec {
           // If the sender completed with true, we're done
           STDEXEC_TRY {
             if constexpr ((__compile_time_bool_of<_Args, true> && ...)) {
-              STDEXEC::set_value(static_cast<_Receiver &&>(this->__receiver()));
+              STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
               return;
             } else if constexpr (!(__compile_time_bool_of<_Args, false> && ...)) {
               const bool __done = (static_cast<bool>(static_cast<_Args &&>(__args)) && ...);
               if (__done) {
-                STDEXEC::set_value(static_cast<_Receiver &&>(this->__receiver()));
+                STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
                 return;
               }
             }
@@ -137,25 +119,28 @@ namespace exec {
               __connect();
             }
             STDEXEC_CATCH_ALL {
-              STDEXEC::set_error(
-                static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
+              STDEXEC::set_error(static_cast<_Receiver &&>(__rcvr_), std::current_exception());
               return;
             }
-            STDEXEC::start(__child_op_.__get());
+            STDEXEC::start(*__child_op_);
           }
           STDEXEC_CATCH_ALL {
             __destroy();
-            STDEXEC::set_error(
-              static_cast<_Receiver &&>(this->__receiver()), std::current_exception());
+            STDEXEC::set_error(static_cast<_Receiver &&>(__rcvr_), std::current_exception());
           }
         } else {
-          _Tag()(static_cast<_Receiver &&>(this->__receiver()), static_cast<_Args &&>(__args)...);
+          _Tag()(static_cast<_Receiver &&>(__rcvr_), static_cast<_Args &&>(__args)...);
         }
       }
+
+      _Receiver __rcvr_;
+      __child_t __child_;
+      STDEXEC::__optional<__child_op_t> __child_op_;
+      trampoline_scheduler __sched_;
     };
 
     template <class _Sender, class _Receiver>
-    __repeat_effect_state(_Sender &&, _Receiver &) -> __repeat_effect_state<_Sender, _Receiver>;
+    __repeat_effect_state(_Sender &&, _Receiver) -> __repeat_effect_state<_Sender, _Receiver>;
 
     STDEXEC_PRAGMA_POP()
 
@@ -204,11 +189,12 @@ namespace exec {
       };
 
       static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &__rcvr) {
-          return __repeat_effect_state{static_cast<_Sender &&>(__sndr), __rcvr};
+        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &&__rcvr) {
+          return __repeat_effect_state{
+            static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr)};
         };
 
-      static constexpr auto start = [](auto &__state, __ignore) noexcept -> void {
+      static constexpr auto start = [](auto &__state) noexcept -> void {
         __state.__start();
       };
     };

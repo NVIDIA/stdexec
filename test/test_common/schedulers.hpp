@@ -55,6 +55,7 @@ namespace {
   struct impulse_scheduler {
     using __id = impulse_scheduler;
     using __t = impulse_scheduler;
+    using scheduler_concept = ex::scheduler_t;
 
     impulse_scheduler()
       : shared_data_(std::make_shared<data>(0)) {
@@ -191,6 +192,7 @@ namespace {
   struct basic_inline_scheduler {
     using __t = basic_inline_scheduler;
     using __id = basic_inline_scheduler;
+    using scheduler_concept = ex::scheduler_t;
 
     auto schedule() const noexcept {
       return sender{};
@@ -291,6 +293,7 @@ namespace {
   struct error_scheduler {
     using __id = error_scheduler;
     using __t = error_scheduler;
+    using scheduler_concept = ex::scheduler_t;
 
     error_scheduler() = default;
 
@@ -357,6 +360,7 @@ namespace {
    public:
     using __id = stopped_scheduler;
     using __t = stopped_scheduler;
+    using scheduler_concept = ex::scheduler_t;
 
     auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
 

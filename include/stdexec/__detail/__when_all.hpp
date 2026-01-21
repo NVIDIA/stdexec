@@ -183,7 +183,7 @@ namespace STDEXEC {
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
 
-    template <class _State, class _Receiver>
+    template <class _State>
     struct __forward_stop_request {
       void operator()() const noexcept {
         // Temporarily increment the count to avoid concurrent/recursive arrivals to
@@ -199,27 +199,25 @@ namespace STDEXEC {
         }
 
         // Arrive in order to decrement the count again and complete if needed.
-        __state_->__arrive(*__rcvr_);
+        __state_->__arrive();
       }
 
       _State* __state_;
-      _Receiver* __rcvr_;
     };
 
     template <class _ErrorsVariant, class _ValuesTuple, class _Receiver, bool _SendsStopped>
-    struct __when_all_state {
-      using __stop_callback_t = stop_callback_for_t<
-        stop_token_of_t<env_of_t<_Receiver>>,
-        __forward_stop_request<__when_all_state, _Receiver>
-      >;
+    struct __state {
+      using __receiver_t = _Receiver;
+      using __stop_callback_t =
+        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<__state>>;
 
-      void __arrive(_Receiver& __rcvr) noexcept {
+      void __arrive() noexcept {
         if (1 == __count_.fetch_sub(1, __std::memory_order_acq_rel)) {
-          __complete(__rcvr);
+          __complete();
         }
       }
 
-      void __complete(_Receiver& __rcvr) noexcept {
+      void __complete() noexcept {
         // Stop callback is no longer needed. Destroy it.
         __on_stop_.reset();
         // All child operations have completed and arrived at the barrier.
@@ -227,19 +225,19 @@ namespace STDEXEC {
         case __started:
           if constexpr (!__std::same_as<_ValuesTuple, __ignore>) {
             // All child operations completed successfully:
-            __when_all::__set_values(__rcvr, __values_);
+            __when_all::__set_values(__rcvr_, __values_);
           }
           break;
         case __error:
           if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
             // One or more child operations completed with an error:
             __errors_.visit(
-              __mk_completion_fn(set_error, __rcvr), static_cast<_ErrorsVariant&&>(__errors_));
+              __mk_completion_fn(set_error, __rcvr_), static_cast<_ErrorsVariant&&>(__errors_));
           }
           break;
         case __stopped:
           if constexpr (_SendsStopped) {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr));
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
           } else {
             STDEXEC_UNREACHABLE();
           }
@@ -248,12 +246,15 @@ namespace STDEXEC {
         }
       }
 
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
       __std::atomic<std::size_t> __count_;
       inplace_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       __std::atomic<__state_t> __state_{__started};
       _ErrorsVariant __errors_{};
-      STDEXEC_ATTRIBUTE(no_unique_address) _ValuesTuple __values_ { };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _ValuesTuple __values_{};
       __optional<__stop_callback_t> __on_stop_{};
     };
 
@@ -308,21 +309,21 @@ namespace STDEXEC {
     };
 
     template <class _Receiver>
-    static auto __mk_state_fn(const _Receiver&) noexcept {
+    static auto __mk_state_fn(_Receiver&& __rcvr) noexcept {
       using __env_of_t = env_of_t<_Receiver>;
-      return
-        []<__max1_sender<__env_t<__env_of_t>>... _Child>(__ignore, __ignore, _Child&&...) noexcept {
-          using _Traits = __traits<__env_of_t, _Child...>;
-          using _ErrorsVariant = _Traits::__errors_variant;
-          using _ValuesTuple = _Traits::__values_tuple;
-          using _State = __when_all_state<
-            _ErrorsVariant,
-            _ValuesTuple,
-            _Receiver,
-            (sends_stopped<_Child, __env_of_t> || ...)
-          >;
-          return _State{sizeof...(_Child)};
-        };
+      return [&]<__max1_sender<__env_t<__env_of_t>>... _Child>(
+               __ignore, __ignore, _Child&&...) noexcept {
+        using _Traits = __traits<__env_of_t, _Child...>;
+        using _ErrorsVariant = _Traits::__errors_variant;
+        using _ValuesTuple = _Traits::__values_tuple;
+        using _State = __state<
+          _ErrorsVariant,
+          _ValuesTuple,
+          _Receiver,
+          (sends_stopped<_Child, __env_of_t> || ...)
+        >;
+        return _State{static_cast<_Receiver&&>(__rcvr), sizeof...(_Child)};
+      };
     }
 
     template <class _Receiver>
@@ -360,36 +361,34 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto get_env =
-        []<class _State, class _Receiver>(
-          __ignore,
-          _State& __state,
-          const _Receiver& __rcvr) noexcept -> __env_t<env_of_t<const _Receiver&>> {
-        return __mkenv(STDEXEC::get_env(__rcvr), __state.__stop_source_);
+      static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
+        -> __env_t<env_of_t<const typename _State::__receiver_t&>> {
+        return __mkenv(STDEXEC::get_env(__state.__rcvr_), __state.__stop_source_);
       };
 
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver& __rcvr) noexcept
+        []<class _Self, class _Receiver>(_Self&& __self, _Receiver&& __rcvr) noexcept
         -> __apply_result_t<__mk_state_fn_t<_Receiver>, _Self> {
-        return __apply(__when_all::__mk_state_fn(__rcvr), static_cast<_Self&&>(__self));
+        return __apply(
+          __when_all::__mk_state_fn(static_cast<_Receiver&&>(__rcvr)),
+          static_cast<_Self&&>(__self));
       };
 
-      static constexpr auto start = []<class _State, class _Receiver, class... _Operations>(
+      static constexpr auto start = []<class _State, class... _Operations>(
                                       _State& __state,
-                                      _Receiver& __rcvr,
                                       _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
         __state.__on_stop_.emplace(
-          get_stop_token(STDEXEC::get_env(__rcvr)),
-          __forward_stop_request<_State, _Receiver>{&__state, &__rcvr});
+          get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
+          __forward_stop_request<_State>{&__state});
         (STDEXEC::start(__child_ops), ...);
         if constexpr (sizeof...(__child_ops) == 0) {
-          __state.__complete(__rcvr);
+          __state.__complete();
         }
       };
 
-      template <class _State, class _Receiver, class _Error>
-      static void __set_error(_State& __state, _Receiver&, _Error&& __err) noexcept {
+      template <class _State, class _Error>
+      static void __set_error(_State& __state, _Error&& __err) noexcept {
         // Transition to the "error" state and switch on the prior state.
         // TODO: What memory orderings are actually needed here?
         switch (__state.__state_.exchange(__error)) {
@@ -416,16 +415,14 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto complete =
-        []<class _Index, class _State, class _Receiver, class _Set, class... _Args>(
-          _Index,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Set,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _Index, class _State, class _Set, class... _Args>(
+                                         _Index,
+                                         _State& __state,
+                                         _Set,
+                                         _Args&&... __args) noexcept -> void {
         using _ValuesTuple = decltype(_State::__values_);
         if constexpr (__same_as<_Set, set_error_t>) {
-          __set_error(__state, __rcvr, static_cast<_Args&&>(__args)...);
+          __set_error(__state, static_cast<_Args&&>(__args)...);
         } else if constexpr (__same_as<_Set, set_stopped_t>) {
           __state_t __expected = __started;
           // Transition to the "stopped" state if and only if we're in the
@@ -450,13 +447,13 @@ namespace STDEXEC {
                 __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
               }
               STDEXEC_CATCH_ALL {
-                __set_error(__state, __rcvr, std::current_exception());
+                __set_error(__state, std::current_exception());
               }
             }
           }
         }
 
-        __state.__arrive(__rcvr);
+        __state.__arrive();
       };
     };
 

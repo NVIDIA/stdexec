@@ -45,18 +45,24 @@ namespace STDEXEC {
     inline constexpr __mstring __query_failed_diag =
       "The current execution environment doesn't have a value for the given query."_mstr;
 
-    template <class _Tag, class _Ty>
+    template <class _Receiver, class _Tag, class _Ty>
     struct __state {
-      using __query = _Tag;
-      using __result = _Ty;
+      using __receiver_t = _Receiver;
+      using __query_t = _Tag;
+      using __result_t = _Ty;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
       __optional<_Ty> __result_;
     };
 
-    template <class _Tag, class _Ty>
+    template <class _Receiver, class _Tag, class _Ty>
       requires __same_as<_Ty, _Ty&&>
-    struct __state<_Tag, _Ty> {
-      using __query = _Tag;
-      using __result = _Ty;
+    struct __state<_Receiver, _Tag, _Ty> {
+      using __receiver_t = _Receiver;
+      using __query_t = _Tag;
+      using __result_t = _Ty;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
     };
 
     template <class _Tag>
@@ -108,39 +114,39 @@ namespace STDEXEC {
       };
 
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(const _Self&, _Receiver&) noexcept {
-          using __query = __data_of<_Self>;
-          using __result = __call_result_t<__query, env_of_t<_Receiver>>;
-          return __state<__query, __result>();
+        []<class _Self, class _Receiver>(const _Self&, _Receiver&& __rcvr) noexcept {
+          using __query_t = __data_of<_Self>;
+          using __result_t = __call_result_t<__query_t, env_of_t<_Receiver>>;
+          return __state<_Receiver, __query_t, __result_t>{static_cast<_Receiver&&>(__rcvr)};
         };
 
-      static constexpr auto start =
-        []<class _State, class _Receiver>(_State& __state, _Receiver& __rcvr) noexcept -> void {
-        using __query = _State::__query;
-        using __result = _State::__result;
-        if constexpr (__same_as<__result, __result&&>) {
+      static constexpr auto start = []<class _State>(_State& __state) noexcept -> void {
+        using __query_t = _State::__query_t;
+        using __result_t = _State::__result_t;
+        using __receiver_t = _State::__receiver_t;
+        if constexpr (__same_as<__result_t, __result_t&&>) {
           // The query returns a reference type; pass it straight through to the receiver.
           STDEXEC::__set_value_invoke(
-            static_cast<_Receiver&&>(__rcvr), __query(), STDEXEC::get_env(__rcvr));
+            static_cast<_State&&>(__state).__rcvr_, __query_t(), STDEXEC::get_env(__state.__rcvr_));
         } else {
-          constexpr bool _Nothrow = __nothrow_callable<__query, env_of_t<_Receiver>>;
-          auto __query_fn = [&]() noexcept(_Nothrow) -> __result&& {
+          constexpr bool _Nothrow = __nothrow_callable<__query_t, env_of_t<__receiver_t>>;
+          auto __query_fn = [&]() noexcept(_Nothrow) -> __result_t&& {
             __state.__result_.__emplace_from(
-              [&]() noexcept(_Nothrow) { return __query()(STDEXEC::get_env(__rcvr)); });
-            return static_cast<__result&&>(*__state.__result_);
+              [&]() noexcept(_Nothrow) { return __query_t()(STDEXEC::get_env(__state.__rcvr_)); });
+            return static_cast<__result_t&&>(*__state.__result_);
           };
-          STDEXEC::__set_value_invoke(static_cast<_Receiver&&>(__rcvr), __query_fn);
+          STDEXEC::__set_value_invoke(static_cast<_State&&>(__state).__rcvr_, __query_fn);
         }
       };
 
       static constexpr auto submit =
-        []<class _Sender, class _Receiver>(const _Sender&, _Receiver __rcvr) noexcept
+        []<class _Sender, class _Receiver>(const _Sender&, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, read_env_t>);
-        using __query = __data_of<_Sender>;
+        using __query_t = __data_of<_Sender>;
         STDEXEC::__set_value_invoke(
-          static_cast<_Receiver&&>(__rcvr), __query(), STDEXEC::get_env(__rcvr));
+          static_cast<_Receiver&&>(__rcvr), __query_t(), STDEXEC::get_env(__rcvr));
       };
     };
   } // namespace __read

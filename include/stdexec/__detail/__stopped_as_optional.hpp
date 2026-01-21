@@ -50,6 +50,14 @@ namespace STDEXEC {
       }
     };
 
+    template <class _Receiver, class _Value>
+    struct __state {
+      using __receiver_t = _Receiver;
+      using __value_t = _Value;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+    };
+
     struct __stopped_as_optional_impl : __sexpr_defaults {
       template <class... _Tys>
         requires(sizeof...(_Tys) == 1)
@@ -83,36 +91,36 @@ namespace STDEXEC {
       };
 
       static constexpr auto get_state =
-        []<class _Self, class _Receiver>(_Self&&, _Receiver&) noexcept
+        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
         requires sender_in<__child_of<_Self>, env_of_t<_Receiver>>
       {
         static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
         using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
-        return __mtype<_Value>();
+        return __state<_Receiver, _Value>{static_cast<_Receiver&&>(__rcvr)};
       };
 
-      static constexpr auto complete =
-        []<class _State, class _Receiver, class _Tag, class... _Args>(
-          __ignore,
-          _State&,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag,
+                                         _Args&&... __args) noexcept -> void {
+        using __value_t = _State::__value_t;
         if constexpr (__same_as<_Tag, set_value_t>) {
           STDEXEC_TRY {
-            static_assert(__std::constructible_from<__t<_State>, _Args...>);
+            static_assert(__std::constructible_from<__value_t, _Args...>);
             STDEXEC::set_value(
-              static_cast<_Receiver&&>(__rcvr),
-              std::optional<__t<_State>>{static_cast<_Args&&>(__args)...});
+              static_cast<_State&&>(__state).__rcvr_,
+              std::optional<__value_t>{static_cast<_Args&&>(__args)...});
           }
           STDEXEC_CATCH_ALL {
-            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), std::current_exception());
+            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
           }
         } else if constexpr (__same_as<_Tag, set_error_t>) {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          STDEXEC::set_error(
+            static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         } else {
           STDEXEC::set_value(
-            static_cast<_Receiver&&>(__rcvr), std::optional<__t<_State>>{std::nullopt});
+            static_cast<_State&&>(__state).__rcvr_, std::optional<__value_t>{std::nullopt});
         }
       };
     };

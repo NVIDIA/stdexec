@@ -47,9 +47,9 @@ namespace STDEXEC {
         return __sync_attrs{__child};
       };
 
-      static constexpr auto get_env = [](__ignore, const auto& __state, const auto& __rcvr) noexcept
-        -> decltype(__env::__join(__state, STDEXEC::get_env(__rcvr))) {
-        return __env::__join(__state, STDEXEC::get_env(__rcvr));
+      static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
+        -> decltype(__env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_))) {
+        return __env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_));
       };
 
       template <class _Self, class... _Env>

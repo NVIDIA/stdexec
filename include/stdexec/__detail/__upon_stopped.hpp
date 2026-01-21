@@ -69,20 +69,18 @@ namespace STDEXEC {
         return {};
       };
 
-      static constexpr auto complete =
-        []<class _Tag, class _State, class _Receiver, class... _Args>(
-          __ignore,
-          _State& __state,
-          _Receiver& __rcvr,
-          _Tag,
-          _Args&&... __args) noexcept -> void {
+      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+                                         __ignore,
+                                         _State& __state,
+                                         _Tag,
+                                         _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_stopped_t>) {
           STDEXEC::__set_value_invoke(
-            static_cast<_Receiver&&>(__rcvr),
-            static_cast<_State&&>(__state),
+            static_cast<_State&&>(__state).__rcvr_,
+            static_cast<_State&&>(__state).__data_,
             static_cast<_Args&&>(__args)...);
         } else {
-          _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
     };

@@ -95,15 +95,14 @@ namespace STDEXEC::__shared {
   // operation. It is what ensure_started- and split-sender's `get_state` fn returns. It holds a
   // ref count to the shared state.
   template <class _CvrefSender, class _Receiver>
-  struct __local_state
-    : __local_state_base
-    , __enable_receiver_from_this<_CvrefSender, _Receiver, __local_state<_CvrefSender, _Receiver>> {
+  struct __local_state : __local_state_base {
     using __tag_t = tag_of_t<_CvrefSender>;
     using __stok_t = stop_token_of_t<env_of_t<_Receiver>>;
     static_assert(__one_of<__tag_t, __split::__split_t, __ensure_started::__ensure_started_t>);
 
-    explicit __local_state(_CvrefSender&& __sndr) noexcept
+    explicit __local_state(_CvrefSender&& __sndr, _Receiver&& __rcvr) noexcept
       : __local_state::__local_state_base{{}, &__notify<tag_of_t<_CvrefSender>>}
+      , __rcvr_(static_cast<_Receiver&&>(__rcvr))
       , __sh_state_(__get_sh_state(__sndr)) {
     }
 
@@ -135,7 +134,7 @@ namespace STDEXEC::__shared {
       // first sets __waiters_ to the completed state. As a result, the attempt to remove `this`
       // from the waiters list above will fail and this stop request is ignored.
       std::exchange(__sh_state_, nullptr)->__detach();
-      STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__receiver()));
+      STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
     }
 
     // This is called from __shared_state::__notify_waiters when the input async operation
@@ -156,7 +155,7 @@ namespace STDEXEC::__shared {
       __variant_t::visit(
         __notify_visitor(),
         static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_),
-        __self->__receiver());
+        __self->__rcvr_);
     }
 
     static auto __get_sh_state(_CvrefSender& __sndr) noexcept {
@@ -167,6 +166,8 @@ namespace STDEXEC::__shared {
     using __sh_state_ptr_t = __result_of<__get_sh_state, _CvrefSender&>;
     using __sh_state_t = std::remove_pointer_t<__sh_state_ptr_t>;
 
+    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+    _Receiver __rcvr_;
     __optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
     __sh_state_ptr_t __sh_state_;
   };
@@ -430,12 +431,13 @@ namespace STDEXEC::__shared {
   template <class _Tag>
   struct __shared_impl : __sexpr_defaults {
     static constexpr auto get_state =
-      []<class _CvrefSender, class _Receiver>(_CvrefSender&& __sndr, _Receiver&) noexcept
+      []<class _CvrefSender, class _Receiver>(_CvrefSender&& __sndr, _Receiver&& __rcvr) noexcept
       -> __local_state<_CvrefSender, _Receiver>
       requires __decay_copyable<__data_of<_CvrefSender>>
     {
       static_assert(sender_expr_for<_CvrefSender, _Tag>);
-      return __local_state<_CvrefSender, _Receiver>{static_cast<_CvrefSender&&>(__sndr)};
+      return __local_state<_CvrefSender, _Receiver>{
+        static_cast<_CvrefSender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
     };
 
     template <class _Sender, class...>
@@ -447,26 +449,25 @@ namespace STDEXEC::__shared {
     };
 
     static constexpr auto start = []<class _Sender, class _Receiver>(
-                                    __local_state<_Sender, _Receiver>& __self,
-                                    _Receiver& __rcvr) noexcept -> void {
+                                    __local_state<_Sender, _Receiver>& __state) noexcept -> void {
       // Scenario: there are no more split senders, this is the only operation state, the
       // underlying operation has not yet been started, and the receiver's stop token is already
       // in the "stop requested" state. Then registering the stop callback will call
-      // __local_state::operator() on __self synchronously. It may also be called asynchronously
+      // __local_state::operator() on __state synchronously. It may also be called asynchronously
       // at any point after the callback is registered. Beware. We are guaranteed, however, that
       // __local_state::operator() will not complete the operation or decrement the shared state's
-      // ref count until after __self has been added to the waiters list.
-      const auto __stok = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr));
-      __self.__on_stop_.emplace(__stok, __self);
+      // ref count until after __state has been added to the waiters list.
+      const auto __stok = STDEXEC::get_stop_token(STDEXEC::get_env(__state.__rcvr_));
+      __state.__on_stop_.emplace(__stok, __state);
 
-      // We haven't put __self in the waiters list yet and we are holding a ref count to
+      // We haven't put __state in the waiters list yet and we are holding a ref count to
       // __sh_state_, so nothing can happen to the __sh_state_ here.
 
       // Start the shared op. As an optimization, skip it if the receiver's stop token has already
       // been signaled.
       if (!__stok.stop_requested()) {
-        __self.__sh_state_->__try_start();
-        if (__self.__sh_state_->__try_add_waiter(&__self, __stok)) {
+        __state.__sh_state_->__try_start();
+        if (__state.__sh_state_->__try_add_waiter(&__state, __stok)) {
           // successfully added the waiter
           return;
         }
@@ -474,9 +475,9 @@ namespace STDEXEC::__shared {
 
       // Otherwise, failed to add the waiter because of a stop-request.
       // Complete synchronously with set_stopped().
-      __self.__on_stop_.reset();
-      std::exchange(__self.__sh_state_, nullptr)->__detach();
-      STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr));
+      __state.__on_stop_.reset();
+      std::exchange(__state.__sh_state_, nullptr)->__detach();
+      STDEXEC::set_stopped(static_cast<_Receiver&&>(__state.__rcvr_));
     };
   };
 } // namespace STDEXEC::__shared
