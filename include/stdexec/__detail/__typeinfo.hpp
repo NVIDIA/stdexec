@@ -43,8 +43,13 @@ namespace STDEXEC {
       return __name_;
     }
 
-    auto operator==(const __type_info &) const noexcept -> bool = default;
-    auto operator<=>(const __type_info &) const noexcept -> std::strong_ordering = default;
+    [[nodiscard]]
+    constexpr auto operator==(const __type_info &__other) const noexcept -> bool {
+      return this == &__other || __name_ == __other.__name_;
+    }
+
+    constexpr auto
+      operator<=>(const __type_info &) const noexcept -> std::strong_ordering = default;
 
    private:
     std::string_view __name_;
