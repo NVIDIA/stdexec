@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__any_receiver_ref.hpp"
 #include "../stdexec/execution.hpp"
 
 #include "sequence_senders.hpp"
@@ -26,6 +25,26 @@
 namespace exec {
   namespace __any {
     using namespace STDEXEC;
+
+    template <class _Sig>
+    struct __rcvr_vfun;
+
+    template <class _Tag, class... _Args>
+    struct __rcvr_vfun<_Tag(_Args...)> {
+      void (*__complete_)(void*, _Args...) noexcept;
+
+      void operator()(void* __obj, _Tag, _Args... __args) const noexcept {
+        __complete_(__obj, static_cast<_Args&&>(__args)...);
+      }
+    };
+
+    template <class _GetReceiver = std::identity, class _Obj, class _Tag, class... _Args>
+    constexpr auto __rcvr_vfun_fn(_Obj*, _Tag (*)(_Args...)) noexcept {
+      return +[](void* __ptr, _Args... __args) noexcept {
+        _Obj* __obj = static_cast<_Obj*>(__ptr);
+        _Tag()(std::move(_GetReceiver()(*__obj)), static_cast<_Args&&>(__args)...);
+      };
+    }
 
     struct __create_vtable_t {
       template <class _VTable, class _Tp>
@@ -656,19 +675,19 @@ namespace exec {
       template <class... _Sigs, class... _Queries>
       struct __vtable<completion_signatures<_Sigs...>, _Queries...> {
         struct __t
-          : __overload<__any_::__rcvr_vfun<_Sigs>...>
+          : __overload<__rcvr_vfun<_Sigs>...>
           , __query_vfun<_Queries>... {
           using __query_vfun<_Queries>::operator()...;
 
           template <class _Tag, class... _As>
             requires __one_of<_Tag(_As...), _Sigs...>
-                  || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, _Tag, _As...>
+                  || __callable<__overload<__rcvr_vfun<_Sigs>...>, void*, _Tag, _As...>
           void operator()(void* __rcvr, _Tag, _As&&... __as) const noexcept {
             if constexpr (__one_of<_Tag(_As...), _Sigs...>) {
-              const __any_::__rcvr_vfun<_Tag(_As...)>& __vfun = *this;
+              const __rcvr_vfun<_Tag(_As...)>& __vfun = *this;
               __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
             } else {
-              const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *this;
+              const __overload<__rcvr_vfun<_Sigs>...>& __vfun = *this;
               __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
             }
           }
@@ -678,7 +697,7 @@ namespace exec {
                   && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
           static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
-              {{__any_::__rcvr_vfun_fn(
+              {{__rcvr_vfun_fn(
                 static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...},
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
@@ -791,26 +810,26 @@ namespace exec {
 
         template <class... _As>
           requires __one_of<set_value_t(_As...), _Sigs...>
-                || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, set_value_t, _As...>
+                || __callable<__overload<__rcvr_vfun<_Sigs>...>, void*, set_value_t, _As...>
         void set_value(_As&&... __as) noexcept {
           if constexpr (__one_of<set_value_t(_As...), _Sigs...>) {
-            const __any_::__rcvr_vfun<set_value_t(_As...)>& __vfun = *__env_.__vtable_;
+            const __rcvr_vfun<set_value_t(_As...)>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
           } else {
-            const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
+            const __overload<__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_value_t(), static_cast<_As&&>(__as)...);
           }
         }
 
         template <class _Error>
           requires __one_of<set_error_t(_Error), _Sigs...>
-                || __callable<__overload<__any_::__rcvr_vfun<_Sigs>...>, void*, set_error_t, _Error>
+                || __callable<__overload<__rcvr_vfun<_Sigs>...>, void*, set_error_t, _Error>
         void set_error(_Error&& __err) noexcept {
           if constexpr (__one_of<set_error_t(_Error), _Sigs...>) {
-            const __any_::__rcvr_vfun<set_error_t(_Error)>& __vfun = *__env_.__vtable_;
+            const __rcvr_vfun<set_error_t(_Error)>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
           } else {
-            const __overload<__any_::__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
+            const __overload<__rcvr_vfun<_Sigs>...>& __vfun = *__env_.__vtable_;
             __vfun(__env_.__rcvr_, set_error_t(), static_cast<_Error&&>(__err));
           }
         }
@@ -818,7 +837,7 @@ namespace exec {
         void set_stopped() noexcept
           requires __one_of<set_stopped_t(), _Sigs...>
         {
-          const __any_::__rcvr_vfun<set_stopped_t()>& __vfun = *__env_.__vtable_;
+          const __rcvr_vfun<set_stopped_t()>& __vfun = *__env_.__vtable_;
           __vfun(__env_.__rcvr_, set_stopped_t());
         }
 
