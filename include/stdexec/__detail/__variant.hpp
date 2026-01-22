@@ -173,7 +173,7 @@ namespace STDEXEC {
 
       template <std::size_t _Ny, class _Fn, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      auto __emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
+      constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
         -> __at<_Ny> & {
         static_assert(
           __same_as<__call_result_t<_Fn, _As...>, __at<_Ny>>,
