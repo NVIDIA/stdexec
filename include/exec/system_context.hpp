@@ -15,10 +15,11 @@
  */
 #pragma once
 
-#include <utility>
-
 #include "../stdexec/execution.hpp"
 #include "__detail/__system_context_replaceability_api.hpp"
+
+#include <optional>
+#include <utility>
 
 #ifndef STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE
 #  define STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE 72
@@ -43,29 +44,16 @@ namespace exec {
   namespace detail {
     /// Allows a frontend receiver of type `_Rcvr` to be passed to the backend.
     template <class _Rcvr>
-    struct __receiver_adapter : system_context_replaceability::receiver {
+    struct __receiver_adapter : STDEXEC::system_context_replaceability::receiver_proxy {
       explicit __receiver_adapter(_Rcvr&& __rcvr)
-        : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
-      }
-
-      auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
-        using system_context_replaceability::__runtime_property_helper;
-        using __StopToken = decltype(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
-        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __StopToken>) {
-          if (__id == __runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
-            *static_cast<STDEXEC::inplace_stop_token*>(__dest) = STDEXEC::get_stop_token(
-              STDEXEC::get_env(__rcvr_));
-            return true;
-          }
-        }
-        return false;
+        : __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
       }
 
       void set_value() noexcept override {
         STDEXEC::set_value(std::forward<_Rcvr>(__rcvr_));
       }
 
-      void set_error(std::exception_ptr __ex) noexcept override {
+      void set_error(std::exception_ptr&& __ex) noexcept override {
         STDEXEC::set_error(std::forward<_Rcvr>(__rcvr_), std::move(__ex));
       }
 
@@ -73,11 +61,36 @@ namespace exec {
         STDEXEC::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
+     protected:
+      void __query_env(
+        STDEXEC::__type_index __query_type,
+        STDEXEC::__type_index __value_type,
+        void* __dest) const noexcept override {
+        if (__query_type == STDEXEC::__mtypeid<STDEXEC::get_stop_token_t>) {
+          __query(STDEXEC::get_stop_token, __value_type, __dest);
+        }
+      }
+
+     private:
+      void __query(STDEXEC::get_stop_token_t, STDEXEC::__type_index __value_type, void* __dest)
+        const noexcept {
+        using __stop_token_t = STDEXEC::stop_token_of_t<STDEXEC::env_of_t<_Rcvr>>;
+        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __stop_token_t>) {
+          if (__value_type == STDEXEC::__mtypeid<STDEXEC::inplace_stop_token>) {
+            using __dest_t = std::optional<STDEXEC::inplace_stop_token>;
+            *static_cast<__dest_t*>(__dest) = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
+          }
+        }
+      }
+
+     public:
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Rcvr __rcvr_;
     };
 
     /// The type large enough to store the data produced by a sender.
+    /// BUGBUG: this seems wrong. i think this should be a variant of tuples of possible
+    /// results.
     template <class _Sender>
     using __sender_data_t = decltype(STDEXEC::sync_wait(std::declval<_Sender>()).value());
 
@@ -85,6 +98,7 @@ namespace exec {
 
   class parallel_scheduler;
   class __parallel_sender;
+
   template <bool, STDEXEC::sender _S, std::integral _Size, class _Fn, bool>
   class __parallel_bulk_sender;
 
@@ -106,7 +120,7 @@ namespace exec {
 
   namespace detail {
     using __backend_ptr =
-      std::shared_ptr<system_context_replaceability::parallel_scheduler_backend>;
+      std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend>;
 
     template <class T>
     auto __make_parallel_scheduler_from(T, __backend_ptr) noexcept;
@@ -199,7 +213,7 @@ namespace exec {
         auto& __scheduler_impl = __preallocated_.__as<__backend_ptr>();
         auto __impl = std::move(__scheduler_impl);
         std::destroy_at(&__scheduler_impl);
-        __impl->schedule(__preallocated_.__as_storage(), __rcvr_);
+        __impl->schedule(__rcvr_, __preallocated_.__as_storage());
       }
 
       /// Object that receives completion from the work described by the sender.
@@ -312,7 +326,8 @@ namespace exec {
     /// This represents the base class that abstracts the storage of the values sent by the previous sender.
     /// Derived class will properly implement the receiver methods.
     template <class _Previous>
-    struct __forward_args_receiver : system_context_replaceability::bulk_item_receiver {
+    struct __forward_args_receiver
+      : STDEXEC::system_context_replaceability::bulk_item_receiver_proxy {
       using __storage_t = detail::__sender_data_t<_Previous>;
 
       /// Storage for the arguments received from the previous sender.
@@ -329,22 +344,9 @@ namespace exec {
       /// Stores `__as` in the base class storage, with the right types.
       explicit __typed_forward_args_receiver(_As&&... __as) {
         static_assert(sizeof(std::tuple<_As...>) <= sizeof(__base_t::__arguments_data_));
+        // BUGBUG: this seems wrong. we are not ever destroying this tuple.
         new (__base_t::__arguments_data_)
           std::tuple<STDEXEC::__decay_t<_As>...>{std::move(__as)...};
-      }
-
-      auto __query_env(__uuid __id, void* __dest) noexcept -> bool override {
-        auto __state = reinterpret_cast<_BulkState*>(this);
-        using system_context_replaceability::__runtime_property_helper;
-        using __StopToken = decltype(STDEXEC::get_stop_token(STDEXEC::get_env(__state->__rcvr_)));
-        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __StopToken>) {
-          if (__id == __runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
-            *static_cast<STDEXEC::inplace_stop_token*>(__dest) = STDEXEC::get_stop_token(
-              STDEXEC::get_env(__state->__rcvr_));
-            return true;
-          }
-        }
-        return false;
       }
 
       /// Calls `set_value()` on the final receiver of the bulk operation, using the values from the previous sender.
@@ -394,6 +396,30 @@ namespace exec {
           std::apply(
             [&](auto&&... __args) { __state->__fun_(__begin, __end, __args...); },
             *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+        }
+      }
+
+     protected:
+      void __query_env(
+        STDEXEC::__type_index __query_type,
+        STDEXEC::__type_index __value_type,
+        void* __dest) const noexcept override {
+        if (__query_type == STDEXEC::__mtypeid<STDEXEC::get_stop_token_t>) {
+          __query(STDEXEC::get_stop_token, __value_type, __dest);
+        }
+      }
+
+     private:
+      void __query(STDEXEC::get_stop_token_t, STDEXEC::__type_index __value_type, void* __dest)
+        const noexcept {
+        auto __state = reinterpret_cast<const _BulkState*>(this);
+        using __stop_token_t = STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__rcvr_t>>;
+        if constexpr (std::is_same_v<STDEXEC::inplace_stop_token, __stop_token_t>) {
+          using __dest_t = std::optional<STDEXEC::inplace_stop_token>;
+          if (__value_type == STDEXEC::__mtypeid<STDEXEC::inplace_stop_token>) {
+            *static_cast<__dest_t*>(__dest) = STDEXEC::get_stop_token(
+              STDEXEC::get_env(__state->__rcvr_));
+          }
         }
       }
     };
@@ -645,7 +671,7 @@ namespace exec {
   };
 
   inline auto get_parallel_scheduler() -> parallel_scheduler {
-    auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
+    auto __impl = STDEXEC::system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
       STDEXEC_THROW(std::runtime_error{"No system context implementation found"});
     }
@@ -728,5 +754,5 @@ namespace exec {
 
 #if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
 #  define STDEXEC_SYSTEM_CONTEXT_INLINE inline
-#  include "__detail/__system_context_default_impl_entry.hpp"
+#  include "../stdexec/__detail/__system_context_default_impl_entry.hpp"
 #endif

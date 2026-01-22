@@ -19,7 +19,6 @@
 #include "__meta.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
-#include "__utility.hpp"
 
 #include <cstddef>
 #include <exception> // IWYU pragma: keep for std::terminate

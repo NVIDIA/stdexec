@@ -404,4 +404,78 @@ namespace {
       }
     };
   };
+
+  namespace _dummy {
+    template <class Domain>
+    struct _attrs_t {
+      constexpr auto
+        query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept;
+
+      constexpr auto
+        query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept {
+        return Domain{};
+      }
+    };
+
+    template <class Rcvr>
+    struct _opstate_t : ex::__immovable {
+      using operation_state_concept = ex::operation_state_t;
+
+      constexpr _opstate_t(Rcvr rcvr) noexcept
+        : _rcvr(static_cast<Rcvr&&>(rcvr)) {
+      }
+
+      constexpr void start() noexcept {
+        ex::set_value(static_cast<Rcvr&&>(_rcvr));
+      }
+
+      Rcvr _rcvr;
+    };
+
+    template <class Domain>
+    struct _sndr_t {
+      using sender_concept = ex::sender_t;
+
+      template <class Self>
+      static consteval auto get_completion_signatures() noexcept {
+        return ex::completion_signatures<ex::set_value_t()>();
+      }
+
+      template <class Rcvr>
+      constexpr auto connect(Rcvr rcvr) const noexcept -> _opstate_t<Rcvr> {
+        return _opstate_t<Rcvr>(static_cast<Rcvr&&>(rcvr));
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept {
+        return _attrs_t<Domain>{};
+      }
+    };
+  } // namespace _dummy
+
+  //! Scheduler that returns a sender that always completes inline (successfully).
+  template <class Domain = ex::default_domain>
+  struct dummy_scheduler : _dummy::_attrs_t<Domain> {
+    using scheduler_concept = ex::scheduler_t;
+
+    static constexpr auto schedule() noexcept -> _dummy::_sndr_t<Domain> {
+      return {};
+    }
+
+    friend constexpr bool operator==(dummy_scheduler, dummy_scheduler) noexcept {
+      return true;
+    }
+
+    friend constexpr bool operator!=(dummy_scheduler, dummy_scheduler) noexcept {
+      return false;
+    }
+  };
+
+  namespace _dummy {
+    template <class Domain>
+    constexpr auto
+      _attrs_t<Domain>::query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept {
+      return dummy_scheduler<Domain>{};
+    }
+  } // namespace _dummy
 } // anonymous namespace

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2024 Lucian Radu Teodorescu
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -19,7 +20,7 @@
 // and doxygen don't know that, so we need to include the header that defines it when clang-tidy and
 // doxygen are invoked.
 #if defined(STDEXEC_CLANG_TIDY_INVOKED) || defined(STDEXEC_DOXYGEN_INVOKED)
-#  include "../system_context.hpp" // IWYU pragma: keep
+#  include "../../exec/system_context.hpp" // IWYU pragma: keep
 #endif
 
 #if !defined(STDEXEC_SYSTEM_CONTEXT_INLINE)
@@ -30,7 +31,7 @@
 
 #define __STDEXEC_SYSTEM_CONTEXT_API extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE(weak)
 
-namespace exec::system_context_replaceability {
+namespace STDEXEC::system_context_replaceability {
 
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
@@ -48,4 +49,4 @@ namespace exec::system_context_replaceability {
       .__set_backend_factory(__new_factory);
   }
 
-} // namespace exec::system_context_replaceability
+} // namespace STDEXEC::system_context_replaceability
