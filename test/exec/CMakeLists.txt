@@ -66,6 +66,7 @@ set(exec_test_sources
     test_frame_allocator.cpp
     test_memory_resource_adaptor.cpp
     test_matching_completion_signature.cpp
+    test_invoke.cpp
     )
 
 set_source_files_properties(test_any_sender.cpp
