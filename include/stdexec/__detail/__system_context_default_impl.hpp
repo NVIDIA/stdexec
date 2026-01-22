@@ -15,25 +15,20 @@
  */
 #pragma once
 
+#include "__atomic.hpp"
 #include "__system_context_replaceability_api.hpp"
 
-#include "../../stdexec/execution.hpp"
 #if STDEXEC_ENABLE_LIBDISPATCH
-#  include "../libdispatch_queue.hpp" // IWYU pragma: keep
+#  include "../../exec/libdispatch_queue.hpp" // IWYU pragma: keep
 #elif STDEXEC_ENABLE_IO_URING
-#  include "../linux/io_uring_context.hpp" // IWYU pragma: keep
+#  include "../../exec/linux/io_uring_context.hpp" // IWYU pragma: keep
 #elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
-#  include "../windows/windows_thread_pool.hpp" // IWYU pragma: keep
+#  include "../../exec/windows/windows_thread_pool.hpp" // IWYU pragma: keep
 #else
-#  include "../static_thread_pool.hpp" // IWYU pragma: keep
+#  include "../../exec/static_thread_pool.hpp" // IWYU pragma: keep
 #endif
 
-#include "../../stdexec/__detail/__atomic.hpp"
-
-namespace exec::__system_context_default_impl {
-  using system_context_replaceability::receiver;
-  using system_context_replaceability::bulk_item_receiver;
-  using system_context_replaceability::parallel_scheduler_backend;
+namespace STDEXEC::__system_context_default_impl {
   using system_context_replaceability::__parallel_scheduler_backend_factory;
 
   /// Receiver that calls the callback when the operation completes.
@@ -70,16 +65,16 @@ namespace exec::__system_context_default_impl {
     using receiver_concept = STDEXEC::receiver_t;
 
     //! The operation state on the frontend.
-    receiver* __r_;
+    STDEXEC::system_context_replaceability::receiver_proxy* __r_;
 
     //! The parent operation state that we will destroy when we complete.
     __operation<_Sender>* __op_;
 
     void set_value() noexcept {
       auto __op = __op_;
-      auto __r = __r_;
+      auto __rcvr = __r_;
       __op->__destruct(); // destroys the operation, including `this`.
-      __r->set_value();
+      __rcvr->set_value();
       // Note: when calling a completion signal, the parent operation might complete, making the
       // static storage passed to this operation invalid. Thus, we need to ensure that we are not
       // using the operation state after the completion signal.
@@ -87,21 +82,21 @@ namespace exec::__system_context_default_impl {
 
     void set_error(std::exception_ptr __ptr) noexcept {
       auto __op = __op_;
-      auto __r = __r_;
+      auto __rcvr = __r_;
       __op->__destruct(); // destroys the operation, including `this`.
-      __r->set_error(__ptr);
+      __rcvr->set_error(std::move(__ptr));
     }
 
     void set_stopped() noexcept {
       auto __op = __op_;
-      auto __r = __r_;
+      auto __rcvr = __r_;
       __op->__destruct(); // destroys the operation, including `this`.
-      __r->set_stopped();
+      __rcvr->set_stopped();
     }
 
     [[nodiscard]]
     auto get_env() const noexcept -> decltype(auto) {
-      auto __o = __r_->try_query<STDEXEC::inplace_stop_token>();
+      auto __o = __r_->try_query<STDEXEC::inplace_stop_token>(STDEXEC::get_stop_token);
       STDEXEC::inplace_stop_token __st = __o ? *__o : STDEXEC::inplace_stop_token{};
       return STDEXEC::prop{STDEXEC::get_stop_token, __st};
     }
@@ -133,7 +128,7 @@ namespace exec::__system_context_default_impl {
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
     static auto __construct_maybe_alloc(
       std::span<std::byte> __storage,
-      receiver* __completion,
+      STDEXEC::system_context_replaceability::receiver_proxy* __completion,
       _Sender __sndr) -> __operation* {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.data() == nullptr || __storage.size() < sizeof(__operation)) {
@@ -158,7 +153,10 @@ namespace exec::__system_context_default_impl {
     }
 
    private:
-    __operation(_Sender __sndr, receiver* __completion, bool __on_heap)
+    __operation(
+      _Sender __sndr,
+      STDEXEC::system_context_replaceability::receiver_proxy* __completion,
+      bool __on_heap)
       : __inner_op_(STDEXEC::connect(std::move(__sndr), __recv<_Sender>{__completion, this}))
       , __on_heap_(__on_heap) {
     }
@@ -170,13 +168,12 @@ namespace exec::__system_context_default_impl {
   };
 
   template <typename _BaseSchedulerContext>
-  struct __generic_impl : parallel_scheduler_backend {
+  struct __generic_impl : STDEXEC::system_context_replaceability::parallel_scheduler_backend {
     __generic_impl()
-      : __pool_scheduler_(__pool_.get_scheduler())
-      , __available_parallelism_(0) {
+      : __pool_scheduler_(__pool_.get_scheduler()) {
       // If the pool exposes the available parallelism, use it to determine the chunk size.
       if constexpr (__has_available_paralellism<_BaseSchedulerContext>) {
-        __available_parallelism_ = static_cast<uint32_t>(__pool_.available_parallelism());
+        __available_parallelism_ = static_cast<size_t>(__pool_.available_parallelism());
       } else {
         __available_parallelism_ = std::thread::hardware_concurrency();
       }
@@ -190,39 +187,40 @@ namespace exec::__system_context_default_impl {
     __pool_scheduler_t __pool_scheduler_;
     //! The available parallelism of the pool, used to determine the chunk size.
     //! Use a value of 0 to disable chunking.
-    uint32_t __available_parallelism_;
+    size_t __available_parallelism_{};
 
     //! Helper class that maps from a chunk index to the start and end of the chunk.
     struct __chunker {
-      uint32_t __chunk_size_;
-      uint32_t __max_size_;
+      size_t __chunk_size_;
+      size_t __max_size_;
 
-      uint32_t __begin(uint32_t __chunk_index) const noexcept {
+      [[nodiscard]]
+      size_t __begin(size_t __chunk_index) const noexcept {
         return __chunk_index * __chunk_size_;
       }
 
-      uint32_t __end(uint32_t __chunk_index) const noexcept {
+      [[nodiscard]]
+      size_t __end(size_t __chunk_index) const noexcept {
         return (std::min) (__begin(__chunk_index + 1), __max_size_);
       }
     };
 
     //! Functor called by the `bulk_chunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_chunked_functor {
-      bulk_item_receiver* __r_;
+      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy* __r_;
       __chunker __chunker_;
 
-      void operator()(unsigned long __idx) const noexcept {
-        auto __chunk_index = static_cast<uint32_t>(__idx);
-        __r_->execute(__chunker_.__begin(__chunk_index), __chunker_.__end(__chunk_index));
+      void operator()(size_t const __idx) const noexcept {
+        __r_->execute(__chunker_.__begin(__idx), __chunker_.__end(__idx));
       }
     };
 
     //! Functor called by the `bulk_unchunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_unchunked_functor {
-      bulk_item_receiver* __r_;
+      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy* __r_;
 
-      void operator()(unsigned long __idx) const noexcept {
-        __r_->execute(static_cast<uint32_t>(__idx), static_cast<uint32_t>(__idx + 1));
+      void operator()(size_t const __idx) const noexcept {
+        __r_->execute(__idx, __idx + 1);
       }
     };
 
@@ -232,72 +230,75 @@ namespace exec::__system_context_default_impl {
     using __schedule_bulk_chunked_operation_t = __operation<decltype(STDEXEC::bulk(
       STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
       STDEXEC::par,
-      std::declval<uint32_t>(),
+      std::declval<size_t>(),
       std::declval<__bulk_chunked_functor>()))>;
+
     using __schedule_bulk_unchunked_operation_t = __operation<decltype(STDEXEC::bulk(
       STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
       STDEXEC::par,
-      std::declval<uint32_t>(),
+      std::declval<size_t>(),
       std::declval<__bulk_unchunked_functor>()))>;
 
    public:
-    void schedule(std::span<std::byte> __storage, receiver& __r) noexcept override {
+    void schedule(
+      STDEXEC::system_context_replaceability::receiver_proxy& __rcvr,
+      std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         auto __sndr = STDEXEC::schedule(__pool_scheduler_);
         auto __os =
-          __schedule_operation_t::__construct_maybe_alloc(__storage, &__r, std::move(__sndr));
+          __schedule_operation_t::__construct_maybe_alloc(__storage, &__rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
-        __r.set_error(std::current_exception());
+        __rcvr.set_error(std::current_exception());
       }
     }
 
     void schedule_bulk_chunked(
-      uint32_t __size,
-      std::span<std::byte> __storage,
-      bulk_item_receiver& __r) noexcept override {
+      size_t __size,
+      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+      std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
         // Aim at having 2 chunks per worker.
-        uint32_t __chunk_size = (__available_parallelism_ > 0
-                                 && __size > 3 * __available_parallelism_)
-                                ? __size / __available_parallelism_ / 2
-                                : 1;
-        uint32_t __num_chunks = (__size + __chunk_size - 1) / __chunk_size;
+        size_t __chunk_size = (__available_parallelism_ > 0
+                               && __size > 3ul * __available_parallelism_)
+                              ? __size / __available_parallelism_ / 2ul
+                              : 1ul;
+        size_t __num_chunks = (__size + __chunk_size - 1) / __chunk_size;
 
         auto __sndr = STDEXEC::bulk(
           STDEXEC::schedule(__pool_scheduler_),
           STDEXEC::par,
           __num_chunks,
           __bulk_chunked_functor{
-            &__r, __chunker{__chunk_size, __size}
+            &__rcvr, __chunker{__chunk_size, __size}
         });
         auto __os = __schedule_bulk_chunked_operation_t::__construct_maybe_alloc(
-          __storage, &__r, std::move(__sndr));
+          __storage, &__rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
-        __r.set_error(std::current_exception());
+        __rcvr.set_error(std::current_exception());
       }
     }
 
     void schedule_bulk_unchunked(
-      uint32_t __size,
-      std::span<std::byte> __storage,
-      bulk_item_receiver& __r) noexcept override {
+      size_t __size,
+      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+      std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         auto __sndr = STDEXEC::bulk(
           STDEXEC::schedule(__pool_scheduler_),
           STDEXEC::par,
           __size,
-          __bulk_unchunked_functor{&__r});
+          __bulk_unchunked_functor{&__rcvr});
         auto __os = __schedule_bulk_unchunked_operation_t::__construct_maybe_alloc(
-          __storage, &__r, std::move(__sndr));
+          __storage, &__rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
-        __r.set_error(std::current_exception());
+        __rcvr.set_error(std::current_exception());
       }
     }
   };
@@ -314,10 +315,10 @@ namespace exec::__system_context_default_impl {
     auto __get_current_instance() -> std::shared_ptr<_Interface> {
       // If we have a valid instance, return it.
       __acquire_instance_lock();
-      auto __r = __instance_;
+      auto __rcvr = __instance_;
       __release_instance_lock();
-      if (__r) {
-        return __r;
+      if (__rcvr) {
+        return __rcvr;
       }
 
       // Otherwise, create a new instance using the factory.
@@ -379,7 +380,10 @@ namespace exec::__system_context_default_impl {
 #endif
 
   /// The singleton to hold the `parallel_scheduler_backend` instance.
-  inline constinit __instance_data<parallel_scheduler_backend, __parallel_scheduler_backend_impl>
+  inline constinit __instance_data<
+    STDEXEC::system_context_replaceability::parallel_scheduler_backend,
+    __parallel_scheduler_backend_impl
+  >
     __parallel_scheduler_backend_singleton{};
 
-} // namespace exec::__system_context_default_impl
+} // namespace STDEXEC::__system_context_default_impl

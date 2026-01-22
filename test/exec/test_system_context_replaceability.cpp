@@ -15,38 +15,38 @@
  */
 
 #include <catch2/catch.hpp>
-#include <exec/__detail/__system_context_default_impl.hpp>
+#include <stdexec/__detail/__system_context_default_impl.hpp>
 #include <exec/system_context.hpp>
 #include <stdexec/execution.hpp>
 
 namespace ex = STDEXEC;
-namespace scr = exec::system_context_replaceability;
+namespace scr = ex::system_context_replaceability;
 
 namespace {
 
   static int count_schedules = 0;
 
   struct my_parallel_scheduler_backend_impl
-    : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
-    using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
+    : ex::__system_context_default_impl::__parallel_scheduler_backend_impl {
+    using base_t = ex::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
     my_parallel_scheduler_backend_impl() = default;
 
-    void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
+    void schedule(scr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override {
       count_schedules++;
-      base_t::schedule(__s, __r);
+      base_t::schedule(__r, __s);
     }
   };
 
 } // namespace
 
-namespace exec::system_context_replaceability {
+namespace STDEXEC::system_context_replaceability {
   // Should replace the function defined in __system_context_default_impl.hpp
   auto query_parallel_scheduler_backend()
-    -> std::shared_ptr<exec::system_context_replaceability::parallel_scheduler_backend> {
+    -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend> {
     return std::make_shared<my_parallel_scheduler_backend_impl>();
   }
-} // namespace exec::system_context_replaceability
+} // namespace STDEXEC::system_context_replaceability
 
 TEST_CASE(
   "Check that we are using a replaced system context (with weak linking)",

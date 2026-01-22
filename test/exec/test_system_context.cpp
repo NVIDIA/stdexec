@@ -29,7 +29,7 @@
 #include <test_common/receivers.hpp>
 
 namespace ex = STDEXEC;
-namespace scr = exec::system_context_replaceability;
+namespace scr = ex::system_context_replaceability;
 
 TEST_CASE("system_context can return a scheduler", "[types][system_scheduler]") {
   auto sched = exec::get_parallel_scheduler();
@@ -307,8 +307,8 @@ TEST_CASE(
 }
 
 struct my_parallel_scheduler_backend_impl
-  : exec::__system_context_default_impl::__parallel_scheduler_backend_impl {
-  using base_t = exec::__system_context_default_impl::__parallel_scheduler_backend_impl;
+  : ex::__system_context_default_impl::__parallel_scheduler_backend_impl {
+  using base_t = ex::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
   my_parallel_scheduler_backend_impl() = default;
 
@@ -317,9 +317,9 @@ struct my_parallel_scheduler_backend_impl
     return count_schedules_;
   }
 
-  void schedule(std::span<std::byte> __s, scr::receiver& __r) noexcept override {
+  void schedule(scr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override {
     count_schedules_++;
-    base_t::schedule(__s, __r);
+    base_t::schedule(__r, __s);
   }
 
 
@@ -328,22 +328,23 @@ struct my_parallel_scheduler_backend_impl
 };
 
 struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend {
-  void schedule(std::span<std::byte>, scr::receiver& r) noexcept override {
+  void schedule(scr::receiver_proxy& r, std::span<std::byte>) noexcept override {
     r.set_value();
   }
 
-  void
-    schedule_bulk_chunked(uint32_t count, std::span<std::byte>, scr::bulk_item_receiver& r) noexcept
-    override {
+  void schedule_bulk_chunked(
+    size_t count,
+    scr::bulk_item_receiver_proxy& r,
+    std::span<std::byte>) noexcept override {
     r.execute(0, count);
     r.set_value();
   }
 
   void schedule_bulk_unchunked(
-    uint32_t count,
-    std::span<std::byte>,
-    scr::bulk_item_receiver& r) noexcept override {
-    for (uint32_t i = 0; i < count; ++i)
+    size_t count,
+    scr::bulk_item_receiver_proxy& r,
+    std::span<std::byte>) noexcept override {
+    for (size_t i = 0; i < count; ++i)
       r.execute(i, i + 1);
     r.set_value();
   }
@@ -394,15 +395,14 @@ TEST_CASE(
 }
 
 TEST_CASE("empty environment always returns nullopt for any query", "[types][system_scheduler]") {
-  struct my_receiver : scr::receiver {
-    auto __query_env(__uuid, void*) noexcept -> bool override {
-      return false;
+  struct my_receiver : scr::receiver_proxy {
+    void __query_env(ex::__type_index, ex::__type_index, void*) const noexcept override {
     }
 
     void set_value() noexcept override {
     }
 
-    void set_error(std::exception_ptr) noexcept override {
+    void set_error(std::exception_ptr&&) noexcept override {
     }
 
     void set_stopped() noexcept override {
@@ -411,38 +411,39 @@ TEST_CASE("empty environment always returns nullopt for any query", "[types][sys
 
   my_receiver rcvr{};
 
-  REQUIRE(rcvr.try_query<STDEXEC::inplace_stop_token>() == std::nullopt);
-  REQUIRE(rcvr.try_query<int>() == std::nullopt);
-  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
+  REQUIRE(rcvr.try_query<ex::inplace_stop_token>(ex::get_stop_token) == std::nullopt);
+  REQUIRE(rcvr.try_query<int>(ex::get_stop_token) == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>(ex::get_allocator) == std::nullopt);
 }
 
 TEST_CASE("environment with a stop token can expose its stop token", "[types][system_scheduler]") {
-  struct my_receiver : scr::receiver {
-    auto __query_env(__uuid uuid, void* dest) noexcept -> bool override {
-      if (
-        uuid
-        == scr::__runtime_property_helper<STDEXEC::inplace_stop_token>::__property_identifier) {
-        *static_cast<STDEXEC::inplace_stop_token*>(dest) = ss.get_token();
-        return true;
-      }
-      return false;
-    }
-
+  struct my_receiver : ex::system_context_replaceability::receiver_proxy {
     void set_value() noexcept override {
     }
 
-    void set_error(std::exception_ptr) noexcept override {
+    void set_error(std::exception_ptr&&) noexcept override {
     }
 
     void set_stopped() noexcept override {
     }
 
-    STDEXEC::inplace_stop_source ss;
+   protected:
+    void __query_env(ex::__type_index query, ex::__type_index value, void* dest)
+      const noexcept override {
+      if (
+        query == ex::__mtypeid<ex::get_stop_token_t>
+        && value == ex::__mtypeid<ex::inplace_stop_token>) {
+        *static_cast<std::optional<ex::inplace_stop_token>*>(dest) = ss.get_token();
+      }
+    }
+
+   public:
+    ex::inplace_stop_source ss;
   };
 
   my_receiver rcvr{};
 
-  auto o1 = rcvr.try_query<STDEXEC::inplace_stop_token>();
+  auto o1 = rcvr.try_query<ex::inplace_stop_token>(ex::get_stop_token);
   REQUIRE(o1.has_value());
   REQUIRE(o1.value().stop_requested() == false);
   REQUIRE(o1.value() == rcvr.ss.get_token());
@@ -450,6 +451,6 @@ TEST_CASE("environment with a stop token can expose its stop token", "[types][sy
   rcvr.ss.request_stop();
   REQUIRE(o1.value().stop_requested() == true);
 
-  REQUIRE(rcvr.try_query<int>() == std::nullopt);
-  REQUIRE(rcvr.try_query<std::allocator<int>>() == std::nullopt);
+  REQUIRE(rcvr.try_query<int>(ex::get_stop_token) == std::nullopt);
+  REQUIRE(rcvr.try_query<std::allocator<int>>(ex::get_allocator) == std::nullopt);
 }

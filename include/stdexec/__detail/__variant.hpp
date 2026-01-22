@@ -225,6 +225,21 @@ namespace STDEXEC {
 
   using __var::__variant;
 
+  struct __visit_t {
+    // clang-format off
+    template <class _Fn, class _Variant, class... _As>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    auto operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const STDEXEC_AUTO_RETURN(
+      __var.visit(
+        static_cast<_Fn &&>(__fn),
+        static_cast<_Variant &&>(__var),
+        static_cast<_As &&>(__as)...)
+    );
+    // clang-format on
+  };
+
+  inline constexpr __visit_t __visit{};
+
   template <class... _Ts>
   using __variant_for = __variant<__indices_for<_Ts...>{}, _Ts...>;
 

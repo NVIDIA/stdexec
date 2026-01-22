@@ -109,7 +109,7 @@ namespace STDEXEC {
 
     // This specialization is what makes __mtypeof< Id > return the type associated with Id.
     template <auto _Index>
-      requires __same_as<decltype(_Index), __type_index>
+      requires __same_as<decltype(_Index) const, __type_index const>
     extern __fn_t<__t<decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))>>
       *__mtypeof_v<_Index>;
   } // namespace __detail
@@ -119,7 +119,5 @@ namespace STDEXEC {
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 
   // Sanity check:
-  static_assert(STDEXEC_IS_SAME(int, __mtypeof<__mtypeid<int>>));
-
-  constexpr auto __nat_id = __mtypeid<__none_such>;
+  static_assert(STDEXEC_IS_SAME(void, __mtypeof<__mtypeid<void>>));
 } // namespace STDEXEC

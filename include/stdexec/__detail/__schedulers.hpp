@@ -180,7 +180,7 @@ namespace STDEXEC {
           using __read_query_t = typename get_completion_scheduler_t<set_value_t>::__read_query_t;
 
           if constexpr (__callable<__read_query_t, _Sch, const _Env&...>) {
-            using __sch2_t = __call_result_t<__read_query_t, _Sch, const _Env&...>;
+            using __sch2_t = __decay_t<__call_result_t<__read_query_t, _Sch, const _Env&...>>;
             if constexpr (__same_as<_Sch, __sch2_t>) {
               _Sch __prev = __sch;
               do {

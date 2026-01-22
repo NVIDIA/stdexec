@@ -51,6 +51,7 @@ namespace STDEXEC {
         : __pol_{__pol} {
       }
 
+      [[nodiscard]]
       const _Pol& __get() const noexcept {
         return __pol_;
       }
@@ -61,6 +62,7 @@ namespace STDEXEC {
       /*implicit*/ __policy_wrapper(const sequenced_policy&) {
       }
 
+      [[nodiscard]]
       const sequenced_policy& __get() const noexcept {
         return seq;
       }
@@ -71,6 +73,7 @@ namespace STDEXEC {
       /*implicit*/ __policy_wrapper(const parallel_policy&) {
       }
 
+      [[nodiscard]]
       const parallel_policy& __get() const noexcept {
         return par;
       }
@@ -81,6 +84,7 @@ namespace STDEXEC {
       /*implicit*/ __policy_wrapper(const parallel_unsequenced_policy&) {
       }
 
+      [[nodiscard]]
       const parallel_unsequenced_policy& __get() const noexcept {
         return par_unseq;
       }
@@ -91,6 +95,7 @@ namespace STDEXEC {
       /*implicit*/ __policy_wrapper(const unsequenced_policy&) {
       }
 
+      [[nodiscard]]
       const unsequenced_policy& __get() const noexcept {
         return unseq;
       }
@@ -101,9 +106,8 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(no_unique_address) __policy_wrapper<_Pol> __pol_;
       _Shape __shape_;
       STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
-      static constexpr auto __mbrs_ =
-        __mliterals<&__data::__pol_, &__data::__shape_, &__data::__fun_>();
     };
+
     template <class _Pol, class _Shape, class _Fun>
     __data(const _Pol&, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
@@ -260,7 +264,7 @@ namespace STDEXEC {
     struct bulk_unchunked_t : __generic_bulk_t<bulk_unchunked_t> { };
 
     template <class _AlgoTag>
-    struct __bulk_impl_base : __sexpr_defaults {
+    struct __impl_base : __sexpr_defaults {
       template <class _Sender>
       using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
 
@@ -287,7 +291,7 @@ namespace STDEXEC {
       };
     };
 
-    struct __bulk_chunked_impl : __bulk_impl_base<bulk_chunked_t> {
+    struct __chunked_impl : __impl_base<bulk_chunked_t> {
       //! This implements the core default behavior for `bulk_chunked`:
       //! When setting value, it calls the function with the entire range.
       //! Note: This is not done in parallel. That is customized by the scheduler.
@@ -317,7 +321,7 @@ namespace STDEXEC {
       };
     };
 
-    struct __bulk_unchunked_impl : __bulk_impl_base<bulk_unchunked_t> {
+    struct __unchunked_impl : __impl_base<bulk_unchunked_t> {
       //! This implements the core default behavior for `bulk_unchunked`:
       //! When setting value, it loops over the shape and invokes the function.
       //! Note: This is not done in concurrently. That is customized by the scheduler.
@@ -348,7 +352,7 @@ namespace STDEXEC {
       };
     };
 
-    struct __bulk_impl : __bulk_impl_base<bulk_t> {
+    struct __impl : __impl_base<bulk_t> {
       // Implementation is handled by lowering to `bulk_chunked` in the tag's `transform_sender`.
     };
   } // namespace __bulk
@@ -361,13 +365,13 @@ namespace STDEXEC {
   inline constexpr bulk_unchunked_t bulk_unchunked{};
 
   template <>
-  struct __sexpr_impl<bulk_t> : __bulk::__bulk_impl { };
+  struct __sexpr_impl<bulk_t> : __bulk::__impl { };
 
   template <>
-  struct __sexpr_impl<bulk_chunked_t> : __bulk::__bulk_chunked_impl { };
+  struct __sexpr_impl<bulk_chunked_t> : __bulk::__chunked_impl { };
 
   template <>
-  struct __sexpr_impl<bulk_unchunked_t> : __bulk::__bulk_unchunked_impl { };
+  struct __sexpr_impl<bulk_unchunked_t> : __bulk::__unchunked_impl { };
 } // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
