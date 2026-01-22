@@ -231,7 +231,7 @@ namespace STDEXEC {
         case __error:
           if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
             // One or more child operations completed with an error:
-            __errors_.visit(
+            STDEXEC::__visit(
               __mk_completion_fn(set_error, __rcvr_), static_cast<_ErrorsVariant&&>(__errors_));
           }
           break;

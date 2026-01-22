@@ -213,7 +213,7 @@ namespace exec {
 
         void start() & noexcept {
           // emit delayed error into the sequence
-          __op_->__error_storage_->visit(
+          STDEXEC::__visit(
             [this](auto&& __error) noexcept {
               STDEXEC::set_error(
                 static_cast<_ErrorReceiver&&>(__receiver_),
@@ -999,7 +999,7 @@ namespace exec {
           __nothrow_subscribable<_NestedSequence, __receiver_t>
           && STDEXEC::__nothrow_constructible_from<_NestedSeqOp, __nested_op_t>;
         STDEXEC_TRY {
-          auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.emplace_from(
+          auto& __nested_seq_op = __next_seq_op_->__nested_seq_op_.__emplace_from(
             subscribe,
             static_cast<_NestedSequence&&>(__sequence),
             __receiver_t{__next_seq_op_, __op_});

@@ -75,7 +75,7 @@ namespace exec {
         void set_value() noexcept {
           STDEXEC_TRY {
             auto& __result = __op_->__result_.__get();
-            __result.visit(__visitor{}, static_cast<_ResultType&&>(__result), __op_);
+            STDEXEC::__visit(__visitor{}, static_cast<_ResultType&&>(__result), __op_);
           }
           STDEXEC_CATCH_ALL {
             if constexpr (!__mapply_q<__nothrow_decay_copyable_t, _ResultType>::value) {
@@ -185,7 +185,7 @@ namespace exec {
           .template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__op_.index() == 0);
         auto __final = static_cast<_FinalSender&&>(__op_.template get<0>().__sndr_);
-        __final_op_t& __final_op = __op_.template emplace_from_at<1>(
+        __final_op_t& __final_op = __op_.template __emplace_from<1>(
           STDEXEC::connect, static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         STDEXEC::start(__final_op);
       }
