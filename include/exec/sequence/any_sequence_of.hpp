@@ -60,7 +60,7 @@ namespace exec {
 
         struct __t
           : public __rcvr_next_vfun<_NextSigs>
-          , public __any_::__rcvr_vfun<_Sigs>...
+          , public __rcvr_vfun<_Sigs>...
           , public __query_vfun<_Queries>... {
           using __id = __next_vtable;
           using __query_vfun<_Queries>::operator()...;
@@ -71,7 +71,7 @@ namespace exec {
           static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __t* {
             static const __t __vtable_{
               {__rcvr_next_vfun_fn<_Rcvr>{}(static_cast<_NextSigs*>(nullptr))},
-              {__any_::__rcvr_vfun_fn(
+              {__rcvr_vfun_fn(
                 static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...,
               {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
             return &__vtable_;
@@ -116,7 +116,7 @@ namespace exec {
           using __vtable_t = STDEXEC::__t<__next_vtable<__next_sigs, __sigs, _Queries...>>;
 
           template <class Sig>
-          using __vfun = __any_::__rcvr_vfun<Sig>;
+          using __vfun = __rcvr_vfun<Sig>;
 
           using __env_t = STDEXEC::__t<__env<__next_sigs, _Queries...>>;
           __env_t __env_;

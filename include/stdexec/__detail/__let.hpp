@@ -18,7 +18,6 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__any_receiver_ref.hpp" // IWYU pragma: keep for __any::__receiver_ref
 #include "__basic_sender.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"

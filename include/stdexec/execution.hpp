@@ -43,7 +43,6 @@
 #include "__detail/__operation_states.hpp"
 #include "__detail/__read_env.hpp"
 #include "__detail/__receiver_adaptor.hpp"
-#include "__detail/__receiver_ref.hpp"
 #include "__detail/__receivers.hpp"
 #include "__detail/__run_loop.hpp"
 #include "__detail/__schedule_from.hpp"

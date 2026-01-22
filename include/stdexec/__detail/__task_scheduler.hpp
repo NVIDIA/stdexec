@@ -599,7 +599,7 @@ namespace STDEXEC {
 
     void schedule(
       system_context_replaceability::receiver_proxy& __rcvr_proxy,
-      std::span<std::byte> __storage) noexcept final override {
+      std::span<std::byte> __storage) noexcept final {
       __schedule(__rcvr_proxy, STDEXEC::schedule(__sch_), __storage);
     }
 
@@ -615,7 +615,7 @@ namespace STDEXEC {
     void schedule_bulk_unchunked(
       size_t __size,
       system_context_replaceability::bulk_item_receiver_proxy& __rcvr_proxy,
-      std::span<std::byte> __storage) noexcept override {
+      std::span<std::byte> __storage) noexcept final {
       auto __sndr = STDEXEC::bulk_unchunked(
         STDEXEC::schedule(__sch_), par, __size, __detail::__bulk_unchunked_fn{__rcvr_proxy});
       __schedule(__rcvr_proxy, std::move(__sndr), __storage);
