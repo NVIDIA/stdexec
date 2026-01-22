@@ -66,6 +66,7 @@ set(exec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_ASIO}>:../execpools/test_asio_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     test_unless_stop_requested.cpp
+    test_invoke.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
