@@ -37,8 +37,8 @@ namespace exec {
         : __rcvr_{static_cast<_Receiver &&>(__rcvr)} {
       }
 
-      virtual void __cleanup() noexcept = 0;
-      virtual void __repeat() noexcept = 0;
+      virtual constexpr void __cleanup() noexcept = 0;
+      virtual constexpr void __repeat() noexcept = 0;
 
       _Receiver __rcvr_;
       trampoline_scheduler __sched_;

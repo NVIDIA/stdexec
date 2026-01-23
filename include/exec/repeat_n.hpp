@@ -41,8 +41,8 @@ namespace exec {
         , __count_{__count} {
       }
 
-      virtual void __cleanup() noexcept = 0;
-      virtual void __repeat() noexcept = 0;
+      virtual constexpr void __cleanup() noexcept = 0;
+      virtual constexpr void __repeat() noexcept = 0;
 
       _Receiver __rcvr_;
       std::size_t __count_;
@@ -81,7 +81,8 @@ namespace exec {
           STDEXEC::set_stopped(std::move(__state_->__rcvr_));
         }
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        [[nodiscard]]
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__state_->__rcvr_);
         }
 
