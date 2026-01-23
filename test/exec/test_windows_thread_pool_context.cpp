@@ -1,6 +1,6 @@
 /*
  * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) 2025 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -19,7 +19,7 @@
 
 #include <stdexec/execution.hpp>
 
-#include <exec/repeat_effect_until.hpp>
+#include <exec/repeat_until.hpp>
 #include <exec/windows/windows_thread_pool.hpp>
 
 using namespace std::chrono_literals;
@@ -75,10 +75,10 @@ TEST_CASE(
 //   exec::windows_thread_pool tp;
 //   auto sch = tp.get_scheduler();
 
-//   STDEXEC::sync_wait(exec::repeat_effect_until(
+//   STDEXEC::sync_wait(exec::repeat_until(
 //       STDEXEC::let_stopped(
 //           STDEXEC::stop_when(
-//               exec::repeat_effect(STDEXEC::schedule(sch)),
+//               exec::repeat(STDEXEC::schedule(sch)),
 //               STDEXEC::schedule(sch)),
 //           [] { return STDEXEC::just(); }),
 //       [n = 0]() mutable noexcept { return n++ == 1000; }));

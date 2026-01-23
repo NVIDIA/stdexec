@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2023 Runner-2019
- * Copyright (c) 2023 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -25,8 +25,6 @@
 #include "trampoline_scheduler.hpp"
 
 #include <cstddef>
-#include <exception>
-#include <type_traits>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
@@ -36,8 +34,20 @@ namespace exec {
   namespace __repeat_n {
     using namespace STDEXEC;
 
-    template <class _Sender, class _Receiver>
-    struct __repeat_n_state;
+    template <class _Receiver>
+    struct __repeat_n_state_base {
+      constexpr explicit __repeat_n_state_base(_Receiver &&__rcvr, std::size_t __count) noexcept
+        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
+        , __count_{__count} {
+      }
+
+      virtual constexpr void __cleanup() noexcept = 0;
+      virtual constexpr void __repeat() noexcept = 0;
+
+      _Receiver __rcvr_;
+      std::size_t __count_;
+      trampoline_scheduler __sched_;
+    };
 
     template <class _SenderId, class _ReceiverId>
     struct __receiver {
@@ -47,24 +57,36 @@ namespace exec {
       struct __t {
         using __id = __receiver;
         using receiver_concept = STDEXEC::receiver_t;
-        __repeat_n_state<_Sender, _Receiver> *__state_;
 
-        void set_value() noexcept {
-          __state_->__complete(set_value_t());
+        constexpr void set_value() noexcept {
+          __state_->__repeat();
         }
 
         template <class _Error>
-        void set_error(_Error &&__err) noexcept {
-          __state_->__complete(set_error_t(), static_cast<_Error &&>(__err));
+        constexpr void set_error(_Error &&__err) noexcept {
+          STDEXEC_TRY {
+            auto __err_copy = static_cast<_Error &&>(__err); // make a copy of the error...
+            __state_->__cleanup(); // ... because this could potentially invalidate it.
+            STDEXEC::set_error(std::move(__state_->__rcvr_), std::move(__err_copy));
+          }
+          STDEXEC_CATCH_ALL {
+            if constexpr (!__nothrow_decay_copyable<_Error>) {
+              STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+            }
+          }
         }
 
-        void set_stopped() noexcept {
-          __state_->__complete(set_stopped_t());
+        constexpr void set_stopped() noexcept {
+          __state_->__cleanup();
+          STDEXEC::set_stopped(std::move(__state_->__rcvr_));
         }
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        [[nodiscard]]
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__state_->__rcvr_);
         }
+
+        __repeat_n_state_base<_Receiver> *__state_;
       };
     };
 
@@ -78,7 +100,7 @@ namespace exec {
     __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
     template <class _Sender, class _Receiver>
-    struct __repeat_n_state {
+    struct __repeat_n_state : __repeat_n_state_base<_Receiver> {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
@@ -86,61 +108,57 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler &>, __child_t &>;
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-      __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr)
-        : __rcvr_(static_cast<_Receiver &&>(__rcvr))
-        , __pair_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
-        // Q: should we skip __connect() if __count_ == 0?
-        __connect();
+      constexpr explicit __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr)
+        : __repeat_n_state_base<_Receiver>{
+            static_cast<_Receiver &&>(__rcvr),
+            STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr)).__count_}
+        , __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr)).__child_) {
+        if (this->__count_ != 0) {
+          __connect();
+        }
       }
 
-      auto __connect() -> __child_op_t & {
+      constexpr auto __connect() -> __child_op_t & {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
-          exec::sequence(STDEXEC::schedule(__sched_), __pair_.__child_),
+          exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
           __receiver_t{this});
       }
 
-      void __start() noexcept {
-        if (__pair_.__count_ == 0) {
-          STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
+      constexpr void __start() noexcept {
+        if (this->__count_ == 0) {
+          STDEXEC::set_value(static_cast<_Receiver &&>(this->__rcvr_));
         } else {
           STDEXEC::start(*__child_op_);
         }
       }
 
-      template <class _Tag, class... _Args>
-      void __complete(_Tag, _Args &&...__args) noexcept {
-        static_assert(sizeof...(_Args) <= 1);
-        static_assert(sizeof...(_Args) == 0 || std::is_same_v<_Tag, STDEXEC::set_error_t>);
-        STDEXEC_ASSERT(__pair_.__count_ > 0);
+      constexpr void __cleanup() noexcept final {
+        __child_op_.reset();
+      }
 
+      constexpr void __repeat() noexcept final {
+        STDEXEC_ASSERT(this->__count_ > 0);
         STDEXEC_TRY {
-          auto __arg_copy = (0, ..., static_cast<_Args &&>(__args)); // copy any arg...
-          __child_op_.reset(); // ... because this could potentially invalidate it.
-
-          if constexpr (__std::same_as<_Tag, set_value_t>) {
-            if (--__pair_.__count_ == 0) {
-              STDEXEC::set_value(std::move(__rcvr_));
-            } else {
-              STDEXEC::start(__connect());
-            }
+          if (--this->__count_ == 0) {
+            __cleanup();
+            STDEXEC::set_value(std::move(this->__rcvr_));
           } else {
-            _Tag()(std::move(__rcvr_), static_cast<__decay_t<_Args> &&>(__arg_copy)...);
+            STDEXEC::start(__connect());
           }
         }
         STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
+          STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
         }
       }
 
-      _Receiver __rcvr_;
-      __child_count_pair<__child_t> __pair_;
+      __child_t __child_;
       STDEXEC::__optional<__child_op_t> __child_op_;
-      trampoline_scheduler __sched_;
     };
 
     template <class _Sender, class _Receiver>
-    __repeat_n_state(_Sender &&, _Receiver) -> __repeat_n_state<_Sender, _Receiver>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __repeat_n_state(_Sender &&, _Receiver) -> __repeat_n_state<_Sender, _Receiver>;
 
     struct repeat_n_t;
     struct _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_;
@@ -196,7 +214,7 @@ namespace exec {
 
     struct repeat_n_t {
       template <sender _Sender>
-      auto operator()(_Sender &&__sndr, std::size_t __count) const {
+      constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const {
         return __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
       }
 
@@ -205,13 +223,12 @@ namespace exec {
         return __closure(*this, __count);
       }
 
-      template <class _Sender, bool _NoThrow = __nothrow_decay_copyable<_Sender>>
-      static auto transform_sender(set_value_t, _Sender &&__sndr, __ignore) noexcept(_NoThrow) {
-        return __apply(
-          []<class _Child>(__ignore, std::size_t __count, _Child __child) noexcept(_NoThrow) {
-            return __make_sexpr<__repeat_n_tag>(__child_count_pair{std::move(__child), __count});
-          },
-          static_cast<_Sender &&>(__sndr));
+      template <class _Sender>
+      static auto transform_sender(set_value_t, _Sender &&__sndr, __ignore)
+        noexcept(__nothrow_decay_copyable<_Sender>) {
+        auto &[__tag, __count, __child] = __sndr;
+        return __make_sexpr<__repeat_n_tag>(
+          __child_count_pair{STDEXEC::__forward_like<_Sender>(__child), __count});
       }
     };
   } // namespace __repeat_n
