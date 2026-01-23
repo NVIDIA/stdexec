@@ -37,7 +37,7 @@ namespace STDEXEC {
       template <class _Op>
         requires __has_start<_Op>
       STDEXEC_ATTRIBUTE(always_inline)
-      void operator()(_Op &__op) const noexcept {
+      constexpr void operator()(_Op &__op) const noexcept {
         static_assert(noexcept(__op.start()), "start() members must be noexcept");
         static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
         __op.start();

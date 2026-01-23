@@ -61,7 +61,7 @@ namespace STDEXEC {
       template <class _Receiver, class... _As>
         requires __set_value_member<_Receiver, _As...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
+      constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
         static_assert(
           noexcept(static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__as)...)),
           "set_value member functions must be noexcept");

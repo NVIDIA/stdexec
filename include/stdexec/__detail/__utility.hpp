@@ -141,7 +141,7 @@ namespace STDEXEC {
   // A derived-to-base cast that works even when the base is not accessible from derived.
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
-  auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
+  constexpr auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
     requires __decays_to<_Tp, _Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));

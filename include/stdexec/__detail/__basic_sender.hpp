@@ -182,7 +182,7 @@ namespace STDEXEC {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
+      explicit constexpr __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
         __state_t(__sexpr_impl<__tag_t>::get_state(__declval<_Sexpr>(), __declval<_Receiver>()))))
         : __state_(
             __sexpr_impl<__tag_t>::get_state(
@@ -220,7 +220,7 @@ namespace STDEXEC {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
+      constexpr auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
         return {};
       }
 
@@ -290,7 +290,7 @@ namespace STDEXEC {
     using __state_t = __op_state::__op_base::__state_t;
     using __inner_ops_t = __apply_result_t<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>;
 
-    explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+    explicit constexpr __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
       __nothrow_constructible_from<__detail::__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
       && __nothrow_applicable<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>)
       : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
@@ -299,7 +299,7 @@ namespace STDEXEC {
           static_cast<_Sexpr&&>(__sexpr))) {
     }
 
-    STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
+    STDEXEC_ATTRIBUTE(always_inline) constexpr void start() & noexcept {
       using __tag_t = __op_state::__tag_t;
       STDEXEC::__apply(
         [&](auto&... __ops) noexcept { __sexpr_impl<__tag_t>::start(this->__state_, __ops...); },

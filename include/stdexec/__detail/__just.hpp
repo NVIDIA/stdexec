@@ -68,7 +68,7 @@ namespace STDEXEC {
 
       template <__movable_value... _Ts>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
+      constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
         return __make_sexpr<just_t>(__tuple{static_cast<_Ts&&>(__ts)...});
       }
     };

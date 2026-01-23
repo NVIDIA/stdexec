@@ -218,7 +218,7 @@ namespace {
    public:
     using receiver_concept = STDEXEC::receiver_t;
 
-    explicit expect_value_receiver_ex(T& dest)
+    explicit constexpr expect_value_receiver_ex(T& dest)
       : dest_(&dest) {
     }
 
@@ -227,7 +227,7 @@ namespace {
       , env_(std::move(env)) {
     }
 
-    void set_value(T val) noexcept {
+    constexpr void set_value(T val) noexcept {
       *dest_ = val;
     }
 
@@ -244,7 +244,7 @@ namespace {
       FAIL_CHECK("set_error called on expect_value_receiver_ex");
     }
 
-    auto get_env() const noexcept -> Env {
+    constexpr auto get_env() const noexcept -> Env {
       return env_;
     }
   };

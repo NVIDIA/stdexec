@@ -69,7 +69,7 @@ namespace STDEXEC {
 
     template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
+    constexpr auto transform_sender(_OpTag, _Sender&& __sndr, const _Env&) const
       noexcept(__nothrow_move_constructible<_Sender>) -> _Sender {
       return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
     }

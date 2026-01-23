@@ -181,4 +181,14 @@ namespace {
     ::STDEXEC::start(op);
     CHECK(invoked == 1);
   }
+
+  TEST_CASE("just compile time", "[not][sure]") {
+    static_assert([](const double value) constexpr -> double {
+      auto sndr = ::STDEXEC::just(value);
+      double placeholder = 0;
+      auto opstate = ::STDEXEC::connect(std::move(sndr), expect_value_receiver_ex{placeholder});
+      ::STDEXEC::start(opstate);
+      return placeholder;
+    }(42) == 42);
+  }
 } // namespace
