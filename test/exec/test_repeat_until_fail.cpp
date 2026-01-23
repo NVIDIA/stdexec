@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <exec/repeat_effect_until.hpp>
+#include <exec/repeat_until.hpp>
 #include <stdexec/execution.hpp>
 
 namespace ex = STDEXEC;
@@ -22,7 +22,7 @@ namespace ex = STDEXEC;
 struct not_a_bool { };
 
 auto main() -> int {
-  ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_effect_until();
+  ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_until();
   // build error: _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_
   STDEXEC::sync_wait(std::move(snd));
 }

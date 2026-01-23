@@ -27,7 +27,7 @@ set(exec_test_sources
     test_env.cpp
     test_finally.cpp
     test_into_tuple.cpp
-    test_repeat_effect_until.cpp
+    test_repeat_until.cpp
     test_repeat_n.cpp
     async_scope/test_dtor.cpp
     async_scope/test_spawn.cpp
@@ -93,9 +93,9 @@ endif()
 
 # Test which parses a source file for an expected error message
 icm_add_build_failure_test(
-    NAME test_repeat_effect_until_fail
-    TARGET test_repeat_effect_until_fail
-    SOURCES PARSE test_repeat_effect_until_fail.cpp
+    NAME test_repeat_until_fail
+    TARGET test_repeat_until_fail
+    SOURCES PARSE test_repeat_until_fail.cpp
     LIBRARIES stdexec
     FOLDER test
 )
