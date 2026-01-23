@@ -38,17 +38,30 @@ namespace exec {
       auto operator()(Senders... sndrs) const -> _sndr<Senders...>;
     };
 
-    template <class Rcvr, class OpStateId, class Index>
-    struct _rcvr {
-      using receiver_concept = STDEXEC::receiver_t;
-      using _opstate_t = STDEXEC::__t<OpStateId>;
-      _opstate_t* _opstate;
-
+    template <class Rcvr>
+    struct _opstate_base {
       template <class... Args>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void set_value(Args&&... args) && noexcept {
-        _opstate->_set_value(Index(), static_cast<Args&&>(args)...);
+      STDEXEC_ATTRIBUTE(host, device)
+      void _set_value([[maybe_unused]] Args&&... args) noexcept {
+        STDEXEC::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
       }
+
+      void _start_next() noexcept {
+        STDEXEC_TRY {
+          (*_start_next_)(this);
+        }
+        STDEXEC_CATCH_ALL {
+          STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
+        }
+      }
+
+      Rcvr _rcvr;
+      void (*_start_next_)(_opstate_base*) = nullptr;
+    };
+
+    template <class Rcvr>
+    struct _rcvr_base {
+      using receiver_concept = STDEXEC::receiver_t;
 
       template <class Error>
       STDEXEC_ATTRIBUTE(host, device)
@@ -61,8 +74,26 @@ namespace exec {
       }
 
       // TODO: use the predecessor's completion scheduler as the current scheduler here.
-      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr> {
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr> {
         return STDEXEC::get_env(_opstate->_rcvr);
+      }
+
+      _opstate_base<Rcvr>* _opstate;
+    };
+
+    template <class Rcvr, bool IsLast>
+    struct _rcvr : _rcvr_base<Rcvr> {
+      using receiver_concept = STDEXEC::receiver_t;
+
+      template <class... Args>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      void set_value(Args&&... args) && noexcept {
+        if constexpr (IsLast) {
+          this->_opstate->_set_value(static_cast<Args&&>(args)...);
+        } else {
+          this->_opstate->_start_next();
+        }
       }
     };
 
@@ -78,7 +109,7 @@ namespace exec {
     struct _opstate;
 
     template <class Rcvr, class Sender0, class... Senders>
-    struct _opstate<Rcvr, Sender0, Senders...> {
+    struct _opstate<Rcvr, Sender0, Senders...> : _opstate_base<Rcvr> {
       using operation_state_concept = STDEXEC::operation_state_t;
 
       // We will be connecting the first sender in the opstate constructor, so we don't need to
@@ -86,11 +117,11 @@ namespace exec {
       // be stored.
       using _senders_tuple_t = STDEXEC::__tuple<STDEXEC::__ignore, Senders...>;
 
-      template <size_t Idx>
-      using _rcvr_t = _seq::_rcvr<Rcvr, STDEXEC::__id<_opstate>, STDEXEC::__msize_t<Idx>>;
+      template <bool IsLast>
+      using _rcvr_t = _seq::_rcvr<Rcvr, IsLast>;
 
-      template <class Sender, class Idx>
-      using _child_opstate_t = STDEXEC::connect_result_t<Sender, _rcvr_t<Idx::value>>;
+      template <class Sender, class IsLast>
+      using _child_opstate_t = STDEXEC::connect_result_t<Sender, _rcvr_t<IsLast::value>>;
 
       using _mk_child_ops_variant_fn = STDEXEC::__mzip_with2<
         STDEXEC::__q2<_child_opstate_t>,
@@ -100,13 +131,17 @@ namespace exec {
       using _ops_variant_t = STDEXEC::__minvoke<
         _mk_child_ops_variant_fn,
         STDEXEC::__tuple<Sender0, Senders...>,
-        STDEXEC::__make_indices<sizeof...(Senders) + 1>
+        STDEXEC::__mfill_c<
+          sizeof...(Senders),
+          STDEXEC::__mfalse,
+          STDEXEC::__mbind_back_q<STDEXEC::__types, STDEXEC::__mtrue>
+        >
       >;
 
       template <class CvrefSndrs>
       STDEXEC_ATTRIBUTE(host, device)
       explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
-        : _rcvr{static_cast<Rcvr&&>(rcvr)}
+        : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{STDEXEC::__apply(
             __convert_tuple_fn<_senders_tuple_t>{},
             static_cast<CvrefSndrs&&>(sndrs))} // move all but the first sender into the opstate.
@@ -115,37 +150,34 @@ namespace exec {
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template __emplace_from<0>(
-          STDEXEC::connect, STDEXEC::__get<0>(static_cast<CvrefSndrs&&>(sndrs)), _rcvr_t<0>{this});
+          STDEXEC::connect,
+          STDEXEC::__get<0>(static_cast<CvrefSndrs&&>(sndrs)),
+          _rcvr_t<sizeof...(Senders) == 0>{this});
       }
 
-      template <class Index, class... Args>
-      STDEXEC_ATTRIBUTE(host, device)
-      void _set_value(Index, [[maybe_unused]] Args&&... args) noexcept {
-        STDEXEC_TRY {
-          constexpr size_t Idx = Index::value + 1;
-          if constexpr (Idx == sizeof...(Senders) + 1) {
-            STDEXEC::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
-          } else {
-            auto& sndr = STDEXEC::__get<Idx>(_sndrs);
-            auto& op = _ops.template __emplace_from<Idx>(
-              STDEXEC::connect, std::move(sndr), _rcvr_t<Idx>{this});
-            STDEXEC::start(op);
-          }
+      template <std::size_t Remaining>
+      static void _start_next(_opstate_base<Rcvr>* _self) {
+        constexpr auto __nth = sizeof...(Senders) - Remaining;
+        auto* self = static_cast<_opstate*>(_self);
+        auto& sndr = STDEXEC::__get<__nth + 1>(self->_sndrs);
+        auto& op = self->_ops.template __emplace_from<__nth + 1>(
+          STDEXEC::connect, std::move(sndr), _rcvr_t<Remaining == 1>{self});
+        if constexpr (Remaining > 1) {
+          self->_start_next_ = &_start_next<Remaining - 1>;
         }
-        STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
-        }
+        STDEXEC::start(op);
       }
 
-      STDEXEC_ATTRIBUTE(host, device) void start() & noexcept {
+      STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
+        if (sizeof...(Senders) != 0) {
+          this->_start_next_ = &_start_next<sizeof...(Senders)>;
+        }
         STDEXEC::start(_ops.template get<0>());
       }
 
-      Rcvr _rcvr;
       _senders_tuple_t _sndrs;
       _ops_variant_t _ops{};
     };
-
 
     // The completions of the sequence sender are the error and stopped completions of all the
     // child senders plus the value completions of the last child sender.

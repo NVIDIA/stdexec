@@ -23,6 +23,7 @@
 #include "__diagnostics.hpp"
 #include "__env.hpp"
 #include "__meta.hpp"
+#include "__operation_states.hpp"
 #include "__receivers.hpp"
 #include "__sender_introspection.hpp"
 #include "__tuple.hpp"
@@ -51,7 +52,7 @@ namespace STDEXEC {
     STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
 #endif
 
-#if 1 //defined(STDEXEC_DEMANGLE_SENDER_NAMES) || STDEXEC_MSVC()
+#if defined(STDEXEC_DEMANGLE_SENDER_NAMES) || STDEXEC_MSVC()
   template <class _Descriptor>
   inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #else
@@ -155,8 +156,8 @@ namespace STDEXEC {
       };
 
       static constexpr auto start =
-        []<class _StartTag = start_t, class... _ChildOps>(__ignore, _ChildOps&... __ops) noexcept {
-          (_StartTag()(__ops), ...);
+        []<class... _ChildOps>(__ignore, _ChildOps&... __ops) noexcept {
+          (STDEXEC::start(__ops), ...);
         };
 
       static constexpr auto complete =

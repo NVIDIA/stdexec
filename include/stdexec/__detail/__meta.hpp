@@ -649,6 +649,12 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class _List>
   using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
 
+  template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__types>>
+  using __mfill_c = __mapply<__mtransform<__mconst<_Ty>, _Continuation>, __make_indices<_Ny>>;
+
+  template <class _Ny, class _Ty, class _Continuation = __qq<__types>>
+  using __mfill = __mfill_c<_Ny::value, _Ty, _Continuation>;
+
   template <bool>
   struct __mconcat_ {
     template <
