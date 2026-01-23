@@ -321,7 +321,7 @@ namespace nvexec::_strm {
               }
               break;
             case _when_all::error:
-              errors_.visit(
+              STDEXEC::__visit(
                 __mk_completion_fn(STDEXEC::set_error, rcvr_),
                 static_cast<errors_variant_t&&>(errors_));
               break;

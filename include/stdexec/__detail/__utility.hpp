@@ -17,10 +17,8 @@
 
 #include "__concepts.hpp"
 #include "__config.hpp"
-#include "__type_traits.hpp"
 
 #include <initializer_list>
-#include <type_traits>
 
 namespace STDEXEC {
   constexpr std::size_t __npos = ~0UL;
@@ -131,19 +129,11 @@ namespace STDEXEC {
     return __pos_of(__same, __same + sizeof...(_Ts));
   }
 
-  namespace __detail {
-    template <class _Cpcvref>
-    struct __forward_like_fn {
-      template <class _Uy>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Uy&& __uy) const noexcept -> auto&& {
-        return static_cast<_Cpcvref::template __f<std::remove_reference_t<_Uy>>>(__uy);
-      }
-    };
-  } // namespace __detail
-
-  template <class _Ty>
-  inline constexpr __detail::__forward_like_fn<__copy_cvref_fn<_Ty&&>> __forward_like{};
+  template <class _Ty, class _Uy>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+  constexpr auto __forward_like(_Uy&& __uy) noexcept -> auto&& {
+    return static_cast<__copy_cvref_t<_Ty&&, STDEXEC_REMOVE_REFERENCE(_Uy)>>(__uy);
+  }
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")

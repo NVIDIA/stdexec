@@ -114,7 +114,7 @@ namespace exec {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
-        _ops.template emplace_from_at<0>(
+        _ops.template __emplace_from<0>(
           STDEXEC::connect, STDEXEC::__get<0>(static_cast<CvrefSndrs&&>(sndrs)), _rcvr_t<0>{this});
       }
 
@@ -127,7 +127,7 @@ namespace exec {
             STDEXEC::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
           } else {
             auto& sndr = STDEXEC::__get<Idx>(_sndrs);
-            auto& op = _ops.template emplace_from_at<Idx>(
+            auto& op = _ops.template __emplace_from<Idx>(
               STDEXEC::connect, std::move(sndr), _rcvr_t<Idx>{this});
             STDEXEC::start(op);
           }

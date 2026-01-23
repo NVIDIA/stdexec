@@ -30,12 +30,12 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(no_unique_address) __immovable __hidden_ { };
     bool __dismissed_{false};
 
-    ~__scope_guard() {
+    constexpr ~__scope_guard() {
       if (!__dismissed_)
         static_cast<_Fn&&>(__fn_)();
     }
 
-    void __dismiss() noexcept {
+    constexpr void __dismiss() noexcept {
       __dismissed_ = true;
     }
   };
@@ -48,11 +48,11 @@ namespace STDEXEC {
 
     bool __dismissed_{false};
 
-    void __dismiss() noexcept {
+    constexpr void __dismiss() noexcept {
       __dismissed_ = true;
     }
 
-    ~__scope_guard() {
+    constexpr ~__scope_guard() {
       if (!__dismissed_)
         static_cast<_Fn&&>(__fn_)(static_cast<_T0&&>(__t0_));
     }
@@ -67,11 +67,11 @@ namespace STDEXEC {
 
     bool __dismissed_{false};
 
-    void __dismiss() noexcept {
+    constexpr void __dismiss() noexcept {
       __dismissed_ = true;
     }
 
-    ~__scope_guard() {
+    constexpr ~__scope_guard() {
       if (!__dismissed_)
         static_cast<_Fn&&>(__fn_)(static_cast<_T0&&>(__t0_), static_cast<_T1&&>(__t1_));
     }
@@ -87,11 +87,11 @@ namespace STDEXEC {
 
     bool __dismissed_{false};
 
-    void __dismiss() noexcept {
+    constexpr void __dismiss() noexcept {
       __dismissed_ = true;
     }
 
-    ~__scope_guard() {
+    constexpr ~__scope_guard() {
       if (!__dismissed_)
         static_cast<_Fn&&>(
           __fn_)(static_cast<_T0&&>(__t0_), static_cast<_T1&&>(__t1_), static_cast<_T2&&>(__t2_));
@@ -99,5 +99,5 @@ namespace STDEXEC {
   };
 
   template <class _Fn, class... _Ts>
-  __scope_guard(_Fn, _Ts...) -> __scope_guard<_Fn, _Ts...>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __scope_guard(_Fn, _Ts...) -> __scope_guard<_Fn, _Ts...>;
 } // namespace STDEXEC

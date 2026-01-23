@@ -95,7 +95,7 @@ namespace exec {
         using operation_state_concept = STDEXEC::operation_state_t;
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
-          Variant::visit(_dematerialize_fn{}, *_results_, _rcvr_);
+          STDEXEC::__visit(_dematerialize_fn{}, *_results_, _rcvr_);
         }
 
         Rcvr _rcvr_;
@@ -160,7 +160,7 @@ namespace exec {
 
       STDEXEC_ATTRIBUTE(host, device) ~_opstate_t() {
         // If this opstate was never started, we must explicitly destroy the _child_opstate_.
-        if (_cache_.is_valueless()) {
+        if (_cache_.__is_valueless()) {
           _child_opstate_.__destroy();
         }
       }

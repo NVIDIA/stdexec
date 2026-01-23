@@ -126,7 +126,7 @@ namespace exec {
           STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
         } else {
           STDEXEC_TRY {
-            STDEXEC::start(__op_.emplace_from(
+            STDEXEC::start(__op_.__emplace_from(
               STDEXEC::connect,
               exec::set_next(
                 __rcvr_, exec::sequence(STDEXEC::schedule(__scheduler_), __sender_t<_Range>{this})),

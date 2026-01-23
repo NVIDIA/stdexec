@@ -59,22 +59,21 @@ namespace exec {
       [[gnu::noinline]]
 #endif
       void __visit_result(_Receiver __rcvr) noexcept {
-        int __is_emplaced = __emplaced_.load(__std::memory_order_acquire);
-        if (__is_emplaced == 0) {
+        if (__emplaced_.load(__std::memory_order_acquire) == 0) {
           STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr));
-          return;
+        } else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultVariant>::value != 0) {
+          STDEXEC_ASSERT(__result_.index() != __variant_npos);
+          STDEXEC::__visit(
+            [&]<class _Tuple>(_Tuple&& __tuple) noexcept {
+              STDEXEC::__apply(
+                [&]<__completion_tag _Tag, class... _Args>(
+                  _Tag __completion, _Args&&... __args) noexcept {
+                  __completion(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+                },
+                static_cast<_Tuple&&>(__tuple));
+            },
+            static_cast<_ResultVariant&&>(__result_));
         }
-        STDEXEC_ASSERT(__result_.index() != __variant_npos);
-        __result_.visit(
-          [&]<class _Tuple>(_Tuple&& __tuple) noexcept {
-            STDEXEC::__apply(
-              [&]<__completion_tag _Tag, class... _Args>(
-                _Tag __completion, _Args&&... __args) noexcept {
-                __completion(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-              },
-              static_cast<_Tuple&&>(__tuple));
-          },
-          static_cast<_ResultVariant&&>(__result_));
       }
     };
 

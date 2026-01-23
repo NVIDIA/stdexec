@@ -139,8 +139,8 @@ namespace exec {
             STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             return;
           }
-          STDEXEC_ASSERT(!__result_.is_valueless());
-          __result_.visit(
+          STDEXEC_ASSERT(!__result_.__is_valueless());
+          STDEXEC::__visit(
             __when_any::__make_visitor_fn(__rcvr_), static_cast<_ResultVariant&&>(__result_));
         }
       }

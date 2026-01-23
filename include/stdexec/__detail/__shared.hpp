@@ -152,7 +152,7 @@ namespace STDEXEC::__shared {
 
       __self->__on_stop_.reset();
 
-      __variant_t::visit(
+      STDEXEC::__visit(
         __notify_visitor(),
         static_cast<__cv_variant_t&&>(__self->__sh_state_->__results_),
         __self->__rcvr_);

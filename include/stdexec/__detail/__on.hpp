@@ -119,7 +119,7 @@ namespace STDEXEC {
 
         auto __pred = __reschedule(STDEXEC::__forward_like<_Sender>(__child), __old, __sched);
         return __reschedule(
-          __forward_like<_Sender>(__clsur)(std::move(__pred)),
+          STDEXEC::__forward_like<_Sender>(__clsur)(std::move(__pred)),
           std::move(__sched),
           std::move(__old));
       }

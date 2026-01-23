@@ -21,7 +21,9 @@
 #include "__utility.hpp"
 
 #include <cstddef>
+#include <memory>
 #include <new>
+#include <type_traits>
 #include <utility>
 
 /********************************************************************************/
@@ -46,14 +48,8 @@ namespace STDEXEC {
   struct __monostate { };
 
   namespace __var {
-    template <class _Ty>
-    STDEXEC_ATTRIBUTE(host, device, always_inline)
-    void __destroy_at(_Ty *ptr) noexcept {
-      ptr->~_Ty();
-    }
-
     STDEXEC_ATTRIBUTE(host, device)
-    inline auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
+    constexpr auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
       __index = __new;
       return __scope_guard{[&__index]() noexcept { __index = __variant_npos; }};
     }
@@ -70,11 +66,13 @@ namespace STDEXEC {
         STDEXEC_ASSERT(false);
       }
 
-      STDEXEC_ATTRIBUTE(host, device) static constexpr auto index() noexcept -> std::size_t {
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto index() noexcept -> std::size_t {
         return __variant_npos;
       }
 
-      STDEXEC_ATTRIBUTE(host, device) static constexpr auto is_valueless() noexcept -> bool {
+      STDEXEC_ATTRIBUTE(host, device)
+      static constexpr auto __is_valueless() noexcept -> bool {
         return true;
       }
     };
@@ -86,10 +84,11 @@ namespace STDEXEC {
       std::size_t __index_{__variant_npos};
       alignas(_Ts...) unsigned char __storage_[__max_size];
 
-      STDEXEC_ATTRIBUTE(host, device) void __destroy() noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void __destroy() noexcept {
         auto __index = std::exchange(__index_, __variant_npos);
         if (__variant_npos != __index) {
-          ((_Is == __index ? __var::__destroy_at(static_cast<_Ts *>(__get_ptr())) : void(0)), ...);
+          ((_Is == __index ? std::destroy_at(static_cast<_Ts *>(__get_ptr())) : void(0)), ...);
         }
       }
 
@@ -100,24 +99,33 @@ namespace STDEXEC {
       // immovable:
       __variant(__variant &&) = delete;
 
-      STDEXEC_ATTRIBUTE(host, device) __variant() noexcept = default;
+      STDEXEC_ATTRIBUTE(host, device)
+      __variant() noexcept = default;
 
-      STDEXEC_ATTRIBUTE(host, device) ~__variant() {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr ~__variant() {
         __destroy();
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE(host, device, always_inline) auto __get_ptr() noexcept -> void * {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto __get_ptr() noexcept -> void * {
         return __storage_;
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE(host, device, always_inline) auto index() const noexcept -> std::size_t {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto __get_ptr() const noexcept -> const void * {
+        return __storage_;
+      }
+
+      [[nodiscard]]
+      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto index() const noexcept
+        -> std::size_t {
         return __index_;
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE(host, device, always_inline) auto is_valueless() const noexcept -> bool {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto __is_valueless() const noexcept
+        -> bool {
         return __index_ == __variant_npos;
       }
 
@@ -136,60 +144,73 @@ namespace STDEXEC {
       //    must be aware of the danger.
       template <class _Ty, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      auto emplace(_As &&...__as) noexcept(__nothrow_constructible_from<_Ty, _As...>) -> _Ty & {
+      constexpr auto emplace(_As &&...__as) noexcept(__nothrow_constructible_from<_Ty, _As...>)
+        -> _Ty & {
         constexpr std::size_t __new_index = STDEXEC::__index_of<_Ty, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, __new_index);
-        auto *__p = ::new (__storage_) _Ty{static_cast<_As &&>(__as)...};
+        auto *__p =
+          std::construct_at(static_cast<_Ty *>(__get_ptr()), static_cast<_As &&>(__as)...);
         __sg.__dismiss();
         return *std::launder(__p);
       }
 
       template <std::size_t _Ny, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      auto emplace(_As &&...__as) noexcept(__nothrow_constructible_from<__at<_Ny>, _As...>)
-        -> __at<_Ny> & {
+      constexpr auto emplace(_As &&...__as)
+        noexcept(__nothrow_constructible_from<__at<_Ny>, _As...>) -> __at<_Ny> & {
         static_assert(_Ny < sizeof...(_Ts), "variant index is too large");
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, _Ny);
-        auto *__p = ::new (__storage_) __at<_Ny>{static_cast<_As &&>(__as)...};
+        auto *__p =
+          std::construct_at(static_cast<__at<_Ny> *>(__get_ptr()), static_cast<_As &&>(__as)...);
         __sg.__dismiss();
         return *std::launder(__p);
       }
 
       template <std::size_t _Ny, class _Fn, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      auto emplace_from_at(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
+      constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
         -> __at<_Ny> & {
         static_assert(
           __same_as<__call_result_t<_Fn, _As...>, __at<_Ny>>,
           "callable does not return the correct type");
+        constexpr bool __is_nothrow = __nothrow_callable<_Fn, _As...>;
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, _Ny);
-        auto *__p = ::new (__storage_)
-          __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
-        __sg.__dismiss();
-        return *std::launder(__p);
+        if (std::is_constant_evaluated()) {
+          auto *__p = std::construct_at<__at<_Ny>>(
+            static_cast<__at<_Ny> *>(__get_ptr()),
+            STDEXEC::__emplace_from([&]() noexcept(__is_nothrow) -> decltype(auto) {
+              return static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...);
+            }));
+          __sg.__dismiss();
+          return *std::launder(__p);
+        } else {
+          auto *__p = ::new (__get_ptr())
+            __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
+          __sg.__dismiss();
+          return *std::launder(__p);
+        }
       }
 
       template <class _Fn, class... _As>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
-        -> __call_result_t<_Fn, _As...> & {
+      constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as)
+        noexcept(__nothrow_callable<_Fn, _As...>) -> __call_result_t<_Fn, _As...> & {
         using __result_t = __call_result_t<_Fn, _As...>;
         constexpr std::size_t __new_index = STDEXEC::__index_of<__result_t, _Ts...>();
         static_assert(__new_index != __variant_npos, "Type not in variant");
-        return emplace_from_at<__new_index>(
-          static_cast<_Fn &&>(__fn), static_cast<_As &&>(__as)...);
+        return __emplace_from<__new_index>(static_cast<_Fn &&>(__fn), static_cast<_As &&>(__as)...);
       }
 
       template <class _Fn, class _Self, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      static void visit(_Fn &&__fn, _Self &&__self, _As &&...__as)
+      static constexpr void __visit(_Fn &&__fn, _Self &&__self, _As &&...__as)
         noexcept((__nothrow_callable<_Fn, _As..., __copy_cvref_t<_Self, _Ts>> && ...)) {
         STDEXEC_ASSERT(__self.__index_ != __variant_npos);
         auto __index = __self.__index_; // make it local so we don't access it after it's deleted.
@@ -202,23 +223,23 @@ namespace STDEXEC {
 
       template <std::size_t _Ny>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-      auto get() && noexcept -> decltype(auto) {
+      constexpr auto get() && noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
-        return static_cast<__at<_Ny> &&>(*reinterpret_cast<__at<_Ny> *>(__storage_));
+        return static_cast<__at<_Ny> &&>(*static_cast<__at<_Ny> *>(__get_ptr()));
       }
 
       template <std::size_t _Ny>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-      auto get() & noexcept -> decltype(auto) {
+      constexpr auto get() & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
-        return *reinterpret_cast<__at<_Ny> *>(__storage_);
+        return *static_cast<__at<_Ny> *>(__get_ptr());
       }
 
       template <std::size_t _Ny>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-      auto get() const & noexcept -> decltype(auto) {
+      constexpr auto get() const & noexcept -> decltype(auto) {
         STDEXEC_ASSERT(_Ny == __index_);
-        return *reinterpret_cast<const __at<_Ny> *>(__storage_);
+        return *static_cast<const __at<_Ny> *>(__get_ptr());
       }
     };
   } // namespace __var
@@ -229,8 +250,8 @@ namespace STDEXEC {
     // clang-format off
     template <class _Fn, class _Variant, class... _As>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const STDEXEC_AUTO_RETURN(
-      __var.visit(
+    constexpr auto operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const STDEXEC_AUTO_RETURN(
+      __var.__visit(
         static_cast<_Fn &&>(__fn),
         static_cast<_Variant &&>(__var),
         static_cast<_As &&>(__as)...)
