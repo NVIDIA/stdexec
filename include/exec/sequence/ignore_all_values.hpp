@@ -39,6 +39,19 @@ namespace exec {
   namespace __ignore_all_values {
     using namespace STDEXEC;
 
+    constexpr auto __complete_fn = []<class _Receiver, class _Tag, class... _Args>(
+                                     _Receiver&& __rcvr,
+                                     _Tag,
+                                     _Args&&... __args) noexcept {
+      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
+    };
+
+    constexpr auto __visit_fn =
+      []<class _Receiver, class _Tuple>(_Receiver&& __rcvr, _Tuple&& __tupl) noexcept {
+        STDEXEC::__apply(
+          __complete_fn, static_cast<_Tuple&&>(__tupl), static_cast<_Receiver&&>(__rcvr));
+      };
+
     template <class _ResultVariant>
     struct __result_type {
       _ResultVariant __result_{};
@@ -64,15 +77,9 @@ namespace exec {
         } else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultVariant>::value != 0) {
           STDEXEC_ASSERT(__result_.index() != __variant_npos);
           STDEXEC::__visit(
-            [&]<class _Tuple>(_Tuple&& __tuple) noexcept {
-              STDEXEC::__apply(
-                [&]<__completion_tag _Tag, class... _Args>(
-                  _Tag __completion, _Args&&... __args) noexcept {
-                  __completion(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-                },
-                static_cast<_Tuple&&>(__tuple));
-            },
-            static_cast<_ResultVariant&&>(__result_));
+            __visit_fn,
+            static_cast<_ResultVariant&&>(__result_),
+            static_cast<_Receiver&&>(__rcvr));
         }
       }
     };
