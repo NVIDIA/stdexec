@@ -93,10 +93,16 @@ struct t {
 
 template<typename T>
 class storage_for_object {
-  alignas(T) std::byte buffer_[sizeof(T)];
+  union type_ {
+    char c;
+    T t;
+    constexpr type_() noexcept : c() {}
+    constexpr ~type_() noexcept {}
+  };
+  type_ storage_;
 public:
   constexpr T* get_storage() noexcept {
-    return reinterpret_cast<T*>(buffer_);
+    return std::addressof(storage_.t);
   }
   constexpr T& get_object() noexcept {
     return *std::launder(get_storage());
