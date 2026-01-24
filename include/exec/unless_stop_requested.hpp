@@ -55,9 +55,9 @@ namespace exec {
       }
 
       template <class _Sender, class _Receiver>
-      constexpr __op_state<_Sender, _Receiver> operator()(_Sender&& __sndr, _Receiver __rcvr) const
-        noexcept(__nothrow_constructible_from<__op_state<_Sender, _Receiver>, _Sender, _Receiver>) {
-        return __op_state<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
+      constexpr __opstate<_Sender, _Receiver> operator()(_Sender&& __sndr, _Receiver __rcvr) const
+        noexcept(__nothrow_constructible_from<__opstate<_Sender, _Receiver>, _Sender, _Receiver>) {
+        return __opstate<_Sender, _Receiver>{(_Sender&&) __sndr, (_Receiver&&) __rcvr};
       }
     };
 
