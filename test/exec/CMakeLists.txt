@@ -51,6 +51,7 @@ set(exec_test_sources
     test_split.cpp
     test_ensure_started.cpp
     test_start_detached.cpp
+    test_object.cpp
     test_storage_for_completion_signatures.cpp
     sequence/test_any_sequence_of.cpp
     sequence/test_empty_sequence.cpp
