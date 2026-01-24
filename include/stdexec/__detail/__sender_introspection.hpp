@@ -35,6 +35,7 @@ namespace STDEXEC {
     struct __desc {
       using __tag = _Tag;
       using __data = _Data;
+      using __indices = __make_indices<sizeof...(_Child)>;
       using __children = __types<_Child...>;
 
       constexpr auto operator()() const noexcept -> __desc {
