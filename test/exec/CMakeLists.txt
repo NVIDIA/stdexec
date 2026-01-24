@@ -78,7 +78,8 @@ set(exec_test_sources
     test_exit_scope_sender.cpp
     test_enter_scope_sender.cpp
     test_enter_scopes.cpp
-    test_within.cpp)
+    test_within.cpp
+    test_lifetime.cpp)
 
 set_source_files_properties(
   test_any_sender.cpp PROPERTIES COMPILE_FLAGS
