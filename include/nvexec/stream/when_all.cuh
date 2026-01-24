@@ -49,12 +49,12 @@ namespace nvexec::_strm {
 
     template <class Sender, class... Env>
     concept valid_child_sender = sender_in<Sender, Env...> && requires {
-      requires(__count_of<set_value_t, Sender, Env...>::value <= 1);
+      requires(STDEXEC::__count_of<set_value_t, Sender, Env...>::value <= 1);
     };
 
     template <class Sender, class... Env>
     concept too_many_completions_sender = sender_in<Sender, Env...> && requires {
-      requires(__count_of<set_value_t, Sender, Env...>::value > 1);
+      requires(STDEXEC::__count_of<set_value_t, Sender, Env...>::value > 1);
     };
 
     template <class Env, class... Senders>

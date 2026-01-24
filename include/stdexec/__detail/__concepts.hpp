@@ -290,9 +290,9 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Alloc>
-    auto __test_alloc_pointer(int) -> typename _Alloc::pointer;
+    constexpr auto __test_alloc_pointer(int) -> typename _Alloc::pointer;
     template <class _Alloc>
-    auto __test_alloc_pointer(long) -> typename _Alloc::value_type*;
+    constexpr auto __test_alloc_pointer(long) -> typename _Alloc::value_type*;
 
     template <class _Alloc>
     using __alloc_pointer_t = decltype(__detail::__test_alloc_pointer<__decay_t<_Alloc>>(0));

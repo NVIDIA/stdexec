@@ -31,27 +31,28 @@ namespace exec {
         using receiver_concept = STDEXEC::receiver_t;
         using __id = __receiver;
 
-        __t(_Receiver&& __upstream)
+        constexpr __t(_Receiver&& __upstream)
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
         }
 
         template <class... _As>
-        void set_value(_As&&... __as) noexcept {
+        constexpr void set_value(_As&&... __as) noexcept {
           STDEXEC::set_value(
             static_cast<_Receiver&&>(__upstream_), set_value_t(), static_cast<_As&&>(__as)...);
         }
 
         template <class _Error>
-        void set_error(_Error __err) noexcept {
+        constexpr void set_error(_Error __err) noexcept {
           STDEXEC::set_value(
             static_cast<_Receiver&&>(__upstream_), set_error_t(), static_cast<_Error&&>(__err));
         }
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_), set_stopped_t());
         }
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        [[nodiscard]]
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__upstream_);
         }
 
@@ -73,7 +74,7 @@ namespace exec {
         using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
-        __t(_Sndr&& __sender)
+        constexpr __t(_Sndr&& __sender)
           : __sndr_{static_cast<_Sndr&&>(__sender)} {
         }
 
@@ -115,7 +116,7 @@ namespace exec {
 
     struct __materialize_t {
       template <class _Sender>
-      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+      constexpr auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
         -> __t<__sender<__id<__decay_t<_Sender>>>> {
         return {static_cast<_Sender&&>(__sndr)};
       }
@@ -141,7 +142,7 @@ namespace exec {
         using receiver_concept = STDEXEC::receiver_t;
         using __id = __receiver;
 
-        __t(_Receiver&& __upstream)
+        constexpr __t(_Receiver&& __upstream)
           : __upstream_{static_cast<_Receiver&&>(__upstream)} {
         }
 
@@ -152,15 +153,16 @@ namespace exec {
         }
 
         template <class Error>
-        void set_error(Error&& err) noexcept {
+        constexpr void set_error(Error&& err) noexcept {
           STDEXEC::set_error(static_cast<_Receiver&&>(__upstream_), static_cast<Error&&>(err));
         }
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           STDEXEC::set_stopped(static_cast<_Receiver&&>(__upstream_));
         }
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        [[nodiscard]]
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__upstream_);
         }
 
@@ -182,7 +184,7 @@ namespace exec {
         using __id = __sender;
 
         template <__decays_to<_Sender> _Sndr>
-        __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
+        constexpr __t(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
           : __sndr_{static_cast<_Sndr&&>(__sndr)} {
         }
 
@@ -223,7 +225,7 @@ namespace exec {
       using __sender_t = __t<__sender<__id<_Sender>>>;
 
       template <sender _Sender>
-      auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
+      constexpr auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
         -> __sender_t<_Sender> {
         return __sender_t<_Sender>(static_cast<_Sender&&>(__sndr));
       }

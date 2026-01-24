@@ -43,7 +43,7 @@ namespace exec {
         stop
       };
 
-      timed_thread_operation_base(
+      constexpr timed_thread_operation_base(
         void (*set_value)(timed_thread_operation_base*) noexcept,
         command_type command = command_type::schedule) noexcept
         : command_{command}
@@ -57,9 +57,9 @@ namespace exec {
 
     template <class Tp>
     struct when_type {
-      when_type() = default;
+      constexpr when_type() = default;
 
-      explicit when_type(Tp tp, std::size_t n = 0) noexcept
+      constexpr explicit when_type(Tp tp, std::size_t n = 0) noexcept
         : time_point{std::move(tp)}
         , counter{n} {
       }
@@ -67,7 +67,7 @@ namespace exec {
       Tp time_point{};
       std::size_t counter{};
 
-      friend auto operator<(const when_type& lhs, const when_type& rhs) noexcept -> bool {
+      friend constexpr auto operator<(const when_type& lhs, const when_type& rhs) noexcept -> bool {
         return lhs.time_point < rhs.time_point
             || (!(rhs.time_point < lhs.time_point) && lhs.counter < rhs.counter);
       }
@@ -76,7 +76,7 @@ namespace exec {
     struct timed_thread_schedule_operation_base : timed_thread_operation_base {
       using time_point = std::chrono::steady_clock::time_point;
 
-      timed_thread_schedule_operation_base(
+      constexpr timed_thread_schedule_operation_base(
         time_point tp,
         void (*set_stopped)(timed_thread_operation_base*) noexcept,
         void (*set_value)(timed_thread_operation_base*) noexcept) noexcept
@@ -97,7 +97,7 @@ namespace exec {
     };
 
     struct timed_thread_stop_operation : timed_thread_operation_base {
-      timed_thread_stop_operation(
+      constexpr timed_thread_stop_operation(
         void (*set_value)(timed_thread_operation_base*) noexcept,
         timed_thread_schedule_operation_base* target) noexcept
         : timed_thread_operation_base{set_value, command_type::stop}
@@ -126,7 +126,7 @@ namespace exec {
       run_thread_.join();
     }
 
-    auto get_scheduler() noexcept -> timed_thread_scheduler;
+    constexpr auto get_scheduler() noexcept -> timed_thread_scheduler;
 
    private:
     template <class Rcvr>
@@ -238,7 +238,7 @@ namespace exec {
      public:
       using __id = timed_thread_schedule_at_op;
 
-      __t(
+      constexpr __t(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point,
         Receiver receiver) noexcept
@@ -275,7 +275,7 @@ namespace exec {
             this} {
       }
 
-      void start() & noexcept {
+      constexpr void start() & noexcept {
         stop_callback_
           .emplace(STDEXEC::get_stop_token(STDEXEC::get_env(receiver_)), on_stopped_t{*this});
         int expected = 0;
@@ -288,14 +288,14 @@ namespace exec {
       }
 
      private:
-      void schedule_this() noexcept {
+      constexpr void schedule_this() noexcept {
         context_.schedule(this);
       }
 
       struct on_stopped_t {
         __t& self_;
 
-        void operator()() const noexcept {
+        constexpr void operator()() const noexcept {
           self_.request_stop();
         }
       };
@@ -303,7 +303,7 @@ namespace exec {
       using callback_type =
         STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
 
-      void request_stop() noexcept {
+      constexpr void request_stop() noexcept {
         if (ref_count_.fetch_add(1, STDEXEC::__std::memory_order_relaxed) == 1) {
           context_.schedule(&stop_op_);
         }
@@ -330,7 +330,8 @@ namespace exec {
 
       struct attrs {
         [[nodiscard]]
-        auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
+        constexpr auto
+          query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
           -> timed_thread_scheduler {
           return timed_thread_scheduler{*context_};
         }
@@ -338,7 +339,7 @@ namespace exec {
         timed_thread_context* context_;
       };
 
-      schedule_at_sender(
+      constexpr schedule_at_sender(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point) noexcept
         : context_{&context}
@@ -346,25 +347,25 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> attrs {
+      constexpr auto get_env() const noexcept -> attrs {
         return attrs{context_};
       }
 
       template <class Receiver>
-      auto connect(Receiver receiver) const & noexcept
+      constexpr auto connect(Receiver receiver) const & noexcept
         -> _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
         return {*context_, time_point_, std::move(receiver)};
       }
 
      private:
       [[nodiscard]]
-      auto get_scheduler() const noexcept -> timed_thread_scheduler;
+      constexpr auto get_scheduler() const noexcept -> timed_thread_scheduler;
 
       timed_thread_context* context_;
       std::chrono::steady_clock::time_point time_point_;
     };
 
-    explicit timed_thread_scheduler(timed_thread_context& context) noexcept
+    constexpr explicit timed_thread_scheduler(timed_thread_context& context) noexcept
       : context_{&context} {
     }
 
@@ -374,22 +375,22 @@ namespace exec {
     }
 
     [[nodiscard]]
-    auto schedule_at(time_point tp) const noexcept -> schedule_at_sender {
+    constexpr auto schedule_at(time_point tp) const noexcept -> schedule_at_sender {
       return schedule_at_sender{*context_, tp};
     }
 
     [[nodiscard]]
-    auto schedule() const noexcept -> schedule_at_sender {
+    constexpr auto schedule() const noexcept -> schedule_at_sender {
       return schedule_at(time_point());
     }
 
-    auto operator==(const timed_thread_scheduler&) const noexcept -> bool = default;
+    constexpr auto operator==(const timed_thread_scheduler&) const noexcept -> bool = default;
 
    private:
     timed_thread_context* context_;
   };
 
-  inline auto timed_thread_context::get_scheduler() noexcept -> timed_thread_scheduler {
+  inline constexpr auto timed_thread_context::get_scheduler() noexcept -> timed_thread_scheduler {
     return timed_thread_scheduler{*this};
   }
 } // namespace exec

@@ -103,7 +103,7 @@ namespace exec {
 
     struct into_tuple_t {
       template <sender _Sender>
-      auto operator()(_Sender &&__sndr) const {
+      constexpr auto operator()(_Sender &&__sndr) const {
         return __make_sexpr<into_tuple_t>({}, static_cast<_Sender &&>(__sndr));
       }
 

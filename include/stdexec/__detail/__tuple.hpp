@@ -45,15 +45,15 @@ namespace STDEXEC {
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    auto __tuple_base_fn(__tuple<_Ts...>&&) noexcept -> __tuple<_Ts...>;
+    constexpr auto __tuple_base_fn(__tuple<_Ts...>&&) noexcept -> __tuple<_Ts...>;
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    auto __tuple_base_fn(__tuple<_Ts...>&) noexcept -> __tuple<_Ts...>&;
+    constexpr auto __tuple_base_fn(__tuple<_Ts...>&) noexcept -> __tuple<_Ts...>&;
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    auto __tuple_base_fn(const __tuple<_Ts...>& __tup) noexcept -> const __tuple<_Ts...>&;
+    constexpr auto __tuple_base_fn(const __tuple<_Ts...>& __tup) noexcept -> const __tuple<_Ts...>&;
 
     template <class _Tuple>
     using __tuple_base_t = decltype(__tup::__tuple_base_fn(__declval<_Tuple>()));
@@ -439,7 +439,8 @@ namespace STDEXEC {
   struct __mktuple_t {
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Ts&&... __ts) const STDEXEC_AUTO_RETURN(__tuple{static_cast<_Ts&&>(__ts)...})
+    constexpr auto
+      operator()(_Ts&&... __ts) const STDEXEC_AUTO_RETURN(__tuple{static_cast<_Ts&&>(__ts)...})
   };
 
   inline constexpr __mktuple_t __mktuple{};

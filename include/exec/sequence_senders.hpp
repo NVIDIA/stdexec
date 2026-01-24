@@ -169,17 +169,17 @@ namespace exec {
         using __token_t = stop_token_of_t<env_of_t<_Receiver>>;
         STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
+        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
           return STDEXEC::get_env(__rcvr_);
         }
 
-        void set_value() noexcept
+        constexpr void set_value() noexcept
           requires __callable<set_value_t, _Receiver>
         {
           return STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
         }
 
-        void set_stopped() noexcept
+        constexpr void set_stopped() noexcept
           requires __callable<set_value_t, _Receiver>
                 && (unstoppable_token<__token_t> || __callable<set_stopped_t, _Receiver>)
         {
@@ -397,7 +397,7 @@ namespace exec {
   struct _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_ { };
 
   template <class _Sequence, class _Item>
-  auto __check_item(_Item*) -> STDEXEC::__mexception<
+  constexpr auto __check_item(_Item*) -> STDEXEC::__mexception<
     _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_<_Item>,
     _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
@@ -421,7 +421,7 @@ namespace exec {
   >;
 
   template <class _Sequence, class... _Items>
-  auto __check_items(exec::item_types<_Items...>*) -> decltype((
+  constexpr auto __check_items(exec::item_types<_Items...>*) -> decltype((
     STDEXEC::__msuccess(),
     ...,
     exec::__check_item<_Sequence>(static_cast<_Items*>(nullptr))));
@@ -470,7 +470,7 @@ namespace exec {
 
   namespace __debug {
     template <class _Env = STDEXEC::env<>, class _Sequence>
-    void __debug_sequence_sender(_Sequence&& __sequence, const _Env& = {});
+    constexpr void __debug_sequence_sender(_Sequence&& __sequence, const _Env& = {});
   } // namespace __debug
   using __debug::__debug_sequence_sender;
 
@@ -529,7 +529,7 @@ namespace exec {
   struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_ { };
 
   template <class _Receiver, class _Item>
-  auto __try_item(_Item*) -> STDEXEC::__mexception<
+  constexpr auto __try_item(_Item*) -> STDEXEC::__mexception<
     _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>,
     STDEXEC::_WITH_RECEIVER_(_Receiver)
   >;
@@ -539,7 +539,7 @@ namespace exec {
   auto __try_item(_Item*) -> STDEXEC::__msuccess;
 
   template <class _Receiver, class... _Items>
-  auto __try_items(exec::item_types<_Items...>*) -> decltype((
+  constexpr auto __try_items(exec::item_types<_Items...>*) -> decltype((
     STDEXEC::__msuccess(),
     ...,
     exec::__try_item<_Receiver>(static_cast<_Items*>(nullptr))));
@@ -632,7 +632,7 @@ namespace exec {
     struct subscribe_t;
 
     struct _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_ {
-      void operator()() const noexcept = delete;
+      constexpr void operator()() const noexcept = delete;
     };
 
     template <class _Env>
@@ -981,13 +981,14 @@ namespace exec {
       using __id = __debug_sequence_sender_receiver;
       using receiver_concept = STDEXEC::receiver_t;
 
-      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> __debug_env_t<_Env> {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };
 
     template <class _Env, class _Sequence>
-    void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
+    constexpr void __debug_sequence_sender(_Sequence&& __sequence, const _Env&) {
       if constexpr (!STDEXEC::__is_debug_env<_Env>) {
         if constexpr (sequence_sender_in<_Sequence, _Env>) {
           using __sigs_t = STDEXEC::__completion_signatures_of_t<_Sequence, __debug_env_t<_Env>>;

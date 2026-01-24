@@ -87,7 +87,7 @@ namespace STDEXEC {
   struct never_stop_token {
    private:
     struct __callback_type {
-      explicit __callback_type(never_stop_token, __ignore) noexcept {
+      constexpr explicit __callback_type(never_stop_token, __ignore) noexcept {
       }
     };
    public:
@@ -102,6 +102,6 @@ namespace STDEXEC {
       return false;
     }
 
-    auto operator==(const never_stop_token&) const noexcept -> bool = default;
+    constexpr auto operator==(const never_stop_token&) const noexcept -> bool = default;
   };
 } // namespace STDEXEC

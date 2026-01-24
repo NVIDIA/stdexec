@@ -49,10 +49,10 @@ namespace STDEXEC {
       }
 
       template <class _CvrefSender, class _Env>
-      using __receiver_t = __t<__meval<__receiver, __cvref_id<_CvrefSender>, __id<_Env>>>;
+      using __receiver_t = __t<__receiver<_Env, __result_variant_t<_CvrefSender, _Env>>>;
 
       template <__decay_copyable _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
         static_assert(sender_to<__child_of<_Sender>, _Receiver>);
 
@@ -68,7 +68,7 @@ namespace STDEXEC {
       }
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&&, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
         return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
       }
     };

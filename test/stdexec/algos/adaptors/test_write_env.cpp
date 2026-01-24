@@ -28,13 +28,19 @@ namespace {
 
   template <typename T>
   struct receiver : expect_void_receiver<> {
+    [[nodiscard]]
     constexpr ::STDEXEC::env<> get_env() const noexcept {
       return state_->get_env();
     }
     T* state_;
   };
 
-  struct state;
+  struct state {
+    [[nodiscard]]
+    constexpr ::STDEXEC::env<> get_env() const noexcept {
+      return {};
+    }
+  };
 
   static_assert(!std::is_same_v<
                 void,
@@ -46,12 +52,6 @@ namespace {
                         std::declval<::STDEXEC::inplace_stop_source&>().get_token()}),
                   receiver<state>{{}, nullptr}))
   >);
-
-  struct state {
-    constexpr ::STDEXEC::env<> get_env() const noexcept {
-      return {};
-    }
-  };
 
   TEST_CASE(
     "write_env works when the actual environment is sourced from a type which was initially "

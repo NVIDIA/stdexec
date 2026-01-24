@@ -45,14 +45,14 @@ namespace STDEXEC {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct upon_error_t {
       template <sender _Sender, __movable_value _Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
         return __make_sexpr<upon_error_t>(
           static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
       }
 
       template <__movable_value _Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+      constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
         return __closure(*this, static_cast<_Fun&&>(__fun));
       }
     };

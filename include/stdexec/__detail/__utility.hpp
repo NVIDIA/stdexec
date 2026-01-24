@@ -29,7 +29,7 @@ namespace STDEXEC {
   struct __ { };
 
   struct __ignore {
-    __ignore() = default;
+    constexpr __ignore() = default;
 
     STDEXEC_ATTRIBUTE(always_inline) constexpr __ignore(auto&&...) noexcept {
     }
@@ -79,7 +79,7 @@ namespace STDEXEC {
   };
 
   template <class... _Fns>
-  __overload(_Fns...) -> __overload<_Fns...>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __overload(_Fns...) -> __overload<_Fns...>;
 
   // Helper to make a type ill-formed if it is one of the given types
   template <class _Ty, class... _Us>
@@ -141,7 +141,7 @@ namespace STDEXEC {
   // A derived-to-base cast that works even when the base is not accessible from derived.
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
-  auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
+  constexpr auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
     requires __decays_to<_Tp, _Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(_Tp, __decay_t<_Up>));
@@ -151,7 +151,7 @@ namespace STDEXEC {
   // A base-to-derived cast that works even when the base is not accessible from derived.
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
-  auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
+  constexpr auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
     requires __decays_to<_Tp, _Tp>
   {
     static_assert(STDEXEC_IS_BASE_OF(__decay_t<_Up>, _Tp));
@@ -161,7 +161,7 @@ namespace STDEXEC {
   STDEXEC_PRAGMA_POP()
 
   template <class _Ty>
-  auto __decay_copy(_Ty) noexcept -> _Ty;
+  constexpr auto __decay_copy(_Ty) noexcept -> _Ty;
 
   template <class _Ty>
   struct __indestructible {
@@ -173,11 +173,11 @@ namespace STDEXEC {
     constexpr ~__indestructible() {
     }
 
-    auto get() noexcept -> _Ty& {
+    constexpr auto get() noexcept -> _Ty& {
       return __value;
     }
 
-    auto get() const noexcept -> const _Ty& {
+    constexpr auto get() const noexcept -> const _Ty& {
       return __value;
     }
 

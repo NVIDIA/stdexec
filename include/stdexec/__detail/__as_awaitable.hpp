@@ -100,7 +100,7 @@ namespace STDEXEC {
       struct __t : __receiver_base<_Value> {
         using __id = __receiver;
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           auto __continuation = __std::coroutine_handle<_Promise>::from_address(
             this->__continuation_.address());
           __std::coroutine_handle<> __stopped_continuation = __continuation.promise()
@@ -109,7 +109,7 @@ namespace STDEXEC {
         }
 
         // Forward get_env query to the coroutine promise
-        auto get_env() const noexcept -> env_of_t<_Promise&> {
+        constexpr auto get_env() const noexcept -> env_of_t<_Promise&> {
           auto __continuation = __std::coroutine_handle<_Promise>::from_address(
             this->__continuation_.address());
           return STDEXEC::get_env(__continuation.promise());
@@ -123,11 +123,11 @@ namespace STDEXEC {
     template <class _Value>
     struct __sender_awaitable_base {
       [[nodiscard]]
-      auto await_ready() const noexcept -> bool {
+      constexpr auto await_ready() const noexcept -> bool {
         return false;
       }
 
-      auto await_resume() -> _Value {
+      constexpr auto await_resume() -> _Value {
         switch (__result_.index()) {
         case 0: // receiver contract not satisfied
           STDEXEC_ASSERT(false && +"_Should never get here" == nullptr);
@@ -154,7 +154,7 @@ namespace STDEXEC {
       using __value = __detail::__value_t<_Sender, _Promise>;
 
       struct __t : __sender_awaitable_base<__value> {
-        __t(_Sender&& sndr, __std::coroutine_handle<_Promise> __hcoro)
+        constexpr __t(_Sender&& sndr, __std::coroutine_handle<_Promise> __hcoro)
           noexcept(__nothrow_connectable<_Sender, __receiver>)
           : __op_state_(connect(
               static_cast<_Sender&&>(sndr),
@@ -163,7 +163,7 @@ namespace STDEXEC {
         })) {
         }
 
-        void await_suspend(__std::coroutine_handle<_Promise>) noexcept {
+        constexpr void await_suspend(__std::coroutine_handle<_Promise>) noexcept {
           STDEXEC::start(__op_state_);
         }
 
@@ -187,12 +187,12 @@ namespace STDEXEC {
                                  };
 
     struct __unspecified {
-      auto get_return_object() noexcept -> __unspecified;
-      auto initial_suspend() noexcept -> __unspecified;
-      auto final_suspend() noexcept -> __unspecified;
-      void unhandled_exception() noexcept;
-      void return_void() noexcept;
-      auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
+      constexpr auto get_return_object() noexcept -> __unspecified;
+      constexpr auto initial_suspend() noexcept -> __unspecified;
+      constexpr auto final_suspend() noexcept -> __unspecified;
+      constexpr void unhandled_exception() noexcept;
+      constexpr void return_void() noexcept;
+      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
     };
 
     struct as_awaitable_t {

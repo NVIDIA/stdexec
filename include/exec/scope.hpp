@@ -24,11 +24,12 @@ namespace exec {
   struct scope_guard {
     STDEXEC::__scope_guard<_Fn, _Ts...> __guard_;
 
-    void dismiss() noexcept {
+    constexpr void dismiss() noexcept {
       __guard_.__dismiss();
     }
   };
+
   template <class _Fn, class... _Ts>
-  scope_guard(_Fn, _Ts...) -> scope_guard<_Fn, _Ts...>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE scope_guard(_Fn, _Ts...) -> scope_guard<_Fn, _Ts...>;
 
 } // namespace exec

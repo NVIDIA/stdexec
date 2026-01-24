@@ -33,7 +33,8 @@ namespace STDEXEC {
   template <class _Tp, _Tp* _Tp::* _NextPtr>
   class alignas(64) __atomic_intrusive_queue<_NextPtr> {
    public:
-    STDEXEC_ATTRIBUTE(host, device) auto push(_Tp* __node) noexcept -> bool {
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto push(_Tp* __node) noexcept -> bool {
       STDEXEC_ASSERT(__node != nullptr);
       _Tp* __old_head = __head_.load(__std::memory_order_relaxed);
       do {
@@ -53,13 +54,14 @@ namespace STDEXEC {
       return true;
     }
 
-    STDEXEC_ATTRIBUTE(host, device) void wait_for_item() noexcept {
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr void wait_for_item() noexcept {
       // Wait until the queue has an item in it:
       __head_.wait(nullptr);
     }
 
-    [[nodiscard]]
-    STDEXEC_ATTRIBUTE(host, device) auto pop_all() noexcept -> __intrusive_queue<_NextPtr> {
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    constexpr auto pop_all() noexcept -> __intrusive_queue<_NextPtr> {
       auto* const __list = __head_.exchange(nullptr, __std::memory_order_acquire);
       return __intrusive_queue<_NextPtr>::make_reversed(__list);
     }

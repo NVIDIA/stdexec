@@ -32,7 +32,7 @@ namespace STDEXEC {
   namespace __cmplsigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     template <template <class...> class _Tuple, class _Tag, class... _Args>
-    auto __for_each_sig(_Tag (*)(_Args...)) -> _Tuple<_Tag, _Args...>;
+    constexpr auto __for_each_sig(_Tag (*)(_Args...)) -> _Tuple<_Tag, _Args...>;
 
     template <class _Sig, template <class...> class _Tuple>
     using __for_each_sig_t = decltype(__cmplsigs::__for_each_sig<_Tuple>(
@@ -44,14 +44,14 @@ namespace STDEXEC {
       class... _More,
       class... _What
     >
-    auto __for_each_completion_signature_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
+    constexpr auto __for_each_completion_signature_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
     template <
       template <class...> class _Tuple,
       template <class...> class _Variant,
       class... _More,
       class... _Sigs
     >
-    auto __for_each_completion_signature_fn(completion_signatures<_Sigs...>**)
+    constexpr auto __for_each_completion_signature_fn(completion_signatures<_Sigs...>**)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
   } // namespace __cmplsigs
 
@@ -73,7 +73,7 @@ namespace STDEXEC {
       class _SetStp,
       class... _Values
     >
-    auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...>;
+    constexpr auto __transform_sig(set_value_t (*)(_Values...)) -> _SetVal<_Values...>;
 
     template <
       template <class...> class _SetVal,
@@ -81,10 +81,10 @@ namespace STDEXEC {
       class _SetStp,
       class _Error
     >
-    auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error>;
+    constexpr auto __transform_sig(set_error_t (*)(_Error)) -> _SetErr<_Error>;
 
     template <template <class...> class _SetVal, template <class...> class _SetErr, class _SetStp>
-    auto __transform_sig(set_stopped_t (*)()) -> _SetStp;
+    constexpr auto __transform_sig(set_stopped_t (*)()) -> _SetStp;
 
     template <
       class _Sig,
@@ -103,7 +103,7 @@ namespace STDEXEC {
       class... _More,
       class... _What
     >
-    auto __transform_sigs_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
+    constexpr auto __transform_sigs_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
 
     template <
       template <class...> class _SetVal,
@@ -113,7 +113,7 @@ namespace STDEXEC {
       class... _More,
       class... _Sigs
     >
-    auto __transform_sigs_fn(completion_signatures<_Sigs...>**)
+    constexpr auto __transform_sigs_fn(completion_signatures<_Sigs...>**)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
   } // namespace __cmplsigs
 
@@ -403,7 +403,8 @@ namespace STDEXEC {
     };
 
     template <class _TransformOne>
-    __transform_all_fn(_TransformOne) -> __transform_all_fn<_TransformOne>;
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __transform_all_fn(_TransformOne) -> __transform_all_fn<_TransformOne>;
   } // namespace __cmplsigs
 
   template <class _SetTag>

@@ -140,7 +140,7 @@ namespace STDEXEC {
 
   template <class _Derived>
   struct __compile_time_error : __exception {
-    __compile_time_error() = default; // NOLINT (bugprone-crtp-constructor-accessibility)
+    constexpr __compile_time_error() = default; // NOLINT (bugprone-crtp-constructor-accessibility)
 
     [[nodiscard]]
     constexpr auto what() const noexcept -> const char* {
@@ -218,15 +218,15 @@ namespace STDEXEC {
           "complete."} {
     }
 
-    STDEXEC_ATTRIBUTE(host, device) auto operator+() const -> _ERROR_;
+    STDEXEC_ATTRIBUTE(host, device) constexpr auto operator+() const -> _ERROR_;
 
     template <class _Ty>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(const _Ty&) const -> _ERROR_;
+    constexpr auto operator,(const _Ty&) const -> _ERROR_;
 
     template <class... Other>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator,(const _ERROR_<Other...>&) const -> _ERROR_<Other...>;
+    constexpr auto operator,(const _ERROR_<Other...>&) const -> _ERROR_<Other...>;
   };
 
   // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that
@@ -248,7 +248,7 @@ namespace STDEXEC {
   struct __not_a_scheduler {
     using scheduler_concept = scheduler_t;
 
-    auto schedule() noexcept {
+    constexpr auto schedule() noexcept {
       return __not_a_sender<_What...>{};
     }
 

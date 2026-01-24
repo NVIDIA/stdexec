@@ -37,7 +37,7 @@ namespace STDEXEC {
       template <class _Op>
         requires __has_start<_Op>
       STDEXEC_ATTRIBUTE(always_inline)
-      void operator()(_Op &__op) const noexcept {
+      constexpr void operator()(_Op &__op) const noexcept {
         static_assert(noexcept(__op.start()), "start() members must be noexcept");
         static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
         __op.start();
@@ -47,7 +47,7 @@ namespace STDEXEC {
         requires __has_start<_Op> || tag_invocable<start_t, _Op &>
       [[deprecated("the use of tag_invoke for start is deprecated")]]
       STDEXEC_ATTRIBUTE(always_inline) //
-        void operator()(_Op &__op) const noexcept {
+        constexpr void operator()(_Op &__op) const noexcept {
         static_assert(nothrow_tag_invocable<start_t, _Op &>);
         (void) tag_invoke(start_t{}, __op);
       }

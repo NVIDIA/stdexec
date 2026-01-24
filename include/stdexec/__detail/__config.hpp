@@ -691,7 +691,7 @@ namespace STDEXEC {
   constexpr struct __catch_any_lvalue_t {
     template <class _Tp>
     STDEXEC_ATTRIBUTE(host, device)
-    operator _Tp&() const noexcept;
+    constexpr operator _Tp&() const noexcept;
   } __catch_any_lvalue{};
 
   STDEXEC_ATTRIBUTE(noreturn, host, device)
@@ -751,7 +751,7 @@ namespace STDEXEC {
 
 namespace STDEXEC {
   template <class... _Ts, class _Self>
-  auto __get_self(const _Self&) -> _Self;
+  constexpr auto __get_self(const _Self&) -> _Self;
 } // namespace STDEXEC
 
 #endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
@@ -772,6 +772,12 @@ namespace STDEXEC {
 #  endif
 #else
 #  define STDEXEC_PRETTY_FUNCTION() __PRETTY_FUNCTION__
+#endif
+
+#if __cplusplus >= 2022'11
+#  define STDEXEC_CONSTEXPR_CXX23 constexpr
+#else
+#  define STDEXEC_CONSTEXPR_CXX23
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

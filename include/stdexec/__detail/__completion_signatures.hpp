@@ -48,17 +48,17 @@ namespace STDEXEC {
     // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
     // but `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
     template <class _Tag, class... _Args>
-    auto __normalize_sig_impl(_Args&&...) -> _Tag (*)(_Args...);
+    constexpr auto __normalize_sig_impl(_Args&&...) -> _Tag (*)(_Args...);
 
     template <class _Tag, class... _Args>
-    auto __normalize_sig(_Tag (*)(_Args...))
+    constexpr auto __normalize_sig(_Tag (*)(_Args...))
       -> decltype(__cmplsigs::__normalize_sig_impl<_Tag>(__declval<_Args>()...));
 
     template <class... _Sigs>
-    auto __repack_completions(_Sigs*...) -> completion_signatures<_Sigs...>;
+    constexpr auto __repack_completions(_Sigs*...) -> completion_signatures<_Sigs...>;
 
     template <class... _Sigs>
-    auto __normalize_completions(completion_signatures<_Sigs...>*)
+    constexpr auto __normalize_completions(completion_signatures<_Sigs...>*)
       -> decltype(__cmplsigs::__repack_completions(
         __cmplsigs::__normalize_sig(static_cast<_Sigs*>(nullptr))...));
 
@@ -183,7 +183,7 @@ namespace STDEXEC {
     template <>
     struct __partitioned_fold_fn<set_value_t> {
       template <class... _ValueTuples, class _Errors, class _Stopped, class _Values>
-      auto operator()(
+      constexpr auto operator()(
         __partitions<__types<_ValueTuples...>, _Errors, _Stopped>&,
         __undefined<_Values>&) const
         -> __undefined<__partitions<__types<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
@@ -192,7 +192,7 @@ namespace STDEXEC {
     template <>
     struct __partitioned_fold_fn<set_error_t> {
       template <class _Values, class... _Errors, class _Stopped, class _Error>
-      auto operator()(
+      constexpr auto operator()(
         __partitions<_Values, __types<_Errors...>, _Stopped>&,
         __undefined<__types<_Error>>&) const
         -> __undefined<__partitions<_Values, __types<_Errors..., _Error>, _Stopped>>&;
@@ -201,7 +201,7 @@ namespace STDEXEC {
     template <>
     struct __partitioned_fold_fn<set_stopped_t> {
       template <class _Values, class _Errors, class _Stopped>
-      auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
+      constexpr auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
         -> __undefined<__partitions<_Values, _Errors, __types<set_stopped_t()>>>&;
     };
 
@@ -210,7 +210,7 @@ namespace STDEXEC {
     // cache. `__undefined` is used here to prevent the instantiation of the intermediate
     // types.
     template <class _Partitioned, class _Tag, class... _Args>
-    auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...)) -> __call_result_t<
+    constexpr auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...)) -> __call_result_t<
       __partitioned_fold_fn<_Tag>,
       _Partitioned&,
       __undefined<__types<_Args...>>&
@@ -218,7 +218,7 @@ namespace STDEXEC {
 
     // This function declaration is used to extract the cache from the `__undefined` type.
     template <class _Partitioned>
-    auto __unpack_partitioned_completions(__undefined<_Partitioned>&) -> _Partitioned;
+    constexpr auto __unpack_partitioned_completions(__undefined<_Partitioned>&) -> _Partitioned;
 
     template <class... _Sigs>
     using __partition_completion_signatures_t = //

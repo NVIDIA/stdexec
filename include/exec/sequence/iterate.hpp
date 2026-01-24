@@ -20,12 +20,12 @@
 
 #if STDEXEC_HAS_STD_RANGES()
 
-#  include "../../stdexec/concepts.hpp"
+#  include "../../stdexec/__detail/__optional.hpp"
 #  include "../../stdexec/execution.hpp"
-#  include "../__detail/__basic_sequence.hpp"
-#  include "../sequence_senders.hpp"
 
+#  include "../__detail/__basic_sequence.hpp"
 #  include "../sequence.hpp"
+#  include "../sequence_senders.hpp"
 #  include "../trampoline_scheduler.hpp"
 
 #  include <exception>
@@ -39,12 +39,12 @@ namespace exec {
     struct __operation_base_base {
       STDEXEC_ATTRIBUTE(no_unique_address) _Iterator __iterator_;
       STDEXEC_ATTRIBUTE(no_unique_address) _Sentinel __sentinel_;
-      trampoline_scheduler __scheduler_;
+      trampoline_scheduler __scheduler_{};
     };
 
     template <class _Iterator, class _Sentinel, class _Receiver>
     struct __operation_base : __operation_base_base<_Iterator, _Sentinel> {
-      explicit __operation_base(_Iterator __it, _Sentinel __sen, _Receiver&& __rcvr)
+      constexpr explicit __operation_base(_Iterator __it, _Sentinel __sen, _Receiver&& __rcvr)
         : __operation_base_base<_Iterator, _Sentinel>{
             static_cast<_Iterator&&>(__it),
             static_cast<_Sentinel&&>(__sen)}
@@ -52,7 +52,7 @@ namespace exec {
       }
 
       virtual ~__operation_base() = default;
-      virtual void __start_next() noexcept = 0;
+      virtual constexpr void __start_next() noexcept = 0;
 
       _Receiver __rcvr_;
     };
@@ -64,7 +64,7 @@ namespace exec {
         STDEXEC_ATTRIBUTE(no_unique_address) _ItemRcvr __rcvr_;
         __operation_base_base<_Iterator, _Sentinel>* __parent_;
 
-        void start() & noexcept {
+        constexpr void start() noexcept {
           STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
         }
       };
@@ -79,7 +79,7 @@ namespace exec {
         STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
 
       template <receiver_of<completion_signatures> _ItemRcvr>
-      auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
+      constexpr auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
         -> STDEXEC::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
         return {static_cast<_ItemRcvr&&>(__rcvr), __parent_};
       }
@@ -93,15 +93,16 @@ namespace exec {
       using __id = __next_receiver;
       using receiver_concept = STDEXEC::receiver_t;
 
-      void set_value() noexcept {
+      constexpr void set_value() noexcept {
         __op_->__start_next();
       }
 
-      void set_stopped() noexcept {
+      constexpr void set_stopped() noexcept {
         __set_value_unless_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
       }
 
-      auto get_env() const noexcept -> env_of_t<_Receiver> {
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
         return STDEXEC::get_env(__op_->__rcvr_);
       }
 
@@ -118,7 +119,7 @@ namespace exec {
       using __next_receiver_t = __next_receiver<_Iterator, _Sentinel, _Receiver>;
       using __next_sender_t = next_sender_of_t<_Receiver, __item_sender_t>;
 
-      explicit __operation(_Iterator __iterator, _Sentinel __sentinel, _Receiver&& __rcvr)
+      constexpr explicit __operation(_Iterator __iterator, _Sentinel __sentinel, _Receiver&& __rcvr)
         : __operation_base<_Iterator, _Sentinel, _Receiver>{
             static_cast<_Iterator&&>(__iterator),
             static_cast<_Sentinel&&>(__sentinel),
@@ -127,7 +128,7 @@ namespace exec {
 
       ~__operation() final = default;
 
-      void __start_next() noexcept final {
+      constexpr void __start_next() noexcept final {
         if (this->__iterator_ == this->__sentinel_) {
           STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
         } else {
@@ -146,7 +147,7 @@ namespace exec {
         }
       }
 
-      void start() & noexcept {
+      constexpr void start() & noexcept {
         __start_next();
       }
 
@@ -155,22 +156,21 @@ namespace exec {
 
     template <class _Receiver>
     struct __subscribe_fn {
-      using _ReceiverId = __id<_Receiver>;
-      _Receiver __rcvr_;
-
       template <class _Range>
-      auto operator()(__ignore, _Range&& __range) noexcept {
+      constexpr auto operator()(__ignore, _Range&& __range) noexcept {
         return __operation{
           std::ranges::begin(static_cast<_Range&&>(__range)),
           std::ranges::end(static_cast<_Range&&>(__range)),
           static_cast<_Receiver&&>(__rcvr_)};
       }
+
+      _Receiver __rcvr_;
     };
 
     struct iterate_t {
       template <std::ranges::forward_range _Range>
         requires __decay_copyable<_Range>
-      auto operator()(_Range&& __range) const -> __well_formed_sequence_sender auto {
+      constexpr auto operator()(_Range&& __range) const -> __well_formed_sequence_sender auto {
         return make_sequence_expr<iterate_t>(__decay_t<_Range>{static_cast<_Range&&>(__range)});
       }
 
@@ -202,7 +202,7 @@ namespace exec {
         sequence_receiver_of<item_types<__item_sender_t<_SeqExpr>>> _Receiver
       >
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
-      static auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
+      static constexpr auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
         noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _SeqExpr>)
           -> __apply_result_t<__subscribe_fn<_Receiver>, _SeqExpr> {
         return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_SeqExpr&&>(__seq));
@@ -222,7 +222,8 @@ namespace exec {
         return item_types<__item_sender_t<_Sequence>>();
       }
 
-      static auto get_env(__ignore) noexcept -> env<> {
+      [[nodiscard]]
+      static constexpr auto get_env(__ignore) noexcept -> env<> {
         return {};
       }
     };

@@ -30,23 +30,24 @@ namespace exec {
     struct sequence_t {
       template <class Sender>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto operator()(Sender sndr) const -> Sender;
+      constexpr auto operator()(Sender sndr) const -> Sender;
 
       template <class... Senders>
         requires(sizeof...(Senders) > 1)
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto operator()(Senders... sndrs) const -> _sndr<Senders...>;
+      constexpr auto operator()(Senders... sndrs) const -> _sndr<Senders...>;
     };
 
     template <class Rcvr>
     struct _opstate_base {
       template <class... Args>
       STDEXEC_ATTRIBUTE(host, device)
-      void _set_value([[maybe_unused]] Args&&... args) noexcept {
+      constexpr void _set_value([[maybe_unused]] Args&&... args) noexcept {
         STDEXEC::set_value(static_cast<Rcvr&&>(_rcvr), static_cast<Args&&>(args)...);
       }
 
-      void _start_next() noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void _start_next() noexcept {
         STDEXEC_TRY {
           (*_start_next_)(this);
         }
@@ -65,7 +66,7 @@ namespace exec {
 
       template <class Error>
       STDEXEC_ATTRIBUTE(host, device)
-      void set_error(Error&& err) && noexcept {
+      constexpr void set_error(Error&& err) && noexcept {
         STDEXEC::set_error(static_cast<Rcvr&&>(_opstate->_rcvr), static_cast<Error&&>(err));
       }
 
@@ -75,7 +76,7 @@ namespace exec {
 
       // TODO: use the predecessor's completion scheduler as the current scheduler here.
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr> {
+      constexpr auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr> {
         return STDEXEC::get_env(_opstate->_rcvr);
       }
 
@@ -88,7 +89,7 @@ namespace exec {
 
       template <class... Args>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void set_value(Args&&... args) && noexcept {
+      constexpr void set_value(Args&&... args) && noexcept {
         if constexpr (IsLast) {
           this->_opstate->_set_value(static_cast<Args&&>(args)...);
         } else {
@@ -140,7 +141,7 @@ namespace exec {
 
       template <class CvrefSndrs>
       STDEXEC_ATTRIBUTE(host, device)
-      explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
+      constexpr explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{STDEXEC::__apply(
             __convert_tuple_fn<_senders_tuple_t>{},
@@ -156,7 +157,7 @@ namespace exec {
       }
 
       template <std::size_t Remaining>
-      static void _start_next(_opstate_base<Rcvr>* _self) {
+      static constexpr void _start_next(_opstate_base<Rcvr>* _self) {
         constexpr auto __nth = sizeof...(Senders) - Remaining;
         auto* self = static_cast<_opstate*>(_self);
         auto& sndr = STDEXEC::__get<__nth + 1>(self->_sndrs);
@@ -168,7 +169,8 @@ namespace exec {
         STDEXEC::start(op);
       }
 
-      STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr void start() noexcept {
         if (sizeof...(Senders) != 0) {
           this->_start_next_ = &_start_next<sizeof...(Senders)>;
         }
@@ -182,7 +184,7 @@ namespace exec {
     // The completions of the sequence sender are the error and stopped completions of all the
     // child senders plus the value completions of the last child sender.
     template <class... Env>
-    struct _completions {
+    struct _completions_fn {
       // When folding left, the first sender folded will be the last sender in the list. That is
       // also when the "state" of the fold is void. For this case we want to include the value
       // completions; otherwise, we want to exclude them.
@@ -218,19 +220,28 @@ namespace exec {
       using sender_concept = STDEXEC::sender_t;
 
       template <class Self, class... Env>
-      using _completions_t =
-        STDEXEC::__minvoke<_completions<Env...>, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>;
+      using _completions_t = STDEXEC::__minvoke<
+        _completions_fn<Env...>,
+        STDEXEC::__copy_cvref_t<Self, Sender0>,
+        Senders...
+      >;
 
-      template <STDEXEC::__decay_copyable Self, class... Env>
+      template <class Self, class... Env>
       STDEXEC_ATTRIBUTE(host, device)
       static consteval auto get_completion_signatures() {
-        return _completions_t<Self, Env...>{};
+        if constexpr (STDEXEC::__decay_copyable<Self>) {
+          return _completions_t<Self, Env...>{};
+        } else {
+          return STDEXEC::__throw_compile_time_error<
+            STDEXEC::_SENDER_TYPE_IS_NOT_COPYABLE_,
+            STDEXEC::_WITH_PRETTY_SENDER_<_sndr<Sender0, Senders...>>
+          >();
+        }
       }
 
-      template <class Self, class Rcvr>
-        requires STDEXEC::__decay_copyable<Self>
+      template <STDEXEC::__decay_copyable Self, class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
+      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr) {
         return _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>{
           static_cast<Rcvr&&>(rcvr), static_cast<Self&&>(self)._sndrs};
       }
@@ -243,14 +254,14 @@ namespace exec {
 
     template <class Sender>
     STDEXEC_ATTRIBUTE(host, device)
-    auto sequence_t::operator()(Sender sndr) const -> Sender {
+    constexpr auto sequence_t::operator()(Sender sndr) const -> Sender {
       return sndr;
     }
 
     template <class... Senders>
       requires(sizeof...(Senders) > 1)
     STDEXEC_ATTRIBUTE(host, device)
-    auto sequence_t::operator()(Senders... sndrs) const -> _sndr<Senders...> {
+    constexpr auto sequence_t::operator()(Senders... sndrs) const -> _sndr<Senders...> {
       return _sndr<Senders...>{{}, {}, {static_cast<Senders&&>(sndrs)...}};
     }
   } // namespace _seq

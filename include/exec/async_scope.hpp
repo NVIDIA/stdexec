@@ -70,7 +70,7 @@ namespace exec {
       struct __t : __task {
         using __id = __when_empty_op;
 
-        explicit __t(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
+        constexpr explicit __t(const __impl* __scope, _Constrained&& __sndr, _Receiver __rcvr)
           : __task{{}, __scope, __notify_waiter}
           , __op_(
               STDEXEC::connect(
@@ -93,7 +93,7 @@ namespace exec {
         }
 
        private:
-        static void __notify_waiter(__task* __self) noexcept {
+        static constexpr void __notify_waiter(__task* __self) noexcept {
           STDEXEC::start(static_cast<__t*>(__self)->__op_);
         }
 
@@ -192,7 +192,7 @@ namespace exec {
           __complete(__scope);
         }
 
-        void set_stopped() noexcept
+        constexpr void set_stopped() noexcept
           requires __callable<set_stopped_t, _Receiver>
         {
           auto __scope = __op_->__scope_;
@@ -202,7 +202,7 @@ namespace exec {
           __complete(__scope);
         }
 
-        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
+        constexpr auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
           return make_env(
             STDEXEC::get_env(__op_->__rcvr_),
             STDEXEC::prop{get_stop_token, __op_->__scope_->__stop_source_.get_token()});
@@ -222,12 +222,12 @@ namespace exec {
         connect_result_t<_Constrained, __nest_rcvr_t> __op_;
 
         template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
-        explicit __t(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
+        constexpr explicit __t(const __impl* __scope, _Sender&& __c, _Rcvr&& __rcvr)
           : __nest_op_base<_ReceiverId>{{}, __scope, static_cast<_Rcvr&&>(__rcvr)}
           , __op_(STDEXEC::connect(static_cast<_Sender&&>(__c), __nest_rcvr_t{this})) {
         }
 
-        void start() & noexcept {
+        constexpr void start() & noexcept {
           STDEXEC_ASSERT(this->__scope_);
           auto& __active = this->__scope_->__active_;
           __active.fetch_add(1, __std::memory_order_relaxed);
@@ -299,7 +299,7 @@ namespace exec {
     struct __subscription : __immovable {
       void (*__complete_)(__subscription*) noexcept = nullptr;
 
-      void __complete() noexcept {
+      constexpr void __complete() noexcept {
         __complete_(this);
       }
 
@@ -316,7 +316,7 @@ namespace exec {
         using __forward_consumer =
           stop_token_of_t<env_of_t<_Receiver>>::template callback_type<__forward_stopped>;
 
-        void __complete_() noexcept {
+        constexpr void __complete_() noexcept {
           STDEXEC_TRY {
             __forward_consumer_.reset();
             auto __state = std::move(__state_);
@@ -365,7 +365,7 @@ namespace exec {
        public:
         using __id = __future_op;
 
-        ~__t() noexcept {
+        constexpr ~__t() noexcept {
           if (__state_ != nullptr) {
             auto __raw_state = __state_.get();
             std::unique_lock __guard{__raw_state->__mutex_};
@@ -381,7 +381,9 @@ namespace exec {
         }
 
         template <class _Receiver2>
-        explicit __t(_Receiver2&& __rcvr, std::unique_ptr<__future_state<_Sender, _Env>> __state)
+        constexpr explicit __t(
+          _Receiver2&& __rcvr,
+          std::unique_ptr<__future_state<_Sender, _Env>> __state)
           : __subscription{
               {},
               [](__subscription* __self) noexcept -> void {
@@ -395,7 +397,7 @@ namespace exec {
               __forward_stopped{&__state_->__stop_source_}) {
         }
 
-        void start() & noexcept {
+        constexpr void start() & noexcept {
           STDEXEC_TRY {
             if (!!__state_) {
               std::unique_lock __guard{__state_->__mutex_};
@@ -428,7 +430,7 @@ namespace exec {
 #else
 
     template <class _Tag, class... _Ts>
-    auto __completion_as_tuple_(_Tag (*)(_Ts...)) -> std::tuple<_Tag, _Ts...>;
+    constexpr auto __completion_as_tuple_(_Tag (*)(_Ts...)) -> std::tuple<_Tag, _Ts...>;
 
     template <class _Fn>
     using __completion_as_tuple_t = decltype(__scope::__completion_as_tuple_(
@@ -458,7 +460,7 @@ namespace exec {
 
     template <class _Ty>
     struct __dynamic_delete {
-      __dynamic_delete()
+      constexpr __dynamic_delete()
         : __delete_([](_Ty* __p) { delete __p; }) {
       }
 
@@ -475,7 +477,7 @@ namespace exec {
         return *this;
       }
 
-      void operator()(_Ty* __p) {
+      constexpr void operator()(_Ty* __p) {
         __delete_(__p);
       }
 
@@ -484,7 +486,7 @@ namespace exec {
 
     template <class _Completions, class _Env>
     struct __future_state_base {
-      __future_state_base(_Env __env, const __impl* __scope)
+      constexpr __future_state_base(_Env __env, const __impl* __scope)
         : __forward_scope_{
             std::in_place,
             __scope->__stop_source_.get_token(),
@@ -505,7 +507,7 @@ namespace exec {
         }
       }
 
-      void __step_from_to_(
+      constexpr void __step_from_to_(
         std::unique_lock<std::mutex>& __guard,
         __future_step __from,
         __future_step __to) {
@@ -534,7 +536,7 @@ namespace exec {
         __future_state_base<_Completions, _Env>* __state_;
         const __impl* __scope_;
 
-        void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept {
+        constexpr void __dispatch_result_(std::unique_lock<std::mutex>& __guard) noexcept {
           auto& __state = *__state_;
           auto __local_subscribers = std::move(__state.__subscribers_);
           __state.__forward_scope_.reset();
@@ -554,7 +556,7 @@ namespace exec {
         }
 
         template <class _Tag, class... _As>
-        void __save_completion(_Tag, _As&&... __as) noexcept {
+        constexpr void __save_completion(_Tag, _As&&... __as) noexcept {
           auto& __state = *__state_;
           STDEXEC_TRY {
             using _Tuple = __decayed_std_tuple<_Tag, _As...>;
@@ -567,7 +569,7 @@ namespace exec {
         }
 
         template <__movable_value... _As>
-        void set_value(_As&&... __as) noexcept {
+        constexpr void set_value(_As&&... __as) noexcept {
           auto& __state = *__state_;
           std::unique_lock __guard{__state.__mutex_};
           __save_completion(set_value_t(), static_cast<_As&&>(__as)...);
@@ -575,21 +577,21 @@ namespace exec {
         }
 
         template <__movable_value _Error>
-        void set_error(_Error&& __err) noexcept {
+        constexpr void set_error(_Error&& __err) noexcept {
           auto& __state = *__state_;
           std::unique_lock __guard{__state.__mutex_};
           __save_completion(set_error_t(), static_cast<_Error&&>(__err));
           __dispatch_result_(__guard);
         }
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           auto& __state = *__state_;
           std::unique_lock __guard{__state.__mutex_};
           __save_completion(set_stopped_t());
           __dispatch_result_(__guard);
         }
 
-        auto get_env() const noexcept -> const __env_t<_Env>& {
+        constexpr auto get_env() const noexcept -> const __env_t<_Env>& {
           return __state_->__env_;
         }
       };
@@ -603,12 +605,12 @@ namespace exec {
     struct __future_state : __future_state_base<__future_completions_t<_Sender, _Env>, _Env> {
       using _Completions = __future_completions_t<_Sender, _Env>;
 
-      __future_state(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
+      constexpr __future_state(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
         : __future_state_base<_Completions, _Env>(static_cast<_Env&&>(__env), __scope)
         , __op_(static_cast<_Sender&&>(__sndr), __future_receiver_t<_Sender, _Env>{this, __scope}) {
       }
 
-      __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
+      constexpr __future_state(_Sender __sndr, _Env __env, const __impl* __scope)
         : __future_state(
             STDEXEC::connect,
             static_cast<_Sender&&>(__sndr),
@@ -677,7 +679,7 @@ namespace exec {
        private:
         friend struct async_scope;
 
-        explicit __t(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
+        constexpr explicit __t(std::unique_ptr<__future_state<_Sender, _Env>> __state) noexcept
           : __state_(std::move(__state)) {
           std::unique_lock __guard{__state_->__mutex_};
           __state_->__step_from_to_(__guard, __future_step::__created, __future_step::__future);
@@ -699,12 +701,12 @@ namespace exec {
       inplace_stop_token __token_;
 
       [[nodiscard]]
-      auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+      constexpr auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
         return __token_;
       }
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> STDEXEC::inline_scheduler {
+      constexpr auto query(get_scheduler_t) const noexcept -> STDEXEC::inline_scheduler {
         return {};
       }
     };
@@ -728,7 +730,7 @@ namespace exec {
         using receiver_concept = STDEXEC::receiver_t;
         __spawn_op_base<_EnvId>* __op_;
 
-        void set_value() noexcept {
+        constexpr void set_value() noexcept {
           __op_->__delete_(__op_);
         }
 
@@ -738,11 +740,11 @@ namespace exec {
           std::rethrow_exception(std::move(__eptr));
         }
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           __op_->__delete_(__op_);
         }
 
-        auto get_env() const noexcept -> const __spawn_env_t<_Env>& {
+        constexpr auto get_env() const noexcept -> const __spawn_env_t<_Env>& {
           return __op_->__env_;
         }
       };
@@ -757,7 +759,7 @@ namespace exec {
       using _Sender = STDEXEC::__t<_SenderId>;
 
       struct __t : __spawn_op_base<_EnvId> {
-        __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
+        constexpr __t(connect_t, _Sender&& __sndr, _Env __env, const __impl* __scope)
           : __spawn_op_base<_EnvId>{
               __env::__join(
                 static_cast<_Env&&>(__env),
@@ -766,7 +768,7 @@ namespace exec {
           , __data_(static_cast<_Sender&&>(__sndr), __spawn_receiver_t<_Env>{this}) {
         }
 
-        __t(_Sender __sndr, _Env __env, const __impl* __scope)
+        constexpr __t(_Sender __sndr, _Env __env, const __impl* __scope)
           : __t(
               STDEXEC::connect,
               static_cast<_Sender&&>(__sndr),
@@ -793,12 +795,12 @@ namespace exec {
 
       template <sender _Constrained>
       [[nodiscard]]
-      auto when_empty(_Constrained&& __c) const -> __when_empty_sender_t<_Constrained> {
+      constexpr auto when_empty(_Constrained&& __c) const -> __when_empty_sender_t<_Constrained> {
         return __when_empty_sender_t<_Constrained>{&__impl_, static_cast<_Constrained&&>(__c)};
       }
 
       [[nodiscard]]
-      auto on_empty() const {
+      constexpr auto on_empty() const {
         return when_empty(just());
       }
 
@@ -807,7 +809,7 @@ namespace exec {
 
       template <sender _Constrained>
       [[nodiscard]]
-      auto nest(_Constrained&& __c) -> nest_result_t<_Constrained> {
+      constexpr auto nest(_Constrained&& __c) -> nest_result_t<_Constrained> {
         return nest_result_t<_Constrained>{&__impl_, static_cast<_Constrained&&>(__c)};
       }
 
@@ -823,6 +825,7 @@ namespace exec {
       }
 
       template <__movable_value _Env = env<>, sender_in<__env_t<_Env>> _Sender>
+      [[nodiscard]]
       auto spawn_future(_Sender&& __sndr, _Env __env = {}) -> __future_t<_Sender, _Env> {
         using __state_t = __future_state<nest_result_t<_Sender>, _Env>;
         auto __state = std::make_unique<__state_t>(
@@ -830,11 +833,13 @@ namespace exec {
         return __future_t<_Sender, _Env>{std::move(__state)};
       }
 
-      auto get_stop_source() noexcept -> inplace_stop_source& {
+      [[nodiscard]]
+      constexpr auto get_stop_source() noexcept -> inplace_stop_source& {
         return __impl_.__stop_source_;
       }
 
-      auto get_stop_token() const noexcept -> inplace_stop_token {
+      [[nodiscard]]
+      constexpr auto get_stop_token() const noexcept -> inplace_stop_token {
         return __impl_.__stop_source_.get_token();
       }
 

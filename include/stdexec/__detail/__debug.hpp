@@ -61,7 +61,7 @@ namespace STDEXEC {
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-      void set_stopped() noexcept
+      constexpr void set_stopped() noexcept
         requires __one_of<set_stopped_t (*)(), _Sigs...>
       {
         STDEXEC_TERMINATE();
@@ -82,7 +82,8 @@ namespace STDEXEC {
       using __id = __debug_receiver;
       using receiver_concept = receiver_t;
 
-      STDEXEC_ATTRIBUTE(host, device) auto get_env() const noexcept -> __debug_env_t<_Env> {
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto get_env() const noexcept -> __debug_env_t<_Env> {
         STDEXEC_TERMINATE();
       }
     };
@@ -102,8 +103,8 @@ namespace STDEXEC {
     [[deprecated(
       "The sender claims to send a particular set of completions,"
       " but in actual fact it completes with a result that is not"
-      " one of the declared completion signatures.")]] //
-    STDEXEC_ATTRIBUTE(host, device)                    //
+      " one of the declared completion signatures.")]] constexpr //
+      STDEXEC_ATTRIBUTE(host, device)                            //
       void _ATTENTION_() noexcept {
     }
 
@@ -129,11 +130,14 @@ namespace STDEXEC {
 
     template <__completion_tag _Tag, class... _Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void tag_invoke(_Tag, __t<__invalid_completion<_Tag(_Args...)>>, _Args&&...) noexcept {
+    constexpr void tag_invoke(
+      _Tag,
+      __t<__invalid_completion<_Tag(_Args...)>>,
+      _Args&&...) noexcept {
     }
 
     struct __debug_operation {
-      void start() & noexcept {
+      constexpr void start() & noexcept {
       }
     };
 
@@ -182,7 +186,7 @@ namespace STDEXEC {
     // which is the faulty `tag_invoke` overload with a mention of the
     // constraint that failed.
     template <class _Sigs, class _Env = env<>, class _Sender>
-    void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
+    constexpr void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sender_in<_Sender, _Env>) {
           using _Receiver = __debug_receiver<__cvref_id<_Sender>, _Env, _Sigs>;
@@ -201,7 +205,7 @@ namespace STDEXEC {
     }
 
     template <class _Env = env<>, class _Sender>
-    void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
+    constexpr void __debug_sender(_Sender&& __sndr, const _Env& = {}) {
       if constexpr (!__is_debug_env<_Env>) {
         if constexpr (sender_in<_Sender, _Env>) {
           using _Sigs = __completion_signatures_of_t<_Sender, __debug_env_t<_Env>>;

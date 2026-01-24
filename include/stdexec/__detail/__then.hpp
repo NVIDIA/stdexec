@@ -43,13 +43,13 @@ namespace STDEXEC {
     ////////////////////////////////////////////////////////////////////////////////////////////////
     struct then_t {
       template <sender _Sender, __movable_value _Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
         return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
       }
 
       template <__movable_value _Fun>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Fun __fun) const {
+      constexpr auto operator()(_Fun __fun) const {
         return __closure(*this, static_cast<_Fun&&>(__fun));
       }
     };
@@ -70,7 +70,7 @@ namespace STDEXEC {
       struct __complete_fn {
         template <class _Tag, class _State, class... _Args>
         STDEXEC_ATTRIBUTE(host, device)
-        void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
+        constexpr void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
             STDEXEC::__set_value_invoke(
               static_cast<_State&&>(__state).__rcvr_,

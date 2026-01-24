@@ -52,7 +52,7 @@ namespace STDEXEC {
     };
 
     template <class _Env>
-    auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
+    constexpr auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
       return __env::__join(
         prop{get_stop_token, __stop_source.get_token()}, static_cast<_Env&&>(__env));
     }
@@ -142,7 +142,7 @@ namespace STDEXEC {
     };
 
     template <class _Receiver, class _ValuesTuple>
-    void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
+    constexpr void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept {
       STDEXEC::__apply(
         [&]<class... OptTuples>(OptTuples&&... __opt_vals) noexcept -> void {
           STDEXEC::__cat_apply(
@@ -185,7 +185,7 @@ namespace STDEXEC {
 
     template <class _State>
     struct __forward_stop_request {
-      void operator()() const noexcept {
+      constexpr void operator()() const noexcept {
         // Temporarily increment the count to avoid concurrent/recursive arrivals to
         // pull the rug under our feet. Relaxed memory order is fine here.
         __state_->__count_.fetch_add(1, __std::memory_order_relaxed);
@@ -211,13 +211,13 @@ namespace STDEXEC {
       using __stop_callback_t =
         stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<__state>>;
 
-      void __arrive() noexcept {
+      constexpr void __arrive() noexcept {
         if (1 == __count_.fetch_sub(1, __std::memory_order_acq_rel)) {
           __complete();
         }
       }
 
-      void __complete() noexcept {
+      constexpr void __complete() noexcept {
         // Stop callback is no longer needed. Destroy it.
         __on_stop_.reset();
         // All child operations have completed and arrived at the barrier.
@@ -309,7 +309,7 @@ namespace STDEXEC {
     };
 
     template <class _Receiver>
-    static auto __mk_state_fn(_Receiver&& __rcvr) noexcept {
+    static constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept {
       using __env_of_t = env_of_t<_Receiver>;
       return [&]<__max1_sender<__env_t<__env_of_t>>... _Child>(
                __ignore, __ignore, _Child&&...) noexcept {
@@ -331,7 +331,7 @@ namespace STDEXEC {
 
     struct when_all_t {
       template <sender... _Senders>
-      auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
         return __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...);
       }
     };
@@ -388,7 +388,7 @@ namespace STDEXEC {
       };
 
       template <class _State, class _Error>
-      static void __set_error(_State& __state, _Error&& __err) noexcept {
+      static constexpr void __set_error(_State& __state, _Error&& __err) noexcept {
         // Transition to the "error" state and switch on the prior state.
         // TODO: What memory orderings are actually needed here?
         switch (__state.__state_.exchange(__error)) {
@@ -459,12 +459,12 @@ namespace STDEXEC {
 
     struct when_all_with_variant_t {
       template <sender... _Senders>
-      auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
+      constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
         return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
         return __apply(
           [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
@@ -493,14 +493,14 @@ namespace STDEXEC {
 
     struct transfer_when_all_t {
       template <scheduler _Scheduler, sender... _Senders>
-      auto
+      constexpr auto
         operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
         return __make_sexpr<transfer_when_all_t>(
           static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform transfer_when_all(sch, sndrs...) into
         // continues_on(when_all(sndrs...), sch).
         return __apply(
@@ -530,14 +530,14 @@ namespace STDEXEC {
 
     struct transfer_when_all_with_variant_t {
       template <scheduler _Scheduler, sender... _Senders>
-      auto
+      constexpr auto
         operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
         return __make_sexpr<transfer_when_all_with_variant_t>(
           static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
       }
 
       template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
         // transform the transfer_when_all_with_variant(sch, sndrs...) into
         // transfer_when_all(sch, into_variant(sndrs...))
         return __apply(

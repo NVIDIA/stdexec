@@ -30,10 +30,10 @@ namespace STDEXEC {
       struct __receiver : __nope {
         using receiver_concept = receiver_t;
 
-        void set_error(std::exception_ptr) noexcept;
-        void set_stopped() noexcept;
+        constexpr void set_error(std::exception_ptr) noexcept;
+        constexpr void set_stopped() noexcept;
         [[nodiscard]]
-        auto get_env() const noexcept -> env<>;
+        constexpr auto get_env() const noexcept -> env<>;
       };
     } // namespace __no
 
@@ -115,7 +115,7 @@ namespace STDEXEC {
 
       template <class _Self>
       STDEXEC_ATTRIBUTE(host, device)
-      static auto __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
+      constexpr static auto __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
         if constexpr (__has_base) {
           return __c_upcast<receiver_adaptor>(static_cast<_Self&&>(__self)).base();
         } else {
@@ -126,7 +126,7 @@ namespace STDEXEC {
      public:
       using receiver_concept = receiver_t;
 
-      receiver_adaptor() = default;
+      constexpr receiver_adaptor() = default;
       using __adaptor_base<_Base>::__adaptor_base;
 
       template <class... _As, class _Self = _Derived>
@@ -154,7 +154,7 @@ namespace STDEXEC {
 
       template <class _Self = _Derived>
       STDEXEC_ATTRIBUTE(host, device)
-      auto get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
+      constexpr auto get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
         return STDEXEC::get_env(__get_base(static_cast<const _Self&>(*this)));
       }
     };

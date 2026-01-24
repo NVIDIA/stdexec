@@ -25,7 +25,6 @@
 #include <exception>  // IWYU pragma: keep for std::terminate
 #include <functional> // IWYU pragma: keep for unwrap_reference_t
 #include <type_traits>
-#include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
@@ -341,10 +340,14 @@ namespace STDEXEC {
   using __get_env::get_env_t;
   inline constexpr get_env_t get_env{};
 
+  // template <class _EnvProvider>
+  // concept environment_provider = requires(_EnvProvider& __ep) {
+  //   { get_env(std::as_const(__ep)) } -> queryable;
+  // };
+
   template <class _EnvProvider>
-  concept environment_provider = requires(_EnvProvider& __ep) {
-    { get_env(std::as_const(__ep)) } -> queryable;
-  };
+  concept environment_provider = __mvalid<__call_result_t, get_env_t, const _EnvProvider&>;
+
 } // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

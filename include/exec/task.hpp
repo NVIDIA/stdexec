@@ -92,7 +92,7 @@ namespace exec {
 
      public:
       template <class _ParentPromise>
-      explicit __default_task_context_impl(_ParentPromise& __parent) noexcept {
+      constexpr explicit __default_task_context_impl(_ParentPromise& __parent) noexcept {
         if constexpr (_SchedulerAffinity == __scheduler_affinity::__sticky) {
           if constexpr (__check_parent_promise_has_scheduler<_ParentPromise>()) {
             __scheduler_ = get_scheduler(get_env(__parent));
@@ -101,19 +101,19 @@ namespace exec {
       }
 
       template <scheduler _Scheduler>
-      explicit __default_task_context_impl(_Scheduler&& __scheduler)
+      constexpr explicit __default_task_context_impl(_Scheduler&& __scheduler)
         : __scheduler_{static_cast<_Scheduler&&>(__scheduler)} {
       }
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> const __any_scheduler&
+      constexpr auto query(get_scheduler_t) const noexcept -> const __any_scheduler&
         requires(__with_scheduler)
       {
         return __scheduler_;
       }
 
       [[nodiscard]]
-      auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+      constexpr auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
         return __stop_token_;
       }
 
@@ -127,12 +127,12 @@ namespace exec {
       }
 
       [[nodiscard]]
-      auto stop_requested() const noexcept -> bool {
+      constexpr auto stop_requested() const noexcept -> bool {
         return __stop_token_.stop_requested();
       }
 
       template <scheduler _Scheduler>
-      void set_scheduler(_Scheduler&& __sched)
+      constexpr void set_scheduler(_Scheduler&& __sched)
         requires(__with_scheduler)
       {
         __scheduler_ = static_cast<_Scheduler&&>(__sched);
@@ -157,7 +157,7 @@ namespace exec {
     template <class _ParentPromise>
     struct __default_awaiter_context {
       template <__scheduler_affinity _Affinity>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>&,
         _ParentPromise&) noexcept {
       }
@@ -173,7 +173,7 @@ namespace exec {
       using __stop_callback_t = __stop_token_t::template callback_type<__forward_stop_request>;
 
       template <__scheduler_affinity _Affinity>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>& __self,
         _ParentPromise& __parent) noexcept
         // Register a callback that will request stop on this basic_task's
@@ -200,7 +200,7 @@ namespace exec {
       requires std::same_as<inplace_stop_token, stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>& __self,
         _ParentPromise& __parent) noexcept {
         __self.__stop_token_ = get_stop_token(get_env(__parent));
@@ -213,7 +213,7 @@ namespace exec {
       requires unstoppable_token<stop_token_of_t<env_of_t<_ParentPromise>>>
     struct __default_awaiter_context<_ParentPromise> {
       template <__scheduler_affinity _Affinity>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>&,
         _ParentPromise&) noexcept {
       }
@@ -224,13 +224,13 @@ namespace exec {
     template <>
     struct __default_awaiter_context<void> {
       template <__scheduler_affinity _Affinity, class _ParentPromise>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>&,
         _ParentPromise&) noexcept {
       }
 
       template <__scheduler_affinity _Affinity, __indirect_stop_token_provider _ParentPromise>
-      explicit __default_awaiter_context(
+      constexpr explicit __default_awaiter_context(
         __default_task_context_impl<_Affinity>& __self,
         _ParentPromise& __parent) {
         // Register a callback that will request stop on this basic_task's
@@ -260,7 +260,7 @@ namespace exec {
     // In a base class so it can be specialized when _Ty is void:
     template <class _Ty>
     struct __promise_base {
-      void return_value(_Ty value) {
+      constexpr void return_value(_Ty value) {
         __data_.template emplace<0>(std::move(value));
       }
 
@@ -271,7 +271,7 @@ namespace exec {
     struct __promise_base<void> {
       struct __void { };
 
-      void return_void() {
+      constexpr void return_void() {
         __data_.template emplace<0>(__void{});
       }
 
@@ -310,7 +310,7 @@ namespace exec {
       };
 
       template <scheduler _Scheduler>
-      auto operator()(_Scheduler __sched) const noexcept -> __wrap<_Scheduler> {
+      constexpr auto operator()(_Scheduler __sched) const noexcept -> __wrap<_Scheduler> {
         return {static_cast<_Scheduler&&>(__sched)};
       }
     };
@@ -325,11 +325,11 @@ namespace exec {
       using __id = basic_task;
       using promise_type = __promise;
 
-      basic_task(basic_task&& __that) noexcept
+      constexpr basic_task(basic_task&& __that) noexcept
         : __coro_(std::exchange(__that.__coro_, {})) {
       }
 
-      ~basic_task() {
+      constexpr ~basic_task() {
         if (__coro_)
           __coro_.destroy();
       }
@@ -343,12 +343,12 @@ namespace exec {
           return false;
         }
 
-        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept
+        static constexpr auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept
           -> __std::coroutine_handle<> {
           return __h.promise().continuation().handle();
         }
 
-        static void await_resume() noexcept {
+        static constexpr void await_resume() noexcept {
         }
       };
 
@@ -360,20 +360,20 @@ namespace exec {
         using __t = __promise;
         using __id = __promise;
 
-        auto get_return_object() noexcept -> basic_task {
+        constexpr auto get_return_object() noexcept -> basic_task {
           return basic_task(__std::coroutine_handle<__promise>::from_promise(*this));
         }
 
-        auto initial_suspend() noexcept -> __std::suspend_always {
+        constexpr auto initial_suspend() noexcept -> __std::suspend_always {
           return {};
         }
 
-        auto final_suspend() noexcept -> __final_awaitable {
+        constexpr auto final_suspend() noexcept -> __final_awaitable {
           return {};
         }
 
         [[nodiscard]]
-        auto disposition() const noexcept -> __task::disposition {
+        constexpr auto disposition() const noexcept -> __task::disposition {
           switch (this->__data_.index()) {
           case 0:
             return __task::disposition::succeeded;
@@ -384,7 +384,7 @@ namespace exec {
           }
         }
 
-        void unhandled_exception() noexcept {
+        constexpr void unhandled_exception() noexcept {
           this->__data_.template emplace<1>(std::current_exception());
         }
 
@@ -427,12 +427,12 @@ namespace exec {
         }
 
         template <class _Awaitable>
-        auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
+        constexpr auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto) {
           return with_awaitable_senders<__promise>::await_transform(
             static_cast<_Awaitable&&>(__awaitable));
         }
 
-        auto get_env() const noexcept -> const __promise_context_t& {
+        constexpr auto get_env() const noexcept -> const __promise_context_t& {
           return *__context_;
         }
 
@@ -445,7 +445,7 @@ namespace exec {
         __std::coroutine_handle<__promise> __coro_;
         __optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
 
-        ~__task_awaitable() {
+        constexpr ~__task_awaitable() {
           if (__coro_)
             __coro_.destroy();
         }
@@ -455,7 +455,7 @@ namespace exec {
         }
 
         template <class _ParentPromise2>
-        auto await_suspend(__std::coroutine_handle<_ParentPromise2> __parent) noexcept
+        constexpr auto await_suspend(__std::coroutine_handle<_ParentPromise2> __parent) noexcept
           -> __std::coroutine_handle<> {
           static_assert(__one_of<_ParentPromise, _ParentPromise2, void>);
           __coro_.promise().__context_.emplace(__parent.promise());
@@ -468,7 +468,7 @@ namespace exec {
           return __coro_;
         }
 
-        auto await_resume() -> _Ty {
+        constexpr auto await_resume() -> _Ty {
           __context_.reset();
           scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
           if (__coro_.promise().__data_.index() == 1)
@@ -481,23 +481,23 @@ namespace exec {
      public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
-      // requires __std::constructible_from<
-      //   awaiter_context_t<__promise, _ParentPromise>,
-      //   __promise_context_t&,
-      //   _ParentPromise&
-      // >
-      auto as_awaitable(_ParentPromise&) && noexcept { //-> __task_awaitable<_ParentPromise> {
+      constexpr // requires __std::constructible_from<
+        //   awaiter_context_t<__promise, _ParentPromise>,
+        //   __promise_context_t&,
+        //   _ParentPromise&
+        // >
+        auto as_awaitable(_ParentPromise&) && noexcept { //-> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
       }
 
       // Make this task generally awaitable:
-      auto operator co_await() && noexcept -> __task_awaitable<>
+      constexpr auto operator co_await() && noexcept -> __task_awaitable<>
         requires __mvalid<awaiter_context_t, __promise>
       {
         return __task_awaitable<>{std::exchange(__coro_, {})};
       }
 
-      explicit basic_task(__std::coroutine_handle<promise_type> __coro) noexcept
+      constexpr explicit basic_task(__std::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro) {
       }
 

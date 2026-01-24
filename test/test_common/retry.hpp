@@ -51,13 +51,20 @@ namespace {
     }
   };
 
-  template <class S, class R>
-  struct _op;
+  template <class R>
+  struct _op_base {
+    explicit _op_base(R r) noexcept(std::is_nothrow_move_constructible_v<R>)
+      : r_(static_cast<R&&>(r)) {
+    }
+    virtual void _retry() noexcept = 0;
+    R r_;
+  };
 
   // pass through all customizations except set_error, which retries the operation.
   template <class S, class R>
-  struct _retry_receiver : STDEXEC::receiver_adaptor<_retry_receiver<S, R>> {
-    _op<S, R>* o_;
+  struct _retry_receiver {
+    using receiver_concept = STDEXEC::receiver_t;
+    _op_base<R>* o_;
 
     auto base() && noexcept -> R&& {
       return static_cast<R&&>(o_->r_);
@@ -67,27 +74,40 @@ namespace {
       return o_->r_;
     }
 
-    explicit _retry_receiver(_op<S, R>* o)
+    explicit _retry_receiver(_op_base<R>* o)
       : o_(o) {
     }
 
+    template <class... Ts>
+    void set_value(Ts&&... ts) noexcept {
+      STDEXEC::set_value(std::move(o_->r_), std::forward<Ts>(ts)...);
+    }
+
     template <class Error>
-    void set_error(Error&&) && noexcept {
+    void set_error(Error&&) noexcept {
       o_->_retry(); // This causes the op to be retried
+    }
+
+    void set_stopped() noexcept {
+      STDEXEC::set_stopped(std::move(o_->r_));
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> STDEXEC::env_of_t<R> {
+      return STDEXEC::get_env(o_->r_);
     }
   };
 
   // Hold the nested operation state in an optional so we can
   // re-construct and re-start it if the operation fails.
   template <class S, class R>
-  struct _op {
+  struct _op : _op_base<R> {
     S s_;
-    R r_;
     std::optional<STDEXEC::connect_result_t<S&, _retry_receiver<S, R>>> o_;
 
     _op(S s, R r)
-      : s_(static_cast<S&&>(s))
-      , r_(static_cast<R&&>(r))
+      : _op_base<R>{std::move(r)}
+      , s_(std::move(s))
       , o_{_connect()} {
     }
 
@@ -97,13 +117,13 @@ namespace {
       return _conv{[this] { return STDEXEC::connect(s_, _retry_receiver<S, R>{this}); }};
     }
 
-    void _retry() noexcept {
+    void _retry() noexcept final {
       STDEXEC_TRY {
         o_.emplace(_connect()); // potentially throwing
         STDEXEC::start(*o_);
       }
       STDEXEC_CATCH_ALL {
-        STDEXEC::set_error(static_cast<R&&>(r_), std::current_exception());
+        STDEXEC::set_error(static_cast<R&&>(this->r_), std::current_exception());
       }
     }
 

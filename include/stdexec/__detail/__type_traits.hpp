@@ -127,7 +127,7 @@ namespace STDEXEC {
 
   namespace __tt {
     template <class _Ty>
-    auto __remove_rvalue_reference_fn(_Ty &&) -> _Ty;
+    constexpr auto __remove_rvalue_reference_fn(_Ty &&) -> _Ty;
   } // namespace __tt
 
   template <class _Ty>
@@ -138,7 +138,7 @@ namespace STDEXEC {
   // because of a bizarre nvc++ compiler bug:
   struct __cref_fn {
     template <class _Ty>
-    auto operator()(const _Ty &) -> const _Ty &;
+    constexpr auto operator()(const _Ty &) -> const _Ty &;
   };
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));

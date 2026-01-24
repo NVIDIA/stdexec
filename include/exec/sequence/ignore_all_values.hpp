@@ -40,10 +40,7 @@ namespace exec {
     using namespace STDEXEC;
 
     template <class _ResultVariant>
-    struct __result_type {
-      _ResultVariant __result_{};
-      __std::atomic<int> __emplaced_{0};
-
+    struct __result_type : __immovable {
       template <class... _Args>
       void __emplace(_Args&&... __args) noexcept {
         int __expected = 0;
@@ -75,6 +72,9 @@ namespace exec {
             static_cast<_ResultVariant&&>(__result_));
         }
       }
+
+      _ResultVariant __result_{};
+      __std::atomic<int> __emplaced_{0};
     };
 
     template <class _ItemReceiver, class _ResultVariant>

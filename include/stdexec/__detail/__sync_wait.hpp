@@ -49,12 +49,12 @@ namespace STDEXEC {
       run_loop* __loop_ = nullptr;
 
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
+      constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 
       [[nodiscard]]
-      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
+      constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
         return __loop_->get_scheduler();
       }
 
@@ -94,7 +94,7 @@ namespace STDEXEC {
         std::optional<std::tuple<_Values...>>* __values_;
 
         template <class... _As>
-        void set_value(_As&&... __as) noexcept {
+        constexpr void set_value(_As&&... __as) noexcept {
           static_assert(__std::constructible_from<std::tuple<_Values...>, _As...>);
           STDEXEC_TRY {
             __values_->emplace(static_cast<_As&&>(__as)...);
@@ -106,7 +106,7 @@ namespace STDEXEC {
         }
 
         template <class _Error>
-        void set_error(_Error __err) noexcept {
+        constexpr void set_error(_Error __err) noexcept {
           if constexpr (__same_as<_Error, std::exception_ptr>) {
             STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
             __state_->__eptr_ = static_cast<_Error&&>(__err);
@@ -118,12 +118,12 @@ namespace STDEXEC {
           __state_->__loop_.finish();
         }
 
-        void set_stopped() noexcept {
+        constexpr void set_stopped() noexcept {
           __state_->__loop_.finish();
         }
 
         [[nodiscard]]
-        auto get_env() const noexcept -> __env {
+        constexpr auto get_env() const noexcept -> __env {
           return __env{&__state_->__loop_};
         }
       };
@@ -236,7 +236,7 @@ namespace STDEXEC {
       }
 
       template <class _Sender>
-      auto operator()(_Sender&&) const {
+      constexpr auto operator()(_Sender&&) const {
         STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_Sender>, __env>();
         // dummy return type to silence follow-on errors
         return std::optional<std::tuple<int>>{};
@@ -269,7 +269,8 @@ namespace STDEXEC {
       // clang-format on
 
       template <sender_in<__env> _Sender>
-      auto apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
+      STDEXEC_CONSTEXPR_CXX23 auto
+        apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
         __state __local_state{};
         std::optional<__sync_wait_result_t<_Sender>> __result{};
 

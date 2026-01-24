@@ -155,10 +155,9 @@ namespace STDEXEC {
       static constexpr auto submit = [] {
       };
 
-      static constexpr auto start =
-        []<class... _ChildOps>(__ignore, _ChildOps&... __ops) noexcept {
-          (STDEXEC::start(__ops), ...);
-        };
+      static constexpr auto start = []<class... _ChildOps>(__ignore, _ChildOps&... __ops) noexcept {
+        (STDEXEC::start(__ops), ...);
+      };
 
       static constexpr auto complete =
         []<class _Index, class _State, class _SetTag, class... _Args>(
@@ -178,17 +177,32 @@ namespace STDEXEC {
       }
     };
 
+
     template <class _Sexpr, class _Receiver>
     struct __op_base : __immovable {
       using __tag_t = __decay_t<_Sexpr>::__tag_t;
       using __state_t = __state_type_t<__tag_t, _Sexpr, _Receiver>;
 
-      explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
+      constexpr explicit __op_base(_Sexpr&& __sndr, _Receiver&& __rcvr) noexcept(noexcept(
         __state_t(__sexpr_impl<__tag_t>::get_state(__declval<_Sexpr>(), __declval<_Receiver>()))))
         : __state_(
             __sexpr_impl<__tag_t>::get_state(
               static_cast<_Sexpr&&>(__sndr),
               static_cast<_Receiver&&>(__rcvr))) {
+      }
+
+      template <class _Index, class _Tag2, class... _Args>
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
+        __sexpr_impl<__tag_t>::complete(
+          _Index(), __state_, _Tag2(), static_cast<_Args&&>(__args)...);
+      }
+
+      template <class _Index>
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr auto __get_env(_Index) const noexcept
+        -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
+        return __sexpr_impl<__tag_t>::get_env(_Index(), __state_);
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -205,27 +219,27 @@ namespace STDEXEC {
 
       struct __impl {
         template <std::size_t... _Is, class... _Child>
-        auto operator()(__indices<_Is...>, _Child&&... __child) const
+        constexpr auto operator()(__indices<_Is...>, _Child&&... __child) const
           noexcept((__nothrow_connectable<_Child, __receiver_t<_Is>> && ...))
             -> __tuple<connect_result_t<_Child, __receiver_t<_Is>>...> {
           return __tuple{connect(static_cast<_Child&&>(__child), __receiver_t<_Is>{__op_})...};
         }
 
-        __op_state<_Sexpr, _Receiver>* __op_;
+        __op_base<_Sexpr, _Receiver>* __op_;
       };
 
       template <class... _Child>
-      auto operator()(__ignore, __ignore, _Child&&... __child) const
+      constexpr auto operator()(__ignore, __ignore, _Child&&... __child) const
         noexcept(__nothrow_callable<__impl, __indices_for<_Child...>, _Child...>)
           -> __call_result_t<__impl, __indices_for<_Child...>, _Child...> {
         return __impl{__op_}(__indices_for<_Child...>(), static_cast<_Child&&>(__child)...);
       }
 
-      auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
+      constexpr auto operator()(__ignore, __ignore) const noexcept -> __tuple<> {
         return {};
       }
 
-      __op_state<_Sexpr, _Receiver>* __op_;
+      __op_base<_Sexpr, _Receiver>* __op_;
     };
 
     inline constexpr auto __drop_front = []<class _Fn>(_Fn __fn) noexcept {
@@ -252,28 +266,30 @@ namespace STDEXEC {
       using __id = __rcvr;
 
       using __index_t = __msize_t<_Idx>;
-      using __parent_op_t = __op_state<_Sexpr, _Receiver>;
+      using __parent_op_t = __detail::__op_base<_Sexpr, _Receiver>;
       using __tag_t = tag_of_t<_Sexpr>;
 
       template <class... _Args>
       STDEXEC_ATTRIBUTE(always_inline)
-      void set_value(_Args&&... __args) noexcept {
+      constexpr void set_value(_Args&&... __args) noexcept {
         __op_->__complete(__index_t(), STDEXEC::set_value, static_cast<_Args&&>(__args)...);
       }
 
       template <class _Error>
       STDEXEC_ATTRIBUTE(always_inline)
-      void set_error(_Error&& __err) noexcept {
+      constexpr void set_error(_Error&& __err) noexcept {
         __op_->__complete(__index_t(), STDEXEC::set_error, static_cast<_Error&&>(__err));
       }
 
-      STDEXEC_ATTRIBUTE(always_inline) void set_stopped() noexcept {
+      STDEXEC_ATTRIBUTE(always_inline)
+      constexpr void set_stopped() noexcept {
         __op_->__complete(__index_t(), STDEXEC::set_stopped);
       }
 
       template <class _Index = __msize_t<_Idx>>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      auto get_env() const noexcept -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
+      constexpr auto get_env() const noexcept
+        -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
         return __op_->__get_env(__index_t());
       }
 
@@ -291,7 +307,7 @@ namespace STDEXEC {
     using __state_t = __op_state::__op_base::__state_t;
     using __inner_ops_t = __apply_result_t<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>;
 
-    explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
+    constexpr explicit __op_state(_Sexpr&& __sexpr, _Receiver __rcvr) noexcept(
       __nothrow_constructible_from<__detail::__op_base<_Sexpr, _Receiver>, _Sexpr, _Receiver>
       && __nothrow_applicable<__detail::__connect_fn<_Sexpr, _Receiver>, _Sexpr>)
       : __op_state::__op_base{static_cast<_Sexpr&&>(__sexpr), static_cast<_Receiver&&>(__rcvr)}
@@ -300,26 +316,12 @@ namespace STDEXEC {
           static_cast<_Sexpr&&>(__sexpr))) {
     }
 
-    STDEXEC_ATTRIBUTE(always_inline) void start() & noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr void start() & noexcept {
       using __tag_t = __op_state::__tag_t;
       STDEXEC::__apply(
         [&](auto&... __ops) noexcept { __sexpr_impl<__tag_t>::start(this->__state_, __ops...); },
         __inner_ops_);
-    }
-
-    template <class _Index, class _Tag2, class... _Args>
-    STDEXEC_ATTRIBUTE(always_inline)
-    void __complete(_Index, _Tag2, _Args&&... __args) noexcept {
-      using __tag_t = __op_state::__tag_t;
-      __sexpr_impl<__tag_t>::complete(
-        _Index(), this->__state_, _Tag2(), static_cast<_Args&&>(__args)...);
-    }
-
-    template <class _Index>
-    STDEXEC_ATTRIBUTE(always_inline)
-    auto __get_env(_Index) const noexcept
-      -> __detail::__env_type_t<__tag_t, _Index, _Sexpr, _Receiver> {
-      return __sexpr_impl<__tag_t>::get_env(_Index(), this->__state_);
     }
 
     __inner_ops_t __inner_ops_;

@@ -29,7 +29,7 @@ namespace exec {
     struct __trampoline_state {
       static thread_local __trampoline_state* __current_;
 
-      __trampoline_state(
+      constexpr __trampoline_state(
         std::size_t __max_recursion_depth,
         std::size_t __max_recursion_size) noexcept
         : __max_recursion_size_(__max_recursion_size)
@@ -37,11 +37,11 @@ namespace exec {
         __current_ = this;
       }
 
-      ~__trampoline_state() {
+      constexpr ~__trampoline_state() {
         __current_ = nullptr;
       }
 
-      void __drain() noexcept;
+      constexpr void __drain() noexcept;
 
       // these origin schedule frame limits will apply to all
       // nested trampoline instances on this thread
@@ -60,17 +60,17 @@ namespace exec {
       const std::size_t __max_recursion_depth_;
 
      public:
-      __scheduler() noexcept
+      constexpr __scheduler() noexcept
         : __max_recursion_size_(4096)
         , __max_recursion_depth_(16) {
       }
 
-      explicit __scheduler(std::size_t __max_recursion_depth) noexcept
+      constexpr explicit __scheduler(std::size_t __max_recursion_depth) noexcept
         : __max_recursion_size_(4096)
         , __max_recursion_depth_(__max_recursion_depth) {
       }
 
-      explicit __scheduler(
+      constexpr explicit __scheduler(
         std::size_t __max_recursion_depth,
         std::size_t __max_recursion_size) noexcept
         : __max_recursion_size_(__max_recursion_size)
@@ -81,7 +81,7 @@ namespace exec {
       struct __operation_base {
         using __execute_fn = void(__operation_base*) noexcept;
 
-        explicit __operation_base(
+        constexpr explicit __operation_base(
           __execute_fn* __execute,
           std::size_t __max_size,
           std::size_t __max_depth) noexcept
@@ -90,7 +90,7 @@ namespace exec {
           , __max_recursion_depth_(__max_depth) {
         }
 
-        void __execute() noexcept {
+        constexpr void __execute() noexcept {
           __execute_(this);
         }
 
@@ -149,12 +149,15 @@ namespace exec {
           using __id = __operation;
           STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __receiver_;
 
-          explicit __t(_Receiver __rcvr, std::size_t __max_size, std::size_t __max_depth) noexcept
+          constexpr explicit __t(
+            _Receiver __rcvr,
+            std::size_t __max_size,
+            std::size_t __max_depth) noexcept
             : __operation_base(&__t::__execute_impl, __max_size, __max_depth)
             , __receiver_(static_cast<_Receiver&&>(__rcvr)) {
           }
 
-          static void __execute_impl(__operation_base* __op) noexcept {
+          static constexpr void __execute_impl(__operation_base* __op) noexcept {
             auto& __self = *static_cast<__t*>(__op);
             if (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
               STDEXEC::set_value(static_cast<_Receiver&&>(__self.__receiver_));
@@ -180,25 +183,27 @@ namespace exec {
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
-        explicit __schedule_sender(std::size_t __max_size, std::size_t __max_depth) noexcept
+        constexpr explicit __schedule_sender(
+          std::size_t __max_size,
+          std::size_t __max_depth) noexcept
           : __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth) {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        auto connect(_Receiver __rcvr) const noexcept -> __operation_t<_Receiver> {
+        constexpr auto connect(_Receiver __rcvr) const noexcept -> __operation_t<_Receiver> {
           return __operation_t<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), __max_recursion_size_, __max_recursion_depth_};
         }
 
         [[nodiscard]]
-        auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept
+        constexpr auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept
           -> __scheduler {
           return __scheduler{__max_recursion_depth_};
         }
 
         [[nodiscard]]
-        auto get_env() const noexcept -> const __schedule_sender& {
+        constexpr auto get_env() const noexcept -> const __schedule_sender& {
           return *this;
         }
 
@@ -208,11 +213,11 @@ namespace exec {
 
      public:
       [[nodiscard]]
-      auto schedule() const noexcept -> __schedule_sender {
+      constexpr auto schedule() const noexcept -> __schedule_sender {
         return __schedule_sender{__max_recursion_size_, __max_recursion_depth_};
       }
 
-      auto operator==(const __scheduler&) const noexcept -> bool = default;
+      constexpr auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
     template <class _Operation>
@@ -220,7 +225,7 @@ namespace exec {
       nullptr;
 
     template <class _Operation>
-    void __trampoline_state<_Operation>::__drain() noexcept {
+    constexpr void __trampoline_state<_Operation>::__drain() noexcept {
       while (__head_ != nullptr) {
         // pop the head of the list
 #if STDEXEC_NVHPC()

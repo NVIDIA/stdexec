@@ -31,14 +31,14 @@ namespace exec {
       struct _impl_fn {
         template <class Rcvr, class Tag, class... Args>
         STDEXEC_ATTRIBUTE(always_inline, host, device)
-        void operator()(Rcvr& rcvr, Tag, const Args&... args) const noexcept {
+        constexpr void operator()(Rcvr& rcvr, Tag, const Args&... args) const noexcept {
           Tag{}(static_cast<Rcvr&&>(rcvr), args...);
         }
       };
 
       template <class Rcvr, class Tuple>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void operator()(Rcvr& rcvr, const Tuple& tupl) const noexcept {
+      constexpr void operator()(Rcvr& rcvr, const Tuple& tupl) const noexcept {
         STDEXEC::__apply(_impl_fn{}, tupl, rcvr);
       }
     };
@@ -46,7 +46,7 @@ namespace exec {
     struct _mk_when_all_fn {
       template <class CacheSndr, class... Closures>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      auto operator()(CacheSndr sndr, Closures&&... closures) const {
+      constexpr auto operator()(CacheSndr sndr, Closures&&... closures) const {
         return STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...);
       }
     };
@@ -110,11 +110,11 @@ namespace exec {
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto connect(Rcvr rcvr) const -> _opstate_t<Rcvr> {
+      constexpr auto connect(Rcvr rcvr) const -> _opstate_t<Rcvr> {
         return _opstate_t<Rcvr>{static_cast<Rcvr&&>(rcvr), _results_};
       }
 
-      STDEXEC_ATTRIBUTE(host, device) static auto get_env() noexcept -> _env_t<Domain> {
+      STDEXEC_ATTRIBUTE(host, device) static constexpr auto get_env() noexcept -> _env_t<Domain> {
         return {};
       }
 
@@ -143,7 +143,7 @@ namespace exec {
       using _cache_sndr_t = fork_join_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
-      explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
+      constexpr explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
         , _fork_opstate_(
             STDEXEC::connect(
@@ -158,20 +158,20 @@ namespace exec {
 
       STDEXEC_IMMOVABLE(_opstate_t);
 
-      STDEXEC_ATTRIBUTE(host, device) ~_opstate_t() {
+      STDEXEC_ATTRIBUTE(host, device) constexpr ~_opstate_t() {
         // If this opstate was never started, we must explicitly destroy the _child_opstate_.
         if (_cache_.__is_valueless()) {
           _child_opstate_.__destroy();
         }
       }
 
-      STDEXEC_ATTRIBUTE(host, device) void start() noexcept {
+      STDEXEC_ATTRIBUTE(host, device) constexpr void start() noexcept {
         STDEXEC::start(_child_opstate_.__get());
       }
 
       template <class Tag, class... Args>
       STDEXEC_ATTRIBUTE(host, device)
-      void _complete(Tag, Args&&... args) noexcept {
+      constexpr void _complete(Tag, Args&&... args) noexcept {
         STDEXEC_TRY {
           using _tuple_t = STDEXEC::__decayed_tuple<Tag, Args...>;
           _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
@@ -189,13 +189,13 @@ namespace exec {
 
       template <class... Values>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void set_value(Values&&... values) noexcept {
+      constexpr void set_value(Values&&... values) noexcept {
         this->_complete(STDEXEC::set_value, static_cast<Values&&>(values)...);
       }
 
       template <class Error>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void set_error(Error&& err) noexcept {
+      constexpr void set_error(Error&& err) noexcept {
         this->_complete(STDEXEC::set_error, static_cast<Error&&>(err));
       }
 
@@ -276,7 +276,7 @@ namespace exec {
 
     template <class Rcvr>
     STDEXEC_ATTRIBUTE(host, device)
-    auto connect(Rcvr rcvr) && -> _opstate_t<Sndr, _closures_t, Rcvr> {
+    constexpr auto connect(Rcvr rcvr) && -> _opstate_t<Sndr, _closures_t, Rcvr> {
       return _opstate_t<Sndr, _closures_t, Rcvr>{
         static_cast<Sndr&&>(sndr_),
         static_cast<_closures_t&&>(_closures_),
@@ -285,7 +285,8 @@ namespace exec {
 
     template <class Rcvr>
     STDEXEC_ATTRIBUTE(host, device)
-    auto connect(Rcvr rcvr) const & -> _opstate_t<Sndr const &, _closures_t const &, Rcvr> {
+    constexpr auto connect(
+      Rcvr rcvr) const & -> _opstate_t<Sndr const &, _closures_t const &, Rcvr> {
       return _opstate_t<Sndr const &, _closures_t const &, Rcvr>{
         sndr_, _closures_, static_cast<Rcvr&&>(rcvr)};
     }

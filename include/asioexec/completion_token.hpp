@@ -358,7 +358,7 @@ namespace asioexec {
       template <typename T, typename... Us>
         requires std::constructible_from<Initiation, T>
                 && std::constructible_from<args_type_, Us...>
-      explicit constexpr sender(T&& t, Us&&... us) noexcept(
+      constexpr explicit sender(T&& t, Us&&... us) noexcept(
         std::is_nothrow_constructible_v<Initiation, T>
         && std::is_nothrow_constructible_v<args_type_, Us...>)
         : init_(static_cast<T&&>(t))
@@ -429,7 +429,7 @@ namespace asioexec {
         };
       }
      public:
-      explicit constexpr executor(
+      constexpr explicit executor(
         operation_state_base<Signatures, Receiver>& self,
         const Executor& ex) noexcept
         : self_(self)

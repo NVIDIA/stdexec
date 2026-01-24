@@ -39,8 +39,8 @@ namespace STDEXEC::ranges {
 namespace STDEXEC::ranges {
 
   namespace __detail {
-    void begin();
-    void end();
+    constexpr void begin();
+    constexpr void end();
 
     template <class _Ty>
     concept __has_member_begin = requires(_Ty&& __val) { static_cast<_Ty&&>(__val).begin(); };
