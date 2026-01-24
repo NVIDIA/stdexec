@@ -70,6 +70,7 @@ set(exec_test_sources
     test_exit_scope_sender.cpp
     test_enter_scope_sender.cpp
     test_enter_scopes.cpp
+    test_within.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
