@@ -72,6 +72,7 @@ set(exec_test_sources
     test_enter_scope_sender.cpp
     test_enter_scopes.cpp
     test_within.cpp
+    test_lifetime.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
