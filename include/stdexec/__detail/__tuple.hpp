@@ -43,52 +43,6 @@ namespace STDEXEC {
     template <class... _Ts>
     struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
 
-    template <class... _Ts>
-    STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto __tuple_base_fn(__tuple<_Ts...>&&) noexcept -> __tuple<_Ts...>;
-
-    template <class... _Ts>
-    STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto __tuple_base_fn(__tuple<_Ts...>&) noexcept -> __tuple<_Ts...>&;
-
-    template <class... _Ts>
-    STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto __tuple_base_fn(const __tuple<_Ts...>& __tup) noexcept -> const __tuple<_Ts...>&;
-
-    template <class _Tuple>
-    using __tuple_base_t = decltype(__tup::__tuple_base_fn(__declval<_Tuple>()));
-
-    template <class _Fn, class _Tuple, class... _Us>
-    extern constexpr bool __applicable_v = __applicable_v<_Fn, __tuple_base_t<_Tuple>, _Us...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __applicable_v<_Fn, __tuple<_Ts...>, _Us...> =
-      __callable<_Fn, _Us..., _Ts...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __applicable_v<_Fn, __tuple<_Ts...>&, _Us...> =
-      __callable<_Fn, _Us..., _Ts&...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __applicable_v<_Fn, const __tuple<_Ts...>&, _Us...> =
-      __callable<_Fn, _Us..., const _Ts&...>;
-
-    template <class _Fn, class _Tuple, class... _Us>
-    extern constexpr bool __nothrow_applicable_v =
-      __nothrow_applicable_v<_Fn, __tuple_base_t<_Tuple>, _Us...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __nothrow_applicable_v<_Fn, __tuple<_Ts...>, _Us...> =
-      __nothrow_callable<_Fn, _Us..., _Ts...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __nothrow_applicable_v<_Fn, __tuple<_Ts...>&, _Us...> =
-      __nothrow_callable<_Fn, _Us..., _Ts&...>;
-
-    template <class _Fn, class... _Ts, class... _Us>
-    inline constexpr bool __nothrow_applicable_v<_Fn, const __tuple<_Ts...>&, _Us...> =
-      __nothrow_callable<_Fn, _Us..., const _Ts&...>;
-
     template <class _Ty, std::size_t _Idx>
     struct __box {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -107,7 +61,7 @@ namespace STDEXEC {
       template <class _Fn, class _Self, class... _Us>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       static constexpr auto __apply(_Fn&& __fn, _Self&& __self, _Us&&... __us)
-        noexcept(__nothrow_applicable_v<_Fn, _Self, _Us...>) -> decltype(auto) {
+        noexcept(__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>...>) -> decltype(auto) {
         return static_cast<_Fn&&>(__fn)(
           static_cast<_Us&&>(__us)...,
           static_cast<_Self&&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Index>::__value...);
@@ -260,12 +214,25 @@ namespace STDEXEC {
     // __apply(fn, tuple, extra...)
     //
     struct __apply_t {
+      template <class _CvRef>
+      struct __impl {
+        template <class... _Ts>
+        using __tuple_t = __mcall<_CvRef, __tuple<_Ts...>>;
+
+        template <class... _Ts, class... _Us, __callable<_Us..., __mcall<_CvRef, _Ts>...> _Fn>
+        void operator()(_Fn&& __fn, __tuple_t<_Ts...>&& __tupl, _Us&&... __us) const
+          noexcept(__nothrow_callable<_Fn, _Us..., __mcall<_CvRef, _Ts>...>);
+      };
+
+      template <class _Tuple>
+      using __impl_t = __impl<__copy_cvref_fn<_Tuple>>;
+
       STDEXEC_EXEC_CHECK_DISABLE
       template <class _Fn, class _Tuple, class... _Us>
-        requires __tup::__applicable_v<_Fn, _Tuple, _Us...>
+        requires __callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr auto operator()(_Fn&& __fn, _Tuple&& __tupl, _Us&&... __us) const
-        noexcept(__tup::__nothrow_applicable_v<_Fn, _Tuple, _Us...>) -> decltype(auto) {
+        noexcept(__nothrow_callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>) -> decltype(auto) {
         constexpr size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
 
         if constexpr (__size == 0) {
@@ -300,6 +267,7 @@ namespace STDEXEC {
         }
       }
     };
+
 #undef STDEXEC_TUPLE_GET
   } // namespace __tup
 
@@ -311,10 +279,11 @@ namespace STDEXEC {
   using __apply_result_t = __call_result_t<__tup::__apply_t, _Fn, _Tuple, _Us...>;
 
   template <class _Fn, class _Tuple, class... _Us>
-  concept __applicable = __tup::__applicable_v<_Fn, _Tuple, _Us...>;
+  concept __applicable = __callable<__tup::__apply_t::__impl_t<_Tuple>, _Fn, _Tuple, _Us...>;
 
   template <class _Fn, class _Tuple, class... _Us>
-  concept __nothrow_applicable = __tup::__nothrow_applicable_v<_Fn, _Tuple, _Us...>;
+  concept __nothrow_applicable =
+    __nothrow_callable<__tup::__apply_t::__impl_t<_Tuple>, _Fn, _Tuple, _Us...>;
 
   //
   // __get<I>(tupl)
@@ -378,20 +347,14 @@ namespace STDEXEC {
   //
   // __tuple_size_v
   //
+  namespace __detail {
+    template <class... _Ts>
+    auto __tuple_sizer(const __tuple<_Ts...>&) -> __msize_t<sizeof...(_Ts)>;
+  } // namespace __detail
+
   template <class _Tuple>
-  inline constexpr size_t __tuple_size_v = __tuple_size_v<__tup::__tuple_base_t<_Tuple>>;
-
-  template <class... _Ts>
-  inline constexpr size_t __tuple_size_v<__tuple<_Ts...>> = sizeof...(_Ts);
-
-  template <class... _Ts>
-  inline constexpr size_t __tuple_size_v<const __tuple<_Ts...>> = sizeof...(_Ts);
-
-  template <class... _Ts>
-  inline constexpr size_t __tuple_size_v<__tuple<_Ts...>&> = sizeof...(_Ts);
-
-  template <class... _Ts>
-  inline constexpr size_t __tuple_size_v<const __tuple<_Ts...>&> = sizeof...(_Ts);
+  inline constexpr size_t __tuple_size_v = decltype(__detail::__tuple_sizer(
+    __declval<_Tuple>()))::value;
 
   //
   // __tuple_element_t
