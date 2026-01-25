@@ -106,7 +106,7 @@ namespace STDEXEC {
       __connect_fn<tag_of_t<_Sexpr>, __state_type_t<_Sexpr, _Receiver>, __child_indices_t<_Sexpr>>;
 
     template <class _Sexpr, class _Receiver>
-    concept __connectable = __tup::__applicable_v<__connect_fn_t<_Sexpr, _Receiver>, _Sexpr>
+    concept __connectable = __applicable<__connect_fn_t<_Sexpr, _Receiver>, _Sexpr>
                          && __mvalid<__state_type_t, _Sexpr, _Receiver>;
 
     template <class _Receiver, class _Data>
