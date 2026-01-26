@@ -44,8 +44,8 @@ namespace exec {
       trampoline_scheduler __sched_;
     };
 
-    template <class _Bool, bool _Expected>
-    concept __bool_constant = __decay_t<_Bool>::value == _Expected;
+    template <class _Boolean, bool _Expected>
+    concept __bool_constant = __decay_t<_Boolean>::value == _Expected;
 
     template <class _ReceiverId>
     struct __receiver {
@@ -55,22 +55,22 @@ namespace exec {
         using __id = __receiver;
         using receiver_concept = STDEXEC::receiver_t;
 
-        template <class... _Bools>
-        constexpr void set_value(_Bools &&...__bools) noexcept {
-          if constexpr ((__bool_constant<_Bools, true> && ...)) {
+        template <class... _Booleans>
+        constexpr void set_value(_Booleans &&...__bools) noexcept {
+          if constexpr ((__bool_constant<_Booleans, true> && ...)) {
             // Always done:
             __state_->__cleanup();
             STDEXEC::set_value(std::move(__state_->__rcvr_));
-          } else if constexpr ((__bool_constant<_Bools, false> && ...)) {
+          } else if constexpr ((__bool_constant<_Booleans, false> && ...)) {
             // Never done:
             __state_->__repeat();
           } else {
             // Mixed results:
             constexpr bool __is_nothrow = noexcept(
-              (static_cast<bool>(static_cast<_Bools &&>(__bools)) && ...));
+              (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...));
             STDEXEC_TRY {
               // If the child sender completed with true, we're done
-              const bool __done = (static_cast<bool>(static_cast<_Bools &&>(__bools)) && ...);
+              const bool __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
               if (__done) {
                 __state_->__cleanup();
                 STDEXEC::set_value(std::move(__state_->__rcvr_));
