@@ -188,7 +188,7 @@ namespace STDEXEC {
       >
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
+      constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
         return __make_sexpr<_AlgoTag>(
           __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
@@ -197,7 +197,7 @@ namespace STDEXEC {
       template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
+      constexpr auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
         return __closure(
           *this,
           static_cast<_Policy&&>(__pol),

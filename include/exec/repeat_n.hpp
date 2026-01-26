@@ -46,7 +46,10 @@ namespace exec {
 
       _Receiver __rcvr_;
       std::size_t __count_;
-      trampoline_scheduler __sched_;
+      trampoline_scheduler __sched_{};
+
+    protected:
+      ~__repeat_n_state_base() noexcept = default;
     };
 
     template <class _SenderId, class _ReceiverId>
@@ -101,7 +104,7 @@ namespace exec {
       __child_count_pair(_Child, std::size_t) -> __child_count_pair<_Child>;
 
     template <class _Sender, class _Receiver>
-    struct __repeat_n_state : __repeat_n_state_base<_Receiver> {
+    struct __repeat_n_state final : __repeat_n_state_base<_Receiver> {
       using __child_count_pair_t = __decay_t<__data_of<_Sender>>;
       using __child_t = decltype(__child_count_pair_t::__child_);
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Sender>, __id<_Receiver>>>;
@@ -109,9 +112,12 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __child_t &>;
       using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
 
-      constexpr explicit __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr)
-        : __repeat_n_state_base<_Receiver>{
-            static_cast<_Receiver &&>(__rcvr),
+      constexpr explicit __repeat_n_state(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(
+        std::is_nothrow_constructible_v<__child_t, STDEXEC::__tuple_element_t<1, _Sender &&>>
+        && noexcept(__connect()))
+        : __repeat_n_state_base<
+            _Receiver
+          >{static_cast<_Receiver &&>(__rcvr),
             STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr)).__count_}
         , __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr)).__child_) {
         if (this->__count_ != 0) {
@@ -119,7 +125,8 @@ namespace exec {
         }
       }
 
-      constexpr auto __connect() -> __child_op_t & {
+      constexpr __child_op_t &__connect()
+        noexcept(STDEXEC::__nothrow_connectable<__child_on_sched_sender_t, __receiver_t>) {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
@@ -134,11 +141,11 @@ namespace exec {
         }
       }
 
-      constexpr void __cleanup() noexcept final {
+      constexpr void __cleanup() noexcept override {
         __child_op_.reset();
       }
 
-      constexpr void __repeat() noexcept final {
+      constexpr void __repeat() noexcept override {
         STDEXEC_ASSERT(this->__count_ > 0);
         STDEXEC_TRY {
           if (--this->__count_ == 0) {
@@ -149,7 +156,9 @@ namespace exec {
           }
         }
         STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
+          if constexpr (!STDEXEC::__nothrow_connectable<__child_on_sched_sender_t, __receiver_t>) {
+            STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
+          }
         }
       }
 

@@ -113,7 +113,9 @@ namespace STDEXEC {
         }
 
         [[nodiscard]]
-        constexpr auto get_env() const noexcept {
+        constexpr decltype(__env::__join(
+          __declval<const _Env2&>(),
+          __declval<STDEXEC::env_of_t<_Receiver&>>())) get_env() const noexcept {
           return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
         }
 
@@ -648,7 +650,20 @@ namespace STDEXEC {
     };
 
     template <class _SetTag>
-    struct __let_impl : __sexpr_defaults {
+    class __let_impl : public __sexpr_defaults {
+      template <typename _Sender, typename _Receiver>
+      using __state_t = __gather_completions_of_t<
+        _SetTag,
+        __child_of_t<_Sender>,
+        __fwd_env_t<env_of_t<_Receiver>>,
+        __q<__decayed_tuple>,
+        __mbind_front_q<
+          __state,
+          _SetTag,
+          __child_of_t<_Sender>,
+          __decay_t<__fn_of_t<_Sender>>,
+          _Receiver>>;
+     public:
       static constexpr auto get_attrs =
         []<class _Child, class _Fun>(
           const __data<_Child, _Fun>& __data) noexcept -> decltype(auto) {
@@ -679,23 +694,14 @@ namespace STDEXEC {
 
       static constexpr auto get_state =
         []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, _Receiver&& __rcvr)
+        -> __state_t<_Sender, _Receiver>
         requires sender_in<__child_of_t<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       // TODO(ericniebler): make this conditionally noexcept
       {
         static_assert(sender_expr_for<_Sender, __let_tag<_SetTag>>);
-        using __child_t = __child_of_t<_Sender>;
-        using __fn_t = __decay_t<__fn_of_t<_Sender>>;
-        using __mk_state = __mbind_front_q<__state, _SetTag, __child_t, __fn_t, _Receiver>;
-        using __state_t = __gather_completions_of_t<
-          _SetTag,
-          __child_t,
-          __fwd_env_t<env_of_t<_Receiver>>,
-          __q<__decayed_tuple>,
-          __mk_state
-        >;
         auto& [__tag, __data] = __sndr;
         auto& [__child, __fn] = __data;
-        return __state_t(
+        return __state_t<_Sender, _Receiver>(
           STDEXEC::__forward_like<_Sender>(__child),
           STDEXEC::__forward_like<_Sender>(__fn),
           static_cast<_Receiver&&>(__rcvr));

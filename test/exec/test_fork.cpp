@@ -72,4 +72,13 @@ namespace {
     CHECK(i1 == 42);
     CHECK(i2 == 42);
   }
+
+  TEST_CASE("fork_join with empty value channel", "[adaptors][fork_join]") {
+    auto sndr = ::STDEXEC::just() | ::STDEXEC::then([]() noexcept -> void { })
+              | exec::fork_join(
+                  ::STDEXEC::then([]() noexcept -> void { }),
+                  ::STDEXEC::then([]() noexcept -> void { }));
+
+    ::STDEXEC::sync_wait(std::move(sndr));
+  }
 } // namespace

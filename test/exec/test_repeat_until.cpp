@@ -17,6 +17,7 @@
 
 #include "exec/repeat_until.hpp"
 #include "exec/static_thread_pool.hpp"
+#include "exec/trampoline_scheduler.hpp"
 #include "stdexec/execution.hpp"
 
 #include <test_common/receivers.hpp>
@@ -30,6 +31,7 @@
 #include <memory>
 #include <stdexcept>
 #include <utility>
+#include <concepts>
 
 namespace ex = STDEXEC;
 
@@ -267,6 +269,47 @@ namespace {
       throw_after = tmp;
       ++throw_after;
     } while (!done);
+  }
+
+  TEST_CASE("repeat composes with completion signatures") {
+    {
+      ex::sender auto only_stopped = ex::just_stopped() | exec::repeat();
+      static_assert(
+        std::same_as<ex::value_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
+        "Expect no value completions");
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(only_stopped)>, std::variant<std::exception_ptr>>,
+        "Missing added set_error_t(std::exception_ptr)");
+      static_assert(
+        ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
+        "Missing set_stopped_t() from upstream");
+
+      // operator| and sync_wait require valid completion signatures
+      ex::sync_wait(only_stopped | ex::upon_stopped([]() noexcept { return -1; }));
+    }
+
+    {
+      ex::sender auto only_error = ex::just_error(-1) | exec::repeat();
+      static_assert(
+        std::same_as<ex::value_types_of_t<decltype(only_error)>, ex::__detail::__not_a_variant>,
+        "Expect no value completions");
+      static_assert(
+        std::same_as<
+          ex::error_types_of_t<decltype(only_error)>,
+          std::variant<int, std::exception_ptr>
+        >,
+        "Missing added set_error_t(std::exception_ptr)");
+
+      // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
+      using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
+      static_assert(
+        !ex::sender_of<SC, ex::set_stopped_t()>
+          || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
+        "Missing added set_stopped_t()");
+
+      // operator| and sync_wait require valid completion signatures
+      ex::sync_wait(only_error | ex::upon_error([](const auto) { return -1; }));
+    }
   }
 
   TEST_CASE(

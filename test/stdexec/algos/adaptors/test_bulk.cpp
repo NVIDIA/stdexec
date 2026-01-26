@@ -61,6 +61,26 @@ namespace {
     }
   };
 
+  constexpr auto test_constexpr() noexcept {
+    struct receiver {
+      using receiver_concept = ex::receiver_t;
+      constexpr void set_value(const int i) && noexcept {
+        this->i = i;
+      }
+      void set_error(std::exception_ptr) && noexcept {
+      }
+      int& i;
+    };
+    int i = 0;
+    auto op = ex::connect(
+      ex::just(666)
+        | ex::bulk(ex::par, 42, [](std::size_t item, auto& val) noexcept { val += item; }),
+      receiver{i});
+    ex::start(op);
+    return i;
+  }
+  static_assert(test_constexpr() == 666 + 42 * 41 / 2);
+
   TEST_CASE("bulk returns a sender", "[adaptors][bulk]") {
     auto snd = ex::bulk(ex::just(19), ex::par, 8, [](int, int) { });
     static_assert(ex::sender<decltype(snd)>);
