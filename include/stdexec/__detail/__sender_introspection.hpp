@@ -24,10 +24,15 @@
 #include <exception> // IWYU pragma: keep for std::terminate
 
 namespace STDEXEC {
+#if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
+  template <auto _Descriptor>
+  struct __sexpr;
+#else
   namespace {
     template <auto _Descriptor>
     struct __sexpr;
   } // namespace
+#endif
 
   namespace __detail {
     // A type that describes a sender's metadata

@@ -33,7 +33,7 @@ namespace STDEXEC {
   namespace __sched {
     template <class _Scheduler>
     concept __has_schedule_member = requires(_Scheduler&& __sched) {
-      static_cast<_Scheduler&&>(__sched).schedule();
+      static_cast<_Scheduler &&>(__sched).schedule();
     };
 
     struct schedule_t {
@@ -89,10 +89,9 @@ namespace STDEXEC {
     struct get_scheduler_t : __query<get_scheduler_t> {
       using __query<get_scheduler_t>::operator();
 
-      template <class _Query = get_scheduler_t>
+      // defined in __read_env.hpp
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto
-        operator()() const noexcept; // defined in __read_env.hpp // defined in __read_env.hpp
+      constexpr auto operator()() const noexcept;
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
@@ -113,9 +112,9 @@ namespace STDEXEC {
     struct get_delegation_scheduler_t : __query<get_delegation_scheduler_t> {
       using __query<get_delegation_scheduler_t>::operator();
 
-      template <class _Query = get_delegation_scheduler_t>
+      // defined in __read_env.hpp
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()() const noexcept; // defined in __read_env.hpp
+      constexpr auto operator()() const noexcept;
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline, host, device)

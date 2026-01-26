@@ -43,9 +43,10 @@ namespace STDEXEC {
     };
 
     struct __write_env_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
-        return __sync_attrs{__child};
-      };
+      static constexpr auto get_attrs =
+        []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
+          return __sync_attrs{__child};
+        };
 
       static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
         -> decltype(__env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_))) {

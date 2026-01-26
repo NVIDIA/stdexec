@@ -84,20 +84,20 @@ namespace STDEXEC {
       using __t = __attrs;
       using __id = __attrs;
 
-      template <class _Sch, class... _Env>
-      static constexpr auto __mk_env2(_Sch __sch, _Env&&... __env) {
+      template <class... _Env>
+      static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env) {
         return env(__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
       }
 
-      template <class _Sch, class... _Env>
-      using __env2_t = decltype(__mk_env2(__declval<_Sch>(), __declval<_Env>()...));
+      template <class... _Env>
+      using __env2_t = decltype(__mk_env2(__declval<_Scheduler>(), __declval<_Env>()...));
 
       // Query for completion scheduler
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag>, _Env&&...) const noexcept
         -> _Scheduler
-        requires(__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>)
+        requires(__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>)
       {
         // If child completes inline, then starts_on completes on its scheduler
         return __sched_;
@@ -110,9 +110,9 @@ namespace STDEXEC {
         const noexcept -> __call_result_t<
           get_completion_scheduler_t<_SetTag>,
           env_of_t<_Child>,
-          __env2_t<_Scheduler, _Env>...
+          __env2_t<_Env>...
         >
-        requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Scheduler, _Env>...>)
+        requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>)
       {
         // If child doesn't complete inline, delegate to child's completion scheduler
         return __query(__attr_, __mk_env2(__sched_, static_cast<_Env&&>(__env))...);
@@ -125,7 +125,7 @@ namespace STDEXEC {
         -> __call_result_t<
           get_completion_domain_t<_SetTag>,
           env_of_t<_Child>,
-          __env2_t<_Scheduler, _Env>...
+          __env2_t<_Env>...
         > {
         return {};
       }
@@ -134,9 +134,9 @@ namespace STDEXEC {
       env_of_t<_Child> __attr_;
     };
 
-    static constexpr auto get_attrs = []<class _Data, class _Child>(
-                                        const _Data& __data,
-                                        const _Child& __child) noexcept -> decltype(auto) {
+    static constexpr auto get_attrs =
+      []<class _Data, class _Child>(__ignore, const _Data& __data, const _Child& __child) noexcept
+      -> __attrs<_Data, _Child> {
       return __attrs<_Data, _Child>{__data, STDEXEC::get_env(__child)};
     };
 

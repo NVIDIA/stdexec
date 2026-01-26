@@ -32,9 +32,9 @@ namespace STDEXEC {
     struct get_allocator_t : __query<get_allocator_t> {
       using __query<get_allocator_t>::operator();
 
-      template <class _Query = get_allocator_t>
+      // defined in __read_env.hpp
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()() const noexcept; // defined in __read_env.hpp
+      constexpr auto operator()() const noexcept;
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline, host, device)

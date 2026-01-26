@@ -65,20 +65,20 @@ namespace STDEXEC {
     };
 
     // What should sync_wait(just_stopped()) return?
-    template <class _Sender, class _Continuation>
+    template <class _CvSender, class _Continuation>
     using __sync_wait_result_impl = __value_types_of_t<
-      _Sender,
+      _CvSender,
       __env,
       __mtransform<__q<__decay_t>, _Continuation>,
       __q<__msingle>
     >;
 
-    template <class _Sender>
-    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _Sender, __qq<std::tuple>>;
+    template <class _CvSender>
+    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _CvSender, __qq<std::tuple>>;
 
-    template <class _Sender>
+    template <class _CvSender>
     using __sync_wait_with_variant_result_t =
-      __mtry_eval<__sync_wait_result_impl, __result_of<into_variant, _Sender>, __q<__midentity>>;
+      __mtry_eval<__sync_wait_result_impl, __result_of<into_variant, _CvSender>, __q<__midentity>>;
 
     struct __state {
       std::exception_ptr __eptr_;
@@ -129,30 +129,30 @@ namespace STDEXEC {
       };
     };
 
-    template <class _Sender>
-    using __receiver_t = __t<__sync_wait_result_impl<_Sender, __q<__receiver>>>;
+    template <class _CvSender>
+    using __receiver_t = __t<__sync_wait_result_impl<_CvSender, __q<__receiver>>>;
 
     // These are for hiding the metaprogramming in diagnostics
-    template <class _Sender>
+    template <class _CvSender>
     struct __sync_receiver_for {
-      using __t = __receiver_t<_Sender>;
+      using __t = __receiver_t<_CvSender>;
     };
-    template <class _Sender>
-    using __sync_receiver_for_t = __t<__sync_receiver_for<_Sender>>;
+    template <class _CvSender>
+    using __sync_receiver_for_t = __t<__sync_receiver_for<_CvSender>>;
 
-    template <class _Sender>
+    template <class _CvSender>
     struct __value_tuple_for {
-      using __t = __sync_wait_result_t<_Sender>;
+      using __t = __sync_wait_result_t<_CvSender>;
     };
-    template <class _Sender>
-    using __value_tuple_for_t = __t<__value_tuple_for<_Sender>>;
+    template <class _CvSender>
+    using __value_tuple_for_t = __t<__value_tuple_for<_CvSender>>;
 
-    template <class _Sender>
+    template <class _CvSender>
     struct __variant_for {
-      using __t = __sync_wait_with_variant_result_t<_Sender>;
+      using __t = __sync_wait_with_variant_result_t<_CvSender>;
     };
-    template <class _Sender>
-    using __variant_for_t = __t<__variant_for<_Sender>>;
+    template <class _CvSender>
+    using __variant_for_t = __t<__variant_for<_CvSender>>;
 
     inline constexpr __mstring __sync_wait_context_diag = "In STDEXEC::sync_wait()..."_mstr;
     inline constexpr __mstring __too_many_successful_completions_diag =
@@ -166,31 +166,32 @@ namespace STDEXEC {
     using __invalid_argument_to_sync_wait =
       _INVALID_ARGUMENT_TO_SYNC_WAIT_<__sync_wait_context_diag, _Diagnostic>;
 
-    template <__mstring _Diagnostic, class _Sender, class _Env = __env>
+    template <__mstring _Diagnostic, class _CvSender, class _Env = __env>
     using __sync_wait_error = __mexception<
       __invalid_argument_to_sync_wait<_Diagnostic>,
-      _WITH_PRETTY_SENDER_<_Sender>,
+      _WITH_PRETTY_SENDER_<_CvSender>,
       _WITH_ENVIRONMENT_(_Env)
     >;
 
-    template <class _Sender, class>
+    template <class _CvSender, class>
     using __too_many_successful_completions_error =
-      __sync_wait_error<__too_many_successful_completions_diag, _Sender>;
+      __sync_wait_error<__too_many_successful_completions_diag, _CvSender>;
 
-    template <class _Sender>
+    template <class _CvSender>
     concept __valid_sync_wait_argument = __ok<__minvoke<
       __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error>>,
-      _Sender,
+      _CvSender,
       __env
     >>;
 
     ////////////////////////////////////////////////////////////////////////////
     // [execution.senders.consumers.sync_wait]
     struct sync_wait_t {
-      template <sender_in<__env> _Sender>
-      auto operator()(_Sender&& __sndr) const {
-        using __domain_t = __completion_domain_of_t<set_value_t, _Sender, __env>;
-        constexpr auto __success_completion_count = __count_of<set_value_t, _Sender, __env>::value;
+      template <sender_in<__env> _CvSender>
+      auto operator()(_CvSender&& __sndr) const {
+        using __domain_t = __completion_domain_of_t<set_value_t, _CvSender, __env>;
+        constexpr auto __success_completion_count =
+          __count_of<set_value_t, _CvSender, __env>::value;
 
         static_assert(
           __success_completion_count != 0,
@@ -206,11 +207,11 @@ namespace STDEXEC {
 
         if constexpr (1 == __success_completion_count) {
           if constexpr (__same_as<__domain_t, default_domain>) {
-            if constexpr (sender_to<_Sender, __receiver_t<_Sender>>) {
-              using __opstate_t = connect_result_t<_Sender, __receiver_t<_Sender>>;
+            if constexpr (sender_to<_CvSender, __receiver_t<_CvSender>>) {
+              using __opstate_t = connect_result_t<_CvSender, __receiver_t<_CvSender>>;
               if constexpr (operation_state<__opstate_t>) {
                 // success path, dispatch to the default domain's sync_wait
-                return default_domain().apply_sender(*this, static_cast<_Sender&&>(__sndr));
+                return default_domain().apply_sender(*this, static_cast<_CvSender&&>(__sndr));
               } else {
                 static_assert(
                   operation_state<__opstate_t>,
@@ -220,24 +221,24 @@ namespace STDEXEC {
               }
             } else {
               static_assert(
-                sender_to<_Sender, __receiver_t<_Sender>>,
+                sender_to<_CvSender, __receiver_t<_CvSender>>,
                 STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
             }
-          } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _Sender>) {
+          } else if constexpr (!__has_implementation_for<sync_wait_t, __domain_t, _CvSender>) {
             static_assert(
-              __has_implementation_for<sync_wait_t, __domain_t, _Sender>,
+              __has_implementation_for<sync_wait_t, __domain_t, _CvSender>,
               "The sender passed to STDEXEC::sync_wait() has a domain that does not provide a "
               "usable implementation for sync_wait().");
           } else {
             // success path, dispatch to the custom domain's sync_wait
-            return STDEXEC::apply_sender(__domain_t(), *this, static_cast<_Sender&&>(__sndr));
+            return STDEXEC::apply_sender(__domain_t(), *this, static_cast<_CvSender&&>(__sndr));
           }
         }
       }
 
-      template <class _Sender>
-      constexpr auto operator()(_Sender&&) const {
-        STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_Sender>, __env>();
+      template <class _CvSender>
+      constexpr auto operator()(_CvSender&&) const {
+        STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_CvSender>, __env>();
         // dummy return type to silence follow-on errors
         return std::optional<std::tuple<int>>{};
       }
@@ -268,17 +269,17 @@ namespace STDEXEC {
       /// @throws error otherwise
       // clang-format on
 
-      template <sender_in<__env> _Sender>
-      STDEXEC_CONSTEXPR_CXX23 auto
-        apply_sender(_Sender&& __sndr) const -> std::optional<__sync_wait_result_t<_Sender>> {
+      template <sender_in<__env> _CvSender>
+      STDEXEC_CONSTEXPR_CXX23 auto apply_sender(_CvSender&& __sndr) const //
+        -> std::optional<__value_tuple_for_t<_CvSender>> {
         __state __local_state{};
-        std::optional<__sync_wait_result_t<_Sender>> __result{};
+        std::optional<__value_tuple_for_t<_CvSender>> __result{};
 
         // Launch the sender with a continuation that will fill in the __result optional or set the
         // exception_ptr in __local_state.
         [[maybe_unused]]
         auto __op = STDEXEC::connect(
-          static_cast<_Sender&&>(__sndr), __receiver_t<_Sender>{&__local_state, &__result});
+          static_cast<_CvSender&&>(__sndr), __receiver_t<_CvSender>{&__local_state, &__result});
         STDEXEC::start(__op);
 
         // Wait for the variant to be filled in.
@@ -297,32 +298,32 @@ namespace STDEXEC {
     struct sync_wait_with_variant_t {
       struct __impl;
 
-      template <sender_in<__env> _Sender>
+      template <sender_in<__env> _CvSender>
         requires __callable<
           apply_sender_t,
-          __completion_domain_of_t<set_value_t, _Sender, __env>,
+          __completion_domain_of_t<set_value_t, _CvSender, __env>,
           sync_wait_with_variant_t,
-          _Sender
+          _CvSender
         >
-      auto operator()(_Sender&& __sndr) const -> decltype(auto) {
+      auto operator()(_CvSender&& __sndr) const -> decltype(auto) {
         using __result_t = __call_result_t<
           apply_sender_t,
-          __completion_domain_of_t<set_value_t, _Sender, __env>,
+          __completion_domain_of_t<set_value_t, _CvSender, __env>,
           sync_wait_with_variant_t,
-          _Sender
+          _CvSender
         >;
         static_assert(__is_instance_of<__result_t, std::optional>);
         using __variant_t = __result_t::value_type;
         static_assert(__is_instance_of<__variant_t, std::variant>);
 
-        using _Domain = __completion_domain_of_t<set_value_t, _Sender, __env>;
-        return STDEXEC::apply_sender(_Domain(), *this, static_cast<_Sender&&>(__sndr));
+        using _Domain = __completion_domain_of_t<set_value_t, _CvSender, __env>;
+        return STDEXEC::apply_sender(_Domain(), *this, static_cast<_CvSender&&>(__sndr));
       }
 
-      template <class _Sender>
-        requires __callable<sync_wait_t, __result_of<into_variant, _Sender>>
-      auto apply_sender(_Sender&& __sndr) const -> std::optional<__variant_for_t<_Sender>> {
-        if (auto __opt_values = sync_wait_t()(into_variant(static_cast<_Sender&&>(__sndr)))) {
+      template <class _CvSender>
+        requires __callable<sync_wait_t, __result_of<into_variant, _CvSender>>
+      auto apply_sender(_CvSender&& __sndr) const -> std::optional<__variant_for_t<_CvSender>> {
+        if (auto __opt_values = sync_wait_t()(into_variant(static_cast<_CvSender&&>(__sndr)))) {
           return std::move(std::get<0>(*__opt_values));
         }
         return std::nullopt;

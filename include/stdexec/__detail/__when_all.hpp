@@ -52,14 +52,14 @@ namespace STDEXEC {
     };
 
     template <class _Env>
-    constexpr auto __mkenv(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
+    constexpr auto __mk_env(_Env&& __env, const inplace_stop_source& __stop_source) noexcept {
       return __env::__join(
         prop{get_stop_token, __stop_source.get_token()}, static_cast<_Env&&>(__env));
     }
 
     template <class _Env>
     using __env_t =
-      decltype(__when_all::__mkenv(__declval<_Env>(), __declval<inplace_stop_source&>()));
+      decltype(__when_all::__mk_env(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
     template <class _Sender, class _Env>
     concept __max1_sender =
@@ -340,9 +340,10 @@ namespace STDEXEC {
       template <class _Self, class... _Env>
       using __completions_t = __children_of<_Self, __when_all::__completions_t<__env_t<_Env>...>>;
 
-      static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
-        return __when_all::__attrs<_Child...>{};
-      };
+      static constexpr auto get_attrs =
+        []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {
+          return __when_all::__attrs<_Child...>{};
+        };
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
@@ -363,7 +364,7 @@ namespace STDEXEC {
 
       static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
         -> __env_t<env_of_t<const typename _State::__receiver_t&>> {
-        return __mkenv(STDEXEC::get_env(__state.__rcvr_), __state.__stop_source_);
+        return __when_all::__mk_env(STDEXEC::get_env(__state.__rcvr_), __state.__stop_source_);
       };
 
       static constexpr auto get_state =
@@ -475,9 +476,10 @@ namespace STDEXEC {
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class... _Child>(__ignore, const _Child&...) noexcept {
-        return __when_all::__attrs<_Child...>{};
-      };
+      static constexpr auto get_attrs =
+        []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {
+          return __when_all::__attrs<_Child...>{};
+        };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
@@ -514,6 +516,7 @@ namespace STDEXEC {
 
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+                                          __ignore,
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
         // TODO(ericniebler): check this use of __sched_attrs
@@ -551,6 +554,7 @@ namespace STDEXEC {
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+                                          __ignore,
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
         return __sched_attrs{std::cref(__sched)};

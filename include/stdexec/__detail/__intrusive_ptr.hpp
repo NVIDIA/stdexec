@@ -19,7 +19,7 @@
 
 #include "__atomic.hpp"
 #include <cstddef>
-#include <new> // IWYU pragma: keep for ::new
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -84,23 +84,22 @@ namespace STDEXEC {
       using __bits_t = __count_and_bits<_ReservedBits>::__bits;
       static constexpr std::size_t __ref_count_increment = 1ul << _ReservedBits;
 
-      alignas(_Ty) unsigned char __value_[sizeof(_Ty)];
+      union {
+        _Ty __value;
+      };
       __std::atomic<std::size_t> __ref_count_;
 
       template <class... _Us>
-      constexpr explicit __control_block(_Us&&... __us) noexcept(noexcept(_Ty{__declval<_Us>()...}))
+      constexpr explicit __control_block(_Us&&... __us)
+        noexcept(__nothrow_constructible_from<_Ty, _Us...>)
         : __ref_count_(__ref_count_increment) {
         // Construct the value *after* the initialization of the atomic in case the constructor of
         // _Ty calls __intrusive_from_this() (which increments the ref count):
-        ::new (static_cast<void*>(__value_)) _Ty{static_cast<_Us&&>(__us)...};
+        std::construct_at(std::addressof(__value), static_cast<_Us&&>(__us)...);
       }
 
       constexpr ~__control_block() {
-        __value().~_Ty();
-      }
-
-      constexpr auto __value() noexcept -> _Ty& {
-        return *reinterpret_cast<_Ty*>(__value_);
+        __value.~_Ty();
       }
 
       constexpr auto __inc_ref_() noexcept -> __bits_t {
@@ -175,7 +174,7 @@ namespace STDEXEC {
       [[nodiscard]]
       constexpr auto __release_() noexcept -> __enable_intrusive_t* {
         auto* __data = std::exchange(__data_, nullptr);
-        return __data ? &__c_upcast<__enable_intrusive_t>(__data->__value()) : nullptr;
+        return __data ? &__c_upcast<__enable_intrusive_t>(__data->__value) : nullptr;
       }
 
      public:
@@ -224,15 +223,15 @@ namespace STDEXEC {
       }
 
       constexpr auto get() const noexcept -> _Ty* {
-        return &__data_->__value();
+        return &__data_->__value;
       }
 
       constexpr auto operator->() const noexcept -> _Ty* {
-        return &__data_->__value();
+        return &__data_->__value;
       }
 
       constexpr auto operator*() const noexcept -> _Ty& {
-        return __data_->__value();
+        return __data_->__value;
       }
 
       constexpr explicit operator bool() const noexcept {

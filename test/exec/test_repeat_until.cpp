@@ -71,17 +71,13 @@ namespace {
     (void) snd;
   }
 
-  TEST_CASE(
-    "repeat_until with environment returns a sender",
-    "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until with environment returns a sender", "[adaptors][repeat_until]") {
     auto snd = exec::repeat_until(ex::just() | ex::then([] { return true; }));
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
-  TEST_CASE(
-    "repeat_until produces void value to downstream receiver",
-    "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until produces void value to downstream receiver", "[adaptors][repeat_until]") {
     ex::sender auto source = ex::just(1) | ex::then([](int) { return true; });
     ex::sender auto snd = exec::repeat_until(std::move(source));
     // The receiver checks if we receive the void value
@@ -133,9 +129,7 @@ namespace {
     ex::sync_wait(exec::repeat_until(std::move(input_snd)));
   }
 
-  TEST_CASE(
-    "repeat_until forwards set_error calls of other types",
-    "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until forwards set_error calls of other types", "[adaptors][repeat_until]") {
     auto snd = ex::just_error(std::string("error")) | exec::repeat_until();
     auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
     ex::start(op);
@@ -152,9 +146,9 @@ namespace {
     "[adaptors][repeat_until]") {
     int n = 1;
     ex::sender auto snd = exec::repeat_until(ex::just() | ex::then([&n] {
-                                                      ++n;
-                                                      return n == 1'000'000;
-                                                    }));
+                                               ++n;
+                                               return n == 1'000'000;
+                                             }));
     ex::sync_wait(std::move(snd));
     CHECK(n == 1'000'000);
   }
@@ -171,9 +165,7 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE(
-    "repeat_until works with bulk on a static_thread_pool",
-    "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until works with bulk on a static_thread_pool", "[adaptors][repeat_until]") {
     exec::static_thread_pool pool{2};
     std::atomic<bool> failed{false};
     const auto tid = std::this_thread::get_id();
@@ -201,8 +193,9 @@ namespace {
 
   TEST_CASE("repeat repeats until an error is encountered", "[adaptors][repeat]") {
     int counter = 0;
-    ex::sender auto snd = exec::repeat(
-      succeed_n_sender(10, ex::set_error, std::string("error")) | ex::then([&] { ++counter; }));
+    ex::sender auto snd = succeed_n_sender(10, ex::set_error, std::string("error")) //
+                        | ex::then([&] { ++counter; })                              //
+                        | exec::repeat();
     static_assert(!all_contained_in<
                   ex::completion_signatures<ex::set_value_t()>,
                   ex::completion_signatures_of_t<decltype(snd), ex::env<>>
@@ -261,8 +254,7 @@ namespace {
     do { // NOLINT(bugprone-infinite-loop)
       const auto tmp = throw_after;
       throw_after = std::numeric_limits<unsigned>::max();
-      auto op =
-        ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
+      auto op = ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
       throw_after = tmp;
@@ -354,8 +346,7 @@ namespace {
     do { // NOLINT(bugprone-infinite-loop)
       const auto tmp = throw_after;
       throw_after = std::numeric_limits<unsigned>::max();
-      auto op =
-        ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
+      auto op = ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
       throw_after = tmp;

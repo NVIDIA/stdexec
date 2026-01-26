@@ -275,10 +275,9 @@ namespace STDEXEC {
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       // Forward the child sender's environment (which contains completion scheduler)
-      static constexpr auto get_attrs =
-        []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
-          return __fwd_env(STDEXEC::get_env(__child));
-        };
+      static constexpr auto get_attrs = [](__ignore, __ignore, const auto& __child) noexcept {
+        return __fwd_env(STDEXEC::get_env(__child));
+      };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {

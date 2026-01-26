@@ -31,36 +31,46 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
   namespace __just {
+    template <class _SetTag>
+    struct __attrs {
+      using __t = __attrs;
+      using __id = __attrs;
+      static constexpr auto query(get_completion_behavior_t<_SetTag>) noexcept {
+        return completion_behavior::inline_completion;
+      }
+    };
+
+    template <class _SetTag, class _Tuple, class _Receiver>
+    struct __opstate {
+      constexpr void start() noexcept {
+        __apply(_SetTag(), static_cast<_Tuple&&>(__data_), static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      _Receiver __rcvr_;
+      _Tuple __data_;
+    };
+
     template <class _JustTag>
     struct __impl : __sexpr_defaults {
-      using __tag_t = _JustTag::__tag_t;
+      using __set_tag_t = _JustTag::__tag_t;
 
-      static constexpr auto get_attrs = [](__ignore) noexcept
-        -> cprop<get_completion_behavior_t<__tag_t>, completion_behavior::inline_completion> {
+      static constexpr auto get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t> {
         return {};
       };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, _JustTag>);
-        return completion_signatures<__mapply<__qf<__tag_t>, __decay_t<__data_of<_Sender>>>>{};
+        return completion_signatures<__mapply<__qf<__set_tag_t>, __decay_t<__data_of<_Sender>>>>{};
       }
 
-      static constexpr auto start = []<class _State>(_State& __state) noexcept -> void {
-        STDEXEC::__apply(
-          __tag_t(),
-          static_cast<_State&&>(__state).__data_,
-          static_cast<_State&&>(__state).__rcvr_);
-      };
-
-      static constexpr auto submit =
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept -> void {
-        static_assert(sender_expr_for<_Sender, _JustTag>);
-        STDEXEC::__apply(
-          __tag_t(),
-          STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr)),
-          static_cast<_Receiver&&>(__rcvr));
-      };
+      static constexpr auto connect =
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
+          __nothrow_decay_copyable<_Sender>) {
+          auto& [__tag, __data] = __sndr;
+          return __opstate<__set_tag_t, decltype(__data), _Receiver>{
+            static_cast<_Receiver&&>(__rcvr), STDEXEC::__forward_like<_Sender>(__data)};
+        };
     };
 
     struct just_t {

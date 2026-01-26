@@ -55,9 +55,10 @@ namespace STDEXEC {
     };
 
     struct __then_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
-        return __sync_attrs{__child};
-      };
+      static constexpr auto get_attrs =
+        []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
+          return __sync_attrs{__child};
+        };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() //
@@ -70,7 +71,8 @@ namespace STDEXEC {
       struct __complete_fn {
         template <class _Tag, class _State, class... _Args>
         STDEXEC_ATTRIBUTE(host, device)
-        constexpr void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
+        constexpr void
+          operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
             STDEXEC::__set_value_invoke(
               static_cast<_State&&>(__state).__rcvr_,
