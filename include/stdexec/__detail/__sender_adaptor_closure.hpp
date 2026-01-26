@@ -93,7 +93,8 @@ namespace STDEXEC {
       template <sender _Sender>
         requires __callable<_Fn, _Sender, _As...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fn, _Sender, _As...>) {
+      constexpr auto
+        operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fn, _Sender, _As...>) {
         return STDEXEC::__apply(
           static_cast<_Fn&&>(__fn_),
           static_cast<__tuple<_As...>&&>(__args_),
@@ -103,7 +104,7 @@ namespace STDEXEC {
       template <sender _Sender>
         requires __callable<const _Fn&, _Sender, const _As&...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto operator()(_Sender&& __sndr) const & noexcept(
+      constexpr auto operator()(_Sender&& __sndr) const & noexcept(
         __nothrow_callable<const _Fn&, _Sender, const _As&...>) {
         return STDEXEC::__apply(__fn_, __args_, static_cast<_Sender&&>(__sndr));
       }
