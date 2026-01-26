@@ -202,8 +202,6 @@ namespace exec {
       __mbind_front_q<__values_t, _Sender>::template __f
     >;
 
-    struct __repeat_tag { };
-
     struct __repeat_until_tag { };
 
     struct __repeat_until_impl : __sexpr_defaults {
