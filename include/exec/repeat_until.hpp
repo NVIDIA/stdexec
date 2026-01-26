@@ -304,4 +304,15 @@ namespace STDEXEC {
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
     }
   };
+
+  template <>
+  struct __sexpr_impl<exec::repeat_t> : __sexpr_defaults {
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      static_assert(sender_expr_for<_Sender, exec::repeat_t>);
+      using __sndr_t =
+        __detail::__transform_sender_result_t<exec::repeat_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    }
+  };
 } // namespace STDEXEC
