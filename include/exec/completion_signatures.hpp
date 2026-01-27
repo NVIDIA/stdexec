@@ -61,7 +61,7 @@ namespace exec {
   //! @tparam DeducedSigs Completion signature types to be deduced from the function arguments.
   //! @param unnamed Pointer arguments (unused) used for type deduction of DeducedSigs.
   //!
-  //! @return An instance of `detail::make_completion_signatures_t` containing the combined
+  //! @return An instance of `STDEXEC::completion_signatures` containing the combined
   //!         signatures.
   //!
   //! @note This is a `consteval` function, meaning it is only callable in constant evaluation

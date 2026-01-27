@@ -352,7 +352,7 @@ namespace {
   TEST_CASE("split into then", "[adaptors][split]") {
     SECTION("split with move only input sender of temporary") {
       auto snd = ex::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) { });
-      ex::sync_wait(snd);
+      ex::sync_wait(std::move(snd));
     }
 
     SECTION("split with move only input sender by moving in") {

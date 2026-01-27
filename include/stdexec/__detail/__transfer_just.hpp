@@ -72,7 +72,7 @@ namespace STDEXEC {
     }
 
     struct __transfer_just_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Data>(const _Data& __data) noexcept {
+      static constexpr auto get_attrs = [](__ignore, const auto& __data) noexcept {
         return STDEXEC::__apply(__make_attrs_fn(), __data);
       };
 

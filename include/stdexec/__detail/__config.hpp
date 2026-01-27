@@ -199,7 +199,7 @@ STDEXEC_NAMESPACE_STD_END
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if __cpp_impl_coroutine >= 2019'02 && __cpp_lib_coroutine >= 2019'02
+#if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
 #  include <coroutine> // IWYU pragma: keep
 #  define STDEXEC_NO_STD_COROUTINES() 0
 namespace STDEXEC::__std {
@@ -764,7 +764,7 @@ namespace STDEXEC {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if defined(_MSC_VER)
+#if STDEXEC_MSVC()
 #  if _MSC_VER >= 19'35
 #    define STDEXEC_PRETTY_FUNCTION() __builtin_FUNCSIG()
 #  else
@@ -774,10 +774,15 @@ namespace STDEXEC {
 #  define STDEXEC_PRETTY_FUNCTION() __PRETTY_FUNCTION__
 #endif
 
-#if __cplusplus >= 2022'11
+#if __cplusplus >= 2022'11L
 #  define STDEXEC_CONSTEXPR_CXX23 constexpr
 #else
 #  define STDEXEC_CONSTEXPR_CXX23
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if !defined(STDEXEC_DEMANGLE_SENDER_NAMES) && STDEXEC_MSVC()
+#  define STDEXEC_DEMANGLE_SENDER_NAMES
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -32,7 +32,6 @@
 #include "__variant.hpp"
 
 #include <exception>
-#include <type_traits>
 
 namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////
@@ -303,12 +302,12 @@ namespace STDEXEC {
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
-    struct __state_base : __immovable {
+    struct __opstate_base : __immovable {
       using __env2_t = _Env2;
       using __second_rcvr_t = __receiver_with_env_t<_Receiver, _Env2>;
 
       template <class _Attrs>
-      constexpr explicit __state_base(
+      constexpr explicit __opstate_base(
         _SetTag,
         const _Attrs& __attrs,
         _Fun __fn,
@@ -381,32 +380,50 @@ namespace STDEXEC {
         return STDEXEC::get_env(__state_->__rcvr_);
       }
 
-      __state_base<_SetTag, _Fun, _Receiver, _Env2, _Tuples...>* __state_;
+      __opstate_base<_SetTag, _Fun, _Receiver, _Env2, _Tuples...>* __state_;
     };
+
+    constexpr auto __start_next_fn =
+      []<class _Fun, class _Receiver, class _Env2, class _Storage, class _Tuple>(
+        _Fun& __fn,
+        _Receiver& __rcvr,
+        _Env2& __env2,
+        _Storage& __storage,
+        _Tuple& __tupl) {
+        using __sender_t = __apply_result_t<_Fun, decltype(__tupl)>;
+        auto&& __sndr = STDEXEC::__apply(static_cast<_Fun&&>(__fn), __tupl);
+        using __submit_t = __submit_result_t<__sender_t, _Env2, _Receiver>;
+        using __second_rcvr_t = __receiver_with_env_t<_Receiver, _Env2>;
+        __second_rcvr_t __rcvr2{__rcvr, static_cast<_Env2&&>(__env2)};
+
+        auto& __op = __storage.template emplace<__submit_t>(
+          static_cast<__sender_t&&>(__sndr), static_cast<__second_rcvr_t&&>(__rcvr2));
+        __op.submit(static_cast<__sender_t&&>(__sndr), static_cast<__second_rcvr_t&&>(__rcvr2));
+      };
 
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _Child, class _Fun, class _Receiver, class... _Tuples>
-    struct __state
-      : __state_base<
+    struct __opstate final
+      : __opstate_base<
           _SetTag,
           _Fun,
           _Receiver,
           __let::__env2_t<_SetTag, env_of_t<_Child>, env_of_t<_Receiver>>,
           _Tuples...
         > {
-      using __env2_t = __state::__state_base::__env2_t;
+      using __env2_t = __opstate::__opstate_base::__env2_t;
       using __first_rcvr_t = __first_rcvr<_SetTag, _Fun, _Receiver, __env2_t, _Tuples...>;
-      using __second_rcvr_t = __state::__state_base::__second_rcvr_t;
+      using __second_rcvr_t = __opstate::__opstate_base::__second_rcvr_t;
 
       using __op_state_variant_t = __variant_for<
         connect_result_t<_Child, __first_rcvr_t>,
         __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
       >;
 
-      constexpr explicit __state(_Child&& __child, _Fun __fn, _Receiver&& __rcvr) noexcept(
-        __nothrow_connectable<_Child, __first_rcvr_t> && std::is_nothrow_move_constructible_v<_Fun>)
-        : __state::__state_base(
+      constexpr explicit __opstate(_Child&& __child, _Fun __fn, _Receiver&& __rcvr) noexcept(
+        __nothrow_connectable<_Child, __first_rcvr_t> && __nothrow_move_constructible<_Fun>)
+        : __opstate::__opstate_base(
             _SetTag(),
             STDEXEC::get_env(__child),
             static_cast<_Fun&&>(__fn),
@@ -415,20 +432,16 @@ namespace STDEXEC {
           .__emplace_from(STDEXEC::connect, static_cast<_Child&&>(__child), __first_rcvr_t{this});
       }
 
+      constexpr void start() noexcept {
+        STDEXEC_ASSERT(__storage_.index() == 0);
+        STDEXEC::start(__storage_.template get<0>());
+      };
+
       constexpr void __start_next() final {
         STDEXEC_ASSERT(__storage_.index() == 0);
         if constexpr (sizeof...(_Tuples) != 0) {
           STDEXEC::__visit(
-            [this](auto& __tupl) {
-              using __sender_t = __apply_result_t<_Fun, decltype(__tupl)>;
-              auto&& __sndr = STDEXEC::__apply(static_cast<_Fun&&>(this->__fn_), __tupl);
-              using __submit_t = __submit_result_t<__sender_t, __env2_t, _Receiver>;
-              __second_rcvr_t __r{this->__rcvr_, static_cast<__env2_t&&>(this->__env2_)};
-              auto& __op = __storage_.template emplace<__submit_t>(
-                static_cast<__sender_t&&>(__sndr), static_cast<__second_rcvr_t&&>(__r));
-              __op.submit(static_cast<__sender_t&&>(__sndr), static_cast<__second_rcvr_t&&>(__r));
-            },
-            this->__args_);
+            __start_next_fn, this->__args_, this->__fn_, this->__rcvr_, this->__env2_, __storage_);
         }
       }
 
@@ -608,23 +621,11 @@ namespace STDEXEC {
       }
     };
 
-    template <class _Sender, class _Fun>
-    struct __data {
-      _Sender __sndr;
-      _Fun __fn;
-    };
-
-    template <class _Sender, class _Fun>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __data(_Sender, _Fun) -> __data<_Sender, _Fun>;
-
-    template <class _Sender>
-    using __child_of_t = decltype((__declval<__data_of<_Sender>>().__sndr));
-    template <class _Sender>
-    using __fn_of_t = decltype((__declval<__data_of<_Sender>>().__fn));
-
     //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
     template <class _SetTag>
     struct __let_t {
+      using __t = _SetTag;
+
       template <sender _Sender, __movable_value _Fun>
       constexpr auto operator()(_Sender&& __sndr, _Fun __fn) const -> __well_formed_sender auto {
         return __make_sexpr<__let_t<_SetTag>>(
@@ -636,49 +637,36 @@ namespace STDEXEC {
       constexpr auto operator()(_Fun __fn) const {
         return __closure(*this, static_cast<_Fun&&>(__fn));
       }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        if constexpr (__decay_copyable<_Sender>) {
-          auto& [__tag, __fn, __child] = __sndr;
-          return __make_sexpr<__let_tag<_SetTag>>(__data{
-            STDEXEC::__forward_like<_Sender>(__child), STDEXEC::__forward_like<_Sender>(__fn)});
-        } else {
-          return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
-        }
-      }
     };
 
     template <class _SetTag>
-    class __let_impl : public __sexpr_defaults {
-      template <typename _Sender, typename _Receiver>
-      using __state_t = __gather_completions_of_t<
+    struct __impls : __sexpr_defaults {
+     private:
+      template <class _Sender>
+      using __fn_t = __decay_t<__data_of<_Sender>>;
+
+      template <class _Sender, class _Receiver>
+      using __opstate_t = __gather_completions_of_t<
         _SetTag,
-        __child_of_t<_Sender>,
+        __child_of<_Sender>,
         __fwd_env_t<env_of_t<_Receiver>>,
         __q<__decayed_tuple>,
-        __mbind_front_q<
-          __state,
-          _SetTag,
-          __child_of_t<_Sender>,
-          __decay_t<__fn_of_t<_Sender>>,
-          _Receiver>>;
+        __mbind_front_q<__opstate, _SetTag, __child_of<_Sender>, __fn_t<_Sender>, _Receiver>
+      >;
      public:
       static constexpr auto get_attrs =
-        []<class _Child, class _Fun>(
-          const __data<_Child, _Fun>& __data) noexcept -> decltype(auto) {
+        []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept -> decltype(auto) {
         // TODO(ericniebler): this needs a proper implementation
-        return __fwd_env(STDEXEC::get_env(__data.__sndr));
+        return __fwd_env(STDEXEC::get_env(__child));
       };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
-        static_assert(sender_expr_for<_Sender, __let_tag<_SetTag>>);
+        static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
         if constexpr (__decay_copyable<_Sender>) {
-          using __fn_t = __decay_t<__fn_of_t<_Sender>>;
           // TODO: update this to use constant evaluation
           using __result_t =
-            __completions_t<__let_tag<_SetTag>, __fn_t, __child_of_t<_Sender>, _Env...>;
+            __completions_t<__let_t<_SetTag>, __fn_t<_Sender>, __child_of<_Sender>, _Env...>;
           if constexpr (__ok<__result_t>) {
             return __result_t();
           } else {
@@ -692,24 +680,21 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto get_state =
-        []<class _Receiver, __decay_copyable _Sender>(_Sender&& __sndr, _Receiver&& __rcvr)
-        -> __state_t<_Sender, _Receiver>
-        requires sender_in<__child_of_t<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
-      // TODO(ericniebler): make this conditionally noexcept
+      static constexpr auto connect =
+        []<class _CvSender, class _Receiver>(_CvSender&& __sndr, _Receiver __rcvr) noexcept(
+          __nothrow_constructible_from<
+            __opstate_t<_CvSender, _Receiver>,
+            __child_of<_CvSender>,
+            __data_of<_CvSender>,
+            _Receiver
+          >) -> __opstate_t<_CvSender, _Receiver>
       {
-        static_assert(sender_expr_for<_Sender, __let_tag<_SetTag>>);
-        auto& [__tag, __data] = __sndr;
-        auto& [__child, __fn] = __data;
-        return __state_t<_Sender, _Receiver>(
-          STDEXEC::__forward_like<_Sender>(__child),
-          STDEXEC::__forward_like<_Sender>(__fn),
+        static_assert(sender_expr_for<_CvSender, __let_t<_SetTag>>);
+        auto& [__tag, __fn, __child] = __sndr;
+        return __opstate_t<_CvSender, _Receiver>(
+          STDEXEC::__forward_like<_CvSender>(__child),
+          STDEXEC::__forward_like<_CvSender>(__fn),
           static_cast<_Receiver&&>(__rcvr));
-      };
-
-      static constexpr auto start = []<class _State>(_State& __state) noexcept {
-        STDEXEC_ASSERT(__state.__storage_.index() == 0);
-        STDEXEC::start(__state.__storage_.template get<0>());
       };
     };
   } // namespace __let
@@ -719,16 +704,5 @@ namespace STDEXEC {
   inline constexpr let_stopped_t let_stopped{};
 
   template <class _SetTag>
-  struct __sexpr_impl<__let::__let_tag<_SetTag>> : __let::__let_impl<_SetTag> { };
-
-  template <class _SetTag>
-  struct __sexpr_impl<__let::__let_t<_SetTag>> : __sexpr_defaults {
-    template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
-      static_assert(sender_expr_for<_Sender, __let::__let_t<_SetTag>>);
-      using __sndr_t =
-        __detail::__transform_sender_result_t<__let::__let_t<_SetTag>, set_value_t, _Sender, env<>>;
-      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    }
-  };
+  struct __sexpr_impl<__let::__let_t<_SetTag>> : __let::__impls<_SetTag> { };
 } // namespace STDEXEC

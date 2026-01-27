@@ -23,6 +23,6 @@ struct not_a_bool { };
 
 auto main() -> int {
   ex::sender auto snd = ex::just(not_a_bool()) | exec::repeat_until();
-  // build error: _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_
+  // build error: _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_
   STDEXEC::sync_wait(std::move(snd));
 }

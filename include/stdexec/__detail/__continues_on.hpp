@@ -353,9 +353,10 @@ namespace STDEXEC {
 
 
      public:
-      static constexpr auto get_attrs = [](const auto& __data, const auto& __child) noexcept {
-        return __attrs{__data, __child};
-      };
+      static constexpr auto get_attrs =
+        [](__ignore, const auto& __data, const auto& __child) noexcept {
+          return __attrs{__data, __child};
+        };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {

@@ -217,7 +217,7 @@ namespace STDEXEC {
       template <class _CvRef>
       struct __impl {
         template <class... _Ts>
-        using __tuple_t = __mcall<_CvRef, __tuple<_Ts...>>;
+        using __tuple_t = __mcall1<_CvRef, __tuple<_Ts...>>;
 
         template <class... _Ts, class... _Us, __callable<_Us..., __mcall1<_CvRef, _Ts>...> _Fn>
         auto operator()(_Fn&& __fn, __tuple_t<_Ts...>&& __tupl, _Us&&... __us) const

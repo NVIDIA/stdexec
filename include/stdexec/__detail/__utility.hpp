@@ -26,7 +26,7 @@ namespace STDEXEC {
   template <class...>
   struct __undefined;
 
-  struct __ { };
+  using __empty = struct __ { };
 
   struct __ignore {
     constexpr __ignore() = default;

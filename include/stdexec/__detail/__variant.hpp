@@ -113,7 +113,8 @@ namespace STDEXEC {
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto __get_ptr() const noexcept -> const void * {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) constexpr auto __get_ptr() const noexcept
+        -> const void * {
         return __storage_;
       }
 
@@ -173,8 +174,8 @@ namespace STDEXEC {
 
       template <std::size_t _Ny, class _Fn, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as) noexcept(__nothrow_callable<_Fn, _As...>)
-        -> __at<_Ny> & {
+      constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as)
+        noexcept(__nothrow_callable<_Fn, _As...>) -> __at<_Ny> & {
         static_assert(
           __same_as<__call_result_t<_Fn, _As...>, __at<_Ny>>,
           "callable does not return the correct type");
@@ -247,16 +248,13 @@ namespace STDEXEC {
   using __var::__variant;
 
   struct __visit_t {
-    // clang-format off
     template <class _Fn, class _Variant, class... _As>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const STDEXEC_AUTO_RETURN(
-      __var.__visit(
-        static_cast<_Fn &&>(__fn),
-        static_cast<_Variant &&>(__var),
-        static_cast<_As &&>(__as)...)
-    );
-    // clang-format on
+    constexpr void operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const noexcept( //
+      noexcept(__var.__visit(__declval<_Fn>(), __declval<_Variant>(), __declval<_As>()...))) {
+      return __var.__visit(
+        static_cast<_Fn &&>(__fn), static_cast<_Variant &&>(__var), static_cast<_As &&>(__as)...);
+    }
   };
 
   inline constexpr __visit_t __visit{};

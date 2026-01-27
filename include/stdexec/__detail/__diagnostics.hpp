@@ -82,6 +82,8 @@ namespace STDEXEC {
 
   struct _WITH_METAFUNCTION_ { };
 
+  struct _INVALID_ARGUMENT_ { };
+
   inline constexpr __mstring __not_callable_diag =
     "The specified function is not callable with the arguments provided."_mstr;
 
