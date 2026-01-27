@@ -217,11 +217,12 @@ namespace STDEXEC {
       template <class _CvRef>
       struct __impl {
         template <class... _Ts>
-        using __tuple_t = __mcall<_CvRef, __tuple<_Ts...>>;
+        using __tuple_t = __mcall1<_CvRef, __tuple<_Ts...>>;
 
-        template <class... _Ts, class... _Us, __callable<_Us..., __mcall<_CvRef, _Ts>...> _Fn>
-        void operator()(_Fn&& __fn, __tuple_t<_Ts...>&& __tupl, _Us&&... __us) const
-          noexcept(__nothrow_callable<_Fn, _Us..., __mcall<_CvRef, _Ts>...>);
+        template <class... _Ts, class... _Us, __callable<_Us..., __mcall1<_CvRef, _Ts>...> _Fn>
+        auto operator()(_Fn&& __fn, __tuple_t<_Ts...>&& __tupl, _Us&&... __us) const
+          noexcept(__nothrow_callable<_Fn, _Us..., __mcall1<_CvRef, _Ts>...>)
+            -> __call_result_t<_Fn, _Us..., __mcall1<_CvRef, _Ts>...>;
       };
 
       template <class _Tuple>
@@ -232,7 +233,8 @@ namespace STDEXEC {
         requires __callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr auto operator()(_Fn&& __fn, _Tuple&& __tupl, _Us&&... __us) const
-        noexcept(__nothrow_callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>) -> decltype(auto) {
+        noexcept(__nothrow_callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>)
+          -> __call_result_t<__impl_t<_Tuple>, _Fn, _Tuple, _Us...> {
         constexpr size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
 
         if constexpr (__size == 0) {

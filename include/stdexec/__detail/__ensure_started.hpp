@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -19,13 +19,10 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
-#include "__concepts.hpp"
-#include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__shared.hpp"
 #include "__transform_sender.hpp"
-#include "__type_traits.hpp"
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -33,53 +30,40 @@ namespace STDEXEC {
   namespace __ensure_started {
     using namespace __shared;
 
-    struct __ensure_started_t { };
+    template <class _CvSender>
+    concept __is_ensure_started_sender =
+      __is_instance_of<__decay_t<_CvSender>, __shared::__sndr>
+      && __same_as<typename __decay_t<_CvSender>::__tag_t, ensure_started_t>;
 
     struct ensure_started_t {
-      template <sender _Sender, class _Env = env<>>
-        requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
+      template <class _Env = env<>, sender_in<_Env> _CvSender>
       [[nodiscard]]
-      auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
-        if constexpr (sender_expr_for<_Sender, __ensure_started_t>) {
-          return static_cast<_Sender&&>(__sndr);
+      auto operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
+        if constexpr (__is_ensure_started_sender<_CvSender>) {
+          return static_cast<_CvSender&&>(__sndr);
         } else {
           return STDEXEC::transform_sender(
-            __make_sexpr<ensure_started_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
+            __make_sexpr<ensure_started_t>(
+              static_cast<_Env&&>(__env), static_cast<_CvSender&&>(__sndr)),
+            __env);
         }
       }
 
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept {
+      [[nodiscard]]
+      constexpr auto operator()() const noexcept {
         return __closure(*this);
       }
 
-      template <class _CvrefSender, class _Env>
-      using __receiver_t = __t<__receiver<_Env, __result_variant_t<_CvrefSender, _Env>>>;
-
-      template <__decay_copyable _Sender, class _Env>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, const _Env&) {
-        using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
-        static_assert(sender_to<__child_of<_Sender>, _Receiver>);
-
-        return __apply(
-          [&]<class _Env2, class _Child>(__ignore, _Env2&& __env, _Child&& __child) {
-            // TODO(ericniebler): should we join the env passed to ensure_started with the
-            // env of the receiver?
-            // The shared state starts life with a ref-count of one.
-            auto* __sh_state =
-              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env2&&>(__env)};
-
-            // Eagerly start the work:
-            __sh_state->__try_start(); // cannot throw
-
-            return __make_sexpr<__ensure_started_t>(__box{__ensure_started_t(), __sh_state});
-          },
-          static_cast<_Sender&&>(__sndr));
-      }
-
-      template <class _Sender, class _Env>
-      static constexpr auto transform_sender(set_value_t, _Sender&&, const _Env&) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
+      template <class _CvSender>
+      static constexpr auto transform_sender(set_value_t, _CvSender&& __sndr, __ignore) {
+        static_assert(sender_expr_for<_CvSender, ensure_started_t>);
+        auto __result = __shared::__sndr{
+          ensure_started_t(),
+          STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
+          STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
+        // eagerly start the operation:
+        __result.__sh_state_->__try_start();
+        return __result;
       }
     };
   } // namespace __ensure_started
@@ -88,24 +72,5 @@ namespace STDEXEC {
   inline constexpr ensure_started_t ensure_started{};
 
   template <>
-  struct __sexpr_impl<__ensure_started::__ensure_started_t>
-    : __shared::__shared_impl<__ensure_started::__ensure_started_t> { };
-
-  template <>
-  struct __sexpr_impl<ensure_started_t> : __sexpr_defaults {
-    template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
-      // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
-      if constexpr (__decay_copyable<_Sender>) {
-        using __sndr_t =
-          __detail::__transform_sender_result_t<ensure_started_t, set_value_t, _Sender, env<>>;
-        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      } else {
-        return STDEXEC::__throw_compile_time_error<
-          _SENDER_TYPE_IS_NOT_COPYABLE_,
-          _WITH_PRETTY_SENDER_<_Sender>
-        >();
-      }
-    }
-  };
+  struct __sexpr_impl<ensure_started_t> : __shared::__impls<ensure_started_t> { };
 } // namespace STDEXEC

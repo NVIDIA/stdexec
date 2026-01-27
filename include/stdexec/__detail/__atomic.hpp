@@ -26,6 +26,8 @@
 #  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #endif
 
+#include <memory>
+
 namespace STDEXEC::__std {
 #if STDEXEC_HAS_CUDA_STD_ATOMIC()
 
@@ -42,7 +44,7 @@ namespace STDEXEC::__std {
   using cuda::std::atomic_thread_fence;
   using cuda::std::atomic_signal_fence;
 
-#else
+#else // ^^^ STDEXEC_HAS_CUDA_STD_ATOMIC() / vvv !STDEXEC_HAS_CUDA_STD_ATOMIC()
 
   using std::atomic;
   using std::atomic_flag;
@@ -97,7 +99,127 @@ namespace STDEXEC::__std {
       __atomic_store_n(__ptr_, __desired, __map_memory_order(__order));
     }
   };
-#  endif
+#  endif // ^^^ __cpp_lib_atomic_ref < 2018'06L
 
-#endif
+#endif // ^^^ !STDEXEC_HAS_CUDA_STD_ATOMIC()
+
+  constexpr memory_order __memory_order_load(memory_order __order) noexcept {
+    return __order == memory_order_acq_rel ? memory_order_acquire
+         : __order == memory_order_release ? memory_order_relaxed
+                                           : __order;
+  }
+
+#if __cpp_lib_atomic_shared_ptr >= 2017'11L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
+  template <class _Ty>
+  using __atomic_shared_ptr = std::atomic<std::shared_ptr<_Ty>>;
+#else
+  template <typename _Ty>
+  struct __atomic_shared_ptr {
+    using value_type = std::shared_ptr<_Ty>;
+
+    __atomic_shared_ptr() = default;
+
+    __atomic_shared_ptr(std::nullptr_t) noexcept {
+    }
+
+    __atomic_shared_ptr(std::shared_ptr<_Ty> __ptr) noexcept
+      : __ptr_{std::move(__ptr)} {
+    }
+
+    __atomic_shared_ptr(__atomic_shared_ptr&&) = delete;
+    __atomic_shared_ptr(__atomic_shared_ptr const &) = delete;
+
+    void operator=(std::nullptr_t) noexcept {
+      store(nullptr);
+    }
+
+    void operator=(std::shared_ptr<_Ty> __ptr) noexcept {
+      store(std::move(__ptr));
+    }
+
+    void operator=(__atomic_shared_ptr&&) = delete;
+    void operator=(__atomic_shared_ptr const &) = delete;
+
+    /* implicit */ operator std::shared_ptr<_Ty>() const noexcept {
+      return load();
+    }
+
+    [[nodiscard]]
+    bool is_lock_free() const noexcept {
+      return std::atomic_is_lock_free(&__ptr_);
+    }
+
+    std::shared_ptr<_Ty> load(memory_order __order = memory_order_seq_cst) const noexcept {
+      return std::atomic_load_explicit(&__ptr_, static_cast<std::memory_order>(__order));
+    }
+
+    void store(std::shared_ptr<_Ty> __ptr, memory_order __order = memory_order_seq_cst) noexcept {
+      std::atomic_store_explicit(&__ptr_, std::move(__ptr), static_cast<std::memory_order>(__order));
+    }
+
+    std::shared_ptr<_Ty>
+      exchange(std::shared_ptr<_Ty> __ptr, memory_order __order = memory_order_seq_cst) noexcept {
+      return std::atomic_exchange_explicit(
+        &__ptr_, std::move(__ptr), static_cast<std::memory_order>(__order));
+    }
+
+    bool compare_exchange_weak(
+      std::shared_ptr<_Ty>& __expected,
+      std::shared_ptr<_Ty> __desired,
+      memory_order __success,
+      memory_order __failure) noexcept {
+      return std::atomic_compare_exchange_weak_explicit(
+        &__ptr_,
+        &__expected,
+        std::move(__desired),
+        static_cast<std::memory_order>(__success),
+        static_cast<std::memory_order>(__failure));
+    }
+
+    bool compare_exchange_weak(
+      std::shared_ptr<_Ty>& __expected,
+      std::shared_ptr<_Ty> __desired,
+      memory_order __order = memory_order_seq_cst) noexcept {
+      return std::atomic_compare_exchange_weak_explicit(
+        &__ptr_,
+        &__expected,
+        std::move(__desired),
+        static_cast<std::memory_order>(__order),
+        static_cast<std::memory_order>(__std::__memory_order_load(__order)));
+    }
+
+    bool compare_exchange_strong(
+      std::shared_ptr<_Ty>& __expected,
+      std::shared_ptr<_Ty> __desired,
+      memory_order __upon_success,
+      memory_order __upon_failure) noexcept {
+      return std::atomic_compare_exchange_strong_explicit(
+        &__ptr_,
+        &__expected,
+        std::move(__desired),
+        static_cast<std::memory_order>(__upon_success),
+        static_cast<std::memory_order>(__upon_failure));
+    }
+
+    bool compare_exchange_strong(
+      std::shared_ptr<_Ty>& __expected,
+      std::shared_ptr<_Ty> __desired,
+      memory_order __order = memory_order_seq_cst) noexcept {
+      return std::atomic_compare_exchange_strong_explicit(
+        &__ptr_,
+        &__expected,
+        std::move(__desired),
+        static_cast<std::memory_order>(__order),
+        static_cast<std::memory_order>(__std::__memory_order_load(__order)));
+    }
+
+   private:
+    std::shared_ptr<_Ty> __ptr_;
+  };
+
+  template <typename _Ty>
+  __atomic_shared_ptr(std::shared_ptr<_Ty>) -> __atomic_shared_ptr<_Ty>;
+
+#endif // ^^^ __cpp_lib_atomic_shared_ptr < 2017'11L
+
 } // namespace STDEXEC::__std

@@ -188,7 +188,7 @@ namespace STDEXEC {
       >
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(host, device)
-      auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
+      constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto {
         return __make_sexpr<_AlgoTag>(
           __data{__pol, __shape, static_cast<_Fun&&>(__fun)}, static_cast<_Sender&&>(__sndr));
@@ -197,7 +197,7 @@ namespace STDEXEC {
       template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>
         requires is_execution_policy_v<std::remove_cvref_t<_Policy>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
+      constexpr auto operator()(_Policy&& __pol, _Shape __shape, _Fun __fun) const {
         return __closure(
           *this,
           static_cast<_Policy&&>(__pol),
@@ -275,10 +275,9 @@ namespace STDEXEC {
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       // Forward the child sender's environment (which contains completion scheduler)
-      static constexpr auto get_attrs =
-        []<class _Data, class _Child>(const _Data&, const _Child& __child) noexcept {
-          return __fwd_env(STDEXEC::get_env(__child));
-        };
+      static constexpr auto get_attrs = [](__ignore, __ignore, const auto& __child) noexcept {
+        return __fwd_env(STDEXEC::get_env(__child));
+      };
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {

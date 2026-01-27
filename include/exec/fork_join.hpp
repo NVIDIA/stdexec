@@ -131,7 +131,7 @@ namespace exec {
     template <class Sndr, class Closures, class Rcvr>
     struct _opstate_t {
       using operation_state_concept = STDEXEC::operation_state_t;
-      using _env_t = STDEXEC::__call_result_t<STDEXEC::__env::__fwd_fn, STDEXEC::env_of_t<Rcvr>>;
+      using _env_t = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
       using _child_completions_t = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
@@ -204,7 +204,7 @@ namespace exec {
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      constexpr auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>> {
+      constexpr auto get_env() const noexcept -> _env_t {
         return STDEXEC::__fwd_env(STDEXEC::get_env(_rcvr_));
       }
 
