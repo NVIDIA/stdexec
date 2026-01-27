@@ -109,7 +109,7 @@ namespace STDEXEC::__std {
                                            : __order;
   }
 
-#if __cpp_lib_atomic_shared_ptr >= 2017'11L
+#if __cpp_lib_atomic_shared_ptr >= 2017'11L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
   template <class _Ty>
   using __atomic_shared_ptr = std::atomic<std::shared_ptr<_Ty>>;
 #else
