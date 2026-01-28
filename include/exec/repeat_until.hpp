@@ -135,9 +135,11 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
-      constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(noexcept(__connect()))
-        : __opstate_base<_Receiver>(static_cast<_Receiver &&>(__rcvr))
-        , __child_(static_cast<_Child &&>(__child)) {
+      constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(
+        __nothrow_move_constructible<_Child> && __nothrow_move_constructible<_Receiver>
+        && noexcept(__connect()))
+        : __opstate_base<_Receiver>(std::move(__rcvr))
+        , __child_(std::move(__child)) {
         __connect();
       }
 

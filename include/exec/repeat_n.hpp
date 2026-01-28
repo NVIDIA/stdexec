@@ -37,7 +37,7 @@ namespace exec {
     template <class _Receiver>
     struct __opstate_base : __immovable {
       constexpr explicit __opstate_base(_Receiver &&__rcvr, std::size_t __count) noexcept
-        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
+        : __rcvr_{std::move(__rcvr)}
         , __count_{__count} {
         static_assert(
           std::is_nothrow_default_constructible_v<trampoline_scheduler>,
@@ -103,8 +103,8 @@ namespace exec {
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
       constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
-        noexcept(std::is_nothrow_move_constructible_v<_Child> && noexcept(__connect()))
-        : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
+        noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
+        : __opstate_base<_Receiver>{std::move(__rcvr), __count}
         , __child_(std::move(__child)) {
         if (this->__count_ != 0) {
           __connect();
