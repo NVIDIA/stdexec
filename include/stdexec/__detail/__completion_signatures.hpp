@@ -107,7 +107,7 @@ namespace STDEXEC {
   [[noreturn, nodiscard]]
   consteval auto
     __throw_compile_time_error([[maybe_unused]] _Values... __values) -> completion_signatures<> {
-    return
+    return;
   }
 #endif // ^^^ constexpr exceptions ^^^
 
