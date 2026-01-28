@@ -197,6 +197,30 @@ namespace exec {
         __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_PRETTY_SENDER_<_Sender>>
       >;
 
+    template <class... _Booleans>
+    using __values_overload_nothrow_bool_convertible =
+      STDEXEC::__mand<std::is_nothrow_convertible<_Booleans &&, bool>...>;
+
+    template <class _Sender, class... _Env>
+    using __values_nothrow_bool_convertible = STDEXEC::__value_types_t<
+      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>,   // sigs
+      STDEXEC::__qq<__values_overload_nothrow_bool_convertible>, // tuple
+      STDEXEC::__q<STDEXEC::__mand>                              // variant
+    >;
+
+    template <class _Sender, class... _Env>
+    using __errors_nothrow_copyable = STDEXEC::__error_types_t<
+      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>, // sigs
+      STDEXEC::__q<STDEXEC::__nothrow_decay_copyable_t>        // variant
+    >;
+
+    template <typename _Sender, typename... _Env>
+    using __with_eptr_completion = STDEXEC::__eptr_completion_unless_t<STDEXEC::__mand<
+      __values_nothrow_bool_convertible<_Sender, _Env...>,
+      __errors_nothrow_copyable<_Sender, _Env...>,
+      __mbool<STDEXEC::__nothrow_connectable<_Sender, STDEXEC::__receiver_archetype<_Env>>>...
+    >>;
+
     template <class...>
     using __delete_set_value_t = completion_signatures<>;
 
@@ -204,8 +228,8 @@ namespace exec {
     using __completions_t = STDEXEC::transform_completion_signatures<
       __completion_signatures_of_t<__decay_t<_Sender> &, _Env...>,
       STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-        __eptr_completion,
+        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
+        __with_eptr_completion<_Sender, _Env...>,
         __delete_set_value_t
       >,
       __mbind_front_q<__values_t, _Sender>::template __f

@@ -189,16 +189,28 @@ namespace exec {
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
-    template <class _Pair, class... _Env>
+    template <class _Sender, class... _Env>
+    using __errors_nothrow_copyable = STDEXEC::__error_types_t<
+      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>, // sigs
+      STDEXEC::__q<STDEXEC::__nothrow_decay_copyable_t>        // variant
+    >;
+
+    template <class _Sender, class... _Env>
+    using __with_eptr_completion = STDEXEC::__eptr_completion_unless_t<STDEXEC::__mand<
+      __errors_nothrow_copyable<_Sender, _Env...>,
+      __mbool<STDEXEC::__nothrow_connectable<_Sender, STDEXEC::__receiver_archetype<_Env>>>...
+    >>;
+
+    template <class _Sender, class... _Env>
     using __completions_t = STDEXEC::transform_completion_signatures<
-      __completion_signatures_of_t<decltype(__decay_t<_Pair>::__child_) &, _Env...>,
+      __completion_signatures_of_t<_Sender &, _Env...>,
       STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-        __eptr_completion,
+        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
+        __with_eptr_completion<_Sender, _Env...>,
         __cmplsigs::__default_set_value,
         __error_t
       >,
-      __mbind_front_q<__values_t, decltype(__decay_t<_Pair>::__child_)>::template __f,
+      __mbind_front_q<__values_t, _Sender>::template __f,
       __error_t
     >;
 
@@ -208,7 +220,7 @@ namespace exec {
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
         // TODO: port this to use constant evaluation
-        return __completions_t<__data_of<_Sender>, _Env...>{};
+        return __completions_t<decltype(__decay_t<__data_of<_Sender>>::__child_), _Env...>{};
       }
 
       static constexpr auto get_state = []<class _Sender, class _Receiver>(
