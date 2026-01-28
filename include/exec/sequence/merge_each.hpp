@@ -148,8 +148,6 @@ namespace exec {
 
     template <class _ErrorStorage>
     struct __operation_base_interface {
-      ~__operation_base_interface() {
-      }
       virtual void nested_value_started() noexcept = 0;
       virtual void nested_value_complete() noexcept = 0;
       virtual bool nested_value_fail() noexcept = 0;
@@ -1155,7 +1153,7 @@ namespace exec {
       using _Receiver = STDEXEC::__t<_ReceiverId>;
       using __error_storage_t = _ErrorStorage;
       using __base_t = __operation_base<_Receiver, __error_storage_t>;
-      struct __t : __base_t {
+      struct __t final : __base_t {
         using __id = __operation;
 
         using __nested_seq_op_t = __compute::__nested_sequence_ops_variant<_Sequence, _Receiver>;
