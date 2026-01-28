@@ -19,13 +19,10 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
-#include "__concepts.hpp"
-#include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__shared.hpp"
 #include "__transform_sender.hpp"
-#include "__type_traits.hpp"
 
 namespace STDEXEC {
   ////////////////////////////////////////////////////////////////////////////
@@ -33,43 +30,27 @@ namespace STDEXEC {
   namespace __split {
     using namespace __shared;
 
-    struct __split_t { };
-
     struct split_t {
-      template <sender _Sender, class _Env = env<>>
-        requires sender_in<_Sender, _Env> && __decay_copyable<env_of_t<_Sender>>
-      auto operator()(_Sender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
+      template <class _Env = env<>, sender_in<_Env> _CvSender>
+      [[nodiscard]]
+      auto operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> __well_formed_sender auto {
         return STDEXEC::transform_sender(
-          __make_sexpr<split_t>(__env, static_cast<_Sender&&>(__sndr)), __env);
+          __make_sexpr<split_t>(static_cast<_Env&&>(__env), static_cast<_CvSender&&>(__sndr)),
+          __env);
       }
 
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept {
+      [[nodiscard]]
+      constexpr auto operator()() const noexcept {
         return __closure(*this);
       }
 
-      template <class _CvrefSender, class _Env>
-      using __receiver_t = __t<__receiver<_Env, __result_variant_t<_CvrefSender, _Env>>>;
-
-      template <__decay_copyable _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        using _Receiver = __receiver_t<__child_of<_Sender>, __decay_t<__data_of<_Sender>>>;
-        static_assert(sender_to<__child_of<_Sender>, _Receiver>);
-
-        return __apply(
-          [&]<class _Env, class _Child>(__ignore, _Env&& __env, _Child&& __child) {
-            // The shared state starts life with a ref-count of one.
-            auto* __sh_state =
-              new __shared_state{static_cast<_Child&&>(__child), static_cast<_Env&&>(__env)};
-
-            return __make_sexpr<__split_t>(__box{__split_t(), __sh_state});
-          },
-          static_cast<_Sender&&>(__sndr));
-      }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
+      template <class _CvSender>
+      static constexpr auto transform_sender(set_value_t, _CvSender&& __sndr, __ignore) {
+        static_assert(sender_expr_for<_CvSender, split_t>);
+        return __shared::__sndr{
+          split_t(),
+          STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
+          STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
       }
     };
   } // namespace __split
@@ -78,23 +59,5 @@ namespace STDEXEC {
   inline constexpr split_t split{};
 
   template <>
-  struct __sexpr_impl<__split::__split_t> : __shared::__shared_impl<__split::__split_t> { };
-
-  template <>
-  struct __sexpr_impl<split_t> : __sexpr_defaults {
-    template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
-      // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
-      if constexpr (__decay_copyable<_Sender>) {
-        using __sndr_t =
-          __detail::__transform_sender_result_t<split_t, set_value_t, _Sender, env<>>;
-        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      } else {
-        return STDEXEC::__throw_compile_time_error<
-          _SENDER_TYPE_IS_NOT_COPYABLE_,
-          _WITH_PRETTY_SENDER_<_Sender>
-        >();
-      }
-    }
-  };
+  struct __sexpr_impl<split_t> : __shared::__impls<split_t> { };
 } // namespace STDEXEC

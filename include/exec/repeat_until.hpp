@@ -31,9 +31,12 @@ namespace exec {
   namespace __repeat {
     using namespace STDEXEC;
 
+    struct repeat_t;
+    struct repeat_until_t;
+
     template <class _Receiver>
-    struct __repeat_state_base {
-      constexpr explicit __repeat_state_base(_Receiver &&__rcvr) noexcept
+    struct __opstate_base {
+      constexpr explicit __opstate_base(_Receiver &&__rcvr) noexcept
         : __rcvr_{std::move(__rcvr)} {
         static_assert(
           std::is_nothrow_default_constructible_v<trampoline_scheduler>,
@@ -47,7 +50,7 @@ namespace exec {
       trampoline_scheduler __sched_{};
 
     protected:
-      ~__repeat_state_base() noexcept = default;
+      ~__opstate_base() noexcept = default;
     };
 
     template <class _Boolean, bool _Expected>
@@ -118,39 +121,35 @@ namespace exec {
           return STDEXEC::get_env(__state_->__rcvr_);
         }
 
-        __repeat_state_base<_Receiver> *__state_;
+        __opstate_base<_Receiver> *__state_;
       };
     };
 
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
-    template <class _Sender, class _Receiver>
-    struct __repeat_state final : __repeat_state_base<_Receiver> {
-      using __child_t = __decay_t<__data_of<_Sender>>;
+    template <class _Child, class _Receiver>
+    struct __opstate final : __opstate_base<_Receiver> {
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Receiver>>>;
-      using __child_on_sched_sender_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __child_t &>;
-      using __child_op_t = STDEXEC::connect_result_t<__child_on_sched_sender_t, __receiver_t>;
+      using __bouncy_sndr_t =
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
+      using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
-      constexpr explicit __repeat_state(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(
-        std::is_nothrow_constructible_v<__child_t, STDEXEC::__tuple_element_t<1, _Sender &&>>
-        && noexcept(__connect()))
-        : __repeat_state_base<_Receiver>(static_cast<_Receiver &&>(__rcvr))
-        , __child_(STDEXEC::__get<1>(static_cast<_Sender &&>(__sndr))) {
+      constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(noexcept(__connect()))
+        : __opstate_base<_Receiver>(static_cast<_Receiver &&>(__rcvr))
+        , __child_(static_cast<_Child &&>(__child)) {
         __connect();
       }
 
-      constexpr __child_op_t &__connect()
-        noexcept(STDEXEC::__nothrow_connectable<__child_on_sched_sender_t, __receiver_t>) {
+      constexpr void start() noexcept {
+        STDEXEC::start(*__child_op_);
+      }
+
+      constexpr __child_op_t& __connect() noexcept(STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>)  {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
           __receiver_t{this});
-      }
-
-      constexpr void __start() noexcept {
-        STDEXEC::start(*__child_op_);
       }
 
       constexpr void __cleanup() noexcept override {
@@ -162,29 +161,22 @@ namespace exec {
           STDEXEC::start(__connect());
         }
         STDEXEC_CATCH_ALL {
-          if constexpr (!STDEXEC::__nothrow_connectable<__child_on_sched_sender_t, __receiver_t>) {
+          if constexpr (!noexcept(__connect())) {
             STDEXEC::set_error(static_cast<_Receiver &&>(this->__rcvr_), std::current_exception());
           }
         }
       }
 
-      __child_t __child_;
+      _Child __child_;
       STDEXEC::__optional<__child_op_t> __child_op_;
     };
 
-    template <class _Sender, class _Receiver>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-      __repeat_state(_Sender &&, _Receiver) -> __repeat_state<_Sender, _Receiver>;
-
     STDEXEC_PRAGMA_POP()
 
-    template <
-      __mstring _Where = "In repeat_until: "_mstr,
-      __mstring _What = "The input sender must send a single value that is convertible to bool"_mstr
-    >
-    struct _INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_ { };
+    struct _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_ { };
+    struct _EXPECTING_A_SENDER_OF_VOID_ { };
 
-    template <class _Sender, class... _Args>
+    template <class _Child, class... _Args>
     using __values_t =
       // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
       std::conditional_t<
@@ -194,7 +186,13 @@ namespace exec {
           completion_signatures<>,
           completion_signatures<set_value_t()>
         >,
-        __mexception<_INVALID_ARGUMENT_TO_REPEAT_EFFECT_UNTIL_<>, _WITH_PRETTY_SENDER_<_Sender>>
+        __mexception<
+          _WHAT_<>(
+            _INVALID_ARGUMENT_,
+            _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
+          _WHERE_(_IN_ALGORITHM_, repeat_until_t),
+          _WITH_PRETTY_SENDER_<_Child>
+        >
       >;
 
     template <class... _Booleans>
@@ -224,15 +222,15 @@ namespace exec {
     template <class...>
     using __delete_set_value_t = completion_signatures<>;
 
-    template <class _Sender, class... _Env>
+    template <class _Child, class... _Env>
     using __completions_t = STDEXEC::transform_completion_signatures<
-      __completion_signatures_of_t<__decay_t<_Sender> &, _Env...>,
+      __completion_signatures_of_t<__decay_t<_Child> &, _Env...>,
       STDEXEC::transform_completion_signatures<
         __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
-        __with_eptr_completion<_Sender, _Env...>,
+        __with_eptr_completion<_Child, _Env...>,
         __delete_set_value_t
       >,
-      __mbind_front_q<__values_t, _Sender>::template __f
+      __mbind_front_q<__values_t, _Child>::template __f
     >;
 
     struct __repeat_until_tag { };
@@ -241,17 +239,15 @@ namespace exec {
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
         // TODO: port this to use constant evaluation
-        return __completions_t<__data_of<_Sender>, _Env...>{};
+        return __completions_t<__child_of<_Sender>, _Env...>{};
       };
 
-      static constexpr auto get_state =
-        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver &&__rcvr) {
-          return __repeat_state{static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr)};
+      static constexpr auto connect =
+        []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver __rcvr) noexcept(
+          noexcept(__opstate(STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>()))) {
+          return __opstate(
+            STDEXEC::__get<2>(static_cast<_Sender &&>(__sndr)), static_cast<_Receiver &&>(__rcvr));
         };
-
-      static constexpr auto start = [](auto &__state) noexcept -> void {
-        __state.__start();
-      };
     };
 
     struct repeat_until_t {
@@ -264,22 +260,12 @@ namespace exec {
       constexpr auto operator()() const {
         return __closure(*this);
       }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
-        return STDEXEC::__apply(
-          []<class _Child>(__ignore, __ignore, _Child __child) {
-            return __make_sexpr<__repeat_until_tag>(std::move(__child));
-          },
-          static_cast<_Sender &&>(__sndr));
-      }
     };
 
     struct repeat_t {
       struct _never {
-        template <class... _Args>
         STDEXEC_ATTRIBUTE(host, device, always_inline)
-        constexpr std::false_type operator()(_Args &&...) const noexcept {
+        constexpr std::false_type operator()() const noexcept {
           return {};
         }
       };
@@ -294,13 +280,24 @@ namespace exec {
         return __closure(*this);
       }
 
-      template <class _Sender>
-      static constexpr auto transform_sender(STDEXEC::set_value_t, _Sender &&__sndr, __ignore) {
-        return STDEXEC::__apply(
-          [](__ignore, __ignore, auto __child) {
-            return repeat_until_t{}(STDEXEC::then(std::move(__child), _never{}));
-          },
-          static_cast<_Sender &&>(__sndr));
+      template <class _CvSender, class _Env>
+      static constexpr auto
+        transform_sender(STDEXEC::set_value_t, _CvSender &&__sndr, const _Env &) noexcept {
+        using namespace STDEXEC;
+        using __child_t = __child_of<_CvSender>;
+        using __values_t = value_types_of_t<__child_t, _Env, __types, __types>;
+        auto &[__tag, __ign, __child] = __sndr;
+
+        if constexpr (__same_as<__values_t, __types<>> || __same_as<__values_t, __types<__types<>>>) {
+          return repeat_until_t()(then(static_cast<__child_t &&>(__child), _never{}));
+        } else {
+          return __not_a_sender<
+            _WHAT_<>(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
+            _WHERE_(_IN_ALGORITHM_, repeat_until_t),
+            _WITH_PRETTY_SENDER_<__child_t>,
+            _WITH_ENVIRONMENT_(_Env)
+          >();
+        }
       }
     };
   } // namespace __repeat
@@ -322,28 +319,8 @@ namespace exec {
 
 namespace STDEXEC {
   template <>
-  struct __sexpr_impl<exec::__repeat::__repeat_until_tag>
-    : exec::__repeat::__repeat_until_impl { }; // namespace STDEXEC
+  struct __sexpr_impl<exec::repeat_t> : exec::__repeat::__repeat_until_impl { };
 
   template <>
-  struct __sexpr_impl<exec::repeat_until_t> : __sexpr_defaults {
-    template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
-      static_assert(sender_expr_for<_Sender, exec::repeat_until_t>);
-      using __sndr_t =
-        __detail::__transform_sender_result_t<exec::repeat_until_t, set_value_t, _Sender, env<>>;
-      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    }
-  };
-
-  template <>
-  struct __sexpr_impl<exec::repeat_t> : __sexpr_defaults {
-    template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
-      static_assert(sender_expr_for<_Sender, exec::repeat_t>);
-      using __sndr_t =
-        __detail::__transform_sender_result_t<exec::repeat_t, set_value_t, _Sender, env<>>;
-      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    }
-  };
+  struct __sexpr_impl<exec::repeat_until_t> : exec::__repeat::__repeat_until_impl { };
 } // namespace STDEXEC

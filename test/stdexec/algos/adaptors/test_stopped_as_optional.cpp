@@ -25,6 +25,11 @@
 namespace ex = STDEXEC;
 
 namespace {
+  struct potentially_throwing_query {
+    constexpr auto operator()(ex::__ignore) const noexcept(false) -> int {
+      return 42;
+    }
+  };
 
   TEST_CASE("stopped_as_optional returns a sender", "[adaptors][stopped_as_optional]") {
     auto snd = ex::stopped_as_optional(ex::just(11));
@@ -62,12 +67,12 @@ namespace {
   TEST_CASE(
     "stopped_as_optional shall not work with senders that have multiple alternatives",
     "[adaptors][stopped_as_optional]") {
-    ex::sender auto in_snd = fallible_just{13} | ex::let_error([](std::exception_ptr) {
-                               return ex::just(std::string{"err"});
-                             });
+    ex::sender auto in_snd = ex::read_env(potentially_throwing_query{})
+                           | ex::let_error(
+                               [](std::exception_ptr) { return ex::just(std::string{"err"}); });
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(in_snd));
-    auto snd = std::move(in_snd) | ex::stopped_as_optional();
-    static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
+    using snd_t = decltype(std::move(in_snd) | ex::stopped_as_optional());
+    static_assert(!ex::sender_to<snd_t, expect_error_receiver<>>);
   }
 
   TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]") {

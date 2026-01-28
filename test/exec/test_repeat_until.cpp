@@ -194,8 +194,9 @@ namespace {
 
   TEST_CASE("repeat repeats until an error is encountered", "[adaptors][repeat]") {
     int counter = 0;
-    ex::sender auto snd = exec::repeat(
-      succeed_n_sender(10, ex::set_error, std::string("error")) | ex::then([&] { ++counter; }));
+    ex::sender auto snd = succeed_n_sender(10, ex::set_error, std::string("error")) //
+                        | ex::then([&] { ++counter; })                              //
+                        | exec::repeat();
     static_assert(!all_contained_in<
                   ex::completion_signatures<ex::set_value_t()>,
                   ex::completion_signatures_of_t<decltype(snd), ex::env<>>

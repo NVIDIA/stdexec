@@ -29,8 +29,22 @@
 #  include <stop_token> // IWYU pragma: export
 #endif
 
+extern void _mm_pause();
+
 namespace STDEXEC {
   namespace __stok {
+    inline void __pause() {
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+      ::_mm_pause();
+#elif defined(__i386__) || defined(__x86_64__) || defined(_M_X64)
+      asm volatile("pause");
+#elif defined(__aarch64__) || defined(__arm__)
+      asm volatile("yield");
+#elif defined(__powerpc64__)
+      asm volatile("or 27,27,27");
+#endif
+    }
+
     struct __inplace_stop_callback_base {
       constexpr void __execute() noexcept {
         this->__execute_(this);
@@ -63,9 +77,9 @@ namespace STDEXEC {
 
       void __wait() noexcept {
         if (__count_++ < __yield_threshold_) {
-          // TODO: _mm_pause();
+          __stok::__pause();
         } else {
-          if (__count_ == 0)
+          if (__count_ == 0) // true if __count_ wrapped around
             __count_ = __yield_threshold_;
           std::this_thread::yield();
         }
@@ -106,8 +120,7 @@ namespace STDEXEC {
 
     auto __try_lock_unless_stop_requested_(bool) const noexcept -> bool;
 
-    auto
-      __try_add_callback_(__stok::__inplace_stop_callback_base*) const noexcept -> bool;
+    auto __try_add_callback_(__stok::__inplace_stop_callback_base*) const noexcept -> bool;
 
     void __remove_callback_(__stok::__inplace_stop_callback_base*) const noexcept;
 
@@ -367,9 +380,9 @@ namespace STDEXEC {
     struct get_stop_token_t : __get_stop_token_t {
       using __get_stop_token_t::operator();
 
-      template <class _Query = get_stop_token_t>
+      // defined in __read_env.hpp
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()() const noexcept; // defined in __read_env.hpp
+      constexpr auto operator()() const noexcept;
 
       template <class _Env>
       STDEXEC_ATTRIBUTE(always_inline, host, device)

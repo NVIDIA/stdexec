@@ -15,13 +15,13 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"
 #include "__utility.hpp"
 
+#include <functional>
+
 namespace STDEXEC {
   template <class _Fn, class... _Ts>
-    requires __nothrow_callable<_Fn, _Ts...>
   struct __scope_guard;
 
   template <class _Fn>
@@ -99,5 +99,6 @@ namespace STDEXEC {
   };
 
   template <class _Fn, class... _Ts>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __scope_guard(_Fn, _Ts...) -> __scope_guard<_Fn, _Ts...>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    __scope_guard(_Fn, _Ts...) -> __scope_guard<_Fn, std::unwrap_reference_t<_Ts>...>;
 } // namespace STDEXEC
