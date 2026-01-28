@@ -235,8 +235,6 @@ namespace exec {
       __mbind_front_q<__values_t, _Child>::template __f
     >;
 
-    struct __repeat_until_tag { };
-
     struct __repeat_until_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
