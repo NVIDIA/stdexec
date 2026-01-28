@@ -165,7 +165,7 @@ namespace nvexec::_strm {
       >;
 
       template <class Error>
-      using _set_error_t = __set_value_invoke_t<Fun, Error>;
+      using _set_error_t = __set_value_from_t<Fun, Error>;
 
       template <class Self, class... Env>
       using completion_signatures = transform_completion_signatures<

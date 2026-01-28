@@ -170,7 +170,7 @@ namespace {
         using __completions_t = STDEXEC::transform_completion_signatures<
           STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
           STDEXEC::completion_signatures<>,
-          STDEXEC::__mbind_front_q<STDEXEC::__set_value_invoke_t, Fun>::template __f
+          STDEXEC::__mbind_front_q<STDEXEC::__set_value_from_t, Fun>::template __f
         >;
 
         template <STDEXEC::__decays_to<__t> Self, STDEXEC::receiver Receiver>

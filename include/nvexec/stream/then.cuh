@@ -183,7 +183,7 @@ namespace nvexec::_strm {
       >;
 
       template <class... As>
-      using _set_value_t = __set_value_invoke_t<Fun, As...>;
+      using _set_value_t = __set_value_from_t<Fun, As...>;
 
       template <class Self, class... Env>
       using _completion_signatures_t = transform_completion_signatures<
