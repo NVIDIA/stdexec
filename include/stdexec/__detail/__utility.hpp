@@ -31,7 +31,9 @@ namespace STDEXEC {
   struct __ignore {
     constexpr __ignore() = default;
 
-    STDEXEC_ATTRIBUTE(always_inline) constexpr __ignore(auto&&...) noexcept {
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __ignore(_Ts&&...) noexcept {
     }
   };
 
@@ -42,7 +44,9 @@ namespace STDEXEC {
   struct __ignore_t {
     __ignore_t() = default;
 
-    constexpr __ignore_t(auto&&...) noexcept {
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __ignore_t(_Ts&&...) noexcept {
     }
   };
 #else

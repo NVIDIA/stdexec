@@ -547,7 +547,7 @@ namespace STDEXEC {
 
   template <class _Fun, class... _Args>
     requires __invocable<_Fun, _Args...>
-  using __set_value_invoke_t = completion_signatures<
+  using __set_value_from_t = completion_signatures<
     __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>
   >;
 

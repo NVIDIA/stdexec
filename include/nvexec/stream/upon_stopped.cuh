@@ -142,7 +142,7 @@ namespace nvexec::_strm {
         >,
         __cmplsigs::__default_set_value,
         __cmplsigs::__default_set_error,
-        __set_value_invoke_t<Fun>
+        __set_value_from_t<Fun>
       >;
 
       template <__decays_to<__t> Self, receiver Receiver>
