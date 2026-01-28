@@ -40,7 +40,7 @@ namespace STDEXEC {
       __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvrefSender, _Env...>,
       __cmplsigs::__default_set_value,
       __cmplsigs::__default_set_error,
-      __set_value_invoke_t<_Fun>
+      __set_value_from_t<_Fun>
     >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ namespace STDEXEC {
                                          _Tag,
                                          _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_stopped_t>) {
-          STDEXEC::__set_value_invoke(
+          STDEXEC::__set_value_from(
             static_cast<_State&&>(__state).__rcvr_,
             static_cast<_State&&>(__state).__data_,
             static_cast<_Args&&>(__args)...);

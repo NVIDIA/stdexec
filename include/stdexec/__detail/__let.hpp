@@ -546,7 +546,7 @@ namespace STDEXEC {
 
     template <class _SetTag, class _SetTag2, class _Sndr, class _Fn, class... _Env>
     using __let_completion_domain_t = __unless_one_of_t<
-      decltype(__let::__get_completion_domain<_SetTag, _SetTag2, _Sndr, _Fn, _Env...>()),
+      __result_of<__let::__get_completion_domain<_SetTag, _SetTag2, _Sndr, _Fn, _Env...>>,
       indeterminate_domain<>
     >;
 

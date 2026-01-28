@@ -51,7 +51,7 @@ namespace STDEXEC {
           auto& __result = __result_.__emplace_from(_Query(), STDEXEC::get_env(__rcvr_));
           return static_cast<_Ty&&>(__result);
         };
-        STDEXEC::__set_value_invoke(static_cast<_Receiver&&>(__rcvr_), __query_fn);
+        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_), __query_fn);
       }
 
       _Receiver __rcvr_;
@@ -63,7 +63,7 @@ namespace STDEXEC {
     struct __opstate<_Receiver, _Query, _Ty> {
       constexpr void start() noexcept {
         // The query returns a reference type; pass it straight through to the receiver.
-        STDEXEC::__set_value_invoke(
+        STDEXEC::__set_value_from(
           static_cast<_Receiver&&>(__rcvr_), _Query(), STDEXEC::get_env(__rcvr_));
       }
 
@@ -130,7 +130,7 @@ namespace STDEXEC {
       {
         static_assert(sender_expr_for<_Sender, read_env_t>);
         using __query_t = __data_of<_Sender>;
-        STDEXEC::__set_value_invoke(
+        STDEXEC::__set_value_from(
           static_cast<_Receiver&&>(__rcvr), __query_t(), STDEXEC::get_env(__rcvr));
       };
     };

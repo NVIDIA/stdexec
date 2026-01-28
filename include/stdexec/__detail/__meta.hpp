@@ -441,22 +441,29 @@ namespace STDEXEC {
   using __minvoke_force = __t<__minvoke_force_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  struct __mdefer_ { };
+  struct __mdefer { };
 
   template <class _Fn, class... _Args>
     requires __minvocable<_Fn, _Args...>
-  struct __mdefer_<_Fn, _Args...> {
+  struct __mdefer<_Fn, _Args...> {
     using __t = __minvoke<_Fn, _Args...>;
   };
 
   template <class _Fn, class... _Args>
-  struct __mdefer : __mdefer_<_Fn, _Args...> { };
-
-  template <class _Fn, class... _Args>
-  using __mmemoize = __t<__mdefer_<_Fn, _Args...>>;
+  using __mmemoize = __t<__mdefer<_Fn, _Args...>>;
 
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
+
+#if STDEXEC_GCC()
+  // GCC can not mangle builtins. __mangle_t introduces an
+  // indirection that hides the builtin from the mangler.
+  template <template <class...> class _Class, class... _Args>
+  using __mmangle_t = __mmemoize_q<_Class, _Args...>;
+#else
+  template <template <class...> class _Class, class... _Args>
+  using __mmangle_t = _Class<_Args...>;
+#endif
 
   namespace __detail {
     template <bool>
