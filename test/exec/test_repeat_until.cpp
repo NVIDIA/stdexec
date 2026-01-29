@@ -264,7 +264,7 @@ namespace {
   }
 
   TEST_CASE("repeat composes with completion signatures", "[adaptors][repeat]") {
-    {
+    SECTION("repeat composes with stopped upstream") {
       ex::sender auto only_stopped = ex::just_stopped() | exec::repeat();
       static_assert(
         std::same_as<ex::value_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
@@ -280,7 +280,7 @@ namespace {
       ex::sync_wait(only_stopped | ex::upon_stopped([]() noexcept { return -1; }));
     }
 
-    {
+    SECTION("repeat composes with errors upstream") {
       ex::sender auto only_error = ex::just_error(-1) | exec::repeat();
       static_assert(
         std::same_as<ex::value_types_of_t<decltype(only_error)>, ex::__detail::__not_a_variant>,
