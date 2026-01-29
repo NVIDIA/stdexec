@@ -123,7 +123,7 @@ namespace exec {
     STDEXEC_PRAGMA_IGNORE_GNU("-Wtsan")
 
     template <class _Child, class _Receiver>
-    struct __opstate : __opstate_base<_Receiver> {
+    struct __opstate final : __opstate_base<_Receiver> {
       using __receiver_t = STDEXEC::__t<__receiver<__id<_Receiver>>>;
       using __bouncy_sndr_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
