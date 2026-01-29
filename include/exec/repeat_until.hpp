@@ -37,9 +37,9 @@ namespace exec {
     template <class _Receiver>
     struct __opstate_base {
       constexpr explicit __opstate_base(_Receiver &&__rcvr) noexcept
-        : __rcvr_{std::move(__rcvr)} {
+        : __rcvr_{static_cast<_Receiver &&>(__rcvr)} {
         static_assert(
-          std::is_nothrow_default_constructible_v<trampoline_scheduler>,
+          __nothrow_constructible_from<trampoline_scheduler>,
           "trampoline_scheduler c'tor is always expected to be noexcept");
       }
 
@@ -136,8 +136,7 @@ namespace exec {
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
       constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(
-        __nothrow_move_constructible<_Child> && __nothrow_move_constructible<_Receiver>
-        && noexcept(__connect()))
+        __nothrow_move_constructible<_Child> && noexcept(__connect()))
         : __opstate_base<_Receiver>(std::move(__rcvr))
         , __child_(std::move(__child)) {
         __connect();
@@ -154,11 +153,11 @@ namespace exec {
           __receiver_t{this});
       }
 
-      constexpr void __cleanup() noexcept override {
+      constexpr void __cleanup() noexcept final {
         __child_op_.reset();
       }
 
-      constexpr void __repeat() noexcept override {
+      constexpr void __repeat() noexcept final {
         STDEXEC_TRY {
           STDEXEC::start(__connect());
         }
@@ -198,28 +197,24 @@ namespace exec {
       >;
 
     template <class... _Booleans>
-    using __values_overload_nothrow_bool_convertible =
-      STDEXEC::__mand<std::is_nothrow_convertible<_Booleans &&, bool>...>;
+    using __values_overload_nothrow_bool_convertible_t =
+      __mand<std::is_nothrow_convertible<_Booleans, bool>...>;
 
     template <class _Sender, class... _Env>
-    using __values_nothrow_bool_convertible = STDEXEC::__value_types_t<
-      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>,   // sigs
-      STDEXEC::__qq<__values_overload_nothrow_bool_convertible>, // tuple
-      STDEXEC::__q<STDEXEC::__mand>                              // variant
-    >;
-
-    template <class _Sender, class... _Env>
-    using __errors_nothrow_copyable = STDEXEC::__error_types_t<
-      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>, // sigs
-      STDEXEC::__q<STDEXEC::__nothrow_decay_copyable_t>        // variant
+    using __values_nothrow_bool_convertible_t = __value_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>,     // sigs
+      __qq<__values_overload_nothrow_bool_convertible_t>, // tuple
+      __qq<__mand>                                        // variant
     >;
 
     template <typename _Sender, typename... _Env>
-    using __with_eptr_completion = STDEXEC::__eptr_completion_unless_t<STDEXEC::__mand<
-      __values_nothrow_bool_convertible<_Sender, _Env...>,
-      __errors_nothrow_copyable<_Sender, _Env...>,
-      __mbool<STDEXEC::__nothrow_connectable<_Sender, STDEXEC::__receiver_archetype<_Env>>>...
-    >>;
+    using __with_eptr_completion_t = __eptr_completion_unless<
+      __values_nothrow_bool_convertible_t<_Sender, _Env...>::value
+      && __cmplsigs::__partition_completion_signatures_t<
+        __completion_signatures_of_t<_Sender, _Env...>
+      >::__nothrow_decay_copyable::__errors::value
+      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)
+    >;
 
     template <class...>
     using __delete_set_value_t = completion_signatures<>;
@@ -229,7 +224,7 @@ namespace exec {
       __completion_signatures_of_t<__decay_t<_Child> &, _Env...>,
       STDEXEC::transform_completion_signatures<
         __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
-        __with_eptr_completion<_Child, _Env...>,
+        __with_eptr_completion_t<_Child, _Env...>,
         __delete_set_value_t
       >,
       __mbind_front_q<__values_t, _Child>::template __f

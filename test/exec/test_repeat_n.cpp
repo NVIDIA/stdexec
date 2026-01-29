@@ -143,7 +143,7 @@ namespace {
   }
 
   TEST_CASE("repeat_n conditionally adds set_error_t(exception)", "[adaptors][repeat_n]") {
-    // 0. ensure exception isn't always added
+    SECTION("ensure exception isn't always added")
     {
       ex::sender auto snd = ex::just() | exec::repeat_n(1);
       static_assert(
@@ -154,6 +154,7 @@ namespace {
     // There are two main cases that will contribute set_error_t(std::exception_ptr)
     // 1. error's copy constructor could throw
     // 2. connect() could throw
+    SECTION("error completion is added when an error's copy ctor can throw")
     {
       // 1.
       struct Error_with_throw_copy {
@@ -168,6 +169,8 @@ namespace {
         >,
         "Missing added set_error_t(std::exception_ptr)");
     }
+
+    SECTION("error completion is added when connect can throw")
     {
       // 2.
       using Sender_connect_throws = just_with_env<ex::env<>>;

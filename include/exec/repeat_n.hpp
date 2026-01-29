@@ -37,10 +37,10 @@ namespace exec {
     template <class _Receiver>
     struct __opstate_base : __immovable {
       constexpr explicit __opstate_base(_Receiver &&__rcvr, std::size_t __count) noexcept
-        : __rcvr_{std::move(__rcvr)}
+        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
         , __count_{__count} {
         static_assert(
-          std::is_nothrow_default_constructible_v<trampoline_scheduler>,
+          __nothrow_constructible_from<trampoline_scheduler>,
           "trampoline_scheduler c'tor is always expected to be noexcept");
       }
 
@@ -104,7 +104,7 @@ namespace exec {
 
       constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
         noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
-        : __opstate_base<_Receiver>{std::move(__rcvr), __count}
+        : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
         , __child_(std::move(__child)) {
         if (this->__count_ != 0) {
           __connect();
@@ -127,11 +127,11 @@ namespace exec {
           __receiver_t{this});
       }
 
-      constexpr void __cleanup() noexcept override {
+      constexpr void __cleanup() noexcept final {
         __child_op_.reset();
       }
 
-      constexpr void __repeat() noexcept override {
+      constexpr void __repeat() noexcept final {
         STDEXEC_ASSERT(this->__count_ > 0);
         STDEXEC_TRY {
           if (--this->__count_ == 0) {
@@ -188,7 +188,7 @@ namespace exec {
       __completion_signatures_of_t<_Child &, _Env...>,
       STDEXEC::transform_completion_signatures<
         __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
-        __with_eptr_completion<_Child, _Env...>,
+        __with_eptr_completion_t<_Child, _Env...>,
         __cmplsigs::__default_set_value,
         __error_t
       >,
