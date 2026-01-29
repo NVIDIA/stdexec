@@ -353,8 +353,7 @@ namespace {
   }
 
   TEST_CASE("repeat_until conditionally adds set_error_t(exception)", "[adaptors][repeat_until]") {
-    // 0. ensure exception isn't always added
-    {
+    SECTION("ensure exception isn't always added"){
       ex::sender auto snd = ex::just(false) | exec::repeat_until();
       static_assert(
         std::same_as<ex::error_types_of_t<decltype(snd)>, ex::__detail::__not_a_variant>,
@@ -365,7 +364,7 @@ namespace {
     // 1. value's conversion to bool could throw
     // 2. error's copy constructor could throw
     // 3. connect() could throw
-    {
+    SECTION("error completion is added when an error's copy ctor can throw"){
       // 1.
       struct To_bool_can_throw {
         [[nodiscard]] operator bool() const noexcept(false) {
@@ -377,6 +376,8 @@ namespace {
         std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
         "Missing added set_error_t(std::exception_ptr)");
     }
+
+    SECTION("error completion is added when error->bool can throw")
     {
       // 2.
       struct Error_with_throw_copy {
@@ -391,6 +392,8 @@ namespace {
         >,
         "Missing added set_error_t(std::exception_ptr)");
     }
+
+    SECTION("error completion is added when connect can throw")
     {
       // 3.
       using Sender_connect_throws = just_with_env<ex::env<>, bool>;
