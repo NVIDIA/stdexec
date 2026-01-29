@@ -37,8 +37,11 @@ namespace exec {
     template <class _Receiver>
     struct __opstate_base : __immovable {
       constexpr explicit __opstate_base(_Receiver &&__rcvr, std::size_t __count) noexcept
-        : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
+        : __rcvr_{std::move(__rcvr)}
         , __count_{__count} {
+        static_assert(
+          std::is_nothrow_default_constructible_v<trampoline_scheduler>,
+          "trampoline_scheduler c'tor is always expected to be noexcept");
       }
 
       virtual constexpr void __cleanup() noexcept = 0;
@@ -46,7 +49,10 @@ namespace exec {
 
       _Receiver __rcvr_;
       std::size_t __count_;
-      trampoline_scheduler __sched_;
+      trampoline_scheduler __sched_{};
+
+    protected:
+      ~__opstate_base() noexcept = default;
     };
 
     template <class _ReceiverId>
@@ -95,12 +101,10 @@ namespace exec {
       using __bouncy_sndr_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
-      static constexpr bool __nothrow_connect =
-        STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>;
 
       constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
-        noexcept(__nothrow_connect)
-        : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
+        noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
+        : __opstate_base<_Receiver>{std::move(__rcvr), __count}
         , __child_(std::move(__child)) {
         if (this->__count_ != 0) {
           __connect();
@@ -115,18 +119,19 @@ namespace exec {
         }
       }
 
-      constexpr auto __connect() noexcept(__nothrow_connect) -> __child_op_t & {
+      constexpr __child_op_t &
+        __connect() noexcept(STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>) {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
           __receiver_t{this});
       }
 
-      constexpr void __cleanup() noexcept final {
+      constexpr void __cleanup() noexcept override {
         __child_op_.reset();
       }
 
-      constexpr void __repeat() noexcept final {
+      constexpr void __repeat() noexcept override {
         STDEXEC_ASSERT(this->__count_ > 0);
         STDEXEC_TRY {
           if (--this->__count_ == 0) {
@@ -137,7 +142,9 @@ namespace exec {
           }
         }
         STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
+          if constexpr (!noexcept(__connect())) {
+            STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
+          }
         }
       }
 
@@ -165,12 +172,24 @@ namespace exec {
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
+    template <class _Sender, class... _Env>
+    using __errors_nothrow_copyable = STDEXEC::__error_types_t<
+      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>, // sigs
+      STDEXEC::__q<STDEXEC::__nothrow_decay_copyable_t>        // variant
+    >;
+
+    template <class _Sender, class... _Env>
+    using __with_eptr_completion = STDEXEC::__eptr_completion_unless_t<STDEXEC::__mand<
+      __errors_nothrow_copyable<_Sender, _Env...>,
+      __mbool<STDEXEC::__nothrow_connectable<_Sender, STDEXEC::__receiver_archetype<_Env>>>...
+    >>;
+
     template <class _Child, class... _Env>
     using __completions_t = STDEXEC::transform_completion_signatures<
       __completion_signatures_of_t<_Child &, _Env...>,
       STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-        __eptr_completion,
+        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
+        __with_eptr_completion<_Child, _Env...>,
         __cmplsigs::__default_set_value,
         __error_t
       >,
