@@ -68,7 +68,7 @@ namespace execpools {
             STDEXEC::__forward_like<Sender>(fun)};
         } else {
           return STDEXEC::__not_a_sender<
-            STDEXEC::_WHAT_<>(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
+            STDEXEC::_WHAT_(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
             STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
             STDEXEC::_TO_FIX_THIS_ERROR_(

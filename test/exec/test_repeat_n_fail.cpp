@@ -22,6 +22,6 @@ namespace ex = STDEXEC;
 
 auto main() -> int {
   ex::sender auto snd = ex::just(42) | exec::repeat_n(10);
-  // build error: _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_
+  // build error: _THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_
   STDEXEC::sync_wait(std::move(snd));
 }

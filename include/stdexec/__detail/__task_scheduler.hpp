@@ -87,7 +87,7 @@ namespace STDEXEC {
       if constexpr (!__same_as<__sched_t, task_scheduler>) {
         return __not_a_sender<
           _WHERE_(_IN_ALGORITHM_, _BulkTag),
-          _WHAT_<>(
+          _WHAT_(
             _CANNOT_DISPATCH_BULK_ALGORITHM_TO_TASK_SCHEDULER_BECAUSE_THERE_IS_NO_TASK_SCHEDULER_IN_THE_ENVIRONMENT),
           _TO_FIX_THIS_ERROR_(
             _ADD_A_CONTINUES_ON_TRANSITION_TO_THE_TASK_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),

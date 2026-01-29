@@ -42,6 +42,8 @@ namespace STDEXEC {
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
   namespace __sync_wait {
+    struct sync_wait_t;
+
     struct __env {
       using __t = __env;
       using __id = __env;
@@ -66,7 +68,7 @@ namespace STDEXEC {
 
     // What should sync_wait(just_stopped()) return?
     template <class _CvSender, class _Continuation>
-    using __sync_wait_result_impl = __value_types_of_t<
+    using __result_t = __value_types_of_t<
       _CvSender,
       __env,
       __mtransform<__q<__decay_t>, _Continuation>,
@@ -74,11 +76,11 @@ namespace STDEXEC {
     >;
 
     template <class _CvSender>
-    using __sync_wait_result_t = __mtry_eval<__sync_wait_result_impl, _CvSender, __qq<std::tuple>>;
+    using __sync_wait_result_t = __result_t<_CvSender, __qq<std::tuple>>;
 
     template <class _CvSender>
     using __sync_wait_with_variant_result_t =
-      __mtry_eval<__sync_wait_result_impl, __result_of<into_variant, _CvSender>, __q<__midentity>>;
+      __result_t<__result_of<into_variant, _CvSender>, __q<__midentity>>;
 
     struct __state {
       std::exception_ptr __eptr_;
@@ -130,7 +132,7 @@ namespace STDEXEC {
     };
 
     template <class _CvSender>
-    using __receiver_t = __t<__sync_wait_result_impl<_CvSender, __q<__receiver>>>;
+    using __receiver_t = __t<__result_t<_CvSender, __q<__receiver>>>;
 
     // These are for hiding the metaprogramming in diagnostics
     template <class _CvSender>
@@ -154,32 +156,26 @@ namespace STDEXEC {
     template <class _CvSender>
     using __variant_for_t = __t<__variant_for<_CvSender>>;
 
-    inline constexpr __mstring __sync_wait_context_diag = "In STDEXEC::sync_wait()..."_mstr;
-    inline constexpr __mstring __too_many_successful_completions_diag =
-      "The argument to STDEXEC::sync_wait() is a sender that can complete successfully in more "
-      "than one way. Use STDEXEC::sync_wait_with_variant() instead."_mstr;
+    struct _SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_ { };
+    struct _USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_ { };
 
-    template <__mstring _Context, __mstring _Diagnostic>
-    struct _INVALID_ARGUMENT_TO_SYNC_WAIT_;
-
-    template <__mstring _Diagnostic>
-    using __invalid_argument_to_sync_wait =
-      _INVALID_ARGUMENT_TO_SYNC_WAIT_<__sync_wait_context_diag, _Diagnostic>;
-
-    template <__mstring _Diagnostic, class _CvSender, class _Env = __env>
-    using __sync_wait_error = __mexception<
-      __invalid_argument_to_sync_wait<_Diagnostic>,
+    template <class _Reason, class _CvSender, class _Env = __env>
+    using __sync_wait_error_t = __mexception<
+      _WHAT_(_INVALID_ARGUMENT_),
+      _WHERE_(_IN_ALGORITHM_, sync_wait_t),
+      _WHY_(_Reason),
       _WITH_PRETTY_SENDER_<_CvSender>,
-      _WITH_ENVIRONMENT_(_Env)
+      _WITH_ENVIRONMENT_(_Env),
+      _TO_FIX_THIS_ERROR_(_USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_)
     >;
 
     template <class _CvSender, class>
-    using __too_many_successful_completions_error =
-      __sync_wait_error<__too_many_successful_completions_diag, _CvSender>;
+    using __too_many_successful_completions_error_t =
+      __sync_wait_error_t<_SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_, _CvSender>;
 
     template <class _CvSender>
     concept __valid_sync_wait_argument = __ok<__minvoke<
-      __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error>>,
+      __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error_t>>,
       _CvSender,
       __env
     >>;

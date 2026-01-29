@@ -302,7 +302,7 @@ namespace exec {
             return __apply(_transform_bulk{*sched.pool_}, static_cast<Sender&&>(sndr));
           } else {
             return STDEXEC::__not_a_sender<
-              STDEXEC::_WHAT_<>(
+              STDEXEC::_WHAT_(
                 CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
               STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
               STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, tag_of_t<Sender>),
@@ -323,7 +323,7 @@ namespace exec {
             return __apply(_transform_iterate{*sched.pool_}, static_cast<Sender&&>(sndr));
           } else {
             return STDEXEC::__not_a_sender<
-              STDEXEC::_WHAT_<>(
+              STDEXEC::_WHAT_(
                 CANNOT_DISPATCH_THE_ITERATE_ALGORITHM_TO_THE_STATIC_THREAD_POOL_SCHEDULER),
               STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_STATIC_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
               STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, exec::iterate_t),

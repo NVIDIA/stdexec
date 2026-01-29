@@ -17,6 +17,7 @@
 
 #include "__concepts.hpp"
 #include "__config.hpp"
+#include "__meta.hpp"
 
 #include <initializer_list>
 
@@ -36,23 +37,6 @@ namespace STDEXEC {
     constexpr __ignore(_Ts&&...) noexcept {
     }
   };
-
-#if STDEXEC_MSVC()
-  // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-function-template-argument-sub/10437827
-
-  template <std::size_t>
-  struct __ignore_t {
-    __ignore_t() = default;
-
-    template <class... _Ts>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __ignore_t(_Ts&&...) noexcept {
-    }
-  };
-#else
-  template <std::size_t>
-  using __ignore_t = __ignore;
-#endif
 
   struct __none_such { };
 
@@ -84,6 +68,53 @@ namespace STDEXEC {
 
   template <class... _Fns>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __overload(_Fns...) -> __overload<_Fns...>;
+
+#if STDEXEC_EDG()
+  // nvc++ doesn't cache the results of alias template specializations.
+  // To avoid repeated computation of the same function return type,
+  // cache the result ourselves in a class template specialization.
+  template <class _Fun, class... _As>
+  using __call_result_ = decltype(__declval<_Fun>()(__declval<_As>()...));
+  template <class _Fun, class... _As>
+  using __call_result_t = __t<__mdefer<__q<__call_result_>, _Fun, _As...>>;
+#else
+  template <class _Fun, class... _As>
+  using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
+#endif
+
+  template <class _Fun, class _Default, class... _As>
+  using __call_result_or_t =
+    __mcall<__mtry_catch_q<__call_result_t, __mconst<_Default>>, _Fun, _As...>;
+
+// BUGBUG TODO file this bug with nvc++
+#if STDEXEC_EDG()
+  template <const auto &_Fun, class... _As>
+  using __result_of = __call_result_t<decltype(_Fun), _As...>;
+#else
+  template <const auto &_Fun, class... _As>
+  using __result_of = decltype(_Fun(__declval<_As>()...));
+#endif
+
+  template <const auto &_Fun, class... _As>
+  inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
+
+  // For emplacing non-movable types into optionals:
+  template <__nothrow_move_constructible _Fn>
+  struct __emplace_from {
+    _Fn __fn_;
+    using __t = __call_result_t<_Fn>;
+
+    constexpr operator __t() && noexcept(__nothrow_callable<_Fn>) {
+      return static_cast<_Fn &&>(__fn_)();
+    }
+
+    constexpr auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
+      return static_cast<_Fn &&>(__fn_)();
+    }
+  };
+
+  template <class _Fn>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __emplace_from(_Fn) -> __emplace_from<_Fn>;
 
   // Helper to make a type ill-formed if it is one of the given types
   template <class _Ty, class... _Us>
@@ -165,9 +196,6 @@ namespace STDEXEC {
   STDEXEC_PRAGMA_POP()
 
   template <class _Ty>
-  constexpr auto __decay_copy(_Ty) noexcept -> _Ty;
-
-  template <class _Ty>
   struct __indestructible {
     template <class... _Us>
     constexpr __indestructible(_Us&&... __us) noexcept(__nothrow_constructible_from<_Ty, _Us...>)
@@ -189,10 +217,13 @@ namespace STDEXEC {
       _Ty __value;
     };
   };
-} // namespace STDEXEC
+
+  template <class _Ty>
+  constexpr auto __decay_copy(_Ty) noexcept -> _Ty;
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 2021'10L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
 #else
 #  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : STDEXEC::__decay_copy(__VA_ARGS__))
 #endif
+} // namespace STDEXEC

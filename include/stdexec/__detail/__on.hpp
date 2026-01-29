@@ -34,20 +34,9 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.on]
   namespace __on {
-    inline constexpr __mstring __on_context = "In STDEXEC::on(Scheduler, Sender)..."_mstr;
-    inline constexpr __mstring __no_scheduler_diag =
-      "STDEXEC::on() requires a scheduler to transition back to."_mstr;
-    inline constexpr __mstring __no_scheduler_details =
-      "The provided environment lacks a value for the get_scheduler() query."_mstr;
-
-    template <
-      __mstring _Context = __on_context,
-      __mstring _Diagnostic = __no_scheduler_diag,
-      __mstring _Details = __no_scheduler_details
-    >
-    struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
-
     struct on_t;
+    struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
+    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_ { };
 
     template <class _Sender, class _Env>
     struct __no_scheduler_in_environment {
@@ -56,7 +45,9 @@ namespace STDEXEC {
       template <class>
       static consteval auto get_completion_signatures() {
         return STDEXEC::__throw_compile_time_error<
-          _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_<>,
+          _WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
+          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+          _WHERE_(_IN_ALGORITHM_, on_t),
           _WITH_PRETTY_SENDER_<_Sender>,
           _WITH_ENVIRONMENT_(_Env)
         >();

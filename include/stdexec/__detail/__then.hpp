@@ -24,14 +24,15 @@
 #include "__queries.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
+#include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    inline constexpr __mstring __then_context = "In STDEXEC::then(Sender, Function)..."_mstr;
-    using __on_not_callable = __callable_error<__then_context>;
+    struct then_t;
+    using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
     using __completions_t = transform_completion_signatures<

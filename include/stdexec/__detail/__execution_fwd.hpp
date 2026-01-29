@@ -19,6 +19,7 @@
 #include "__config.hpp" // IWYU pragma: export
 #include "__meta.hpp"
 #include "__type_traits.hpp"
+#include "__utility.hpp"
 
 // IWYU pragma: always_keep
 
@@ -54,7 +55,7 @@ namespace STDEXEC {
     __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
 
   template <class... _Ts>
-  using __decayed_std_tuple = __meval<std::tuple, __decay_t<_Ts>...>;
+  using __decayed_std_tuple = std::tuple<__decay_t<_Ts>...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct default_domain;

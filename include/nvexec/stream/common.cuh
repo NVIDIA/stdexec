@@ -38,8 +38,6 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
-  using STDEXEC::operator""_mstr;
-
   enum class stream_priority {
     high,
     normal,

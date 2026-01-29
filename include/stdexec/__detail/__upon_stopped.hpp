@@ -30,9 +30,8 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
-    inline constexpr __mstring __upon_stopped_context =
-      "In STDEXEC::upon_stopped(Sender, Function)..."_mstr;
-    using __on_not_callable = __callable_error<__upon_stopped_context>;
+    struct upon_stopped_t;
+    using __on_not_callable = __mbind_front_q<__callable_error_t, upon_stopped_t>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
     using __completion_signatures_t = transform_completion_signatures<

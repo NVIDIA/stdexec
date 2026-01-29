@@ -28,6 +28,9 @@
 
 #include <memory>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+
 namespace STDEXEC::__std {
 #if STDEXEC_HAS_CUDA_STD_ATOMIC()
 
@@ -223,3 +226,5 @@ namespace STDEXEC::__std {
 #endif // ^^^ __cpp_lib_atomic_shared_ptr < 2017'11L
 
 } // namespace STDEXEC::__std
+
+STDEXEC_PRAGMA_POP()
