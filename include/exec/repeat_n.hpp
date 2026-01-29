@@ -119,11 +119,10 @@ namespace exec {
         }
       }
 
-      constexpr auto __connect()
-        noexcept(
-          STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t> &&
-          STDEXEC::__nothrow_
-          ) -> __child_op_t & {
+      constexpr auto __connect() noexcept(
+        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler&>
+        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
+        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>) -> __child_op_t & {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
@@ -175,15 +174,15 @@ namespace exec {
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __errors_nothrow_copyable = STDEXEC::__error_types_t<
-      STDEXEC::__completion_signatures_of_t<_Sender, _Env...>, // sigs
-      STDEXEC::__q<STDEXEC::__nothrow_decay_copyable_t>        // variant
+    using __errors_nothrow_copyable = __error_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>, // sigs
+      __q<__nothrow_decay_copyable_t>                 // variant
     >;
 
     template <class _Sender, class... _Env>
-    using __with_eptr_completion = STDEXEC::__eptr_completion_unless_t<STDEXEC::__mand<
+    using __with_eptr_completion_t = __eptr_completion_unless_t<__mand<
       __errors_nothrow_copyable<_Sender, _Env...>,
-      __mbool<STDEXEC::__nothrow_connectable<_Sender, STDEXEC::__receiver_archetype<_Env>>>...
+      __mbool<__nothrow_connectable<_Sender, __receiver_archetype<_Env>>>...
     >>;
 
     template <class _Child, class... _Env>
