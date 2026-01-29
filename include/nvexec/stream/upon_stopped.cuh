@@ -134,7 +134,7 @@ namespace nvexec::_strm {
       using completion_signatures = transform_completion_signatures<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         __with_error_invoke_t<
-          __callable_error<"In nvexec::upon_stopped(Sender, Function)..."_mstr>,
+          __mbind_front_q<__callable_error_t, upon_stopped_t>,
           set_stopped_t,
           Fun,
           __copy_cvref_t<Self, Sender>,

@@ -265,7 +265,7 @@ namespace exec {
         return _child_completions_t{};
       } else if constexpr (!__decay_copyable_results_t::value) {
         return _ERROR_<
-          _WHAT_<>(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
+          _WHAT_(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
           _IN_ALGORITHM_(exec::fork_join_t)
         >();
       } else {

@@ -187,10 +187,16 @@ namespace STDEXEC {
                   && __nothrow_move_constructible<__decay_t<_Receiver>>
                   && __std::constructible_from<__decay_t<_Receiver>, _Receiver>;
 
+  struct _THE_RECEIVER_DOES_NOT_ACCEPT_ALL_OF_THE_SENDERS_COMPLETION_SIGNALS_ { };
+
   namespace __detail {
     template <class _Receiver, class _Tag, class... _Args>
-    constexpr auto __try_completion(_Tag (*)(_Args...))
-      -> __mexception<_MISSING_COMPLETION_SIGNAL_<_Tag(_Args...)>, _WITH_RECEIVER_(_Receiver)>;
+    constexpr auto __try_completion(_Tag (*)(_Args...)) -> __mexception<
+      _WHAT_(_CONCEPT_CHECK_FAILURE_),
+      _WHY_(_THE_RECEIVER_DOES_NOT_ACCEPT_ALL_OF_THE_SENDERS_COMPLETION_SIGNALS_),
+      _UNHANDLED_COMPLETION_SIGNAL_<_Tag(_Args...)>,
+      _WITH_RECEIVER_(_Receiver)
+    >;
 
     template <class _Receiver, class _Tag, class... _Args>
       requires __callable<_Tag, _Receiver, _Args...>

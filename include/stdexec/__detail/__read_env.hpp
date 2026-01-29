@@ -36,8 +36,7 @@
 
 namespace STDEXEC {
   namespace __read {
-    inline constexpr __mstring __query_failed_diag =
-      "The current execution environment doesn't have a value for the given query."_mstr;
+    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_;
 
     template <
       class _Receiver,
@@ -111,7 +110,8 @@ namespace STDEXEC {
           }
         } else {
           return STDEXEC::__throw_compile_time_error<
-            _NOT_CALLABLE_<"In STDEXEC::read_env()..."_mstr, __query_failed_diag>,
+            _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
+            _WHERE_(_IN_ALGORITHM_, read_env_t),
             _WITH_QUERY_(__query_t),
             _WITH_ENVIRONMENT_(_Env)
           >();

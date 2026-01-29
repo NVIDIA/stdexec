@@ -740,7 +740,7 @@ namespace exec {
         __transform_parallel_bulk_sender{__sched}, static_cast<_Sender&&>(__sndr));
     } else {
       return STDEXEC::__not_a_sender<
-        STDEXEC::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),
+        STDEXEC::_WHAT_(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER),
         STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_PARALLEL_SCHEDULER_IN_THE_ENVIRONMENT),
         STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<_Sender>),
         STDEXEC::_TO_FIX_THIS_ERROR_(

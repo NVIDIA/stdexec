@@ -16,7 +16,7 @@
 #pragma once
 
 #include "__detail/__config.hpp"
-#include "__detail/__meta.hpp"
+#include "__detail/__utility.hpp"
 
 #include "concepts.hpp" // IWYU pragma: keep
 

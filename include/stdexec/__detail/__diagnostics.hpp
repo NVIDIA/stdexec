@@ -26,11 +26,7 @@ namespace STDEXEC {
   struct sender_t;
   struct scheduler_t;
 
-  namespace __errs {
-    inline constexpr __mstring __unrecognized_sender_type_diagnostic =
-      "The given type cannot be used as a sender with the given environment "
-      "because the attempt to compute the completion signatures failed."_mstr;
-  } // namespace __errs
+  struct _WHAT_ { };
 
   struct _WHERE_ { };
 
@@ -38,7 +34,6 @@ namespace STDEXEC {
 
   struct _IN_ALGORITHM_ { };
 
-  template <__mstring _Diagnostic = __errs::__unrecognized_sender_type_diagnostic>
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
   template <class _Sender>
@@ -61,7 +56,7 @@ namespace STDEXEC {
   struct _WITH_RECEIVER_ { };
 
   template <class _Sig>
-  struct _MISSING_COMPLETION_SIGNAL_;
+  struct _UNHANDLED_COMPLETION_SIGNAL_;
 
   template <class _Sig>
   struct _WITH_COMPLETION_SIGNATURE_;
@@ -84,29 +79,38 @@ namespace STDEXEC {
 
   struct _INVALID_ARGUMENT_ { };
 
-  inline constexpr __mstring __not_callable_diag =
-    "The specified function is not callable with the arguments provided."_mstr;
+  struct _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_ { };
 
-  template <__mstring _Context, __mstring _Diagnostic = __not_callable_diag>
-  struct _NOT_CALLABLE_;
+  struct _CANNOT_PIPE_ONE_SENDER_INTO_ANOTHER_ { };
 
-  template <auto _Reason = "You cannot pipe one sender into another."_mstr>
-  struct _CANNOT_PIPE_INTO_A_SENDER_ { };
+  struct _DOMAIN_ERROR_ { };
+
+  struct _INVALID_EXPRESSION_ { };
+
+  struct _CONCEPT_CHECK_FAILURE_ { };
 
   template <class _Sender>
-  using __bad_pipe_sink_t =
-    __mexception<_CANNOT_PIPE_INTO_A_SENDER_<>, _WITH_PRETTY_SENDER_<_Sender>>;
+  using __bad_pipe_sink_t = __mexception<
+    _WHAT_(_INVALID_EXPRESSION_),
+    _WHY_(_CANNOT_PIPE_ONE_SENDER_INTO_ANOTHER_),
+    _WITH_PRETTY_SENDER_<_Sender>
+  >;
 
-  template <__mstring _Context>
-  struct __callable_error {
-    template <class _Fun, class... _Args>
-    using __f =
-      __mexception<_NOT_CALLABLE_<_Context>, _WITH_FUNCTION_(_Fun), _WITH_ARGUMENTS_(_Args...)>;
-  };
+  template <class _Tag, class _Fun, class... _Args>
+  using __callable_error_t = __mexception<
+    _WHAT_(_INVALID_EXPRESSION_),
+    _WHY_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+    _WHERE_(_IN_ALGORITHM_, _Tag),
+    _WITH_FUNCTION_(_Fun),
+    _WITH_ARGUMENTS_(_Args...)
+  >;
+
+  struct _UNABLE_TO_COMPUTE_THE_SENDER_COMPLETION_SIGNATURES_ { };
 
   template <class _Sender, class... _Env>
   using __unrecognized_sender_error_t = __mexception<
-    _UNRECOGNIZED_SENDER_TYPE_<>,
+    _WHAT_(_UNRECOGNIZED_SENDER_TYPE_),
+    _WHY_(_UNABLE_TO_COMPUTE_THE_SENDER_COMPLETION_SIGNATURES_),
     _WITH_PRETTY_SENDER_<_Sender>,
     _WITH_ENVIRONMENT_(_Env)...
   >;

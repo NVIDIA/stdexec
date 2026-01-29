@@ -21,7 +21,6 @@
 #include "../../stdexec/execution.hpp"
 #include <concepts>
 #include <cstddef>
-#include <exception>
 
 #include <cuda/std/utility>
 
@@ -33,6 +32,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec {
   namespace _strm {
+    struct launch_t;
+
     struct launch_params {
       std::size_t grid_size = 1;
       std::size_t block_size = 1;
@@ -97,8 +98,7 @@ namespace nvexec {
       };
 
       template <class Fun, class... As>
-      using launch_error_t =
-        __minvoke<__callable_error<"In nvexec::launch()..."_mstr>, Fun, cudaStream_t, As&...>;
+      using launch_error_t = __callable_error_t<launch_t, Fun, cudaStream_t, As&...>;
 
       template <class Fun, class... As>
       using _set_value_t = __minvoke<

@@ -124,7 +124,7 @@ namespace exec {
             __libdispatch_bulk::transform_bulk{*sched.queue_}, std::forward<Sender>(sndr));
         } else {
           return STDEXEC::__not_a_sender<
-            STDEXEC::_WHAT_<>(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER),
+            STDEXEC::_WHAT_(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER),
             STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_LIBDISPATCH_SCHEDULER_IN_THE_ENVIRONMENT),
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::bulk_t),
             STDEXEC::_TO_FIX_THIS_ERROR_(

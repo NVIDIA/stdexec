@@ -46,7 +46,7 @@ namespace exec {
 
     template <class... Ts>
     using _error_t = STDEXEC::_ERROR_<
-      STDEXEC::_WHAT_<>(_diag_t),
+      STDEXEC::_WHAT_(_diag_t),
       STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, JustTag),
       STDEXEC::_WITH_COMPLETION_SIGNATURE_<_set_tag_t(Ts...)>
     >;

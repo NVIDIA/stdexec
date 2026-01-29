@@ -19,19 +19,19 @@
 
 namespace exec {
   namespace __resched {
-
     using namespace STDEXEC;
 
-    template <
-      __mstring _Where = "In reschedule() ..."_mstr,
-      __mstring _What =
-        "The execution environment does not have a current scheduler on which to reschedule."_mstr
-    >
-    struct _INVALID_RESCHEDULE_NO_SCHEDULER_ { };
+    struct reschedule_t;
+    struct _CANNOT_RESCHEDULE_ { };
+    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_ { };
 
     template <class _Env>
-    using __no_scheduler_error =
-      __mexception<_INVALID_RESCHEDULE_NO_SCHEDULER_<>, _WITH_ENVIRONMENT_(_Env)>;
+    using __no_scheduler_error = __mexception<
+      _WHAT_(_CANNOT_RESCHEDULE_),
+      _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+      _WHERE_(_IN_ALGORITHM_, reschedule_t),
+      _WITH_ENVIRONMENT_(_Env)
+    >;
 
     template <class _Env>
     using __schedule_sender_t = schedule_result_t<__call_result_t<get_scheduler_t, _Env>>;
@@ -75,7 +75,7 @@ namespace exec {
       constexpr auto operator==(const __scheduler&) const noexcept -> bool = default;
     };
 
-    struct __reschedule_t {
+    struct reschedule_t {
       template <sender _Sender>
       constexpr auto operator()(_Sender&& __sndr) const {
         return STDEXEC::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
@@ -87,5 +87,5 @@ namespace exec {
     };
   } // namespace __resched
 
-  inline constexpr auto reschedule = __resched::__reschedule_t{};
+  inline constexpr auto reschedule = __resched::reschedule_t{};
 } // namespace exec
