@@ -51,7 +51,7 @@ namespace exec {
       std::size_t __count_;
       trampoline_scheduler __sched_{};
 
-    protected:
+     protected:
       ~__opstate_base() noexcept = default;
     };
 
@@ -119,8 +119,11 @@ namespace exec {
         }
       }
 
-      constexpr __child_op_t &
-        __connect() noexcept(STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>) {
+      constexpr auto __connect()
+        noexcept(
+          STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t> &&
+          STDEXEC::__nothrow_
+          ) -> __child_op_t & {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
@@ -206,12 +209,12 @@ namespace exec {
       static constexpr auto connect = //
         []<class _Receiver, class _Sender>(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(
           noexcept(__opstate(0, STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>()))) {
-        const std::size_t __count = STDEXEC::__get<1>(__sndr);
-        return __opstate(
-          __count,
-          STDEXEC::__get<2>(static_cast<_Sender &&>(__sndr)),
-          static_cast<_Receiver &&>(__rcvr));
-      };
+          const std::size_t __count = STDEXEC::__get<1>(__sndr);
+          return __opstate(
+            __count,
+            STDEXEC::__get<2>(static_cast<_Sender &&>(__sndr)),
+            static_cast<_Receiver &&>(__rcvr));
+        };
     };
 
     struct repeat_n_t {

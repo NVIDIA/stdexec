@@ -49,7 +49,7 @@ namespace exec {
       _Receiver __rcvr_;
       trampoline_scheduler __sched_{};
 
-    protected:
+     protected:
       ~__opstate_base() noexcept = default;
     };
 
@@ -135,8 +135,8 @@ namespace exec {
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
-      constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(
-        __nothrow_move_constructible<_Child> && noexcept(__connect()))
+      constexpr explicit __opstate(_Child __child, _Receiver __rcvr)
+        noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
         : __opstate_base<_Receiver>(std::move(__rcvr))
         , __child_(std::move(__child)) {
         __connect();
@@ -146,7 +146,8 @@ namespace exec {
         STDEXEC::start(*__child_op_);
       }
 
-      constexpr __child_op_t& __connect() noexcept(STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>)  {
+      constexpr auto __connect()
+        noexcept(STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>) -> __child_op_t & {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
