@@ -119,8 +119,7 @@ namespace STDEXEC {
 
     template <>
     struct __bulk_traits<bulk_t> {
-      using __on_not_callable =
-        __callable_error<"In STDEXEC::bulk(Sender, Policy, Shape, Function)..."_mstr>;
+      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_t>;
 
       // Curried function, after passing the required indices.
       template <class _Fun, class _Shape>
@@ -130,8 +129,7 @@ namespace STDEXEC {
 
     template <>
     struct __bulk_traits<bulk_chunked_t> {
-      using __on_not_callable =
-        __callable_error<"In STDEXEC::bulk_chunked(Sender, Policy, Shape, Function)..."_mstr>;
+      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_chunked_t>;
 
       // Curried function, after passing the required indices.
       template <class _Fun, class _Shape>
@@ -145,8 +143,7 @@ namespace STDEXEC {
 
     template <>
     struct __bulk_traits<bulk_unchunked_t> {
-      using __on_not_callable =
-        __callable_error<"In STDEXEC::bulk_unchunked(Sender, Policy, Shape, Function)..."_mstr>;
+      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_unchunked_t>;
 
       // Curried function, after passing the required indices.
       template <class _Fun, class _Shape>

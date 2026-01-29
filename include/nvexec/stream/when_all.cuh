@@ -69,7 +69,7 @@ namespace nvexec::_strm {
       }
 
       using InvalidArg = __m_at_c<position_of(), Senders...>;
-      using __t = STDEXEC::__when_all::__too_many_value_completions_error<InvalidArg, Env...>;
+      using __t = STDEXEC::__when_all::__too_many_value_completions_error_t<InvalidArg, Env...>;
     };
 
     template <class... As, class TupleT>

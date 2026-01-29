@@ -30,9 +30,8 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
-    inline constexpr __mstring __upon_stopped_context =
-      "In STDEXEC::upon_stopped(Sender, Function)..."_mstr;
-    using __on_not_callable = __callable_error<__upon_stopped_context>;
+    struct upon_stopped_t;
+    using __on_not_callable = __mbind_front_q<__callable_error_t, upon_stopped_t>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
     using __completion_signatures_t = transform_completion_signatures<
@@ -40,7 +39,7 @@ namespace STDEXEC {
       __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvrefSender, _Env...>,
       __cmplsigs::__default_set_value,
       __cmplsigs::__default_set_error,
-      __set_value_invoke_t<_Fun>
+      __set_value_from_t<_Fun>
     >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +74,7 @@ namespace STDEXEC {
                                          _Tag,
                                          _Args&&... __args) noexcept -> void {
         if constexpr (__same_as<_Tag, set_stopped_t>) {
-          STDEXEC::__set_value_invoke(
+          STDEXEC::__set_value_from(
             static_cast<_State&&>(__state).__rcvr_,
             static_cast<_State&&>(__state).__data_,
             static_cast<_Args&&>(__args)...);

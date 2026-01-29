@@ -23,15 +23,14 @@ namespace exec {
   namespace __into_tuple {
     using namespace STDEXEC;
 
-    template <
-      __mstring _Where = "In into_tuple: "_mstr,
-      __mstring _What = "The input sender must have at exactly one possible value completion"_mstr
-    >
-    struct _INVALID_ARGUMENT_TO_INTO_TUPLE_ { };
+    struct into_tuple_t;
+    struct _THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION_ { };
 
     template <class _Sender, class _Env>
     using __too_many_completions_error = __mexception<
-      _INVALID_ARGUMENT_TO_INTO_TUPLE_<>,
+      _WHAT_(_INVALID_ARGUMENT_),
+      _WHY_(_THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION_),
+      _WHERE_(_IN_ALGORITHM_, into_tuple_t),
       _WITH_PRETTY_SENDER_<_Sender>,
       _WITH_ENVIRONMENT_(_Env)
     >;

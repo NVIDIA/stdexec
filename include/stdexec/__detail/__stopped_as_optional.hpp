@@ -82,8 +82,8 @@ namespace STDEXEC {
             >();
           } else {
             return STDEXEC::__throw_compile_time_error<
-              _WHAT_<>(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
-              _IN_ALGORITHM_(stopped_as_optional_t),
+              _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
+              _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
               _WITH_PRETTY_SENDER_<__child_of<_Self>>
             >();
           }

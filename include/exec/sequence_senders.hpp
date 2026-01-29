@@ -226,15 +226,9 @@ namespace exec {
     struct __item_types { };
   } // namespace __debug
 
-  namespace __errs {
-    using namespace STDEXEC;
-    inline constexpr __mstring __unrecognized_sequence_type_diagnostic =
-      "The given type cannot be used as a sequence with the given environment "
-      "because the attempt to compute the item types failed."_mstr;
-  } // namespace __errs
-
-  template <STDEXEC::__mstring _Diagnostic = __errs::__unrecognized_sequence_type_diagnostic>
   struct _UNRECOGNIZED_SEQUENCE_TYPE_;
+
+  struct _FAILED_TO_COMPUTE_SEQUENCE_ITEM_TYPES_ { };
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 
@@ -268,7 +262,8 @@ namespace exec {
 
   template <class _Sequence, class... _Env>
   using __unrecognized_sequence_error_t = STDEXEC::__mexception<
-    _UNRECOGNIZED_SEQUENCE_TYPE_<>,
+    STDEXEC::_WHAT_(_UNRECOGNIZED_SEQUENCE_TYPE_),
+    STDEXEC::_WHY_(_FAILED_TO_COMPUTE_SEQUENCE_ITEM_TYPES_),
     _WITH_PRETTY_SEQUENCE_<_Sequence>,
     STDEXEC::_WITH_ENVIRONMENT_(_Env)...
   >;
@@ -301,6 +296,7 @@ namespace exec {
 
     template <class _Sequence, class... _Env>
     concept __with_member_alias = __mvalid<__member_alias_t, _Sequence, _Env...>;
+
     template <class _Sequence, class... _Env>
     concept __with_consteval_static_member =
       __mvalid<__consteval_static_member_result_t, _Sequence, _Env...>;
@@ -393,12 +389,12 @@ namespace exec {
   concept sequence_sender = STDEXEC::sender_in<_Sequence, _Env...>
                          && enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>;
 
-  template <class _Item>
   struct _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_ { };
 
   template <class _Sequence, class _Item>
   constexpr auto __check_item(_Item*) -> STDEXEC::__mexception<
-    _SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_<_Item>,
+    STDEXEC::_WHAT_(_SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_),
+    STDEXEC::_WITH_PRETTY_SENDER_<_Item>,
     _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
@@ -410,13 +406,17 @@ namespace exec {
     requires STDEXEC::__merror<_Items>
   auto __check_items(_Items*) -> _Items;
 
-  template <class _Item>
   struct _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_ { };
+
+  template <template <class...> class _Class>
+  struct _EXPECTED_A_SPECIALIZATION_OF_ { };
 
   template <class _Sequence, class _Items>
     requires(!STDEXEC::__merror<_Items>)
   auto __check_items(_Items*) -> STDEXEC::__mexception<
-    _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_<_Items>,
+    STDEXEC::_WHAT_(_SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_),
+    STDEXEC::_WHY_(_EXPECTED_A_SPECIALIZATION_OF_<item_types>),
+    STDEXEC::_WITH_TYPE_<_Items>,
     _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
@@ -435,12 +435,14 @@ namespace exec {
     requires STDEXEC::__merror<_Sequence>
   auto __check_sequence(_Sequence*) -> _Sequence;
 
-  struct _SEQUENCE_GET_ITEM_TYPES_IS_NOT_WELL_FORMED_ { };
+  struct _ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_ { };
+  struct _THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_ { };
 
   template <class _Sequence>
     requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__mvalid<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> STDEXEC::__mexception<
-    _SEQUENCE_GET_ITEM_TYPES_IS_NOT_WELL_FORMED_,
+    STDEXEC::_WHAT_(_ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_),
+    STDEXEC::_WHY_(_THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_),
     _WITH_PRETTY_SEQUENCE_<_Sequence>
   >;
 
@@ -525,12 +527,12 @@ namespace exec {
     _Data __data_{};
   };
 
-  template <class _Item>
   struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_ { };
 
   template <class _Receiver, class _Item>
   constexpr auto __try_item(_Item*) -> STDEXEC::__mexception<
-    _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_<_Item>,
+    STDEXEC::_WHAT_(_MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_),
+    STDEXEC::_WITH_PRETTY_SENDER_<_Item>,
     STDEXEC::_WITH_RECEIVER_(_Receiver)
   >;
 

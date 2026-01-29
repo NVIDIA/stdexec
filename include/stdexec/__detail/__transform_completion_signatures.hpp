@@ -440,12 +440,10 @@ namespace STDEXEC {
         return __msuccess();
       } else {
         return STDEXEC::__throw_compile_time_error<
-          _IN_ALGORITHM_(_AlgoTag)...,
-          _NOT_CALLABLE_<
-            "The given transform meta-function is not callable with the argument type"_mstr
-          >,
-          _WITH_ARGUMENTS_(_Arg),
-          _WITH_METAFUNCTION_(_Fn)
+          _WHERE_(_IN_ALGORITHM_, _AlgoTag)...,
+          _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_,
+          _WITH_METAFUNCTION_(_Fn),
+          _WITH_ARGUMENTS_(_Arg)
         >();
       }
     }
@@ -471,7 +469,7 @@ namespace STDEXEC {
         return __msuccess();
       } else {
         return STDEXEC::__throw_compile_time_error<
-          _IN_ALGORITHM_(_AlgoTag)...,
+          _WHERE_(_IN_ALGORITHM_, _AlgoTag)...,
           _TYPE_IS_NOT_DECAY_COPYABLE_,
           _WITH_TYPE_<_Arg>
         >();
@@ -547,7 +545,7 @@ namespace STDEXEC {
 
   template <class _Fun, class... _Args>
     requires __invocable<_Fun, _Args...>
-  using __set_value_invoke_t = completion_signatures<
+  using __set_value_from_t = completion_signatures<
     __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>
   >;
 

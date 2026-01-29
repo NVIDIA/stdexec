@@ -36,8 +36,7 @@
 
 namespace STDEXEC {
   namespace __read {
-    inline constexpr __mstring __query_failed_diag =
-      "The current execution environment doesn't have a value for the given query."_mstr;
+    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_;
 
     template <
       class _Receiver,
@@ -51,7 +50,7 @@ namespace STDEXEC {
           auto& __result = __result_.__emplace_from(_Query(), STDEXEC::get_env(__rcvr_));
           return static_cast<_Ty&&>(__result);
         };
-        STDEXEC::__set_value_invoke(static_cast<_Receiver&&>(__rcvr_), __query_fn);
+        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_), __query_fn);
       }
 
       _Receiver __rcvr_;
@@ -63,7 +62,7 @@ namespace STDEXEC {
     struct __opstate<_Receiver, _Query, _Ty> {
       constexpr void start() noexcept {
         // The query returns a reference type; pass it straight through to the receiver.
-        STDEXEC::__set_value_invoke(
+        STDEXEC::__set_value_from(
           static_cast<_Receiver&&>(__rcvr_), _Query(), STDEXEC::get_env(__rcvr_));
       }
 
@@ -111,7 +110,8 @@ namespace STDEXEC {
           }
         } else {
           return STDEXEC::__throw_compile_time_error<
-            _NOT_CALLABLE_<"In STDEXEC::read_env()..."_mstr, __query_failed_diag>,
+            _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
+            _WHERE_(_IN_ALGORITHM_, read_env_t),
             _WITH_QUERY_(__query_t),
             _WITH_ENVIRONMENT_(_Env)
           >();
@@ -130,7 +130,7 @@ namespace STDEXEC {
       {
         static_assert(sender_expr_for<_Sender, read_env_t>);
         using __query_t = __data_of<_Sender>;
-        STDEXEC::__set_value_invoke(
+        STDEXEC::__set_value_from(
           static_cast<_Receiver&&>(__rcvr), __query_t(), STDEXEC::get_env(__rcvr));
       };
     };

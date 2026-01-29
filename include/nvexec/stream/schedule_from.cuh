@@ -192,7 +192,7 @@ namespace nvexec {
           return _sender_t{stream_sched.context_state_, static_cast<Sender&&>(sndr)};
         } else {
           return STDEXEC::__not_a_sender<
-            STDEXEC::_WHAT_<>(
+            STDEXEC::_WHAT_(
               CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
             STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::schedule_from_t),

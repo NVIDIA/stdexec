@@ -39,6 +39,7 @@
 namespace exec {
   namespace __merge_each {
     using namespace STDEXEC;
+    struct merge_each_t;
 
     struct __env_with_inplace_stop_token_t {
       auto operator()(inplace_stop_token& __stop_token) const noexcept {
@@ -148,8 +149,6 @@ namespace exec {
 
     template <class _ErrorStorage>
     struct __operation_base_interface {
-      ~__operation_base_interface() {
-      }
       virtual void nested_value_started() noexcept = 0;
       virtual void nested_value_complete() noexcept = 0;
       virtual bool nested_value_fail() noexcept = 0;
@@ -758,7 +757,7 @@ namespace exec {
     template <class _OperationBase>
     using __receive_nested_values_t = __minvoke<__mtry_q<__receive_nested_values>, _OperationBase>;
 
-    struct _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_ { };
+    struct _MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_ { };
 
     template <class _Sequence, class _Sender, class... _Env>
     struct __value_completions_error {
@@ -767,7 +766,9 @@ namespace exec {
         sizeof...(_Env) == 0 && sizeof...(_Args) == 1 && (dependent_sender<_Args> && ...),
         STDEXEC::__mexception<dependent_sender_error, _WITH_PRETTY_SENDER_<_Args>...>,
         STDEXEC::__mexception<
-          _INVALID_ARGUMENT_TO_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_,
+          _WHAT_(_INVALID_ARGUMENT_),
+          _WHERE_(_IN_ALGORITHM_, merge_each_t),
+          _WHY_(_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_),
           _WITH_PRETTY_SEQUENCE_<_Sequence>,
           _WITH_PRETTY_SENDER_<_Sender>,
           __fn_t<_WITH_ENVIRONMENT_, _Env>...,
@@ -1155,7 +1156,7 @@ namespace exec {
       using _Receiver = STDEXEC::__t<_ReceiverId>;
       using __error_storage_t = _ErrorStorage;
       using __base_t = __operation_base<_Receiver, __error_storage_t>;
-      struct __t : __base_t {
+      struct __t final : __base_t {
         using __id = __operation;
 
         using __nested_seq_op_t = __compute::__nested_sequence_ops_variant<_Sequence, _Receiver>;

@@ -155,7 +155,7 @@ namespace exec {
     };
 
     struct repeat_n_t;
-    struct _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_;
+    struct _THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_;
 
     template <class _Child, class... _Args>
     using __values_t =
@@ -164,8 +164,9 @@ namespace exec {
         (sizeof...(_Args) == 0),
         completion_signatures<>,
         __mexception<
-          _REPEAT_N_EXPECTS_A_SENDER_OF_VOID_,
+          _WHAT_(_INVALID_ARGUMENT_),
           _WHERE_(_IN_ALGORITHM_, repeat_n_t),
+          _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
           _WITH_PRETTY_SENDER_<_Child>
         >
       >;

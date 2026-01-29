@@ -16,7 +16,6 @@
 #pragma once
 
 #include "__detail/__config.hpp"
-#include "__detail/__meta.hpp"
 #include "__detail/__utility.hpp"
 
 #include "concepts.hpp" // IWYU pragma: keep
@@ -65,18 +64,44 @@ namespace STDEXEC {
     inline constexpr bool __is_refwrap = false;
     template <class _Up>
     inline constexpr bool __is_refwrap<std::reference_wrapper<_Up>> = true;
+    template <class _Up>
+    inline constexpr bool __is_refwrap<const std::reference_wrapper<_Up>> = true;
 
-    struct __funobj {
-      template <class _Fun, class... _Args>
+    template <bool, bool, bool>
+    struct __invoke_fn;
+
+    template <>
+    struct __invoke_fn<false, true, false> {
+      template <class _MbrPtr, class _Ty>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Fun&& __fun, _Args&&... __args) const
-        noexcept(noexcept((static_cast<_Fun&&>(__fun))(static_cast<_Args&&>(__args)...)))
-          -> decltype((static_cast<_Fun&&>(__fun))(static_cast<_Args&&>(__args)...)) {
-        return static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
+      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty&& __ty) const noexcept
+        -> decltype(((static_cast<_Ty&&>(__ty)).*__mem_ptr)) {
+        return ((static_cast<_Ty&&>(__ty)).*__mem_ptr);
       }
     };
 
-    struct __memfn {
+    template <>
+    struct __invoke_fn<false, false, true> {
+      template <class _MbrPtr, class _Ty>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty __ty) const noexcept
+        -> decltype((__ty.get().*__mem_ptr)) {
+        return (__ty.get().*__mem_ptr);
+      }
+    };
+
+    template <>
+    struct __invoke_fn<false, false, false> {
+      template <class _MbrPtr, class _Ty>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty&& __ty) const noexcept
+        -> decltype(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)) {
+        return ((*static_cast<_Ty&&>(__ty)).*__mem_ptr);
+      }
+    };
+
+    template <>
+    struct __invoke_fn<true, true, false> {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       constexpr auto operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const
@@ -86,7 +111,8 @@ namespace STDEXEC {
       }
     };
 
-    struct __memfn_refwrap {
+    template <>
+    struct __invoke_fn<true, false, true> {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       constexpr auto operator()(_Memptr __mem_ptr, _Ty __ty, _Args&&... __args) const
@@ -96,7 +122,8 @@ namespace STDEXEC {
       }
     };
 
-    struct __memfn_smartptr {
+    template <>
+    struct __invoke_fn<true, false, false> {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
       constexpr auto operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const noexcept(
@@ -106,78 +133,36 @@ namespace STDEXEC {
       }
     };
 
-    struct __memobj {
-      template <class _Mbr, class _Class, class _Ty>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Mbr _Class::* __mem_ptr, _Ty&& __ty) const noexcept
-        -> decltype(((static_cast<_Ty&&>(__ty)).*__mem_ptr)) {
-        return ((static_cast<_Ty&&>(__ty)).*__mem_ptr);
-      }
-    };
-
-    struct __memobj_refwrap {
-      template <class _Mbr, class _Class, class _Ty>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Mbr _Class::* __mem_ptr, _Ty __ty) const noexcept
-        -> decltype((__ty.get().*__mem_ptr)) {
-        return (__ty.get().*__mem_ptr);
-      }
-    };
-
-    struct __memobj_smartptr {
-      template <class _Mbr, class _Class, class _Ty>
-      STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Mbr _Class::* __mem_ptr, _Ty&& __ty) const noexcept
-        -> decltype(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)) {
-        return ((*static_cast<_Ty&&>(__ty)).*__mem_ptr);
-      }
-    };
-
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
-    constexpr auto __invoke_selector(__ignore, __ignore) noexcept -> __funobj {
-      return {};
-    }
-
     template <class _Mbr, class _Class, class _Ty>
-    STDEXEC_ATTRIBUTE(always_inline, host, device)
-    constexpr auto __invoke_selector(_Mbr _Class::*, const _Ty&) noexcept {
-      if constexpr (STDEXEC_IS_FUNCTION(_Mbr)) {
-        // member function ptr case
-        if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
-          return __memfn{};
-        } else if constexpr (__is_refwrap<_Ty>) {
-          return __memfn_refwrap{};
-        } else {
-          return __memfn_smartptr{};
-        }
-      } else {
-        // member object ptr case
-        if constexpr (STDEXEC_IS_BASE_OF(_Class, _Ty)) {
-          return __memobj{};
-        } else if constexpr (__is_refwrap<_Ty>) {
-          return __memobj_refwrap{};
-        } else {
-          return __memobj_smartptr{};
-        }
-      }
-    }
+    using __invoke_fn_t = __invoke_fn<
+      STDEXEC_IS_FUNCTION(_Mbr),
+      STDEXEC_IS_BASE_OF(_Class, STDEXEC_REMOVE_REFERENCE(_Ty)),
+      __is_refwrap<STDEXEC_REMOVE_REFERENCE(_Ty)>
+    >;
 
     struct __invoke_t {
-      template <class _Fun>
+      template <class _Fun, class... _Args>
+        requires __callable<_Fun, _Args...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Fun&& __fun) const noexcept(noexcept(static_cast<_Fun&&>(__fun)()))
-        -> decltype(static_cast<_Fun&&>(__fun)()) {
-        return static_cast<_Fun&&>(__fun)();
+      constexpr auto operator()(_Fun&& __fun, _Args&&... __args) const
+        noexcept(__nothrow_callable<_Fun, _Args...>) -> __call_result_t<_Fun, _Args...> {
+        return static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
       }
 
-      template <class _Fun, class _Ty, class... _Args>
+      template <class _Mbr, class _Class, class _Ty, class... _Args>
+        requires __callable<__invoke_fn_t<_Mbr, _Class, _Ty>, _Mbr _Class::*, _Ty, _Args...>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr auto operator()(_Fun&& __fun, _Ty&& __ty, _Args&&... __args) const //
-        STDEXEC_AUTO_RETURN(
-          __invoke_::__invoke_selector(__fun, __ty)(
-            static_cast<_Fun&&>(__fun),
-            static_cast<_Ty&&>(__ty),
-            static_cast<_Args&&>(__args)...))
+      constexpr auto operator()(_Mbr _Class::* __fun, _Ty&& __ty, _Args&&... __args) const noexcept(
+        __nothrow_callable<__invoke_fn_t<_Mbr, _Class, _Ty>, _Mbr _Class::*, _Ty, _Args...>)
+        -> __call_result_t<
+          __mmangle_t<__invoke_fn_t, _Mbr, _Class, _Ty>, // to avoid GCC builtin mangling issues
+          _Mbr _Class::*,
+          _Ty,
+          _Args...
+        > {
+        return __invoke_fn_t<_Mbr, _Class, _Ty>()(
+          __fun, static_cast<_Ty&&>(__ty), static_cast<_Args&&>(__args)...);
+      }
     };
   } // namespace __invoke_
 

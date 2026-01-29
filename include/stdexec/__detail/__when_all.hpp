@@ -45,6 +45,8 @@ namespace STDEXEC {
   // [execution.senders.adaptors.when_all]
   // [execution.senders.adaptors.when_all_with_variant]
   namespace __when_all {
+    struct when_all_t;
+
     enum __state_t {
       __started,
       __error,
@@ -66,48 +68,40 @@ namespace STDEXEC {
       sender_in<_Sender, _Env>
       && __mvalid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
-    template <
-      __mstring _Context = "In STDEXEC::when_all()..."_mstr,
-      __mstring _Diagnostic =
-        "The given sender can complete successfully in more that one way. "
-        "Use STDEXEC::when_all_with_variant() instead."_mstr
-    >
-    struct _INVALID_WHEN_ALL_ARGUMENT_;
+    struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_ { };
+    struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_ { };
 
     template <class _Sender, class... _Env>
-    using __too_many_value_completions_error = __mexception<
-      _INVALID_WHEN_ALL_ARGUMENT_<>,
+    using __too_many_value_completions_error_t = __mexception<
+      _WHAT_(_INVALID_ARGUMENT_),
+      _WHERE_(_IN_ALGORITHM_, when_all_t),
+      _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+      _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_),
       _WITH_PRETTY_SENDER_<_Sender>,
       __fn_t<_WITH_ENVIRONMENT_, _Env>...
     >;
-
-    template <class... _Args>
-    using __all_nothrow_decay_copyable = __mbool<(__nothrow_decay_copyable<_Args> && ...)>;
 
     template <class _Error>
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results = __for_each_completion_signature_t<
-      __completion_signatures_of_t<_Sender, _Env...>,
-      __all_nothrow_decay_copyable,
-      __mand_t
-    >;
+    using __nothrow_decay_copyable_results_t = __cmplsigs::__partitions_of_t<
+      __completion_signatures_of_t<_Sender, _Env...>
+    >::__nothrow_decay_copyable::__all;
 
     template <class... _Env>
-    struct __completions_t {
+    struct __completions {
       // TODO(ericniebler): check that all senders have a common completion domain
-
       template <class... _Senders>
-      using __all_nothrow_decay_copyable_results =
-        __mand<__nothrow_decay_copyable_results<_Senders, _Env...>...>;
+      using __all_nothrow_decay_copyable_results_t =
+        __mand<__nothrow_decay_copyable_results_t<_Senders, _Env...>...>;
 
       template <class _Sender, class _ValueTuple, class... _Rest>
       using __value_tuple_t = __minvoke<
         __if_c<
           (0 == sizeof...(_Rest)),
           __mconst<_ValueTuple>,
-          __q<__too_many_value_completions_error>
+          __q<__too_many_value_completions_error_t>
         >,
         _Sender,
         _Env...
@@ -129,7 +123,7 @@ namespace STDEXEC {
       template <class... _Senders>
       using __f = __meval<
         __concat_completion_signatures_t,
-        __meval<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results<_Senders...>>,
+        __meval<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
         __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
         __transform_completion_signatures_t<
           __completion_signatures_of_t<_Senders, _Env...>,
@@ -171,7 +165,7 @@ namespace STDEXEC {
       using __errors_list = __minvoke<
         __mconcat<>,
         __if<
-          __mand<__nothrow_decay_copyable_results<_Senders, _Env>...>,
+          __mand<__nothrow_decay_copyable_results_t<_Senders, _Env>...>,
           __types<>,
           __types<std::exception_ptr>
         >,
@@ -338,7 +332,7 @@ namespace STDEXEC {
 
     struct __when_all_impl : __sexpr_defaults {
       template <class _Self, class... _Env>
-      using __completions_t = __children_of<_Self, __when_all::__completions_t<__env_t<_Env>...>>;
+      using __completions_t = __children_of<_Self, __when_all::__completions<__env_t<_Env>...>>;
 
       static constexpr auto get_attrs =
         []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {

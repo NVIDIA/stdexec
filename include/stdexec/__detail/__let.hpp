@@ -45,19 +45,21 @@ namespace STDEXEC {
       using __t = _SetTag;
     };
 
+    template <class _SetTag, class...>
+    extern __undefined<_SetTag> __let_from_set;
+
+    template <class... _Ign>
+    extern let_value_t __let_from_set<set_value_t, _Ign...>;
+
+    template <class... _Ign>
+    extern let_error_t __let_from_set<set_error_t, _Ign...>;
+
+    template <class... _Ign>
+    extern let_stopped_t __let_from_set<set_stopped_t, _Ign...>;
+
     template <class _SetTag>
-    inline constexpr __mstring __in_which_let_msg{"In STDEXEC::let_value(Sender, Function)..."};
-
-    template <>
-    inline constexpr __mstring __in_which_let_msg<set_error_t>{
-      "In STDEXEC::let_error(Sender, Function)..."};
-
-    template <>
-    inline constexpr __mstring __in_which_let_msg<set_stopped_t>{
-      "In STDEXEC::let_stopped(Sender, Function)..."};
-
-    template <class _SetTag>
-    using __on_not_callable = __callable_error<__in_which_let_msg<_SetTag>>;
+    using __on_not_callable =
+      __mbind_front_q<__callable_error_t, decltype(__let_from_set<_SetTag>)>;
 
     // This environment is part of the receiver used to connect the secondary sender.
     template <class _SetTag, class _Attrs, class... _Env>
@@ -126,7 +128,6 @@ namespace STDEXEC {
     template <class _Receiver, class _Env2>
     using __receiver_with_env_t = __t<__rcvr_env<__id<_Receiver>, __id<_Env2>>>;
 
-    template <__mstring _Where, __mstring _What>
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
     template <class...>
@@ -142,10 +143,8 @@ namespace STDEXEC {
 
     template <class _Sender, class _SetTag, class... _JoinEnv2>
     using __bad_result_sender = __not_a_sender<
-      _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_<
-        __in_which_let_msg<_SetTag>,
-        "The function must return a valid sender for the current environment"_mstr
-      >,
+      _WHAT_(_FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_),
+      _WHERE_(_IN_ALGORITHM_, decltype(__let_from_set<_SetTag>)),
       _WITH_PRETTY_SENDER_<_Sender>,
       __fn_t<_WITH_ENVIRONMENT_, _JoinEnv2>...,
       __mapply_q<_NESTED_ERROR_, __try_completion_signatures_of_t<_Sender, _JoinEnv2...>>
@@ -228,20 +227,18 @@ namespace STDEXEC {
       __mtry_q<__concat_completion_signatures_t>::__f
     >;
 
-    template <__mstring _Where, __mstring _What>
-    struct _NO_COMMON_DOMAIN_ { };
-
-    template <class _SetTag>
-    using __no_common_domain_t = _NO_COMMON_DOMAIN_<
-      __in_which_let_msg<_SetTag>,
-      "The senders returned by Function do not all share a common domain"_mstr
-    >;
+    struct _THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_ { };
 
     template <class _SetTag, class... _Env>
     struct __try_common_domain_fn {
       struct __error_fn {
         template <class... _Senders>
-        using __f = __mexception<__no_common_domain_t<_SetTag>, _WITH_PRETTY_SENDERS_<_Senders...>>;
+        using __f = __mexception<
+          _WHAT_(_DOMAIN_ERROR_),
+          _WHY_(_THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_),
+          _WHERE_(_IN_ALGORITHM_, decltype(__let_from_set<_SetTag>)),
+          _WITH_PRETTY_SENDERS_<_Senders...>
+        >;
       };
 
       // TODO(ericniebler): this needs to be updated:
@@ -546,7 +543,7 @@ namespace STDEXEC {
 
     template <class _SetTag, class _SetTag2, class _Sndr, class _Fn, class... _Env>
     using __let_completion_domain_t = __unless_one_of_t<
-      decltype(__let::__get_completion_domain<_SetTag, _SetTag2, _Sndr, _Fn, _Env...>()),
+      __result_of<__let::__get_completion_domain<_SetTag, _SetTag2, _Sndr, _Fn, _Env...>>,
       indeterminate_domain<>
     >;
 
@@ -687,8 +684,7 @@ namespace STDEXEC {
             __child_of<_CvSender>,
             __data_of<_CvSender>,
             _Receiver
-          >) -> __opstate_t<_CvSender, _Receiver>
-      {
+          >) -> __opstate_t<_CvSender, _Receiver> {
         static_assert(sender_expr_for<_CvSender, __let_t<_SetTag>>);
         auto& [__tag, __fn, __child] = __sndr;
         return __opstate_t<_CvSender, _Receiver>(

@@ -24,20 +24,21 @@
 #include "__queries.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
+#include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    inline constexpr __mstring __then_context = "In STDEXEC::then(Sender, Function)..."_mstr;
-    using __on_not_callable = __callable_error<__then_context>;
+    struct then_t;
+    using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
     template <class _Fun, class _CvrefSender, class... _Env>
     using __completions_t = transform_completion_signatures<
       __completion_signatures_of_t<_CvrefSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvrefSender, _Env...>,
-      __mbind_front<__mtry_catch_q<__set_value_invoke_t, __on_not_callable>, _Fun>::template __f
+      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
     >;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +75,7 @@ namespace STDEXEC {
         constexpr void
           operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
           if constexpr (__same_as<_Tag, set_value_t>) {
-            STDEXEC::__set_value_invoke(
+            STDEXEC::__set_value_from(
               static_cast<_State&&>(__state).__rcvr_,
               static_cast<_State&&>(__state).__data_,
               static_cast<_Args&&>(__args)...);

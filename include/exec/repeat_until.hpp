@@ -191,10 +191,9 @@ namespace exec {
           completion_signatures<set_value_t()>
         >,
         __mexception<
-          _WHAT_<>(
-            _INVALID_ARGUMENT_,
-            _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
+          _WHAT_(_INVALID_ARGUMENT_),
           _WHERE_(_IN_ALGORITHM_, repeat_until_t),
+          _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
           _WITH_PRETTY_SENDER_<_Child>
         >
       >;
@@ -294,7 +293,7 @@ namespace exec {
           return repeat_until_t()(then(static_cast<__child_t &&>(__child), _never{}));
         } else {
           return __not_a_sender<
-            _WHAT_<>(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
+            _WHAT_(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
             _WHERE_(_IN_ALGORITHM_, repeat_until_t),
             _WITH_PRETTY_SENDER_<__child_t>,
             _WITH_ENVIRONMENT_(_Env)

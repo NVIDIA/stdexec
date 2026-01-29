@@ -107,7 +107,7 @@ namespace STDEXEC {
   [[noreturn, nodiscard]]
   consteval auto
     __throw_compile_time_error([[maybe_unused]] _Values... __values) -> completion_signatures<> {
-    return
+    return;
   }
 #endif // ^^^ constexpr exceptions ^^^
 
@@ -376,7 +376,7 @@ namespace STDEXEC {
       } else {
         return STDEXEC::__throw_compile_time_error<
           _WHERE_(_IN_COMPLETION_SIGNATURES_APPLY_),
-          _NOT_CALLABLE_<"The given function is not callablle with the arguments provided"_mstr>,
+          _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_,
           _WITH_FUNCTION_(_Fn),
           _WITH_ARGUMENTS_(_Sigs * ...)
         >();

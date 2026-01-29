@@ -173,7 +173,7 @@ namespace nvexec::_strm {
       using __error_completions_t = __meval<
         __concat_completion_signatures_t,
         __with_error_invoke_t<
-          __callable_error<"In nvexec::then(Sender, Function)..."_mstr>,
+          __mbind_front_q<__callable_error_t, then_t>,
           set_value_t,
           Fun,
           __copy_cvref_t<Self, Sender>,
@@ -183,7 +183,7 @@ namespace nvexec::_strm {
       >;
 
       template <class... As>
-      using _set_value_t = __set_value_invoke_t<Fun, As...>;
+      using _set_value_t = __set_value_from_t<Fun, As...>;
 
       template <class Self, class... Env>
       using _completion_signatures_t = transform_completion_signatures<
