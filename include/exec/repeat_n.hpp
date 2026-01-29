@@ -174,17 +174,13 @@ namespace exec {
     template <class _Error>
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
-    template <class _Sender, class... _Env>
-    using __errors_nothrow_copyable = __error_types_t<
-      __completion_signatures_of_t<_Sender, _Env...>, // sigs
-      __q<__nothrow_decay_copyable_t>                 // variant
+    template <typename _Sender, typename... _Env>
+    using __with_eptr_completion_t = __eptr_completion_unless<
+      __cmplsigs::__partitions_of_t<
+        __completion_signatures_of_t<_Sender, _Env...>
+      >::__nothrow_decay_copyable::__errors::value
+      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)
     >;
-
-    template <class _Sender, class... _Env>
-    using __with_eptr_completion_t = __eptr_completion_unless_t<__mand<
-      __errors_nothrow_copyable<_Sender, _Env...>,
-      __mbool<__nothrow_connectable<_Sender, __receiver_archetype<_Env>>>...
-    >>;
 
     template <class _Child, class... _Env>
     using __completions_t = STDEXEC::transform_completion_signatures<
