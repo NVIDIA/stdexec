@@ -94,14 +94,14 @@ namespace nvexec::_strm::__algo_range_init_fun {
     using _set_value_t = __meval<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
 
     template <class Self, class... Env>
-    using completion_signatures = STDEXEC::transform_completion_signatures<
+    using _completions_t = STDEXEC::transform_completion_signatures<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       completion_signatures<set_error_t(cudaError_t)>,
       __mtry_q<_set_value_t>::template __f
     >;
 
     template <__decays_to_derived_from<sender> Self, STDEXEC::receiver Receiver>
-      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
+      requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
       return stream_opstate<__copy_cvref_t<Self, Sender>>(
@@ -116,7 +116,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to_derived_from<sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...> {
+    static consteval auto get_completion_signatures() -> _completions_t<Self, Env...> {
       return {};
     }
 

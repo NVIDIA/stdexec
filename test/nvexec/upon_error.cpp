@@ -3,7 +3,6 @@
 
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
-#include "test_common/type_helpers.hpp"
 
 namespace ex = STDEXEC;
 

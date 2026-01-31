@@ -857,7 +857,7 @@ namespace exec {
     template <__stoppable_task _Base>
     struct __stoppable_task_facade : __impl_base<_Base, __has_submit_stop<_Base>> {
       using __receiver_t = __receiver_of_t<_Base>;
-      using __base_t = __stoppable_task_facade::__impl_base;
+      using __base_t = __impl_base<_Base, __has_submit_stop<_Base>>;
 
       struct __stop_callback {
         __stoppable_task_facade* __self_;

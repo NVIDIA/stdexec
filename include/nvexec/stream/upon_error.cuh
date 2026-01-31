@@ -116,16 +116,17 @@ namespace nvexec::_strm {
   struct upon_error_sender : stream_sender_base {
     template <class Receiver>
       requires sender_in<Sender, env_of_t<Receiver>>
-    using max_result_size_t = STDEXEC::__gather_completions_of_t<
-      set_error_t,
-      Sender,
-      env_of_t<Receiver>,
-      __mbind_front<result_size_for, Fun>,
-      maxsize
-    >;
+    struct max_result_size
+      : STDEXEC::__gather_completions_of_t<
+          set_error_t,
+          Sender,
+          env_of_t<Receiver>,
+          __mbind_front<result_size_for, Fun>,
+          maxsize
+        > { };
 
     template <class Receiver>
-    using receiver_t = _upon_error::receiver<max_result_size_t<Receiver>::value, Receiver, Fun>;
+    using receiver_t = _upon_error::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
 
     template <class Error>
     using _set_error_t = __set_value_from_t<Fun, Error>;

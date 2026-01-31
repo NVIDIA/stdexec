@@ -1153,7 +1153,7 @@ namespace exec {
   class any_receiver_ref {
     using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
     using __env_t = STDEXEC::env_of_t<__receiver_base>;
-    __receiver_base __receiver_;
+    __receiver_base __rcvr_;
 
    public:
     using receiver_concept = STDEXEC::receiver_t;
@@ -1163,29 +1163,29 @@ namespace exec {
       requires STDEXEC::receiver_of<_Receiver, _Completions>
     any_receiver_ref(_Receiver& __receiver)
       noexcept(STDEXEC::__nothrow_constructible_from<__receiver_base, _Receiver>)
-      : __receiver_(__receiver) {
+      : __rcvr_(__receiver) {
     }
 
     template <class... _As>
       requires STDEXEC::__callable<STDEXEC::set_value_t, __receiver_base, _As...>
     void set_value(_As&&... __as) noexcept {
-      STDEXEC::set_value(static_cast<__receiver_base&&>(__receiver_), static_cast<_As&&>(__as)...);
+      STDEXEC::set_value(static_cast<__receiver_base&&>(__rcvr_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
       requires STDEXEC::__callable<STDEXEC::set_error_t, __receiver_base, _Error>
     void set_error(_Error&& __err) noexcept {
-      STDEXEC::set_error(static_cast<__receiver_base&&>(__receiver_), static_cast<_Error&&>(__err));
+      STDEXEC::set_error(static_cast<__receiver_base&&>(__rcvr_), static_cast<_Error&&>(__err));
     }
 
     void set_stopped() noexcept
       requires STDEXEC::__callable<STDEXEC::set_stopped_t, __receiver_base>
     {
-      STDEXEC::set_stopped(static_cast<__receiver_base&&>(__receiver_));
+      STDEXEC::set_stopped(static_cast<__receiver_base&&>(__rcvr_));
     }
 
     auto get_env() const noexcept -> STDEXEC::env_of_t<__receiver_base> {
-      return STDEXEC::get_env(__receiver_);
+      return STDEXEC::get_env(__rcvr_);
     }
 
     template <auto... _SenderQueries>

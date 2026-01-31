@@ -134,7 +134,6 @@ namespace STDEXEC {
         requires __callable<__mtypeof<_DeclFn>>
       constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(noexcept(_DeclFn())) -> decltype(_DeclFn()) {
-
         using _TfxSender = __tfx_sender<_Sender, _Receiver>;
         auto&& __env = get_env(__rcvr);
 

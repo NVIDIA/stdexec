@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -20,7 +20,6 @@
 #include "__type_traits.hpp"
 
 #include <cassert>
-#include <compare>
 #include <cstddef>
 #include <source_location> // IWYU pragma: keep for std::source_location::current
 #include <string_view>

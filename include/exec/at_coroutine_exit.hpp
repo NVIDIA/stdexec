@@ -41,13 +41,13 @@ namespace exec {
           requires __callable<set_value_t, _Receiver, _Args...>
         void set_value(_Args&&... __args) noexcept {
           STDEXEC::set_value(
-            static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
+            static_cast<_Receiver&&>(__rcvr_), static_cast<_Args&&>(__args)...);
         }
 
         template <class _Error>
           requires __callable<set_error_t, _Receiver, _Error>
         void set_error(_Error&& __err) noexcept {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__receiver_), static_cast<_Error&&>(__err));
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
         }
 
         [[noreturn]]
@@ -56,10 +56,10 @@ namespace exec {
         }
 
         auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__receiver_);
+          return STDEXEC::get_env(__rcvr_);
         }
 
-        _Receiver __receiver_;
+        _Receiver __rcvr_;
       };
 
       template <class _Sender>

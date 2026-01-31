@@ -32,7 +32,7 @@ namespace exec {
 
     template <class _Receiver>
     struct __operation_base {
-      _Receiver __receiver_;
+      _Receiver __rcvr_;
     };
 
     template <class _Receiver>
@@ -40,21 +40,21 @@ namespace exec {
       using receiver_concept = STDEXEC::receiver_t;
 
       void set_value() noexcept {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
+        STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__rcvr_));
       }
 
       template <class _Error>
       void set_error(_Error&& __error) noexcept {
         STDEXEC::set_error(
-          static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
+          static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Error&&>(__error));
       }
 
       void set_stopped() noexcept {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
       }
 
       auto get_env() const noexcept -> env_of_t<_Receiver> {
-        return STDEXEC::get_env(__op_->__receiver_);
+        return STDEXEC::get_env(__op_->__rcvr_);
       }
 
       __operation_base<_Receiver>* __op_;
@@ -66,7 +66,7 @@ namespace exec {
       auto operator()(_Item&& __item, __operation_base<_Receiver>* __op) const
         noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
           -> next_sender_of_t<_Receiver, _Item> {
-        return exec::set_next(__op->__receiver_, static_cast<_Item&&>(__item));
+        return exec::set_next(__op->__rcvr_, static_cast<_Item&&>(__item));
       }
     };
 

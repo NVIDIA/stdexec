@@ -74,9 +74,9 @@ namespace STDEXEC {
   // To avoid repeated computation of the same function return type,
   // cache the result ourselves in a class template specialization.
   template <class _Fun, class... _As>
-  using __call_result_ = decltype(__declval<_Fun>()(__declval<_As>()...));
+  using __call_result_i = decltype(__declval<_Fun>()(__declval<_As>()...));
   template <class _Fun, class... _As>
-  using __call_result_t = __t<__mdefer<__q<__call_result_>, _Fun, _As...>>;
+  using __call_result_t = __mmemoize_q<__call_result_i, _Fun, _As...>;
 #else
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
