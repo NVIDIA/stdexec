@@ -74,6 +74,7 @@ set(exec_test_sources
     test_within.cpp
     test_lifetime.cpp
     test_sync_object.cpp
+    test_nest_scopes.cpp
     )
 
 set_source_files_properties(test_any_sender.cpp
