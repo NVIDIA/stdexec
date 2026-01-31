@@ -38,8 +38,6 @@ namespace {
 
   struct boolean_sender {
     using sender_concept = ex::sender_t;
-    using __t = boolean_sender;
-    using __id = boolean_sender;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(bool), ex::set_error_t(const int&)>;
 
@@ -298,9 +296,8 @@ namespace {
 
     // operator| and sync_wait require valid completion signatures
     ex::sync_wait(
-      only_error  //
-      | ex::upon_stopped([]() { return -1; })
-      | ex::upon_error([](const auto) { return -1; }));
+      only_error //
+      | ex::upon_stopped([]() { return -1; }) | ex::upon_error([](const auto) { return -1; }));
   }
 
   TEST_CASE(

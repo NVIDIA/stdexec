@@ -50,9 +50,7 @@ set(stdexec_examples
 if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # The following examples generate files with names that are too long for Windows.
   set(stdexec_examples ${stdexec_examples}
-                 "example.benchmark.static_thread_pool_old : benchmark/static_thread_pool_old.cpp"
               "example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
-          "example.benchmark.static_thread_pool_nested_old : benchmark/static_thread_pool_nested_old.cpp"
         "example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
  "example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
   )

@@ -118,7 +118,7 @@ namespace STDEXEC {
 
       template <class _Sender, class _Env>
       static auto transform_sender(set_value_t, _Sender&&, const _Env&) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
       }
 
      private:

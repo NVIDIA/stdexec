@@ -31,159 +31,147 @@
 
 namespace nvexec::_strm {
   namespace _sync_wait {
-    struct __env {
-      using __t = __env;
-      using __id = __env;
+    struct env {
+      [[nodiscard]]
+      constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
+        return __sched_;
+      }
+
+      [[nodiscard]]
+      constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
+        return __sched_;
+      }
 
       run_loop::scheduler __sched_;
-
-      [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
-        return __sched_;
-      }
-
-      [[nodiscard]]
-      auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
-        return __sched_;
-      }
     };
 
     // What should sync_wait(just_stopped()) return?
     template <class Sender>
-      requires sender_in<Sender, __env>
-    using sync_wait_result_t = value_types_of_t<Sender, __env, __decayed_std_tuple, __msingle>;
+      requires sender_in<Sender, env>
+    using sync_wait_result_t = value_types_of_t<Sender, env, __decayed_std_tuple, __msingle>;
 
-    template <class SenderId>
-    struct state_t;
+    template <class Sender>
+    struct state;
 
-    template <class SenderId>
-    struct receiver_t {
-      using Sender = STDEXEC::__t<SenderId>;
-
-      struct __t : public stream_receiver_base {
-        using __id = receiver_t;
-
-        state_t<SenderId>* state_;
-        run_loop* loop_;
-
-        template <class Error>
-        void set_error_(Error err) noexcept {
-          if constexpr (__decays_to<Error, cudaError_t>) {
-            state_->data_.template emplace<2>(static_cast<Error&&>(err));
-          } else {
-            // What is `exception_ptr` but death pending
-            state_->data_.template emplace<2>(cudaErrorUnknown);
-          }
-          loop_->finish();
+    template <class Sender>
+    struct receiver : public stream_receiver_base {
+      template <class Error>
+      void _set_error(Error err) noexcept {
+        if constexpr (__decays_to<Error, cudaError_t>) {
+          state_->data_.template emplace<2>(static_cast<Error&&>(err));
+        } else {
+          // What is `exception_ptr` but death pending
+          state_->data_.template emplace<2>(cudaErrorUnknown);
         }
+        loop_->finish();
+      }
 
-        template <class T>
-        static void prefetch(T&& ref, cudaStream_t stream) {
-          using decay_type = __decay_t<T>;
-          decay_type* ptr = &ref;
-          cudaPointerAttributes attributes{};
-          if (cudaError_t err = cudaPointerGetAttributes(&attributes, ptr); err == cudaSuccess) {
-            if (attributes.type == cudaMemoryTypeManaged) {
-              [[maybe_unused]]
-              auto _ign = STDEXEC_LOG_CUDA_API(
-                cudaMemPrefetchAsync(ptr, sizeof(decay_type), cudaCpuDeviceId, stream));
-            }
+      template <class Type>
+      static void prefetch(Type&& ref, cudaStream_t stream) {
+        using type_t = __decay_t<Type>;
+        type_t* ptr = &ref;
+        cudaPointerAttributes attributes{};
+        if (cudaError_t err = cudaPointerGetAttributes(&attributes, ptr); err == cudaSuccess) {
+          if (attributes.type == cudaMemoryTypeManaged) {
+            [[maybe_unused]]
+            auto _ign = STDEXEC_LOG_CUDA_API(
+              cudaMemPrefetchAsync(ptr, sizeof(type_t), cudaCpuDeviceId, stream));
           }
         }
+      }
 
-        template <class... As>
-        void set_value(As&&... as) noexcept {
-          static_assert(std::constructible_from<sync_wait_result_t<Sender>, As...>);
-          STDEXEC_TRY {
-            int dev_id{};
-            cudaStream_t stream = state_->stream_;
+      template <class... Args>
+      void set_value(Args&&... args) noexcept {
+        static_assert(std::constructible_from<sync_wait_result_t<Sender>, Args...>);
+        STDEXEC_TRY {
+          int dev_id{};
+          cudaStream_t stream = state_->stream_;
 
-            if constexpr (sizeof...(As)) {
-              if (STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id)) == cudaSuccess) {
-                int concurrent_managed_access{};
-                if (
-                  STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
-                    &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
-                  == cudaSuccess) {
-                  // Avoid launching the destruction kernel if the memory targeting host
-                  (prefetch(static_cast<As&&>(as), stream), ...);
-                }
+          if constexpr (sizeof...(Args)) {
+            if (STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id)) == cudaSuccess) {
+              int concurrent_managed_access{};
+              if (
+                STDEXEC_LOG_CUDA_API(cudaDeviceGetAttribute(
+                  &concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, dev_id))
+                == cudaSuccess) {
+                // Avoid launching the destruction kernel if the memory targeting host
+                (prefetch(static_cast<Args&&>(args), stream), ...);
               }
             }
-
-            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
-                status == cudaSuccess) {
-              state_->data_.template emplace<1>(static_cast<As&&>(as)...);
-            } else {
-              set_error_(status);
-            }
-            loop_->finish();
           }
-          STDEXEC_CATCH_ALL {
-            set_error_(std::current_exception());
-          }
-        }
 
-        template <class Error>
-        void set_error(Error err) noexcept {
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
               status == cudaSuccess) {
-            set_error_(static_cast<Error&&>(err));
+            state_->data_.template emplace<1>(static_cast<Args&&>(args)...);
           } else {
-            set_error_(status);
-          }
-        }
-
-        void set_stopped() noexcept {
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
-              status == cudaSuccess) {
-            state_->data_.template emplace<3>(set_stopped_t());
-          } else {
-            set_error_(status);
+            _set_error(status);
           }
           loop_->finish();
         }
-
-        [[nodiscard]]
-        auto get_env() const noexcept -> __env {
-          return {loop_->get_scheduler()};
+        STDEXEC_CATCH_ALL {
+          _set_error(std::current_exception());
         }
-      };
+      }
+
+      template <class Error>
+      void set_error(Error err) noexcept {
+        if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
+            status == cudaSuccess) {
+          _set_error(static_cast<Error&&>(err));
+        } else {
+          _set_error(status);
+        }
+      }
+
+      void set_stopped() noexcept {
+        if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(state_->stream_));
+            status == cudaSuccess) {
+          state_->data_.template emplace<3>(set_stopped_t());
+        } else {
+          _set_error(status);
+        }
+        loop_->finish();
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> env {
+        return {loop_->get_scheduler()};
+      }
+
+      state<Sender>* state_;
+      run_loop* loop_;
     };
 
-    template <class SenderId>
-    struct state_t {
-      using _Tuple = sync_wait_result_t<STDEXEC::__t<SenderId>>;
+    template <class Sender>
+    struct state {
+      using tuple_t = sync_wait_result_t<Sender>;
 
       cudaStream_t stream_{};
-      std::variant<std::monostate, _Tuple, cudaError_t, set_stopped_t> data_{};
+      std::variant<std::monostate, tuple_t, cudaError_t, set_stopped_t> data_{};
     };
 
     struct sync_wait_t {
-      template <class Sender>
-      using receiver_t = STDEXEC::__t<receiver_t<STDEXEC::__id<Sender>>>;
-
-      template <__single_value_variant_sender<__env> Sender>
-        requires sender_in<Sender, __env> && __receiver_from<receiver_t<Sender>, Sender>
-      auto operator()(context_state_t context_state, Sender&& __sndr) const
+      template <sender_in<env> Sender>
+        requires __single_value_variant_sender<Sender, env>
+      auto operator()(context ctx, Sender&& sndr) const //
         -> std::optional<sync_wait_result_t<Sender>> {
-        using state_t = state_t<STDEXEC::__id<Sender>>;
+        using state_t = _sync_wait::state<Sender>;
         state_t state{};
         run_loop loop;
 
         cudaError_t status = cudaSuccess;
-        auto __op_state = make_host<exit_operation_state_t<Sender, receiver_t<Sender>>>(
-          status, context_state.pinned_resource_, __emplace_from{[&] {
-            return exit_op_state(
-              static_cast<Sender&&>(__sndr), receiver_t<Sender>{{}, &state, &loop}, context_state);
+        auto opstate = host_allocate<exit_opstate_t<Sender, receiver<Sender>>>(
+          status, ctx.pinned_resource_, __emplace_from{[&] {
+            return exit_opstate(
+              static_cast<Sender&&>(sndr), receiver<Sender>{{}, &state, &loop}, ctx);
           }});
         if (status != cudaSuccess) {
           throw std::bad_alloc{};
         }
 
-        state.stream_ = __op_state->get_stream();
+        state.stream_ = opstate->get_stream();
 
-        start(*__op_state);
+        STDEXEC::start(*opstate);
 
         // Wait for the variant to be filled in.
         loop.run();
@@ -201,10 +189,10 @@ namespace nvexec::_strm {
 
   template <>
   struct apply_sender_for<sync_wait_t> {
-    template <stream_completing_sender<env<>> Sender>
+    template <stream_completing_sender<STDEXEC::env<>> Sender>
     auto operator()(Sender&& sndr) const {
       auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), STDEXEC::env{});
-      return _sync_wait::sync_wait_t{}(sched.context_state_, static_cast<Sender&&>(sndr));
+      return _sync_wait::sync_wait_t{}(sched.ctx_, static_cast<Sender&&>(sndr));
     }
   };
 } // namespace nvexec::_strm

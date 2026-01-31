@@ -165,8 +165,6 @@ namespace exec::__win32 {
   class windows_thread_pool::_cancellable_schedule_op_base<StopToken>::type {
    public:
     using operation_state_concept = STDEXEC::operation_state_t;
-    using __id = _cancellable_schedule_op_base<StopToken>;
-
     type(type &&) = delete;
     auto operator=(type &&) -> type & = delete;
 
@@ -395,8 +393,6 @@ namespace exec::__win32 {
     >;
 
    public:
-    using __id = _cancellable_schedule_op<Rcvr>;
-
     explicit type(windows_thread_pool &pool, Rcvr rcvr)
       : base(pool, STDEXEC::get_stop_token(rcvr).stop_possible())
       , rcvr_(std::move(rcvr)) {
@@ -443,8 +439,6 @@ namespace exec::__win32 {
       STDEXEC::set_error_t(std::exception_ptr),
       STDEXEC::set_stopped_t()
     >;
-    using __id = schedule_sender;
-    using __t = schedule_sender;
 
     template <class Rcvr> //
       requires STDEXEC::receiver_of<Rcvr, completion_signatures>
@@ -514,7 +508,6 @@ namespace exec::__win32 {
 
    public:
     using operation_state_concept = STDEXEC::operation_state_t;
-    using __id = _time_schedule_op<StopToken>;
 
     ~type() {
       ::CloseThreadpoolTimer(timer_);
@@ -670,8 +663,6 @@ namespace exec::__win32 {
       windows_thread_pool::time_schedule_op<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>;
 
    public:
-    using __id = _schedule_at_op<Rcvr>;
-
     explicit type(
       windows_thread_pool &pool,
       windows_thread_pool::clock_type::time_point dueTime,
@@ -713,9 +704,6 @@ namespace exec::__win32 {
       STDEXEC::set_error_t(std::exception_ptr),
       STDEXEC::set_stopped_t()
     >;
-    using __id = schedule_at_sender;
-    using __t = schedule_at_sender;
-
     explicit schedule_at_sender(windows_thread_pool &pool, filetime_clock::time_point dueTime)
       : pool_(&pool)
       , dueTime_(dueTime) {
@@ -749,8 +737,6 @@ namespace exec::__win32 {
       windows_thread_pool::time_schedule_op<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Rcvr>>>;
 
    public:
-    using __id = _schedule_after_op<Duration, Rcvr>;
-
     explicit type(windows_thread_pool &pool, Duration duration, Rcvr rcvr)
       : base(pool, STDEXEC::get_stop_token(rcvr).stop_possible())
       , duration_(duration)
@@ -792,7 +778,6 @@ namespace exec::__win32 {
       STDEXEC::set_error_t(std::exception_ptr),
       STDEXEC::set_stopped_t()
     >;
-    using __id = _schedule_after<Duration>;
 
     explicit sender(windows_thread_pool &pool, Duration duration)
       : pool_(&pool)

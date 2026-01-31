@@ -139,20 +139,20 @@ namespace exec {
         >
       >;
 
-      template <class CvrefSndrs>
+      template <class CvSndrs>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr explicit _opstate(Rcvr&& rcvr, CvrefSndrs&& sndrs)
+      constexpr explicit _opstate(Rcvr&& rcvr, CvSndrs&& sndrs)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{STDEXEC::__apply(
             __convert_tuple_fn<_senders_tuple_t>{},
-            static_cast<CvrefSndrs&&>(sndrs))} // move all but the first sender into the opstate.
+            static_cast<CvSndrs&&>(sndrs))} // move all but the first sender into the opstate.
       {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
         // result is that the first sender in `sndrs` is not moved from, but the rest are.
         _ops.template __emplace_from<0>(
           STDEXEC::connect,
-          STDEXEC::__get<0>(static_cast<CvrefSndrs&&>(sndrs)),
+          STDEXEC::__get<0>(static_cast<CvSndrs&&>(sndrs)),
           _rcvr_t<sizeof...(Senders) == 0>{this});
       }
 
@@ -233,7 +233,7 @@ namespace exec {
           return _completions_t<Self, Env...>{};
         } else {
           return STDEXEC::__throw_compile_time_error<
-            STDEXEC::_SENDER_TYPE_IS_NOT_COPYABLE_,
+            STDEXEC::_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
             STDEXEC::_WITH_PRETTY_SENDER_<_sndr<Sender0, Senders...>>
           >();
         }

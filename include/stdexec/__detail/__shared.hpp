@@ -83,35 +83,31 @@ namespace STDEXEC::__shared {
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _Env, class _Variant>
   struct __receiver {
-    struct __t {
-      using receiver_concept = receiver_t;
-      using __id = __receiver;
+    using receiver_concept = receiver_t;
+    template <class... _As>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr void set_value(_As&&... __as) noexcept {
+      __sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
+    }
 
-      template <class... _As>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr void set_value(_As&&... __as) noexcept {
-        __sh_state_->__complete(set_value_t(), static_cast<_As&&>(__as)...);
-      }
+    template <class _Error>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr void set_error(_Error&& __err) noexcept {
+      __sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
+    }
 
-      template <class _Error>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr void set_error(_Error&& __err) noexcept {
-        __sh_state_->__complete(set_error_t(), static_cast<_Error&&>(__err));
-      }
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr void set_stopped() noexcept {
+      __sh_state_->__complete(set_stopped_t());
+    }
 
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr void set_stopped() noexcept {
-        __sh_state_->__complete(set_stopped_t());
-      }
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> const __env_t<_Env>& {
+      return __sh_state_->__env_;
+    }
 
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> const __env_t<_Env>& {
-        return __sh_state_->__env_;
-      }
-
-      // The receiver does not hold a reference to the shared state.
-      __shared_state_base<_Env, _Variant>* __sh_state_;
-    };
+    // The receiver does not hold a reference to the shared state.
+    __shared_state_base<_Env, _Variant>* __sh_state_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -323,12 +319,12 @@ namespace STDEXEC::__shared {
   __shared_state_base<_Env, _Variant>::~__shared_state_base() = default;
 
   ////////////////////////////////////////////////////////////////////////////////////////
-  //! Heap-allocatable shared state for things like `STDEXEC::split`.
+  //! Heap-allocatable shared state for `stdexec::split` and `stdexec::ensure_started`.
   template <class _CvSender, class _Env>
   struct STDEXEC_ATTRIBUTE(empty_bases) __shared_state final
     : std::enable_shared_from_this<__shared_state<_CvSender, _Env>>
     , __shared_state_base<_Env, __result_variant_t<_CvSender, _Env>> {
-    using __receiver_t = __t<__receiver<_Env, __result_variant_t<_CvSender, _Env>>>;
+    using __receiver_t = __receiver<_Env, __result_variant_t<_CvSender, _Env>>;
     using __waiters_list_t = __shared_state::__shared_state_base::__waiters_list_t;
 
     constexpr explicit __shared_state(_CvSender&& __sndr, _Env __env)
@@ -433,7 +429,8 @@ namespace STDEXEC::__shared {
         return __make_completions_t<__cvref_results_t<_Tag>, _CvChild, _Env>();
       } else {
         return STDEXEC::__throw_compile_time_error<
-          _SENDER_TYPE_IS_NOT_COPYABLE_,
+          _WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
+          _WHERE_(_IN_ALGORITHM_, _Tag),
           _WITH_PRETTY_SENDER_<_CvChild>
         >();
       }

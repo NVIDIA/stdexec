@@ -30,8 +30,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 namespace nvexec::_strm {
   namespace repeat_n {
     template <class OpState>
-    struct receiver_t : stream_receiver_base {
-      receiver_t(OpState& opstate) noexcept
+    struct receiver : stream_receiver_base {
+      receiver(OpState& opstate) noexcept
         : opstate_(opstate) {
       }
 
@@ -55,33 +55,24 @@ namespace nvexec::_strm {
       OpState& opstate_;
     };
 
-    template <class CvrefSenderId, class ReceiverId>
-    struct operation_state_t : operation_state_base_t<ReceiverId> {
+    template <class CvSender, class Receiver>
+    struct opstate : _strm::opstate_base<Receiver> {
       using operation_state_concept = STDEXEC::operation_state_t;
-      using __t = operation_state_t;
-      using __id = operation_state_t;
 
-      using CvrefSender = STDEXEC::__cvref_t<CvrefSenderId>;
-      using Sender = STDEXEC::__decay_t<CvrefSender>;
-      using Receiver = STDEXEC::__t<ReceiverId>;
-      using Scheduler = STDEXEC::__result_of<
+      using sender_t = STDEXEC::__decay_t<CvSender>;
+      using scheduler_t = STDEXEC::__result_of<
         STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>,
-        STDEXEC::env_of_t<Sender>,
+        STDEXEC::env_of_t<sender_t>,
         STDEXEC::env_of_t<Receiver>
       >;
 
       using inner_sender_t =
-        STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<Scheduler&>, Sender&>;
-      using inner_opstate_t =
-        STDEXEC::connect_result_t<inner_sender_t, receiver_t<operation_state_t>>;
+        STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<scheduler_t&>, sender_t&>;
+      using inner_opstate_t = STDEXEC::connect_result_t<inner_sender_t, receiver<opstate>>;
 
-      explicit operation_state_t(
-        CvrefSender&& sndr,
-        Receiver&& rcvr,
-        std::size_t count,
-        Scheduler sched)
-        : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), sched.context_state_)
-        , sndr_(static_cast<CvrefSender&&>(sndr))
+      explicit opstate(CvSender&& sndr, Receiver rcvr, std::size_t count, scheduler_t sched)
+        : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), sched.ctx_)
+        , sndr_(static_cast<CvSender&&>(sndr))
         , sched_(std::move(sched))
         , count_(count) {
         _connect();
@@ -89,7 +80,7 @@ namespace nvexec::_strm {
 
       void _connect() {
         inner_opstate_.__emplace_from(
-          STDEXEC::connect, exec::sequence(STDEXEC::schedule(sched_), sndr_), receiver_t{*this});
+          STDEXEC::connect, exec::sequence(STDEXEC::schedule(sched_), sndr_), receiver{*this});
       }
 
       template <class Tag, class... Args>
@@ -130,18 +121,15 @@ namespace nvexec::_strm {
         }
       }
 
-      Sender sndr_;
-      Scheduler sched_;
+      sender_t sndr_;
+      scheduler_t sched_;
       STDEXEC::__optional<inner_opstate_t> inner_opstate_;
       std::size_t count_{};
     };
 
-    template <class CvrefSenderId>
-    struct sender_t {
+    template <class CvSender>
+    struct sender {
       using sender_concept = STDEXEC::sender_t;
-      using __t = sender_t;
-      using __id = sender_t;
-      using CvrefSender = STDEXEC::__cvref_t<CvrefSenderId>;
 
       using completion_signatures = STDEXEC::completion_signatures<
         STDEXEC::set_value_t(),
@@ -152,33 +140,29 @@ namespace nvexec::_strm {
 
       template <STDEXEC::receiver Receiver>
       auto connect(Receiver rcvr) && //
-        -> repeat_n::operation_state_t<CvrefSenderId, STDEXEC::__id<Receiver>> {
+        -> repeat_n::opstate<CvSender, Receiver> {
         auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
           STDEXEC::get_env(sndr_), STDEXEC::get_env(rcvr));
-        return repeat_n::operation_state_t<CvrefSenderId, STDEXEC::__id<Receiver>>(
-          static_cast<CvrefSender&&>(sndr_),
-          static_cast<Receiver&&>(rcvr),
-          count_,
-          std::move(sched));
+        return repeat_n::opstate<CvSender, Receiver>(
+          static_cast<CvSender&&>(sndr_), static_cast<Receiver&&>(rcvr), count_, std::move(sched));
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> STDEXEC::env_of_t<CvrefSender> {
+      auto get_env() const noexcept -> STDEXEC::env_of_t<CvSender> {
         return STDEXEC::get_env(sndr_);
       }
 
-      CvrefSender sndr_; // could be a value or a reference
+      CvSender sndr_; // could be a value or a reference
       std::size_t count_;
     };
   } // namespace repeat_n
 
   template <class Env>
   struct transform_sender_for<exec::repeat_n_t, Env> {
-    template <class CvrefSender>
-    auto operator()(STDEXEC::__ignore, size_t count, CvrefSender&& sndr) const {
-      static_assert(sizeof(sndr) == 0);
-      using sender_t = repeat_n::sender_t<STDEXEC::__cvref_id<CvrefSender>>;
-      return sender_t{static_cast<CvrefSender&&>(sndr), count};
+    template <class CvSender>
+    auto operator()(STDEXEC::__ignore, size_t count, CvSender&& sndr) const {
+      using sender_t = repeat_n::sender<CvSender>;
+      return sender_t{static_cast<CvSender&&>(sndr), count};
     }
 
     const Env& env_;

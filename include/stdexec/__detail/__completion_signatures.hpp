@@ -67,7 +67,7 @@ namespace STDEXEC {
       static_cast<_Completions*>(nullptr)));
 
     template <class _Sig>
-    using __normalize_sig_t = decltype(__normalize_sig(static_cast<_Sig*>(nullptr)));
+    using __normalize_sig_t = decltype(__cmplsigs::__normalize_sig(static_cast<_Sig*>(nullptr)));
   } // namespace __cmplsigs
 
   template <class... _SigPtrs>

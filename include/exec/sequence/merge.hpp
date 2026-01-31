@@ -35,40 +35,33 @@ namespace exec {
       _Receiver __receiver_;
     };
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __result_receiver {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using receiver_concept = STDEXEC::receiver_t;
 
-      struct __t {
-        using receiver_concept = STDEXEC::receiver_t;
-        using __id = __result_receiver;
+      void set_value() noexcept {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
+      }
 
-        __operation_base<_Receiver>* __op_;
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept {
+        STDEXEC::set_error(
+          static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
+      }
 
-        void set_value() noexcept {
-          STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
-        }
+      void set_stopped() noexcept {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
+      }
 
-        template <class _Error>
-        void set_error(_Error&& __error) noexcept {
-          STDEXEC::set_error(
-            static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
-        }
+      auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return STDEXEC::get_env(__op_->__receiver_);
+      }
 
-        void set_stopped() noexcept {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
-        }
-
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__op_->__receiver_);
-        }
-      };
+      __operation_base<_Receiver>* __op_;
     };
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __merge_each_fn {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
-
       template <STDEXEC::sender _Item>
       auto operator()(_Item&& __item, __operation_base<_Receiver>* __op) const
         noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
@@ -78,52 +71,44 @@ namespace exec {
     };
 
     struct __combine {
-      template <class _ReceiverId>
-      using merge_each_fn_t =
-        __closure<__merge_each_fn<_ReceiverId>, __operation_base<__t<_ReceiverId>>*>;
+      template <class _Receiver>
+      using merge_each_fn_t = __closure<__merge_each_fn<_Receiver>, __operation_base<_Receiver>*>;
 
-      template <class _Sequence, class _ReceiverId>
+      template <class _Sequence, class _Receiver>
       using transform_sender_t =
-        __call_result_t<exec::transform_each_t, _Sequence, merge_each_fn_t<_ReceiverId>>;
-      template <class _Sequence, class _ReceiverId>
+        __call_result_t<exec::transform_each_t, _Sequence, merge_each_fn_t<_Receiver>>;
+      template <class _Sequence, class _Receiver>
       using ignored_sender_t =
-        __call_result_t<exec::ignore_all_values_t, transform_sender_t<_Sequence, _ReceiverId>>;
+        __call_result_t<exec::ignore_all_values_t, transform_sender_t<_Sequence, _Receiver>>;
 
-      template <class _ReceiverId, class... _Sequences>
+      template <class _Receiver, class... _Sequences>
       using result_sender_t =
-        __call_result_t<when_all_t, ignored_sender_t<_Sequences, _ReceiverId>...>;
+        __call_result_t<when_all_t, ignored_sender_t<_Sequences, _Receiver>...>;
     };
 
-    template <class _ReceiverId, class... _Sequences>
-    struct __operation {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+    template <class _Receiver, class... _Sequences>
+    struct __operation : __operation_base<_Receiver> {
+      using merge_each_fn_t = __combine::merge_each_fn_t<_Receiver>;
 
-      using merge_each_fn_t = __combine::merge_each_fn_t<_ReceiverId>;
+      template <class _ReceiverDependent>
+      using result_sender_t = __combine::result_sender_t<_ReceiverDependent, _Sequences...>;
 
-      template <class _ReceiverIdDependent>
-      using result_sender_t = __combine::result_sender_t<_ReceiverIdDependent, _Sequences...>;
+      explicit __operation(_Receiver __rcvr, _Sequences... __sequences)
+        : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
+        , __op_result_{STDEXEC::connect(
+            STDEXEC::when_all(
+              exec::ignore_all_values(
+                exec::transform_each(
+                  static_cast<_Sequences&&>(__sequences),
+                  merge_each_fn_t({}, this)))...),
+            __result_receiver<_Receiver>{this})} {
+      }
 
-      struct __t : __operation_base<_Receiver> {
-        using __id = __operation;
+      void start() & noexcept {
+        STDEXEC::start(__op_result_);
+      }
 
-        explicit __t(_Receiver __rcvr, _Sequences... __sequences)
-          : __operation_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
-          , __op_result_{STDEXEC::connect(
-              STDEXEC::when_all(
-                exec::ignore_all_values(
-                  exec::transform_each(
-                    static_cast<_Sequences&&>(__sequences),
-                    merge_each_fn_t({}, this)))...),
-              STDEXEC::__t<__result_receiver<_ReceiverId>>{this})} {
-        }
-
-        void start() & noexcept {
-          STDEXEC::start(__op_result_);
-        }
-
-        connect_result_t<result_sender_t<_ReceiverId>, STDEXEC::__t<__result_receiver<_ReceiverId>>>
-          __op_result_;
-      };
+      connect_result_t<result_sender_t<_Receiver>, __result_receiver<_Receiver>> __op_result_;
     };
 
     struct merge_t {
@@ -132,8 +117,8 @@ namespace exec {
         template <class _Receiver, class... _Sequences>
         auto operator()(_Receiver& __rcvr, __ignore, __ignore, _Sequences... __sequences)
           noexcept(__nothrow_decay_copyable<_Sequences...>)
-            -> __t<__operation<__id<_Receiver>, _Sequences...>> {
-          return __t<__operation<__id<_Receiver>, _Sequences...>>{
+            -> __operation<_Receiver, _Sequences...> {
+          return __operation<_Receiver, _Sequences...>{
             static_cast<_Receiver&&>(__rcvr), static_cast<_Sequences&&>(__sequences)...};
         }
       };
@@ -165,7 +150,7 @@ namespace exec {
       template <class... _Sequences>
       auto operator()(_Sequences&&... __sequences) const
         noexcept(__nothrow_decay_copyable<_Sequences...>) -> __well_formed_sequence_sender auto {
-        return make_sequence_expr<merge_t>(__(), static_cast<_Sequences&&>(__sequences)...);
+        return make_sequence_expr<merge_t>({}, static_cast<_Sequences&&>(__sequences)...);
       }
 
       template <class _Self, class... _Env>

@@ -20,7 +20,6 @@
 
 #include "../../stdexec/__detail/__ranges.hpp"
 #include "../../stdexec/execution.hpp"
-#include <algorithm>
 #include <cstddef>
 
 #include <cuda/std/type_traits>
@@ -35,129 +34,109 @@ namespace nvexec::_strm::__algo_range_init_fun {
     ::cuda::std::invoke_result_t<Fun, STDEXEC::ranges::range_reference_t<Range>, InitT>
   >;
 
-  template <class SenderId, class ReceiverId, class InitT, class Fun, class DerivedReceiver>
-  struct receiver_t {
-    struct __t : public stream_receiver_base {
-      using Sender = STDEXEC::__t<SenderId>;
-      using Receiver = STDEXEC::__t<ReceiverId>;
-
+  template <class Sender, class Receiver, class InitT, class Fun, class DerivedReceiver>
+  struct receiver : public stream_receiver_base {
+    struct result_size_for {
       template <class... Range>
-      struct result_size_for {
-        using __t = __msize_t<sizeof(typename DerivedReceiver::template result_t<Range...>)>;
-      };
-
-      template <class... Sizes>
-      struct max_in_pack {
-        static constexpr ::std::size_t value = (std::max) ({::std::size_t{}, Sizes::value...});
-      };
-
-      struct max_result_size {
-        template <class... _As>
-        using result_size_for_t = STDEXEC::__t<result_size_for<_As...>>;
-
-        static constexpr ::std::size_t value = __gather_completions_of_t<
-          set_value_t,
-          Sender,
-          env_of_t<Receiver>,
-          __q<result_size_for_t>,
-          __q<max_in_pack>
-        >::value;
-      };
-
-      operation_state_base_t<ReceiverId>& op_state_;
-      STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
-      STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
-
-     public:
-      using __id = receiver_t;
-
-      static constexpr ::std::size_t memory_allocation_size = max_result_size::value;
-
-      template <class Range>
-      void set_value(Range&& range) noexcept {
-        DerivedReceiver::set_value_impl(static_cast<__t&&>(*this), static_cast<Range&&>(range));
-      }
-
-      template <class Error>
-      void set_error(Error&& err) noexcept {
-        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-      }
-
-      void set_stopped() noexcept {
-        op_state_.propagate_completion_signal(set_stopped_t());
-      }
-
-      [[nodiscard]]
-      auto get_env() const noexcept -> env_of_t<Receiver> {
-        return STDEXEC::get_env(op_state_.rcvr_);
-      }
-
-      __t(InitT init, Fun fun, operation_state_base_t<ReceiverId>& op_state)
-        : op_state_(op_state)
-        , init_(static_cast<InitT&&>(init))
-        , fun_(static_cast<Fun&&>(fun)) {
-      }
+      using __f = __msize_t<sizeof(
+        typename __meval<__mfirst, DerivedReceiver, Range...>::template result_t<Range...>)>;
     };
+
+    _strm::opstate_base<Receiver>& opstate_;
+    STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
+    STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
+
+   public:
+    static constexpr std::size_t memory_allocation_size() noexcept {
+      return __gather_completions_of_t<
+        set_value_t,
+        Sender,
+        env_of_t<Receiver>,
+        result_size_for,
+        maxsize
+      >::value;
+    }
+
+    template <class Range>
+    void set_value(Range&& range) noexcept {
+      DerivedReceiver::set_value_impl(static_cast<receiver&&>(*this), static_cast<Range&&>(range));
+    }
+
+    template <class Error>
+    void set_error(Error&& err) noexcept {
+      opstate_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+    }
+
+    void set_stopped() noexcept {
+      opstate_.propagate_completion_signal(set_stopped_t());
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> env_of_t<Receiver> {
+      return STDEXEC::get_env(opstate_.rcvr_);
+    }
+
+    receiver(InitT init, Fun fun, _strm::opstate_base<Receiver>& opstate)
+      : opstate_(opstate)
+      , init_(static_cast<InitT&&>(init))
+      , fun_(static_cast<Fun&&>(fun)) {
+    }
   };
 
-  template <class SenderId, class InitT, class Fun, class DerivedSender>
-  struct sender_t {
-    struct __t : stream_sender_base {
-      using Sender = STDEXEC::__t<SenderId>;
-      using __id = sender_t;
+  template <class Sender, class InitT, class Fun, class DerivedSender>
+  struct sender : stream_sender_base {
+    // in the following two type aliases, __mfirst is used to make DerivedSender,
+    // which is incomplete in this context, dependent to avoid hard errors.
+    template <class Receiver>
+    using receiver_t = __meval<__mfirst, DerivedSender, Receiver>::template receiver_t<Receiver>;
 
-      template <class Receiver>
-      using receiver_t = DerivedSender::template receiver_t<Receiver>;
+    template <class Range>
+    using _set_value_t = __meval<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
 
-      template <class Range>
-      using _set_value_t = DerivedSender::template _set_value_t<Range>;
+    template <class Self, class... Env>
+    using completion_signatures = STDEXEC::transform_completion_signatures<
+      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+      completion_signatures<set_error_t(cudaError_t)>,
+      __mtry_q<_set_value_t>::template __f
+    >;
 
-      Sender sndr_;
-      STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
-      STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
+    template <__decays_to_derived_from<sender> Self, STDEXEC::receiver Receiver>
+      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+      return stream_opstate<__copy_cvref_t<Self, Sender>>(
+        static_cast<Self&&>(self).sndr_,
+        static_cast<Receiver&&>(rcvr),
+        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver> {
+          return receiver_t<Receiver>{
+            {self.init_, self.fun_, stream_provider}
+          };
+        });
+    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <class Self, class... Env>
-      using completion_signatures = STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-        completion_signatures<set_error_t(cudaError_t)>,
-        __mtry_q<_set_value_t>::template __f
-      >;
+    template <__decays_to_derived_from<sender> Self, class... Env>
+    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...> {
+      return {};
+    }
 
-      template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-        -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          static_cast<Self&&>(self).sndr_,
-          static_cast<Receiver&&>(rcvr),
-          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> {
-            return receiver_t<Receiver>(self.init_, self.fun_, stream_provider);
-          });
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
+    auto get_env() const noexcept -> env_of_t<const Sender&> {
+      return STDEXEC::get_env(sndr_);
+    }
 
-      template <__decays_to<__t> Self, class... Env>
-      static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...> {
-        return {};
-      }
-
-      auto get_env() const noexcept -> env_of_t<const Sender&> {
-        return STDEXEC::get_env(sndr_);
-      }
-    };
+    Sender sndr_;
+    STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
+    STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
   };
 } // namespace nvexec::_strm::__algo_range_init_fun
 
 namespace STDEXEC::__detail {
-  template <class SenderId, class InitT, class Fun, class DerivedSender>
-  extern __mconst<nvexec::_strm::__algo_range_init_fun::sender_t<
-    __demangle_t<__t<SenderId>>,
+  template <class Sender, class InitT, class Fun, class DerivedSender>
+  extern __declfn_t<nvexec::_strm::__algo_range_init_fun::sender<
+    __demangle_t<Sender>,
     InitT,
     Fun,
     __demangle_t<DerivedSender>
   >>
-    __demangle_v<
-      nvexec::_strm::__algo_range_init_fun::sender_t<SenderId, InitT, Fun, DerivedSender>
-    >;
+    __demangle_v<nvexec::_strm::__algo_range_init_fun::sender<Sender, InitT, Fun, DerivedSender>>;
 } // namespace STDEXEC::__detail

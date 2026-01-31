@@ -32,8 +32,6 @@ namespace STDEXEC {
   namespace __start_detached {
     struct __submit_receiver {
       using receiver_concept = receiver_t;
-      using __t = __submit_receiver;
-      using __id = __submit_receiver;
 
       template <class... _As>
       constexpr void set_value(_As&&...) noexcept {
@@ -72,8 +70,6 @@ namespace STDEXEC {
     template <class _Env>
     struct __receiver {
       using receiver_concept = receiver_t;
-      using __t = __receiver;
-      using __id = __receiver;
 
       template <class... _As>
       constexpr void set_value(_As&&...) noexcept {
@@ -100,13 +96,10 @@ namespace STDEXEC {
       __op_base<_Env>* __op_;
     };
 
-    template <class _SenderId, class _EnvId>
-    struct __operation : __op_base<__t<_EnvId>> {
-      using _Sender = __cvref_t<_SenderId>;
-      using _Env = __t<_EnvId>;
-
+    template <class _Sender, class _Env>
+    struct __operation : __op_base<_Env> {
       constexpr explicit __operation(connect_t, _Sender&& __sndr, _Env __env)
-        : __op_base<__t<_EnvId>>(static_cast<_Env&&>(__env))
+        : __op_base<_Env>(static_cast<_Env&&>(__env))
         , __op_data_(static_cast<_Sender&&>(__sndr), __receiver<_Env>{this}) {
       }
 
@@ -172,20 +165,20 @@ namespace STDEXEC {
       }
 
       // Below is the default implementation for `start_detached`.
-      template <class _Sender, class _Env = __root_env>
-        requires sender_in<_Sender, __as_root_env_t<_Env>>
-      void apply_sender(_Sender&& __sndr, _Env&& __env = {}) const noexcept(false) {
-        using _Op = __operation<__cvref_id<_Sender>, __id<__decay_t<_Env>>>;
+      template <class _CvSender, class _Env = __root_env>
+        requires sender_in<_CvSender, __as_root_env_t<_Env>>
+      void apply_sender(_CvSender&& __sndr, _Env&& __env = {}) const noexcept(false) {
+        using _Op = __operation<_CvSender, __decay_t<_Env>>;
 
 #if !STDEXEC_APPLE_CLANG() // There seems to be a codegen bug in apple clang that causes
                            // `start_detached` to segfault when the code path below is
                            // taken.
         // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here is a
         // conforming extension.
-        if constexpr (__use_submit<_Sender, _Env>) {
+        if constexpr (__use_submit<_CvSender, _Env>) {
           // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
           // for the operation. We can just call submit and return.
-          STDEXEC::__submit::__submit(static_cast<_Sender&&>(__sndr), __submit_receiver{});
+          STDEXEC::__submit::__submit(static_cast<_CvSender&&>(__sndr), __submit_receiver{});
         } else
 #endif
         {
@@ -202,7 +195,7 @@ namespace STDEXEC {
           // This can potentially throw. If it does, the scope guard will deallocate the
           // storage automatically.
           std::allocator_traits<_OpAlloc>::construct(
-            __op_alloc, __op, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env));
+            __op_alloc, __op, static_cast<_CvSender&&>(__sndr), static_cast<_Env&&>(__env));
           // The operation state is now constructed, dismiss the scope guard.
           __g.__dismiss();
           // The operation has now started and is responsible for deleting itself when it

@@ -62,6 +62,13 @@ namespace STDEXEC {
     using __expected_t =
       std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
 
+    // Helper to cast a coroutine_handle<void> to coroutine_handle<_Promise>
+    template <class _Promise>
+    constexpr auto __coroutine_handle_cast(__std::coroutine_handle<> __hcoro) noexcept
+      -> __std::coroutine_handle<_Promise> {
+      return __std::coroutine_handle<_Promise>::from_address(__hcoro.address());
+    }
+
     template <class _Value>
     struct __receiver_base {
       using receiver_concept = receiver_t;
@@ -93,32 +100,25 @@ namespace STDEXEC {
       __std::coroutine_handle<> __continuation_;
     };
 
-    template <class _PromiseId, class _Value>
-    struct __receiver {
-      using _Promise = STDEXEC::__t<_PromiseId>;
+    template <class _Promise, class _Value>
+    struct __receiver : __receiver_base<_Value> {
+      constexpr void set_stopped() noexcept {
+        auto __continuation = __coroutine_handle_cast<_Promise>(this->__continuation_);
+        // Do not use type deduction here so that we perform any conversions necessary on
+        // the stopped continuation:
+        __std::coroutine_handle<> __on_stopped = __continuation.promise().unhandled_stopped();
+        __on_stopped.resume();
+      }
 
-      struct __t : __receiver_base<_Value> {
-        using __id = __receiver;
-
-        constexpr void set_stopped() noexcept {
-          auto __continuation = __std::coroutine_handle<_Promise>::from_address(
-            this->__continuation_.address());
-          __std::coroutine_handle<> __stopped_continuation = __continuation.promise()
-                                                               .unhandled_stopped();
-          __stopped_continuation.resume();
-        }
-
-        // Forward get_env query to the coroutine promise
-        constexpr auto get_env() const noexcept -> env_of_t<_Promise&> {
-          auto __continuation = __std::coroutine_handle<_Promise>::from_address(
-            this->__continuation_.address());
-          return STDEXEC::get_env(__continuation.promise());
-        }
-      };
+      // Forward get_env query to the coroutine promise
+      constexpr auto get_env() const noexcept -> env_of_t<_Promise&> {
+        const auto __continuation = __coroutine_handle_cast<_Promise>(this->__continuation_);
+        return STDEXEC::get_env(__continuation.promise());
+      }
     };
 
     template <class _Sender, class _Promise>
-    using __receiver_t = __t<__receiver<__id<_Promise>, __detail::__value_t<_Sender, _Promise>>>;
+    using __receiver_t = __receiver<_Promise, __detail::__value_t<_Sender, _Promise>>;
 
     template <class _Value>
     struct __sender_awaitable_base {
@@ -147,34 +147,25 @@ namespace STDEXEC {
       __expected_t<_Value> __result_;
     };
 
-    template <class _PromiseId, class _SenderId>
-    struct __sender_awaitable {
-      using _Promise = STDEXEC::__t<_PromiseId>;
-      using _Sender = STDEXEC::__t<_SenderId>;
-      using __value = __detail::__value_t<_Sender, _Promise>;
-
-      struct __t : __sender_awaitable_base<__value> {
-        constexpr __t(_Sender&& sndr, __std::coroutine_handle<_Promise> __hcoro)
-          noexcept(__nothrow_connectable<_Sender, __receiver>)
-          : __op_state_(connect(
-              static_cast<_Sender&&>(sndr),
-              __receiver{
-                {&this->__result_, __hcoro}
-        })) {
-        }
-
-        constexpr void await_suspend(__std::coroutine_handle<_Promise>) noexcept {
-          STDEXEC::start(__op_state_);
-        }
-
-       private:
-        using __receiver = __receiver_t<_Sender, _Promise>;
-        connect_result_t<_Sender, __receiver> __op_state_;
-      };
-    };
-
     template <class _Promise, class _Sender>
-    using __sender_awaitable_t = __t<__sender_awaitable<__id<_Promise>, __id<_Sender>>>;
+    struct __sender_awaitable : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>> {
+      constexpr __sender_awaitable(_Sender&& sndr, __std::coroutine_handle<_Promise> __hcoro)
+        noexcept(__nothrow_connectable<_Sender, __receiver>)
+        : __op_state_(connect(
+            static_cast<_Sender&&>(sndr),
+            __receiver{
+              {&this->__result_, __hcoro}
+      })) {
+      }
+
+      constexpr void await_suspend(__std::coroutine_handle<_Promise>) noexcept {
+        STDEXEC::start(__op_state_);
+      }
+
+     private:
+      using __receiver = __receiver_t<_Sender, _Promise>;
+      connect_result_t<_Sender, __receiver> __op_state_;
+    };
 
     template <class _Sender, class _Promise>
     concept __awaitable_sender = sender_in<_Sender, env_of_t<_Promise&>>
@@ -199,17 +190,18 @@ namespace STDEXEC {
       template <class _Tp, class _Promise>
       static consteval auto __get_declfn() noexcept {
         if constexpr (__detail::__has_as_awaitable_member<_Tp, _Promise>) {
-          using _Result = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-          constexpr bool _Nothrow = noexcept(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-          return __declfn<_Result, _Nothrow>();
+          using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
+          constexpr bool __is_nothrow = noexcept(__declval<_Tp>()
+                                                   .as_awaitable(__declval<_Promise&>()));
+          return __declfn<__result_t, __is_nothrow>();
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
           return __declfn<_Tp&&>();
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
-          using _Result = __sender_awaitable_t<_Promise, _Tp>;
-          constexpr bool _Nothrow =
-            __nothrow_constructible_from<_Result, _Tp, __std::coroutine_handle<_Promise>>;
-          return __declfn<_Result, _Nothrow>();
+          using __result_t = __sender_awaitable<_Promise, _Tp>;
+          constexpr bool __is_nothrow =
+            __nothrow_constructible_from<__result_t, _Tp, __std::coroutine_handle<_Promise>>;
+          return __declfn<__result_t, __is_nothrow>();
         } else {
           return __declfn<_Tp&&>();
         }
@@ -220,15 +212,15 @@ namespace STDEXEC {
       auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
         -> decltype(_DeclFn()) {
         if constexpr (__detail::__has_as_awaitable_member<_Tp, _Promise>) {
-          using _Result = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
-          static_assert(__awaitable<_Result, _Promise>);
+          using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
+          static_assert(__awaitable<__result_t, _Promise>);
           return static_cast<_Tp&&>(__t).as_awaitable(__promise);
           // NOLINTNEXTLINE(bugprone-branch-clone)
         } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
           return static_cast<_Tp&&>(__t);
         } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
           auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
-          return __sender_awaitable_t<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
+          return __sender_awaitable<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
         } else {
           return static_cast<_Tp&&>(__t);
         }
@@ -240,8 +232,8 @@ namespace STDEXEC {
       auto operator()(_Tp&& __t, _Promise& __promise) const
         noexcept(nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
           -> tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
-        using _Result = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
-        static_assert(__awaitable<_Result, _Promise>);
+        using __result_t = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
+        static_assert(__awaitable<__result_t, _Promise>);
         return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
       }
     };

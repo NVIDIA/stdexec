@@ -71,7 +71,7 @@ namespace STDEXEC {
 
   struct _TO_FIX_THIS_ERROR_ { };
 
-  struct _SENDER_TYPE_IS_NOT_COPYABLE_ { };
+  struct _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_ { };
 
   struct _TYPE_IS_NOT_DECAY_COPYABLE_ { };
 
@@ -199,8 +199,6 @@ namespace STDEXEC {
   template <class... _What>
   struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error {
     using __t = _ERROR_;
-    using __id = _ERROR_;
-
     using __partitioned = _ERROR_;
 
     template <class, class>

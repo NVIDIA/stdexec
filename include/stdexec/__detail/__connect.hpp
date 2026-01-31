@@ -120,7 +120,7 @@ namespace STDEXEC {
           using _Result = __call_result_t<__connect_awaitable_t, _TfxSender, _Receiver>;
           return __declfn<_Result, false>();
         } else if constexpr (__is_debug_env<env_of_t<_Receiver>>) {
-          using _Result = __debug::__debug_operation;
+          using _Result = __debug::__opstate;
           return __declfn<_Result, _NothrowTfxSender>();
         } else {
           return _NO_USABLE_CONNECT_CUSTOMIZATION_FOUND_<

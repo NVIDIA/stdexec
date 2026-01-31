@@ -35,53 +35,47 @@ namespace exec {
       STDEXEC_ATTRIBUTE(no_unique_address) _Args args;
     };
 
-    template <class _ReceiverId, class _Fun, class _ArgsId>
-    struct __operation {
-      using _Context = __context<STDEXEC::__t<_ReceiverId>, STDEXEC::__t<_ArgsId>>;
-      using _Result = __call_result_t<_Fun, _Context&>;
-      using _State = __if_c<__std::same_as<_Result, void>, __void, std::optional<_Result>>;
+    template <class _Receiver, class _Fun, class _Args>
+    struct __opstate : STDEXEC::__immovable {
+      using __context_t = __context<_Receiver, _Args>;
+      using __result_t = __call_result_t<_Fun, __context_t&>;
+      using __state_t = __if_c<__std::same_as<__result_t, void>, __void, std::optional<__result_t>>;
 
-      struct __t : STDEXEC::__immovable {
-        using __id = __operation;
+      void start() & noexcept {
+        __state_
+          .emplace(__emplace_from{[&]() noexcept { return static_cast<_Fun&&>(__fun_)(__ctx_); }});
+      }
 
-        STDEXEC_ATTRIBUTE(no_unique_address) _Context __ctx_;
-        STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
-        STDEXEC_ATTRIBUTE(no_unique_address) _State __state_ { };
-
-        void start() & noexcept {
-          __state_.emplace(
-            __emplace_from{[&]() noexcept { return static_cast<_Fun&&>(__fun_)(__ctx_); }});
-        }
-      };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __context_t __ctx_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Fun __fun_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __state_t __state_{};
     };
 
-    template <class _Fun, class _ArgsId, class... _Sigs>
+    template <class _Fun, class _Args, class... _Sigs>
     struct __sender {
-      using _Args = STDEXEC::__t<_ArgsId>;
+      using sender_concept = STDEXEC::sender_t;
+      using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
 
-      struct __t {
-        using __id = __sender;
-        using sender_concept = STDEXEC::sender_t;
-        using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
+      template <__decays_to<__sender> _Self, receiver_of<completion_signatures> _Receiver>
+        requires __callable<_Fun, __context<_Receiver, _Args>&>
+              && __std::constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
+              && __std::constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+        -> __opstate<_Receiver, _Fun, _Args> {
+        static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
+        return {
+          {},
+          {static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__args_},
+          static_cast<_Self&&>(__self).__fun_
+        };
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-        _Fun __fun_;
-        _Args __args_;
-
-        template <__decays_to<__t> _Self, receiver_of<completion_signatures> _Receiver>
-          requires __callable<_Fun, __context<_Receiver, _Args>&>
-                && __std::constructible_from<_Fun, __copy_cvref_t<_Self, _Fun>>
-                && __std::constructible_from<_Args, __copy_cvref_t<_Self, _Args>>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-          -> STDEXEC::__t<__operation<STDEXEC::__id<_Receiver>, _Fun, _ArgsId>> {
-          static_assert(__nothrow_callable<_Fun, __context<_Receiver, _Args>&>);
-          return {
-            {},
-            {static_cast<_Receiver&&>(__rcvr), static_cast<_Self&&>(__self).__args_},
-            static_cast<_Self&&>(__self).__fun_
-          };
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
-      };
+      _Fun __fun_;
+      _Args __args_;
     };
 
     template <__completion_signature... _Sigs>
@@ -90,14 +84,14 @@ namespace exec {
         requires __std::move_constructible<_Fun>
               && __std::constructible_from<__decayed_std_tuple<_Args...>, _Args...>
       auto operator()(_Fun __fun, _Args&&... __args) const
-        -> __t<__sender<_Fun, __id<__decayed_std_tuple<_Args...>>, _Sigs...>> {
+        -> __sender<_Fun, __decayed_std_tuple<_Args...>, _Sigs...> {
         return {static_cast<_Fun&&>(__fun), {static_cast<_Args&&>(__args)...}};
       }
     };
   } // namespace __create
 
   template <class... _Sigs>
-  extern const STDEXEC::__mfront<void, _Sigs...> create;
+  extern const STDEXEC::__undefined<_Sigs...> create;
 
   template <STDEXEC::__completion_signature... _Sigs>
   inline constexpr __create::__create_t<_Sigs...> create<_Sigs...>{};
