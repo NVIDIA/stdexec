@@ -86,7 +86,7 @@ namespace STDEXEC {
 
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__types>, __qq<__msingle>>;
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__mlist>, __qq<__msingle>>;
 
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...> //

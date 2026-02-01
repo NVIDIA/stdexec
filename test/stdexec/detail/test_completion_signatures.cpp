@@ -54,11 +54,11 @@ namespace {
     "[detail][completion_signatures]") {
     using set_value_f = ex::__q<set_value_sig>;
 
-    using tr = ex::__mtransform<set_value_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_value_f, ex::__q<ex::__mlist>>;
 
     using res = ex::__minvoke<tr, int, double, string>;
     using expected =
-      ex::__types<ex::set_value_t(int), ex::set_value_t(double), ex::set_value_t(string)>;
+      ex::__mlist<ex::set_value_t(int), ex::set_value_t(double), ex::set_value_t(string)>;
     static_assert(is_same_v<res, expected>);
   }
 
@@ -67,10 +67,10 @@ namespace {
     "[detail][completion_signatures]") {
     using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__mlist>>;
 
     using res = ex::__minvoke<tr, exception_ptr, error_code, string>;
-    using expected = ex::__types<
+    using expected = ex::__mlist<
       ex::set_error_t(exception_ptr),
       ex::set_error_t(error_code),
       ex::set_error_t(string)
@@ -83,10 +83,10 @@ namespace {
     "[detail][completion_signatures]") {
     using set_error_f = ex::__q<set_error_sig>;
 
-    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__types>>;
+    using tr = ex::__mtransform<set_error_f, ex::__q<ex::__mlist>>;
 
     using res = ex::__minvoke<tr, exception_ptr>;
-    using expected = ex::__types<ex::set_error_t(exception_ptr)>;
+    using expected = ex::__mlist<ex::set_error_t(exception_ptr)>;
     static_assert(is_same_v<res, expected>);
   }
 
@@ -123,16 +123,16 @@ namespace {
     using sig_ec = ex::__error_types_of_t<snd_ec_t, ex::env<>, tr>;
     using sig_str = ex::__error_types_of_t<snd_str_t, ex::env<>, tr>;
 
-    static_assert(is_same_v<sig_eptr, ex::__types<ex::set_error_t(exception_ptr)>>);
-    static_assert(is_same_v<sig_ec, ex::__types<ex::set_error_t(error_code)>>);
-    static_assert(is_same_v<sig_str, ex::__types<ex::set_error_t(string)>>);
+    static_assert(is_same_v<sig_eptr, ex::__mlist<ex::set_error_t(exception_ptr)>>);
+    static_assert(is_same_v<sig_ec, ex::__mlist<ex::set_error_t(error_code)>>);
+    static_assert(is_same_v<sig_str, ex::__mlist<ex::set_error_t(string)>>);
   }
 
   template <class CS, class... Expected>
   void expect_val_types() {
     using expected_t = ex::__mmake_set<Expected...>;
     using actual_t =
-      ex::__gather_completions_t<ex::set_value_t, CS, ex::__q<ex::__types>, ex::__q<ex::__mset>>;
+      ex::__gather_completions_t<ex::set_value_t, CS, ex::__q<ex::__mlist>, ex::__q<ex::__mset>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
@@ -159,8 +159,8 @@ namespace {
     using cs_ec = ex::transform_completion_signatures_of<snd_ec_t>;
     using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t>;
 
-    expect_val_types<cs_int, ex::__types<int>>();
-    expect_val_types<cs_double_char, ex::__types<double, char>>();
+    expect_val_types<cs_int, ex::__mlist<int>>();
+    expect_val_types<cs_double_char, ex::__mlist<double, char>>();
     expect_val_types<cs_eptr>();
     expect_val_types<cs_ec>();
     expect_val_types<cs_stopped>();
@@ -189,8 +189,8 @@ namespace {
     using cs_ec = ex::transform_completion_signatures_of<snd_ec_t, ex::env<>>;
     using cs_stopped = ex::transform_completion_signatures_of<snd_stopped_t, ex::env<>>;
 
-    expect_val_types<cs_int, ex::__types<int>>();
-    expect_val_types<cs_double_char, ex::__types<double, char>>();
+    expect_val_types<cs_int, ex::__mlist<int>>();
+    expect_val_types<cs_double_char, ex::__mlist<double, char>>();
     expect_val_types<cs_eptr>();
     expect_val_types<cs_ec>();
     expect_val_types<cs_stopped>();
@@ -241,7 +241,7 @@ namespace {
     >;
 
     // will add int, double will appear only once
-    expect_val_types<cs, ex::__types<int>, ex::__types<double>>();
+    expect_val_types<cs, ex::__mlist<int>, ex::__mlist<double>>();
   }
 
   template <class... Args>
@@ -263,7 +263,7 @@ namespace {
 
     // will transform the original "double" into <string, double>
     // then will add the other "int" and "double"
-    expect_val_types<cs, ex::__types<int>, ex::__types<double>, ex::__types<string, double>>();
+    expect_val_types<cs, ex::__mlist<int>, ex::__mlist<double>, ex::__mlist<string, double>>();
   }
 
   TEST_CASE(

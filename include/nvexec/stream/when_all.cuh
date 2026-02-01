@@ -67,7 +67,7 @@ namespace nvexec::_strm {
 
     template <class... Env, class... Senders>
       requires(too_many_completions_sender<Senders, Env...> || ...)
-    struct completions<__types<Env...>, Senders...> {
+    struct completions<__mlist<Env...>, Senders...> {
       static constexpr auto position_of() noexcept -> std::size_t {
         constexpr bool which[] = {too_many_completions_sender<Senders, Env...>...};
         return __pos_of(which, which + sizeof...(Senders));
@@ -79,7 +79,7 @@ namespace nvexec::_strm {
 
     template <class... Env, class... Senders>
       requires(valid_child_sender<Senders, Env...> && ...)
-    struct completions<__types<Env...>, Senders...> {
+    struct completions<__mlist<Env...>, Senders...> {
       using non_values_t = __minvoke_q<
         __concat_completion_signatures_t,
         completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
@@ -94,8 +94,8 @@ namespace nvexec::_strm {
         __mconcat<__qf<set_value_t>>,
         __value_types_t<
           __completion_signatures_of_t<Senders, Env...>,
-          __q<__types>,
-          __msingle_or<__types<>>
+          __q<__mlist>,
+          __msingle_or<__mlist<>>
         >...
       >;
 
@@ -126,7 +126,7 @@ namespace nvexec::_strm {
 
     template <class Cv, class... Env>
     using _completions_t = STDEXEC::__t<
-      _when_all::completions<__types<_when_all::env_t<Env>...>, __copy_cvref_t<Cv, Senders>...>
+      _when_all::completions<__mlist<_when_all::env_t<Env>...>, __copy_cvref_t<Cv, Senders>...>
     >;
 
    public:

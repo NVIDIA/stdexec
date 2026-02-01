@@ -129,14 +129,14 @@ namespace STDEXEC {
     // __partitions specialization. If the cache is never accessed, it is never
     // instantiated.
     template <
-      class _ValueTuplesList = __types<>,
-      class _ErrorsList = __types<>,
-      class _StoppedList = __types<>
+      class _ValueTuplesList = __mlist<>,
+      class _ErrorsList = __mlist<>,
+      class _StoppedList = __mlist<>
     >
     struct __partitions;
 
     template <class... _ValueTuples, class... _Errors, class... _Stopped>
-    struct __partitions<__types<_ValueTuples...>, __types<_Errors...>, __types<_Stopped...>> {
+    struct __partitions<__mlist<_ValueTuples...>, __mlist<_Errors...>, __mlist<_Stopped...>> {
       template <class _Tuple, class _Variant>
       using __value_types = _Variant::template __f<__mapply<_Tuple, _ValueTuples>...>;
 
@@ -184,25 +184,25 @@ namespace STDEXEC {
     struct __partitioned_fold_fn<set_value_t> {
       template <class... _ValueTuples, class _Errors, class _Stopped, class _Values>
       constexpr auto operator()(
-        __partitions<__types<_ValueTuples...>, _Errors, _Stopped>&,
+        __partitions<__mlist<_ValueTuples...>, _Errors, _Stopped>&,
         __undefined<_Values>&) const
-        -> __undefined<__partitions<__types<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
+        -> __undefined<__partitions<__mlist<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
     };
 
     template <>
     struct __partitioned_fold_fn<set_error_t> {
       template <class _Values, class... _Errors, class _Stopped, class _Error>
       constexpr auto operator()(
-        __partitions<_Values, __types<_Errors...>, _Stopped>&,
-        __undefined<__types<_Error>>&) const
-        -> __undefined<__partitions<_Values, __types<_Errors..., _Error>, _Stopped>>&;
+        __partitions<_Values, __mlist<_Errors...>, _Stopped>&,
+        __undefined<__mlist<_Error>>&) const
+        -> __undefined<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>&;
     };
 
     template <>
     struct __partitioned_fold_fn<set_stopped_t> {
       template <class _Values, class _Errors, class _Stopped>
       constexpr auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
-        -> __undefined<__partitions<_Values, _Errors, __types<set_stopped_t()>>>&;
+        -> __undefined<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>>&;
     };
 
     // The following overload of binary operator* is used to build up the cache of completion
@@ -213,7 +213,7 @@ namespace STDEXEC {
     constexpr auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...)) -> __call_result_t<
       __partitioned_fold_fn<_Tag>,
       _Partitioned&,
-      __undefined<__types<_Args...>>&
+      __undefined<__mlist<_Args...>>&
     >;
 
     // This function declaration is used to extract the cache from the `__undefined` type.

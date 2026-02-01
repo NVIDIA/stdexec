@@ -95,7 +95,7 @@ namespace STDEXEC {
 #define STDEXEC_CHECKED_COMPLSIGS(_SENDER, _ENV, ...)                                              \
   (static_cast<void>(__VA_ARGS__),                                                                 \
    STDEXEC::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>(                                \
-     static_cast<__types<_SENDER, _ENV...>*>(nullptr)))
+     static_cast<__mlist<_SENDER, _ENV...>*>(nullptr)))
 
     template <class _Ty>
     concept __non_sender = !enable_sender<__decay_t<_Ty>>;
@@ -107,7 +107,7 @@ namespace STDEXEC {
 
     template <class _Completions, class _Sender, class... _Env>
       requires(!__valid_completion_signatures<_Completions>)
-    consteval auto __checked_complsigs(__types<_Sender, _Env...>*) {
+    consteval auto __checked_complsigs(__mlist<_Sender, _Env...>*) {
       if constexpr (__merror<_Completions>) {
         return STDEXEC::__throw_compile_time_error(_Completions());
       } else if constexpr (STDEXEC_IS_BASE_OF(dependent_sender_error, _Completions)) {

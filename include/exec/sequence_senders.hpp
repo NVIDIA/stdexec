@@ -201,7 +201,7 @@ namespace exec {
 
   template <class... _Senders>
   struct item_types {
-    template <class _Fn, class _Continuation = STDEXEC::__qq<STDEXEC::__types>>
+    template <class _Fn, class _Continuation = STDEXEC::__qq<STDEXEC::__mlist>>
     static constexpr auto __transform(_Fn __fn, _Continuation __continuation = {}) {
       return __continuation(__fn.template operator()<_Senders>()...);
     }
