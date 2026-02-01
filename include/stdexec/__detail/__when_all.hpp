@@ -110,7 +110,7 @@ namespace STDEXEC {
       template <class _Sender>
       using __single_values_of_t = __value_types_t<
         __completion_signatures_of_t<_Sender, _Env...>,
-        __mtransform<__q<__decay_t>, __q<__types>>,
+        __mtransform<__q<__decay_t>, __q<__mlist>>,
         __mbind_front_q<__value_tuple_t, _Sender>
       >;
 
@@ -166,10 +166,10 @@ namespace STDEXEC {
         __mconcat<>,
         __if<
           __mand<__nothrow_decay_copyable_results_t<_Senders, _Env>...>,
-          __types<>,
-          __types<std::exception_ptr>
+          __mlist<>,
+          __mlist<std::exception_ptr>
         >,
-        __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...
+        __error_types_of_t<_Senders, __env_t<_Env>, __q<__mlist>>...
       >;
 
       using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;

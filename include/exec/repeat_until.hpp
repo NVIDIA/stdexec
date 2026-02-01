@@ -247,10 +247,10 @@ namespace exec {
         transform_sender(STDEXEC::set_value_t, _CvSender &&__sndr, const _Env &) noexcept {
         using namespace STDEXEC;
         using __child_t = __child_of<_CvSender>;
-        using __values_t = value_types_of_t<__child_t, _Env, __types, __types>;
+        using __values_t = value_types_of_t<__child_t, _Env, __mlist, __mlist>;
         auto &[__tag, __ign, __child] = __sndr;
 
-        if constexpr (__same_as<__values_t, __types<>> || __same_as<__values_t, __types<__types<>>>) {
+        if constexpr (__same_as<__values_t, __mlist<>> || __same_as<__values_t, __mlist<__mlist<>>>) {
           return repeat_until_t()(then(static_cast<__child_t &&>(__child), _never{}));
         } else {
           return __not_a_sender<

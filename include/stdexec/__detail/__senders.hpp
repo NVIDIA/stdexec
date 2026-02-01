@@ -42,13 +42,13 @@ namespace STDEXEC {
   template <class _Sender, class _SetSig, class _Env = env<>>
   concept sender_of = sender_in<_Sender, _Env>
                    && __std::same_as<
-                        __types<_SetSig>,
+                        __mlist<_SetSig>,
                         __gather_completions_of_t<
                           __detail::__tag_of_sig_t<_SetSig>,
                           _Sender,
                           _Env,
-                          __mcompose<__qq<__types>, __qf<__detail::__tag_of_sig_t<_SetSig>>>,
-                          __mconcat<__qq<__types>>
+                          __mcompose<__qq<__mlist>, __qf<__detail::__tag_of_sig_t<_SetSig>>>,
+                          __mconcat<__qq<__mlist>>
                         >
                    >;
 
@@ -63,7 +63,7 @@ namespace STDEXEC {
       set_error_t,
       __nofail_t,
       __cmplsigs::__default_completion,
-      __types
+      __mlist
     >;
   };
 

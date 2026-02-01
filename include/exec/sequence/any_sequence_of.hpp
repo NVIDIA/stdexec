@@ -211,7 +211,7 @@ namespace exec {
       void* __sender_;
     };
 
-    template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
+    template <class _Sigs, class _SenderQueries = __mlist<>, class _ReceiverQueries = __mlist<>>
     struct __sequence_sender {
       using __receiver_ref_t = __next_receiver_ref<_Sigs, _ReceiverQueries>;
       using __vtable_t = __sender_vtable<_Sigs, _SenderQueries, _ReceiverQueries>;

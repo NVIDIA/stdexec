@@ -25,15 +25,15 @@ using namespace STDEXEC;
 namespace {
 
   TEST_CASE(
-    "transform identity will return the given types (wrapped in __types)",
+    "transform identity will return the given types (wrapped in __mlist)",
     "[detail][transform]") {
     using tr = __mtransform<__q<__midentity>>;
     using res = __minvoke<tr, int, char>;
-    static_assert(is_same_v<res, __types<int, char>>);
+    static_assert(is_same_v<res, __mlist<int, char>>);
   }
 
   TEST_CASE(
-    "transform can avoid the __types wrapping with __q<__midentity>",
+    "transform can avoid the __mlist wrapping with __q<__midentity>",
     "[detail][transform]") {
     using tr = __mtransform<__q<__midentity>, __q<__midentity>>;
     using res = __minvoke<tr, int>;
@@ -46,7 +46,7 @@ namespace {
   TEST_CASE("transform can wrap input types", "[detail][transform]") {
     using tr = __mtransform<__q<as_optional>>;
     using res = __minvoke<tr, int, char>;
-    static_assert(is_same_v<res, __types<optional<int>, optional<char>>>);
+    static_assert(is_same_v<res, __mlist<optional<int>, optional<char>>>);
   }
 
   TEST_CASE(

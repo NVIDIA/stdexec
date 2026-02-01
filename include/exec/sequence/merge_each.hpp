@@ -131,7 +131,7 @@ namespace exec {
     };
 
     template <class... _Args>
-    using drop = __types<>;
+    using drop = __mlist<>;
 
     enum class __completion_t {
       __started,
@@ -755,7 +755,7 @@ namespace exec {
         template <class... _Senders>
         using __f = __minvoke_if_c<
           __arg_of_base_t<_Env...>::template __valid_args<_Senders...>(),
-          __mconst<STDEXEC::__types<_Senders...>>,
+          __mconst<STDEXEC::__mlist<_Senders...>>,
           __value_completions_error<_Sequence, _Sender, _Env...>,
           _Senders...
         >;
@@ -770,9 +770,9 @@ namespace exec {
           // if set_value
           __arg_of_t<_Sequence, _Sender, _Env...>::template __f,
           // else remove
-          STDEXEC::__mconst<STDEXEC::__types<>>::__f,
-          // concat to __types result
-          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__types>>::__f
+          STDEXEC::__mconst<STDEXEC::__mlist<>>::__f,
+          // concat to __mlist result
+          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>::__f
         >;
       };
 
@@ -786,9 +786,9 @@ namespace exec {
       struct __nested_sequences_fn {
         template <class... _Senders>
         using __f = __mapply<
-          STDEXEC::__munique<STDEXEC::__qq<__types>>,
+          STDEXEC::__munique<STDEXEC::__qq<__mlist>>,
           STDEXEC::__minvoke<
-            STDEXEC::__mconcat<STDEXEC::__qq<__types>>,
+            STDEXEC::__mconcat<STDEXEC::__qq<__mlist>>,
             __minvoke_q<__nested_sequences_from_item_type_t, _Sequence, _Senders, _Env...>...
           >
         >;
@@ -806,7 +806,7 @@ namespace exec {
       struct __all_nested_values_fn {
         template <class... _Sequences>
         using __f = STDEXEC::__minvoke<
-          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__types>>,
+          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>,
           __item_types_of_t<_Sequences, _Env...>...
         >;
       };
@@ -824,7 +824,7 @@ namespace exec {
         template <class _Sender>
         using __f = STDEXEC::__error_types_t<
           __completion_signatures_of_t<_Sender, _Env...>,
-          STDEXEC::__qq<STDEXEC::__types>
+          STDEXEC::__qq<STDEXEC::__mlist>
         >;
       };
 
@@ -832,7 +832,7 @@ namespace exec {
       using __error_types_t = __mapply<
         STDEXEC::__mtransform<
           __error_types_fn<_Env...>,
-          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__types>>
+          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>
         >,
         _Senders
       >;
@@ -848,9 +848,9 @@ namespace exec {
 
       template <class _Sequence, class... _Env>
       using __errors_t = STDEXEC::__minvoke<
-        STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__types>>,
+        STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>,
         // always include std::exception_ptr
-        STDEXEC::__types<std::exception_ptr>,
+        STDEXEC::__mlist<std::exception_ptr>,
         // include errors from senders of the nested sequences
         __error_types_t<__item_types_of_t<_Sequence, _Env...>, _Env...>,
         // include errors from the nested sequences

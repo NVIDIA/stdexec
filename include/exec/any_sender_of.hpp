@@ -964,7 +964,7 @@ namespace exec {
       }
     };
 
-    template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
+    template <class _Sigs, class _SenderQueries = __mlist<>, class _ReceiverQueries = __mlist<>>
     struct __sender {
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures = _Sigs;
@@ -1047,7 +1047,7 @@ namespace exec {
       void* __sender_;
     };
 
-    template <class _ScheduleSender, class _SchedulerQueries = __types<>>
+    template <class _ScheduleSender, class _SchedulerQueries = __mlist<>>
     class __scheduler {
       static constexpr std::size_t __buffer_size = 4 * sizeof(void*);
       template <class _Ty>
@@ -1147,7 +1147,7 @@ namespace exec {
   } // namespace __any
 
   template <auto... _Sigs>
-  using queries = STDEXEC::__types<decltype(_Sigs)...>;
+  using queries = STDEXEC::__mlist<decltype(_Sigs)...>;
 
   template <class _Completions, auto... _ReceiverQueries>
   class any_receiver_ref {

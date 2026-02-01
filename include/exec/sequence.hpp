@@ -135,7 +135,7 @@ namespace exec {
         STDEXEC::__mfill_c<
           sizeof...(Senders),
           STDEXEC::__mfalse,
-          STDEXEC::__mbind_back_q<STDEXEC::__types, STDEXEC::__mtrue>
+          STDEXEC::__mbind_back_q<STDEXEC::__mlist, STDEXEC::__mtrue>
         >
       >;
 

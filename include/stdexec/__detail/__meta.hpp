@@ -53,7 +53,7 @@ namespace STDEXEC {
   using __mtypeof = decltype(__detail::__mtypeof_v<_Value>());
 
   template <class...>
-  struct __types;
+  struct __mlist;
 
   template <class _Tp>
   using __midentity = _Tp;
@@ -359,6 +359,12 @@ namespace STDEXEC {
   template <class _Fn>
   struct __mtry : __mtry_q<_Fn::template __f> { };
 
+  template <__merror _Error>
+  struct __mtry<_Error> {
+    template <class...>
+    using __f = _Error;
+  };
+
   template <template <class...> class _Fn, class... _Front>
   struct __mbind_front_q {
     template <class... _Args>
@@ -483,7 +489,7 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class _Default, class... _Args>
   using __minvoke_or_q = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
-  template <class _Fn, class _Continuation = __q<__types>>
+  template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mtransform {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
@@ -512,7 +518,7 @@ namespace STDEXEC {
   struct __mfold_left_ {
     template <class _Fn, class _State, class _Head, class... _Tail>
     using __f =
-      __minvoke<_Fn, __mcall<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
+      __minvoke<_Fn, __minvoke<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
   };
 
   template <>
@@ -578,45 +584,45 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class _List>
   using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
 
-  template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__types>>
+  template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill_c = __mapply<__mtransform<__mconst<_Ty>, _Continuation>, __make_indices<_Ny>>;
 
-  template <class _Ny, class _Ty, class _Continuation = __qq<__types>>
+  template <class _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill = __mfill_c<_Ny::value, _Ty, _Continuation>;
 
   template <bool>
   struct __mconcat_ {
     template <
       class... _Ts,
-      template <class...> class _Ap = __types,
+      template <class...> class _Ap = __mlist,
       class... _As,
-      template <class...> class _Bp = __types,
+      template <class...> class _Bp = __mlist,
       class... _Bs,
-      template <class...> class _Cp = __types,
+      template <class...> class _Cp = __mlist,
       class... _Cs,
-      template <class...> class _Dp = __types,
+      template <class...> class _Dp = __mlist,
       class... _Ds,
       class... _Tail
     >
     static auto __f(
-      __types<_Ts...> *,
+      __mlist<_Ts...> *,
       _Ap<_As...> *,
       _Bp<_Bs...> * = nullptr,
       _Cp<_Cs...> * = nullptr,
       _Dp<_Ds...> * = nullptr,
       _Tail *...__tail)
       -> __midentity<decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
-        static_cast<__types<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
+        static_cast<__mlist<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
         __tail...))>;
   };
 
   template <>
   struct __mconcat_<true> {
     template <class... _As>
-    static auto __f(__types<_As...> *) -> __types<_As...>;
+    static auto __f(__mlist<_As...> *) -> __mlist<_As...>;
   };
 
-  template <class _Continuation = __qq<__types>>
+  template <class _Continuation = __qq<__mlist>>
   struct __mconcat {
     template <class... _Args>
     using __f = __mapply<
@@ -648,7 +654,7 @@ namespace STDEXEC {
     using __f = __mbool<(__same_as<_Tp, _Args> || ...)>;
   };
 
-  template <class _Continuation = __q<__types>>
+  template <class _Continuation = __q<__mlist>>
   struct __mpush_back {
     template <class _List, class _Item>
     using __f = __mapply<__mbind_back<_Continuation, _Item>, _List>;
@@ -678,27 +684,27 @@ namespace STDEXEC {
     using __f = _Second<_First<_Args...>>;
   };
 
-  template <class _Old, class _New, class _Continuation = __q<__types>>
+  template <class _Old, class _New, class _Continuation = __q<__mlist>>
   struct __mreplace {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
-  template <class _Old, class _Continuation = __q<__types>>
+  template <class _Old, class _Continuation = __q<__mlist>>
   struct __mremove {
     template <class... _Args>
     using __f = __minvoke<
       __mconcat<_Continuation>,
-      __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...
+      __if_c<__same_as<_Args, _Old>, __mlist<>, __mlist<_Args>>...
     >;
   };
 
-  template <class _Pred, class _Continuation = __q<__types>>
+  template <class _Pred, class _Continuation = __q<__mlist>>
   struct __mremove_if {
     template <class... _Args>
     using __f = __minvoke<
       __mconcat<_Continuation>,
-      __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...
+      __if<__minvoke<_Pred, _Args>, __mlist<>, __mlist<_Args>>...
     >;
   };
 
@@ -800,7 +806,7 @@ namespace STDEXEC {
 
   template <class _List1, class _List2>
   struct __mzip_with2_
-    : __mzip_with2_<__mapply_q<__types, _List1>, __mapply_q<__types, _List2>> { };
+    : __mzip_with2_<__mapply_q<__mlist, _List1>, __mapply_q<__mlist, _List2>> { };
 
   template <template <class...> class _Cp, class... _Cs, template <class...> class _Dp, class... _Ds>
   struct __mzip_with2_<_Cp<_Cs...>, _Dp<_Ds...>> {
@@ -808,7 +814,7 @@ namespace STDEXEC {
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
   };
 
-  template <class _Fn, class _Continuation = __q<__types>>
+  template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mzip_with2 {
     template <class _Cp, class _Dp>
     using __f = __minvoke<__mzip_with2_<_Cp, _Dp>, _Fn, _Continuation>;
@@ -833,7 +839,7 @@ namespace STDEXEC {
     using __f = __minvoke<_Continuation>;
   };
 
-  template <class _Needle, class _Continuation = __q<__types>>
+  template <class _Needle, class _Continuation = __q<__mlist>>
   struct __mfind {
     template <class... _Args>
     using __f = __minvoke<__mfind_<(sizeof...(_Args) != 0)>, _Needle, _Continuation, _Args...>;
@@ -986,7 +992,7 @@ namespace STDEXEC {
   template <class _Set1, class _Set2>
   concept __mset_eq = __mapply<__set::__eq<_Set1>, _Set2>::value;
 
-  template <class _Continuation = __q<__types>>
+  template <class _Continuation = __q<__mlist>>
   struct __munique {
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
