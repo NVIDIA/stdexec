@@ -255,7 +255,7 @@ namespace exec {
     };
 
     template <class _ErrorStorage>
-    using __error_sender_t = __meval<__error_sender, _ErrorStorage>;
+    using __error_sender_t = __minvoke_q<__error_sender, _ErrorStorage>;
 
     template <class _ErrorStorage, class _EnvFn>
     struct __error_next_receiver {
@@ -553,12 +553,12 @@ namespace exec {
     };
 
     template <class _NestedValueSender, class _NestedValueReceiver, class _ErrorStorage>
-    using __nested_value_op_t = STDEXEC::__meval<
+    using __nested_value_op_t = STDEXEC::__minvoke_q<
       __nested_value_op,
       _NestedValueSender,
       _NestedValueReceiver,
       _ErrorStorage,
-      __meval<
+      __minvoke_q<
         STDEXEC::connect_result_t,
         _NestedValueSender,
         __receive_nested_value<_NestedValueReceiver, _ErrorStorage>
@@ -613,7 +613,7 @@ namespace exec {
     };
 
     template <class _NestedValue, class _ErrorStorage>
-    using __nested_value_sender_t = __meval<__nested_value_sender, _NestedValue, _ErrorStorage>;
+    using __nested_value_sender_t = __minvoke_q<__nested_value_sender, _NestedValue, _ErrorStorage>;
 
     //
     // __next_.. is returned from set_next. Unlike the rest of the
@@ -715,7 +715,7 @@ namespace exec {
     };
 
     template <class _OperationBase>
-    using __receive_nested_values_t = __meval<__receive_nested_values, _OperationBase>;
+    using __receive_nested_values_t = __minvoke_q<__receive_nested_values, _OperationBase>;
 
     struct _MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_ { };
 
@@ -789,7 +789,7 @@ namespace exec {
           STDEXEC::__munique<STDEXEC::__qq<__types>>,
           STDEXEC::__minvoke<
             STDEXEC::__mconcat<STDEXEC::__qq<__types>>,
-            __meval<__nested_sequences_from_item_type_t, _Sequence, _Senders, _Env...>...
+            __minvoke_q<__nested_sequences_from_item_type_t, _Sequence, _Senders, _Env...>...
           >
         >;
       };
@@ -900,7 +900,7 @@ namespace exec {
       struct __nested_sequence_op_fn {
         template <class _Sequence>
         using __f =
-          __meval<subscribe_result_t, _Sequence, __receive_nested_values_t<_OperationBase>>;
+          __minvoke_q<subscribe_result_t, _Sequence, __receive_nested_values_t<_OperationBase>>;
       };
 
       template <class _Sequence, class _OperationBase>
@@ -1121,7 +1121,7 @@ namespace exec {
     };
 
     template <class _Receiver, class _Sequence>
-    using __operation_t = __meval<
+    using __operation_t = __minvoke_q<
       __operation,
       _Receiver,
       _Sequence,
@@ -1192,7 +1192,7 @@ namespace exec {
       template <class _Self, class... _Env>
       struct __completions_fn {
         template <class... _Sequences>
-        using __f = __meval<
+        using __f = __minvoke_q<
           __concat_completion_signatures_t,
           completion_signatures<set_stopped_t()>,
           __completion_signatures_of_t<__child_of<_Self>, _Env...>,

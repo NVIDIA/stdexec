@@ -279,17 +279,17 @@ namespace exec {
       typename STDEXEC_REMOVE_REFERENCE(transform_sender_result_t<_Sequence, _Env...>)::item_types;
 
     template <class _Sequence, class... _Env>
-    concept __with_member = __mvalid<__member_result_t, _Sequence, _Env...>;
+    concept __with_member = __minvocable_q<__member_result_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
-    concept __with_static_member = __mvalid<__static_member_result_t, _Sequence, _Env...>;
+    concept __with_static_member = __minvocable_q<__static_member_result_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
-    concept __with_member_alias = __mvalid<__member_alias_t, _Sequence, _Env...>;
+    concept __with_member_alias = __minvocable_q<__member_alias_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
     concept __with_consteval_static_member =
-      __mvalid<__consteval_static_member_result_t, _Sequence, _Env...>;
+      __minvocable_q<__consteval_static_member_result_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
     concept __with_tag_invoke = tag_invocable<get_item_types_t, _Sequence, _Env...>;
@@ -429,7 +429,7 @@ namespace exec {
   struct _THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_ { };
 
   template <class _Sequence>
-    requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__mvalid<__item_types_of_t, _Sequence>)
+    requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> STDEXEC::__mexception<
     STDEXEC::_WHAT_(_ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_),
     STDEXEC::_WHY_(_THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_),
@@ -437,7 +437,7 @@ namespace exec {
   >;
 
   template <class _Sequence>
-    requires(!STDEXEC::__merror<_Sequence>) && STDEXEC::__mvalid<__item_types_of_t, _Sequence>
+    requires(!STDEXEC::__merror<_Sequence>) && STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>
   auto __check_sequence(_Sequence*) -> decltype(exec::__check_items<_Sequence>(
     static_cast<__item_types_of_t<_Sequence>*>(nullptr)));
 
@@ -647,7 +647,7 @@ namespace exec {
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_member =
-      __mvalid<__subscribe_member_result_t, _Sequence, _Receiver>;
+      __minvocable_q<__subscribe_member_result_t, _Sequence, _Receiver>;
 
     template <class _Sequence, class _Receiver>
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
@@ -655,7 +655,7 @@ namespace exec {
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
-      __mvalid<__subscribe_static_member_result_t, _Sequence, _Receiver>;
+      __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_tag_invoke = tag_invocable<subscribe_t, _Sequence, _Receiver>;

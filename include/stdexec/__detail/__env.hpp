@@ -266,7 +266,7 @@ namespace STDEXEC {
   // };
 
   template <class _EnvProvider>
-  concept environment_provider = __mvalid<__call_result_t, get_env_t, const _EnvProvider&>;
+  concept environment_provider = __minvocable_q<__call_result_t, get_env_t, const _EnvProvider&>;
 
 } // namespace STDEXEC
 

@@ -58,7 +58,7 @@ namespace STDEXEC {
     using __tag_of = __desc_of<_Sender>::__tag;
 
     template <class _Sender>
-      requires __mvalid<__tag_of, _Sender>
+      requires __minvocable_q<__tag_of, _Sender>
     extern __tag_of<_Sender> __tag_of_v;
   } // namespace __detail
 
@@ -96,7 +96,7 @@ namespace STDEXEC {
   struct __muncurry_<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
   template <class _Sender>
-  concept sender_expr = __mvalid<tag_of_t, _Sender>;
+  concept sender_expr = __minvocable_q<tag_of_t, _Sender>;
 
   template <class _Sender, class _Tag>
   concept sender_expr_for = sender_expr<_Sender> && __std::same_as<tag_of_t<_Sender>, _Tag>;

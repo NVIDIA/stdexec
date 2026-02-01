@@ -39,7 +39,7 @@ namespace nvexec::_strm::__algo_range_init_fun {
     struct result_size_for {
       template <class... Range>
       using __f = __msize_t<sizeof(
-        typename __meval<__mfirst, DerivedReceiver, Range...>::template result_t<Range...>)>;
+        typename __minvoke_q<__mfirst, DerivedReceiver, Range...>::template result_t<Range...>)>;
     };
 
     _strm::opstate_base<Receiver>& opstate_;
@@ -88,10 +88,10 @@ namespace nvexec::_strm::__algo_range_init_fun {
     // in the following two type aliases, __mfirst is used to make DerivedSender,
     // which is incomplete in this context, dependent to avoid hard errors.
     template <class Receiver>
-    using receiver_t = __meval<__mfirst, DerivedSender, Receiver>::template receiver_t<Receiver>;
+    using receiver_t = __minvoke_q<__mfirst, DerivedSender, Receiver>::template receiver_t<Receiver>;
 
     template <class Range>
-    using _set_value_t = __meval<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
+    using _set_value_t = __minvoke_q<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
 
     template <class Self, class... Env>
     using _completions_t = STDEXEC::transform_completion_signatures<

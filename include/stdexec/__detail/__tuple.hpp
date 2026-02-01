@@ -368,7 +368,7 @@ namespace STDEXEC {
       STDEXEC::__get<_Index::value>(__declval<_Tuple>())));
 
     template <size_t _Index, class _Tuple>
-      requires __mvalid<__tuple_element_t, __msize_t<_Index>, _Tuple>
+      requires __minvocable_q<__tuple_element_t, __msize_t<_Index>, _Tuple>
     extern __declfn_t<__tuple_element_t<__msize_t<_Index>, _Tuple>> __tuple_element_v;
   } // namespace __detail
 
