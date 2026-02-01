@@ -65,7 +65,7 @@ namespace exec {
       auto operator()(STDEXEC::bulk_t, Data &&data, Sender &&sndr) {
         auto [pol, shape, fun] = static_cast<Data &&>(data);
         // TODO: handle non-par execution policies
-        return bulk_sender<__decay_t<Sender>, decltype(shape), decltype(fun)>{
+        return bulk_sender<STDEXEC::__decay_t<Sender>, decltype(shape), decltype(fun)>{
           queue_, static_cast<Sender &&>(sndr), shape, std::move(fun)};
       }
 
@@ -214,10 +214,10 @@ namespace exec {
     struct bulk_sender {
       using sender_concept = STDEXEC::sender_t;
 
-      template <class Sender, class... Env>
+      template <class CvSender, class... Env>
       using with_error_invoke_t = STDEXEC::__if_c<
         STDEXEC::__value_types_t<
-          STDEXEC::__completion_signatures_of_t<Sender, Env...>,
+          STDEXEC::__completion_signatures_of_t<CvSender, Env...>,
           STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
           STDEXEC::__q<STDEXEC::__mand>
         >::value,
@@ -230,7 +230,7 @@ namespace exec {
         STDEXEC::completion_signatures<STDEXEC::set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using __completions_t = STDEXEC::transform_completion_signatures<
+      using _completions_t = STDEXEC::transform_completion_signatures<
         STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
         with_error_invoke_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
         set_value_t
@@ -240,8 +240,8 @@ namespace exec {
       using bulk_op_state_t =
         bulk_op_state<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>;
 
-      template <STDEXEC::__decays_to<__bulk_sender> Self, STDEXEC::receiver Receiver>
-        requires STDEXEC::receiver_of<Receiver, __completions_t<Self, STDEXEC::env_of_t<Receiver>>>
+      template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
+        requires STDEXEC::receiver_of<Receiver, _completions_t<Self, STDEXEC::env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Receiver rcvr)
         noexcept(STDEXEC::__nothrow_constructible_from<
                  bulk_op_state_t<Self, Receiver>,
@@ -255,13 +255,13 @@ namespace exec {
           self.queue_,
           self.shape_,
           self.fun_,
-          (std::forward<Self>(self)).sndr_,
-          (std::forward<Receiver>(rcvr))};
+          std::forward<Self>(self).sndr_,
+          std::forward<Receiver>(rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <STDEXEC::__decays_to<__bulk_sender> Self, class... Env>
-      static consteval auto get_completion_signatures() -> __completions_t<Self, Env...> {
+      template <STDEXEC::__decays_to<bulk_sender> Self, class... Env>
+      static consteval auto get_completion_signatures() -> _completions_t<Self, Env...> {
         return {};
       }
 
@@ -281,7 +281,7 @@ namespace exec {
         bulk_shared_state *sh_state_;
         Shape task_id_;
 
-        bulk_task(bulk_shared_state *sh_state_arg, Shape task_id_arg)
+        explicit bulk_task(bulk_shared_state *sh_state_arg, Shape task_id_arg)
           : sh_state_(sh_state_arg)
           , task_id_(task_id_arg) {
           this->execute = [](task_base *t) noexcept {
