@@ -33,7 +33,7 @@ namespace STDEXEC {
   namespace __sched {
     template <class _Scheduler>
     concept __has_schedule_member = requires(_Scheduler&& __sched) {
-      static_cast<_Scheduler &&>(__sched).schedule();
+      static_cast<_Scheduler&&>(__sched).schedule();
     };
 
     struct schedule_t {
@@ -135,9 +135,6 @@ namespace STDEXEC {
     //! @tparam _Tag one of set_value_t, set_error_t, or set_stopped_t
     template <__completion_tag _Tag>
     struct get_completion_scheduler_t {
-      using __t = get_completion_scheduler_t;
-      using __id = get_completion_scheduler_t;
-
       template <class Sig>
       static inline constexpr get_completion_scheduler_t<_Tag> (*signature)(Sig) = nullptr;
 
@@ -340,9 +337,6 @@ namespace STDEXEC {
   // TODO(ericniebler): examine all uses of this struct.
   template <class _Scheduler>
   struct __sched_attrs {
-    using __t = __sched_attrs;
-    using __id = __sched_attrs;
-
     template <class... _Env>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_completion_scheduler_t<set_value_t>, const _Env&... __env)
@@ -369,9 +363,6 @@ namespace STDEXEC {
   // See SCHED-ENV from [exec.snd.expos]
   template <class _Scheduler>
   struct __sched_env {
-    using __t = __sched_env;
-    using __id = __sched_env;
-
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_scheduler_t) const noexcept {
       return __sched_;

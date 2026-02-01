@@ -27,23 +27,21 @@ namespace STDEXEC {
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
   // completion signatures wrapper enforces that at compile time.
-  template <class _Sender, class... _Env>
-  extern __undefined<_Sender, _Env...> __checked_completion_signatures_v;
-
-  template <class _Sender, class... _Env>
-  auto __checked_completion_signatures(_Sender &&__sndr, _Env &&...__env) noexcept {
-    using __completions_t = __completion_signatures_of_t<_Sender, _Env...>;
-    STDEXEC::__debug_sender(static_cast<_Sender &&>(__sndr), __env...);
+  template <class _CvSender, class... _Env>
+  auto __checked_completion_signatures(_CvSender &&__sndr, _Env &&...__env) noexcept {
+    using __completions_t = __completion_signatures_of_t<_CvSender, _Env...>;
+    STDEXEC::__debug_sender(static_cast<_CvSender &&>(__sndr), __env...);
     return __completions_t{};
   }
 
-  template <class _Sender, class... _Env>
-    requires sender_in<_Sender, _Env...>
-  using completion_signatures_of_t =
-    decltype(STDEXEC::__checked_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
+  template <class _CvSender, class... _Env>
+    requires sender_in<_CvSender, _Env...>
+  using completion_signatures_of_t = decltype(STDEXEC::__checked_completion_signatures(
+    __declval<_CvSender>(),
+    __declval<_Env>()...));
 #else
-  template <class _Sender, class... _Env>
-    requires sender_in<_Sender, _Env...>
-  using completion_signatures_of_t = __completion_signatures_of_t<_Sender, _Env...>;
+  template <class _CvSender, class... _Env>
+    requires sender_in<_CvSender, _Env...>
+  using completion_signatures_of_t = __completion_signatures_of_t<_CvSender, _Env...>;
 #endif
 } // namespace STDEXEC

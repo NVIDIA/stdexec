@@ -59,28 +59,24 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel, class _ItemRcvr>
     struct __item_operation {
-      struct __t {
-        using __id = __item_operation;
-        STDEXEC_ATTRIBUTE(no_unique_address) _ItemRcvr __rcvr_;
-        __operation_base_base<_Iterator, _Sentinel>* __parent_;
+      constexpr void start() noexcept {
+        STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+      }
 
-        constexpr void start() noexcept {
-          STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
-        }
-      };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _ItemRcvr __rcvr_;
+      __operation_base_base<_Iterator, _Sentinel>* __parent_;
     };
 
     template <class _Iterator, class _Sentinel>
     struct __sender {
-      using __t = __sender;
-      using __id = __sender;
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
 
       template <receiver_of<completion_signatures> _ItemRcvr>
       constexpr auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
-        -> STDEXEC::__t<__item_operation<_Iterator, _Sentinel, _ItemRcvr>> {
+        -> __item_operation<_Iterator, _Sentinel, _ItemRcvr> {
         return {static_cast<_ItemRcvr&&>(__rcvr), __parent_};
       }
 
@@ -89,8 +85,6 @@ namespace exec {
 
     template <class _Iterator, class _Sentinel, class _Receiver>
     struct __next_receiver {
-      using __t = __next_receiver;
-      using __id = __next_receiver;
       using receiver_concept = STDEXEC::receiver_t;
 
       constexpr void set_value() noexcept {
@@ -125,8 +119,6 @@ namespace exec {
             static_cast<_Sentinel&&>(__sentinel),
             static_cast<_Receiver&&>(__rcvr)} {
       }
-
-      ~__operation() final = default;
 
       constexpr void __start_next() noexcept final {
         if (this->__iterator_ == this->__sentinel_) {

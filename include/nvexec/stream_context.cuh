@@ -62,82 +62,46 @@ namespace nvexec {
     };
 
     struct stream_scheduler : private stream_scheduler_env<stream_scheduler> {
-      using __t = stream_scheduler;
-      using __id = stream_scheduler;
-
-      explicit stream_scheduler(context_state_t context_state) noexcept
-        : context_state_(context_state) {
+      explicit stream_scheduler(context ctx) noexcept
+        : ctx_(ctx) {
       }
 
       auto operator==(const stream_scheduler& other) const noexcept -> bool {
-        return context_state_.hub_ == other.context_state_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device) auto schedule() const noexcept {
-        return sender_t{context_state_};
+        return sender{ctx_};
       }
 
       using stream_scheduler_env::query;
 
      private:
-      template <class ReceiverId>
-      struct operation_state_ {
-        using Receiver = STDEXEC::__t<ReceiverId>;
-
-        struct __t : operation_state_base_t<ReceiverId> {
-          using __id = operation_state_;
-
-          explicit __t(Receiver rcvr, context_state_t context_state)
-            : operation_state_base_t<ReceiverId>(static_cast<Receiver&&>(rcvr), context_state) {
-          }
-
-          void start() & noexcept {
-            this->propagate_completion_signal(set_value);
-          }
-
-         private:
-          friend stream_context;
-          cudaStream_t stream_{};
-          cudaError_t status_{cudaSuccess};
-        };
-      };
-
-      template <class ReceiverId>
-      using operation_state_t = STDEXEC::__t<operation_state_<ReceiverId>>;
-
-      struct sender_t : stream_sender_base {
-        using __t = sender_t;
-        using __id = sender_t;
-
-        using completion_signatures =
-          STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
-
-        STDEXEC_ATTRIBUTE(host, device)
-        explicit sender_t(context_state_t context_state) noexcept
-          : env_{context_state} {
+      template <class Receiver>
+      struct opstate : _strm::opstate_base<Receiver> {
+        explicit opstate(Receiver rcvr, context ctx)
+          : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), ctx) {
         }
 
-        template <class Receiver>
-        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> operation_state_t<STDEXEC::__id<Receiver>> {
-          return operation_state_t<STDEXEC::__id<Receiver>>(
-            static_cast<Receiver&&>(rcvr), env_.context_state_);
-        }
-
-        STDEXEC_ATTRIBUTE(nodiscard) auto get_env() const noexcept -> decltype(auto) {
-          return (env_);
+        void start() & noexcept {
+          this->propagate_completion_signal(set_value);
         }
 
        private:
-        struct env {
-          using __t = env;
-          using __id = env;
-          context_state_t context_state_;
+        friend stream_context;
+        cudaStream_t stream_{};
+        cudaError_t status_{cudaSuccess};
+      };
+
+      struct sender : stream_sender_base {
+       private:
+        struct attrs {
+          context ctx_;
 
           STDEXEC_ATTRIBUTE(nodiscard)
           auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept
             -> stream_scheduler {
-            return stream_scheduler{context_state_};
+            return stream_scheduler{ctx_};
           }
 
           STDEXEC_ATTRIBUTE(nodiscard)
@@ -147,12 +111,32 @@ namespace nvexec {
           }
         };
 
-        env env_;
+        attrs env_;
+
+       public:
+        using completion_signatures =
+          STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
+
+        STDEXEC_ATTRIBUTE(host, device)
+        explicit sender(context ctx) noexcept
+          : env_{ctx} {
+        }
+
+        template <class Receiver>
+        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
+          -> opstate<Receiver> {
+          return opstate<Receiver>(static_cast<Receiver&&>(rcvr), env_.ctx_);
+        }
+
+        STDEXEC_ATTRIBUTE(nodiscard)
+        auto get_env() const noexcept -> const attrs& {
+          return (env_);
+        }
       };
 
      public:
       // private: TODO
-      context_state_t context_state_;
+      context ctx_;
     };
 
     template <>
@@ -172,7 +156,7 @@ namespace nvexec {
     }
 
     auto get_scheduler(stream_priority priority = stream_priority::normal) -> stream_scheduler {
-      return stream_scheduler{_strm::context_state_t(
+      return stream_scheduler{_strm::context(
         pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
 
@@ -188,6 +172,6 @@ namespace nvexec {
     _strm::stream_pools_t stream_pools_{};
 
     int dev_id_{};
-    _strm::queue::task_hub_t hub_;
+    _strm::queue::task_hub hub_;
   };
 } // namespace nvexec

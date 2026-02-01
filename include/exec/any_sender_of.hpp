@@ -266,9 +266,7 @@ namespace exec {
       std::size_t _InlineSize = 3 * sizeof(void*),
       std::size_t _Alignment = alignof(std::max_align_t)
     >
-    struct __storage {
-      class __t;
-    };
+    class __storage;
 
     template <
       class _Vtable,
@@ -276,118 +274,115 @@ namespace exec {
       std::size_t _InlineSize = 3 * sizeof(void*),
       std::size_t _Alignment = alignof(std::max_align_t)
     >
-    struct __immovable_storage {
-      class __t : __immovable {
-        static constexpr std::size_t __buffer_size = (std::max) (_InlineSize, sizeof(void*));
-        static constexpr std::size_t __alignment = (std::max) (_Alignment, alignof(void*));
-        using __with_delete = __delete_t(void() noexcept);
-        using __vtable_t = __storage_vtable<_Vtable, __with_delete>;
+    struct __immovable_storage : __immovable {
+      static constexpr std::size_t __buffer_size = (std::max) (_InlineSize, sizeof(void*));
+      static constexpr std::size_t __alignment = (std::max) (_Alignment, alignof(void*));
+      using __with_delete = __delete_t(void() noexcept);
+      using __vtable_t = __storage_vtable<_Vtable, __with_delete>;
 
-        template <class _Tp>
-        static constexpr bool __is_small = sizeof(_Tp) <= __buffer_size
-                                        && alignof(_Tp) <= __alignment;
+      template <class _Tp>
+      static constexpr bool __is_small = sizeof(_Tp) <= __buffer_size
+                                      && alignof(_Tp) <= __alignment;
 
-        template <class _Tp>
-        static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
-          return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete>;
+      template <class _Tp>
+      static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
+        return &__storage_vtbl<__immovable_storage, __decay_t<_Tp>, _Vtable, __with_delete>;
+      }
+     public:
+      __immovable_storage() = default;
+
+      template <__not_decays_to<__immovable_storage> _Tp>
+        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<__decay_t<_Tp>>>
+      __immovable_storage(_Tp&& __object)
+        : __vtable_{__get_vtable_of_type<_Tp>()} {
+        using _Dp = __decay_t<_Tp>;
+        if constexpr (__is_small<_Dp>) {
+          __construct_small<_Dp>(static_cast<_Tp&&>(__object));
+        } else {
+          __construct_large<_Dp>(static_cast<_Tp&&>(__object));
         }
-       public:
-        using __id = __immovable_storage;
+      }
 
-        __t() = default;
-
-        template <__not_decays_to<__t> _Tp>
-          requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<__decay_t<_Tp>>>
-        __t(_Tp&& __object)
-          : __vtable_{__get_vtable_of_type<_Tp>()} {
-          using _Dp = __decay_t<_Tp>;
-          if constexpr (__is_small<_Dp>) {
-            __construct_small<_Dp>(static_cast<_Tp&&>(__object));
-          } else {
-            __construct_large<_Dp>(static_cast<_Tp&&>(__object));
-          }
+      template <class _Tp, class... _Args>
+        requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_Tp>>
+      __immovable_storage(std::in_place_type_t<_Tp>, _Args&&... __args)
+        : __vtable_{__get_vtable_of_type<_Tp>()} {
+        if constexpr (__is_small<_Tp>) {
+          __construct_small<_Tp>(static_cast<_Args&&>(__args)...);
+        } else {
+          __construct_large<_Tp>(static_cast<_Args&&>(__args)...);
         }
+      }
 
-        template <class _Tp, class... _Args>
-          requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_Tp>>
-        __t(std::in_place_type_t<_Tp>, _Args&&... __args)
-          : __vtable_{__get_vtable_of_type<_Tp>()} {
-          if constexpr (__is_small<_Tp>) {
-            __construct_small<_Tp>(static_cast<_Args&&>(__args)...);
-          } else {
-            __construct_large<_Tp>(static_cast<_Args&&>(__args)...);
-          }
-        }
+      ~__immovable_storage() {
+        __reset();
+      }
 
-        ~__t() {
-          __reset();
-        }
+      void __reset() noexcept {
+        (*__vtable_)(__any::__delete, this);
+        __object_pointer_ = nullptr;
+        __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
+      }
 
-        void __reset() noexcept {
-          (*__vtable_)(__any::__delete, this);
-          __object_pointer_ = nullptr;
-          __vtable_ = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
-        }
+      [[nodiscard]]
+      auto __get_vtable() const noexcept -> const _Vtable* {
+        return __vtable_;
+      }
 
-        [[nodiscard]]
-        auto __get_vtable() const noexcept -> const _Vtable* {
-          return __vtable_;
-        }
+      [[nodiscard]]
+      auto __get_object_pointer() const noexcept -> void* {
+        return __object_pointer_;
+      }
 
-        [[nodiscard]]
-        auto __get_object_pointer() const noexcept -> void* {
-          return __object_pointer_;
-        }
+     private:
+      friend struct __any::__delete_t;
 
-       private:
-        friend struct __any::__delete_t;
+      template <class _Tp, class... _As>
+      void __construct_small(_As&&... __args) {
+        static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
+        _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        _Alloc __alloc{__allocator_};
+        std::allocator_traits<_Alloc>::construct(__alloc, __pointer, static_cast<_As&&>(__args)...);
+        __object_pointer_ = __pointer;
+      }
 
-        template <class _Tp, class... _As>
-        void __construct_small(_As&&... __args) {
-          static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
-          _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
-          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__allocator_};
+      template <class _Tp, class... _As>
+      void __construct_large(_As&&... __args) {
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        _Alloc __alloc{__allocator_};
+        _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
+        STDEXEC_TRY {
           std::allocator_traits<_Alloc>::construct(
             __alloc, __pointer, static_cast<_As&&>(__args)...);
-          __object_pointer_ = __pointer;
         }
+        STDEXEC_CATCH_ALL {
+          std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+          STDEXEC_THROW();
+        }
+        __object_pointer_ = __pointer;
+      }
 
-        template <class _Tp, class... _As>
-        void __construct_large(_As&&... __args) {
-          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__allocator_};
-          _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
-          STDEXEC_TRY {
-            std::allocator_traits<_Alloc>::construct(
-              __alloc, __pointer, static_cast<_As&&>(__args)...);
-          }
-          STDEXEC_CATCH_ALL {
-            std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-            STDEXEC_THROW();
-          }
-          __object_pointer_ = __pointer;
+      template <class _Tp>
+      void __delete(__mtype<_Tp>) noexcept {
+        if (!__object_pointer_) {
+          return;
         }
+        using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
+        _Alloc __alloc{__allocator_};
+        _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
+        std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
+        if constexpr (!__is_small<_Tp>) {
+          std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
+        }
+      }
 
-        template <class _Tp>
-        void __delete(__mtype<_Tp>) noexcept {
-          if (!__object_pointer_) {
-            return;
-          }
-          using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__allocator_};
-          _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
-          std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
-          if constexpr (!__is_small<_Tp>) {
-            std::allocator_traits<_Alloc>::deallocate(__alloc, __pointer, 1);
-          }
-        }
-       private:
-        const __vtable_t* __vtable_{__default_storage_vtable(static_cast<__vtable_t*>(nullptr))};
-        void* __object_pointer_{nullptr};
-        alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-        STDEXEC_ATTRIBUTE(no_unique_address) _Allocator __allocator_ { };
-      };
+     private:
+      const __vtable_t* __vtable_{__default_storage_vtable(static_cast<__vtable_t*>(nullptr))};
+      void* __object_pointer_{nullptr};
+      alignas(__alignment) std::byte __buffer_[__buffer_size]{};
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Allocator __allocator_{};
     };
 
     template <
@@ -397,15 +392,14 @@ namespace exec {
       std::size_t _InlineSize,
       std::size_t _Alignment
     >
-    class __storage<_Vtable, _Allocator, _Copyable, _InlineSize, _Alignment>::__t
-      : __if_c<_Copyable, __, __move_only> {
+    class __storage : __if_c<_Copyable, __empty, __move_only> {
       static_assert(
         STDEXEC_IS_CONVERTIBLE_TO(typename std::allocator_traits<_Allocator>::void_pointer, void*));
 
       static constexpr std::size_t __buffer_size = (std::max) (_InlineSize, sizeof(void*));
       static constexpr std::size_t __alignment = (std::max) (_Alignment, alignof(void*));
-      using __with_copy = __copy_construct_t(void(const __t&));
-      using __with_move = __move_construct_t(void(__t&&) noexcept);
+      using __with_copy = __copy_construct_t(void(const __storage&));
+      using __with_move = __move_construct_t(void(__storage&&) noexcept);
       using __with_delete = __delete_t(void() noexcept);
 
       template <class _Tp>
@@ -422,7 +416,7 @@ namespace exec {
       static constexpr auto __get_vtable_of_type() noexcept -> const __vtable_t* {
         if constexpr (_Copyable) {
           return &__storage_vtbl<
-            __t,
+            __storage,
             __decay_t<_Tp>,
             _Vtable,
             __with_delete,
@@ -430,18 +424,16 @@ namespace exec {
             __with_copy
           >;
         } else {
-          return &__storage_vtbl<__t, __decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
+          return &__storage_vtbl<__storage, __decay_t<_Tp>, _Vtable, __with_delete, __with_move>;
         }
       }
 
      public:
-      using __id = __storage;
+      __storage() = default;
 
-      __t() = default;
-
-      template <__not_decays_to<__t> _Tp>
+      template <__not_decays_to<__storage> _Tp>
         requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<__decay_t<_Tp>>>
-      __t(_Tp&& __object)
+      __storage(_Tp&& __object)
         : __vtable_{__get_vtable_of_type<_Tp>()} {
         using _Dp = __decay_t<_Tp>;
         if constexpr (__is_small<_Dp>) {
@@ -453,7 +445,7 @@ namespace exec {
 
       template <class _Tp, class... _Args>
         requires __callable<__create_vtable_t, __mtype<_Vtable>, __mtype<_Tp>>
-      __t(std::in_place_type_t<_Tp>, _Args&&... __args)
+      __storage(std::in_place_type_t<_Tp>, _Args&&... __args)
         : __vtable_{__get_vtable_of_type<_Tp>()} {
         if constexpr (__is_small<_Tp>) {
           __construct_small<_Tp>(static_cast<_Args&&>(__args)...);
@@ -462,34 +454,34 @@ namespace exec {
         }
       }
 
-      __t(const __t& __other)
+      __storage(const __storage& __other)
         requires(_Copyable)
         : __vtable_(__other.__vtable_) {
         (*__other.__vtable_)(__any::__copy_construct, this, __other);
       }
 
-      auto operator=(const __t& __other) -> __t&
+      auto operator=(const __storage& __other) -> __storage&
         requires(_Copyable)
       {
         if (&__other != this) {
-          __t tmp(__other);
+          __storage tmp(__other);
           *this = std::move(tmp);
         }
         return *this;
       }
 
-      __t(__t&& __other) noexcept
+      __storage(__storage&& __other) noexcept
         : __vtable_(__other.__vtable_) {
-        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__t&&>(__other));
+        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__storage&&>(__other));
       }
 
-      auto operator=(__t&& __other) noexcept -> __t& {
+      auto operator=(__storage&& __other) noexcept -> __storage& {
         __reset();
-        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__t&&>(__other));
+        (*__other.__vtable_)(__any::__move_construct, this, static_cast<__storage&&>(__other));
         return *this;
       }
 
-      ~__t() {
+      ~__storage() {
         __reset();
       }
 
@@ -554,7 +546,7 @@ namespace exec {
       }
 
       template <class _Tp>
-      void __move_construct(__mtype<_Tp>, __t&& __other) noexcept {
+      void __move_construct(__mtype<_Tp>, __storage&& __other) noexcept {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -574,7 +566,7 @@ namespace exec {
 
       template <class _Tp>
         requires _Copyable
-      void __copy_construct(__mtype<_Tp>, const __t& __other) {
+      void __copy_construct(__mtype<_Tp>, const __storage& __other) {
         if (!__other.__object_pointer_) {
           return;
         }
@@ -607,18 +599,17 @@ namespace exec {
       std::size_t _InlineSize = 3 * sizeof(void*),
       std::size_t _Alignment = alignof(std::max_align_t)
     >
-    using __immovable_storage_t =
-      __t<__immovable_storage<_VTable, _Allocator, _InlineSize, _Alignment>>;
+    using __immovable_storage_t = __immovable_storage<_VTable, _Allocator, _InlineSize, _Alignment>;
 
     template <class _VTable, class _Allocator = std::allocator<std::byte>>
-    using __unique_storage_t = __t<__storage<_VTable, _Allocator>>;
+    using __unique_storage_t = __storage<_VTable, _Allocator>;
 
     template <
       class _VTable,
       std::size_t _InlineSize = 3 * sizeof(void*),
       class _Allocator = std::allocator<std::byte>
     >
-    using __copyable_storage_t = __t<__storage<_VTable, _Allocator, true, _InlineSize>>;
+    using __copyable_storage_t = __storage<_VTable, _Allocator, true, _InlineSize>;
 
     template <class _Tag, class... _As>
     auto __tag_type(_Tag (*)(_As...)) -> _Tag;
@@ -665,44 +656,39 @@ namespace exec {
 
     namespace __rec {
       template <class _Sigs, class... _Queries>
-      struct __vtable {
-        class __t;
-      };
+      struct __vtable;
 
       template <class _Sigs, class... _Queries>
       struct __ref;
 
       template <class... _Sigs, class... _Queries>
-      struct __vtable<completion_signatures<_Sigs...>, _Queries...> {
-        struct __t
-          : __overload<__rcvr_vfun<_Sigs>...>
-          , __query_vfun<_Queries>... {
-          using __query_vfun<_Queries>::operator()...;
+      struct __vtable<completion_signatures<_Sigs...>, _Queries...>
+        : __overload<__rcvr_vfun<_Sigs>...>
+        , __query_vfun<_Queries>... {
+        using __query_vfun<_Queries>::operator()...;
 
-          template <class _Tag, class... _As>
-            requires __one_of<_Tag(_As...), _Sigs...>
-                  || __callable<__overload<__rcvr_vfun<_Sigs>...>, void*, _Tag, _As...>
-          void operator()(void* __rcvr, _Tag, _As&&... __as) const noexcept {
-            if constexpr (__one_of<_Tag(_As...), _Sigs...>) {
-              const __rcvr_vfun<_Tag(_As...)>& __vfun = *this;
-              __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
-            } else {
-              const __overload<__rcvr_vfun<_Sigs>...>& __vfun = *this;
-              __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
-            }
+        template <class _Tag, class... _As>
+          requires __one_of<_Tag(_As...), _Sigs...>
+                || __callable<__overload<__rcvr_vfun<_Sigs>...>, void*, _Tag, _As...>
+        void operator()(void* __rcvr, _Tag, _As&&... __as) const noexcept {
+          if constexpr (__one_of<_Tag(_As...), _Sigs...>) {
+            const __rcvr_vfun<_Tag(_As...)>& __vfun = *this;
+            __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
+          } else {
+            const __overload<__rcvr_vfun<_Sigs>...>& __vfun = *this;
+            __vfun(__rcvr, _Tag(), static_cast<_As&&>(__as)...);
           }
+        }
 
-          template <class _Rcvr>
-            requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
-                  && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
-          static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __t* {
-            static const __t __vtable_{
-              {{__rcvr_vfun_fn(
-                static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...},
-              {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
-            return &__vtable_;
-          }
-        };
+        template <class _Rcvr>
+          requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
+                && (__callable<__query_vfun_fn<_Rcvr>, _Queries> && ...)
+        static auto __create_vtable(__mtype<_Rcvr>) noexcept -> const __vtable* {
+          static const __vtable __vtable_{
+            {{__rcvr_vfun_fn(static_cast<_Rcvr*>(nullptr), static_cast<_Sigs*>(nullptr))}...},
+            {__query_vfun_fn<_Rcvr>{}(static_cast<_Queries>(nullptr))}...};
+          return &__vtable_;
+        }
       };
 
       template <class... _Sigs, class... _Queries>
@@ -712,7 +698,7 @@ namespace exec {
         // MSVCBUG https://developercommunity.visualstudio.com/t/Private-member-inaccessible-when-used-in/10448363
        private:
 #endif
-        using __vtable_t = STDEXEC::__t<__vtable<completion_signatures<_Sigs...>, _Queries...>>;
+        using __vtable_t = __vtable<completion_signatures<_Sigs...>, _Queries...>;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -734,8 +720,6 @@ namespace exec {
         } __env_;
        public:
         using receiver_concept = STDEXEC::receiver_t;
-        using __id = __ref;
-        using __t = __ref;
 
         template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
@@ -780,9 +764,8 @@ namespace exec {
 #endif
         using _FilteredQueries =
           __minvoke<__mremove_if<__q<__is_never_stop_token_query_t>>, _Queries...>;
-        using __vtable_t = STDEXEC::__t<
-          __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>
-        >;
+        using __vtable_t =
+          __mapply<__mbind_front_q<__vtable, completion_signatures<_Sigs...>>, _FilteredQueries>;
 
         struct __env_t {
           const __vtable_t* __vtable_;
@@ -798,8 +781,6 @@ namespace exec {
         } __env_;
        public:
         using receiver_concept = STDEXEC::receiver_t;
-        using __id = __ref;
-        using __t = __ref;
 
         template <__none_of<__ref, const __ref, __env_t, const __env_t> _Rcvr>
           requires receiver_of<_Rcvr, completion_signatures<_Sigs...>>
@@ -847,10 +828,7 @@ namespace exec {
       };
     } // namespace __rec
 
-    class __operation_vtable {
-     public:
-      void (*__start_)(void*) noexcept;
-
+    struct __operation_vtable {
       template <class _Op>
       static auto __create_vtable(__mtype<_Op>) noexcept -> const __operation_vtable* {
         static __operation_vtable __vtable{[](void* __object_pointer) noexcept -> void {
@@ -861,6 +839,8 @@ namespace exec {
         }};
         return &__vtable;
       }
+
+      void (*__start_)(void*) noexcept;
     };
 
     using __immovable_operation_storage =
@@ -882,108 +862,89 @@ namespace exec {
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __stoppable_receiver {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using receiver_concept = STDEXEC::receiver_t;
 
-      struct __t {
-        using receiver_concept = STDEXEC::receiver_t;
-        __operation_base<_Receiver>* __op_;
+      template <class _Item>
+        requires __callable<set_next_t, _Receiver&, _Item>
+      [[nodiscard]]
+      auto set_next(_Item&& __item) & noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
+        -> __call_result_t<set_next_t, _Receiver&, _Item> {
+        return exec::set_next(__op_->__rcvr_, static_cast<_Item&&>(__item));
+      }
 
-        template <class _Item>
-          requires __callable<set_next_t, _Receiver&, _Item>
-        [[nodiscard]]
-        auto set_next(_Item&& __item) & noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
-          -> __call_result_t<set_next_t, _Receiver&, _Item> {
-          return exec::set_next(__op_->__rcvr_, static_cast<_Item&&>(__item));
-        }
+      template <class... _Args>
+        requires __callable<set_value_t, _Receiver, _Args...>
+      void set_value(_Args&&... __args) noexcept {
+        __op_->__on_stop_.reset();
+        STDEXEC::set_value(
+          static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Args&&>(__args)...);
+      }
 
-        template <class... _Args>
-          requires __callable<set_value_t, _Receiver, _Args...>
-        void set_value(_Args&&... __args) noexcept {
-          __op_->__on_stop_.reset();
-          STDEXEC::set_value(
-            static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Args&&>(__args)...);
-        }
+      template <class _Error>
+        requires __callable<set_error_t, _Receiver, _Error>
+      void set_error(_Error&& __err) noexcept {
+        __op_->__on_stop_.reset();
+        STDEXEC::set_error(static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Error&&>(__err));
+      }
 
-        template <class _Error>
-          requires __callable<set_error_t, _Receiver, _Error>
-        void set_error(_Error&& __err) noexcept {
-          __op_->__on_stop_.reset();
-          STDEXEC::set_error(
-            static_cast<_Receiver&&>(__op_->__rcvr_), static_cast<_Error&&>(__err));
-        }
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, _Receiver>
+      {
+        __op_->__on_stop_.reset();
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
+      }
 
-        void set_stopped() noexcept
-          requires __callable<set_stopped_t, _Receiver>
-        {
-          __op_->__on_stop_.reset();
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
-        }
+      auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
+        return __env::__join(
+          prop{get_stop_token, __op_->__stop_source_.get_token()},
+          STDEXEC::get_env(__op_->__rcvr_));
+      }
 
-        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
-          return __env::__join(
-            prop{get_stop_token, __op_->__stop_source_.get_token()},
-            STDEXEC::get_env(__op_->__rcvr_));
-        }
-      };
+      __operation_base<_Receiver>* __op_;
     };
 
-    template <class _ReceiverId>
-    using __stoppable_receiver_t = STDEXEC::__t<__stoppable_receiver<_ReceiverId>>;
+    template <class _Receiver, bool>
+    struct __operation : __operation_base<_Receiver> {
+     public:
+      template <class _Sender>
+      explicit __operation(_Sender&& __sender, _Receiver&& __receiver)
+        : __operation_base<_Receiver>{static_cast<_Receiver&&>(__receiver)}
+        , __rec_{this}
+        , __storage_{__sender.__connect(__rec_)} {
+      }
 
-    template <class _ReceiverId, bool>
-    struct __operation {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      void start() & noexcept {
+        this->__on_stop_.emplace(
+          STDEXEC::get_stop_token(STDEXEC::get_env(this->__rcvr_)),
+          __forward_stop_request{this->__stop_source_});
+        STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
+        __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
+      }
 
-      class __t : public __operation_base<_Receiver> {
-       public:
-        using __id = __operation;
-
-        template <class _Sender>
-        __t(_Sender&& __sender, _Receiver&& __receiver)
-          : __operation_base<_Receiver>{static_cast<_Receiver&&>(__receiver)}
-          , __rec_{this}
-          , __storage_{__sender.__connect(__rec_)} {
-        }
-
-        void start() & noexcept {
-          this->__on_stop_.emplace(
-            STDEXEC::get_stop_token(STDEXEC::get_env(this->__rcvr_)),
-            __forward_stop_request{this->__stop_source_});
-          STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
-          __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
-        }
-
-       private:
-        __stoppable_receiver_t<_ReceiverId> __rec_;
-        __immovable_operation_storage __storage_{};
-      };
+     private:
+      __stoppable_receiver<_Receiver> __rec_;
+      __immovable_operation_storage __storage_{};
     };
 
-    template <class _ReceiverId>
-    struct __operation<_ReceiverId, false> {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+    template <class _Receiver>
+    struct __operation<_Receiver, false> {
+     public:
+      template <class _Sender>
+      explicit __operation(_Sender&& __sender, _Receiver&& __receiver)
+        : __rec_{static_cast<_Receiver&&>(__receiver)}
+        , __storage_{__sender.__connect(__rec_)} {
+      }
 
-      class __t {
-       public:
-        using __id = __operation;
+      void start() & noexcept {
+        STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
+        __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
+      }
 
-        template <class _Sender>
-        __t(_Sender&& __sender, _Receiver&& __receiver)
-          : __rec_{static_cast<_Receiver&&>(__receiver)}
-          , __storage_{__sender.__connect(__rec_)} {
-        }
-
-        void start() & noexcept {
-          STDEXEC_ASSERT(__storage_.__get_vtable()->__start_);
-          __storage_.__get_vtable()->__start_(__storage_.__get_object_pointer());
-        }
-
-       private:
-        STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rec_;
-        __immovable_operation_storage __storage_{};
-      };
+     private:
+      STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rec_;
+      __immovable_operation_storage __storage_{};
     };
 
     template <class _Queries, bool _IsEnvProvider = true>
@@ -1005,88 +966,85 @@ namespace exec {
 
     template <class _Sigs, class _SenderQueries = __types<>, class _ReceiverQueries = __types<>>
     struct __sender {
+      using sender_concept = STDEXEC::sender_t;
+      using completion_signatures = _Sigs;
       using __receiver_ref_t = __receiver_ref<_Sigs, _ReceiverQueries>;
+
+      struct __vtable;
+      struct __attrs;
+
       static constexpr bool __with_inplace_stop_token =
         __mapply<__mall_of<__q<__is_not_stop_token_query_t>>, _ReceiverQueries>::value;
 
-      class __vtable : public __query_vtable<_SenderQueries> {
-       public:
-        using __id = __vtable;
+      __sender(__sender&&) = default;
+      __sender(const __sender&) = delete;
 
-        auto __queries() const noexcept -> const __query_vtable<_SenderQueries>& {
-          return *this;
-        }
+      auto operator=(__sender&&) -> __sender& = default;
+      auto operator=(const __sender&) -> __sender& = delete;
 
-        __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
+      template <__not_decays_to<__sender> _Sender>
+        requires sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>
+      __sender(_Sender&& __sndr)
+        : __storage_{static_cast<_Sender&&>(__sndr)} {
+      }
 
-        template <sender_to<__receiver_ref_t> _Sender>
-        static auto __create_vtable(__mtype<_Sender>) noexcept -> const __vtable* {
-          static const __vtable __vtable_{
-            {*__any::__create_vtable(
-              __mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
-            [](void* __object_pointer, __receiver_ref_t __receiver)
-              -> __immovable_operation_storage {
-              _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
-              using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
-              return __immovable_operation_storage{
-                std::in_place_type<__op_state_t>, __emplace_from{[&] {
-                  return STDEXEC::connect(
-                    static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
-                }}};
-            }};
-          return &__vtable_;
-        }
-      };
+      auto __connect(__receiver_ref_t __receiver) -> __immovable_operation_storage {
+        return __storage_.__get_vtable()->__connect_(
+          __storage_.__get_object_pointer(), static_cast<__receiver_ref_t&&>(__receiver));
+      }
 
-      struct __env_t {
-        const __vtable* __vtable_;
-        void* __sender_;
+      auto get_env() const noexcept -> __attrs {
+        return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
+      }
 
-        template <class _Tag, class... _As>
-          requires __callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>
-        auto query(_Tag, _As&&... __as) const
-          noexcept(__nothrow_callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>)
-            -> __call_result_t<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...> {
-          return __vtable_->__queries()(_Tag{}, __sender_, static_cast<_As&&>(__as)...);
-        }
-      };
+      template <receiver_of<_Sigs> _Receiver>
+      auto connect(_Receiver __rcvr) && -> __operation<_Receiver, __with_inplace_stop_token> {
+        return __operation<_Receiver, __with_inplace_stop_token>{
+          static_cast<__sender&&>(*this), static_cast<_Receiver&&>(__rcvr)};
+      }
 
-      struct __t {
-        using __id = __sender;
-        using completion_signatures = _Sigs;
-        using sender_concept = STDEXEC::sender_t;
+     private:
+      __unique_storage_t<__vtable> __storage_;
+    };
 
-        __t(const __t&) = delete;
-        auto operator=(const __t&) -> __t& = delete;
+    template <class _Sigs, class _SenderQueries, class _ReceiverQueries>
+    struct __sender<_Sigs, _SenderQueries, _ReceiverQueries>::__vtable
+      : __query_vtable<_SenderQueries> {
+      auto __queries() const noexcept -> const __query_vtable<_SenderQueries>& {
+        return *this;
+      }
 
-        __t(__t&&) = default;
-        auto operator=(__t&&) -> __t& = default;
+      template <sender_to<__receiver_ref_t> _Sender>
+      static auto __create_vtable(__mtype<_Sender>) noexcept -> const __vtable* {
+        static const __vtable __vtable_{
+          {*__any::__create_vtable(__mtype<__query_vtable<_SenderQueries>>{}, __mtype<_Sender>{})},
+          [](void* __object_pointer, __receiver_ref_t __receiver) -> __immovable_operation_storage {
+            _Sender& __sender = *static_cast<_Sender*>(__object_pointer);
+            using __op_state_t = connect_result_t<_Sender, __receiver_ref_t>;
+            return __immovable_operation_storage{
+              std::in_place_type<__op_state_t>, __emplace_from{[&] {
+                return STDEXEC::connect(
+                  static_cast<_Sender&&>(__sender), static_cast<__receiver_ref_t&&>(__receiver));
+              }}};
+          }};
+        return &__vtable_;
+      }
 
-        template <__not_decays_to<__t> _Sender>
-          requires sender_to<_Sender, __receiver_ref<_Sigs, _ReceiverQueries>>
-        __t(_Sender&& __sndr)
-          : __storage_{static_cast<_Sender&&>(__sndr)} {
-        }
+      __immovable_operation_storage (*__connect_)(void*, __receiver_ref_t);
+    };
 
-        auto __connect(__receiver_ref_t __receiver) -> __immovable_operation_storage {
-          return __storage_.__get_vtable()->__connect_(
-            __storage_.__get_object_pointer(), static_cast<__receiver_ref_t&&>(__receiver));
-        }
+    template <class _Sigs, class _SenderQueries, class _ReceiverQueries>
+    struct __sender<_Sigs, _SenderQueries, _ReceiverQueries>::__attrs {
+      template <class _Tag, class... _As>
+        requires __callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>
+      auto query(_Tag, _As&&... __as) const
+        noexcept(__nothrow_callable<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...>)
+          -> __call_result_t<const __query_vtable<_SenderQueries>&, _Tag, void*, _As...> {
+        return __vtable_->__queries()(_Tag{}, __sender_, static_cast<_As&&>(__as)...);
+      }
 
-        auto get_env() const noexcept -> __env_t {
-          return {__storage_.__get_vtable(), __storage_.__get_object_pointer()};
-        }
-
-        template <receiver_of<_Sigs> _Rcvr>
-        auto connect(_Rcvr __rcvr) && -> STDEXEC::__t<
-          __operation<STDEXEC::__id<_Rcvr>, __with_inplace_stop_token>
-        > {
-          return {static_cast<__t&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
-        }
-
-       private:
-        __unique_storage_t<__vtable> __storage_;
-      };
+      const __vtable* __vtable_;
+      void* __sender_;
     };
 
     template <class _ScheduleSender, class _SchedulerQueries = __types<>>
@@ -1195,54 +1153,49 @@ namespace exec {
   class any_receiver_ref {
     using __receiver_base = __any::__rec::__ref<_Completions, decltype(_ReceiverQueries)...>;
     using __env_t = STDEXEC::env_of_t<__receiver_base>;
-    __receiver_base __receiver_;
+    __receiver_base __rcvr_;
 
    public:
     using receiver_concept = STDEXEC::receiver_t;
-    using __t = any_receiver_ref;
-    using __id = any_receiver_ref;
 
     template <STDEXEC::__none_of<any_receiver_ref, const any_receiver_ref, __env_t, const __env_t>
                 _Receiver>
       requires STDEXEC::receiver_of<_Receiver, _Completions>
     any_receiver_ref(_Receiver& __receiver)
       noexcept(STDEXEC::__nothrow_constructible_from<__receiver_base, _Receiver>)
-      : __receiver_(__receiver) {
+      : __rcvr_(__receiver) {
     }
 
     template <class... _As>
       requires STDEXEC::__callable<STDEXEC::set_value_t, __receiver_base, _As...>
     void set_value(_As&&... __as) noexcept {
-      STDEXEC::set_value(static_cast<__receiver_base&&>(__receiver_), static_cast<_As&&>(__as)...);
+      STDEXEC::set_value(static_cast<__receiver_base&&>(__rcvr_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
       requires STDEXEC::__callable<STDEXEC::set_error_t, __receiver_base, _Error>
     void set_error(_Error&& __err) noexcept {
-      STDEXEC::set_error(static_cast<__receiver_base&&>(__receiver_), static_cast<_Error&&>(__err));
+      STDEXEC::set_error(static_cast<__receiver_base&&>(__rcvr_), static_cast<_Error&&>(__err));
     }
 
     void set_stopped() noexcept
       requires STDEXEC::__callable<STDEXEC::set_stopped_t, __receiver_base>
     {
-      STDEXEC::set_stopped(static_cast<__receiver_base&&>(__receiver_));
+      STDEXEC::set_stopped(static_cast<__receiver_base&&>(__rcvr_));
     }
 
     auto get_env() const noexcept -> STDEXEC::env_of_t<__receiver_base> {
-      return STDEXEC::get_env(__receiver_);
+      return STDEXEC::get_env(__rcvr_);
     }
 
     template <auto... _SenderQueries>
     class any_sender {
-      using __sender_base = STDEXEC::__t<
-        __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>
-      >;
-      __sender_base __sender_;
+      using __base_t =
+        __any::__sender<_Completions, queries<_SenderQueries...>, queries<_ReceiverQueries...>>;
+      __base_t __sender_;
 
      public:
       using sender_concept = STDEXEC::sender_t;
-      using __t = any_sender;
-      using __id = any_sender;
 
       template <STDEXEC::__not_decays_to<any_sender> _Sender>
         requires STDEXEC::sender_to<_Sender, __receiver_base>
@@ -1252,30 +1205,31 @@ namespace exec {
 
       template <STDEXEC::__decays_to_derived_from<any_sender> _Self, class... _Env>
         requires(__any::__satisfies_receiver_query<decltype(_ReceiverQueries), _Env...> && ...)
-      static consteval auto get_completion_signatures() -> __sender_base::completion_signatures {
+      static consteval auto get_completion_signatures() -> __base_t::completion_signatures {
         return {};
       }
 
       template <STDEXEC::receiver_of<_Completions> _Receiver>
-      auto connect(_Receiver __rcvr) && -> STDEXEC::connect_result_t<__sender_base, _Receiver> {
-        return static_cast<__sender_base&&>(__sender_).connect(static_cast<_Receiver&&>(__rcvr));
+      auto connect(_Receiver __rcvr) && -> STDEXEC::connect_result_t<__base_t, _Receiver> {
+        return static_cast<__base_t&&>(__sender_).connect(static_cast<_Receiver&&>(__rcvr));
       }
 
-      auto get_env() const noexcept -> STDEXEC::env_of_t<__sender_base> {
-        return static_cast<const __sender_base&>(__sender_).get_env();
+      auto get_env() const noexcept -> STDEXEC::env_of_t<__base_t> {
+        return static_cast<const __base_t&>(__sender_).get_env();
       }
 
       template <auto... _SchedulerQueries>
       class any_scheduler {
         // Add the required set_value_t() completions to the schedule-sender.
-        using __schedule_completions = STDEXEC::__concat_completion_signatures_t<
+        using __schedule_completions_t = STDEXEC::__concat_completion_signatures_t<
           _Completions,
           STDEXEC::completion_signatures<STDEXEC::set_value_t()>
         >;
-        using __schedule_receiver = any_receiver_ref<__schedule_completions, _ReceiverQueries...>;
+        using __schedule_receiver_t =
+          any_receiver_ref<__schedule_completions_t, _ReceiverQueries...>;
 
         template <class _BaseSender>
-        struct __schedule_sender : _BaseSender {
+        class __schedule_sender : public _BaseSender {
           struct __attrs {
             template <class... _Env>
             STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -1297,6 +1251,10 @@ namespace exec {
             const __schedule_sender& __self_;
           };
 
+          friend struct __attrs;
+          any_scheduler __sch_;
+
+         public:
           __schedule_sender(any_scheduler __sch, _BaseSender&& __sender)
             : _BaseSender(static_cast<_BaseSender&&>(__sender))
             , __sch_(static_cast<any_scheduler&&>(__sch)) {
@@ -1308,13 +1266,11 @@ namespace exec {
           }
 
          private:
-          friend struct __attrs;
-          any_scheduler __sch_;
         };
 
         template <class... _ScheduleSenderQueries>
         using __any_sender_t =
-          typename __schedule_receiver::template any_sender<_ScheduleSenderQueries{}...>;
+          typename __schedule_receiver_t::template any_sender<_ScheduleSenderQueries{}...>;
 
         using __schedule_sender_base_t = STDEXEC::__minvoke<
           STDEXEC::__mremove_if<
@@ -1333,8 +1289,6 @@ namespace exec {
 
        public:
         using scheduler_concept = STDEXEC::scheduler_t;
-        using __t = any_scheduler;
-        using __id = any_scheduler;
 
         template <STDEXEC::__none_of<any_scheduler> _Scheduler>
           requires STDEXEC::scheduler<_Scheduler>

@@ -30,8 +30,6 @@
 namespace {
 
   struct next_rcvr {
-    using __id = next_rcvr;
-    using __t = next_rcvr;
     using receiver_concept = ex::receiver_t;
 
     auto set_next(auto item) {

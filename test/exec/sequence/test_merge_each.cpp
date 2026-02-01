@@ -46,8 +46,6 @@ namespace {
                            == ex::__mapply<ex::__msize, _B>::value;
 
   struct null_receiver {
-    using __id = null_receiver;
-    using __t = null_receiver;
     using receiver_concept = ex::receiver_t;
 
     template <class... _Values>

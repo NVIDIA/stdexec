@@ -686,9 +686,6 @@ namespace {
 
   // A scheduler that counts how many instances are extant.
   struct counting_scheduler {
-    using __id = counting_scheduler;
-    using __t = counting_scheduler;
-
     static int count;
 
     counting_scheduler() noexcept {
@@ -720,9 +717,6 @@ namespace {
     };
 
     struct sender {
-      using __id = sender;
-      using __t = sender;
-
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 

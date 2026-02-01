@@ -227,4 +227,15 @@ namespace STDEXEC {
 
   template <class _Fn>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __for_each(_Fn) -> __for_each<_Fn>;
+
+  template <class _Ty>
+  struct __construct {
+    template <class... _As>
+      requires __std::constructible_from<_Ty, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr auto operator()(_As&&... __as) const noexcept( //
+      __nothrow_constructible_from<_Ty, _As...>) -> _Ty {
+      return _Ty(static_cast<_As&&>(__as)...);
+    }
+  };
 } // namespace STDEXEC

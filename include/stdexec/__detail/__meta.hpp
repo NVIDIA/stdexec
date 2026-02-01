@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -20,7 +20,6 @@
 #include "__type_traits.hpp"
 
 #include <cassert>
-#include <compare>
 #include <cstddef>
 #include <source_location> // IWYU pragma: keep for std::source_location::current
 #include <string_view>
@@ -150,8 +149,6 @@ namespace STDEXEC {
   template <class... _What>
   struct _ERROR_ {
     using __t = _ERROR_;
-    using __id = _ERROR_;
-
     using __partitioned = _ERROR_;
 
     template <class, class>
@@ -701,13 +698,19 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Ty>
-    extern __cp __demangle_v;
+    extern __declfn_t<_Ty> __demangle_v;
 
     template <class _Ty>
-    using __demangle_fn = decltype(__demangle_v<_Ty>);
+    extern __declfn_t<_Ty &> __demangle_v<_Ty &>;
 
     template <class _Ty>
-    using __demangle_t = __minvoke<__demangle_fn<_Ty>, _Ty>;
+    extern __declfn_t<_Ty &&> __demangle_v<_Ty &&>;
+
+    template <class _Ty>
+    extern __declfn_t<_Ty const &> __demangle_v<_Ty const &>;
+
+    template <class _Ty>
+    using __demangle_t = decltype(__demangle_v<_Ty>());
 
     template <class _Sender>
     using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled>;
@@ -766,54 +769,9 @@ namespace STDEXEC {
 
   static_assert(__mnameof<void> == "void");
 
-  //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
-  //! See MAINTAINERS.md#class-template-parameters.
-  template <class _Ty>
-  concept __has_id = requires { typename _Ty::__id; };
-
-  //! Identity mapping `_Ty` to itself.
-  //! That is, `__same_as<_Ty, typename _Id<_Ty>::__t>`.
-  template <class _Ty>
-  struct _Id {
-    using __t = _Ty;
-
-    // Uncomment the line below to find any code that likely misuses the
-    // ADL isolation mechanism. In particular, '__id<_Ty>' when _Ty is a
-    // reference is a likely misuse. The static_assert below will trigger
-    // when the type passed to the __id alias template is a reference to
-    // a type that is setup to use ADL isolation.
-    //static_assert(!__has_id<std::remove_cvref_t<_Ty>>);
-  };
-
-  //! Helper metafunction detail of `__id`, below.
-  template <bool = true>
-  struct __id_ {
-    template <class _Ty>
-    using __f = _Ty::__id;
-  };
-
-  template <>
-  struct __id_<false> {
-    template <class _Ty>
-    using __f = _Id<_Ty>;
-  };
-
-  //! Metafunction mapping `_Ty` to either
-  //! * `typename _Ty::__id` if that exists, or to
-  //! * `_Ty` (itself) otherwise.
-  //! See MAINTAINERS.md#class-template-parameters.
-  template <class _Ty>
-  using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
-
-  template <class _From, class _To = __decay_t<_From>>
-  using __cvref_t = __copy_cvref_t<_From, __t<_To>>;
-
-  template <class _From, class _To = __decay_t<_From>>
-  using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
-
   template <class _List1, class _List2>
   struct __mzip_with2_
-    : __mzip_with2_<__mapply<__qq<__types>, _List1>, __mapply<__qq<__types>, _List2>> { };
+    : __mzip_with2_<__mapply_q<__types, _List1>, __mapply_q<__types, _List2>> { };
 
   template <template <class...> class _Cp, class... _Cs, template <class...> class _Dp, class... _Ds>
   struct __mzip_with2_<_Cp<_Cs...>, _Dp<_Ds...>> {

@@ -48,9 +48,9 @@ namespace STDEXEC {
     //     tuple<set_error_t, __decay_t<_Error2>>,
     //        ...
     //   >
-    template <class _CvrefSender, class _Env>
+    template <class _CvSender, class _Env>
     using __results_of = __for_each_completion_signature_t<
-      __completion_signatures_of_t<_CvrefSender, _Env>,
+      __completion_signatures_of_t<_CvSender, _Env>,
       __decayed_tuple,
       __munique<__qq<STDEXEC::__variant_for>>::__f
     >;
@@ -77,9 +77,9 @@ namespace STDEXEC {
       >
     >;
 
-    template <class _Scheduler, class _CvrefSender, class... _Env>
+    template <class _Scheduler, class _CvSender, class... _Env>
     using __completions_t =
-      __completions_impl_t<_Scheduler, __completion_signatures_of_t<_CvrefSender, _Env...>, _Env...>;
+      __completions_impl_t<_Scheduler, __completion_signatures_of_t<_CvSender, _Env...>, _Env...>;
 
     template <class _State>
     STDEXEC_ATTRIBUTE(always_inline)
@@ -105,40 +105,31 @@ namespace STDEXEC {
     // the source sender completes, the completion information is saved off in the operation state
     // so that when this receiver completes, it can read the completion out of the operation state
     // and forward it to the output receiver after transitioning to the scheduler's context.
-    template <class _SexprId, class _ReceiverId>
-    struct __rcvr2 {
-      using _Sexpr = STDEXEC::__t<_SexprId>;
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
-
-      struct __t {
-        using receiver_concept = receiver_t;
-        using __id = __rcvr2;
-
-        constexpr void set_value() noexcept {
-          STDEXEC::__visit(__trnsfr::__make_visitor_fn(__state_), __state_->__data_);
-        }
-
-        template <class _Error>
-        constexpr void set_error(_Error&& __err) noexcept {
-          STDEXEC::set_error(
-            static_cast<_Receiver&&>(__state_->__rcvr_), static_cast<_Error&&>(__err));
-        }
-
-        constexpr void set_stopped() noexcept {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__state_->__rcvr_));
-        }
-
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__rcvr_);
-        }
-
-        __state_base<_Sexpr, _Receiver>* __state_;
-      };
-    };
-
     template <class _Sexpr, class _Receiver>
-    using __receiver2 = __t<__rcvr2<__id<_Sexpr>, __id<_Receiver>>>;
+    struct __receiver2 {
+      using receiver_concept = receiver_t;
+
+      constexpr void set_value() noexcept {
+        STDEXEC::__visit(__trnsfr::__make_visitor_fn(__state_), __state_->__data_);
+      }
+
+      template <class _Error>
+      constexpr void set_error(_Error&& __err) noexcept {
+        STDEXEC::set_error(
+          static_cast<_Receiver&&>(__state_->__rcvr_), static_cast<_Error&&>(__err));
+      }
+
+      constexpr void set_stopped() noexcept {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__state_->__rcvr_));
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return STDEXEC::get_env(__state_->__rcvr_);
+      }
+
+      __state_base<_Sexpr, _Receiver>* __state_;
+    };
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state : __state_base<_Sexpr, _Receiver> {

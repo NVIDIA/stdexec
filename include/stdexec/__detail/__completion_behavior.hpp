@@ -114,9 +114,6 @@ namespace STDEXEC {
       }
 
      public:
-      using __t = get_completion_behavior_t;
-      using __id = get_completion_behavior_t;
-
       template <class _Sig>
       static inline constexpr get_completion_behavior_t (*signature)(_Sig) = nullptr;
 

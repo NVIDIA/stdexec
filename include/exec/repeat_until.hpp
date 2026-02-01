@@ -50,73 +50,68 @@ namespace exec {
     template <class _Boolean, bool _Expected>
     concept __bool_constant = __decay_t<_Boolean>::value == _Expected;
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __receiver {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using receiver_concept = STDEXEC::receiver_t;
 
-      struct __t {
-        using __id = __receiver;
-        using receiver_concept = STDEXEC::receiver_t;
-
-        template <class... _Booleans>
-        constexpr void set_value(_Booleans &&...__bools) noexcept {
-          if constexpr ((__bool_constant<_Booleans, true> && ...)) {
-            // Always done:
-            __state_->__cleanup();
-            STDEXEC::set_value(std::move(__state_->__rcvr_));
-          } else if constexpr ((__bool_constant<_Booleans, false> && ...)) {
-            // Never done:
-            __state_->__repeat();
-          } else {
-            // Mixed results:
-            constexpr bool __is_nothrow = noexcept(
-              (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...));
-            STDEXEC_TRY {
-              // If the child sender completed with true, we're done
-              const bool __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
-              if (__done) {
-                __state_->__cleanup();
-                STDEXEC::set_value(std::move(__state_->__rcvr_));
-              } else {
-                __state_->__repeat();
-              }
-            }
-            STDEXEC_CATCH_ALL {
-              if constexpr (!__is_nothrow) {
-                __state_->__cleanup();
-                STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
-              }
-            }
-          }
-        }
-
-        template <class _Error>
-        constexpr void set_error(_Error &&__err) noexcept { // intentionally pass-by-value
+      template <class... _Booleans>
+      constexpr void set_value(_Booleans &&...__bools) noexcept {
+        if constexpr ((__bool_constant<_Booleans, true> && ...)) {
+          // Always done:
+          __state_->__cleanup();
+          STDEXEC::set_value(std::move(__state_->__rcvr_));
+        } else if constexpr ((__bool_constant<_Booleans, false> && ...)) {
+          // Never done:
+          __state_->__repeat();
+        } else {
+          // Mixed results:
+          constexpr bool __is_nothrow = noexcept(
+            (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...));
           STDEXEC_TRY {
-            auto __err_copy = static_cast<_Error &&>(__err); // make a local copy of the error...
-            __state_->__cleanup(); // because this could potentially invalidate it.
-            STDEXEC::set_error(std::move(__state_->__rcvr_), static_cast<_Error &&>(__err_copy));
+            // If the child sender completed with true, we're done
+            const bool __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
+            if (__done) {
+              __state_->__cleanup();
+              STDEXEC::set_value(std::move(__state_->__rcvr_));
+            } else {
+              __state_->__repeat();
+            }
           }
           STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow_decay_copyable<_Error>) {
+            if constexpr (!__is_nothrow) {
               __state_->__cleanup();
               STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
             }
           }
         }
+      }
 
-        constexpr void set_stopped() noexcept {
-          __state_->__cleanup();
-          STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+      template <class _Error>
+      constexpr void set_error(_Error &&__err) noexcept { // intentionally pass-by-value
+        STDEXEC_TRY {
+          auto __err_copy = static_cast<_Error &&>(__err); // make a local copy of the error...
+          __state_->__cleanup(); // because this could potentially invalidate it.
+          STDEXEC::set_error(std::move(__state_->__rcvr_), static_cast<_Error &&>(__err_copy));
         }
-
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__rcvr_);
+        STDEXEC_CATCH_ALL {
+          if constexpr (!__nothrow_decay_copyable<_Error>) {
+            __state_->__cleanup();
+            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+          }
         }
+      }
 
-        __opstate_base<_Receiver> *__state_;
-      };
+      constexpr void set_stopped() noexcept {
+        __state_->__cleanup();
+        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return STDEXEC::get_env(__state_->__rcvr_);
+      }
+
+      __opstate_base<_Receiver> *__state_;
     };
 
     STDEXEC_PRAGMA_PUSH()
@@ -124,7 +119,7 @@ namespace exec {
 
     template <class _Child, class _Receiver>
     struct __opstate final : __opstate_base<_Receiver> {
-      using __receiver_t = STDEXEC::__t<__receiver<__id<_Receiver>>>;
+      using __receiver_t = __receiver<_Receiver>;
       using __bouncy_sndr_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;

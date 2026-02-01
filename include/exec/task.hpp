@@ -321,8 +321,6 @@ namespace exec {
     class [[nodiscard]] basic_task {
       struct __promise;
      public:
-      using __t = basic_task;
-      using __id = basic_task;
       using promise_type = __promise;
 
       constexpr basic_task(basic_task&& __that) noexcept
@@ -357,8 +355,6 @@ namespace exec {
       struct __promise
         : __promise_base<_Ty>
         , with_awaitable_senders<__promise> {
-        using __t = __promise;
-        using __id = __promise;
 
         constexpr auto get_return_object() noexcept -> basic_task {
           return basic_task(__std::coroutine_handle<__promise>::from_promise(*this));
