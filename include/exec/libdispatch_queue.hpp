@@ -48,10 +48,10 @@ namespace exec {
     struct bulk_shared_state;
 
     template <class Fun, class Shape, class... Args>
-      requires STDEXEC::__callable<Fun, Shape, Args &...>
-    using bulk_non_throwing = STDEXEC::__mbool<
-      STDEXEC::__nothrow_callable<Fun, Shape, Args &...>
-      && noexcept(STDEXEC::__decayed_std_tuple<Args...>(std::declval<Args>()...))
+      requires STDEXEC::__callable<Fun, Shape, STDEXEC::__decay_t<Args> &...>
+    using bulk_non_throwing_t = STDEXEC::__mbool<
+      STDEXEC::__nothrow_callable<Fun, Shape, STDEXEC::__decay_t<Args> &...>
+      && STDEXEC::__nothrow_decay_copyable<Args...>
     >;
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
@@ -218,7 +218,7 @@ namespace exec {
       using with_error_invoke_t = STDEXEC::__if_c<
         STDEXEC::__value_types_t<
           STDEXEC::__completion_signatures_of_t<CvSender, Env...>,
-          STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+          STDEXEC::__mbind_front_q<bulk_non_throwing_t, Fun, Shape>,
           STDEXEC::__q<STDEXEC::__mand>
         >::value,
         STDEXEC::completion_signatures<>,
@@ -432,7 +432,7 @@ namespace exec {
       static constexpr bool may_throw = !STDEXEC::__value_types_of_t<
         CvSender,
         STDEXEC::env_of_t<Receiver>,
-        STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+        STDEXEC::__mbind_front_q<bulk_non_throwing_t, Fun, Shape>,
         STDEXEC::__q<STDEXEC::__mand>
       >::value;
 
