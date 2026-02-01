@@ -47,7 +47,7 @@ namespace exec {
     template <class... _Env>
     struct __completions_fn {
       template <class... _CvSenders>
-      using __all_value_args_nothrow_decay_copyable = __meval<
+      using __all_value_args_nothrow_decay_copyable = __minvoke_q<
         __mand_t,
         __value_types_t<
           __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,

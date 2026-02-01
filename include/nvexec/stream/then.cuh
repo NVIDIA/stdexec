@@ -133,7 +133,7 @@ namespace nvexec::_strm {
     using _set_error_t = completion_signatures<set_error_t(Error)>;
 
     template <class Self, class... Env>
-    using __error_completions_t = __meval<
+    using __error_completions_t = __minvoke_q<
       __concat_completion_signatures_t,
       __with_error_invoke_t<
         __mbind_front_q<__callable_error_t, then_t>,

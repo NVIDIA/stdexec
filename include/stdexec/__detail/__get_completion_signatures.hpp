@@ -132,13 +132,13 @@ namespace STDEXEC {
                ::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender, class... _Env>
-    concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
+    concept __with_member = __minvocable_q<__member_result_t, _Sender, _Env...>;
 
     template <class _Sender>
     using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
 
     template <class _Sender, class... _Env>
-    concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Env...>;
+    concept __with_static_member = __minvocable_q<__static_member_result_t, _Sender, _Env...>;
 
     template <class _Sender, class... _Env>
     concept __with_consteval_static_member = //
@@ -158,7 +158,7 @@ namespace STDEXEC {
                                     && tag_invocable<get_completion_signatures_t, _Sender, env<>>;
 
     template <class _Sender>
-    concept __with_member_alias = __mvalid<__member_alias_t, _Sender>;
+    concept __with_member_alias = __minvocable_q<__member_alias_t, _Sender>;
 
     template <class _Sender, class... _Env>
     [[nodiscard]]

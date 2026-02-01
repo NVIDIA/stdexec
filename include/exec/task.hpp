@@ -488,7 +488,7 @@ namespace exec {
 
       // Make this task generally awaitable:
       constexpr auto operator co_await() && noexcept -> __task_awaitable<>
-        requires __mvalid<awaiter_context_t, __promise>
+        requires __minvocable_q<awaiter_context_t, __promise>
       {
         return __task_awaitable<>{std::exchange(__coro_, {})};
       }

@@ -349,7 +349,7 @@ namespace STDEXEC {
     template <class... _Args, class _Fn>
     [[nodiscard]]
     consteval auto __apply_transform(const _Fn& __fn) {
-      if constexpr (__mvalid<__transform_expr_t, _Fn, _Args...>) {
+      if constexpr (__minvocable_q<__transform_expr_t, _Fn, _Args...>) {
         using __completions_t = __transform_expr_t<_Fn, _Args...>;
         if constexpr (__well_formed_completions<__completions_t>) {
           return __cmplsigs::__transform_expr<_Args...>(__fn);

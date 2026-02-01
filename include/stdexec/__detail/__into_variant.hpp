@@ -52,7 +52,7 @@ namespace STDEXEC {
     template <class _Sender, class... _Env>
     using __completions = transform_completion_signatures<
       __completion_signatures_of_t<_Sender, _Env...>,
-      __meval<__variant_completions, __variant_t<_Sender, _Env...>>,
+      __minvoke_q<__variant_completions, __variant_t<_Sender, _Env...>>,
       __mconst<completion_signatures<>>::__f
     >;
 

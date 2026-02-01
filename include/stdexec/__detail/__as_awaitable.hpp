@@ -169,7 +169,7 @@ namespace STDEXEC {
 
     template <class _Sender, class _Promise>
     concept __awaitable_sender = sender_in<_Sender, env_of_t<_Promise&>>
-                              && __mvalid<__detail::__value_t, _Sender, _Promise>
+                              && __minvocable_q<__detail::__value_t, _Sender, _Promise>
                               && sender_to<_Sender, __receiver_t<_Sender, _Promise>>
                               && requires(_Promise& __promise) {
                                    {

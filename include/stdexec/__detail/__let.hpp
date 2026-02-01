@@ -124,7 +124,7 @@ namespace STDEXEC {
     struct _NESTED_ERROR_;
 
     template <class _Sender, class... _Env>
-    using __try_completion_signatures_of_t = __meval_or<
+    using __try_completion_signatures_of_t = __minvoke_or_q<
       __completion_signatures_of_t,
       __unrecognized_sender_error_t<_Sender, _Env...>,
       _Sender,
@@ -156,7 +156,7 @@ namespace STDEXEC {
     template <class _SetTag, class _Fun, class... _JoinEnv2>
     struct __result_sender_fn {
       template <class... _Args>
-      using __f = __meval<
+      using __f = __minvoke_q<
         __ensure_sender_t,
         _SetTag,
         __mcall<

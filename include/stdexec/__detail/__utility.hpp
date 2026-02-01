@@ -29,15 +29,6 @@ namespace STDEXEC {
 
   using __empty = struct __ { };
 
-  struct __ignore {
-    constexpr __ignore() = default;
-
-    template <class... _Ts>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __ignore(_Ts&&...) noexcept {
-    }
-  };
-
   struct __none_such { };
 
   namespace {

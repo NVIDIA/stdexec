@@ -42,10 +42,10 @@ namespace STDEXEC {
                ::static_connect(__declval<_Sender>(), __declval<_Receiver>()));
 
     template <class _Sender, class _Receiver>
-    concept __with_member = __mvalid<__member_result_t, _Sender, _Receiver>;
+    concept __with_member = __minvocable_q<__member_result_t, _Sender, _Receiver>;
 
     template <class _Sender, class _Receiver>
-    concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Receiver>;
+    concept __with_static_member = __minvocable_q<__static_member_result_t, _Sender, _Receiver>;
 
     template <class _Sender, class _Receiver>
     concept __with_legacy_tag_invoke = tag_invocable<connect_t, _Sender, _Receiver>;
