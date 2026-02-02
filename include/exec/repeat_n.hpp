@@ -55,49 +55,44 @@ namespace exec {
       ~__opstate_base() noexcept = default;
     };
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __receiver {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using receiver_concept = STDEXEC::receiver_t;
 
-      struct __t {
-        using __id = __receiver;
-        using receiver_concept = STDEXEC::receiver_t;
+      constexpr void set_value() noexcept {
+        __state_->__repeat();
+      }
 
-        constexpr void set_value() noexcept {
-          __state_->__repeat();
+      template <class _Error>
+      constexpr void set_error(_Error &&__err) noexcept {
+        STDEXEC_TRY {
+          auto __err_copy = static_cast<_Error &&>(__err); // make a copy of the error...
+          __state_->__cleanup(); // ... because this could potentially invalidate it.
+          STDEXEC::set_error(std::move(__state_->__rcvr_), std::move(__err_copy));
         }
-
-        template <class _Error>
-        constexpr void set_error(_Error &&__err) noexcept {
-          STDEXEC_TRY {
-            auto __err_copy = static_cast<_Error &&>(__err); // make a copy of the error...
-            __state_->__cleanup(); // ... because this could potentially invalidate it.
-            STDEXEC::set_error(std::move(__state_->__rcvr_), std::move(__err_copy));
-          }
-          STDEXEC_CATCH_ALL {
-            if constexpr (!__nothrow_decay_copyable<_Error>) {
-              STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
-            }
+        STDEXEC_CATCH_ALL {
+          if constexpr (!__nothrow_decay_copyable<_Error>) {
+            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
           }
         }
+      }
 
-        constexpr void set_stopped() noexcept {
-          __state_->__cleanup();
-          STDEXEC::set_stopped(std::move(__state_->__rcvr_));
-        }
+      constexpr void set_stopped() noexcept {
+        __state_->__cleanup();
+        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+      }
 
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__state_->__rcvr_);
-        }
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return STDEXEC::get_env(__state_->__rcvr_);
+      }
 
-        __opstate_base<_Receiver> *__state_;
-      };
+      __opstate_base<_Receiver> *__state_;
     };
 
     template <class _Child, class _Receiver>
     struct __opstate final : __opstate_base<_Receiver> {
-      using __receiver_t = STDEXEC::__t<__receiver<__id<_Receiver>>>;
+      using __receiver_t = __receiver<_Receiver>;
       using __bouncy_sndr_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;

@@ -16,126 +16,115 @@
  */
 #pragma once
 
+#include "../stdexec/__detail/__variant.hpp"
 #include "../stdexec/execution.hpp"
-
-#include <variant>
 
 namespace exec {
   namespace __variant {
     using namespace STDEXEC;
 
-    template <class _ReceiverId, class... _CvrefSenderIds>
+    template <class _Receiver, class... _CvSenders>
     struct __operation_state {
-      class __t {
-        std::variant<connect_result_t<__cvref_t<_CvrefSenderIds>, STDEXEC::__t<_ReceiverId>>...>
-          __variant_;
+      __variant_for<connect_result_t<_CvSenders, _Receiver>...> __variant_{};
 
-       public:
-        template <class _Sender, class _Receiver>
-        constexpr __t(_Sender&& __sender, _Receiver&& __receiver)
-          noexcept(__nothrow_connectable<_Sender, _Receiver>)
-          : __variant_{
-              std::in_place_type<connect_result_t<_Sender, _Receiver>>,
-              __emplace_from{[&] {
-                return STDEXEC::connect(
-                  static_cast<_Sender&&>(__sender), static_cast<_Receiver&&>(__receiver));
-              }}} {
-        }
+     public:
+      template <class _CvSender>
+      constexpr explicit __operation_state(_CvSender&& __sndr, _Receiver&& __rcvr)
+        noexcept(__nothrow_connectable<_CvSender, _Receiver>) {
+        __variant_.__emplace_from(
+          STDEXEC::connect, static_cast<_CvSender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
+      }
 
-        constexpr void start() & noexcept {
-          std::visit([](auto& __s) { STDEXEC::start(__s); }, __variant_);
-        }
-      };
+      constexpr void start() & noexcept {
+        STDEXEC::__visit(STDEXEC::start, __variant_);
+      }
     };
 
-    template <class... _SenderIds>
-    struct __sender {
-      template <class _Self, class _Env>
-      using __completion_signatures_t = __mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
-        __completion_signatures_of_t<__copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>, _Env>...
-      >;
+    template <class _OpState, class _Receiver>
+    struct __visitor {
+      template <class _Sender>
+      constexpr auto operator()(_Sender&& __sndr) -> _OpState {
+        return _OpState{static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
+      }
 
-      template <class _Self, class _Receiver>
-      struct __visitor {
-        _Receiver __rcvr;
-
-        template <class _Sender>
-        constexpr auto operator()(_Sender&& __s)
-          -> STDEXEC::__t<__operation_state<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>> {
-          return {static_cast<_Sender&&>(__s), static_cast<_Receiver&&>(__rcvr)};
-        }
-      };
-
-      class __t : private std::variant<STDEXEC::__t<_SenderIds>...> {
-        using __variant_t = std::variant<STDEXEC::__t<_SenderIds>...>;
-
-        constexpr auto base() && noexcept -> __variant_t&& {
-          return std::move(*this);
-        }
-
-        constexpr auto base() & noexcept -> __variant_t& {
-          return *this;
-        }
-
-        constexpr auto base() const & noexcept -> const __variant_t& {
-          return *this;
-        }
-
-       public:
-        using sender_concept = STDEXEC::sender_t;
-        using __id = __sender;
-
-        constexpr __t() = default;
-
-        template <class _Sender>
-          requires __one_of<__decay_t<_Sender>, STDEXEC::__t<_SenderIds>...>
-        __t(_Sender&& __sender)
-          noexcept(__nothrow_constructible_from<std::variant<STDEXEC::__t<_SenderIds>...>, _Sender>)
-          : __variant_t{static_cast<_Sender&&>(__sender)} {
-        }
-
-        using __variant_t::operator=;
-        using __variant_t::index;
-        using __variant_t::emplace;
-        using __variant_t::swap;
-
-        template <__decays_to<__t> _Self, receiver _Receiver>
-          requires(sender_to<__copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>, _Receiver> && ...)
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept((
-          __nothrow_connectable<__copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>, _Receiver> && ...))
-          -> STDEXEC::__t<__operation_state<
-            STDEXEC::__id<_Receiver>,
-            __cvref_id<_Self, STDEXEC::__t<_SenderIds>>...
-          >> {
-          return std::visit(
-            __visitor<_Self, _Receiver>{static_cast<_Receiver&&>(__rcvr)},
-            static_cast<_Self&&>(__self).base());
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
-
-        template <__decays_to<__t> _Self, class _Env>
-        static consteval auto get_completion_signatures() //
-          -> __completion_signatures_t<_Self, _Env> {
-          return {};
-        }
-      };
+      _Receiver __rcvr;
     };
   } // namespace __variant
 
+  // TODO: make STDEXEC::__variant_for work here
   template <class... _Senders>
-  using variant_sender =
-    STDEXEC::__t<__variant::__sender<STDEXEC::__id<STDEXEC::__decay_t<_Senders>>...>>;
-} // namespace exec
-
-namespace STDEXEC::__detail {
-  struct __variant_sender_name {
-    template <class _Sender>
-    using __f = __mapply<
-      __mtransform<__mcompose<__q<__demangle_t>, __q<__t>>, __q<exec::__variant::__sender>>,
-      _Sender
+  struct variant_sender {
+    template <class _Self, class _Env>
+    using __completions_t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
+      STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Env>...
     >;
-  }; // namespace STDEXEC::__detail
 
-  template <class... _SenderIds>
-  extern __variant_sender_name __demangle_v<exec::__variant::__sender<_SenderIds...>>;
-} // namespace STDEXEC::__detail
+    template <std::size_t _Index>
+    using __nth_sender_t = STDEXEC::__m_at_c<_Index, _Senders...>;
+
+    template <class _Self, class _Receiver>
+    using __opstate_t =
+      __variant::__operation_state<_Receiver, STDEXEC::__copy_cvref_t<_Self, _Senders>...>;
+
+    std::variant<_Senders...> __sndrs_;
+
+   public:
+    using sender_concept = STDEXEC::sender_t;
+
+    constexpr variant_sender() = default;
+
+    template <class _Sender>
+      requires STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
+    /*implicit*/ variant_sender(_Sender&& __sndr)
+      noexcept(STDEXEC::__nothrow_constructible_from<std::variant<_Senders...>, _Sender>)
+      : __sndrs_{static_cast<_Sender&&>(__sndr)} {
+    }
+
+    [[nodiscard]]
+    auto index() const noexcept -> std::size_t {
+      return __sndrs_.index();
+    }
+
+    template <STDEXEC::__decay_copyable _Sender>
+      requires STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
+    auto operator=(_Sender __sndr) noexcept(STDEXEC::__nothrow_move_constructible<_Sender>)
+      -> variant_sender& {
+      __sndrs_ = static_cast<_Sender&&>(__sndr);
+      return *this;
+    }
+
+    template <STDEXEC::__one_of<_Senders...> _Sender, class... _Args>
+    auto emplace(_Args&&... __args)
+      noexcept(STDEXEC::__nothrow_constructible_from<_Sender, _Args...>) -> _Sender& {
+      return __sndrs_.template emplace<_Sender>(static_cast<_Args&&>(__args)...);
+    }
+
+    template <std::size_t _Index, class... _Args>
+    auto emplace(_Args&&... __args)
+      noexcept(STDEXEC::__nothrow_constructible_from<__nth_sender_t<_Index>, _Args...>)
+        -> __nth_sender_t<_Index>& {
+      return __sndrs_.template emplace<_Index>(static_cast<_Args&&>(__args)...);
+    }
+
+    void swap(variant_sender& __other) noexcept {
+      static_assert(noexcept(__sndrs_.swap(__other.__sndrs_)));
+      __sndrs_.swap(__other.__sndrs_);
+    }
+
+    template <STDEXEC::__decays_to<variant_sender> _Self, STDEXEC::receiver _Receiver>
+      requires(STDEXEC::sender_to<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Receiver> && ...)
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept(
+      (STDEXEC::__nothrow_connectable<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Receiver> && ...))
+      -> __opstate_t<_Self, _Receiver> {
+      using __visitor_t = __variant::__visitor<__opstate_t<_Self, _Receiver>, _Receiver>;
+      return std::visit(
+        __visitor_t{static_cast<_Receiver&&>(__rcvr)}, static_cast<_Self&&>(__self).__sndrs_);
+    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
+
+    template <STDEXEC::__decays_to<variant_sender> _Self, class _Env>
+    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env> {
+      return {};
+    }
+  };
+} // namespace exec

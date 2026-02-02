@@ -95,7 +95,7 @@ namespace STDEXEC {
 #define STDEXEC_CHECKED_COMPLSIGS(_SENDER, _ENV, ...)                                              \
   (static_cast<void>(__VA_ARGS__),                                                                 \
    STDEXEC::__cmplsigs::__checked_complsigs<decltype(__VA_ARGS__)>(                                \
-     static_cast<__types<_SENDER, _ENV...>*>(nullptr)))
+     static_cast<__mlist<_SENDER, _ENV...>*>(nullptr)))
 
     template <class _Ty>
     concept __non_sender = !enable_sender<__decay_t<_Ty>>;
@@ -107,7 +107,7 @@ namespace STDEXEC {
 
     template <class _Completions, class _Sender, class... _Env>
       requires(!__valid_completion_signatures<_Completions>)
-    consteval auto __checked_complsigs(__types<_Sender, _Env...>*) {
+    consteval auto __checked_complsigs(__mlist<_Sender, _Env...>*) {
       if constexpr (__merror<_Completions>) {
         return STDEXEC::__throw_compile_time_error(_Completions());
       } else if constexpr (STDEXEC_IS_BASE_OF(dependent_sender_error, _Completions)) {
@@ -132,13 +132,13 @@ namespace STDEXEC {
                ::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
 
     template <class _Sender, class... _Env>
-    concept __with_member = __mvalid<__member_result_t, _Sender, _Env...>;
+    concept __with_member = __minvocable_q<__member_result_t, _Sender, _Env...>;
 
     template <class _Sender>
     using __member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
 
     template <class _Sender, class... _Env>
-    concept __with_static_member = __mvalid<__static_member_result_t, _Sender, _Env...>;
+    concept __with_static_member = __minvocable_q<__static_member_result_t, _Sender, _Env...>;
 
     template <class _Sender, class... _Env>
     concept __with_consteval_static_member = //
@@ -158,7 +158,7 @@ namespace STDEXEC {
                                     && tag_invocable<get_completion_signatures_t, _Sender, env<>>;
 
     template <class _Sender>
-    concept __with_member_alias = __mvalid<__member_alias_t, _Sender>;
+    concept __with_member_alias = __minvocable_q<__member_alias_t, _Sender>;
 
     template <class _Sender, class... _Env>
     [[nodiscard]]

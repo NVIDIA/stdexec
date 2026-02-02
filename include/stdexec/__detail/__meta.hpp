@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -20,7 +20,6 @@
 #include "__type_traits.hpp"
 
 #include <cassert>
-#include <compare>
 #include <cstddef>
 #include <source_location> // IWYU pragma: keep for std::source_location::current
 #include <string_view>
@@ -54,7 +53,7 @@ namespace STDEXEC {
   using __mtypeof = decltype(__detail::__mtypeof_v<_Value>());
 
   template <class...>
-  struct __types;
+  struct __mlist;
 
   template <class _Tp>
   using __midentity = _Tp;
@@ -142,6 +141,15 @@ namespace STDEXEC {
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
+  struct __ignore {
+    constexpr __ignore() = default;
+
+    template <class... _Ts>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __ignore(_Ts&&...) noexcept {
+    }
+  };
+
   using __msuccess = int;
 
   template <class _What, class... _With>
@@ -150,8 +158,6 @@ namespace STDEXEC {
   template <class... _What>
   struct _ERROR_ {
     using __t = _ERROR_;
-    using __id = _ERROR_;
-
     using __partitioned = _ERROR_;
 
     template <class, class>
@@ -172,9 +178,8 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator+() const -> _ERROR_;
 
-    template <class _Ty>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator,(const _Ty &) const -> _ERROR_;
+    constexpr auto operator,(__ignore) const -> _ERROR_;
   };
 
   template <class... _What>
@@ -198,6 +203,42 @@ namespace STDEXEC {
   template <class _Arg>
   concept __merror = !STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
+  template <class _Fn, class... _Args>
+  using __mcall = _Fn::template __f<_Args...>;
+
+  template <class _Fn, class _Arg>
+  using __mcall1 = _Fn::template __f<_Arg>;
+
+  template <class _Fn, class _First, class _Second>
+  using __mcall2 = _Fn::template __f<_First, _Second>;
+
+  template <template <class...> class _Fn, class... _Args>
+  using __mcall_q = _Fn<_Args...>;
+
+  template <template <class> class _Fn, class _Arg>
+  using __mcall1_q = _Fn<_Arg>;
+
+  template <template <class, class> class _Fn, class _First, class _Second>
+  using __mcall2_q = _Fn<_First, _Second>;
+
+  template <class _Fn, class... _Args>
+  concept __mcallable = requires { typename __mcall<_Fn, _Args...>; };
+
+  template <class _Fn, class _Arg>
+  concept __mcallable1 = requires { typename __mcall1<_Fn, _Arg>; };
+
+  template <class _Fn, class _First, class _Second>
+  concept __mcallable2 = requires { typename __mcall2<_Fn, _First, _Second>; };
+
+  template <template <class...> class _Fn, class... _Args>
+  concept __mcallable_q = requires { typename __mcall_q<_Fn, _Args...>; };
+
+  template <template <class> class _Fn, class _Arg>
+  concept __mcallable1_q = requires { typename __mcall1_q<_Fn, _Arg>; };
+
+  template <template <class, class> class _Fn, class _First, class _Second>
+  concept __mcallable2_q = requires { typename __mcall2_q<_Fn, _First, _Second>; };
+
   template <class... _Args>
   concept _Ok = (STDEXEC_IS_SAME(__ok_t<_Args>, __msuccess) && ...);
 
@@ -209,31 +250,49 @@ namespace STDEXEC {
   //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
   //! it is part of the meta-error propagation mechanism. if any of the argument types
   //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
-  //! `__minvoke` and `__meval` are implemented in terms of `__i`.
-  template <bool _ArgsOK, bool _FnOK = true>
+  //! `__minvoke` and `__minvoke_q` are implemented in terms of `__i`.
+  template <bool _OK>
   struct __i;
+
+  template <>
+  struct __i<true> {
+    template <template <class...> class _Fn, class... _Args>
+    using __g = _Fn<_Args...>;
+
+    template <class _Fn, class... _Args>
+    using __f = _Fn::template __f<_Args...>;
+  };
+
+  template <>
+  struct __i<false> {
+    template <template <class...> class, class... _Args>
+    using __g = __mfind_error<_Args...>;
+
+    template <class... _Args>
+    using __f = __mfind_error<_Args...>;
+  };
 
 #if STDEXEC_EDG()
   // Most compilers memoize alias template specializations, but
   // nvc++ does not. So we memoize the type computations by
   // indirecting through a class template specialization.
   template <template <class...> class _Fn, class... _Args>
-  using __meval__ = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+  using __minvoke_q__ = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   template <template <class...> class _Fn, class... _Args>
-  struct __meval_ { };
+  struct __minvoke_q_ { };
 
   template <template <class...> class _Fn, class... _Args>
-    requires __typename<__meval__<_Fn, _Args...>>
-  struct __meval_<_Fn, _Args...> {
-    using __t = __meval__<_Fn, _Args...>;
+    requires __typename<__minvoke_q__<_Fn, _Args...>>
+  struct __minvoke_q_<_Fn, _Args...> {
+    using __t = __minvoke_q__<_Fn, _Args...>;
   };
 
   template <template <class...> class _Fn, class... _Args>
-  using __meval = __t<__meval_<_Fn, _Args...>>;
+  using __minvoke_q = __t<__minvoke_q_<_Fn, _Args...>>;
 
   template <class _Fn, class... _Args>
-  using __minvoke__ = __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
+  using __minvoke__ = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
 
   template <class _Fn, class... _Args>
   struct __minvoke_ { };
@@ -250,21 +309,15 @@ namespace STDEXEC {
 #else
 
   template <template <class...> class _Fn, class... _Args>
-  using __meval = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
+  using __minvoke_q = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
   //! Metafunction invocation
   //! Given a metafunction, `_Fn`, and args.
   //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
-  using __minvoke = __i<_Ok<_Args...>, _Ok<_Fn>>::template __f<_Fn>::template __f<_Args...>;
+  using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
 
 #endif
-
-  template <class _Fn, class... _Args>
-  using __mcall = _Fn::template __f<_Args...>;
-
-  template <class _Fn, class _Arg>
-  using __mcall1 = _Fn::template __f<_Arg>;
 
   template <template <class...> class _Fn>
   struct __qq {
@@ -284,37 +337,13 @@ namespace STDEXEC {
     using __f = _Fn<_Ty, _Uy>;
   };
 
-  template <>
-  struct __i<true, true> {
-    template <template <class...> class _Fn, class... _Args>
-    using __g = _Fn<_Args...>;
-
-    template <class _Fn>
-    using __f = _Fn;
-  };
-
-  template <>
-  struct __i<false, true> {
-    template <template <class...> class, class... _Args>
-    using __g = __mfind_error<_Args...>;
-
-    template <class>
-    using __f = __qq<__mfind_error>;
-  };
-
-  template <bool _ArgsOK>
-  struct __i<_ArgsOK, false> {
-    template <class _Fn>
-    using __f = _Fn;
-  };
-
   //! This struct template is like
   //! [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
   //! It turns an alias/class template into a metafunction that also propagates
   //! "meta-exceptions". All of the meta utilities recognize specializations of
   //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the evaluation of the
   //! metafunction and are automatically propagated like an exception. Note: `__minvoke`
-  //! and `__meval` also participate in this error propagation.
+  //! and `__minvoke_q` also participate in this error propagation.
   //!
   //! This design lets us report type errors briefly at the library boundary, even if the
   //! actual error happens deep inside a meta-program.
@@ -330,10 +359,16 @@ namespace STDEXEC {
   template <class _Fn>
   struct __mtry : __mtry_q<_Fn::template __f> { };
 
+  template <__merror _Error>
+  struct __mtry<_Error> {
+    template <class...>
+    using __f = _Error;
+  };
+
   template <template <class...> class _Fn, class... _Front>
   struct __mbind_front_q {
     template <class... _Args>
-    using __f = __meval<_Fn, _Front..., _Args...>;
+    using __f = __minvoke_q<_Fn, _Front..., _Args...>;
   };
 
   template <class _Fn, class... _Front>
@@ -342,17 +377,17 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class... _Back>
   struct __mbind_back_q {
     template <class... _Args>
-    using __f = __meval<_Fn, _Args..., _Back...>;
+    using __f = __minvoke_q<_Fn, _Args..., _Back...>;
   };
 
   template <class _Fn, class... _Back>
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
   template <template <class...> class _Tp, class... _Args>
-  concept __mvalid = requires { typename __meval<_Tp, _Args...>; };
+  concept __minvocable_q = requires { typename __minvoke_q<_Tp, _Args...>; };
 
   template <class _Fn, class... _Args>
-  concept __minvocable = __mvalid<_Fn::template __f, _Args...>;
+  concept __minvocable = __minvocable_q<_Fn::template __f, _Args...>;
 
   namespace __detail {
     template <class _Fn, class... _Args>
@@ -410,7 +445,7 @@ namespace STDEXEC {
   //! This is similar to `std::conditional_t<Pred, Then, Else>` but instantiates fewer
   //! templates.
   template <class _Pred, class _Then, class _Else>
-  using __if = __meval<__detail::__if_t, _Pred, _Then, _Else>;
+  using __if = __minvoke_q<__detail::__if_t, _Pred, _Then, _Else>;
 
   template <bool _Pred, class _Then, class _Else>
   using __if_c = __minvoke<__detail::__if_<_Pred>, _Then, _Else>;
@@ -433,7 +468,7 @@ namespace STDEXEC {
   template <template <class...> class _Try, class _Catch>
   struct __mtry_catch_q {
     template <class... _Args>
-    using __f = __minvoke<__if_c<__mvalid<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
+    using __f = __minvoke<__if_c<__minvocable_q<_Try, _Args...>, __q<_Try>, _Catch>, _Args...>;
   };
 
   template <class _Try, class _Catch>
@@ -454,10 +489,7 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class _Default, class... _Args>
   using __minvoke_or_q = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
-  template <template <class...> class _Fn, class _Default, class... _Args>
-  using __meval_or = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
-
-  template <class _Fn, class _Continuation = __q<__types>>
+  template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mtransform {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
@@ -486,7 +518,7 @@ namespace STDEXEC {
   struct __mfold_left_ {
     template <class _Fn, class _State, class _Head, class... _Tail>
     using __f =
-      __minvoke<_Fn, __mcall<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
+      __minvoke<_Fn, __minvoke<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
   };
 
   template <>
@@ -552,45 +584,45 @@ namespace STDEXEC {
   template <template <class...> class _Fn, class _List>
   using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
 
-  template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__types>>
+  template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill_c = __mapply<__mtransform<__mconst<_Ty>, _Continuation>, __make_indices<_Ny>>;
 
-  template <class _Ny, class _Ty, class _Continuation = __qq<__types>>
+  template <class _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill = __mfill_c<_Ny::value, _Ty, _Continuation>;
 
   template <bool>
   struct __mconcat_ {
     template <
       class... _Ts,
-      template <class...> class _Ap = __types,
+      template <class...> class _Ap = __mlist,
       class... _As,
-      template <class...> class _Bp = __types,
+      template <class...> class _Bp = __mlist,
       class... _Bs,
-      template <class...> class _Cp = __types,
+      template <class...> class _Cp = __mlist,
       class... _Cs,
-      template <class...> class _Dp = __types,
+      template <class...> class _Dp = __mlist,
       class... _Ds,
       class... _Tail
     >
     static auto __f(
-      __types<_Ts...> *,
+      __mlist<_Ts...> *,
       _Ap<_As...> *,
       _Bp<_Bs...> * = nullptr,
       _Cp<_Cs...> * = nullptr,
       _Dp<_Ds...> * = nullptr,
       _Tail *...__tail)
       -> __midentity<decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
-        static_cast<__types<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
+        static_cast<__mlist<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
         __tail...))>;
   };
 
   template <>
   struct __mconcat_<true> {
     template <class... _As>
-    static auto __f(__types<_As...> *) -> __types<_As...>;
+    static auto __f(__mlist<_As...> *) -> __mlist<_As...>;
   };
 
-  template <class _Continuation = __qq<__types>>
+  template <class _Continuation = __qq<__mlist>>
   struct __mconcat {
     template <class... _Args>
     using __f = __mapply<
@@ -622,7 +654,7 @@ namespace STDEXEC {
     using __f = __mbool<(__same_as<_Tp, _Args> || ...)>;
   };
 
-  template <class _Continuation = __q<__types>>
+  template <class _Continuation = __q<__mlist>>
   struct __mpush_back {
     template <class _List, class _Item>
     using __f = __mapply<__mbind_back<_Continuation, _Item>, _List>;
@@ -652,27 +684,27 @@ namespace STDEXEC {
     using __f = _Second<_First<_Args...>>;
   };
 
-  template <class _Old, class _New, class _Continuation = __q<__types>>
+  template <class _Old, class _New, class _Continuation = __q<__mlist>>
   struct __mreplace {
     template <class... _Args>
     using __f = __minvoke<_Continuation, __if_c<__same_as<_Args, _Old>, _New, _Args>...>;
   };
 
-  template <class _Old, class _Continuation = __q<__types>>
+  template <class _Old, class _Continuation = __q<__mlist>>
   struct __mremove {
     template <class... _Args>
     using __f = __minvoke<
       __mconcat<_Continuation>,
-      __if_c<__same_as<_Args, _Old>, __types<>, __types<_Args>>...
+      __if_c<__same_as<_Args, _Old>, __mlist<>, __mlist<_Args>>...
     >;
   };
 
-  template <class _Pred, class _Continuation = __q<__types>>
+  template <class _Pred, class _Continuation = __q<__mlist>>
   struct __mremove_if {
     template <class... _Args>
     using __f = __minvoke<
       __mconcat<_Continuation>,
-      __if<__minvoke<_Pred, _Args>, __types<>, __types<_Args>>...
+      __if<__minvoke<_Pred, _Args>, __mlist<>, __mlist<_Args>>...
     >;
   };
 
@@ -686,7 +718,7 @@ namespace STDEXEC {
   using __mfront_ = _Ty;
 
   template <class... _As>
-  using __mfront = __meval<__mfront_, _As...>;
+  using __mfront = __minvoke_q<__mfront_, _As...>;
 
   template <class... _As>
     requires(sizeof...(_As) == 1)
@@ -701,13 +733,19 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Ty>
-    extern __cp __demangle_v;
+    extern __declfn_t<_Ty> __demangle_v;
 
     template <class _Ty>
-    using __demangle_fn = decltype(__demangle_v<_Ty>);
+    extern __declfn_t<_Ty &> __demangle_v<_Ty &>;
 
     template <class _Ty>
-    using __demangle_t = __minvoke<__demangle_fn<_Ty>, _Ty>;
+    extern __declfn_t<_Ty &&> __demangle_v<_Ty &&>;
+
+    template <class _Ty>
+    extern __declfn_t<_Ty const &> __demangle_v<_Ty const &>;
+
+    template <class _Ty>
+    using __demangle_t = decltype(__demangle_v<_Ty>());
 
     template <class _Sender>
     using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled>;
@@ -766,54 +804,9 @@ namespace STDEXEC {
 
   static_assert(__mnameof<void> == "void");
 
-  //! A concept checking if `_Ty` has a dependent type `_Ty::__id`.
-  //! See MAINTAINERS.md#class-template-parameters.
-  template <class _Ty>
-  concept __has_id = requires { typename _Ty::__id; };
-
-  //! Identity mapping `_Ty` to itself.
-  //! That is, `__same_as<_Ty, typename _Id<_Ty>::__t>`.
-  template <class _Ty>
-  struct _Id {
-    using __t = _Ty;
-
-    // Uncomment the line below to find any code that likely misuses the
-    // ADL isolation mechanism. In particular, '__id<_Ty>' when _Ty is a
-    // reference is a likely misuse. The static_assert below will trigger
-    // when the type passed to the __id alias template is a reference to
-    // a type that is setup to use ADL isolation.
-    //static_assert(!__has_id<std::remove_cvref_t<_Ty>>);
-  };
-
-  //! Helper metafunction detail of `__id`, below.
-  template <bool = true>
-  struct __id_ {
-    template <class _Ty>
-    using __f = _Ty::__id;
-  };
-
-  template <>
-  struct __id_<false> {
-    template <class _Ty>
-    using __f = _Id<_Ty>;
-  };
-
-  //! Metafunction mapping `_Ty` to either
-  //! * `typename _Ty::__id` if that exists, or to
-  //! * `_Ty` (itself) otherwise.
-  //! See MAINTAINERS.md#class-template-parameters.
-  template <class _Ty>
-  using __id = __minvoke<__id_<__has_id<_Ty>>, _Ty>;
-
-  template <class _From, class _To = __decay_t<_From>>
-  using __cvref_t = __copy_cvref_t<_From, __t<_To>>;
-
-  template <class _From, class _To = __decay_t<_From>>
-  using __cvref_id = __copy_cvref_t<_From, __id<_To>>;
-
   template <class _List1, class _List2>
   struct __mzip_with2_
-    : __mzip_with2_<__mapply<__qq<__types>, _List1>, __mapply<__qq<__types>, _List2>> { };
+    : __mzip_with2_<__mapply_q<__mlist, _List1>, __mapply_q<__mlist, _List2>> { };
 
   template <template <class...> class _Cp, class... _Cs, template <class...> class _Dp, class... _Ds>
   struct __mzip_with2_<_Cp<_Cs...>, _Dp<_Ds...>> {
@@ -821,7 +814,7 @@ namespace STDEXEC {
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Cs, _Ds>...>;
   };
 
-  template <class _Fn, class _Continuation = __q<__types>>
+  template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mzip_with2 {
     template <class _Cp, class _Dp>
     using __f = __minvoke<__mzip_with2_<_Cp, _Dp>, _Fn, _Continuation>;
@@ -846,7 +839,7 @@ namespace STDEXEC {
     using __f = __minvoke<_Continuation>;
   };
 
-  template <class _Needle, class _Continuation = __q<__types>>
+  template <class _Needle, class _Continuation = __q<__mlist>>
   struct __mfind {
     template <class... _Args>
     using __f = __minvoke<__mfind_<(sizeof...(_Args) != 0)>, _Needle, _Continuation, _Args...>;
@@ -862,17 +855,17 @@ namespace STDEXEC {
   template <class... _Booleans>
   using __mand_t = __mbool<(_Booleans::value && ...)>;
   template <class... _Booleans>
-  using __mand = __meval<__mand_t, _Booleans...>;
+  using __mand = __minvoke_q<__mand_t, _Booleans...>;
 
   template <class... _Booleans>
   using __mor_t = __mbool<(_Booleans::value || ...)>;
   template <class... _Booleans>
-  using __mor = __meval<__mor_t, _Booleans...>;
+  using __mor = __minvoke_q<__mor_t, _Booleans...>;
 
   template <class _Boolean>
   using __mnot_t = __mbool<!_Boolean::value>;
   template <class _Boolean>
-  using __mnot = __meval<__mnot_t, _Boolean>;
+  using __mnot = __minvoke_q<__mnot_t, _Boolean>;
 
   template <class _Fn>
   struct __mall_of {
@@ -999,7 +992,7 @@ namespace STDEXEC {
   template <class _Set1, class _Set2>
   concept __mset_eq = __mapply<__set::__eq<_Set1>, _Set2>::value;
 
-  template <class _Continuation = __q<__types>>
+  template <class _Continuation = __q<__mlist>>
   struct __munique {
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;

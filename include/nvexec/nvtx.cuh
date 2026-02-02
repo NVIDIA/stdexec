@@ -38,104 +38,91 @@ namespace nvexec {
       pop
     };
 
-    template <kind Kind, class ReceiverId>
-    struct receiver_t {
-      class __t : public stream_receiver_base {
-        using Receiver = STDEXEC::__t<ReceiverId>;
-        using Env = operation_state_base_t<ReceiverId>::env_t;
+    template <kind Kind, class Receiver>
+    struct receiver : public stream_receiver_base {
+      using env_t = _strm::opstate_base<Receiver>::env_t;
 
-        operation_state_base_t<ReceiverId>& op_state_;
-        std::string name_;
+      _strm::opstate_base<Receiver>& opstate_;
+      std::string name_;
 
-        template <class Tag, class... As>
-        void _complete(Tag tag, As&&... as) noexcept {
-          if constexpr (Kind == kind::push) {
-            nvtxRangePushA(name_.c_str());
-          } else {
-            nvtxRangePop();
-          }
-
-          op_state_.propagate_completion_signal(tag, static_cast<As&&>(as)...);
+      template <class Tag, class... Args>
+      void _complete(Tag tag, Args&&... args) noexcept {
+        if constexpr (Kind == kind::push) {
+          nvtxRangePushA(name_.c_str());
+        } else {
+          nvtxRangePop();
         }
 
-       public:
-        using __id = receiver_t;
+        opstate_.propagate_completion_signal(tag, static_cast<Args&&>(args)...);
+      }
 
-        template <class... _Args>
-        void set_value(_Args&&... __args) noexcept {
-          _complete(STDEXEC::set_value, static_cast<_Args&&>(__args)...);
-        }
+     public:
+      template <class... Args>
+      void set_value(Args&&... args) noexcept {
+        _complete(STDEXEC::set_value, static_cast<Args&&>(args)...);
+      }
 
-        template <class _Error>
-        void set_error(_Error&& __error) noexcept {
-          _complete(STDEXEC::set_error, static_cast<_Error&&>(__error));
-        }
+      template <class Error>
+      void set_error(Error&& __error) noexcept {
+        _complete(STDEXEC::set_error, static_cast<Error&&>(__error));
+      }
 
-        void set_stopped() noexcept {
-          _complete(STDEXEC::set_stopped);
-        }
+      void set_stopped() noexcept {
+        _complete(STDEXEC::set_stopped);
+      }
 
-        auto get_env() const noexcept -> Env {
-          return op_state_.make_env();
-        }
+      auto get_env() const noexcept -> env_t {
+        return opstate_.make_env();
+      }
 
-        explicit __t(operation_state_base_t<ReceiverId>& op_state, std::string name)
-          : op_state_(op_state)
-          , name_(std::move(name)) {
-        }
-      };
+      explicit receiver(_strm::opstate_base<Receiver>& opstate, std::string name)
+        : opstate_(opstate)
+        , name_(std::move(name)) {
+      }
     };
 
-    template <kind Kind, class SenderId>
-    struct nvtx_sender_t {
-      using Sender = STDEXEC::__t<SenderId>;
+    template <kind Kind, class Sender>
+    struct nvtx_sender : stream_sender_base {
+      Sender sndr_;
+      std::string name_;
 
-      struct __t : stream_sender_base {
-        using __id = nvtx_sender_t;
-        Sender sndr_;
-        std::string name_;
+      template <class Receiver>
+      using receiver_t = receiver<Kind, Receiver>;
 
-        template <class Receiver>
-        using receiver_t = STDEXEC::__t<receiver_t<Kind, STDEXEC::__id<Receiver>>>;
+      template <class Self, class Env>
+      using _completions_t = __try_make_completion_signatures<__copy_cvref_t<Self, Sender>, Env>;
 
-        template <class Self, class Env>
-        using _completion_signatures_t =
-          __try_make_completion_signatures<__copy_cvref_t<Self, Sender>, Env>;
+      template <__decays_to<nvtx_sender> Self, STDEXEC::receiver Receiver>
+        requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+        return stream_opstate<__copy_cvref_t<Self, Sender>>(
+          static_cast<Self&&>(self).sndr_,
+          static_cast<Receiver&&>(rcvr),
+          [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver> {
+            return receiver_t<Receiver>(stream_provider, std::move(self.name_));
+          });
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-        template <__decays_to<__t> Self, receiver Receiver>
-          requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-          -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-          return stream_op_state<__copy_cvref_t<Self, Sender>>(
-            static_cast<Self&&>(self).sndr_,
-            static_cast<Receiver&&>(rcvr),
-            [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
-              -> receiver_t<Receiver> {
-              return receiver_t<Receiver>(stream_provider, std::move(self.name_));
-            });
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
+      template <__decays_to<nvtx_sender> Self, class Env>
+      static consteval auto get_completion_signatures() -> _completions_t<Self, Env> {
+        return {};
+      }
 
-        template <__decays_to<__t> Self, class Env>
-        static consteval auto get_completion_signatures() -> _completion_signatures_t<Self, Env> {
-          return {};
-        }
-
-        auto get_env() const noexcept -> stream_sender_attrs<Sender> {
-          return {&sndr_};
-        }
-      };
+      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+        return {&sndr_};
+      }
     };
 
     template <kind Kind, STDEXEC::sender Sender>
-    using nvtx_sender_th =
-      STDEXEC::__t<nvtx_sender_t<Kind, STDEXEC::__id<STDEXEC::__decay_t<Sender>>>>;
+    using nvtx_sender_t = nvtx_sender<Kind, STDEXEC::__decay_t<Sender>>;
 
     struct push_t {
       template <STDEXEC::sender Sender>
       auto
-        operator()(Sender&& sndr, std::string&& name) const -> nvtx_sender_th<kind::push, Sender> {
-        return nvtx_sender_th<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
+        operator()(Sender&& sndr, std::string&& name) const -> nvtx_sender_t<kind::push, Sender> {
+        return nvtx_sender_t<kind::push, Sender>{{}, static_cast<Sender&&>(sndr), std::move(name)};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -146,8 +133,8 @@ namespace nvexec {
 
     struct pop_t {
       template <STDEXEC::sender Sender>
-      auto operator()(Sender&& sndr) const -> nvtx_sender_th<kind::pop, Sender> {
-        return nvtx_sender_th<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
+      auto operator()(Sender&& sndr) const -> nvtx_sender_t<kind::pop, Sender> {
+        return nvtx_sender_t<kind::pop, Sender>{{}, static_cast<Sender&&>(sndr), {}};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
@@ -183,5 +170,11 @@ namespace nvexec {
   } // namespace nvtx
 
 } // namespace nvexec
+
+namespace STDEXEC::__detail {
+  template <nvexec::_strm::nvtx::kind Kind, class Sender>
+  extern __declfn_t<nvexec::_strm::nvtx::nvtx_sender<Kind, __demangle_t<Sender>>>
+    __demangle_v<nvexec::_strm::nvtx::nvtx_sender<Kind, Sender>>;
+} // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

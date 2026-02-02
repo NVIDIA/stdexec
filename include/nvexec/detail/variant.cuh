@@ -110,11 +110,11 @@ namespace nvexec {
     using union_t = detail::static_storage_t<max_alignment, max_size>;
     using front_t = STDEXEC::__mfront<Ts...>;
 
-    template <STDEXEC::__one_of<Ts...> T>
+    template <STDEXEC::__one_of<Ts...> Type>
     STDEXEC_ATTRIBUTE(host, device)
-    auto get() noexcept -> T& {
+    auto get() noexcept -> Type& {
       void* data = storage_.data_;
-      return *static_cast<T*>(data);
+      return *static_cast<Type*>(data);
     }
 
     template <std::size_t I>
@@ -139,18 +139,18 @@ namespace nvexec {
       return index_ != detail::npos<index_t>();
     }
 
-    template <STDEXEC::__one_of<Ts...> T, class... As>
+    template <STDEXEC::__one_of<Ts...> Type, class... Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void emplace(As&&... as) {
+    void emplace(Args&&... args) {
       destroy();
-      construct<T>(static_cast<As&&>(as)...);
+      construct<Type>(static_cast<Args&&>(args)...);
     }
 
-    template <STDEXEC::__one_of<Ts...> T, class... As>
+    template <STDEXEC::__one_of<Ts...> Type, class... Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void construct(As&&... as) {
-      ::new (storage_.data_) T(static_cast<As&&>(as)...);
-      index_ = STDEXEC::__mcall<STDEXEC::__mfind_i<T>, Ts...>::value;
+    void construct(Args&&... args) {
+      ::new (storage_.data_) Type(static_cast<Args&&>(args)...);
+      index_ = STDEXEC::__mcall<STDEXEC::__mfind_i<Type>, Ts...>::value;
     }
 
     STDEXEC_ATTRIBUTE(host, device)

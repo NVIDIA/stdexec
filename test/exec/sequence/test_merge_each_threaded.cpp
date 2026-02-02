@@ -48,8 +48,6 @@ namespace {
                            == ex::__mapply<ex::__msize, _B>::value;
 
   struct null_receiver {
-    using __id = null_receiver;
-    using __t = null_receiver;
     using receiver_concept = ex::receiver_t;
 
     template <class... _Values>
@@ -126,7 +124,7 @@ namespace {
   // (the successful completion will never occur)
   [[maybe_unused]]
   static constexpr auto with_void = [](auto&& sender) noexcept
-    -> variant_sender<STDEXEC::__call_result_t<ex::just_t>, decltype(sender)> {
+    -> variant_sender<STDEXEC::__call_result_t<ex::just_t>, STDEXEC::__decay_t<decltype(sender)>> {
     return {static_cast<decltype(sender)&&>(sender)};
   };
 

@@ -141,7 +141,7 @@ namespace {
     STATIC_REQUIRE(
       std::same_as<
         env_t,
-        STDEXEC::__t<exec::__any::__sender_env<Completions, STDEXEC::__types<>, STDEXEC::__types<>>>
+        exec::__any::__sender_env<Completions, STDEXEC::__mlist<>, STDEXEC::__mlist<>>
       >);
   }
 

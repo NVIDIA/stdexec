@@ -70,13 +70,8 @@ namespace {
 
   template <class CPO, class... CompletionSignals>
   struct cpo_test_scheduler_t {
-    using __id = cpo_test_scheduler_t;
-    using __t = cpo_test_scheduler_t;
-
     struct sender_t {
       using sender_concept = STDEXEC::sender_t;
-      using __id = sender_t;
-      using __t = sender_t;
       using completion_signatures = ex::completion_signatures<
         ex::set_value_t(),
         ex::set_error_t(std::exception_ptr),

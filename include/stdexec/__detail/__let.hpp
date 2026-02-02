@@ -90,43 +90,33 @@ namespace STDEXEC {
     template <class _SetTag, class _Attrs, class _Env>
     using __result_env_t = __join_env_t<__env2_t<_SetTag, _Attrs, _Env>, _Env>;
 
-    template <class _ReceiverId, class _Env2Id>
-    struct __rcvr_env {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
-      using _Env2 = STDEXEC::__t<_Env2Id>;
-
-      struct __t {
-        using receiver_concept = receiver_t;
-        using __id = __rcvr_env;
-
-        template <class... _As>
-        constexpr void set_value(_As&&... __as) noexcept {
-          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
-        }
-
-        template <class _Error>
-        constexpr void set_error(_Error&& __err) noexcept {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
-        }
-
-        constexpr void set_stopped() noexcept {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-        }
-
-        [[nodiscard]]
-        constexpr decltype(__env::__join(
-          __declval<const _Env2&>(),
-          __declval<STDEXEC::env_of_t<_Receiver&>>())) get_env() const noexcept {
-          return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
-        }
-
-        _Receiver& __rcvr_;
-        const _Env2& __env_;
-      };
-    };
-
     template <class _Receiver, class _Env2>
-    using __receiver_with_env_t = __t<__rcvr_env<__id<_Receiver>, __id<_Env2>>>;
+    struct __rcvr_env {
+      using receiver_concept = receiver_t;
+      template <class... _As>
+      constexpr void set_value(_As&&... __as) noexcept {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+      }
+
+      template <class _Error>
+      constexpr void set_error(_Error&& __err) noexcept {
+        STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+      }
+
+      constexpr void set_stopped() noexcept {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      [[nodiscard]]
+      constexpr decltype(__env::__join(
+        __declval<const _Env2&>(),
+        __declval<STDEXEC::env_of_t<_Receiver&>>())) get_env() const noexcept {
+        return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
+      }
+
+      _Receiver& __rcvr_;
+      const _Env2& __env_;
+    };
 
     struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_ { };
 
@@ -134,7 +124,7 @@ namespace STDEXEC {
     struct _NESTED_ERROR_;
 
     template <class _Sender, class... _Env>
-    using __try_completion_signatures_of_t = __meval_or<
+    using __try_completion_signatures_of_t = __minvoke_or_q<
       __completion_signatures_of_t,
       __unrecognized_sender_error_t<_Sender, _Env...>,
       _Sender,
@@ -166,7 +156,7 @@ namespace STDEXEC {
     template <class _SetTag, class _Fun, class... _JoinEnv2>
     struct __result_sender_fn {
       template <class... _Args>
-      using __f = __meval<
+      using __f = __minvoke_q<
         __ensure_sender_t,
         _SetTag,
         __mcall<
@@ -182,7 +172,7 @@ namespace STDEXEC {
     // possibly augmented with the input sender's completion scheduler (which is
     // where the result sender will be started).
     template <class _Receiver, class _Env2>
-    using __result_receiver_t = __receiver_with_env_t<_Receiver, _Env2>;
+    using __result_receiver_t = __rcvr_env<_Receiver, _Env2>;
 
     template <class _ResultSender, class _Env2, class _Receiver>
     using __checked_result_receiver_t = __result_receiver_t<_Receiver, _Env2>;
@@ -214,14 +204,14 @@ namespace STDEXEC {
       >;
     };
 
-    template <class _LetTag, class _Fun, class _CvrefSender, class... _Env>
+    template <class _LetTag, class _Fun, class _CvSender, class... _Env>
     using __completions_t = __gather_completion_signatures_t<
-      __completion_signatures_of_t<_CvrefSender, _Env...>,
+      __completion_signatures_of_t<_CvSender, _Env...>,
       __t<_LetTag>,
       __transform_signal_fn<
         __t<_LetTag>,
         _Fun,
-        __result_env_t<__t<_LetTag>, env_of_t<_CvrefSender>, _Env>...
+        __result_env_t<__t<_LetTag>, env_of_t<_CvSender>, _Env>...
       >::template __f,
       __cmplsigs::__default_completion,
       __mtry_q<__concat_completion_signatures_t>::__f
@@ -301,7 +291,7 @@ namespace STDEXEC {
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
     struct __opstate_base : __immovable {
       using __env2_t = _Env2;
-      using __second_rcvr_t = __receiver_with_env_t<_Receiver, _Env2>;
+      using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
 
       template <class _Attrs>
       constexpr explicit __opstate_base(
@@ -354,9 +344,6 @@ namespace STDEXEC {
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
     struct __first_rcvr {
       using receiver_concept = STDEXEC::receiver_t;
-      using __t = __first_rcvr;
-      using __id = __first_rcvr;
-
       template <class... _Args>
       constexpr void set_value(_Args&&... __args) noexcept {
         __state_->__impl(STDEXEC::set_value, static_cast<_Args&&>(__args)...);
@@ -390,7 +377,7 @@ namespace STDEXEC {
         using __sender_t = __apply_result_t<_Fun, decltype(__tupl)>;
         auto&& __sndr = STDEXEC::__apply(static_cast<_Fun&&>(__fn), __tupl);
         using __submit_t = __submit_result_t<__sender_t, _Env2, _Receiver>;
-        using __second_rcvr_t = __receiver_with_env_t<_Receiver, _Env2>;
+        using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
         __second_rcvr_t __rcvr2{__rcvr, static_cast<_Env2&&>(__env2)};
 
         auto& __op = __storage.template emplace<__submit_t>(
@@ -549,8 +536,6 @@ namespace STDEXEC {
 
     template <class _LetTag, class _Sndr, class _Fn>
     struct __attrs {
-      using __t = __attrs;
-      using __id = __attrs;
       using __set_tag_t = STDEXEC::__t<_LetTag>;
 
       template <class _Tag>
@@ -671,7 +656,7 @@ namespace STDEXEC {
           }
         } else {
           return STDEXEC::__throw_compile_time_error<
-            _SENDER_TYPE_IS_NOT_COPYABLE_,
+            _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
             _WITH_PRETTY_SENDER_<_Sender>
           >();
         }

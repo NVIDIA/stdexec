@@ -87,183 +87,144 @@ namespace {
   };
 
   namespace detail::a_sender {
-    template <class SenderId, class ReceiverId>
-    struct operation_state {
-      using Sender = STDEXEC::__cvref_t<SenderId>;
-      using Receiver = STDEXEC::__t<ReceiverId>;
-
-      struct __t {
-        using __id = operation_state;
-        using inner_op_state_t = STDEXEC::connect_result_t<Sender, Receiver>;
-
-        inner_op_state_t inner_op_;
-
-        void start() & noexcept {
-          STDEXEC::start(inner_op_);
-        }
-
-        __t(Sender&& sender, Receiver&& receiver)
-          : inner_op_{
-              STDEXEC::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
-        }
-      };
-    };
-
     template <class Sender, class Receiver>
-    using _operation_state_t =
-      STDEXEC::__t<operation_state<STDEXEC::__cvref_id<Sender>, STDEXEC::__id<Receiver>>>;
+    struct operation_state {
+      operation_state(Sender&& sender, Receiver&& receiver)
+        : inner_op_{
+            STDEXEC::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
+      }
 
-    template <class ReceiverId, class Fun>
-    struct receiver {
-      using Receiver = STDEXEC::__t<ReceiverId>;
+      using inner_op_state_t = STDEXEC::connect_result_t<Sender, Receiver>;
 
-      class __t : public STDEXEC::receiver_adaptor<__t, Receiver> {
-        friend STDEXEC::receiver_adaptor<__t, Receiver>;
+      inner_op_state_t inner_op_;
 
-        static_assert(std::is_trivially_copyable_v<Receiver>);
-        static_assert(std::is_trivially_copyable_v<Fun>);
-        Fun f_;
-
-       public:
-        using __id = receiver;
-
-        template <class... As>
-          requires std::invocable<Fun, As...>
-        STDEXEC_ATTRIBUTE(host, device)
-        void set_value(As&&... as) && noexcept {
-          using result_t = std::invoke_result_t<Fun, As...>;
-
-          if constexpr (std::is_same_v<void, result_t>) {
-            std::invoke(f_, static_cast<As&&>(as)...);
-            STDEXEC::set_value(std::move(this->base()));
-          } else {
-            STDEXEC::set_value(std::move(this->base()), std::invoke(f_, static_cast<As&&>(as)...));
-          }
-        }
-
-        explicit __t(Receiver rcvr, Fun fun)
-          : STDEXEC::receiver_adaptor<__t, Receiver>(static_cast<Receiver&&>(rcvr))
-          , f_(static_cast<Fun&&>(fun)) {
-        }
-      };
+      void start() & noexcept {
+        STDEXEC::start(inner_op_);
+      }
     };
 
     template <class Receiver, class Fun>
-    using _receiver_t = STDEXEC::__t<receiver<STDEXEC::__id<Receiver>, Fun>>;
+    class receiver : public STDEXEC::receiver_adaptor<receiver<Receiver, Fun>, Receiver> {
+      friend STDEXEC::receiver_adaptor<receiver<Receiver, Fun>, Receiver>;
 
-    template <class SenderId, class Fun>
-    struct sender {
-      using Sender = STDEXEC::__t<SenderId>;
+      static_assert(std::is_trivially_copyable_v<Receiver>);
+      static_assert(std::is_trivially_copyable_v<Fun>);
+      Fun fun_;
 
-      struct __t {
-        using __id = sender;
-        using sender_concept = STDEXEC::sender_t;
+     public:
+      using receiver_concept = STDEXEC::receiver_t;
 
-        Sender sndr_;
-        Fun fun_;
+      explicit receiver(Receiver rcvr, Fun fun)
+        : STDEXEC::receiver_adaptor<receiver, Receiver>(static_cast<Receiver&&>(rcvr))
+        , fun_(static_cast<Fun&&>(fun)) {
+      }
 
-        template <class Self, class Receiver>
-        using op_t =
-          _operation_state_t<STDEXEC::__copy_cvref_t<Self, Sender>, _receiver_t<Receiver, Fun>>;
+      template <class... As>
+        requires std::invocable<Fun, As...>
+      STDEXEC_ATTRIBUTE(host, device)
+      void set_value(As&&... as) && noexcept {
+        using result_t = std::invoke_result_t<Fun, As...>;
 
-        template <class Self, class... Env>
-        using __completions_t = STDEXEC::transform_completion_signatures<
-          STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
-          STDEXEC::completion_signatures<>,
-          STDEXEC::__mbind_front_q<STDEXEC::__set_value_from_t, Fun>::template __f
-        >;
-
-        template <STDEXEC::__decays_to<__t> Self, STDEXEC::receiver Receiver>
-          requires STDEXEC::receiver_of<Receiver, __completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
-          -> op_t<Self, Receiver> {
-          return op_t<Self, Receiver>(
-            static_cast<Self&&>(self).sndr_,
-            _receiver_t<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
+        if constexpr (std::is_same_v<void, result_t>) {
+          std::invoke(fun_, static_cast<As&&>(as)...);
+          STDEXEC::set_value(std::move(this->base()));
+        } else {
+          STDEXEC::set_value(std::move(this->base()), std::invoke(fun_, static_cast<As&&>(as)...));
         }
-        STDEXEC_EXPLICIT_THIS_END(connect)
-
-        template <STDEXEC::__decays_to<__t> Self, class... Env>
-        static consteval auto get_completion_signatures() -> __completions_t<Self, Env...> {
-          return {};
-        }
-
-        auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
-          return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
-        }
-      };
+      }
     };
 
     template <class Sender, class Fun>
-    using _sender_t = STDEXEC::__t<sender<STDEXEC::__id<STDEXEC::__decay_t<Sender>>, Fun>>;
+    struct sender {
+      using sender_concept = STDEXEC::sender_t;
+
+      template <class Self, class Receiver>
+      using op_t = operation_state<STDEXEC::__copy_cvref_t<Self, Sender>, receiver<Receiver, Fun>>;
+
+      template <class Self, class... Env>
+      using __completions_t = STDEXEC::transform_completion_signatures<
+        STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
+        STDEXEC::completion_signatures<>,
+        STDEXEC::__mbind_front_q<STDEXEC::__set_value_from_t, Fun>::template __f
+      >;
+
+      template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
+        requires STDEXEC::receiver_of<Receiver, __completions_t<Self, STDEXEC::env_of_t<Receiver>>>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+        -> op_t<Self, Receiver> {
+        return op_t<Self, Receiver>(
+          static_cast<Self&&>(self).sndr_,
+          receiver<Receiver, Fun>(static_cast<Receiver&&>(rcvr), self.fun_));
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
+
+      template <STDEXEC::__decays_to<sender> Self, class... Env>
+      static consteval auto get_completion_signatures() -> __completions_t<Self, Env...> {
+        return {};
+      }
+
+      auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
+        return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
+      }
+
+      Sender sndr_;
+      Fun fun_;
+    };
+
+    template <class Sender, class Fun>
+    using _sender_t = sender<STDEXEC::__decay_t<Sender>, Fun>;
   } // namespace detail::a_sender
 
   namespace detail::a_receiverless_sender {
-    template <class SenderId, class ReceiverId>
-    struct operation_state {
-      using Sender = STDEXEC::__cvref_t<SenderId>;
-      using Receiver = STDEXEC::__t<ReceiverId>;
-
-      struct __t {
-        using __id = operation_state;
-        using inner_op_state_t = STDEXEC::connect_result_t<Sender, Receiver>;
-
-        inner_op_state_t inner_op_;
-
-        void start() & noexcept {
-          STDEXEC::start(inner_op_);
-        }
-
-        __t(Sender&& sender, Receiver&& receiver)
-          : inner_op_{
-              STDEXEC::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
-        }
-      };
-    };
-
     template <class Sender, class Receiver>
-    using _operation_state_t =
-      STDEXEC::__t<operation_state<STDEXEC::__cvref_id<Sender>, STDEXEC::__id<Receiver>>>;
+    struct operation_state {
+      using inner_op_state_t = STDEXEC::connect_result_t<Sender, Receiver>;
 
-    template <class SenderId>
-    struct sender {
-      using Sender = STDEXEC::__t<SenderId>;
+      operation_state(Sender&& sender, Receiver&& receiver)
+        : inner_op_{
+            STDEXEC::connect(static_cast<Sender&&>(sender), static_cast<Receiver&&>(receiver))} {
+      }
 
-      struct __t {
-        using __id = sender;
-        using sender_concept = STDEXEC::sender_t;
+      void start() & noexcept {
+        STDEXEC::start(inner_op_);
+      }
 
-        Sender sndr_;
-
-        template <class Self, class Receiver>
-        using op_t = _operation_state_t<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver>;
-
-        template <class Self, class... Env>
-        using _completions_t =
-          STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>;
-
-        template <STDEXEC::__decays_to<__t> Self, STDEXEC::receiver Receiver>
-          requires STDEXEC::receiver_of<Receiver, _completions_t<Self, STDEXEC::env_of_t<Receiver>>>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
-          -> op_t<Self, Receiver> {
-          return op_t<Self, Receiver>(
-            static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
-
-        template <STDEXEC::__decays_to<__t> Self, class... Env>
-        static consteval auto get_completion_signatures() -> _completions_t<Self, Env...> {
-          return {};
-        }
-
-        auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
-          return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
-        }
-      };
+      inner_op_state_t inner_op_;
     };
 
     template <class Sender>
-    using _sender_t = STDEXEC::__t<sender<STDEXEC::__id<STDEXEC::__decay_t<Sender>>>>;
+    struct sender {
+      using sender_concept = STDEXEC::sender_t;
+
+      Sender sndr_;
+
+      template <class Self, class Receiver>
+      using op_t = operation_state<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver>;
+
+      template <class Self, class... Env>
+      using _completions_t =
+        STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>;
+
+      template <STDEXEC::__decays_to<sender> Self, STDEXEC::receiver Receiver>
+        requires STDEXEC::receiver_of<Receiver, _completions_t<Self, STDEXEC::env_of_t<Receiver>>>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
+        -> op_t<Self, Receiver> {
+        return op_t<Self, Receiver>(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
+
+      template <STDEXEC::__decays_to<sender> Self, class... Env>
+      static consteval auto get_completion_signatures() -> _completions_t<Self, Env...> {
+        return {};
+      }
+
+      auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>> {
+        return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
+      }
+    };
+
+    template <class Sender>
+    using _sender_t = sender<STDEXEC::__decay_t<Sender>>;
   } // namespace detail::a_receiverless_sender
 
   enum class a_sender_kind {
@@ -277,11 +238,11 @@ namespace {
   template <>
   struct a_sender_helper_t<a_sender_kind::then> {
     template <class _Sender, class _Fun>
-    using sender_th = detail::a_sender::_sender_t<_Sender, _Fun>;
+    using sender_t = detail::a_sender::_sender_t<_Sender, _Fun>;
 
     template <STDEXEC::sender _Sender, class _Fun>
-    auto operator()(_Sender&& __sndr, _Fun __fun) const -> sender_th<_Sender, _Fun> {
-      return sender_th<_Sender, _Fun>{static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)};
+    auto operator()(_Sender&& __sndr, _Fun __fun) const -> sender_t<_Sender, _Fun> {
+      return sender_t<_Sender, _Fun>{static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)};
     }
 
     template <class _Fun>
@@ -293,11 +254,11 @@ namespace {
   template <>
   struct a_sender_helper_t<a_sender_kind::receiverless> {
     template <class _Sender>
-    using receiverless_sender_th = detail::a_receiverless_sender::_sender_t<_Sender>;
+    using receiverless_sender_t = detail::a_receiverless_sender::_sender_t<_Sender>;
 
     template <STDEXEC::sender _Sender>
-    auto operator()(_Sender&& __sndr) const -> receiverless_sender_th<_Sender> {
-      return receiverless_sender_th<_Sender>{static_cast<_Sender&&>(__sndr)};
+    auto operator()(_Sender&& __sndr) const -> receiverless_sender_t<_Sender> {
+      return receiverless_sender_t<_Sender>{static_cast<_Sender&&>(__sndr)};
     }
 
     auto operator()() const {

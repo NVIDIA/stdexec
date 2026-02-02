@@ -46,22 +46,22 @@ namespace exec {
     // __completions_fn is to avoid a pack expansion bug in nvc++.
     template <class... _Env>
     struct __completions_fn {
-      template <class... _CvrefSenders>
-      using __all_value_args_nothrow_decay_copyable = __meval<
+      template <class... _CvSenders>
+      using __all_value_args_nothrow_decay_copyable = __minvoke_q<
         __mand_t,
         __value_types_t<
-          __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
+          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
           __qq<__nothrow_decay_copyable_and_move_constructible_t>,
           __qq<__mand_t>
         >...
       >;
 
-      template <class... _CvrefSenders>
+      template <class... _CvSenders>
       using __f = __mtry_q<__concat_completion_signatures_t>::__f<
-        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvrefSenders...>>,
+        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_completion_signatures_t<
-          __completion_signatures_of_t<_CvrefSenders, __env_t<_Env>...>,
+          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
           __as_rvalues,
           __as_error,
           set_stopped_t (*)(),
@@ -70,9 +70,9 @@ namespace exec {
       >;
     };
 
-    template <class _Env, class... _CvrefSenders>
+    template <class _Env, class... _CvSenders>
     using __result_type_t = __for_each_completion_signature_t<
-      __minvoke<__completions_fn<_Env>, _CvrefSenders...>,
+      __minvoke<__completions_fn<_Env>, _CvSenders...>,
       __decayed_tuple,
       __uniqued_variant_for
     >;
@@ -89,8 +89,8 @@ namespace exec {
     }
 
     template <class _Receiver, class _ResultVariant>
-    struct __op_base : __immovable {
-      __op_base(_Receiver&& __rcvr, std::size_t __n_senders)
+    struct __opstate_base : __immovable {
+      __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)} {
       }
@@ -148,150 +148,131 @@ namespace exec {
 
     template <class _Receiver, class _ResultVariant>
     struct __receiver {
-      class __t {
-       public:
-        using receiver_concept = STDEXEC::receiver_t;
-        using __id = __receiver;
+     public:
+      using receiver_concept = STDEXEC::receiver_t;
 
-        explicit __t(__op_base<_Receiver, _ResultVariant>* __op) noexcept
-          : __op_{__op} {
-        }
+      explicit __receiver(__opstate_base<_Receiver, _ResultVariant>* __op) noexcept
+        : __op_{__op} {
+      }
 
-        auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
-          auto __token = prop{get_stop_token, __op_->__stop_source_.get_token()};
-          return __env::__join(std::move(__token), STDEXEC::get_env(__op_->__rcvr_));
-        }
+      auto get_env() const noexcept -> __env_t<env_of_t<_Receiver>> {
+        auto __token = prop{get_stop_token, __op_->__stop_source_.get_token()};
+        return __env::__join(std::move(__token), STDEXEC::get_env(__op_->__rcvr_));
+      }
 
-        template <class... _Args>
-        void set_value(_Args&&... __args) noexcept {
-          __op_->notify(set_value_t(), static_cast<_Args&&>(__args)...);
-        }
+      template <class... _Args>
+      void set_value(_Args&&... __args) noexcept {
+        __op_->notify(set_value_t(), static_cast<_Args&&>(__args)...);
+      }
 
-        template <class _Error>
-        void set_error(_Error&& __err) noexcept {
-          __op_->notify(set_error_t(), static_cast<_Error&&>(__err));
-        }
+      template <class _Error>
+      void set_error(_Error&& __err) noexcept {
+        __op_->notify(set_error_t(), static_cast<_Error&&>(__err));
+      }
 
-        void set_stopped() noexcept {
-          __op_->notify(set_stopped_t());
-        }
+      void set_stopped() noexcept {
+        __op_->notify(set_stopped_t());
+      }
 
-       private:
-        __op_base<_Receiver, _ResultVariant>* __op_;
-      };
+     private:
+      __opstate_base<_Receiver, _ResultVariant>* __op_;
     };
 
-    template <class _ReceiverId, class... _CvrefSenderIds>
-    struct __op {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
-
-      using __result_t = __result_type_t<env_of_t<_Receiver>, __cvref_t<_CvrefSenderIds>...>;
-      using __receiver_t = STDEXEC::__t<__receiver<_Receiver, __result_t>>;
-      using __op_base_t = __op_base<_Receiver, __result_t>;
+    template <class _Receiver, class... _CvSenders>
+    struct __opstate
+      : __opstate_base<_Receiver, __result_type_t<env_of_t<_Receiver>, _CvSenders...>> {
+      using __result_t = __result_type_t<env_of_t<_Receiver>, _CvSenders...>;
+      using __receiver_t = __receiver<_Receiver, __result_t>;
+      using __op_base_t = __opstate_base<_Receiver, __result_t>;
+      using __opstates_t = __tuple<connect_result_t<_CvSenders, __receiver_t>...>;
 
       static constexpr bool __nothrow_construct =
-        (__nothrow_connectable<__cvref_t<_CvrefSenderIds>, __receiver_t> && ...);
+        (__nothrow_connectable<_CvSenders, __receiver_t> && ...);
 
-      class __t : __op_base_t {
-        using __opstate_tuple =
-          __tuple<connect_result_t<STDEXEC::__cvref_t<_CvrefSenderIds>, __receiver_t>...>;
-       public:
-        template <class _SenderTuple>
-        __t(_SenderTuple&& __senders, _Receiver&& __rcvr) noexcept(__nothrow_construct)
-          : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvrefSenderIds)}
-          , __ops_{STDEXEC::__apply(
-              [this]<class... _Senders>(_Senders&&... __sndrs) noexcept(
-                __nothrow_construct) -> __opstate_tuple {
-                return __opstate_tuple{
-                  STDEXEC::connect(static_cast<_Senders&&>(__sndrs), __receiver_t{this})...};
-              },
-              static_cast<_SenderTuple&&>(__senders))} {
+     public:
+      explicit __opstate(_Receiver&& __rcvr, _CvSenders&&... __sndrs) noexcept(__nothrow_construct)
+        : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvSenders)}
+        , __ops_{STDEXEC::connect(static_cast<_CvSenders&&>(__sndrs), __receiver_t{this})...} {
+      }
+
+      void start() & noexcept {
+        this->__on_stop_.emplace(
+          get_stop_token(get_env(this->__rcvr_)), __forward_stop_request{this->__stop_source_});
+        if (this->__stop_source_.stop_requested()) {
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
+        } else {
+          STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, __ops_);
         }
+      }
 
-        void start() & noexcept {
-          this->__on_stop_.emplace(
-            get_stop_token(get_env(this->__rcvr_)), __forward_stop_request{this->__stop_source_});
-          if (this->__stop_source_.stop_requested()) {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));
-          } else {
-            STDEXEC::__apply(STDEXEC::__for_each{STDEXEC::start}, __ops_);
-          }
-        }
-
-       private:
-        __opstate_tuple __ops_;
-      };
+     private:
+      __opstates_t __ops_;
     };
 
-    template <class... _SenderIds>
+    template <class... _Senders>
     struct __sender {
       template <class _Self, class _Env>
-      using __result_t = __result_type_t<_Env, __copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>...>;
+      using __result_t = __result_type_t<_Env, __copy_cvref_t<_Self, _Senders>...>;
 
       template <class _Self, class _Receiver>
-      using __receiver_t =
-        STDEXEC::__t<__receiver<_Receiver, __result_t<_Self, env_of_t<_Receiver>>>>;
+      using __receiver_t = __receiver<_Receiver, __result_t<_Self, env_of_t<_Receiver>>>;
 
       template <class _Self, class _Receiver>
-      using __op_t = STDEXEC::__t<__op<__id<_Receiver>, __copy_cvref_t<_Self, _SenderIds>...>>;
+      using __opstate_t = __opstate<_Receiver, __copy_cvref_t<_Self, _Senders>...>;
 
       template <class _Self, class... _Env>
-      using __completions_t = __minvoke<
-        __when_any::__completions_fn<_Env...>,
-        __copy_cvref_t<_Self, STDEXEC::__t<_SenderIds>>...
-      >;
+      using __completions_t =
+        __minvoke<__completions_fn<_Env...>, __copy_cvref_t<_Self, _Senders>...>;
+     public:
+      using sender_concept = STDEXEC::sender_t;
 
-      class __t {
-       public:
-        using __id = __sender;
-        using sender_concept = STDEXEC::sender_t;
-        using __senders_tuple = __tuple<STDEXEC::__t<_SenderIds>...>;
+      template <__not_decays_to<__sender>... _CvSenders>
+      explicit __sender(_CvSenders&&... __sndrs)
+        noexcept((__nothrow_decay_copyable<_CvSenders> && ...))
+        : __sndrs_{static_cast<_CvSenders&&>(__sndrs)...} {
+      }
 
-        template <__not_decays_to<__t>... _Senders>
-        explicit(sizeof...(_Senders) == 1) __t(_Senders&&... __senders)
-          noexcept((__nothrow_decay_copyable<_Senders> && ...))
-          : __senders_{static_cast<_Senders&&>(__senders)...} {
-        }
+      template <__decay_copyable _Self, receiver _Receiver>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept( //
+        STDEXEC::__nothrow_constructible_from<
+          __opstate_t<_Self, _Receiver>,
+          _Receiver,
+          __copy_cvref_t<_Self, _Senders>...
+        >) -> __opstate_t<_Self, _Receiver> {
+        return STDEXEC::__apply(
+          STDEXEC::__construct<__opstate_t<_Self, _Receiver>>{},
+          static_cast<_Self&&>(__self).__sndrs_,
+          static_cast<_Receiver&&>(__rcvr));
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-        template <__decay_copyable _Self, receiver _Receiver>
-        STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-          noexcept(__nothrow_constructible_from<
-                   __op_t<_Self, _Receiver>,
-                   __copy_cvref_t<_Self, __senders_tuple>,
-                   _Receiver
-          >) -> __op_t<_Self, _Receiver> {
-          return __op_t<_Self, _Receiver>{
-            static_cast<_Self&&>(__self).__senders_, static_cast<_Receiver&&>(__rcvr)};
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
+      template <__decay_copyable _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        return __completions_t<_Self, _Env...>{};
+      }
 
-        template <__decay_copyable _Self, class... _Env>
-        static consteval auto get_completion_signatures() {
-          return __completions_t<_Self, _Env...>{};
-        }
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures() {
+        return STDEXEC::__throw_compile_time_error<
+          _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
+          _WITH_PRETTY_SENDERS_<_Senders>...
+        >();
+      }
 
-        template <class _Self, class... _Env>
-        static consteval auto get_completion_signatures() {
-          return STDEXEC::__throw_compile_time_error<
-            _SENDER_TYPE_IS_NOT_COPYABLE_,
-            _WITH_PRETTY_SENDERS_<STDEXEC::__t<_SenderIds>>...
-          >();
-        }
-
-       private:
-        __senders_tuple __senders_;
-      };
+     private:
+      __tuple<_Senders...> __sndrs_;
     };
 
     struct __when_any_t {
-      template <class... _Senders>
-      using __sender_t = __t<__sender<__id<__decay_t<_Senders>>...>>;
+      template <class... _CvSenders>
+      using __sender_t = __sender<__decay_t<_CvSenders>...>;
 
-      template <sender... _Senders>
-        requires(sizeof...(_Senders) > 0 && sender<__sender_t<_Senders...>>)
-      auto operator()(_Senders&&... __senders) const
-        noexcept((__nothrow_decay_copyable<_Senders> && ...)) -> __sender_t<_Senders...> {
-        return __sender_t<_Senders...>(static_cast<_Senders&&>(__senders)...);
+      auto operator()() const noexcept = delete;
+
+      template <sender... _CvSenders>
+      constexpr auto operator()(_CvSenders&&... __sndrs) const
+        noexcept((__nothrow_decay_copyable<_CvSenders> && ...)) -> __sender_t<_CvSenders...> {
+        return __sender_t<_CvSenders...>(static_cast<_CvSenders&&>(__sndrs)...);
       }
     };
 

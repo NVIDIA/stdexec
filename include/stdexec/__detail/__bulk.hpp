@@ -154,10 +154,10 @@ namespace STDEXEC {
     template <class _Ty>
     using __decay_ref = __decay_t<_Ty>&;
 
-    template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
+    template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
     using __with_error_invoke_t = __if<
       __value_types_t<
-        __completion_signatures_of_t<_CvrefSender, _Env...>,
+        __completion_signatures_of_t<_CvSender, _Env...>,
         __mtransform<
           __q<__decay_ref>,
           typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>
@@ -169,10 +169,10 @@ namespace STDEXEC {
     >;
 
 
-    template <class _AlgoTag, class _Fun, class _Shape, class _CvrefSender, class... _Env>
+    template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
     using __completion_signatures = transform_completion_signatures<
-      __completion_signatures_of_t<_CvrefSender, _Env...>,
-      __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvrefSender, _Env...>
+      __completion_signatures_of_t<_CvSender, _Env...>,
+      __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvSender, _Env...>
     >;
 
     template <class _AlgoTag>

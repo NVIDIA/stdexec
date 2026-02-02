@@ -35,9 +35,6 @@ namespace STDEXEC {
    private:
     template <class _Receiver>
     struct __opstate {
-      using __id = __opstate;
-      using __t = __opstate;
-
       using operation_state_concept = operation_state_t;
 
       STDEXEC_ATTRIBUTE(host, device)
@@ -49,9 +46,6 @@ namespace STDEXEC {
     };
 
     struct __sender {
-      using __id = __sender;
-      using __t = __sender;
-
       using sender_concept = sender_t;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
@@ -68,9 +62,6 @@ namespace STDEXEC {
     };
 
    public:
-    using __t = inline_scheduler;
-    using __id = inline_scheduler;
-
     using scheduler_concept = scheduler_t;
 
     constexpr inline_scheduler() = default;

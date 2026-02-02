@@ -46,7 +46,7 @@ namespace execpools {
 
     friend thread_pool_base<tbb_thread_pool>;
 
-    template <class PoolType, class ReceiverId>
+    template <class PoolType, class Receiver>
     friend struct operation;
 
     void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {

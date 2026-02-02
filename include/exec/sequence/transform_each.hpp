@@ -50,71 +50,62 @@ namespace exec {
 
     template <class _Receiver, class _Adaptor>
     struct __operation_base {
-      _Receiver __receiver_;
+      _Receiver __rcvr_;
       _Adaptor __adaptor_;
     };
 
-    template <class _ReceiverId, class _Adaptor>
+    template <class _Receiver, class _Adaptor>
     struct __receiver {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      using receiver_concept = STDEXEC::receiver_t;
 
-      struct __t {
-        using receiver_concept = STDEXEC::receiver_t;
-        using __id = __receiver;
-        __operation_base<_Receiver, _Adaptor>* __op_;
+      template <class _Item>
+      auto set_next(_Item&& __item) & noexcept(
+        __nothrow_callable<set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
+        && __nothrow_callable<_Adaptor&, _Item>)
+        -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
+        return exec::set_next(
+          __opstate_->__rcvr_, __opstate_->__adaptor_(static_cast<_Item&&>(__item)));
+      }
 
-        template <class _Item>
-        auto set_next(_Item&& __item) & noexcept(
-          __nothrow_callable<set_next_t, _Receiver&, __call_result_t<_Adaptor&, _Item>>
-          && __nothrow_callable<_Adaptor&, _Item>)
-          -> next_sender_of_t<_Receiver, __call_result_t<_Adaptor&, _Item>> {
-          return exec::set_next(
-            __op_->__receiver_, __op_->__adaptor_(static_cast<_Item&&>(__item)));
-        }
+      void set_value() noexcept {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__opstate_->__rcvr_));
+      }
 
-        void set_value() noexcept {
-          STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__receiver_));
-        }
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept {
+        STDEXEC::set_error(
+          static_cast<_Receiver&&>(__opstate_->__rcvr_), static_cast<_Error&&>(__error));
+      }
 
-        template <class _Error>
-        void set_error(_Error&& __error) noexcept {
-          STDEXEC::set_error(
-            static_cast<_Receiver&&>(__op_->__receiver_), static_cast<_Error&&>(__error));
-        }
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, _Receiver>
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__opstate_->__rcvr_));
+      }
 
-        void set_stopped() noexcept
-          requires __callable<set_stopped_t, _Receiver>
-        {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__receiver_));
-        }
+      auto get_env() const noexcept -> env_of_t<_Receiver> {
+        return STDEXEC::get_env(__opstate_->__rcvr_);
+      }
 
-        auto get_env() const noexcept -> env_of_t<_Receiver> {
-          return STDEXEC::get_env(__op_->__receiver_);
-        }
-      };
+      __operation_base<_Receiver, _Adaptor>* __opstate_;
     };
 
-    template <class _Sender, class _ReceiverId, class _Adaptor>
-    struct __operation {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+    template <class _Sender, class _Receiver, class _Adaptor>
+    struct __operation : __operation_base<_Receiver, _Adaptor> {
+      __operation(_Sender&& __sndr, _Receiver __rcvr, _Adaptor __adaptor)
+        : __operation_base<_Receiver, _Adaptor>{
+            static_cast<_Receiver&&>(__rcvr),
+            static_cast<_Adaptor&&>(__adaptor)}
+        , __opstate_{exec::subscribe(
+            static_cast<_Sender&&>(__sndr),
+            __receiver<_Receiver, _Adaptor>{this})} {
+      }
 
-      struct __t : __operation_base<_Receiver, _Adaptor> {
-        using __id = __operation;
-        subscribe_result_t<_Sender, STDEXEC::__t<__receiver<_ReceiverId, _Adaptor>>> __op_;
+      void start() & noexcept {
+        STDEXEC::start(__opstate_);
+      }
 
-        __t(_Sender&& __sndr, _Receiver __rcvr, _Adaptor __adaptor)
-          : __operation_base<_Receiver, _Adaptor>{
-              static_cast<_Receiver&&>(__rcvr),
-              static_cast<_Adaptor&&>(__adaptor)}
-          , __op_{exec::subscribe(
-              static_cast<_Sender&&>(__sndr),
-              STDEXEC::__t<__receiver<_ReceiverId, _Adaptor>>{this})} {
-        }
-
-        void start() & noexcept {
-          STDEXEC::start(__op_);
-        }
-      };
+      subscribe_result_t<_Sender, __receiver<_Receiver, _Adaptor>> __opstate_;
     };
 
     template <class _Receiver>
@@ -124,7 +115,7 @@ namespace exec {
       template <class _Adaptor, class _Sequence>
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence)
         noexcept(__nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>)
-          -> __t<__operation<_Sequence, __id<_Receiver>, _Adaptor>> {
+          -> __operation<_Sequence, _Receiver, _Adaptor> {
         return {
           static_cast<_Sequence&&>(__sequence),
           static_cast<_Receiver&&>(__rcvr_),
@@ -188,10 +179,10 @@ namespace exec {
       }
 
       template <class _Self, class _Receiver>
-      using __receiver_t = __t<__receiver<__id<_Receiver>, __data_of<_Self>>>;
+      using __receiver_t = __receiver<_Receiver, __data_of<_Self>>;
 
       template <class _Self, class _Receiver>
-      using __operation_t = __t<__operation<__child_of<_Self>, __id<_Receiver>, __data_of<_Self>>>;
+      using __operation_t = __operation<__child_of<_Self>, _Receiver, __data_of<_Self>>;
 
       template <sender_expr_for<transform_each_t> _Self, receiver _Receiver>
       static auto subscribe(_Self&& __self, _Receiver __rcvr)

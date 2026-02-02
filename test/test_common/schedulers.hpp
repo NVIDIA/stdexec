@@ -53,8 +53,6 @@ namespace {
   //! thread-safety to allow it to be run with `sync_wait` (which makes us not control when the
   //! operation_state object is created and started).
   struct impulse_scheduler {
-    using __id = impulse_scheduler;
-    using __t = impulse_scheduler;
     using scheduler_concept = ex::scheduler_t;
 
     impulse_scheduler()
@@ -158,9 +156,6 @@ namespace {
     };
 
     struct sender {
-      using __id = sender;
-      using __t = sender;
-
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
@@ -190,8 +185,6 @@ namespace {
   //! Scheduler that executes everything inline, i.e., on the same thread
   template <class Domain = void>
   struct basic_inline_scheduler {
-    using __t = basic_inline_scheduler;
-    using __id = basic_inline_scheduler;
     using scheduler_concept = ex::scheduler_t;
 
     auto schedule() const noexcept {
@@ -217,8 +210,6 @@ namespace {
     };
 
     struct sender {
-      using __t = sender;
-      using __id = sender;
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
@@ -237,9 +228,6 @@ namespace {
 
   template <class Type>
   struct nothrow_copyable_box {
-    using __t = nothrow_copyable_box;
-    using __id = nothrow_copyable_box;
-
     nothrow_copyable_box() noexcept = default;
 
     explicit nothrow_copyable_box(Type value)
@@ -267,9 +255,6 @@ namespace {
   template <class Type>
     requires ex::__nothrow_copy_constructible<Type>
   struct nothrow_copyable_box<Type> {
-    using __t = nothrow_copyable_box;
-    using __id = nothrow_copyable_box;
-
     nothrow_copyable_box() noexcept = default;
 
     explicit nothrow_copyable_box(Type value) noexcept(ex::__nothrow_copy_constructible<Type>)
@@ -291,8 +276,6 @@ namespace {
   //! Scheduler that returns a sender that always completes with error.
   template <class Error = std::exception_ptr>
   struct error_scheduler {
-    using __id = error_scheduler;
-    using __t = error_scheduler;
     using scheduler_concept = ex::scheduler_t;
 
     error_scheduler() = default;
@@ -326,9 +309,6 @@ namespace {
     };
 
     struct sender {
-      using __id = sender;
-      using __t = sender;
-
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(Error), ex::set_stopped_t()>;
@@ -358,8 +338,6 @@ namespace {
     struct sender;
 
    public:
-    using __id = stopped_scheduler;
-    using __t = stopped_scheduler;
     using scheduler_concept = ex::scheduler_t;
 
     auto operator==(const stopped_scheduler&) const noexcept -> bool = default;
@@ -386,9 +364,6 @@ namespace {
     };
 
     struct sender {
-      using __id = sender;
-      using __t = sender;
-
       using sender_concept = STDEXEC::sender_t;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
@@ -408,11 +383,9 @@ namespace {
   namespace _dummy {
     template <class Domain>
     struct _attrs_t {
-      constexpr auto
-        query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept;
+      constexpr auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept;
 
-      constexpr auto
-        query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept {
+      constexpr auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept {
         return Domain{};
       }
     };

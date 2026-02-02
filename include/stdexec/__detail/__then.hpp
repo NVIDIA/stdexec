@@ -34,10 +34,10 @@ namespace STDEXEC {
     struct then_t;
     using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
-    template <class _Fun, class _CvrefSender, class... _Env>
+    template <class _Fun, class _CvSender, class... _Env>
     using __completions_t = transform_completion_signatures<
-      __completion_signatures_of_t<_CvrefSender, _Env...>,
-      __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvrefSender, _Env...>,
+      __completion_signatures_of_t<_CvSender, _Env...>,
+      __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvSender, _Env...>,
       __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
     >;
 

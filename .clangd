@@ -39,6 +39,7 @@ CompileFlags:
     - "-std=c++20"
     - "-Wno-unknown-cuda-version"
     - "--cuda-host-only"
+    - "--cuda-path=/usr/local/cuda-12"
 
 ---
 
@@ -81,6 +82,8 @@ CompileFlags:
     - -ignore-system
     - "-fconcepts-diagnostics-depth=*"
     - "-gopt"
+    - "-Wfatal-errors"
+    - "-fsanitize*"
 Diagnostics:
   Suppress:
     - "variadic_device_fn"

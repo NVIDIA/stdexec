@@ -26,18 +26,13 @@ namespace exec {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __seqexpr
   template <class...>
-  struct __basic_sequence_sender {
-    using __id = __basic_sequence_sender;
-    using __t = __basic_sequence_sender;
-  };
+  struct __basic_sequence_sender { };
 
   namespace {
     template <auto _DescriptorFn>
     struct __seqexpr
       : STDEXEC::__minvoke<decltype(_DescriptorFn()), STDEXEC::__qq<STDEXEC::__tuple>> {
       using sender_concept = sequence_sender_t;
-      using __t = __seqexpr;
-      using __id = __seqexpr;
       using __desc_t = decltype(_DescriptorFn());
       using __tag_t = __desc_t::__tag;
 
@@ -92,14 +87,9 @@ namespace exec {
     };
   } // namespace __mkseqexpr
 
-  struct __basic_sequence_sender_name {
-    template <class _Tag, class _Data, class... _Child>
-    using __result = __basic_sequence_sender<_Tag, _Data, STDEXEC::__demangle_t<_Child>...>;
-
-    template <class _Sender>
-    using __f =
-      STDEXEC::__minvoke<typename STDEXEC::__decay_t<_Sender>::__desc_t, STDEXEC::__q<__result>>;
-  };
+  template <class _Tag, class _Data, class... _Child>
+  using __basic_sequence_sender_t =
+    __basic_sequence_sender<_Tag, _Data, STDEXEC::__demangle_t<_Child>...>;
 
   template <class _Tag, class _Domain = STDEXEC::default_domain>
   inline constexpr __mkseqexpr::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
@@ -107,5 +97,6 @@ namespace exec {
 
 namespace STDEXEC::__detail {
   template <auto _DescriptorFn>
-  extern exec::__basic_sequence_sender_name __demangle_v<exec::__seqexpr<_DescriptorFn>>;
+  extern __declfn_t<__minvoke<__result_of<_DescriptorFn>, __q<exec::__basic_sequence_sender_t>>>
+    __demangle_v<exec::__seqexpr<_DescriptorFn>>;
 } // namespace STDEXEC::__detail

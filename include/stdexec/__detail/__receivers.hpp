@@ -248,8 +248,6 @@ namespace STDEXEC {
 
   template <class _Env>
   struct __receiver_archetype {
-    using __t = __receiver_archetype;
-    using __id = __receiver_archetype;
     using receiver_concept = receiver_t;
 
     template <class... _Args>

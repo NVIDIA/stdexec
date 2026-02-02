@@ -28,36 +28,31 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 namespace nvexec {
   namespace _strm {
     struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler> {
-      using __t = multi_gpu_stream_scheduler;
-      using __id = multi_gpu_stream_scheduler;
-
-      multi_gpu_stream_scheduler(int num_devices, context_state_t context_state)
+      multi_gpu_stream_scheduler(int num_devices, context ctx)
         : num_devices_(num_devices)
-        , context_state_(context_state) {
+        , ctx_(ctx) {
       }
 
       auto operator==(const multi_gpu_stream_scheduler& other) const noexcept -> bool {
-        return context_state_.hub_ == other.context_state_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_;
       }
 
       [[nodiscard]]
       STDEXEC_ATTRIBUTE(host, device) auto schedule() const noexcept {
-        return sender_t{num_devices_, context_state_};
+        return sender{num_devices_, ctx_};
       }
 
       using stream_scheduler_env::query;
 
      private:
-      template <class ReceiverId>
-      struct operation_state_t : stream_op_state_base {
-        using Receiver = STDEXEC::__t<ReceiverId>;
-
-        explicit operation_state_t(Receiver rcvr)
+      template <class Receiver>
+      struct opstate : stream_opstate_base {
+        explicit opstate(Receiver rcvr)
           : rcvr_(static_cast<Receiver&&>(rcvr)) {
           status_ = STDEXEC_LOG_CUDA_API(cudaStreamCreate(&stream_));
         }
 
-        ~operation_state_t() {
+        ~opstate() {
           STDEXEC_ASSERT_CUDA_API(cudaStreamDestroy(stream_));
         }
 
@@ -91,23 +86,20 @@ namespace nvexec {
         cudaError_t status_{cudaSuccess};
       };
 
-      struct sender_t : stream_sender_base {
-        using __t = sender_t;
-        using __id = sender_t;
-
+      struct sender : stream_sender_base {
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
-        explicit sender_t(int num_devices, context_state_t context_state) noexcept
-          : env_{.num_devices_ = num_devices, .context_state_ = context_state} {
+        explicit sender(int num_devices, context ctx) noexcept
+          : env_{.num_devices_ = num_devices, .ctx_ = ctx} {
         }
 
         template <class Receiver>
         [[nodiscard]]
         auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> operation_state_t<STDEXEC::__id<Receiver>> {
-          return operation_state_t<STDEXEC::__id<Receiver>>(static_cast<Receiver&&>(rcvr));
+          -> opstate<Receiver> {
+          return opstate<Receiver>(static_cast<Receiver&&>(rcvr));
         }
 
         [[nodiscard]]
@@ -116,28 +108,25 @@ namespace nvexec {
         }
 
        private:
-        struct env {
-          using __t = env;
-          using __id = env;
-
-          int num_devices_;
-          context_state_t context_state_;
-
+        struct attrs {
           template <class CPO>
           [[nodiscard]]
           auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
             -> multi_gpu_stream_scheduler {
-            return multi_gpu_stream_scheduler{num_devices_, context_state_};
+            return multi_gpu_stream_scheduler{num_devices_, ctx_};
           }
+
+          int num_devices_;
+          context ctx_;
         };
 
-        env env_;
+        attrs env_;
       };
 
      public:
       // private: TODO
       int num_devices_{};
-      context_state_t context_state_;
+      context ctx_;
     };
 
     template <>
@@ -178,7 +167,7 @@ namespace nvexec {
       -> multi_gpu_stream_scheduler {
       return {
         num_devices_,
-        _strm::context_state_t(
+        _strm::context(
           pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
     }
 
@@ -196,7 +185,7 @@ namespace nvexec {
     _strm::stream_pools_t stream_pools_{};
 
     int dev_id_{};
-    _strm::queue::task_hub_t hub_;
+    _strm::queue::task_hub hub_;
   };
 } // namespace nvexec
 

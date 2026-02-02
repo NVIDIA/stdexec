@@ -34,79 +34,69 @@ namespace exec {
 
     struct __die_on_stop_t {
       template <class _Receiver>
-      struct __receiver_id {
-        struct __t {
-          using receiver_concept = STDEXEC::receiver_t;
-          using __id = __receiver_id;
-          _Receiver __receiver_;
+      struct __receiver {
+        using receiver_concept = STDEXEC::receiver_t;
 
-          template <class... _Args>
-            requires __callable<set_value_t, _Receiver, _Args...>
-          void set_value(_Args&&... __args) noexcept {
-            STDEXEC::set_value(
-              static_cast<_Receiver&&>(__receiver_), static_cast<_Args&&>(__args)...);
-          }
+        template <class... _Args>
+          requires __callable<set_value_t, _Receiver, _Args...>
+        void set_value(_Args&&... __args) noexcept {
+          STDEXEC::set_value(
+            static_cast<_Receiver&&>(__rcvr_), static_cast<_Args&&>(__args)...);
+        }
 
-          template <class _Error>
-            requires __callable<set_error_t, _Receiver, _Error>
-          void set_error(_Error&& __err) noexcept {
-            STDEXEC::set_error(static_cast<_Receiver&&>(__receiver_), static_cast<_Error&&>(__err));
-          }
+        template <class _Error>
+          requires __callable<set_error_t, _Receiver, _Error>
+        void set_error(_Error&& __err) noexcept {
+          STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+        }
 
-          [[noreturn]]
-          void set_stopped() noexcept {
-            std::terminate();
-          }
+        [[noreturn]]
+        void set_stopped() noexcept {
+          std::terminate();
+        }
 
-          auto get_env() const noexcept -> env_of_t<_Receiver> {
-            return STDEXEC::get_env(__receiver_);
-          }
-        };
+        auto get_env() const noexcept -> env_of_t<_Receiver> {
+          return STDEXEC::get_env(__rcvr_);
+        }
+
+        _Receiver __rcvr_;
       };
 
-      template <class _Rec>
-      using __receiver = __t<__receiver_id<_Rec>>;
-
       template <class _Sender>
-      struct __sender_id {
+      struct __sender {
+        using sender_concept = STDEXEC::sender_t;
+
         template <class... _Env>
         using __completions_t = __mapply<
           __mremove<set_stopped_t(), __q<completion_signatures>>,
           __completion_signatures_of_t<_Sender, _Env...>
         >;
 
-        struct __t {
-          using __id = __sender_id;
-          using sender_concept = STDEXEC::sender_t;
+        template <receiver _Receiver>
+          requires sender_to<_Sender, __receiver<_Receiver>>
+        auto connect(_Receiver __rcvr) && noexcept
+          -> connect_result_t<_Sender, __receiver<_Receiver>> {
+          return STDEXEC::connect(
+            static_cast<_Sender&&>(__sender_),
+            __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
+        }
 
-          _Sender __sender_;
+        template <__same_as<__sender> _Self, class... _Env>
+        static consteval auto get_completion_signatures() -> __completions_t<_Env...> {
+          return {};
+        }
 
-          template <receiver _Receiver>
-            requires sender_to<_Sender, __receiver<_Receiver>>
-          auto connect(_Receiver __rcvr) && noexcept
-            -> connect_result_t<_Sender, __receiver<_Receiver>> {
-            return STDEXEC::connect(
-              static_cast<_Sender&&>(__sender_),
-              __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
-          }
+        auto get_env() const noexcept -> env_of_t<_Sender> {
+          return STDEXEC::get_env(__sender_);
+        }
 
-          template <__same_as<__t> _Self, class... _Env>
-          static consteval auto get_completion_signatures() -> __completions_t<_Env...> {
-            return {};
-          }
-
-          auto get_env() const noexcept -> env_of_t<_Sender> {
-            return STDEXEC::get_env(__sender_);
-          }
-        };
+        _Sender __sender_;
       };
-      template <class _Sender>
-      using __sender = __t<__sender_id<__decay_t<_Sender>>>;
 
       template <sender _Sender>
       auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> __sender<_Sender> {
-        return __sender<_Sender>{static_cast<_Sender&&>(__sndr)};
+        -> __sender<__decay_t<_Sender>> {
+        return __sender<__decay_t<_Sender>>{static_cast<_Sender&&>(__sndr)};
       }
 
       template <class _Value>

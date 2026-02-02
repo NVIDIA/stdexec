@@ -58,7 +58,7 @@ namespace STDEXEC {
         static_assert(sender_expr_for<_Self, write_env_t>);
         return STDEXEC::get_completion_signatures<
           __child_of<_Self>,
-          __meval<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
+          __minvoke_q<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
         >();
       }
     };

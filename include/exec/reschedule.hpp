@@ -42,7 +42,7 @@ namespace exec {
 
     template <class _Env>
     using __completions =
-      __meval<__completion_signatures_of_t, __try_schedule_sender_t<_Env>, _Env>;
+      __minvoke_q<__completion_signatures_of_t, __try_schedule_sender_t<_Env>, _Env>;
 
     struct __scheduler {
       struct __sender {

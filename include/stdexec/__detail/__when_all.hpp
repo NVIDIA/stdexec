@@ -66,7 +66,7 @@ namespace STDEXEC {
     template <class _Sender, class _Env>
     concept __max1_sender =
       sender_in<_Sender, _Env>
-      && __mvalid<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
+      && __minvocable_q<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
 
     struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_ { };
     struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_ { };
@@ -110,20 +110,20 @@ namespace STDEXEC {
       template <class _Sender>
       using __single_values_of_t = __value_types_t<
         __completion_signatures_of_t<_Sender, _Env...>,
-        __mtransform<__q<__decay_t>, __q<__types>>,
+        __mtransform<__q<__decay_t>, __q<__mlist>>,
         __mbind_front_q<__value_tuple_t, _Sender>
       >;
 
       template <class... _Senders>
-      using __set_values_sig_t = __meval<
+      using __set_values_sig_t = __minvoke_q<
         completion_signatures,
         __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>
       >;
 
       template <class... _Senders>
-      using __f = __meval<
+      using __f = __minvoke_q<
         __concat_completion_signatures_t,
-        __meval<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
+        __minvoke_q<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
         __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
         __transform_completion_signatures_t<
           __completion_signatures_of_t<_Senders, _Env...>,
@@ -166,10 +166,10 @@ namespace STDEXEC {
         __mconcat<>,
         __if<
           __mand<__nothrow_decay_copyable_results_t<_Senders, _Env>...>,
-          __types<>,
-          __types<std::exception_ptr>
+          __mlist<>,
+          __mlist<std::exception_ptr>
         >,
-        __error_types_of_t<_Senders, __env_t<_Env>, __q<__types>>...
+        __error_types_of_t<_Senders, __env_t<_Env>, __q<__mlist>>...
       >;
 
       using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;
@@ -342,7 +342,7 @@ namespace STDEXEC {
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
         static_assert(sender_expr_for<_Self, when_all_t>);
-        if constexpr (__mvalid<__completions_t, _Self, _Env...>) {
+        if constexpr (__minvocable_q<__completions_t, _Self, _Env...>) {
           // TODO: update this to use constant evaluation:
           return __completions_t<_Self, _Env...>{};
         } else if constexpr (sizeof...(_Env) == 0) {
