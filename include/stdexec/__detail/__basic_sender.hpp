@@ -278,7 +278,7 @@ namespace STDEXEC {
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class _Tag, class _Data, class... _Child>
   struct __basic_sender {
-    using __mangled = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
+    using __mangled_t = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
   };
 
 #if !defined(STDEXEC_DEMANGLE_SENDER_NAMES)
