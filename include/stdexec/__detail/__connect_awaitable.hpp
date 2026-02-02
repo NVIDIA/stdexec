@@ -34,8 +34,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
-  // __connect_awaitable_
-  namespace __connect_awaitable_ {
+  // __connect_await
+  namespace __connect_await {
     struct __promise_base {
       constexpr auto initial_suspend() noexcept -> __std::suspend_always {
         return {};
@@ -201,10 +201,14 @@ namespace STDEXEC {
         return __co_impl(static_cast<_Awaitable&&>(__awaitable), static_cast<_Receiver&&>(__rcvr));
       }
     };
-  } // namespace __connect_awaitable_
+  } // namespace __connect_await
 
-  using __connect_awaitable_::__connect_awaitable_t;
+  using __connect_await::__connect_awaitable_t;
 #else
+  namespace __connect_await {
+    template <class>
+    using __promise = void;
+  } // namespace __connect_await
   struct __connect_awaitable_t { };
 #endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};

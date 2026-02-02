@@ -210,6 +210,9 @@ namespace STDEXEC {
                   "no-throw .start() member function.");
               }
             } else {
+              // This shoud generate a useful error message about why the sender cannot
+              // be connected to the receiver:
+              connect(static_cast<_CvSender&&>(__sndr), __receiver_t<_CvSender>{});
               static_assert(
                 sender_to<_CvSender, __receiver_t<_CvSender>>,
                 STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
