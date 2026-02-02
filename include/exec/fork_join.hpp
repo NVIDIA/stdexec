@@ -23,10 +23,7 @@
 namespace exec {
   struct PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE { };
 
-  struct fork_join_t {
-    template <class Sndr, class... Closures>
-    struct _sndr_t;
-
+  struct fork_join_impl_t {
     struct _dematerialize_fn {
       struct _impl_fn {
         template <class Rcvr, class Tag, class... Args>
@@ -135,12 +132,13 @@ namespace exec {
       using _child_completions_t = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
       using _when_all_sndr_t =
-        fork_join_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
+        fork_join_impl_t::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
       using _child_opstate_t =
         STDEXEC::connect_result_t<Sndr, STDEXEC::__rcvr_ref_t<_opstate_t, _env_t>>;
       using _fork_opstate_t =
         STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__rcvr_ref_t<Rcvr>>;
-      using _cache_sndr_t = fork_join_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
+      using _cache_sndr_t =
+        fork_join_impl_t::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
@@ -213,57 +211,45 @@ namespace exec {
       STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
       _fork_opstate_t _fork_opstate_;
     };
+  };
 
-    template <class... Closures>
-    struct _closure_t {
-      using _closures_t = STDEXEC::__tuple<Closures...>;
-
-      template <class Sndr>
-      STDEXEC_ATTRIBUTE(host, device)
-      friend constexpr auto
-        operator|(Sndr sndr, _closure_t self) noexcept -> _sndr_t<Sndr, Closures...> {
-        return _sndr_t<Sndr, Closures...>{
-          {}, static_cast<_closures_t&&>(self._closures_), static_cast<Sndr&&>(sndr)};
-      }
-
-      template <class Sndr>
-      STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto operator()(Sndr sndr) && noexcept -> _sndr_t<Sndr, Closures...> {
-        return _sndr_t<Sndr, Closures...>{{}, std::move(this->_closures_), std::move(sndr)};
-      }
-
-      _closures_t _closures_;
-    };
-
+  struct fork_join_t {
     template <class Sndr, class... Closures>
       requires STDEXEC::sender<Sndr>
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator()(Sndr sndr, Closures... closures) const -> _sndr_t<Sndr, Closures...> {
-      return {{}, {static_cast<Closures&&>(closures)...}, static_cast<Sndr&&>(sndr)};
+    constexpr auto
+      operator()(Sndr&& sndr, Closures&&... closures) const -> STDEXEC::__well_formed_sender auto {
+      return STDEXEC::__make_sexpr<fork_join_t>(
+        STDEXEC::__tuple{std::forward<Closures>(closures)...}, std::forward<Sndr>(sndr));
     }
 
     template <class... Closures>
       requires((!STDEXEC::sender<Closures>) && ...)
     STDEXEC_ATTRIBUTE(host, device)
-    auto operator()(Closures... closures) const -> _closure_t<Closures...> {
-      return {{static_cast<Closures&&>(closures)...}};
+    constexpr auto operator()(Closures&&... closures) const {
+      return STDEXEC::__closure{*this, std::forward<Closures>(closures)...};
     }
   };
 
   template <>
-  struct fork_join_t::_env_t<STDEXEC::indeterminate_domain<>> { };
+  struct fork_join_impl_t::_env_t<STDEXEC::indeterminate_domain<>> { };
 
-  template <class Sndr, class... Closures>
-  struct fork_join_t::_sndr_t {
-    using sender_concept = STDEXEC::sender_t;
-    using _closures_t = STDEXEC::__tuple<Closures...>;
+  inline constexpr fork_join_t fork_join{};
 
+} // namespace exec
+
+namespace exec::__fork_join {
+  struct __impls : STDEXEC::__sexpr_defaults {
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
     static consteval auto get_completion_signatures() {
       using namespace STDEXEC;
-      using _domain_t = STDEXEC::__completion_domain_of_t<set_value_t, Sndr, Env...>;
-      using _child_t = __copy_cvref_t<Self, Sndr>;
+
+      using _closures_t = STDEXEC::__data_of<Self>;
+      using _child_sndr_t = STDEXEC::__child_of<Self>;
+
+      using _domain_t = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
+      using _child_t = __copy_cvref_t<Self, _child_sndr_t>;
       using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
       using __decay_copyable_results_t = STDEXEC::__decay_copyable_results_t<_child_completions_t>;
 
@@ -275,37 +261,26 @@ namespace exec {
           _IN_ALGORITHM_(exec::fork_join_t)
         >();
       } else {
-        using _sndr_t = _when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
+        using _sndr_t =
+          fork_join_impl_t::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
         return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
       }
     }
 
-    template <class Rcvr>
-    STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto connect(Rcvr rcvr) && -> _opstate_t<Sndr, _closures_t, Rcvr> {
-      return _opstate_t<Sndr, _closures_t, Rcvr>{
-        static_cast<Sndr&&>(sndr_),
-        static_cast<_closures_t&&>(_closures_),
-        static_cast<Rcvr&&>(rcvr)};
-    }
+    static constexpr auto connect =
+      []<class _Receiver, class _Sender>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept {
+        using _closures_t = STDEXEC::__data_of<_Sender>;
+        using _sndr_t = STDEXEC::__child_of<_Sender>;
 
-    template <class Rcvr>
-    STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto connect(
-      Rcvr rcvr) const & -> _opstate_t<Sndr const &, _closures_t const &, Rcvr> {
-      return _opstate_t<Sndr const &, _closures_t const &, Rcvr>{
-        sndr_, _closures_, static_cast<Rcvr&&>(rcvr)};
-    }
-
-    STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sndr>> {
-      return STDEXEC::__fwd_env(STDEXEC::get_env(sndr_));
-    }
-
-    STDEXEC_ATTRIBUTE(no_unique_address) fork_join_t _tag_;
-    STDEXEC::__tuple<Closures...> _closures_;
-    Sndr sndr_;
+        return fork_join_impl_t::_opstate_t<_sndr_t, _closures_t, _Receiver>{
+          STDEXEC::__get<2>(static_cast<_Sender&&>(__sndr)),
+          STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr)),
+          static_cast<_Receiver&&>(__rcvr)};
+      };
   };
+} // namespace exec::__fork_join
 
-  inline constexpr fork_join_t fork_join{};
-} // namespace exec
+namespace STDEXEC {
+  template <>
+  struct __sexpr_impl<exec::fork_join_t> : exec::__fork_join::__impls { };
+} // namespace STDEXEC
