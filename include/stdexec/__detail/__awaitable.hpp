@@ -17,7 +17,7 @@
 
 #include "__concepts.hpp"
 #include "__config.hpp"
-#include "__utility.hpp"
+#include "__meta.hpp"
 
 namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()

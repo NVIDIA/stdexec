@@ -322,40 +322,40 @@ namespace exec {
         return __result_t();
       } else if constexpr (sizeof...(_Env) == 0) {
         return STDEXEC::__dependent_sender<_Sequence>();
-      } else if constexpr ((__is_debug_env<_Env> || ...)) {
-        // This ought to cause a hard error that indicates where the problem is.
-        using __item_types_t [[maybe_unused]] = STDEXEC::__mconstant<STDEXEC_REMOVE_REFERENCE(
-          _Sequence)::template get_item_types<_Sequence, _Env...>()>;
-        return __debug::__item_types();
       } else {
         return __unrecognized_sequence_error_t<_Sequence, _Env...>();
       }
     }
 
     struct get_item_types_t {
-      template <class _Sequence, class... _Env>
-      constexpr auto operator()(_Sequence&&, const _Env&...) const noexcept {
-        using _NewSequence = STDEXEC::__maybe_transform_sender_t<_Sequence, _Env...>;
-        if constexpr (STDEXEC::__merror<_NewSequence>) {
-          return exec::__invalid_item_types(_NewSequence());
-        } else {
-          return __sequence_sndr::__get_item_types_helper<_NewSequence, _Env...>();
-        }
+      template <class _Sequence>
+      constexpr auto operator()(_Sequence&&) const noexcept {
+        return __sequence_sndr::__get_item_types_helper<_Sequence>();
+      }
+
+      template <class _Sequence, class _Env>
+      constexpr auto operator()(_Sequence&&, const _Env&) const noexcept {
+        using __new_sequence_t = transform_sender_result_t<_Sequence, _Env>;
+        static_assert(!STDEXEC::__merror<__new_sequence_t>);
+        return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
       }
     };
   } // namespace __sequence_sndr
 
   using __sequence_sndr::get_item_types_t; // for backwards compatibility
 
-  template <class _Sequence, class... _Env>
+  template <class _Sequence>
   [[nodiscard]]
   consteval auto get_item_types() {
-    using _NewSequence = STDEXEC::__maybe_transform_sender_t<_Sequence, _Env...>;
-    if constexpr (STDEXEC::__merror<_NewSequence>) {
-      return exec::__invalid_item_types(_NewSequence());
-    } else {
-      return __sequence_sndr::__get_item_types_helper<_NewSequence, _Env...>();
-    }
+    return __sequence_sndr::__get_item_types_helper<_Sequence>();
+  }
+
+  template <class _Sequence, class _Env>
+  [[nodiscard]]
+  consteval auto get_item_types() {
+    using __new_sequence_t = STDEXEC::transform_sender_result_t<_Sequence, _Env>;
+    static_assert(!STDEXEC::__merror<__new_sequence_t>);
+    return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
   }
 
   // Legacy interface:
@@ -429,7 +429,8 @@ namespace exec {
   struct _THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_ { };
 
   template <class _Sequence>
-    requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>)
+    requires(!STDEXEC::__merror<_Sequence>)
+         && (!STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> STDEXEC::__mexception<
     STDEXEC::_WHAT_(_ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_),
     STDEXEC::_WHY_(_THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_),

@@ -189,7 +189,7 @@ namespace STDEXEC {
     struct as_awaitable_t {
       template <class _Tp, class _Promise>
       static consteval auto __get_declfn() noexcept {
-        if constexpr (__detail::__has_as_awaitable_member<_Tp, _Promise>) {
+        if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
           using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
           constexpr bool __is_nothrow = noexcept(__declval<_Tp>()
                                                    .as_awaitable(__declval<_Promise&>()));
@@ -211,7 +211,7 @@ namespace STDEXEC {
         requires __callable<__mtypeof<_DeclFn>>
       auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
         -> decltype(_DeclFn()) {
-        if constexpr (__detail::__has_as_awaitable_member<_Tp, _Promise>) {
+        if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
           using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
           static_assert(__awaitable<__result_t, _Promise>);
           return static_cast<_Tp&&>(__t).as_awaitable(__promise);
