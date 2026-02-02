@@ -54,10 +54,7 @@ namespace STDEXEC {
   inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #else
   template <class _Descriptor, auto _DescriptorFn = STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)>
-  inline constexpr auto __descriptor_fn_i = _DescriptorFn;
-
-  template <class _Descriptor>
-  inline constexpr auto __descriptor_fn_v = __descriptor_fn_i<_Descriptor>();
+  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
 #endif
 
   template <class _Tag, class _Data, class... _Child>
