@@ -30,53 +30,57 @@ namespace STDEXEC {
   template <auto _Ptr>
   class __intrusive_mpsc_queue;
 
+  // _Node must be default_initializable only for the queue to construct an
+  // internal "stub" node - only the _Next data element is accessed internally.
   template <class _Node, __std::atomic<void*> _Node::* _Next>
+    requires __std::default_initializable<_Node>
   class __intrusive_mpsc_queue<_Next> {
-    __std::atomic<void*> __back_{&__nil_};
-    void* __front_{&__nil_};
-    __std::atomic<_Node*> __nil_ = nullptr;
 
-    constexpr void push_back_nil() {
-      __nil_.store(nullptr, __std::memory_order_relaxed);
-      auto* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, __std::memory_order_acq_rel));
-      (__prev->*_Next).store(&__nil_, __std::memory_order_release);
-    }
+    __std::atomic<void*> __back_{&__stub_};
+    __std::atomic<void*> __head_{&__stub_};
+    _Node __stub_;
 
    public:
+
+    __intrusive_mpsc_queue() {
+      (__stub_.*_Next).store(nullptr, __std::memory_order_release);
+    }
+
     constexpr auto push_back(_Node* __new_node) noexcept -> bool {
-      (__new_node->*_Next).store(nullptr, __std::memory_order_relaxed);
-      void* __prev_back = __back_.exchange(__new_node, __std::memory_order_acq_rel);
-      bool __is_nil = __prev_back == static_cast<void*>(&__nil_);
-      if (__is_nil) {
-        __nil_.store(__new_node, __std::memory_order_release);
-      } else {
-        (static_cast<_Node*>(__prev_back)->*_Next).store(__new_node, __std::memory_order_release);
-      }
-      return __is_nil;
+      (__new_node->*_Next).store(nullptr, __std::memory_order_release);
+      _Node* __prev = static_cast<_Node*>(
+          __head_.exchange(static_cast<void*>(__new_node), __std::memory_order_acq_rel)
+      );
+      bool was_stub = __prev == &__stub_;
+      (__prev->*_Next).store(static_cast<void*>(__new_node), __std::memory_order_release);
+      return was_stub;
     }
 
     constexpr auto pop_front() noexcept -> _Node* {
-      if (__front_ == static_cast<void*>(&__nil_)) {
-        _Node* __next = __nil_.load(__std::memory_order_acquire);
-        if (!__next) {
+      _Node* __back = static_cast<_Node*>(__back_.load(__std::memory_order_relaxed));
+      _Node* __next = static_cast<_Node*>((__back->*_Next).load(__std::memory_order_acquire));
+      if (__back == &__stub_) {
+        if (nullptr == __next)
           return nullptr;
-        }
-        __front_ = __next;
+        __back_.store(static_cast<void*>(__next), __std::memory_order_relaxed);
+        __back = __next;
+        __next = static_cast<_Node*>((__next->*_Next).load(__std::memory_order_acquire));
       }
-      auto* __front = static_cast<_Node*>(__front_);
-      void* __next = (__front->*_Next).load(__std::memory_order_acquire);
       if (__next) {
-        __front_ = __next;
-        return __front;
+        __back_.store(static_cast<void*>(__next), __std::memory_order_relaxed);
+        return __back;
       }
-      STDEXEC_ASSERT(!__next);
-      push_back_nil();
-      do {
-        __spin_loop_pause();
-        __next = (__front->*_Next).load(__std::memory_order_acquire);
-      } while (!__next);
-      __front_ = __next;
-      return __front;
+      _Node* __head = static_cast<_Node*>(__head_.load(__std::memory_order_relaxed));
+      if (__back != __head)
+        return nullptr;
+      push_back(&__stub_);
+      __next = static_cast<_Node*>((__back->*_Next).load(__std::memory_order_acquire));
+      if (__next) {
+        __back_.store(static_cast<void*>(__next), __std::memory_order_relaxed);
+        return __back;
+      }
+      return nullptr;
     }
   };
+
 } // namespace STDEXEC

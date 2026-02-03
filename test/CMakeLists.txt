@@ -62,6 +62,7 @@ set(stdexec_test_sources
     stdexec/algos/other/test_execute.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_utility.cpp
+    stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp

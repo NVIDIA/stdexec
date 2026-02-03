@@ -7,7 +7,7 @@ build_dir = build
 
 .SECONDARY:
 
-test_programs = split async_scope sync_wait
+test_programs = split async_scope sync_wait intrusive_mpsc_queue
 
 test_exe_files = $(foreach name,$(test_programs),$(build_dir)/$(name))
 

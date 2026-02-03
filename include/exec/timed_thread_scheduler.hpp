@@ -43,6 +43,9 @@ namespace exec {
         stop
       };
 
+      // Default ctor for __intrusive_mpsc_queue's internal stub node
+      constexpr timed_thread_operation_base() = default;
+
       constexpr timed_thread_operation_base(
         void (*set_value)(timed_thread_operation_base*) noexcept,
         command_type command = command_type::schedule) noexcept
