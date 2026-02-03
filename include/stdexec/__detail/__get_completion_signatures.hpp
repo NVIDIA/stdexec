@@ -86,7 +86,7 @@ namespace STDEXEC {
       }
     }
 
-    template <class _Sender, __non_sender... _Env>
+    template <class _Sender, class... _Env>
     using __co_await_completions_t = //
       completion_signatures<
         __detail::__single_value_sig_t<__await_result_t<_Sender, __detail::__promise<_Env>...>>,
@@ -94,11 +94,11 @@ namespace STDEXEC {
         set_stopped_t()
       >;
 
-    template <class _Sender, __non_sender... _Env>
+    template <class _Sender, class... _Env>
     using __legacy_member_result_t = //
       decltype(__declval<_Sender>().get_completion_signatures(__declval<_Env>()...));
 
-    template <class _Sender, __non_sender... _Env>
+    template <class _Sender, class... _Env>
     using __legacy_static_member_result_t =      //
       decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
                ::static_get_completion_signatures(__declval<_Sender>(), __declval<_Env>()...));
