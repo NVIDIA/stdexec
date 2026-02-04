@@ -91,6 +91,7 @@ else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
 endif()
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
+option(STDEXEC_BUILD_RELACY_TESTS "Build stdexec relacy tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
 
 # STDEXEC_BUILD_TESTS is used solely to configure CTest's BUILD_TESTING option,
 # which is CMake's preferred option for enabling testing when using CTest.

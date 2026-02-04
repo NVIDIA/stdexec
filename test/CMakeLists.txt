@@ -138,6 +138,10 @@ icm_add_build_failure_test(
     FOLDER test
 )
 
+if(STDEXEC_BUILD_RELACY_TESTS)
+    add_subdirectory(rrd)
+endif()
+
 # # Adding multiple tests with a glob
 # icm_glob_build_failure_tests(
 #     PATTERN *_fail*.cpp

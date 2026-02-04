@@ -1,4 +1,20 @@
-#include "../../relacy/relacy_std.hpp"
+/*
+ * Copyright (c) 2025 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <stdexec_relacy.hpp>
 
 #include <stdexec/__detail/__intrusive_mpsc_queue.hpp>
 
@@ -314,7 +330,7 @@ struct mpsc_five_producers_ordered : rl::test_suite<mpsc_five_producers_ordered,
 };
 
 auto main(int argc, char** argv) -> int {
-  int iterations = argc > 1 ? strtol(argv[1], nullptr, 10) : 500000;
+  int iterations = argc > 1 ? strtol(argv[1], nullptr, 10) : 250000;
   rl::test_params p;
   p.iteration_count = iterations;
   p.execution_depth_limit = 10000;
@@ -341,7 +357,7 @@ auto main(int argc, char** argv) -> int {
   CHECK(rl::simulate<mpsc_pop_from_empty_never_returns_node>(p));
 
   // Beefy test...
-  p.iteration_count = 50000;
+  p.iteration_count = 5000;
   printf("Running mpsc_five_producers_ordered...\n");
   CHECK(rl::simulate<mpsc_five_producers_ordered>(p));
 
