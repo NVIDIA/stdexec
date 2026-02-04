@@ -226,6 +226,12 @@ namespace exec {
           {}, static_cast<_closures_t&&>(self._closures_), static_cast<Sndr&&>(sndr)};
       }
 
+      template <class Sndr>
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto operator()(Sndr sndr) && noexcept -> _sndr_t<Sndr, Closures...> {
+        return _sndr_t<Sndr, Closures...>{{}, std::move(this->_closures_), std::move(sndr)};
+      }
+
       _closures_t _closures_;
     };
 
