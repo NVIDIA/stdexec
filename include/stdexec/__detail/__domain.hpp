@@ -213,7 +213,7 @@ namespace STDEXEC {
       }
 
       template <__none_of<_Queries...> _Query, class... _As>
-        requires  __queryable_with<_Env, _Query, _As...>
+        requires __queryable_with<_Env, _Query, _As...>
       constexpr auto operator()(_Query, _As&&... __as) const
         noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
           -> __query_result_t<_Env, _Query, _As...> {
@@ -388,11 +388,11 @@ namespace STDEXEC {
 
       // Query with tag_invoke (legacy):
       template <class _Env>
-        requires tag_invocable<get_domain_t, const _Env&>
+        requires __tag_invocable<get_domain_t, const _Env&>
       [[deprecated("use a query member function instead of tag_invoke for queries")]]
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
         constexpr auto operator()(const _Env&) const noexcept {
-        return __decay_t<tag_invoke_result_t<get_domain_t, const _Env&>>{};
+        return __decay_t<__tag_invoke_result_t<get_domain_t, const _Env&>>{};
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

@@ -43,7 +43,7 @@ namespace STDEXEC {
     concept __with_co_await = __awaitable<_Sender, __connect_await::__promise<_Receiver>>;
 
     template <class _Sender, class _Receiver>
-    concept __with_legacy_tag_invoke = tag_invocable<connect_t, _Sender, _Receiver>;
+    concept __with_legacy_tag_invoke = __tag_invocable<connect_t, _Sender, _Receiver>;
 
     template <class _Sender, class _Receiver>
     concept __with_any_connect = __with_static_member<_Sender, _Receiver>
@@ -60,7 +60,7 @@ namespace STDEXEC {
   namespace __connect {
 #if !STDEXEC_MSVC()
 
-#define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn_t<decltype(_EXPR), noexcept(_EXPR)>
+#  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn_t<decltype(_EXPR), noexcept(_EXPR)>
 
     // A variable template whose type is a function pointer such that the
     // return type and noexcept-ness depend on whether _Sender can be connected
@@ -94,7 +94,7 @@ namespace STDEXEC {
             || __with_co_await<_Sender, _Receiver>      //
             || __with_legacy_tag_invoke<_Sender, _Receiver>
     extern STDEXEC_CONNECT_DECLFN_FOR(
-      tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()))
+      __tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()))
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
@@ -124,7 +124,7 @@ namespace STDEXEC {
             || __with_member<_Sender, _Receiver>        //
             || __with_co_await<_Sender, _Receiver>      //
             || __with_legacy_tag_invoke<_Sender, _Receiver>
-    extern __declfn_t<tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>
+    extern __declfn_t<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
     template <class _Sender, class _Receiver>
@@ -135,11 +135,11 @@ namespace STDEXEC {
                __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>
       >);
 
-#undef STDEXEC_CONNECT_DECLFN_FOR
+#  undef STDEXEC_CONNECT_DECLFN_FOR
 
 #else // ^^^ !STDEXEC_MSVC() ^^^ / vvv STDEXEC_MSVC() vvv
 
-#define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn<decltype(_EXPR), noexcept(_EXPR)>()
+#  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn<decltype(_EXPR), noexcept(_EXPR)>()
 
     template <bool _NothrowTransform>
     struct __connect_declfn;
@@ -159,7 +159,7 @@ namespace STDEXEC {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
         } else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>) {
           return STDEXEC_CONNECT_DECLFN_FOR(
-            tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()));
+            __tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()));
         } else {
           return __declfn<void, false>();
         }
@@ -181,7 +181,7 @@ namespace STDEXEC {
         } else if constexpr (__with_co_await<_Sender, _Receiver>) {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
         } else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>) {
-          return __declfn<tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>();
+          return __declfn<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>();
         } else {
           return __declfn<void, false>();
         }
@@ -194,7 +194,7 @@ namespace STDEXEC {
                __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>
       >::template __get<transform_sender_result_t<_Sender, env_of_t<_Receiver>>, _Receiver>());
 
-#undef STDEXEC_CONNECT_DECLFN_FOR
+#  undef STDEXEC_CONNECT_DECLFN_FOR
 
 #endif // STDEXEC_MSVC()
 
@@ -222,7 +222,7 @@ namespace STDEXEC {
           return __connect_awaitable(
             static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
         } else {
-          return tag_invoke(
+          return __tag_invoke(
             *this, static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
         }
       }

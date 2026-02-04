@@ -239,15 +239,16 @@ namespace STDEXEC {
       }
 
       template <class _EnvProvider>
-        requires __has_get_env<const _EnvProvider&> || tag_invocable<get_env_t, const _EnvProvider&>
+        requires __has_get_env<const _EnvProvider&>
+              || __tag_invocable<get_env_t, const _EnvProvider&>
       [[deprecated("the use of tag_invoke for get_env is deprecated")]]
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
         constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
-        -> tag_invoke_result_t<get_env_t, const _EnvProvider&> {
+        -> __tag_invoke_result_t<get_env_t, const _EnvProvider&> {
         static_assert(
-          nothrow_tag_invocable<get_env_t, const _EnvProvider&>,
-          "get_env tag_invoke overloads must be noexcept");
-        return tag_invoke(*this, __env_provider);
+          __nothrow_tag_invocable<get_env_t, const _EnvProvider&>,
+          "get_env __tag_invoke overloads must be noexcept");
+        return __tag_invoke(*this, __env_provider);
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
