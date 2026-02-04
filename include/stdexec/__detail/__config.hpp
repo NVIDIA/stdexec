@@ -112,6 +112,15 @@
 #  define STDEXEC_INTELLISENSE() 0
 #endif
 
+// Not all supported compilers have implemented the resolution of CWG 2428 yet.
+// https://cplusplus.github.io/CWG/issues/2428.html
+#if (STDEXEC_CLANG_VERSION >= 19'00) || (STDEXEC_GCC_VERSION >= 13'00)                             \
+  || (STDEXEC_MSVC_VERSION >= 19'44)
+#  define STDEXEC_DEPRECATE_CONCEPT(_MSG) [[deprecated(_MSG)]]
+#else
+#  define STDEXEC_DEPRECATE_CONCEPT(_MSG)
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_MSVC()
 #  define STDEXEC_PRAGMA(_ARG) __pragma(_ARG)

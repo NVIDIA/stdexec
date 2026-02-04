@@ -89,12 +89,12 @@ namespace STDEXEC {
 
   // Deprecated interfaces
   template <class _Tag, class... _Args>
-  concept tag_invocable
-    [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]] = __tag_invocable<_Tag, _Args...>;
+  concept tag_invocable STDEXEC_DEPRECATE_CONCEPT(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)
+    = __tag_invocable<_Tag, _Args...>;
 
   template <class _Tag, class... _Args>
-  concept nothrow_tag_invocable
-    [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]] = __nothrow_tag_invocable<_Tag, _Args...>;
+  concept nothrow_tag_invocable STDEXEC_DEPRECATE_CONCEPT(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)
+    = __nothrow_tag_invocable<_Tag, _Args...>;
 
   template <class _Tag, class... _Args>
   using tag_invoke_result_t
