@@ -91,7 +91,6 @@ else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
 endif()
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
-option(STDEXEC_BUILD_RELACY_TESTS "Build stdexec relacy tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
 
 # STDEXEC_BUILD_TESTS is used solely to configure CTest's BUILD_TESTING option,
 # which is CMake's preferred option for enabling testing when using CTest.
@@ -150,6 +149,14 @@ if(DEFINED CMAKE_CXX_COMPILER_FRONTEND_VARIANT)
 else()
   set(stdexec_compiler_frontend ${CMAKE_CXX_COMPILER_ID})
 endif()
+
+# Build relacy tests by default only for GNU compiler and if tests are enabled
+if(${STDEXEC_BUILD_TESTS} AND stdexec_compiler_frontend STREQUAL "GNU")
+    set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT ON)
+else()
+    set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT OFF)
+endif()
+option(STDEXEC_BUILD_RELACY_TESTS "Build stdexec relacy tests" ${STDEXEC_BUILD_RELACY_TESTS_DEFAULT})
 
 set(stdexec_export_targets)
 
