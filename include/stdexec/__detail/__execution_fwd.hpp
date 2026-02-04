@@ -225,17 +225,16 @@ namespace STDEXEC {
   concept __well_formed_completions = bool(
     __cmplsigs::__well_formed_completions_helper<_Completions>);
 
-  template <class _Sender, class... _Env>
-    requires(sizeof...(_Env) <= 1)
-  [[nodiscard]]
-  consteval auto get_completion_signatures() -> __well_formed_completions auto;
+  // template <class _Sender>
+  // consteval auto get_completion_signatures();
 
-  // Legacy interface:
-  template <class _Sender, class... _Env>
-    requires(sizeof...(_Env) <= 1)
-  [[nodiscard]]
-  constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept //
-    -> __well_formed_completions auto;
+  // template <class _Sender, class _Env>
+  // consteval auto get_completion_signatures();
+
+  // // Legacy interface:
+  // template <class _Sender, class... _Env>
+  //   requires(sizeof...(_Env) <= 1)
+  // constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept;
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 

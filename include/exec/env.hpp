@@ -32,10 +32,24 @@ namespace exec {
       }
     };
 
+    template <class _Env, class _Query>
+    struct __without : STDEXEC::__env::__env_base_t<_Env> {
+      static_assert(STDEXEC::__nothrow_move_constructible<_Env>);
+
+      using STDEXEC::__env::__env_base_t<_Env>::query;
+
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      auto query(_Query) const noexcept = delete;
+    };
+
     struct __without_t {
-      template <class _Env, class _Tag>
-      constexpr auto operator()(_Env&& __env, _Tag) const -> decltype(auto) {
-        return STDEXEC::__env::__without(static_cast<_Env&&>(__env), _Tag());
+      template <class _Env, class _Query>
+      constexpr auto operator()(_Env&& __env, _Query) const noexcept {
+        if constexpr (STDEXEC::__queryable_with<_Env, _Query>) {
+          return __without<_Env, _Query>{static_cast<_Env&&>(__env)};
+        } else {
+          return static_cast<_Env&&>(__env);
+        }
       }
     };
 
@@ -65,47 +79,54 @@ namespace exec {
   template <class... _Ts>
   using make_env_t = STDEXEC::__result_of<make_env, _Ts...>;
 
+  template <class _Fun>
+  struct env_from {
+    static_assert(STDEXEC::__nothrow_move_constructible<_Fun>);
+
+    template <class _Query, class... _Args>
+      requires STDEXEC::__callable<const _Fun&, _Query, _Args...>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    auto query(_Query, _Args&&... __args) const
+      noexcept(STDEXEC::__nothrow_callable<const _Fun&, _Query, _Args...>)
+        -> STDEXEC::__call_result_t<const _Fun&, _Query, _Args...> {
+      return __fun_(_Query(), static_cast<_Args&&>(__args)...);
+    }
+
+    STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
+  };
+
+  template <class _Fun>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE env_from(_Fun) -> env_from<_Fun>;
+
   namespace __read_with_default {
     using namespace STDEXEC;
 
     struct read_with_default_t;
 
-    template <class _Tag, class _DefaultId, class _ReceiverId>
-    struct __operation {
-      using _Default = STDEXEC::__t<_DefaultId>;
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
-
-      struct __t : __immovable {
-        using __id = __operation;
-
-        STDEXEC_ATTRIBUTE(no_unique_address) _Default __default_;
-        _Receiver __rcvr_;
-
-        constexpr void start() & noexcept {
-          STDEXEC_TRY {
-            if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
-              const auto& __env = get_env(__rcvr_);
-              STDEXEC::set_value(std::move(__rcvr_), _Tag{}(__env));
-            } else {
-              STDEXEC::set_value(std::move(__rcvr_), std::move(__default_));
-            }
-          }
-          STDEXEC_CATCH_ALL {
-            STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
+    template <class _Tag, class _Default, class _Receiver>
+    struct __opstate : __immovable {
+      constexpr void start() & noexcept {
+        STDEXEC_TRY {
+          if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
+            const auto& __env = get_env(__rcvr_);
+            STDEXEC::set_value(std::move(__rcvr_), _Tag{}(__env));
+          } else {
+            STDEXEC::set_value(std::move(__rcvr_), std::move(__default_));
           }
         }
-      };
-    };
+        STDEXEC_CATCH_ALL {
+          STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
+        }
+      }
 
-    template <class _Tag, class _Default, class _Receiver>
-    using __operation_t = __t<__operation<_Tag, __id<_Default>, __id<_Receiver>>>;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Default __default_;
+      _Receiver __rcvr_;
+    };
 
     template <class _Tag, class _Default>
     struct __sender {
-      using __id = __sender;
-      using __t = __sender;
       using sender_concept = STDEXEC::sender_t;
-      STDEXEC_ATTRIBUTE(no_unique_address) _Default __default_;
 
       template <class _Env>
       using __value_t =
@@ -121,7 +142,7 @@ namespace exec {
         requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          -> __operation_t<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
+          -> __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver> {
         return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
@@ -130,6 +151,9 @@ namespace exec {
       static consteval auto get_completion_signatures() -> __completions_t<_Env> {
         return {};
       }
+
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      _Default __default_;
     };
 
     struct __read_with_default_t {
@@ -151,61 +175,44 @@ namespace exec {
   namespace __write_attrs {
     using namespace STDEXEC;
 
-    template <class _SenderId, class _Attrs>
+    template <class _Sender, class _Attrs>
     struct __sender {
-      using _Sender = STDEXEC::__t<_SenderId>;
+      using sender_concept = sender_t;
 
-      struct __t {
-        using sender_concept = sender_t;
-        using __id = __sender;
-        _Sender __sndr_;
-        _Attrs __attrs_;
+      constexpr auto get_env() const noexcept -> __join_env_t<const _Attrs&, env_of_t<_Sender>> {
+        return STDEXEC::__env::__join(__attrs_, STDEXEC::get_env(__sndr_));
+      }
 
-        constexpr auto get_env() const noexcept -> __join_env_t<const _Attrs&, env_of_t<_Sender>> {
-          return STDEXEC::__env::__join(__attrs_, STDEXEC::get_env(__sndr_));
-        }
+      template <__decays_to<__sender> _Self, class... _Env>
+      static consteval auto get_completion_signatures()
+        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
+        return {};
+      }
 
-        template <__decays_to<__t> _Self, class... _Env>
-        static consteval auto get_completion_signatures()
-          -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...> {
-          return {};
-        }
+      template <__decays_to<__sender> _Self, class _Receiver>
+        requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
+      constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
+        -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver> {
+        return STDEXEC::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
 
-        template <__decays_to<__t> _Self, class _Receiver>
-          requires sender_in<__copy_cvref_t<_Self, _Sender>, env_of_t<_Receiver>>
-        constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-          -> connect_result_t<__copy_cvref_t<_Self, _Sender>, _Receiver> {
-          return STDEXEC::connect(std::forward<_Self>(__self).__sndr_, std::move(__rcvr));
-        }
-        STDEXEC_EXPLICIT_THIS_END(connect)
-      };
+      _Sender __sndr_;
+      _Attrs __attrs_;
     };
 
     struct __write_attrs_t {
       template <class _Sender, class _Attrs>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto
-        operator()(_Sender snd, _Attrs __attrs_) const -> __write_attrs::__sender<_Sender, _Attrs> {
-        return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
+      constexpr auto operator()(_Sender snd, _Attrs __attrs_) const -> __sender<_Sender, _Attrs> {
+        return __sender<_Sender, _Attrs>{
           static_cast<_Sender&&>(snd), static_cast<_Attrs&&>(__attrs_)};
       }
 
       template <class _Attrs>
-      struct __closure {
-        _Attrs __attrs_;
-
-        template <class _Sender>
-        STDEXEC_ATTRIBUTE(host, device)
-        friend constexpr auto operator|(_Sender __sndr_, __closure _clsr) {
-          return __t<__write_attrs::__sender<__id<_Sender>, _Attrs>>{
-            static_cast<_Sender&&>(__sndr_), static_cast<_Attrs&&>(_clsr.__attrs_)};
-        }
-      };
-
-      template <class _Attrs>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto operator()(_Attrs __attrs_) const {
-        return __closure<_Attrs>{static_cast<_Attrs&&>(__attrs_)};
+        return STDEXEC::__closure(*this, static_cast<_Attrs&&>(__attrs_));
       }
     };
   } // namespace __write_attrs

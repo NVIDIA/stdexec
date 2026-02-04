@@ -202,45 +202,6 @@ namespace STDEXEC {
       }
       return __npos;
     }
-
-    template <class... _Fns>
-    struct __first_callable {
-     private:
-      //! @brief Returns the first function that is callable with a given set of arguments.
-      template <class... _Args, class _Self>
-      static constexpr auto __get_1st(_Self&& __self) noexcept -> decltype(auto) {
-        // NOLINTNEXTLINE (modernize-avoid-c-arrays)
-        constexpr bool __flags[] = {__callable<__copy_cvref_t<_Self, _Fns>, _Args...>..., false};
-        constexpr size_t __idx = __find_pos(__flags, __flags + sizeof...(_Fns));
-        if constexpr (__idx != __npos) {
-          return std::get<__idx>(static_cast<_Self&&>(__self).__fns_);
-        }
-      }
-
-      //! @brief Alias for the type of the first function that is callable with a given set of arguments.
-      template <class _Self, class... _Args>
-      using __1st_fn_t = decltype(__first_callable::__get_1st<_Args...>(__declval<_Self>()));
-
-     public:
-      //! @brief Calls the first function that is callable with a given set of arguments.
-      template <class... _Args>
-      constexpr auto operator()(_Args&&... __args) && noexcept(
-        __nothrow_callable<__1st_fn_t<__first_callable, _Args...>, _Args...>)
-        -> __call_result_t<__1st_fn_t<__first_callable, _Args...>, _Args...> {
-        return __first_callable::__get_1st<_Args...>(static_cast<__first_callable&&>(*this))(
-          static_cast<_Args&&>(__args)...);
-      }
-
-      //! @overload
-      template <class... _Args>
-      constexpr auto operator()(_Args&&... __args) const & noexcept(
-        __nothrow_callable<__1st_fn_t<__first_callable const &, _Args...>, _Args...>)
-        -> __call_result_t<__1st_fn_t<__first_callable const &, _Args...>, _Args...> {
-        return __first_callable::__get_1st<_Args...>(*this)(static_cast<_Args&&>(__args)...);
-      }
-
-      std::tuple<_Fns...> __fns_;
-    };
   } // namespace __detail
 
   namespace __queries {
@@ -251,8 +212,8 @@ namespace STDEXEC {
         : __env_{static_cast<_Env&&>(__env)} {
       }
 
-      template <class _Query, class... _As>
-        requires __none_of<_Query, _Queries...> && __queryable_with<_Env, _Query, _As...>
+      template <__none_of<_Queries...> _Query, class... _As>
+        requires  __queryable_with<_Env, _Query, _As...>
       constexpr auto operator()(_Query, _As&&... __as) const
         noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
           -> __query_result_t<_Env, _Query, _As...> {

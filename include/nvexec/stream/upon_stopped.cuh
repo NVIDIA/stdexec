@@ -31,7 +31,6 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nvexec::_strm {
-
   namespace _upon_stopped {
     template <class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
@@ -47,133 +46,130 @@ namespace nvexec::_strm {
       new (result) ResultT(::cuda::std::move(fn)());
     }
 
-    template <class T>
-    inline constexpr std::size_t size_of_ = sizeof(T);
+    template <class Receiver, class Fun>
+    struct receiver : public stream_receiver_base {
+      using receiver_concept = STDEXEC::receiver_t;
+      using _result_t = std::invoke_result_t<Fun>;
+      using _env_t = _strm::opstate_base<Receiver>::env_t;
 
-    template <>
-    inline constexpr std::size_t size_of_<void> = 0;
+      static constexpr std::size_t memory_allocation_size() noexcept {
+        return _sizeof_v<_result_t>;
+      }
 
-    template <class ReceiverId, class Fun>
-    struct receiver_t {
-      class __t : public stream_receiver_base {
-        using result_t = std::invoke_result_t<Fun>;
-        using env_t = operation_state_base_t<ReceiverId>::env_t;
+      explicit receiver(Fun fun, _strm::opstate_base<Receiver>& opstate)
+        : fun_(static_cast<Fun&&>(fun))
+        , opstate_(opstate) {
+      }
 
-        Fun f_;
-        operation_state_base_t<ReceiverId>& op_state_;
+      template <class... Args>
+      void set_value(Args&&... args) noexcept {
+        opstate_.propagate_completion_signal(set_value_t(), static_cast<Args&&>(args)...);
+      }
 
-       public:
-        using __id = receiver_t;
+      template <class Error>
+      void set_error(Error __err) noexcept {
+        opstate_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(__err));
+      }
 
-        static constexpr std::size_t memory_allocation_size = size_of_<result_t>;
+      void set_stopped() noexcept {
+        constexpr bool does_not_return_a_value = std::is_same_v<void, _result_t>;
+        cudaStream_t stream = opstate_.get_stream();
 
-        template <class... _As>
-        void set_value(_As&&... __as) noexcept {
-          op_state_.propagate_completion_signal(set_value_t(), static_cast<_As&&>(__as)...);
-        }
-
-        template <class _Error>
-        void set_error(_Error __err) noexcept {
-          op_state_.propagate_completion_signal(set_error_t(), static_cast<_Error&&>(__err));
-        }
-
-        void set_stopped() noexcept {
-          constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
-          cudaStream_t stream = op_state_.get_stream();
-
-          if constexpr (does_not_return_a_value) {
-            _upon_stopped_kernel<<<1, 1, 0, stream>>>(std::move(f_));
-            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-                status == cudaSuccess) {
-              op_state_.propagate_completion_signal(STDEXEC::set_value);
-            } else {
-              op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-            }
+        if constexpr (does_not_return_a_value) {
+          _upon_stopped_kernel<<<1, 1, 0, stream>>>(std::move(fun_));
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
+            opstate_.propagate_completion_signal(STDEXEC::set_value);
           } else {
-            using decayed_result_t = __decay_t<result_t>;
-            auto* d_result = static_cast<decayed_result_t*>(op_state_.temp_storage_);
-            _upon_stopped_kernel_with_result<<<1, 1, 0, stream>>>(std::move(f_), d_result);
-            if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-                status == cudaSuccess) {
-              op_state_.defer_temp_storage_destruction(d_result);
-              op_state_.propagate_completion_signal(STDEXEC::set_value, *d_result);
-            } else {
-              op_state_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-            }
+            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+          }
+        } else {
+          using decayed_result_t = __decay_t<_result_t>;
+          auto* d_result = static_cast<decayed_result_t*>(opstate_.temp_storage_);
+          _upon_stopped_kernel_with_result<<<1, 1, 0, stream>>>(std::move(fun_), d_result);
+          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+              status == cudaSuccess) {
+            opstate_.defer_temp_storage_destruction(d_result);
+            opstate_.propagate_completion_signal(STDEXEC::set_value, *d_result);
+          } else {
+            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
+      }
 
-        [[nodiscard]]
-        auto get_env() const noexcept -> env_t {
-          return op_state_.make_env();
-        }
+      [[nodiscard]]
+      auto get_env() const noexcept -> _env_t {
+        return opstate_.make_env();
+      }
 
-        explicit __t(Fun fun, operation_state_base_t<ReceiverId>& op_state)
-          : f_(static_cast<Fun&&>(fun))
-          , op_state_(op_state) {
-        }
-      };
+     private:
+      Fun fun_;
+      _strm::opstate_base<Receiver>& opstate_;
     };
   } // namespace _upon_stopped
 
-  template <class SenderId, class Fun>
-  struct upon_stopped_sender_t {
-    using Sender = STDEXEC::__t<SenderId>;
+  template <class Sender, class Fun>
+  struct upon_stopped_sender : stream_sender_base {
+    using sender_concept = STDEXEC::sender_t;
+    using _set_error_t = completion_signatures<set_error_t(std::exception_ptr)>;
 
-    struct __t : stream_sender_base {
-      using __id = upon_stopped_sender_t;
-      Sender sndr_;
-      Fun fun_;
+    template <class Receiver>
+    using receiver_t = _upon_stopped::receiver<Receiver, Fun>;
 
-      using _set_error_t = completion_signatures<set_error_t(std::exception_ptr)>;
+    template <class Self, class... Env>
+    using completion_signatures = transform_completion_signatures<
+      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+      __with_error_invoke_t<
+        __mbind_front_q<__callable_error_t, upon_stopped_t>,
+        set_stopped_t,
+        Fun,
+        __copy_cvref_t<Self, Sender>,
+        Env...
+      >,
+      __cmplsigs::__default_set_value,
+      __cmplsigs::__default_set_error,
+      __set_value_from_t<Fun>
+    >;
 
-      template <class Receiver>
-      using receiver_t = STDEXEC::__t<_upon_stopped::receiver_t<STDEXEC::__id<Receiver>, Fun>>;
+    explicit upon_stopped_sender(Sender sndr, Fun fun)
+      noexcept(__nothrow_move_constructible<Sender, Fun>)
+      : sndr_(static_cast<Sender&&>(sndr))
+      , fun_(static_cast<Fun&&>(fun)) {
+    }
 
-      template <class Self, class... Env>
-      using completion_signatures = transform_completion_signatures<
-        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-        __with_error_invoke_t<
-          __mbind_front_q<__callable_error_t, upon_stopped_t>,
-          set_stopped_t,
-          Fun,
-          __copy_cvref_t<Self, Sender>,
-          Env...
-        >,
-        __cmplsigs::__default_set_value,
-        __cmplsigs::__default_set_error,
-        __set_value_from_t<Fun>
-      >;
+    template <__decays_to<upon_stopped_sender> Self, STDEXEC::receiver Receiver>
+      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
+      return stream_opstate<__copy_cvref_t<Self, Sender>>(
+        static_cast<Self&&>(self).sndr_,
+        static_cast<Receiver&&>(rcvr),
+        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver> {
+          return receiver_t<Receiver>(self.fun_, stream_provider);
+        });
+    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <__decays_to<__t> Self, receiver Receiver>
-        requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-        -> stream_op_state_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver> {
-        return stream_op_state<__copy_cvref_t<Self, Sender>>(
-          static_cast<Self&&>(self).sndr_,
-          static_cast<Receiver&&>(rcvr),
-          [&](operation_state_base_t<STDEXEC::__id<Receiver>>& stream_provider)
-            -> receiver_t<Receiver> { return receiver_t<Receiver>(self.fun_, stream_provider); });
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
+    template <__decays_to<upon_stopped_sender> Self, class... Env>
+    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...> {
+      return {};
+    }
 
-      template <__decays_to<__t> Self, class... Env>
-      static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...> {
-        return {};
-      }
+    auto get_env() const noexcept -> stream_sender_attrs<Sender> {
+      return {&sndr_};
+    }
 
-      auto get_env() const noexcept -> stream_sender_attrs<Sender> {
-        return {&sndr_};
-      }
-    };
+   private:
+    Sender sndr_;
+    Fun fun_;
   };
 
   template <class Env>
   struct transform_sender_for<STDEXEC::upon_stopped_t, Env> {
-    template <class Fn, stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, Fn fun, Sender&& sndr) const {
-      using _sender_t = __t<upon_stopped_sender_t<__id<__decay_t<Sender>>, Fn>>;
-      return _sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fn&&>(fun)};
+    template <class Fun, stream_completing_sender<Env> CvSender>
+    auto operator()(__ignore, Fun fun, CvSender&& sndr) const {
+      using _sender_t = upon_stopped_sender<__decay_t<CvSender>, Fun>;
+      return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fun&&>(fun)};
     }
 
     const Env& env_;
@@ -181,9 +177,9 @@ namespace nvexec::_strm {
 } // namespace nvexec::_strm
 
 namespace STDEXEC::__detail {
-  template <class SenderId, class Fun>
-  inline constexpr __mconst<nvexec::_strm::upon_stopped_sender_t<__demangle_t<__t<SenderId>>, Fun>>
-    __demangle_v<nvexec::_strm::upon_stopped_sender_t<SenderId, Fun>>{};
+  template <class Sender, class Fun>
+  extern __declfn_t<nvexec::_strm::upon_stopped_sender<__demangle_t<Sender>, Fun>>
+    __demangle_v<nvexec::_strm::upon_stopped_sender<Sender, Fun>>;
 } // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

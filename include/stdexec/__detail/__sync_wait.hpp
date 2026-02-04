@@ -45,9 +45,6 @@ namespace STDEXEC {
     struct sync_wait_t;
 
     struct __env {
-      using __t = __env;
-      using __id = __env;
-
       run_loop* __loop_ = nullptr;
 
       [[nodiscard]]
@@ -89,50 +86,47 @@ namespace STDEXEC {
 
     template <class... _Values>
     struct __receiver {
-      struct __t {
-        using receiver_concept = receiver_t;
-        using __id = __receiver;
-        __state* __state_;
-        std::optional<std::tuple<_Values...>>* __values_;
+      using receiver_concept = receiver_t;
 
-        template <class... _As>
-        constexpr void set_value(_As&&... __as) noexcept {
-          static_assert(__std::constructible_from<std::tuple<_Values...>, _As...>);
-          STDEXEC_TRY {
-            __values_->emplace(static_cast<_As&&>(__as)...);
-          }
-          STDEXEC_CATCH_ALL {
-            __state_->__eptr_ = std::current_exception();
-          }
-          __state_->__loop_.finish();
+      template <class... _As>
+      constexpr void set_value(_As&&... __as) noexcept {
+        static_assert(__std::constructible_from<std::tuple<_Values...>, _As...>);
+        STDEXEC_TRY {
+          __values_->emplace(static_cast<_As&&>(__as)...);
         }
+        STDEXEC_CATCH_ALL {
+          __state_->__eptr_ = std::current_exception();
+        }
+        __state_->__loop_.finish();
+      }
 
-        template <class _Error>
-        constexpr void set_error(_Error __err) noexcept {
-          if constexpr (__same_as<_Error, std::exception_ptr>) {
-            STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
-            __state_->__eptr_ = static_cast<_Error&&>(__err);
-          } else if constexpr (__same_as<_Error, std::error_code>) {
-            __state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
-          } else {
-            __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
-          }
-          __state_->__loop_.finish();
+      template <class _Error>
+      constexpr void set_error(_Error __err) noexcept {
+        if constexpr (__same_as<_Error, std::exception_ptr>) {
+          STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
+          __state_->__eptr_ = static_cast<_Error&&>(__err);
+        } else if constexpr (__same_as<_Error, std::error_code>) {
+          __state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
+        } else {
+          __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
         }
+        __state_->__loop_.finish();
+      }
 
-        constexpr void set_stopped() noexcept {
-          __state_->__loop_.finish();
-        }
+      constexpr void set_stopped() noexcept {
+        __state_->__loop_.finish();
+      }
 
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> __env {
-          return __env{&__state_->__loop_};
-        }
-      };
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> __env {
+        return __env{&__state_->__loop_};
+      }
+      __state* __state_;
+      std::optional<std::tuple<_Values...>>* __values_;
     };
 
     template <class _CvSender>
-    using __receiver_t = __t<__result_t<_CvSender, __q<__receiver>>>;
+    using __receiver_t = __result_t<_CvSender, __q<__receiver>>;
 
     // These are for hiding the metaprogramming in diagnostics
     template <class _CvSender>
@@ -216,6 +210,9 @@ namespace STDEXEC {
                   "no-throw .start() member function.");
               }
             } else {
+              // This shoud generate a useful error message about why the sender cannot
+              // be connected to the receiver:
+              connect(static_cast<_CvSender&&>(__sndr), __receiver_t<_CvSender>{});
               static_assert(
                 sender_to<_CvSender, __receiver_t<_CvSender>>,
                 STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);

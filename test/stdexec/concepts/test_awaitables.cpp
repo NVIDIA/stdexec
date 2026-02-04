@@ -124,7 +124,7 @@ namespace {
     static_assert(sender_with_env<awaitable_sender_1<Awaiter>>);
     static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_1<Awaiter>>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_1<Awaiter>>);
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
   }
@@ -137,7 +137,7 @@ namespace {
     static_assert(!ex::__awaitable<awaitable_sender_2>);
     static_assert(ex::__awaitable<awaitable_sender_2, promise<ex::__std::suspend_always>>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_2>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_2>);
   }
 
   void test_awaitable_sender3() {
@@ -149,7 +149,7 @@ namespace {
     static_assert(!ex::__awaitable<awaitable_sender_3>);
     static_assert(ex::__awaitable<awaitable_sender_3, promise<awaiter>>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_3>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_3>);
   }
 
   template <class Signatures>
@@ -163,9 +163,9 @@ namespace {
     static_assert(ex::__awaitable<awaitable_sender_4, promise<awaiter>>);
     static_assert(ex::__awaitable<awaitable_sender_4, ex::__detail::__promise<ex::env<>>>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_4>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_4>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_4>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_4>);
 
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::env<>>, Signatures>);
@@ -185,7 +185,7 @@ namespace {
     static_assert(ex::__awaitable<awaitable_sender_5, promise<awaiter>>);
     static_assert(ex::__awaitable<awaitable_sender_5, ex::__detail::__promise<ex::env<>>>);
 
-    static_assert(!ex::__cmplsigs::__with_member_alias<awaitable_sender_5>);
+    static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_5>);
 
     static_assert(
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_5, ex::env<>>, Signatures>);

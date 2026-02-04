@@ -34,18 +34,12 @@ namespace exec {
     template <class _Sender, class _Env>
     using __completions_t = transform_completion_signatures<
       __completion_signatures_of_t<_Sender, _Env>,
-      __if_c<
-        __unstoppable_env<_Env>,
-        completion_signatures<>,
-        completion_signatures<set_stopped_t()>
-      >
+      __if_c<__unstoppable_env<_Env>, completion_signatures<>, completion_signatures<set_stopped_t()>>
     >;
 
     template <class _CvChild, class _Receiver>
     struct __opstate {
       using receiver_concept = receiver_t;
-      using __t = __opstate;
-      using __id = __opstate;
       using __child_op_t = connect_result_t<_CvChild, __rcvr_ref_t<_Receiver>>;
 
       constexpr explicit __opstate(_CvChild&& __child, _Receiver __rcvr)

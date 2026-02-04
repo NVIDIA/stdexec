@@ -34,7 +34,7 @@ namespace execpools {
 
     friend execpools::thread_pool_base<taskflow_thread_pool>;
 
-    template <class PoolType, class ReceiverId>
+    template <class PoolType, class Receiver>
     friend struct execpools::operation;
 
     void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept {

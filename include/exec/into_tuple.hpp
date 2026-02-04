@@ -56,7 +56,7 @@ namespace exec {
     template <class _Sender, class... _Env>
     using __completions_t = transform_completion_signatures<
       __completion_signatures_of_t<_Sender, _Env...>,
-      __meval<__tuple_completions_t, __result_tuple_t<_Sender, _Env...>>,
+      __minvoke_q<__tuple_completions_t, __result_tuple_t<_Sender, _Env...>>,
       __mconst<STDEXEC::completion_signatures<>>::__f
     >;
 

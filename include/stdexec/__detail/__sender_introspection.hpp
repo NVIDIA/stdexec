@@ -41,7 +41,7 @@ namespace STDEXEC {
       using __tag = _Tag;
       using __data = _Data;
       using __indices = __make_indices<sizeof...(_Child)>;
-      using __children = __types<_Child...>;
+      using __children = __mlist<_Child...>;
 
       constexpr auto operator()() const noexcept -> __desc {
         return __desc{};
@@ -58,7 +58,7 @@ namespace STDEXEC {
     using __tag_of = __desc_of<_Sender>::__tag;
 
     template <class _Sender>
-      requires __mvalid<__tag_of, _Sender>
+      requires __minvocable_q<__tag_of, _Sender>
     extern __tag_of<_Sender> __tag_of_v;
   } // namespace __detail
 
@@ -68,7 +68,7 @@ namespace STDEXEC {
   template <class _Sender>
   using __data_of = __tuple_element_t<1, _Sender>;
 
-  template <class _Sender, class _Continuation = __q<__types>>
+  template <class _Sender, class _Continuation = __q<__mlist>>
   using __children_of = __mapply<
     __mtransform<__copy_cvref_fn<_Sender>, _Continuation>,
     typename __detail::__desc_of<_Sender>::__children
@@ -96,7 +96,7 @@ namespace STDEXEC {
   struct __muncurry_<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
   template <class _Sender>
-  concept sender_expr = __mvalid<tag_of_t, _Sender>;
+  concept sender_expr = __minvocable_q<tag_of_t, _Sender>;
 
   template <class _Sender, class _Tag>
   concept sender_expr_for = sender_expr<_Sender> && __std::same_as<tag_of_t<_Sender>, _Tag>;

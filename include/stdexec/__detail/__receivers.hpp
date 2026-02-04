@@ -20,7 +20,6 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
-#include "__get_completion_signatures.hpp"
 #include "__tag_invoke.hpp"
 
 #include "../functional.hpp"
@@ -214,10 +213,6 @@ namespace STDEXEC {
     { __detail::__try_completions<_Receiver>(__completions) } -> __ok;
   };
 
-  template <class _Receiver, class _Sender>
-  concept __receiver_from =
-    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
-
   /// A utility for calling set_value with the result of a function invocation:
   template <class _Receiver, class _Fun, class... _As>
   STDEXEC_ATTRIBUTE(host, device)
@@ -248,8 +243,6 @@ namespace STDEXEC {
 
   template <class _Env>
   struct __receiver_archetype {
-    using __t = __receiver_archetype;
-    using __id = __receiver_archetype;
     using receiver_concept = receiver_t;
 
     template <class... _Args>

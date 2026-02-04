@@ -79,7 +79,7 @@ namespace exec {
     struct timed_thread_schedule_operation_base : timed_thread_operation_base {
       using time_point = std::chrono::steady_clock::time_point;
 
-      constexpr timed_thread_schedule_operation_base(
+      constexpr explicit timed_thread_schedule_operation_base(
         time_point tp,
         void (*set_stopped)(timed_thread_operation_base*) noexcept,
         void (*set_value)(timed_thread_operation_base*) noexcept) noexcept
@@ -111,9 +111,7 @@ namespace exec {
     };
 
     template <class Rcvr>
-    struct timed_thread_schedule_at_op {
-      class __t;
-    };
+    class timed_thread_schedule_at_op;
   } // namespace _time_thrd_sched
 
   class timed_thread_context {
@@ -133,7 +131,7 @@ namespace exec {
 
    private:
     template <class Rcvr>
-    friend struct _time_thrd_sched::timed_thread_schedule_at_op;
+    friend class _time_thrd_sched::timed_thread_schedule_at_op;
 
     using command_type = _time_thrd_sched::timed_thread_operation_base;
     using task_type = _time_thrd_sched::timed_thread_schedule_operation_base;
@@ -236,43 +234,40 @@ namespace exec {
 
   namespace _time_thrd_sched {
     template <class Receiver>
-    class timed_thread_schedule_at_op<Receiver>::__t
-      : _time_thrd_sched::timed_thread_schedule_operation_base {
+    class timed_thread_schedule_at_op : _time_thrd_sched::timed_thread_schedule_operation_base {
      public:
-      using __id = timed_thread_schedule_at_op;
-
-      constexpr __t(
+      constexpr explicit timed_thread_schedule_at_op(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point,
         Receiver receiver) noexcept
         : _time_thrd_sched::timed_thread_schedule_operation_base{
             time_point,
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
-              auto* self = static_cast<__t*>(op);
+              auto* self = static_cast<timed_thread_schedule_at_op*>(op);
               int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                STDEXEC::set_stopped(std::move(self->receiver_));
+                STDEXEC::set_stopped(std::move(self->rcvr_));
               }
             },
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
-              auto* self = static_cast<__t*>(op);
+              auto* self = static_cast<timed_thread_schedule_at_op*>(op);
               int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                STDEXEC::set_value(std::move(self->receiver_));
+                STDEXEC::set_value(std::move(self->rcvr_));
               }
             }}
         , context_{context}
-        , receiver_{std::move(receiver)}
+        , rcvr_{std::move(receiver)}
         , stop_op_{
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept {
               auto* stop = static_cast<_time_thrd_sched::timed_thread_stop_operation*>(op);
-              auto* self = static_cast<__t*>(stop->target_);
+              auto* self = static_cast<timed_thread_schedule_at_op*>(stop->target_);
               int counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1) {
                 self->stop_callback_.reset();
-                STDEXEC::set_stopped(std::move(self->receiver_));
+                STDEXEC::set_stopped(std::move(self->rcvr_));
               }
             },
             this} {
@@ -280,13 +275,13 @@ namespace exec {
 
       constexpr void start() & noexcept {
         stop_callback_
-          .emplace(STDEXEC::get_stop_token(STDEXEC::get_env(receiver_)), on_stopped_t{*this});
+          .emplace(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)), on_stopped_t{*this});
         int expected = 0;
         if (ref_count_.compare_exchange_strong(expected, 1, STDEXEC::__std::memory_order_relaxed)) {
           schedule_this();
         } else {
           stop_callback_.reset();
-          STDEXEC::set_stopped(std::move(receiver_));
+          STDEXEC::set_stopped(std::move(rcvr_));
         }
       }
 
@@ -296,7 +291,7 @@ namespace exec {
       }
 
       struct on_stopped_t {
-        __t& self_;
+        timed_thread_schedule_at_op& self_;
 
         constexpr void operator()() const noexcept {
           self_.request_stop();
@@ -313,7 +308,7 @@ namespace exec {
       }
 
       timed_thread_context& context_;
-      Receiver receiver_;
+      Receiver rcvr_;
       _time_thrd_sched::timed_thread_stop_operation stop_op_;
       std::optional<callback_type> stop_callback_;
       STDEXEC::__std::atomic<int> ref_count_{0};
@@ -342,7 +337,7 @@ namespace exec {
         timed_thread_context* context_;
       };
 
-      constexpr schedule_at_sender(
+      constexpr explicit schedule_at_sender(
         timed_thread_context& context,
         std::chrono::steady_clock::time_point time_point) noexcept
         : context_{&context}
@@ -356,8 +351,9 @@ namespace exec {
 
       template <class Receiver>
       constexpr auto connect(Receiver receiver) const & noexcept
-        -> _time_thrd_sched::timed_thread_schedule_at_op<Receiver>::__t {
-        return {*context_, time_point_, std::move(receiver)};
+        -> _time_thrd_sched::timed_thread_schedule_at_op<Receiver> {
+        return _time_thrd_sched::timed_thread_schedule_at_op<Receiver>{
+          *context_, time_point_, std::move(receiver)};
       }
 
      private:

@@ -24,36 +24,29 @@ namespace exec {
 
     using namespace STDEXEC;
 
-    template <class _ReceiverId>
+    template <class _Receiver>
     struct __operation {
-      using _Receiver = STDEXEC::__t<_ReceiverId>;
+      void start() & noexcept {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+      }
 
-      struct __t {
-        using __id = __operation;
-        STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
-
-        void start() & noexcept {
-          STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
-        }
-      };
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
     };
 
     struct __sender {
-      struct __t {
-        using __id = __sender;
-        using sender_concept = sequence_sender_t;
-        using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
-        using item_types = exec::item_types<>;
+      using sender_concept = sequence_sender_t;
+      using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+      using item_types = exec::item_types<>;
 
-        template <receiver_of<completion_signatures> _Rcvr>
-        auto subscribe(_Rcvr __rcvr) const noexcept {
-          return STDEXEC::__t<__operation<STDEXEC::__id<_Rcvr>>>{static_cast<_Rcvr&&>(__rcvr)};
-        }
-      };
+      template <receiver_of<completion_signatures> _Rcvr>
+      auto subscribe(_Rcvr __rcvr) const noexcept {
+        return __operation<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)};
+      }
     };
 
     struct empty_sequence_t {
-      auto operator()() const noexcept -> __t<__sender> {
+      auto operator()() const noexcept -> __sender {
         return {};
       }
     };

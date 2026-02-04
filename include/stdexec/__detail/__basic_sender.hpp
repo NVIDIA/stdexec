@@ -193,7 +193,7 @@ namespace STDEXEC {
     };
 
     template <class _Tag, class _Self, class... _Env>
-    concept __has_get_completion_signatures = requires {
+    concept __has_get_completion_signatures_impl = requires {
       __sexpr_impl<_Tag>::template get_completion_signatures<_Self, _Env...>();
     };
   } // namespace __detail
@@ -203,8 +203,6 @@ namespace STDEXEC {
   template <class _Tag, class _State, std::size_t _Idx>
   struct __rcvr {
     using receiver_concept = receiver_t;
-    using __t = __rcvr;
-    using __id = __rcvr;
     using __index_t = __msize_t<_Idx>;
 
     template <class... _Args>
@@ -280,10 +278,7 @@ namespace STDEXEC {
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class _Tag, class _Data, class... _Child>
   struct __basic_sender {
-    // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
-    using __id = __basic_sender;
-    using __t = __basic_sender;
-    using __mangled = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
+    using __mangled_t = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
   };
 
 #if !defined(STDEXEC_DEMANGLE_SENDER_NAMES)
@@ -297,9 +292,6 @@ namespace STDEXEC {
     struct __sexpr : __minvoke<decltype(_DescriptorFn()), __qq<__tuple>> {
       using sender_concept = sender_t;
 
-      // See MAINTAINERS.md#class-template-parameters for `__id` and `__t`.
-      using __id = __sexpr;
-      using __t = __sexpr;
       using __desc_t = decltype(_DescriptorFn());
       using __tag_t = __desc_t::__tag;
 
@@ -313,9 +305,9 @@ namespace STDEXEC {
         using namespace __detail;
         static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
         using __self_t = __copy_cvref_t<_Self, __sexpr>;
-        if constexpr (__has_get_completion_signatures<__tag_t, __self_t, _Env...>) {
+        if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t, _Env...>) {
           return __sexpr_impl<__tag_t>::template get_completion_signatures<__self_t, _Env...>();
-        } else if constexpr (__has_get_completion_signatures<__tag_t, __self_t>) {
+        } else if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t>) {
           return __sexpr_impl<__tag_t>::template get_completion_signatures<__self_t>();
         } else if constexpr (sizeof...(_Env) == 0) {
           return __dependent_sender<_Self>();
@@ -396,34 +388,12 @@ namespace STDEXEC {
   // The __demangle_t utility defined below is used to pretty-print the type names of
   // senders in compiler diagnostics.
   namespace __detail {
-    struct __basic_sender_name {
-      template <class _Tag, class _Data, class... _Child>
-      using __result = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>;
-
-      template <class _Sender>
-      using __f = __minvoke<typename __decay_t<_Sender>::__desc_t, __q<__result>>;
-    };
-
-    struct __id_name {
-      template <class _Sender>
-      using __f = __demangle_t<__id<_Sender>>;
-    };
-
-    template <class _Sender>
-    extern __mcompose<__cplr, __demangle_fn<_Sender>> __demangle_v<_Sender&>;
-
-    template <class _Sender>
-    extern __mcompose<__cprr, __demangle_fn<_Sender>> __demangle_v<_Sender&&>;
-
-    template <class _Sender>
-    extern __mcompose<__cpclr, __demangle_fn<_Sender>> __demangle_v<const _Sender&>;
+    template <class _Tag, class _Data, class... _Child>
+    using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>;
 
     template <auto _Descriptor>
-    extern __basic_sender_name __demangle_v<__sexpr<_Descriptor>>;
-
-    template <__has_id _Sender>
-      requires __not_same_as<__id<_Sender>, _Sender>
-    extern __id_name __demangle_v<_Sender>;
+    extern __declfn_t<__minvoke<__result_of<_Descriptor>, __q<__basic_sender_t>>>
+      __demangle_v<__sexpr<_Descriptor>>;
   } // namespace __detail
 } // namespace STDEXEC
 

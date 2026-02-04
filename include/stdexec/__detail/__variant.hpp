@@ -96,11 +96,11 @@ namespace STDEXEC {
       template <std::size_t _Ny>
       using __at = __m_at_c<_Ny, _Ts...>;
 
-      // immovable:
-      constexpr __variant(__variant &&) = delete;
-
       STDEXEC_ATTRIBUTE(host, device)
       __variant() noexcept = default;
+
+      // immovable:
+      constexpr __variant(__variant &&) = delete;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr ~__variant() {

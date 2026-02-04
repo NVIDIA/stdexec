@@ -2,7 +2,6 @@
 
 #include <stdexec/execution.hpp>
 
-#include "common.cuh"
 #include "nvexec/stream_context.cuh"
 
 #include <cub/thread/thread_operators.cuh>

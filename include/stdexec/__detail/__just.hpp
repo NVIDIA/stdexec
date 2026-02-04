@@ -22,6 +22,7 @@
 #include "__completion_signatures.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
+#include "__sender_introspection.hpp"
 #include "__type_traits.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -33,8 +34,6 @@ namespace STDEXEC {
   namespace __just {
     template <class _SetTag>
     struct __attrs {
-      using __t = __attrs;
-      using __id = __attrs;
       static constexpr auto query(get_completion_behavior_t<_SetTag>) noexcept {
         return completion_behavior::inline_completion;
       }

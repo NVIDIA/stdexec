@@ -66,7 +66,7 @@ namespace STDEXEC {
 
       template <class _Sender>
       static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
       }
     };
   } // namespace __starts_on_ns
@@ -81,9 +81,6 @@ namespace STDEXEC {
   struct __sexpr_impl<starts_on_t> : __sexpr_defaults {
     template <class _Scheduler, class _Child>
     struct __attrs {
-      using __t = __attrs;
-      using __id = __attrs;
-
       template <class... _Env>
       static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env) {
         return env(__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
@@ -107,11 +104,8 @@ namespace STDEXEC {
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag> __query, _Env&&... __env)
-        const noexcept -> __call_result_t<
-          get_completion_scheduler_t<_SetTag>,
-          env_of_t<_Child>,
-          __env2_t<_Env>...
-        >
+        const noexcept
+        -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
         requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>)
       {
         // If child doesn't complete inline, delegate to child's completion scheduler
@@ -122,11 +116,7 @@ namespace STDEXEC {
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<
-          get_completion_domain_t<_SetTag>,
-          env_of_t<_Child>,
-          __env2_t<_Env>...
-        > {
+        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...> {
         return {};
       }
 

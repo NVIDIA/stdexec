@@ -116,9 +116,6 @@ namespace STDEXEC {
   // The attributes of a sender adaptor that does not introduce asynchrony.
   template <class _Sender>
   struct __sync_attrs {
-    using __t = __sync_attrs;
-    using __id = __sync_attrs;
-
     [[nodiscard]]
     constexpr auto query(__is_scheduler_affine_t) const noexcept {
       return __mbool<__is_scheduler_affine<_Sender>>();

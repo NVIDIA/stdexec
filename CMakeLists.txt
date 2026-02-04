@@ -284,9 +284,8 @@ target_compile_options(stdexec_executable_flags INTERFACE
 if (STDEXEC_IS_TOP_LEVEL)
   # Integrate with LLVM/clang tooling
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
-  add_executable(_clangd_helper_file
-    include/._clangd_helper_file.cpp
-  )
+  add_executable(_clangd_helper_file include/._clangd_helper_file.cpp)
+  target_link_libraries(_clangd_helper_file PRIVATE STDEXEC::stdexec)
 endif()
 
 # Set up nvexec library

@@ -142,8 +142,6 @@ namespace {
   };
 
   struct completes_if {
-    using __t = completes_if;
-    using __id = completes_if;
     using sender_concept = STDEXEC::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 

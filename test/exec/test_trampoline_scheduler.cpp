@@ -30,8 +30,6 @@ namespace {
 
   struct fails_alot {
     using sender_concept = ex::sender_t;
-    using __t = fails_alot;
-    using __id = fails_alot;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(), ex::set_error_t(try_again)>;
 

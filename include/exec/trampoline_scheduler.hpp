@@ -141,42 +141,35 @@ namespace exec {
         const std::size_t __max_recursion_depth_;
       };
 
-      template <class _ReceiverId>
-      struct __operation {
-        using _Receiver = STDEXEC::__t<_ReceiverId>;
+      template <class _Receiver>
+      struct __operation : __operation_base {
+        constexpr explicit __operation(
+          _Receiver __rcvr,
+          std::size_t __max_size,
+          std::size_t __max_depth) noexcept
+          : __operation_base(&__execute_impl, __max_size, __max_depth)
+          , __rcvr_(static_cast<_Receiver&&>(__rcvr)) {
+        }
 
-        struct __t : __operation_base {
-          using __id = __operation;
-          STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __receiver_;
-
-          constexpr explicit __t(
-            _Receiver __rcvr,
-            std::size_t __max_size,
-            std::size_t __max_depth) noexcept
-            : __operation_base(&__t::__execute_impl, __max_size, __max_depth)
-            , __receiver_(static_cast<_Receiver&&>(__rcvr)) {
-          }
-
-          static constexpr void __execute_impl(__operation_base* __op) noexcept {
-            auto& __self = *static_cast<__t*>(__op);
-            if (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
-              STDEXEC::set_value(static_cast<_Receiver&&>(__self.__receiver_));
+        static constexpr void __execute_impl(__operation_base* __op) noexcept {
+          auto& __self = *static_cast<__operation*>(__op);
+          if (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>) {
+            STDEXEC::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
+          } else {
+            if (get_stop_token(get_env(__self.__rcvr_)).stop_requested()) {
+              STDEXEC::set_stopped(static_cast<_Receiver&&>(__self.__rcvr_));
             } else {
-              if (get_stop_token(get_env(__self.__receiver_)).stop_requested()) {
-                STDEXEC::set_stopped(static_cast<_Receiver&&>(__self.__receiver_));
-              } else {
-                STDEXEC::set_value(static_cast<_Receiver&&>(__self.__receiver_));
-              }
+              STDEXEC::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
             }
           }
-        };
+        }
+
+        STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+        _Receiver __rcvr_;
       };
 
       struct __schedule_sender;
       friend __schedule_sender;
-
-      template <class _Receiver>
-      using __operation_t = STDEXEC::__t<__operation<__id<__decay_t<_Receiver>>>>;
 
       struct __schedule_sender {
         using sender_concept = STDEXEC::sender_t;
@@ -191,8 +184,8 @@ namespace exec {
         }
 
         template <receiver_of<completion_signatures> _Receiver>
-        constexpr auto connect(_Receiver __rcvr) const noexcept -> __operation_t<_Receiver> {
-          return __operation_t<_Receiver>{
+        constexpr auto connect(_Receiver __rcvr) const noexcept -> __operation<_Receiver> {
+          return __operation<_Receiver>{
             static_cast<_Receiver&&>(__rcvr), __max_recursion_size_, __max_recursion_depth_};
         }
 

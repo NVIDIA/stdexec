@@ -69,9 +69,6 @@ namespace STDEXEC {
 
   template <class _Query, class _Transform>
   struct __query<_Query, __no_default, _Transform> {
-    using __t = _Query;
-    using __id = _Query;
-
     template <class _Sig>
     static inline constexpr _Query (*signature)(_Sig) = nullptr;
 
