@@ -81,4 +81,19 @@ namespace {
 
     ::STDEXEC::sync_wait(std::move(sndr));
   }
+
+  TEST_CASE("fork_join can be nested", "[adaptors][fork_join]") {
+    std::atomic<int> witness = 0;
+
+    auto make_then = [&witness]() {
+      return ::STDEXEC::then([&witness]() noexcept { ++witness; });
+    };
+
+    auto sndr = ::STDEXEC::just() | make_then()
+              | exec::fork_join(make_then(), exec::fork_join(make_then(), make_then()));
+
+    ::STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(witness == 4);
+  }
 } // namespace
