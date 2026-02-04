@@ -15,33 +15,20 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
+#include "__config.hpp"
+#include "__type_traits.hpp"
 
-namespace STDEXEC::__std_concepts {
-#if STDEXEC_HAS_STD_CONCEPTS_HEADER()
-  using std::invocable;
-#else
-  template <class _Fun, class... _As>
-  concept invocable = requires(_Fun&& __f, _As&&... __as) {
-    std::invoke(static_cast<_Fun&&>(__f), static_cast<_As&&>(__as)...);
-  };
-#endif
-} // namespace STDEXEC::__std_concepts
-
-namespace std {
-  using namespace STDEXEC::__std_concepts;
-} // namespace std
+#define STDEXEC_TAG_INVOKE_DEPRECATED_MSG                                                          \
+  "The use of tag_invoke as a means of customization is deprecated. Please use member functions "  \
+  "instead."
 
 namespace STDEXEC {
   // [func.tag_invoke], tag_invoke
-  namespace __tag_invoke {
+  namespace __dispatch {
     constexpr void tag_invoke();
 
-    // NOT TO SPEC: Don't require tag_invocable to subsume invocable.
-    // std::invoke is more expensive at compile time than necessary,
-    // and results in diagnostics that are more verbose than necessary.
     template <class _Tag, class... _Args>
-    concept tag_invocable = requires(_Tag __tag, _Args&&... __args) {
+    concept __tag_invocable = requires(_Tag __tag, _Args&&... __args) {
       tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
     };
 
@@ -52,54 +39,72 @@ namespace STDEXEC {
       };
     };
 
-    // NOT TO SPEC: nothrow_tag_invocable subsumes tag_invocable
     template <class _Tag, class... _Args>
-    concept nothrow_tag_invocable =
-      tag_invocable<_Tag, _Args...> && requires(_Tag __tag, _Args&&... __args) {
+    concept __nothrow_tag_invocable =
+      __tag_invocable<_Tag, _Args...> && requires(_Tag __tag, _Args&&... __args) {
         { tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...) } noexcept;
       };
 
     template <class _Tag, class... _Args>
-    using tag_invoke_result_t = decltype(tag_invoke(__declval<_Tag>(), __declval<_Args>()...));
+    using __tag_invoke_result_t = decltype(tag_invoke(__declval<_Tag>(), __declval<_Args>()...));
 
     template <class _Tag, class... _Args>
-    struct tag_invoke_result { };
+    struct __tag_invoke_result { };
 
     template <class _Tag, class... _Args>
-      requires tag_invocable<_Tag, _Args...>
-    struct tag_invoke_result<_Tag, _Args...> {
-      using type = tag_invoke_result_t<_Tag, _Args...>;
+      requires __tag_invocable<_Tag, _Args...>
+    struct __tag_invoke_result<_Tag, _Args...> {
+      using type = __tag_invoke_result_t<_Tag, _Args...>;
     };
 
-    struct tag_invoke_t {
+    struct __tag_invoke_t {
       template <class _Tag, class... _Args>
-        requires tag_invocable<_Tag, _Args...>
-      [[deprecated(
-        "The use of tag_invoke as a means of customization is deprecated. "
-        "Please use member functions instead.")]]
+        requires __tag_invocable<_Tag, _Args...>
+      [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
       STDEXEC_ATTRIBUTE(always_inline) constexpr auto
         operator()(_Tag __tag, _Args&&... __args) const
-        noexcept(nothrow_tag_invocable<_Tag, _Args...>) -> tag_invoke_result_t<_Tag, _Args...> {
+        noexcept(__nothrow_tag_invocable<_Tag, _Args...>) -> __tag_invoke_result_t<_Tag, _Args...> {
         return tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
       }
     };
 
-  } // namespace __tag_invoke
+  } // namespace __dispatch
 
-  using __tag_invoke::tag_invoke_t;
+  using __dispatch::__tag_invoke_t;
 
   namespace __ti {
-    inline constexpr tag_invoke_t tag_invoke{};
+    inline constexpr __tag_invoke_t __tag_invoke{};
+
+    [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
+    inline constexpr __tag_invoke_t tag_invoke = __tag_invoke;
   } // namespace __ti
 
   using namespace __ti;
 
-  template <auto& _Tag>
-  using tag_t = __decay_t<decltype(_Tag)>;
+  using __dispatch::__tag_invocable;
+  using __dispatch::__tag_invocable_r;
+  using __dispatch::__nothrow_tag_invocable;
+  using __dispatch::__tag_invoke_result_t;
+  using __dispatch::__tag_invoke_result;
 
-  using __tag_invoke::tag_invocable;
-  using __tag_invoke::__tag_invocable_r;
-  using __tag_invoke::nothrow_tag_invocable;
-  using __tag_invoke::tag_invoke_result_t;
-  using __tag_invoke::tag_invoke_result;
+  // Deprecated interfaces
+  template <class _Tag, class... _Args>
+  concept tag_invocable STDEXEC_DEPRECATE_CONCEPT(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)
+    = __tag_invocable<_Tag, _Args...>;
+
+  template <class _Tag, class... _Args>
+  concept nothrow_tag_invocable STDEXEC_DEPRECATE_CONCEPT(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)
+    = __nothrow_tag_invocable<_Tag, _Args...>;
+
+  template <class _Tag, class... _Args>
+  using tag_invoke_result_t
+    [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]] = __tag_invoke_result_t<_Tag, _Args...>;
+
+  template <class _Tag, class... _Args>
+  using tag_invoke_result
+    [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]] = __tag_invoke_result<_Tag, _Args...>;
+
+  template <auto& _Tag>
+  using tag_t [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
+  = __decay_t<decltype(_Tag)>;
 } // namespace STDEXEC

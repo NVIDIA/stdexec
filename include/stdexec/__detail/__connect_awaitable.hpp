@@ -60,12 +60,13 @@ namespace STDEXEC {
 
       template <class _Ty>
         requires __has_as_awaitable_member<_Ty, _Promise&>
-              || tag_invocable<as_awaitable_t, _Ty, _Promise&>
+              || __tag_invocable<as_awaitable_t, _Ty, _Promise&>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       auto await_transform(_Ty&& __value)
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
-        return tag_invoke(as_awaitable, static_cast<_Ty&&>(__value), static_cast<_Promise&>(*this));
+        noexcept(__nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
+          -> __tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
+        return __tag_invoke(
+          as_awaitable, static_cast<_Ty&&>(__value), static_cast<_Promise&>(*this));
       }
     };
 

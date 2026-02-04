@@ -44,12 +44,12 @@ namespace STDEXEC {
       }
 
       template <class _Op>
-        requires __has_start<_Op> || tag_invocable<start_t, _Op &>
+        requires __has_start<_Op> || __tag_invocable<start_t, _Op &>
       [[deprecated("the use of tag_invoke for start is deprecated")]]
       STDEXEC_ATTRIBUTE(always_inline) //
         constexpr void operator()(_Op &__op) const noexcept {
-        static_assert(nothrow_tag_invocable<start_t, _Op &>);
-        (void) tag_invoke(start_t{}, __op);
+        static_assert(__nothrow_tag_invocable<start_t, _Op &>);
+        (void) __tag_invoke(start_t{}, __op);
       }
     };
   } // namespace __start
