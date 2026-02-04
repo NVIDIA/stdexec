@@ -59,13 +59,12 @@ struct mpsc_single_producer_consumer : rl::test_suite<mpsc_single_producer_consu
 struct mpsc_two_producers : rl::test_suite<mpsc_two_producers, 3> {
   test_queue queue;
   test_node nodes[4] = {test_node{1}, test_node{2}, test_node{3}, test_node{4}};
-  std::atomic<int> consumed_count{0};
-  std::atomic<bool> seen[4];
+  int consumed_count{0};
+  bool seen[4];
 
   void before() {
-    consumed_count.store(0, std::memory_order_relaxed);
     for (int i = 0; i < 4; ++i) {
-      seen[i].store(false, std::memory_order_relaxed);
+      seen[i] = false;
     }
   }
 
@@ -80,25 +79,23 @@ struct mpsc_two_producers : rl::test_suite<mpsc_two_producers, 3> {
       queue.push_back(&nodes[3]);
     } else {
       // Consumer
-      int count = 0;
-      while (count < 4) {
+      while (consumed_count < 4) {
         test_node* node = queue.pop_front();
         if (node) {
           int idx = node->value_ - 1;
           RL_ASSERT(idx >= 0 && idx < 4);
-          bool was_seen = seen[idx].exchange(true, std::memory_order_relaxed);
+          bool was_seen = std::exchange(seen[idx], true);
           RL_ASSERT(!was_seen); // Each node should be seen exactly once
-          ++count;
+          ++consumed_count;
         }
       }
-      consumed_count.store(count, std::memory_order_relaxed);
     }
   }
 
   void after() {
-    RL_ASSERT(consumed_count.load() == 4);
+    RL_ASSERT(consumed_count == 4);
     for (int i = 0; i < 4; ++i) {
-      RL_ASSERT(seen[i].load());
+      RL_ASSERT(seen[i]);
     }
   }
 };
@@ -202,13 +199,12 @@ struct mpsc_five_prod_one_cons : rl::test_suite<mpsc_five_prod_one_cons, 6> {
     // Producer 4: values 40000-40001
     test_node{40000}, test_node{40001}
   };
-  std::atomic<int> consumed_count{0};
-  std::atomic<bool> seen[10];
+  int consumed_count{0};
+  bool seen[10];
 
   void before() {
-    consumed_count.store(0, std::memory_order_relaxed);
     for (int i = 0; i < 10; ++i) {
-      seen[i].store(false, std::memory_order_relaxed);
+      seen[i] = false;
     }
   }
 
@@ -220,8 +216,7 @@ struct mpsc_five_prod_one_cons : rl::test_suite<mpsc_five_prod_one_cons, 6> {
       queue.push_back(&nodes[base_idx + 1]);
     } else {
       // Consumer thread (5)
-      std::atomic<int> count = 0;
-      while (count < 10) {
+      while (consumed_count < 10) {
         test_node* node = queue.pop_front();
         if (node) {
           // Map value to index
@@ -234,19 +229,18 @@ struct mpsc_five_prod_one_cons : rl::test_suite<mpsc_five_prod_one_cons, 6> {
             idx = producer_id * 2 + item_in_producer;
           }
           RL_ASSERT(idx >= 0 && idx < 10);
-          bool was_seen = seen[idx].exchange(true, std::memory_order_relaxed);
+          bool was_seen = std::exchange(seen[idx], true);
           RL_ASSERT(!was_seen); // Each node should be seen exactly once
-          count.fetch_add(1);
+          ++consumed_count;
         }
       }
-      consumed_count.store(count, std::memory_order_relaxed);
     }
   }
 
   void after() {
-    RL_ASSERT(consumed_count.load() == 10);
+    RL_ASSERT(consumed_count == 10);
     for (int i = 0; i < 10; ++i) {
-      RL_ASSERT(seen[i].load());
+      RL_ASSERT(seen[i]);
     }
   }
 };
@@ -258,11 +252,10 @@ struct mpsc_five_producers_ordered : rl::test_suite<mpsc_five_producers_ordered,
 
   test_queue queue;
   test_node nodes[TOTAL_ITEMS];
-  std::atomic<int> consumed_count{0};
+  int consumed_count{0};
   int consumed_values[TOTAL_ITEMS];
 
   void before() {
-    consumed_count.store(0, std::memory_order_relaxed);
     for (int i = 0; i < TOTAL_ITEMS; ++i) {
       consumed_values[i] = -1;
       // Initialize nodes with their values
@@ -279,19 +272,18 @@ struct mpsc_five_producers_ordered : rl::test_suite<mpsc_five_producers_ordered,
       }
     } else {
       int count = 0;
-      while (count < TOTAL_ITEMS) {
+      while (consumed_count < TOTAL_ITEMS) {
         test_node* node = queue.pop_front();
         if (node) {
           consumed_values[count] = node->value_;
-          ++count;
+          ++consumed_count;
         }
       }
-      consumed_count.store(count, std::memory_order_relaxed);
     }
   }
 
   void after() {
-    RL_ASSERT(consumed_count.load() == TOTAL_ITEMS);
+    RL_ASSERT(consumed_count == TOTAL_ITEMS);
     
     // Check that each value appears exactly once
     bool seen[TOTAL_ITEMS + 1] = {false}; // values are 1-500, so need 501 elements
