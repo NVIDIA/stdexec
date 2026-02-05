@@ -19,7 +19,7 @@
 #include <stdexec/__detail/__intrusive_mpsc_queue.hpp>
 
 struct test_node {
-  std::atomic<void*> next_{nullptr};
+  std::atomic<test_node*> next_{nullptr};
   int value_{0};
 
   test_node() = default;
@@ -271,11 +271,11 @@ struct mpsc_five_producers_ordered : rl::test_suite<mpsc_five_producers_ordered,
         queue.push_back(&nodes[start_idx + i]);
       }
     } else {
-      int count = 0;
+      // int count = 0;
       while (consumed_count < TOTAL_ITEMS) {
         test_node* node = queue.pop_front();
         if (node) {
-          consumed_values[count] = node->value_;
+          consumed_values[consumed_count] = node->value_;
           ++consumed_count;
         }
       }

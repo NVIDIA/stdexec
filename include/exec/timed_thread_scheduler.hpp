@@ -53,7 +53,7 @@ namespace exec {
         , set_value_{set_value} {
       }
 
-      STDEXEC::__std::atomic<void*> next_{nullptr};
+      STDEXEC::__std::atomic<timed_thread_operation_base*> next_{nullptr};
       command_type command_;
       void (*set_value_)(timed_thread_operation_base*) noexcept;
     };

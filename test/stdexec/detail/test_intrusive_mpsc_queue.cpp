@@ -10,7 +10,7 @@
 namespace {
 
   struct test_node {
-    std::atomic<void*> next_{nullptr};
+    std::atomic<test_node*> next_{nullptr};
     int value_{0};
 
     test_node() = default;
