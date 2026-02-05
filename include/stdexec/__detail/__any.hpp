@@ -977,7 +977,7 @@ namespace STDEXEC::__any {
 
       STDEXEC_IF_NOT_CONSTEVAL {
         STDEXEC_ASSERT(
-          (std::convertible_to<_Value &, __value_ref_t>)
+          (std::is_convertible_v<_Value &, __value_ref_t>)
           && "attempt to get a mutable reference from a const reference, or an rvalue from an "
              "lvalue");
       }

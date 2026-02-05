@@ -314,48 +314,38 @@ namespace STDEXEC {
 #endif
   } // namespace __std
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Winvalid-constexpr")
-
-  inline constexpr void __debug_printf_v(const char* __fmt, va_list __args) noexcept {
-    STDEXEC_IF_CONSTEVAL {
-      __std::unreachable();
-    }
-    else {
-      std::vprintf(__fmt, __args);
-      std::fflush(stdout);
-    }
+  inline void __debug_vprintf(const char* __fmt, va_list __args) noexcept {
+    std::vprintf(__fmt, __args);
+    std::fflush(stdout);
   }
 
   template <class...> // To avoid gcc error about va_list not being usable in a constexpr function
-  constexpr void __debug_printf(const char* __fmt, ...) noexcept {
-    STDEXEC_IF_CONSTEVAL {
-      __std::unreachable();
-    }
-    else {
-      va_list __args;
-      va_start(__args, __fmt);
-      STDEXEC::__debug_printf_v(__fmt, __args);
-      va_end(__args);
-    }
+  inline void __debug_printf(const char* __fmt, ...) noexcept {
+    va_list __args;
+    va_start(__args, __fmt);
+    STDEXEC::__debug_vprintf(__fmt, __args);
+    va_end(__args);
   }
 
   template <class _Return = void>
   [[noreturn]]
   constexpr _Return __die(const char* __fmt, ...) noexcept {
     STDEXEC_IF_CONSTEVAL {
-      __std::unreachable();
+      // The following `if constexpr` is needed to keep compilers from complaining that
+      // neither branch of the `if consteval` (above) is a constant expression.
+      if constexpr (!__mnever<_Return>)
+      {
+        __std::unreachable();
+      }
     }
     else {
       va_list __args;
       va_start(__args, __fmt);
-      STDEXEC::__debug_printf_v(__fmt, __args);
+      STDEXEC::__debug_vprintf(__fmt, __args);
       va_end(__args);
       STDEXEC_TERMINATE();
     }
   }
-
-  STDEXEC_PRAGMA_POP()
 } // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
