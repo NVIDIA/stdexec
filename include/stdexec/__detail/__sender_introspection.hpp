@@ -87,13 +87,13 @@ namespace STDEXEC {
   inline constexpr std::size_t __nbr_children_of = __tuple_size_v<_Sender> - 2;
 
   template <auto _Descriptor>
-  struct __muncurry_<__sexpr<_Descriptor>> : decltype(_Descriptor()){};
+  struct __mfor<__sexpr<_Descriptor>> : decltype(_Descriptor()){};
 
   template <auto _Descriptor>
-  struct __muncurry_<__sexpr<_Descriptor> &> : decltype(_Descriptor()){};
+  struct __mfor<__sexpr<_Descriptor> &> : decltype(_Descriptor()){};
 
   template <auto _Descriptor>
-  struct __muncurry_<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
+  struct __mfor<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
   template <class _Sender>
   concept sender_expr = __minvocable_q<tag_of_t, _Sender>;
