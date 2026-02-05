@@ -570,6 +570,14 @@ namespace STDEXEC {
 #  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 0
 #endif
 
+#if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
+#  define STDEXEC_IF_CONSTEVAL if consteval
+#  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
+#else
+#  define STDEXEC_IF_CONSTEVAL if (std::is_constant_evaluated())
+#  define STDEXEC_IF_NOT_CONSTEVAL if (std::is_constant_evaluated()) {} else
+#endif
+
 #ifdef STDEXEC_ASSERT
 #  error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
 #endif
@@ -738,18 +746,25 @@ namespace STDEXEC {
     STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
 
 #  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                           \
-    template <class... Ts>                                                                         \
+    template <class... _Ts>                                                                        \
       STDEXEC_ATTRIBUTE(always_inline)                                                             \
-      auto _FN(Ts&&... ts)                                                                         \
+      auto _FN(_Ts&&... __args)                                                                    \
       && STDEXEC_AUTO_RETURN(                                                                      \
-        decltype(STDEXEC::__get_self<Ts...>(                                                       \
-          *this))::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<Ts&&>(ts)...))       \
+           decltype(STDEXEC::__get_self<_Ts...>(*this))::STDEXEC_PP_CAT(static_, _FN)(             \
+             std::move(*this), static_cast<_Ts&&>(__args)...))                                     \
                                                                                                    \
-        template <class... Ts>                                                                     \
-        STDEXEC_ATTRIBUTE(always_inline)                                                           \
-        auto _FN(Ts&&... ts) const & STDEXEC_AUTO_RETURN(                                          \
-          decltype(STDEXEC::__get_self<Ts...>(                                                     \
-            *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<Ts&&>(ts)...))
+             template <class... _Ts>                                                               \
+             STDEXEC_ATTRIBUTE(always_inline)                                                      \
+             auto _FN(_Ts&&... __args)                                                             \
+           & STDEXEC_AUTO_RETURN(                                                                  \
+             decltype(STDEXEC::__get_self<_Ts...>(                                                 \
+               *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...))        \
+                                                                                                   \
+             template <class... _Ts>                                                               \
+             STDEXEC_ATTRIBUTE(always_inline)                                                      \
+             auto _FN(_Ts&&... __args) const & STDEXEC_AUTO_RETURN(                                \
+               decltype(STDEXEC::__get_self<_Ts...>(                                               \
+                 *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
 #  define STDEXEC_EXPLICIT_THIS_EAT_auto
