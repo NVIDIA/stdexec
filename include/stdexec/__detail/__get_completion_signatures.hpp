@@ -238,10 +238,11 @@ namespace STDEXEC {
   }
 
   template <class _Sender, class _Env>
-    requires __has_get_completion_signatures<_Sender, _Env>
+    requires assert_with<
+      __has_get_completion_signatures<_Sender, _Env>, 
+      __unrecognized_sender_error_t<transform_sender_result_t<_Sender, _Env>, _Env>>
   consteval auto get_completion_signatures() {
     using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
-    static_assert(!__merror<__new_sndr_t>);
     return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
   }
 
@@ -255,7 +256,9 @@ namespace STDEXEC {
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
   template <class _Sender, class... _Env>
-    requires enable_sender<__decay_t<_Sender>>
+    requires assert_with<
+      enable_sender<__decay_t<_Sender>>, 
+      __unrecognized_sender_error_t<__decay_t<_Sender>, _Env...>>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
 

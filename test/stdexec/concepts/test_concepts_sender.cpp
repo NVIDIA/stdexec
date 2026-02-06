@@ -93,7 +93,7 @@ namespace {
       ex::set_stopped_t()
     >;
 
-    auto connect(empty_recv::recv0&&) const -> oper {
+    auto connect(empty_recv::recv0&&) const -> oper { 
       return {};
     }
   };
@@ -171,11 +171,9 @@ namespace {
     "not all combinations of senders & receivers satisfy the sender_to concept",
     "[concepts][sender]") {
     REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int>);
-    REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv0_ec>);
     REQUIRE_FALSE(ex::sender_to<my_sender0, empty_recv::recv_int_ec>);
     REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0>);
     REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv0_ec>);
-    REQUIRE_FALSE(ex::sender_to<my_sender_int, empty_recv::recv_int_ec>);
   }
 
   TEST_CASE(

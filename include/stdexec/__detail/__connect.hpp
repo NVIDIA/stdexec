@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__execution_fwd.hpp"
+#include "__diagnostics.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__completion_signatures_of.hpp"
@@ -206,7 +207,9 @@ namespace STDEXEC {
         class _Receiver,
         class _DeclFn = __connect_declfn_t<_Sender, _Receiver>
       >
-        requires __connectable_to<_Sender, _Receiver>
+        requires assert_with<
+          __connectable_to<_Sender, _Receiver>, 
+          __connect_error_t<transform_sender_result_t<_Sender, env_of_t<_Receiver>>, _Receiver>>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
         noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn> {
