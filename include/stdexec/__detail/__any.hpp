@@ -530,7 +530,9 @@ namespace STDEXEC::__any {
     class _Extension = __iabstract<_Interface>
   >
   struct __reference_model
-    : _Interface<__mcall1<__bases_of<_Interface>, __reference_root<_Interface, _Value, _Extension>>> {
+    : _Interface<
+        __mcall1<__bases_of<_Interface>, __reference_root<_Interface, _Value, _Extension>>
+      > {
     using __base_t =
       _Interface<__mcall1<__bases_of<_Interface>, __reference_root<_Interface, _Value, _Extension>>>;
     using __base_t::__base_t;
@@ -594,7 +596,7 @@ namespace STDEXEC::__any {
   struct interface : _Base {
     static_assert(std::popcount(_BufferAlignment) == 1, "BufferAlignment must be a power of two");
     using __bases_type = _BaseInterfaces;
-    using __interface_type = __iabstract<_Interface, _BaseInterfaces>;
+    using __this_interface_type = __iabstract<_Interface, _BaseInterfaces>;
     using _Base::__indirect_bind_;
     using _Base::__slice_to_;
     using _Base::_Base;
@@ -608,7 +610,7 @@ namespace STDEXEC::__any {
                                                  : _Base::__buffer_alignment;
 
     static constexpr bool __nothrow_slice =
-      STDEXEC::__any::__nothrow_slice<__interface_type, _Base, __buffer_size>;
+      STDEXEC::__any::__nothrow_slice<__this_interface_type, _Base, __buffer_size>;
 
     //! @pre !empty(*this)
     constexpr virtual void
@@ -616,7 +618,8 @@ namespace STDEXEC::__any {
       STDEXEC_ASSERT(!__empty(*this));
       if constexpr (_Base::__box_kind != __box_kind::__abstract) {
         using __root_interface_t = _Base::__interface_type;
-        constexpr bool __is_root_interface = std::same_as<__root_interface_t, __interface_type>;
+        constexpr bool __is_root_interface =
+          std::same_as<__root_interface_t, __this_interface_type>;
         STDEXEC_ASSERT(!__is_root_interface);
         if constexpr (!__is_root_interface) {
           if constexpr (_Base::__box_kind == __box_kind::__proxy) {
@@ -893,7 +896,7 @@ namespace STDEXEC::__any {
   struct __reference_union {
     union {
       _Value *__value_ptr_ = nullptr;
-      __iroot *__root_ptr_; // points to a __value_root<_Extension, __value_type>
+      __iroot *__root_ptr_; // points to a __value_root<_Extension, _Value>
     };
     bool __which_ = false; // true if root, false if value
   };

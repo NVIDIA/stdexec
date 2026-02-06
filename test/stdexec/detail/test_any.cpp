@@ -90,7 +90,8 @@ struct foobar {
   State state;
 };
 
-static_assert(std::derived_from<any::__iabstract<any::__icopyable>, any::__iabstract<any::__imovable>>);
+static_assert(
+  std::derived_from<any::__iabstract<any::__icopyable>, any::__iabstract<any::__imovable>>);
 static_assert(std::derived_from<any::__iabstract<ibar>, any::__iabstract<ifoo>>);
 static_assert(!std::derived_from<any::__iabstract<ibar>, any::__iabstract<any::__icopyable>>);
 static_assert(any::__extension_of<any::__iabstract<ibar>, any::__icopyable>);
@@ -117,7 +118,7 @@ struct IBar : any::interface<IBar, Base, any::__extends<any::__icopyable>> {
 template <class Base>
 struct IBaz
   : any::interface<IBaz, Base, any::__extends<IFoo, IBar>> // inherits twice
-                                                         // from __icopyable
+                                                           // from __icopyable
 {
   using IBaz::interface::interface;
 
@@ -162,8 +163,8 @@ consteval void test_consteval() {
   auto y = any::__any_cast<foobar<T>>(pifoo);
 }
 
-TEMPLATE_TEST_CASE("basic usage", "[any]", foobar<Small>, foobar<Big>) {
-#if ANY_COMPILER_CLANG || ANY_COMPILER_GCC >= 14'03
+TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>) {
+#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
   test_consteval<TestType>(); // NOLINT(invalid_consteval_call)
 #endif
 

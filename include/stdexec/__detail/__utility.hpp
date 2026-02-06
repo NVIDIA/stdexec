@@ -259,21 +259,21 @@ namespace STDEXEC {
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __polymorphic_downcast
-  template <class ResultPtr, class CvInterface>
+  template <class _ResultPtr, class _CvInterface>
   [[nodiscard]]
-  inline constexpr auto* __polymorphic_downcast(CvInterface* from) noexcept {
-    static_assert(std::is_pointer_v<ResultPtr>);
-    using value_type = __copy_cvref_t<CvInterface, std::remove_pointer_t<ResultPtr>>;
+  inline constexpr auto* __polymorphic_downcast(_CvInterface* __from_ptr) noexcept {
+    static_assert(std::is_pointer_v<_ResultPtr>);
+    using __value_type = __copy_cvref_t<_CvInterface, std::remove_pointer_t<_ResultPtr>>;
     static_assert(
-      std::derived_from<value_type, CvInterface>,
+      std::derived_from<__value_type, _CvInterface>,
       "__polymorphic_downcast requires From to be a base class of To");
 
 #if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
     STDEXEC_IF_NOT_CONSTEVAL {
-      STDEXEC_ASSERT(dynamic_cast<value_type*>(from) != nullptr);
+      STDEXEC_ASSERT(dynamic_cast<__value_type*>(__from_ptr) != nullptr);
     }
 #endif
-    return static_cast<value_type*>(from);
+    return static_cast<__value_type*>(__from_ptr);
   }
 
   namespace __std {
@@ -284,14 +284,14 @@ namespace STDEXEC {
 #else
     template <class _Ty>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-    _Ty* start_lifetime_as(void* p) noexcept {
-      return std::launder(static_cast<_Ty*>(p));
+    _Ty* start_lifetime_as(void* __ptr) noexcept {
+      return std::launder(static_cast<_Ty*>(__ptr));
     }
 
     template <class _Ty>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-    _Ty const * start_lifetime_as(void const * p) noexcept {
-      return std::launder(static_cast<_Ty const *>(p));
+    _Ty const * start_lifetime_as(void const * __ptr) noexcept {
+      return std::launder(static_cast<_Ty const *>(__ptr));
     }
 #endif
 
