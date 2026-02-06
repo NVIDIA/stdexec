@@ -614,7 +614,7 @@ namespace STDEXEC::__any {
 
     //! @pre !empty(*this)
     constexpr virtual void
-      __slice_to_(__value_proxy_root<_Interface> &__out) noexcept(__nothrow_slice) {
+      __slice_to_(__value_proxy_root<_Interface> &__result) noexcept(__nothrow_slice) {
       STDEXEC_ASSERT(!__empty(*this));
       if constexpr (_Base::__box_kind != __box_kind::__abstract) {
         using __root_interface_t = _Base::__interface_type;
@@ -623,36 +623,36 @@ namespace STDEXEC::__any {
         STDEXEC_ASSERT(!__is_root_interface);
         if constexpr (!__is_root_interface) {
           if constexpr (_Base::__box_kind == __box_kind::__proxy) {
-            __value(*this).__slice_to_(__out);
+            __value(*this).__slice_to_(__result);
             __reset(*this);
           } else // if constexpr (_Base::__box_kind == __box_kind::__object)
           {
             // Move from type-erased values, but not from type-erased references
             constexpr bool __is_value = (_Base::__root_kind == __root_kind::__value);
             // potentially throwing:
-            __out.emplace(STDEXEC_DECAY_COPY(STDEXEC::__move_if<__is_value>(__value(*this))));
+            __result.emplace(STDEXEC_DECAY_COPY(STDEXEC::__move_if<__is_value>(__value(*this))));
           }
         }
       }
     }
 
     //! @pre !empty(*this)
-    constexpr virtual void __indirect_bind_(__reference_proxy_root<_Interface> &__out) noexcept {
+    constexpr virtual void __indirect_bind_(__reference_proxy_root<_Interface> &__result) noexcept {
       STDEXEC_ASSERT(!__empty(*this));
       if constexpr (_Base::__box_kind == __box_kind::__proxy)
-        __value(*this).__indirect_bind_(__out);
+        __value(*this).__indirect_bind_(__result);
       else if constexpr (_Base::__box_kind == __box_kind::__object)
-        __out.__object_bind_(*this);
+        __result.__object_bind_(*this);
     }
 
     //! @pre !empty(*this)
     constexpr virtual void
-      __indirect_bind_(__reference_proxy_root<_Interface> &__out) const noexcept {
+      __indirect_bind_(__reference_proxy_root<_Interface> &__result) const noexcept {
       STDEXEC_ASSERT(!__empty(*this));
       if constexpr (_Base::__box_kind == __box_kind::__proxy)
-        __value(*this).__indirect_bind_(__out);
+        __value(*this).__indirect_bind_(__result);
       else if constexpr (_Base::__box_kind == __box_kind::__object)
-        __out.__object_bind_(*this);
+        __result.__object_bind_(*this);
     }
   };
 
@@ -1099,7 +1099,7 @@ namespace STDEXEC::__any {
       else {
         if constexpr (std::derived_from<_CvModel, __iabstract<_Interface>>) {
           //! Optimize for when Base derives from __iabstract<_Interface>. _Store the
-          //! address of __value(__other) directly in __out as a tagged __ptr instead of
+          //! address of __value(__other) directly in __result as a tagged ptr instead of
           //! introducing an indirection.
           //! @post __is_tagged() == true
           auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
@@ -1589,7 +1589,7 @@ namespace STDEXEC::__any {
       if (__proxy_ptr == nullptr || __empty(*__proxy_ptr))
         return;
       // _Optimize for when _CvValueProxy derives from __iabstract<_Interface>. _Store the address
-      // of __value(__other) directly in __out as a tagged __ptr instead of introducing an
+      // of __value(__other) directly in __result as a tagged ptr instead of introducing an
       // indirection.
       else if constexpr (std::derived_from<_CvValueProxy, __iabstract<_Interface>>)
         __reference_.__model_bind_(STDEXEC::__as_const_if<__is_const_>(__value(*__proxy_ptr)));
