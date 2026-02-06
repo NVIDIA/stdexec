@@ -343,7 +343,7 @@ namespace STDEXEC {
       va_start(__args, __fmt);
       STDEXEC::__debug_vprintf(__fmt, __args);
       va_end(__args);
-      STDEXEC_TERMINATE();
+      std::terminate();
     }
   }
 } // namespace STDEXEC

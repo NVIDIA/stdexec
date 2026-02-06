@@ -501,9 +501,9 @@ namespace STDEXEC::__any {
         return *std::construct_at(
           reinterpret_cast<_Model *>(__buff.data()), static_cast<_Args &&>(__args)...);
       } else {
-        auto *const model = ::new _Model(static_cast<_Args &&>(__args)...);
-        *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(model);
-        return *model;
+        auto *const __model = ::new _Model(static_cast<_Args &&>(__args)...);
+        *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(__model);
+        return *__model;
       }
     }
   }
@@ -816,9 +816,9 @@ namespace STDEXEC::__any {
     constexpr _Value &__emplace_(_Args &&...__args) {
       static_assert(__decays_to<_Value, _Value>, "Value must be an object type.");
       using __model_type = __value_model<_Interface, _Value>;
-      auto &model = STDEXEC::__any::__emplace_into<__model_type>(
+      auto &__model = STDEXEC::__any::__emplace_into<__model_type>(
         __root_ptr_, __buff_, static_cast<_Args &&>(__args)...);
-      return __value(model);
+      return __value(__model);
     }
 
     template <int = 0, class _CvRefValue, class _Value = std::decay_t<_CvRefValue>>
@@ -1091,10 +1091,10 @@ namespace STDEXEC::__any {
     }
 
     template <__extension_of<_Interface> _CvModel>
-    constexpr void __model_bind_(_CvModel &model) noexcept {
+    constexpr void __model_bind_(_CvModel &__model) noexcept {
       static_assert(__extension_of<_CvModel, _Interface>, "CvModel must implement Interface");
       STDEXEC_IF_CONSTEVAL {
-        model.__indirect_bind_(*this);
+        __model.__indirect_bind_(*this);
       }
       else {
         if constexpr (std::derived_from<_CvModel, __iabstract<_Interface>>) {
@@ -1103,27 +1103,31 @@ namespace STDEXEC::__any {
           //! introducing an indirection.
           //! @post __is_tagged() == true
           auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-          __ptr = static_cast<__iabstract<_Interface> *>(std::addressof(STDEXEC::__unconst(model)));
+          __ptr = static_cast<__iabstract<_Interface> *>(
+            std::addressof(STDEXEC::__unconst(__model)));
         } else {
           //! @post __is_tagged() == false
-          model.__indirect_bind_(*this);
+          __model.__indirect_bind_(*this);
         }
       }
     }
 
     template <class _CvModel>
-    constexpr void __object_bind_(_CvModel &model) noexcept {
+    constexpr void __object_bind_(_CvModel &__model) noexcept {
       static_assert(__extension_of<_CvModel, _Interface>);
       using __extension_type = _CvModel::__interface_type;
       using __value_type = _CvModel::__value_type;
       using __model_type = __reference_model<_Interface, __value_type, __extension_type>;
       if constexpr (_CvModel::__root_kind == __root_kind::__reference) {
         STDEXEC::__any::__emplace_into<__model_type>(
-          __root_ptr_, __buff_, model.__get_value_ptr_(), model.__get_root_ptr_());
+          __root_ptr_, __buff_, __model.__get_value_ptr_(), __model.__get_root_ptr_());
       } else {
-        __iroot *root = std::addressof(const_cast<std::remove_cv_t<_CvModel> &>(model));
+        __iroot *__root_ptr = std::addressof(STDEXEC::__unconst(__model));
         STDEXEC::__any::__emplace_into<__model_type>(
-          __root_ptr_, __buff_, static_cast<__value_type *>(nullptr), STDEXEC_DECAY_COPY(root));
+          __root_ptr_,
+          __buff_,
+          static_cast<__value_type *>(nullptr),
+          STDEXEC_DECAY_COPY(__root_ptr));
       }
     }
 
