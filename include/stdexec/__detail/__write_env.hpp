@@ -22,7 +22,6 @@
 #include "__env.hpp"
 #include "__queries.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__utility.hpp"
 
 namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
