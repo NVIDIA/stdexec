@@ -17,7 +17,7 @@
 
 #include "exec/repeat_until.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "stdexec/__detail/__sync_wait.hpp"
+#include "exec/trampoline_scheduler.hpp"
 #include "stdexec/execution.hpp"
 
 #include <test_common/receivers.hpp>
@@ -27,6 +27,7 @@
 
 #include <catch2/catch.hpp>
 
+#include <concepts>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -260,44 +261,42 @@ namespace {
     } while (!done);
   }
 
-  TEST_CASE("repeat composes with completion signatures") {
-    ex::sender auto only_stopped = ex::just_stopped() | exec::repeat();
-    static_assert(
-      std::same_as<ex::value_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
-      "Expect no value completions");
-    static_assert(
-      std::same_as<ex::error_types_of_t<decltype(only_stopped)>, std::variant<std::exception_ptr>>,
-      "Missing added set_error_t(std::exception_ptr)");
-    static_assert(
-      ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
-      "Missing set_stopped_t() from upstream");
+  TEST_CASE("repeat composes with completion signatures", "[adaptors][repeat]") {
+    SECTION("repeat composes with stopped upstream") {
+      ex::sender auto only_stopped = ex::just_stopped() | exec::repeat();
+      static_assert(
+        std::same_as<ex::value_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
+        "Expect no value completions");
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
+        "Expect no value completions");
+      static_assert(
+        ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
+        "Missing set_stopped_t() from upstream");
 
-    // operator| and sync_wait require valid completion signatures
-    ex::sync_wait(only_stopped | ex::upon_stopped([]() noexcept { return -1; }));
+      // operator| and sync_wait require valid completion signatures
+      ex::sync_wait(only_stopped | ex::upon_stopped([]() noexcept { return -1; }));
+    }
 
+    SECTION("repeat composes with errors upstream") {
+      ex::sender auto only_error = ex::just_error(-1) | exec::repeat();
+      static_assert(
+        std::same_as<ex::value_types_of_t<decltype(only_error)>, ex::__detail::__not_a_variant>,
+        "Expect no value completions");
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
+        "Unexpected added set_error_t(std::exception_ptr)");
 
-    ex::sender auto only_error = ex::just_error(-1) | exec::repeat();
-    static_assert(
-      std::same_as<ex::value_types_of_t<decltype(only_error)>, ex::__detail::__not_a_variant>,
-      "Expect no value completions");
-    static_assert(
-      std::same_as<
-        ex::error_types_of_t<decltype(only_error)>,
-        std::variant<int, std::exception_ptr>
-      >,
-      "Missing added set_error_t(std::exception_ptr)");
+      // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
+      using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
+      static_assert(
+        !ex::sender_of<SC, ex::set_stopped_t()>
+          || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
+        "Missing added set_stopped_t()");
 
-    // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
-    using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
-    static_assert(
-      !ex::sender_of<SC, ex::set_stopped_t()>
-        || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
-      "Missing added set_error_t(std::exception_ptr)");
-
-    // operator| and sync_wait require valid completion signatures
-    ex::sync_wait(
-      only_error //
-      | ex::upon_stopped([]() { return -1; }) | ex::upon_error([](const auto) { return -1; }));
+      // operator| and sync_wait require valid completion signatures
+      ex::sync_wait(only_error | ex::upon_error([](const auto) { return -1; }));
+    }
   }
 
   TEST_CASE(
@@ -349,5 +348,63 @@ namespace {
       throw_after = tmp;
       ++throw_after;
     } while (!done);
+  }
+
+  TEST_CASE("repeat_until conditionally adds set_error_t(exception)", "[adaptors][repeat_until]") {
+    SECTION("ensure exception isn't always added") {
+      ex::sender auto snd = ex::just(false) | exec::repeat_until();
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(snd)>, ex::__detail::__not_a_variant>,
+        "Expected no errors ");
+    }
+
+    // There are three main cases that will contribute set_error_t(std::exception_ptr)
+    // 1. value's conversion to bool could throw
+    // 2. error's copy constructor could throw
+    // 3. connect() could throw
+    SECTION("error completion is added when an error's copy ctor can throw") {
+      // 1.
+      struct To_bool_can_throw {
+        [[nodiscard]]
+        operator bool() const noexcept(false) {
+          return true;
+        }
+      };
+      ex::sender auto snd = ex::just(To_bool_can_throw{}) | exec::repeat_until();
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
+        "Missing added set_error_t(std::exception_ptr)");
+    }
+
+    SECTION("error completion is added when error->bool can throw") {
+      // 2.
+      struct Error_with_throw_copy {
+        Error_with_throw_copy() noexcept = default;
+        Error_with_throw_copy(const Error_with_throw_copy&) noexcept(false) {};
+      };
+      ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
+      static_assert(
+        std::same_as<
+          ex::error_types_of_t<decltype(snd)>,
+          std::variant<Error_with_throw_copy, std::exception_ptr>
+        >,
+        "Missing added set_error_t(std::exception_ptr)");
+    }
+
+    SECTION("error completion is added when connect can throw") {
+      // 3.
+      using Sender_connect_throws = just_with_env<ex::env<>, bool>;
+      static_assert(
+        !ex::__error_types_t<
+          ex::completion_signatures_of_t<Sender_connect_throws>,
+          ex::__mcontains<ex::set_error_t(std::exception_ptr)>
+        >::value,
+        "Sender can't already emit exception to test if repeat_until() adds it");
+
+      ex::sender auto snd = Sender_connect_throws{{}, true} | exec::repeat_until();
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
+        "Missing added set_error_t(std::exception_ptr)");
+    }
   }
 } // namespace
