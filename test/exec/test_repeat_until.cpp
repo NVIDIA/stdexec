@@ -380,7 +380,7 @@ namespace {
       // 2.
       struct Error_with_throw_copy {
         Error_with_throw_copy() noexcept = default;
-        Error_with_throw_copy(const Error_with_throw_copy&) noexcept(false) = default;
+        Error_with_throw_copy(const Error_with_throw_copy&) noexcept(false) {};
       };
       ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
       static_assert(
