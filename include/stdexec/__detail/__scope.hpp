@@ -18,7 +18,7 @@
 #include "__config.hpp"
 #include "__utility.hpp"
 
-#include <functional>
+#include <type_traits>
 
 namespace STDEXEC {
   template <class _Fn, class... _Ts>

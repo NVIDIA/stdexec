@@ -316,6 +316,7 @@ namespace STDEXEC {
 
   inline void __debug_vprintf(const char* __fmt, va_list __args) noexcept {
     std::vprintf(__fmt, __args);
+    std::putchar('\n');
     std::fflush(stdout);
   }
 

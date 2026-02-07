@@ -23,7 +23,6 @@
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
-#include "__inline_scheduler.hpp"
 #include "__meta.hpp"
 #include "__parallel_scheduler_backend.hpp"
 #include "__queries.hpp"

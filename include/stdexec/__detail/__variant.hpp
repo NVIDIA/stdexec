@@ -47,6 +47,18 @@ namespace STDEXEC {
 
   struct __monostate { };
 
+  struct __visit_t {
+    template <class _Fn, class _Variant, class... _As>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr void operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const noexcept( //
+      noexcept(__var.__visit(__declval<_Fn>(), __declval<_Variant>(), __declval<_As>()...))) {
+      return __var.__visit(
+        static_cast<_Fn &&>(__fn), static_cast<_Variant &&>(__var), static_cast<_As &&>(__as)...);
+    }
+  };
+
+  inline constexpr __visit_t __visit{};
+
   namespace __var {
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto __mk_index_guard(std::size_t &__index, std::size_t __new) noexcept {
@@ -87,10 +99,19 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void __destroy() noexcept {
         auto __index = std::exchange(__index_, __variant_npos);
+        void *const __ptr = __get_ptr();
         if (__variant_npos != __index) {
-          ((_Is == __index ? std::destroy_at(static_cast<_Ts *>(__get_ptr())) : void(0)), ...);
+          ((_Is == __index ? std::destroy_at(static_cast<_Ts *>(__ptr)) : void(0)), ...);
         }
       }
+
+      struct __move_visitor {
+        template <class _Ty>
+        STDEXEC_ATTRIBUTE(host, device)
+        constexpr void operator()(__variant &__self, _Ty &&__val) const noexcept {
+          __self.template emplace<_Ty>(static_cast<_Ty &&>(__val));
+        }
+      };
 
      public:
       template <std::size_t _Ny>
@@ -99,12 +120,26 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(host, device)
       __variant() noexcept = default;
 
-      // immovable:
-      constexpr __variant(__variant &&) = delete;
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr __variant(__variant &&__other) noexcept {
+        static_assert(__nothrow_move_constructible<_Ts...>);
+        if (!__other.__is_valueless()) {
+          __visit(__move_visitor{}, __other, *this);
+        }
+      }
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr ~__variant() {
         __destroy();
+      }
+
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr __variant &operator=(__variant &&__other) noexcept {
+        if (this != &__other) {
+          static_assert(__nothrow_move_constructible<_Ts...>);
+          __visit(__move_visitor{}, __other, *this);
+        }
+        return *this;
       }
 
       [[nodiscard]]
@@ -246,18 +281,6 @@ namespace STDEXEC {
   } // namespace __var
 
   using __var::__variant;
-
-  struct __visit_t {
-    template <class _Fn, class _Variant, class... _As>
-    STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr void operator()(_Fn &&__fn, _Variant &&__var, _As &&...__as) const noexcept( //
-      noexcept(__var.__visit(__declval<_Fn>(), __declval<_Variant>(), __declval<_As>()...))) {
-      return __var.__visit(
-        static_cast<_Fn &&>(__fn), static_cast<_Variant &&>(__var), static_cast<_As &&>(__as)...);
-    }
-  };
-
-  inline constexpr __visit_t __visit{};
 
   template <class... _Ts>
   using __variant_for = __variant<__indices_for<_Ts...>{}, _Ts...>;
