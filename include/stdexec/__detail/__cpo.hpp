@@ -51,7 +51,7 @@
 
 #define STDEXEC_MEMFN_DECL_TAG_INVOKE(_WHICH, _QUERY, ...)                                         \
   STDEXEC_MEMFN_DECL_RETURN_ ## _WHICH(__VA_ARGS__)                                                \
-  tag_invoke(STDEXEC_MEMFN_DECL_TAG_ ## _WHICH ## _QUERY(__VA_ARGS__)
+  __tag_invoke(STDEXEC_MEMFN_DECL_TAG_ ## _WHICH ## _QUERY(__VA_ARGS__)
 
 #define STDEXEC_MEMFN_DECL_ARGS(...)                                                               \
   STDEXEC_PP_CAT(STDEXEC_EAT_THIS_, __VA_ARGS__))

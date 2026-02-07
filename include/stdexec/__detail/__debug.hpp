@@ -24,9 +24,6 @@
 #include "__query.hpp"
 #include "__sender_concepts.hpp"
 
-#include <cstdarg>
-#include <cstdio>
-
 #include <exception> // IWYU pragma: keep for std::terminate
 
 namespace STDEXEC {
@@ -194,13 +191,5 @@ namespace STDEXEC {
         STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_CvSender>, _Env>();
       }
     }
-  }
-
-  inline void __debug_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    std::vprintf(fmt, args);
-    std::fflush(stdout);
-    va_end(args);
   }
 } // namespace STDEXEC

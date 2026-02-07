@@ -60,6 +60,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_start_detached.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/other/test_execute.cpp
+    stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_utility.cpp
     stdexec/schedulers/test_task_scheduler.cpp

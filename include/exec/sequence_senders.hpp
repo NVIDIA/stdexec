@@ -137,16 +137,16 @@ namespace exec {
 
       template <receiver _Receiver, sender _Item>
         requires __has_set_next_member<_Receiver, _Item>
-              || tag_invocable<set_next_t, _Receiver&, _Item>
+              || __tag_invocable<set_next_t, _Receiver&, _Item>
       [[deprecated("the use of tag_invoke for set_next is deprecated")]]
       auto operator()(_Receiver& __rcvr, _Item&& __item) const
-        noexcept(nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
-          -> tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
+        noexcept(__nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
+          -> __tag_invoke_result_t<set_next_t, _Receiver&, _Item> {
         static_assert(
-          next_sender<tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
+          next_sender<__tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
           "The sender returned from set_next is required to complete with set_value_t() or "
           "set_stopped_t()");
-        return tag_invoke(*this, __rcvr, static_cast<_Item&&>(__item));
+        return __tag_invoke(*this, __rcvr, static_cast<_Item&&>(__item));
       }
     };
   } // namespace __sequence_sndr
@@ -292,7 +292,7 @@ namespace exec {
       __minvocable_q<__consteval_static_member_result_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
-    concept __with_tag_invoke = tag_invocable<get_item_types_t, _Sequence, _Env...>;
+    concept __with_tag_invoke = __tag_invocable<get_item_types_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
     [[nodiscard]]
@@ -314,7 +314,7 @@ namespace exec {
       } else if constexpr (__with_consteval_static_member<_Sequence>) {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
       } else if constexpr (__with_tag_invoke<_Sequence, _Env...>) {
-        using __result_t = tag_invoke_result_t<get_item_types_t, _Sequence, _Env...>;
+        using __result_t = __tag_invoke_result_t<get_item_types_t, _Sequence, _Env...>;
         return __result_t();
       } else if constexpr (
         sender_in<_Sequence, _Env...> && !enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>) {
@@ -322,40 +322,40 @@ namespace exec {
         return __result_t();
       } else if constexpr (sizeof...(_Env) == 0) {
         return STDEXEC::__dependent_sender<_Sequence>();
-      } else if constexpr ((__is_debug_env<_Env> || ...)) {
-        // This ought to cause a hard error that indicates where the problem is.
-        using __item_types_t [[maybe_unused]] = STDEXEC::__mconstant<STDEXEC_REMOVE_REFERENCE(
-          _Sequence)::template get_item_types<_Sequence, _Env...>()>;
-        return __debug::__item_types();
       } else {
         return __unrecognized_sequence_error_t<_Sequence, _Env...>();
       }
     }
 
     struct get_item_types_t {
-      template <class _Sequence, class... _Env>
-      constexpr auto operator()(_Sequence&&, const _Env&...) const noexcept {
-        using _NewSequence = STDEXEC::__maybe_transform_sender_t<_Sequence, _Env...>;
-        if constexpr (STDEXEC::__merror<_NewSequence>) {
-          return exec::__invalid_item_types(_NewSequence());
-        } else {
-          return __sequence_sndr::__get_item_types_helper<_NewSequence, _Env...>();
-        }
+      template <class _Sequence>
+      constexpr auto operator()(_Sequence&&) const noexcept {
+        return __sequence_sndr::__get_item_types_helper<_Sequence>();
+      }
+
+      template <class _Sequence, class _Env>
+      constexpr auto operator()(_Sequence&&, const _Env&) const noexcept {
+        using __new_sequence_t = transform_sender_result_t<_Sequence, _Env>;
+        static_assert(!STDEXEC::__merror<__new_sequence_t>);
+        return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
       }
     };
   } // namespace __sequence_sndr
 
   using __sequence_sndr::get_item_types_t; // for backwards compatibility
 
-  template <class _Sequence, class... _Env>
+  template <class _Sequence>
   [[nodiscard]]
   consteval auto get_item_types() {
-    using _NewSequence = STDEXEC::__maybe_transform_sender_t<_Sequence, _Env...>;
-    if constexpr (STDEXEC::__merror<_NewSequence>) {
-      return exec::__invalid_item_types(_NewSequence());
-    } else {
-      return __sequence_sndr::__get_item_types_helper<_NewSequence, _Env...>();
-    }
+    return __sequence_sndr::__get_item_types_helper<_Sequence>();
+  }
+
+  template <class _Sequence, class _Env>
+  [[nodiscard]]
+  consteval auto get_item_types() {
+    using __new_sequence_t = STDEXEC::transform_sender_result_t<_Sequence, _Env>;
+    static_assert(!STDEXEC::__merror<__new_sequence_t>);
+    return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
   }
 
   // Legacy interface:
@@ -429,7 +429,8 @@ namespace exec {
   struct _THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_ { };
 
   template <class _Sequence>
-    requires(!STDEXEC::__merror<_Sequence>) && (!STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>)
+    requires(!STDEXEC::__merror<_Sequence>)
+         && (!STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>)
   auto __check_sequence(_Sequence*) -> STDEXEC::__mexception<
     STDEXEC::_WHAT_(_ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_),
     STDEXEC::_WHY_(_THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_),
@@ -658,7 +659,7 @@ namespace exec {
       __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
     template <class _Sequence, class _Receiver>
-    concept __subscribable_with_tag_invoke = tag_invocable<subscribe_t, _Sequence, _Receiver>;
+    concept __subscribable_with_tag_invoke = __tag_invocable<subscribe_t, _Sequence, _Receiver>;
 
     struct subscribe_t {
      private:
@@ -790,7 +791,7 @@ namespace exec {
         auto _DeclFn = __get_declfn<_Sequence, _Receiver>()
       >
         requires STDEXEC::__callable<decltype(_DeclFn)>
-              || STDEXEC::tag_invocable<
+              || STDEXEC::__tag_invocable<
                    subscribe_t,
                    __transform_sender_result_t<_Sequence, _Receiver>,
                    _Receiver
@@ -798,22 +799,22 @@ namespace exec {
       [[deprecated("the use of tag_invoke for subscribe is deprecated")]]
       auto operator()(_Sequence&& __sequence, _Receiver __rcvr) const noexcept(
         __nothrow_callable<transform_sender_t, _Sequence, env_of_t<_Receiver>>
-        && STDEXEC::nothrow_tag_invocable<
+        && STDEXEC::__nothrow_tag_invocable<
           subscribe_t,
           __transform_sender_result_t<_Sequence, _Receiver>,
           _Receiver
         >)
-        -> STDEXEC::tag_invoke_result_t<
+        -> STDEXEC::__tag_invoke_result_t<
           subscribe_t,
           __transform_sender_result_t<_Sequence, _Receiver>,
           _Receiver
         > {
         using __tfx_seq_t = __transform_sender_result_t<_Sequence, _Receiver>;
-        using __result_t = tag_invoke_result_t<subscribe_t, __tfx_seq_t, _Receiver>;
+        using __result_t = __tag_invoke_result_t<subscribe_t, __tfx_seq_t, _Receiver>;
         __check_operation_state<__result_t>();
         auto&& __env = STDEXEC::get_env(__rcvr);
         auto&& __tfx_seq = STDEXEC::transform_sender(static_cast<_Sequence&&>(__sequence), __env);
-        return STDEXEC::tag_invoke(
+        return STDEXEC::__tag_invoke(
           subscribe_t{}, static_cast<__tfx_seq_t&&>(__tfx_seq), static_cast<_Receiver&&>(__rcvr));
       }
 

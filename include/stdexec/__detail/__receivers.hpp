@@ -20,7 +20,6 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
-#include "__get_completion_signatures.hpp"
 #include "__tag_invoke.hpp"
 
 #include "../functional.hpp"
@@ -76,12 +75,12 @@ namespace STDEXEC {
 
       template <class _Receiver, class... _As>
         requires __set_value_member<_Receiver, _As...>
-              || tag_invocable<set_value_t, _Receiver, _As...>
+              || __tag_invocable<set_value_t, _Receiver, _As...>
       [[deprecated("the use of tag_invoke for set_value is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
         constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept {
-        static_assert(nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
-        (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
+        static_assert(__nothrow_tag_invocable<set_value_t, _Receiver, _As...>);
+        (void) __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_As &&>(__as)...);
       }
     };
 
@@ -113,12 +112,13 @@ namespace STDEXEC {
 
       template <class _Receiver, class _Error>
         requires __set_error_member<_Receiver, _Error>
-              || tag_invocable<set_error_t, _Receiver, _Error>
+              || __tag_invocable<set_error_t, _Receiver, _Error>
       [[deprecated("the use of tag_invoke for set_error is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
         constexpr void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept {
-        static_assert(nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
-        (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_Error &&>(__err));
+        static_assert(__nothrow_tag_invocable<set_error_t, _Receiver, _Error>);
+        (void)
+          __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr), static_cast<_Error &&>(__err));
       }
     };
 
@@ -146,12 +146,12 @@ namespace STDEXEC {
       }
 
       template <class _Receiver>
-        requires __set_stopped_member<_Receiver> || tag_invocable<set_stopped_t, _Receiver>
+        requires __set_stopped_member<_Receiver> || __tag_invocable<set_stopped_t, _Receiver>
       [[deprecated("the use of tag_invoke for set_stopped is deprecated")]]
       STDEXEC_ATTRIBUTE(host, device, always_inline) //
         constexpr void operator()(_Receiver &&__rcvr) const noexcept {
-        static_assert(nothrow_tag_invocable<set_stopped_t, _Receiver>);
-        (void) tag_invoke(*this, static_cast<_Receiver &&>(__rcvr));
+        static_assert(__nothrow_tag_invocable<set_stopped_t, _Receiver>);
+        (void) __tag_invoke(*this, static_cast<_Receiver &&>(__rcvr));
       }
     };
   } // namespace __rcvrs
@@ -213,10 +213,6 @@ namespace STDEXEC {
   concept receiver_of = receiver<_Receiver> && requires(_Completions *__completions) {
     { __detail::__try_completions<_Receiver>(__completions) } -> __ok;
   };
-
-  template <class _Receiver, class _Sender>
-  concept __receiver_from =
-    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
   /// A utility for calling set_value with the result of a function invocation:
   template <class _Receiver, class _Fun, class... _As>

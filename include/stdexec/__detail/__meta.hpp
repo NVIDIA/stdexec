@@ -417,11 +417,11 @@ namespace STDEXEC {
 #if STDEXEC_GCC()
   // GCC can not mangle builtins. __mangle_t introduces an
   // indirection that hides the builtin from the mangler.
-  template <template <class...> class _Class, class... _Args>
-  using __mmangle_t = __mmemoize_q<_Class, _Args...>;
+  template <template <class...> class _Fn, class... _Args>
+  using __mmangle_t = __mmemoize_q<_Fn, _Args...>;
 #else
-  template <template <class...> class _Class, class... _Args>
-  using __mmangle_t = _Class<_Args...>;
+  template <template <class...> class _Fn, class... _Args>
+  using __mmangle_t = _Fn<_Args...>;
 #endif
 
   namespace __detail {
@@ -456,9 +456,6 @@ namespace STDEXEC {
   template <bool _Pred, class _Then, class _Else, class... _Args>
   using __minvoke_if_c = __minvoke<__if_c<_Pred, _Then, _Else>, _Args...>;
 
-  template <bool _Pred, class _Tp = void>
-  using __enable_if = std::enable_if_t<_Pred, _Tp>;
-
   template <class _Tp>
   struct __mconst {
     template <class...>
@@ -474,7 +471,7 @@ namespace STDEXEC {
   template <class _Try, class _Catch>
   struct __mtry_catch {
     template <class... _Args>
-    using __f = __minvoke<__if_c<__minvocable<_Try, _Args...>, _Try, _Catch>, _Args...>;
+    using __f = __minvoke_if_c<__minvocable<_Try, _Args...>, _Try, _Catch, _Args...>;
   };
 
   template <class _Fn, class _Default>
@@ -533,56 +530,51 @@ namespace STDEXEC {
     using __f = __minvoke<__mfold_left_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
-  template <class _Fn>
-  struct __mcurry {
-    template <class... _Ts>
-    using __f = __minvoke<_Fn, _Ts...>;
-  };
-
+  // for:: [a] -> (a -> b) -> [b]
   template <class _Tp>
-  struct __muncurry_;
+  struct __mfor;
 
   template <template <class...> class _Ap, class... _As>
-  struct __muncurry_<_Ap<_As...>> {
+  struct __mfor<_Ap<_As...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _As...>;
   };
 
   template <class _Ret, class... _As>
-  struct __muncurry_<_Ret(_As...)> {
+  struct __mfor<_Ret(_As...)> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _Ret, _As...>;
   };
 
   template <std::size_t... _Ns>
-  struct __muncurry_<__indices<_Ns...>> {
+  struct __mfor<__indices<_Ns...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
   };
 
   template <template <class _Np, _Np...> class _Cp, class _Np, _Np... _Ns>
-  struct __muncurry_<_Cp<_Np, _Ns...>> {
+  struct __mfor<_Cp<_Np, _Ns...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
   };
 
   template <class _What, class... _With>
-  struct __muncurry_<_ERROR_<_What, _With...>> {
+  struct __mfor<_ERROR_<_What, _With...>> {
     template <class _Fn>
     using __f = _ERROR_<_What, _With...>;
   };
 
-  template <class _Fn>
-  struct __muncurry {
-    template <class _Tp>
-    using __f = __muncurry_<_Tp>::template __f<_Fn>;
-  };
-
   template <class _Fn, class _List>
-  using __mapply = __minvoke<__muncurry<_Fn>, _List>;
+  using __mapply = __mcall1<__mfor<_List>, _Fn>;
 
   template <template <class...> class _Fn, class _List>
-  using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
+  using __mapply_q = __mcall1<__mfor<_List>, __q<_Fn>>;
+
+  template <class _Fn>
+  struct __muncurry {
+    template <class _List>
+    using __f = __mapply<_Fn, _List>;
+  };
 
   template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill_c = __mapply<__mtransform<__mconst<_Ty>, _Continuation>, __make_indices<_Ny>>;
@@ -724,12 +716,12 @@ namespace STDEXEC {
     requires(sizeof...(_As) == 1)
   using __msingle = __mfront<_As...>;
 
-  template <class _Default, class... _As>
-    requires(sizeof...(_As) <= 1)
-  using __msingle_or_ = __mfront<_As..., _Default>;
-
   template <class _Default>
-  using __msingle_or = __mbind_front_q<__msingle_or_, _Default>;
+  struct __msingle_or {
+    template <class... _As>
+      requires(sizeof...(_As) <= 1)
+    using __f = __mfront<_As..., _Default>;
+  };
 
   namespace __detail {
     template <class _Ty>
@@ -748,7 +740,7 @@ namespace STDEXEC {
     using __demangle_t = decltype(__demangle_v<_Ty>());
 
     template <class _Sender>
-    using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled>;
+    using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled_t>;
   } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
@@ -823,12 +815,10 @@ namespace STDEXEC {
   template <bool>
   struct __mfind_ {
     template <class _Needle, class _Continuation, class _Head, class... _Tail>
-    using __f = __minvoke<
-      __if_c<
-        __same_as<_Needle, _Head>,
-        __mbind_front<_Continuation, _Head>,
-        __mbind_front<__mfind_<(sizeof...(_Tail) != 0)>, _Needle, _Continuation>
-      >,
+    using __f = __minvoke_if_c<
+      __same_as<_Needle, _Head>,
+      __mbind_front<_Continuation, _Head>,
+      __mbind_front<__mfind_<(sizeof...(_Tail) != 0)>, _Needle, _Continuation>,
       _Tail...
     >;
   };
@@ -870,19 +860,19 @@ namespace STDEXEC {
   template <class _Fn>
   struct __mall_of {
     template <class... _Args>
-    using __f = __mand<__minvoke<_Fn, _Args>...>;
+    using __f = __minvoke_q<__mand, __mcall1<_Fn, _Args>...>;
   };
 
   template <class _Fn>
   struct __mnone_of {
     template <class... _Args>
-    using __f = __mand<__mnot<__minvoke<_Fn, _Args>>...>;
+    using __f = __minvoke_q<__mand, __mnot<__mcall1<_Fn, _Args>>...>;
   };
 
   template <class _Fn>
   struct __many_of {
     template <class... _Args>
-    using __f = __mor<__minvoke<_Fn, _Args>...>;
+    using __f = __minvoke_q<__mor, __mcall1<_Fn, _Args>...>;
   };
 
 #if !STDEXEC_NO_STD_PACK_INDEXING()
@@ -963,11 +953,11 @@ namespace STDEXEC {
     auto operator+(__inherit<_Set...> &) -> __inherit<_Set...>;
 
     template <class... _Set, class _Ty>
-    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __if_c<
-      __mset_contains<__inherit<_Set...>, _Ty>,
-      __inherit<_Set...>,
-      __inherit<_Ty, _Set...>
-    > &;
+    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __inherit<_Ty, _Set...> &;
+
+    template <class... _Set, class _Ty>
+      requires __mset_contains<__inherit<_Set...>, _Ty>
+    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __inherit<_Set...> &;
 
     template <class _ExpectedSet, class... _Ts>
     concept __mset_eq = (sizeof...(_Ts) == __mapply<__msize, _ExpectedSet>::value)

@@ -21,7 +21,6 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
-#include "__get_completion_signatures.hpp"
 #include "__meta.hpp"
 #include "__receivers.hpp"
 
@@ -34,8 +33,43 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
-  // __connect_awaitable_
-  namespace __connect_awaitable_ {
+  // __connect_await
+  namespace __connect_await {
+    template <class _Tp, class _Promise>
+    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
+      static_cast<_Tp&&>(__t).as_awaitable(__promise);
+    };
+
+    // A partial duplicate of with_awaitable_senders to avoid circular type dependencies
+    template <class _Promise>
+    struct __with_await_transform {
+      template <class _Ty>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto await_transform(_Ty&& __value) noexcept -> _Ty&& {
+        return static_cast<_Ty&&>(__value);
+      }
+
+      template <class _Ty>
+        requires __has_as_awaitable_member<_Ty, _Promise&>
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      auto await_transform(_Ty&& __value)
+        noexcept(noexcept(__declval<_Ty>().as_awaitable(__declval<_Promise&>())))
+          -> decltype(__declval<_Ty>().as_awaitable(__declval<_Promise&>())) {
+        return static_cast<_Ty&&>(__value).as_awaitable(static_cast<_Promise&>(*this));
+      }
+
+      template <class _Ty>
+        requires __has_as_awaitable_member<_Ty, _Promise&>
+              || __tag_invocable<as_awaitable_t, _Ty, _Promise&>
+      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      auto await_transform(_Ty&& __value)
+        noexcept(__nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
+          -> __tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&> {
+        return __tag_invoke(
+          as_awaitable, static_cast<_Ty&&>(__value), static_cast<_Promise&>(*this));
+      }
+    };
+
     struct __promise_base {
       constexpr auto initial_suspend() noexcept -> __std::suspend_always {
         return {};
@@ -101,7 +135,7 @@ namespace STDEXEC {
     template <class _Receiver>
     struct __promise
       : __promise_base
-      , __detail::__with_await_transform<__promise<_Receiver>> {
+      , __with_await_transform<__promise<_Receiver>> {
 #  if STDEXEC_EDG()
       constexpr __promise(auto&&, _Receiver&& __rcvr) noexcept
         : __rcvr_(__rcvr) {
@@ -201,10 +235,18 @@ namespace STDEXEC {
         return __co_impl(static_cast<_Awaitable&&>(__awaitable), static_cast<_Receiver&&>(__rcvr));
       }
     };
-  } // namespace __connect_awaitable_
+  } // namespace __connect_await
 
-  using __connect_awaitable_::__connect_awaitable_t;
+  using __connect_await::__connect_awaitable_t;
 #else
+  namespace __connect_await {
+    template <class>
+    struct __promise { };
+
+    template <class>
+    struct __with_await_transform { };
+  } // namespace __connect_await
+
   struct __connect_awaitable_t { };
 #endif
   inline constexpr __connect_awaitable_t __connect_awaitable{};

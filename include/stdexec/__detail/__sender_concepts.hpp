@@ -61,6 +61,10 @@ namespace STDEXEC {
     && sender<_Sender>     //
     && __constant_completion_signatures<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
+  template <class _Receiver, class _Sender>
+  concept __receiver_from =
+    receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
+
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
