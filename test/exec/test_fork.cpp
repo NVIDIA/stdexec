@@ -16,6 +16,7 @@
 
 #include "exec/fork_join.hpp"
 #include "exec/just_from.hpp"
+#include "test_common/schedulers.hpp"
 #include "test_common/type_helpers.hpp"
 
 #include <catch2/catch.hpp>
@@ -36,6 +37,37 @@ namespace {
         completion_signatures_of_t<decltype(sndr), env<>>,
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>
       >);
+  }
+
+  struct ForwardingThen {
+    template <typename Value>
+    constexpr decltype(auto) operator()(Value&& value) const noexcept {
+      return std::forward<Value>(value);
+    }
+
+    constexpr void operator()() const noexcept {
+    }
+  };
+
+  template <char ID>
+  struct identifiable_domain : public STDEXEC::default_domain { };
+
+  TEST_CASE("fork_join completion domain and scheduler", "[adaptors][fork_join]") {
+    basic_inline_scheduler<identifiable_domain<'A'>> sched_A;
+    basic_inline_scheduler<identifiable_domain<'B'>> sched_B;
+    basic_inline_scheduler<identifiable_domain<'C'>> sched_C;
+
+    auto sndr = STDEXEC::schedule(sched_A) | STDEXEC::then(ForwardingThen{})
+              | exec::fork_join(
+                  STDEXEC::on(sched_B, STDEXEC::then(ForwardingThen{})),
+                  STDEXEC::on(sched_C, STDEXEC::then(ForwardingThen{})))
+              | STDEXEC::then(ForwardingThen{});
+
+    auto domain = STDEXEC::get_completion_domain<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    static_assert(std::same_as<decltype(domain), identifiable_domain<'A'>>);
+
+    auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr));
+    static_assert(std::same_as<decltype(sched), decltype(sched_A)>);
   }
 
   TEST_CASE("fork_join broadcasts results to multiple continuations", "[adaptors][fork_join]") {
@@ -80,5 +112,39 @@ namespace {
                   ::STDEXEC::then([]() noexcept -> void { }));
 
     ::STDEXEC::sync_wait(std::move(sndr));
+  }
+
+  TEST_CASE("fork_join can be nested", "[adaptors][fork_join]") {
+    std::atomic<int> witness = 0;
+
+    auto make_then = [&witness]() {
+      return ::STDEXEC::then([&witness]() noexcept { ++witness; });
+    };
+
+    auto sndr = ::STDEXEC::just() | make_then()
+              | exec::fork_join(make_then(), exec::fork_join(make_then(), make_then()));
+
+    ::STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(witness == 4);
+  }
+
+  struct customize_fork_join_domain : public STDEXEC::default_domain {
+    template <STDEXEC::sender_expr_for<exec::fork_join_t> Sndr, class Env>
+    constexpr auto transform_sender(STDEXEC::set_value_t, Sndr&&, const Env&) const noexcept {
+      return STDEXEC::just(std::string("congrats on customizing fork_join_t"));
+    }
+  };
+
+  TEST_CASE("fork_join is customizable", "[adaptors][fork_join]") {
+    basic_inline_scheduler<customize_fork_join_domain> sched{};
+
+    auto sndr =
+      ::STDEXEC::schedule(sched) | ::STDEXEC::then(ForwardingThen{})
+      | exec::fork_join(::STDEXEC::then(ForwardingThen{}), ::STDEXEC::then(ForwardingThen{}));
+
+    CHECK(
+      std::get<0>(STDEXEC::sync_wait(std::move(sndr)).value())
+      == "congrats on customizing fork_join_t");
   }
 } // namespace

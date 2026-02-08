@@ -19,7 +19,14 @@
 #include "__config.hpp"
 #include "__meta.hpp"
 
+#include <cstdarg>
+#include <cstdio>
 #include <initializer_list>
+#include <memory>  // IWYU pragma: keep for std::start_lifetime_as
+#include <utility> // IWYU pragma: keep for std::unreachable
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wduplicate-decl-specifier")
 
 namespace STDEXEC {
   constexpr std::size_t __npos = ~0UL;
@@ -79,14 +86,14 @@ namespace STDEXEC {
 
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_EDG()
-  template <const auto &_Fun, class... _As>
+  template <const auto& _Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
 #else
-  template <const auto &_Fun, class... _As>
+  template <const auto& _Fun, class... _As>
   using __result_of = decltype(_Fun(__declval<_As>()...));
 #endif
 
-  template <const auto &_Fun, class... _As>
+  template <const auto& _Fun, class... _As>
   inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
   // For emplacing non-movable types into optionals:
@@ -96,11 +103,11 @@ namespace STDEXEC {
     using __t = __call_result_t<_Fn>;
 
     constexpr operator __t() && noexcept(__nothrow_callable<_Fn>) {
-      return static_cast<_Fn &&>(__fn_)();
+      return static_cast<_Fn&&>(__fn_)();
     }
 
     constexpr auto operator()() && noexcept(__nothrow_callable<_Fn>) -> __t {
-      return static_cast<_Fn &&>(__fn_)();
+      return static_cast<_Fn&&>(__fn_)();
     }
   };
 
@@ -210,11 +217,135 @@ namespace STDEXEC {
   };
 
   template <class _Ty>
-  constexpr auto __decay_copy(_Ty) noexcept -> _Ty;
+  constexpr auto __decay_copy(_Ty __arg) noexcept -> _Ty {
+    return __arg;
+  }
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 2021'10L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
 #else
 #  define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : STDEXEC::__decay_copy(__VA_ARGS__))
 #endif
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // _move_if
+  template <bool Move, class _Ty>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+  constexpr auto&& __move_if(_Ty& t) noexcept {
+    if constexpr (Move)
+      return std::move(t);
+    else
+      return t;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // __unconst
+  template <class T>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+  constexpr auto __unconst(T const & t) noexcept -> T& {
+    return const_cast<T&>(t);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // _as_const_if
+  template <bool Const, class T>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+  constexpr auto& __as_const_if(T& t) noexcept {
+    if constexpr (Const)
+      return const_cast<T const &>(t);
+    else
+      return t;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // __polymorphic_downcast
+  template <class _ResultPtr, class _CvInterface>
+  [[nodiscard]]
+  inline constexpr auto* __polymorphic_downcast(_CvInterface* __from_ptr) noexcept {
+    static_assert(std::is_pointer_v<_ResultPtr>);
+    using __value_type = __copy_cvref_t<_CvInterface, std::remove_pointer_t<_ResultPtr>>;
+    static_assert(
+      std::derived_from<__value_type, _CvInterface>,
+      "__polymorphic_downcast requires From to be a base class of To");
+
+#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+    STDEXEC_IF_NOT_CONSTEVAL {
+      STDEXEC_ASSERT(dynamic_cast<__value_type*>(__from_ptr) != nullptr);
+    }
+#endif
+    return static_cast<__value_type*>(__from_ptr);
+  }
+
+  namespace __std {
+//////////////////////////////////////////////////////////////////////////////////////////
+// start_lifetime_as
+#if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 2022'07L
+    using std::start_lifetime_as;
+#else
+    template <class _Ty>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    _Ty* start_lifetime_as(void* __ptr) noexcept {
+      return std::launder(static_cast<_Ty*>(__ptr));
+    }
+
+    template <class _Ty>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    _Ty const * start_lifetime_as(void const * __ptr) noexcept {
+      return std::launder(static_cast<_Ty const *>(__ptr));
+    }
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// unreachable
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
+    using std::unreachable;
+#else
+    [[noreturn]]
+    inline void unreachable() {
+      // Uses compiler specific extensions if possible.
+      // Even if no extension is used, undefined behavior is still raised by
+      // an empty function body and the noreturn attribute.
+#  if STDEXEC_MSVC()
+      __assume(false); // MSVC
+#  else
+      __builtin_unreachable(); // everybody else
+#  endif
+    }
+#endif
+  } // namespace __std
+
+  inline void __debug_vprintf(const char* __fmt, va_list __args) noexcept {
+    std::vprintf(__fmt, __args);
+    std::fflush(stdout);
+  }
+
+  template <class...> // To avoid gcc error about va_list not being usable in a constexpr function
+  inline void __debug_printf(const char* __fmt, ...) noexcept {
+    va_list __args;
+    va_start(__args, __fmt);
+    STDEXEC::__debug_vprintf(__fmt, __args);
+    va_end(__args);
+  }
+
+  template <class _Return = void>
+  [[noreturn]]
+  constexpr _Return __die(const char* __fmt, ...) noexcept {
+    STDEXEC_IF_CONSTEVAL {
+      // The following `if constexpr` is needed to keep compilers from complaining that
+      // neither branch of the `if consteval` (above) is a constant expression.
+      if constexpr (!__mnever<_Return>)
+      {
+        __std::unreachable();
+      }
+    }
+    else {
+      va_list __args;
+      va_start(__args, __fmt);
+      STDEXEC::__debug_vprintf(__fmt, __args);
+      va_end(__args);
+      std::terminate();
+    }
+  }
 } // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

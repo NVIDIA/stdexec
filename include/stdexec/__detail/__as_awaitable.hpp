@@ -227,14 +227,14 @@ namespace STDEXEC {
       }
 
       template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
-        requires __callable<__mtypeof<_DeclFn>> || tag_invocable<as_awaitable_t, _Tp, _Promise&>
+        requires __callable<__mtypeof<_DeclFn>> || __tag_invocable<as_awaitable_t, _Tp, _Promise&>
       [[deprecated("the use of tag_invoke for as_awaitable is deprecated")]]
       auto operator()(_Tp&& __t, _Promise& __promise) const
-        noexcept(nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
-          -> tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
-        using __result_t = tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
+        noexcept(__nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
+          -> __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
+        using __result_t = __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
         static_assert(__awaitable<__result_t, _Promise>);
-        return tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
+        return __tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
       }
     };
   } // namespace __as_awaitable

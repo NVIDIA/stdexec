@@ -530,56 +530,51 @@ namespace STDEXEC {
     using __f = __minvoke<__mfold_left_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
   };
 
-  template <class _Fn>
-  struct __mcurry {
-    template <class... _Ts>
-    using __f = __minvoke<_Fn, _Ts...>;
-  };
-
+  // for:: [a] -> (a -> b) -> [b]
   template <class _Tp>
-  struct __muncurry_;
+  struct __mfor;
 
   template <template <class...> class _Ap, class... _As>
-  struct __muncurry_<_Ap<_As...>> {
+  struct __mfor<_Ap<_As...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _As...>;
   };
 
   template <class _Ret, class... _As>
-  struct __muncurry_<_Ret(_As...)> {
+  struct __mfor<_Ret(_As...)> {
     template <class _Fn>
     using __f = __minvoke<_Fn, _Ret, _As...>;
   };
 
   template <std::size_t... _Ns>
-  struct __muncurry_<__indices<_Ns...>> {
+  struct __mfor<__indices<_Ns...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, __msize_t<_Ns>...>;
   };
 
   template <template <class _Np, _Np...> class _Cp, class _Np, _Np... _Ns>
-  struct __muncurry_<_Cp<_Np, _Ns...>> {
+  struct __mfor<_Cp<_Np, _Ns...>> {
     template <class _Fn>
     using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
   };
 
   template <class _What, class... _With>
-  struct __muncurry_<_ERROR_<_What, _With...>> {
+  struct __mfor<_ERROR_<_What, _With...>> {
     template <class _Fn>
     using __f = _ERROR_<_What, _With...>;
   };
 
-  template <class _Fn>
-  struct __muncurry {
-    template <class _Tp>
-    using __f = __muncurry_<_Tp>::template __f<_Fn>;
-  };
-
   template <class _Fn, class _List>
-  using __mapply = __minvoke<__muncurry<_Fn>, _List>;
+  using __mapply = __mcall1<__mfor<_List>, _Fn>;
 
   template <template <class...> class _Fn, class _List>
-  using __mapply_q = __minvoke<__muncurry<__q<_Fn>>, _List>;
+  using __mapply_q = __mcall1<__mfor<_List>, __q<_Fn>>;
+
+  template <class _Fn>
+  struct __muncurry {
+    template <class _List>
+    using __f = __mapply<_Fn, _List>;
+  };
 
   template <std::size_t _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill_c = __mapply<__mtransform<__mconst<_Ty>, _Continuation>, __make_indices<_Ny>>;
