@@ -61,7 +61,7 @@ namespace STDEXEC::__std {
   using std::atomic_thread_fence;
   using std::atomic_signal_fence;
 
-#  if __cpp_lib_atomic_ref >= 2018'06L && !defined(STDEXEC_RELACY)
+#  if __cpp_lib_atomic_ref >= 2018'06L
   using std::atomic_ref;
 #  else
   inline constexpr int __atomic_flag_map[] = {

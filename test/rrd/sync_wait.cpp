@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "../../relacy/relacy_std.hpp"
+#include <stdexec_relacy.hpp>
 
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>

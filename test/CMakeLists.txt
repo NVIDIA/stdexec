@@ -63,6 +63,7 @@ set(stdexec_test_sources
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_utility.cpp
+    stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
@@ -137,6 +138,10 @@ icm_add_build_failure_test(
     LIBRARIES stdexec
     FOLDER test
 )
+
+if(STDEXEC_BUILD_RELACY_TESTS)
+    add_subdirectory(rrd)
+endif()
 
 # # Adding multiple tests with a glob
 # icm_glob_build_failure_tests(
