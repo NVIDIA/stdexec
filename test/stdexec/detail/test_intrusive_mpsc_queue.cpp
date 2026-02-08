@@ -42,14 +42,14 @@ namespace {
 
     std::set<test_node*> consumed_addrs;
 
-    std::jthread producer1([&]() {
+    std::thread producer1([&]() {
       for (int i = 0; i < num_items_per_producer; ++i) {
         queue.push_back(nodes1[i].get());
         produced_count.fetch_add(1, std::memory_order_relaxed);
       }
     });
 
-    std::jthread producer2([&]() {
+    std::thread producer2([&]() {
       for (int i = 0; i < num_items_per_producer; ++i) {
         queue.push_back(nodes2[i].get());
         produced_count.fetch_add(1, std::memory_order_relaxed);
@@ -57,7 +57,7 @@ namespace {
     });
 
     std::set<int> consumed;
-    std::jthread consumer([&]() {
+    std::thread consumer([&]() {
       int count = 0;
       while (count < total_items) {
         test_node* node = queue.pop_front();
