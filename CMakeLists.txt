@@ -151,7 +151,8 @@ else()
 endif()
 
 # Build relacy tests by default only for GNU compiler and if tests are enabled
-if(${STDEXEC_BUILD_TESTS} AND stdexec_compiler_frontend STREQUAL "GNU")
+# It will take work to get other platforms to work in the future.
+if(${STDEXEC_BUILD_TESTS} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
     set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT ON)
 else()
     set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT OFF)
