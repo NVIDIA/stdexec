@@ -24,7 +24,6 @@
 #include "__optional.hpp"
 #include "__schedulers.hpp"
 #include "__task_scheduler.hpp"
-#include "__variant.hpp"
 
 #include <cstddef>
 #include <exception>
@@ -72,7 +71,7 @@ namespace STDEXEC {
     };
 
     struct __any_alloc_base {
-      virtual void __deallocate(void* __ptr, size_t __bytes) noexcept = 0;
+      virtual void __deallocate_(void* __ptr, size_t __bytes) noexcept = 0;
     };
 
     template <class _PAlloc>
@@ -84,7 +83,7 @@ namespace STDEXEC {
         : __alloc_(std::move(__alloc)) {
       }
 
-      void __deallocate(void* __ptr, size_t __bytes) noexcept final {
+      void __deallocate_(void* __ptr, size_t __bytes) noexcept final {
         // __bytes here is the same as __bytes passed to promise_type::operator new. We
         // overallocated to store the allocator in the blocks immediately following the
         // promise object. We now use that allocator to deallocate the entire block of
@@ -451,7 +450,7 @@ namespace STDEXEC {
       size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
       void* const __alloc_loc = static_cast<__task::__memblock*>(__ptr) + __promise_blocks;
       auto* __alloc = static_cast<__task::__any_alloc_base*>(__alloc_loc);
-      __alloc->__deallocate(__ptr, __bytes);
+      __alloc->__deallocate_(__ptr, __bytes);
     }
 
    private:
