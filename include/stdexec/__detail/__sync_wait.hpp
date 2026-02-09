@@ -144,11 +144,11 @@ namespace STDEXEC {
     using __value_tuple_for_t = __t<__value_tuple_for<_CvSender>>;
 
     template <class _CvSender>
-    struct __variant_for {
+    struct __variant {
       using __t = __sync_wait_with_variant_result_t<_CvSender>;
     };
     template <class _CvSender>
-    using __variant_for_t = __t<__variant_for<_CvSender>>;
+    using __variant_for_t = __t<__variant<_CvSender>>;
 
     struct _SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_ { };
     struct _USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_ { };

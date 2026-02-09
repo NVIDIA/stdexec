@@ -287,10 +287,8 @@ namespace nvexec::_strm {
         stop_callback_for_t<stop_token_of_t<env_of_t<_receiver_t>>, __forward_stop_request>;
 
       template <class Sender, std::size_t Index>
-      using _child_opstate_t = exit_opstate_t<
-        __copy_cvref_t<_when_all_sender_t, Sender>,
-        receiver<CvReceiver, Index>
-      >;
+      using _child_opstate_t =
+        exit_opstate_t<__copy_cvref_t<_when_all_sender_t, Sender>, receiver<CvReceiver, Index>>;
 
       // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
       using _child_values_t = __if<
@@ -308,7 +306,7 @@ namespace nvexec::_strm {
       >;
 
       using _errors_t =
-        error_types_of_t<when_all_sender, _when_all::env_t<_env_t>, __uniqued_variant_for>;
+        error_types_of_t<when_all_sender, _when_all::env_t<_env_t>, __uniqued_variant>;
 
       template <size_t... Is>
       static auto
@@ -477,7 +475,7 @@ namespace nvexec::_strm {
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       std::atomic<_when_all::disposition> state_{_when_all::started};
 
-      _errors_t errors_{};
+      _errors_t errors_{__no_init};
       _child_values_t* values_{};
       inplace_stop_source stop_source_{};
 

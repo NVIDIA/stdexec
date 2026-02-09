@@ -264,7 +264,7 @@ namespace exec {
         __data_.template emplace<0>(std::move(value));
       }
 
-      __variant_for<_Ty, std::exception_ptr> __data_{};
+      __variant<_Ty, std::exception_ptr> __data_{__no_init};
     };
 
     template <>
@@ -275,7 +275,7 @@ namespace exec {
         __data_.template emplace<0>(__void{});
       }
 
-      __variant_for<__void, std::exception_ptr> __data_{};
+      __variant<__void, std::exception_ptr> __data_{__no_init};
     };
 
     template <class _Sch>
@@ -467,10 +467,12 @@ namespace exec {
         constexpr auto await_resume() -> _Ty {
           __context_.reset();
           scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
+
           if (__coro_.promise().__data_.index() == 1)
-            std::rethrow_exception(std::move(__coro_.promise().__data_.template get<1>()));
+            std::rethrow_exception(std::move(__var::__get<1>(__coro_.promise().__data_)));
+
           if constexpr (!std::is_void_v<_Ty>)
-            return std::move(__coro_.promise().__data_.template get<0>());
+            return std::move(__var::__get<0>(__coro_.promise().__data_));
         }
       };
 

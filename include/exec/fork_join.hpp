@@ -63,7 +63,7 @@ namespace exec {
         STDEXEC::__mset
       >,
       _maybe_eptr_completion_t<Completions>
-    >::template rebind<STDEXEC::__variant_for>;
+    >::template rebind<STDEXEC::__variant>;
 
     template <class Domain>
     struct _env_t {
@@ -207,7 +207,7 @@ namespace exec {
       }
 
       Rcvr _rcvr_;
-      _variant_t<_child_completions_t> _cache_{};
+      _variant_t<_child_completions_t> _cache_{STDEXEC::__no_init};
       STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
       _fork_opstate_t _fork_opstate_;
     };

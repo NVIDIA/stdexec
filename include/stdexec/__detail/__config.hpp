@@ -571,11 +571,13 @@ namespace STDEXEC {
 #endif
 
 #if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
-#  define STDEXEC_IF_CONSTEVAL if consteval
+#  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
 #else
 #  define STDEXEC_IF_CONSTEVAL if (std::is_constant_evaluated())
-#  define STDEXEC_IF_NOT_CONSTEVAL if (std::is_constant_evaluated()) {} else
+#  define STDEXEC_IF_NOT_CONSTEVAL                                                                 \
+    if (std::is_constant_evaluated()) {                                                            \
+    } else
 #endif
 
 #ifdef STDEXEC_ASSERT
@@ -799,9 +801,11 @@ namespace STDEXEC {
 #endif
 
 #if __cplusplus >= 2022'11L
-#  define STDEXEC_CONSTEXPR_CXX23 constexpr
+#  define STDEXEC_CONSTEXPR_CXX23        constexpr
+#  define STDEXEC_STATIC_CONSTEXPR_LOCAL static constexpr
 #else
 #  define STDEXEC_CONSTEXPR_CXX23
+#  define STDEXEC_STATIC_CONSTEXPR_LOCAL constexpr
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

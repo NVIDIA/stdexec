@@ -30,7 +30,7 @@
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__utility.hpp"
-#include "__variant.hpp" // IWYU pragma: keep for __variant_for
+#include "__variant.hpp" // IWYU pragma: keep for __variant
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -52,7 +52,7 @@ namespace STDEXEC {
     using __results_of = __for_each_completion_signature_t<
       __completion_signatures_of_t<_CvSender, _Env>,
       __decayed_tuple,
-      __munique<__qq<STDEXEC::__variant_for>>::__f
+      __munique<__qq<STDEXEC::__variant>>::__f
     >;
 
     template <class... _Values>
@@ -98,7 +98,7 @@ namespace STDEXEC {
       using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver __rcvr_;
-      __variant_t __data_{};
+      __variant_t __data_{__no_init};
     };
 
     // This receiver is to be completed on the execution context associated with the scheduler. When
@@ -137,7 +137,7 @@ namespace STDEXEC {
       using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
-        : __state::__state_base{{}, static_cast<_Receiver&&>(__rcvr), {}}
+        : __state::__state_base{{}, static_cast<_Receiver&&>(__rcvr)}
         , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
       }
 

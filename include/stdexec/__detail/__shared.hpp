@@ -117,7 +117,7 @@ namespace STDEXEC::__shared {
     __mbind_front_q<__decayed_tuple, set_value_t>::__f,
     __mbind_front_q<__decayed_tuple, set_error_t>::__f,
     __tuple<set_stopped_t>,
-    __munique<__qq<__variant_for>>::__f,
+    __munique<__qq<__variant>>::__f,
     __tuple<set_error_t, std::exception_ptr>,
     __tuple<set_stopped_t>
   >;
@@ -312,7 +312,7 @@ namespace STDEXEC::__shared {
     __waiters_list_t __waiters_{};
     inplace_stop_source __stop_source_{};
     __env_t<_Env> __env_;
-    _Variant __results_{}; // Initialized to the "set_stopped" state in the ctor.
+    _Variant __results_{__no_init}; // Initialized to the "set_stopped" state in the ctor.
   };
 
   template <class _Env, class _Variant>
