@@ -32,6 +32,7 @@
 #include <utility>
 
 namespace STDEXEC {
+#if !STDEXEC_NO_STD_COROUTINES()
   namespace __task {
     ////////////////////////////////////////////////////////////////////////////////
     // A base class for task::promise_type so it can be specialized when _Ty is void:
@@ -66,7 +67,7 @@ namespace STDEXEC {
       return (__total_size / __chunk_size) + (__total_size % __chunk_size != 0);
     }
 
-    struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__) __block {
+    struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__) __memblock {
       std::byte __storage_[__STDCPP_DEFAULT_NEW_ALIGNMENT__];
     };
 
@@ -77,10 +78,10 @@ namespace STDEXEC {
     template <class _PAlloc>
     struct __any_alloc final : __any_alloc_base {
       using value_type = std::allocator_traits<_PAlloc>::value_type;
-      static_assert(__same_as<value_type, __block>);
-      // Number of __block-sized chunks we needed store the allocator:
+      static_assert(__same_as<value_type, __memblock>);
+      // Number of __memblock-sized chunks we needed store the allocator:
       static constexpr size_t __alloc_blocks =
-        __task::__divmod(sizeof(__any_alloc), sizeof(__block));
+        __task::__divmod(sizeof(__any_alloc), sizeof(__memblock));
 
       explicit __any_alloc(_PAlloc __alloc)
         : __alloc_(std::move(__alloc)) {
@@ -91,8 +92,8 @@ namespace STDEXEC {
         // overallocated to store the allocator in the blocks immediately following the
         // promise object. We now use that allocator to deallocate the entire block of
         // memory:
-        size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__block));
-        void* const __alloc_loc = static_cast<__block*>(__ptr) + __promise_blocks;
+        size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
+        void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
 
         // Quick sanity check to make sure the allocator is where we expect it to be.
         STDEXEC_ASSERT(__alloc_loc == static_cast<void*>(this));
@@ -104,7 +105,7 @@ namespace STDEXEC {
         std::destroy_at(this);
         // Deallocate the entire block of memory:
         std::allocator_traits<_PAlloc>::deallocate(
-          __alloc, static_cast<__block*>(__ptr), __promise_blocks + __alloc_blocks);
+          __alloc, static_cast<__memblock*>(__ptr), __promise_blocks + __alloc_blocks);
       }
 
       _PAlloc __alloc_;
@@ -263,7 +264,7 @@ namespace STDEXEC {
         // If the receiver's stop token is different from the task's stop token, then we need
         // to set up a callback to request a stop on the task's stop source when the receiver's
         // stop token is triggered:
-        __callback().__construct(
+        __stop_callback().__construct(
           get_stop_token(get_env(__rcvr_)),
           __on_stopped_t{__coro_.promise().__stop_.template get<0>()});
       }
@@ -299,7 +300,7 @@ namespace STDEXEC {
       }
     }
 
-    auto __callback() noexcept -> __manual_lifetime<__stop_callback_t<_Rcvr>>&
+    auto __stop_callback() noexcept -> __manual_lifetime<__stop_callback_t<_Rcvr>>&
       requires __needs_stop_callback<_Rcvr>
     {
       return *this;
@@ -309,7 +310,7 @@ namespace STDEXEC {
       if constexpr (__needs_stop_callback<_Rcvr>) {
         // If we set up a stop callback on the receiver's stop token, then we need to
         // disable it when the operation completes:
-        __callback().__destroy();
+        __stop_callback().__destroy();
       }
 
       std::printf("opstate completed, &__errors_ = %p\n", static_cast<void*>(&this->__errors_));
@@ -338,7 +339,7 @@ namespace STDEXEC {
 
     void __canceled() noexcept final {
       if constexpr (__needs_stop_callback<_Rcvr>) {
-        __callback().__destroy();
+        __stop_callback().__destroy();
       }
 
       std::exchange(__coro_, {}).destroy();
@@ -422,14 +423,14 @@ namespace STDEXEC {
 
     template <class _Alloc, class... _Args>
     void* operator new(size_t __bytes, std::allocator_arg_t, _Alloc __alloc, _Args&&...) {
-      using __palloc_t = std::allocator_traits<_Alloc>::template rebind_alloc<__task::__block>;
+      using __palloc_t = std::allocator_traits<_Alloc>::template rebind_alloc<__task::__memblock>;
       using __pointer_t = std::allocator_traits<__palloc_t>::pointer;
       static_assert(std::is_pointer_v<__pointer_t>, "Allocator pointer type must be a raw pointer");
 
       // the number of blocks needed to store an object of type __palloc_t:
       static constexpr size_t __alloc_blocks =
-        __task::__divmod(sizeof(__task::__any_alloc<__palloc_t>), sizeof(__task::__block));
-      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__block));
+        __task::__divmod(sizeof(__task::__any_alloc<__palloc_t>), sizeof(__task::__memblock));
+      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
 
       __palloc_t __palloc(__alloc);
       __pointer_t const __ptr =
@@ -447,8 +448,8 @@ namespace STDEXEC {
     }
 
     void operator delete(void* __ptr, size_t __bytes) noexcept {
-      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__block));
-      void* const __alloc_loc = static_cast<__task::__block*>(__ptr) + __promise_blocks;
+      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
+      void* const __alloc_loc = static_cast<__task::__memblock*>(__ptr) + __promise_blocks;
       auto* __alloc = static_cast<__task::__any_alloc_base*>(__alloc_loc);
       __alloc->__deallocate(__ptr, __bytes);
     }
@@ -497,4 +498,5 @@ namespace STDEXEC {
     __variant_for<stop_source_type, stop_token_type> __stop_{};
     __opstate_base* __state_ = nullptr;
   };
+#endif // !STDEXEC_NO_STD_COROUTINES()
 } // namespace STDEXEC

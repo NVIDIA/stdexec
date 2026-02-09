@@ -187,10 +187,10 @@ namespace STDEXEC {
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, __new_index);
-        auto *__p =
+        auto *__ptr =
           std::construct_at(static_cast<_Ty *>(__get_ptr()), static_cast<_As &&>(__as)...);
         __sg.__dismiss();
-        return *std::launder(__p);
+        return *std::launder(__ptr);
       }
 
       template <std::size_t _Ny, class... _As>
@@ -201,10 +201,10 @@ namespace STDEXEC {
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, _Ny);
-        auto *__p =
+        auto *__ptr =
           std::construct_at(static_cast<__at<_Ny> *>(__get_ptr()), static_cast<_As &&>(__as)...);
         __sg.__dismiss();
-        return *std::launder(__p);
+        return *std::launder(__ptr);
       }
 
       template <std::size_t _Ny, class _Fn, class... _As>
@@ -219,18 +219,18 @@ namespace STDEXEC {
         __destroy();
         auto __sg = __mk_index_guard(__index_, _Ny);
         if (std::is_constant_evaluated()) {
-          auto *__p = std::construct_at<__at<_Ny>>(
+          auto *__ptr = std::construct_at<__at<_Ny>>(
             static_cast<__at<_Ny> *>(__get_ptr()),
             STDEXEC::__emplace_from([&]() noexcept(__is_nothrow) -> decltype(auto) {
               return static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...);
             }));
           __sg.__dismiss();
-          return *std::launder(__p);
+          return *std::launder(__ptr);
         } else {
-          auto *__p = ::new (__get_ptr())
+          auto *__ptr = ::new (__get_ptr())
             __at<_Ny>(static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...));
           __sg.__dismiss();
-          return *std::launder(__p);
+          return *std::launder(__ptr);
         }
       }
 

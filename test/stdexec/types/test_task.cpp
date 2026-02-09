@@ -15,16 +15,21 @@
  * limitations under the License.
  */
 
-#include <stdexec/execution.hpp>
+#include <stdexec/coroutine.hpp>
 
-#include <exec/single_thread_context.hpp>
-#include <stdexec/__detail/__task.hpp>
+#if !STDEXEC_NO_STD_COROUTINES()
 
-#include <atomic>
+#  include <stdexec/execution.hpp>
 
-#include <catch2/catch.hpp>
+#  include <exec/single_thread_context.hpp>
+#  include <stdexec/__detail/__task.hpp>
 
-#include <test_common/allocators.hpp>
+#  include <atomic>
+
+#  include <catch2/catch.hpp>
+
+#  include <test_common/allocators.hpp>
+#  include <test_common/senders.hpp>
 
 namespace ex = STDEXEC;
 
@@ -135,6 +140,24 @@ namespace {
     CHECK(!res.has_value());
   }
 
+  auto test_task_awaits_just_ref_sender() -> ex::task<void> {
+    int value = 42;
+    [[maybe_unused]]
+    decltype(auto) value_ref = co_await just_ref(value);
+    // BUGBUG TODO: references are not supported yet so just check that we get the right value back for now
+    CHECK(value_ref == 42);
+    // STATIC_REQUIRE(std::same_as<decltype(value_ref), int&>);
+    // CHECK(&value_ref == &value);
+    co_return;
+  }
+
+  TEST_CASE("test task can await a just_ref sender", "[types][task]") {
+    auto t = test_task_awaits_just_ref_sender();
+    ex::sync_wait(std::move(t));
+  }
+
   // TODO: add tests for stop token support in task
 
 } // anonymous namespace
+
+#endif // !STDEXEC_NO_STD_COROUTINES()
