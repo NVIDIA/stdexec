@@ -36,10 +36,10 @@ namespace STDEXEC {
     extern const __q<__decayed_std_tuple> __as_single;
 
     template <>
-    inline const __q<__midentity> __as_single<1>;
+    inline constexpr __q<__midentity> __as_single<1>;
 
     template <>
-    inline const __mconst<void> __as_single<0>;
+    inline constexpr __mconst<void> __as_single<0>;
 
     template <class... _Values>
     using __single_value = __minvoke<decltype(__as_single<sizeof...(_Values)>), _Values...>;
@@ -47,7 +47,7 @@ namespace STDEXEC {
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
       __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>
-    >;
+      >;
   } // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////

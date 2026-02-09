@@ -200,41 +200,9 @@ namespace STDEXEC {
 
   namespace __cmplsigs {
     struct get_completion_signatures_t;
-
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
-    // Without constexpr exceptions, we cannot always produce a valid
-    // completion_signatures type. We must permit get_completion_signatures to return an
-    // error type because we can't throw it.
-    template <class _Completions>
-    concept __well_formed_completions_helper =
-      __valid_completion_signatures<_Completions>
-      || STDEXEC_IS_BASE_OF(STDEXEC::dependent_sender_error, _Completions)
-      || __is_instance_of<_Completions, _ERROR_>;
-#else
-    // When we have constexpr exceptions, we can require that get_completion_signatures
-    // always produces a valid completion_signatures type.
-    template <class _Completions>
-    concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>;
-#endif
   } // namespace __cmplsigs
 
   using __cmplsigs::get_completion_signatures_t;
-
-  // The cast to bool is to hide the disjunction in __well_formed_completions_helper.
-  template <class _Completions>
-  concept __well_formed_completions = bool(
-    __cmplsigs::__well_formed_completions_helper<_Completions>);
-
-  // template <class _Sender>
-  // consteval auto get_completion_signatures();
-
-  // template <class _Sender, class _Env>
-  // consteval auto get_completion_signatures();
-
-  // // Legacy interface:
-  // template <class _Sender, class... _Env>
-  //   requires(sizeof...(_Env) <= 1)
-  // constexpr auto get_completion_signatures(_Sender&&, const _Env&...) noexcept;
 
 #if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
 

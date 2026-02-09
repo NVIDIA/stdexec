@@ -477,12 +477,12 @@ namespace exec {
      public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
-      constexpr // requires __std::constructible_from<
-        //   awaiter_context_t<__promise, _ParentPromise>,
-        //   __promise_context_t&,
-        //   _ParentPromise&
-        // >
-        auto as_awaitable(_ParentPromise&) && noexcept { //-> __task_awaitable<_ParentPromise> {
+        requires __std::constructible_from<
+          awaiter_context_t<__promise, _ParentPromise>,
+          __promise_context_t&,
+          _ParentPromise&
+        >
+      constexpr auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
       }
 

@@ -35,13 +35,13 @@ using namespace std::string_literals;
 namespace {
 
   // This is a work-around for clang-12 bugs in Release mode
-  thread_local int __thread_id = 0;
+  thread_local constinit int thread_id = 0;
 
   static_assert(STDEXEC::sender<exec::task<void>>);
 
   // This is a work-around for apple clang bugs in Release mode
   STDEXEC_PP_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int {
-    return __thread_id;
+    return thread_id;
   }
 
   auto test_stickiness_for_two_single_thread_contexts_nested(
@@ -117,8 +117,8 @@ namespace {
     scheduler auto scheduler1 = context1.get_scheduler();
     scheduler auto scheduler2 = context2.get_scheduler();
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 1; }),
-      schedule(scheduler2) | then([] { __thread_id = 2; })));
+      schedule(scheduler1) | then([] { thread_id = 1; }),
+      schedule(scheduler2) | then([] { thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
     auto t = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
@@ -131,8 +131,8 @@ namespace {
     scheduler auto scheduler1 = context1.get_scheduler();
     scheduler auto scheduler2 = context2.get_scheduler();
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 1; }),
-      schedule(scheduler2) | then([] { __thread_id = 2; })));
+      schedule(scheduler1) | then([] { thread_id = 1; }),
+      schedule(scheduler2) | then([] { thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
     auto t = starts_on(
@@ -147,8 +147,8 @@ namespace {
     scheduler auto scheduler1 = context1.get_scheduler();
     scheduler auto scheduler2 = context2.get_scheduler();
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 1; }),
-      schedule(scheduler2) | then([] { __thread_id = 2; })));
+      schedule(scheduler1) | then([] { thread_id = 1; }),
+      schedule(scheduler2) | then([] { thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
     auto t =
@@ -164,8 +164,8 @@ namespace {
     scheduler auto scheduler1 = context1.get_scheduler();
     scheduler auto scheduler2 = context2.get_scheduler();
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 1; }),
-      schedule(scheduler2) | then([] { __thread_id = 2; })));
+      schedule(scheduler1) | then([] { thread_id = 1; }),
+      schedule(scheduler2) | then([] { thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
     auto t = starts_on(
@@ -179,41 +179,39 @@ namespace {
     scheduler auto scheduler1 = STDEXEC::inline_scheduler{};
     scheduler auto scheduler2 = STDEXEC::inline_scheduler{};
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 0; }),
-      schedule(scheduler2) | then([] { __thread_id = 0; })));
+      schedule(scheduler1) | then([] { thread_id = 0; }),
+      schedule(scheduler2) | then([] { thread_id = 0; })));
     auto id1 = 0;
     auto id2 = 0;
     auto t = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
     sync_wait(std::move(t));
   }
 
-  namespace {
-    auto test_stick_on_main_nested(
-      scheduler auto sched1,
-      scheduler auto,
-      auto id_main_thread,
-      [[maybe_unused]] auto id1,
-      [[maybe_unused]] auto id2) -> task<void> {
-      CHECK(get_id() == id_main_thread);
-      co_await schedule(sched1);
-      CHECK(get_id() == id_main_thread);
-    }
+  auto test_stick_on_main_nested(
+    scheduler auto sched1,
+    scheduler auto,
+    auto id_main_thread,
+    [[maybe_unused]] auto id1,
+    [[maybe_unused]] auto id2) -> task<void> {
+    CHECK(get_id() == id_main_thread);
+    co_await schedule(sched1);
+    CHECK(get_id() == id_main_thread);
+  }
 
-    auto test_stick_on_main(
-      scheduler auto sched1,
-      scheduler auto sched2,
-      auto id_main_thread,
-      [[maybe_unused]] auto id1,
-      [[maybe_unused]] auto id2) -> task<void> {
-      CHECK(get_id() == id_main_thread);
-      co_await schedule(sched1);
-      CHECK(get_id() == id_main_thread);
-      co_await schedule(sched2);
-      CHECK(get_id() == id_main_thread);
-      co_await test_stick_on_main_nested(sched1, sched2, id_main_thread, id1, id2);
-      CHECK(get_id() == id_main_thread);
-    }
-  } // namespace
+  auto test_stick_on_main(
+    scheduler auto sched1,
+    scheduler auto sched2,
+    auto id_main_thread,
+    [[maybe_unused]] auto id1,
+    [[maybe_unused]] auto id2) -> task<void> {
+    CHECK(get_id() == id_main_thread);
+    co_await schedule(sched1);
+    CHECK(get_id() == id_main_thread);
+    co_await schedule(sched2);
+    CHECK(get_id() == id_main_thread);
+    co_await test_stick_on_main_nested(sched1, sched2, id_main_thread, id1, id2);
+    CHECK(get_id() == id_main_thread);
+  }
 
   TEST_CASE("Stick on main thread if completes_inline is not used", "[types][sticky][task]") {
     single_thread_context context1;
@@ -221,8 +219,8 @@ namespace {
     scheduler auto scheduler1 = context1.get_scheduler();
     scheduler auto scheduler2 = context2.get_scheduler();
     sync_wait(when_all(
-      schedule(scheduler1) | then([] { __thread_id = 1; }),
-      schedule(scheduler2) | then([] { __thread_id = 2; })));
+      schedule(scheduler1) | then([] { thread_id = 1; }),
+      schedule(scheduler2) | then([] { thread_id = 2; })));
     auto id1 = 1;
     auto id2 = 2;
     auto id_main_thread = 0;

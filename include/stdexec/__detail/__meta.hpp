@@ -812,27 +812,39 @@ namespace STDEXEC {
     using __f = __minvoke<__mzip_with2_<_Cp, _Dp>, _Fn, _Continuation>;
   };
 
+  template <class _Ty, class _Uy>
+  using __msame_as = __mbool<STDEXEC_IS_SAME(_Ty, _Uy)>;
+
+  template <class _Ty, class _Uy>
+  using __mconvertible_to = __mbool<STDEXEC_IS_CONVERTIBLE_TO(_Ty, _Uy)>;
+
   template <bool>
-  struct __mfind_ {
-    template <class _Needle, class _Continuation, class _Head, class... _Tail>
+  struct __mfind_if_ {
+    template <class _Fn, class _Continuation, class _Head, class... _Tail>
     using __f = __minvoke_if_c<
-      __same_as<_Needle, _Head>,
+      __mcall1<_Fn, _Head>::value,
       __mbind_front<_Continuation, _Head>,
-      __mbind_front<__mfind_<(sizeof...(_Tail) != 0)>, _Needle, _Continuation>,
+      __mbind_front<__mfind_if_<(sizeof...(_Tail) != 0)>, _Fn, _Continuation>,
       _Tail...
     >;
   };
 
   template <>
-  struct __mfind_<false> {
-    template <class _Needle, class _Continuation>
+  struct __mfind_if_<false> {
+    template <class _Fn, class _Continuation>
     using __f = __minvoke<_Continuation>;
+  };
+
+  template <class _Fn, class _Continuation = __q<__mlist>>
+  struct __mfind_if {
+    template <class... _Args>
+    using __f = __minvoke<__mfind_if_<(sizeof...(_Args) != 0)>, _Fn, _Continuation, _Args...>;
   };
 
   template <class _Needle, class _Continuation = __q<__mlist>>
   struct __mfind {
     template <class... _Args>
-    using __f = __minvoke<__mfind_<(sizeof...(_Args) != 0)>, _Needle, _Continuation, _Args...>;
+    using __f = __mcall<__mfind_if<__mbind_front_q<__msame_as, _Needle>, _Continuation>, _Args...>;
   };
 
   template <class _Needle>
