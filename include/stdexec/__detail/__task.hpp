@@ -72,7 +72,7 @@ namespace STDEXEC {
     };
 
     struct __any_alloc_base {
-      virtual void __deallocate(void* __ptr, size_t __bytes) noexcept = 0;
+      virtual void __deallocate_(void* __ptr, size_t __bytes) noexcept = 0;
     };
 
     template <class _PAlloc>
@@ -84,7 +84,7 @@ namespace STDEXEC {
         : __alloc_(std::move(__alloc)) {
       }
 
-      void __deallocate(void* __ptr, size_t __bytes) noexcept final {
+      void __deallocate_(void* __ptr, size_t __bytes) noexcept final {
         // __bytes here is the same as __bytes passed to promise_type::operator new. We
         // overallocated to store the allocator in the blocks immediately following the
         // promise object. We now use that allocator to deallocate the entire block of
@@ -189,7 +189,7 @@ namespace STDEXEC {
     using __on_stopped_t = __task::__on_stopped<stop_source_type>;
 
     using __error_variant_t =
-      __error_types_t<error_types, __mbind_front_q<__variant_for, __monostate>, __q1<__decay_t>>;
+      __error_types_t<error_types, __mbind_front_q<__variant, __monostate>, __q1<__decay_t>>;
 
     using __completions_t = __concat_completion_signatures_t<
       completion_signatures<__detail::__single_value_sig_t<_Ty>, set_stopped_t()>,
@@ -207,7 +207,6 @@ namespace STDEXEC {
       constexpr explicit __opstate_base(scheduler_type __sched) noexcept
         : __sch_(std::move(__sched)) {
         // Initialize the errors variant to monostate, the "no error" state:
-        std::printf("opstate_base constructor, &__errors_ = %p\n", static_cast<void*>(&__errors_));
         __errors_.template emplace<0>();
       }
 
@@ -216,7 +215,7 @@ namespace STDEXEC {
       virtual auto __get_allocator() noexcept -> allocator_type = 0;
 
       scheduler_type __sch_;
-      __error_variant_t __errors_{};
+      __error_variant_t __errors_{__no_init};
     };
 
     constexpr explicit task(__std::coroutine_handle<promise_type> __coro) noexcept
@@ -266,7 +265,7 @@ namespace STDEXEC {
         // stop token is triggered:
         __stop_callback().__construct(
           get_stop_token(get_env(__rcvr_)),
-          __on_stopped_t{__coro_.promise().__stop_.template get<0>()});
+          __on_stopped_t{__var::__get<0>(__coro_.promise().__stop_)});
       }
       __coro_.resume();
     }
@@ -451,7 +450,7 @@ namespace STDEXEC {
       size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
       void* const __alloc_loc = static_cast<__task::__memblock*>(__ptr) + __promise_blocks;
       auto* __alloc = static_cast<__task::__any_alloc_base*>(__alloc_loc);
-      __alloc->__deallocate(__ptr, __bytes);
+      __alloc->__deallocate_(__ptr, __bytes);
     }
 
    private:
@@ -495,7 +494,7 @@ namespace STDEXEC {
       __promise const * __promise_;
     };
 
-    __variant_for<stop_source_type, stop_token_type> __stop_{};
+    __variant<stop_source_type, stop_token_type> __stop_{__no_init};
     __opstate_base* __state_ = nullptr;
   };
 #endif // !STDEXEC_NO_STD_COROUTINES()

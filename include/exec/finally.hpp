@@ -28,8 +28,7 @@ namespace exec {
     using namespace STDEXEC;
 
     template <class _Sigs>
-    using __result_variant_t =
-      __for_each_completion_signature_t<_Sigs, __decayed_tuple, __variant_for>;
+    using __result_variant_t = __for_each_completion_signature_t<_Sigs, __decayed_tuple, __variant>;
 
     template <class _ResultType, class _Receiver>
     struct __opstate_base {
@@ -111,10 +110,10 @@ namespace exec {
 
       template <class... _Args>
       void __store_result_and_start_next_op(_Args&&... __args) {
-        this->__result_.__construct()
+        this->__result_.__construct(STDEXEC::__no_init)
           .template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
         STDEXEC_ASSERT(__current_opstate_.index() == 0);
-        auto __final = static_cast<_FinalSender&&>(__current_opstate_.template get<0>().__sndr_);
+        auto __final = static_cast<_FinalSender&&>(__var::__get<0>(__current_opstate_).__sndr_);
         __final_opstate_t& __final_op = __current_opstate_.template __emplace_from<1>(
           STDEXEC::connect, static_cast<_FinalSender&&>(__final), __final_receiver_t{this});
         STDEXEC::start(__final_op);
@@ -122,7 +121,7 @@ namespace exec {
 
       explicit __opstate(_InitialSender&& __initial, _FinalSender __final, _Receiver __receiver)
         : __base_t{{static_cast<_Receiver&&>(__receiver)}}
-        , __current_opstate_() {
+        , __current_opstate_(STDEXEC::__no_init) {
         __current_opstate_.template emplace<0>(
           static_cast<_InitialSender&&>(__initial),
           static_cast<_FinalSender&&>(__final),
@@ -131,7 +130,7 @@ namespace exec {
 
       void start() & noexcept {
         STDEXEC_ASSERT(__current_opstate_.index() == 0);
-        STDEXEC::start(__current_opstate_.template get<0>().__initial_opstate_);
+        STDEXEC::start(__var::__get<0>(__current_opstate_).__initial_opstate_);
       }
 
      private:
@@ -152,7 +151,7 @@ namespace exec {
         connect_result_t<_InitialSender, __initial_receiver_t> __initial_opstate_;
       };
 
-      __variant_for<__initial_op_t, __final_opstate_t> __current_opstate_;
+      __variant<__initial_op_t, __final_opstate_t> __current_opstate_;
     };
 
     template <class _InitialSender, class _FinalSender, class _Receiver>

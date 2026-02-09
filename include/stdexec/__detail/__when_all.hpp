@@ -172,7 +172,7 @@ namespace STDEXEC {
         __error_types_of_t<_Senders, __env_t<_Env>, __q<__mlist>>...
       >;
 
-      using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;
+      using __errors_variant = __mapply<__q<__uniqued_variant>, __errors_list>;
     };
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
@@ -223,7 +223,7 @@ namespace STDEXEC {
           }
           break;
         case __error:
-          if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
+          if constexpr (!__same_as<_ErrorsVariant, __variant<>>) {
             // One or more child operations completed with an error:
             STDEXEC::__visit(
               __mk_completion_fn(set_error, __rcvr_), static_cast<_ErrorsVariant&&>(__errors_));
@@ -246,7 +246,7 @@ namespace STDEXEC {
       inplace_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       __std::atomic<__state_t> __state_{__started};
-      _ErrorsVariant __errors_{};
+      _ErrorsVariant __errors_{__no_init};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _ValuesTuple __values_{};
       __optional<__stop_callback_t> __on_stop_{};

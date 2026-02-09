@@ -338,7 +338,7 @@ namespace STDEXEC {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env2 __env2_;
       //! Variant to hold the child sender's results before passing them to the function:
-      __variant_for<_Tuples...> __args_{};
+      __variant<_Tuples...> __args_{__no_init};
     };
 
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
@@ -400,7 +400,7 @@ namespace STDEXEC {
       using __first_rcvr_t = __first_rcvr<_SetTag, _Fun, _Receiver, __env2_t, _Tuples...>;
       using __second_rcvr_t = __opstate::__opstate_base::__second_rcvr_t;
 
-      using __op_state_variant_t = __variant_for<
+      using __op_state_variant_t = __variant<
         connect_result_t<_Child, __first_rcvr_t>,
         __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
       >;
@@ -418,7 +418,7 @@ namespace STDEXEC {
 
       constexpr void start() noexcept {
         STDEXEC_ASSERT(__storage_.index() == 0);
-        STDEXEC::start(__storage_.template get<0>());
+        STDEXEC::start(__var::__get<0>(__storage_));
       };
 
       constexpr void __start_next() final {
@@ -430,7 +430,7 @@ namespace STDEXEC {
       }
 
       //! Variant type for holding the operation state of the currently in flight operation
-      __op_state_variant_t __storage_{};
+      __op_state_variant_t __storage_{__no_init};
     };
 
     // The set_value completions of:

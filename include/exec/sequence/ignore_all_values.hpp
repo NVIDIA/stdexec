@@ -78,7 +78,7 @@ namespace exec {
         }
       }
 
-      _ResultVariant __result_{};
+      _ResultVariant __result_{STDEXEC::__no_init};
       __std::atomic<int> __emplaced_{0};
     };
 
@@ -231,7 +231,7 @@ namespace exec {
       __mconst<__mlist<>>::__f,
       __mcompose_q<__mlist, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,
       __mlist<__tuple<set_stopped_t>>,
-      __mconcat<__qq<__variant_for>>::__f
+      __mconcat<__qq<__variant>>::__f
     >;
 
     template <class _Sender, class _Env>

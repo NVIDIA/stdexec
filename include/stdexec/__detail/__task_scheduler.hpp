@@ -29,7 +29,7 @@
 #include "__schedulers.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__typeinfo.hpp"
-#include "__variant.hpp" // IWYU pragma: keep for __variant_for
+#include "__variant.hpp" // IWYU pragma: keep for __variant
 
 #include <cstddef>
 
@@ -371,8 +371,9 @@ namespace STDEXEC {
       void execute(size_t __begin, size_t __end) noexcept final {
         STDEXEC_TRY {
           using __policy_t = std::remove_cvref_t<decltype(__declval<_Policy>().__get())>;
-          constexpr bool __parallelize = std::same_as<__policy_t, STDEXEC::parallel_policy>
-                                      || std::same_as<__policy_t, STDEXEC::parallel_unsequenced_policy>;
+          constexpr bool __parallelize =
+            std::same_as<__policy_t, STDEXEC::parallel_policy>
+            || std::same_as<__policy_t, STDEXEC::parallel_unsequenced_policy>;
           __visit(
             __detail::__get_execute_bulk_fn<__parallelize>(
               _BulkTag(), __fn_, __shape_, __begin, __end),
@@ -389,7 +390,7 @@ namespace STDEXEC {
 
       _Fn __fn_;
       size_t __shape_;
-      _Values __values_{};
+      _Values __values_{__no_init};
       __backend_ptr_t __backend_;
       std::byte __storage_[8 * sizeof(void*)];
     };
@@ -419,7 +420,7 @@ namespace STDEXEC {
         _Sndr,
         __fwd_env_t<env_of_t<_Rcvr>>,
         __decayed_tuple,
-        __mbind_front_q<__variant_for, __monostate>::__f
+        __mbind_front_q<__variant, __monostate>::__f
       >;
       using __rcvr_t = __task_bulk_receiver<_BulkTag, _Policy, _Fn, _Rcvr, __values_t>;
       using __opstate1_t = connect_result_t<_Sndr, __rcvr_t>;

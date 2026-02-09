@@ -20,12 +20,12 @@
 #include "../stdexec/execution.hpp"
 
 namespace exec {
-  namespace __variant {
+  namespace __var {
     using namespace STDEXEC;
 
     template <class _Receiver, class... _CvSenders>
     struct __operation_state {
-      __variant_for<connect_result_t<_CvSenders, _Receiver>...> __variant_{};
+      STDEXEC::__variant<connect_result_t<_CvSenders, _Receiver>...> __variant_{STDEXEC::__no_init};
 
      public:
       template <class _CvSender>
@@ -40,18 +40,15 @@ namespace exec {
       }
     };
 
-    template <class _OpState, class _Receiver>
+    template <class _OpState>
     struct __visitor {
-      template <class _Sender>
-      constexpr auto operator()(_Sender&& __sndr) -> _OpState {
+      template <class _Receiver, class _Sender>
+      constexpr auto operator()(_Receiver&& __rcvr, _Sender&& __sndr) -> _OpState {
         return _OpState{static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr)};
       }
-
-      _Receiver __rcvr;
     };
-  } // namespace __variant
+  } // namespace __var
 
-  // TODO: make STDEXEC::__variant_for work here
   template <class... _Senders>
   struct variant_sender {
     template <class _Self, class _Env>
@@ -60,24 +57,29 @@ namespace exec {
     >;
 
     template <std::size_t _Index>
-    using __nth_sender_t = STDEXEC::__m_at_c<_Index, _Senders...>;
+    using __nth_t = STDEXEC::__m_at_c<_Index, _Senders...>;
 
     template <class _Self, class _Receiver>
     using __opstate_t =
-      __variant::__operation_state<_Receiver, STDEXEC::__copy_cvref_t<_Self, _Senders>...>;
+      __var::__operation_state<_Receiver, STDEXEC::__copy_cvref_t<_Self, _Senders>...>;
 
-    std::variant<_Senders...> __sndrs_;
+    STDEXEC::__variant<_Senders...> __sndrs_{STDEXEC::__no_init};
 
    public:
     using sender_concept = STDEXEC::sender_t;
 
-    constexpr variant_sender() = default;
+    constexpr variant_sender()
+      requires std::default_initializable<__nth_t<0>>
+    {
+      __sndrs_.template emplace<0>();
+    }
 
-    template <class _Sender>
-      requires STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
+    template <STDEXEC::__not_decays_to<variant_sender> _Sender>
+      requires STDEXEC::__decay_copyable<_Sender>
+            && STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
     /*implicit*/ variant_sender(_Sender&& __sndr)
-      noexcept(STDEXEC::__nothrow_constructible_from<std::variant<_Senders...>, _Sender>)
-      : __sndrs_{static_cast<_Sender&&>(__sndr)} {
+      noexcept(STDEXEC::__nothrow_decay_copyable<_Sender>) {
+      __sndrs_.template emplace<STDEXEC::__decay_t<_Sender>>(static_cast<_Sender&&>(__sndr));
     }
 
     [[nodiscard]]
@@ -85,11 +87,12 @@ namespace exec {
       return __sndrs_.index();
     }
 
-    template <STDEXEC::__decay_copyable _Sender>
-      requires STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
-    auto operator=(_Sender __sndr) noexcept(STDEXEC::__nothrow_move_constructible<_Sender>)
+    template <STDEXEC::__not_decays_to<variant_sender> _Sender>
+      requires STDEXEC::__decay_copyable<_Sender>
+            && STDEXEC::__one_of<STDEXEC::__decay_t<_Sender>, _Senders...>
+    auto operator=(_Sender&& __sndr) noexcept(STDEXEC::__nothrow_decay_copyable<_Sender>)
       -> variant_sender& {
-      __sndrs_ = static_cast<_Sender&&>(__sndr);
+      __sndrs_.template emplace<STDEXEC::__decay_t<_Sender>>(static_cast<_Sender&&>(__sndr));
       return *this;
     }
 
@@ -101,8 +104,8 @@ namespace exec {
 
     template <std::size_t _Index, class... _Args>
     auto emplace(_Args&&... __args)
-      noexcept(STDEXEC::__nothrow_constructible_from<__nth_sender_t<_Index>, _Args...>)
-        -> __nth_sender_t<_Index>& {
+      noexcept(STDEXEC::__nothrow_constructible_from<__nth_t<_Index>, _Args...>)
+        -> __nth_t<_Index>& {
       return __sndrs_.template emplace<_Index>(static_cast<_Args&&>(__args)...);
     }
 
@@ -116,9 +119,9 @@ namespace exec {
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept(
       (STDEXEC::__nothrow_connectable<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Receiver> && ...))
       -> __opstate_t<_Self, _Receiver> {
-      using __visitor_t = __variant::__visitor<__opstate_t<_Self, _Receiver>, _Receiver>;
-      return std::visit(
-        __visitor_t{static_cast<_Receiver&&>(__rcvr)}, static_cast<_Self&&>(__self).__sndrs_);
+      using __visitor_t = __var::__visitor<__opstate_t<_Self, _Receiver>>;
+      return STDEXEC::__visit(
+        __visitor_t{}, static_cast<_Self&&>(__self).__sndrs_, static_cast<_Receiver&&>(__rcvr));
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 

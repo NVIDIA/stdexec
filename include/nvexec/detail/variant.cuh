@@ -55,7 +55,7 @@ namespace nvexec {
       V&& v,
       std::size_t index) {
       if (0 == index) {
-        static_cast<VisitorT&&>(visitor)((static_cast<V&&>(v)).template get<0>());
+        static_cast<VisitorT&&>(visitor)(static_cast<V&&>(v).template get<0>());
       }
     }
 
@@ -67,7 +67,7 @@ namespace nvexec {
       V&& v,
       std::size_t index) {
       if (I == index) {
-        static_cast<VisitorT&&>(visitor)((static_cast<V&&>(v)).template get<I>());
+        static_cast<VisitorT&&>(visitor)(static_cast<V&&>(v).template get<I>());
         return;
       }
 
