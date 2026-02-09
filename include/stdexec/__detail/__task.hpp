@@ -79,9 +79,6 @@ namespace STDEXEC {
     struct __any_alloc final : __any_alloc_base {
       using value_type = std::allocator_traits<_PAlloc>::value_type;
       static_assert(__same_as<value_type, __memblock>);
-      // Number of __memblock-sized chunks we needed store the allocator:
-      static constexpr size_t __alloc_blocks =
-        __task::__divmod(sizeof(__any_alloc<_PAlloc>), sizeof(__memblock));
 
       explicit __any_alloc(_PAlloc __alloc)
         : __alloc_(std::move(__alloc)) {
@@ -94,6 +91,9 @@ namespace STDEXEC {
         // memory:
         size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
         void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
+        // the number of blocks needed to store an object of type __palloc_t:
+        static constexpr size_t __alloc_blocks =
+          __task::__divmod(sizeof(__task::__any_alloc<_PAlloc>), sizeof(__task::__memblock));
 
         // Quick sanity check to make sure the allocator is where we expect it to be.
         STDEXEC_ASSERT(__alloc_loc == static_cast<void*>(this));
