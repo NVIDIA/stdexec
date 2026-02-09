@@ -268,7 +268,7 @@ namespace {
 
     template <class Receiver>
     auto connect(Receiver rcvr) const noexcept {
-      return opstate{value_, static_cast<Receiver&&>(rcvr)};
+      return opstate<Receiver>{value_, static_cast<Receiver&&>(rcvr)};
     }
 
    private:

@@ -81,7 +81,7 @@ namespace STDEXEC {
       static_assert(__same_as<value_type, __memblock>);
       // Number of __memblock-sized chunks we needed store the allocator:
       static constexpr size_t __alloc_blocks =
-        __task::__divmod(sizeof(__any_alloc), sizeof(__memblock));
+        __task::__divmod(sizeof(__any_alloc<_PAlloc>), sizeof(__memblock));
 
       explicit __any_alloc(_PAlloc __alloc)
         : __alloc_(std::move(__alloc)) {
