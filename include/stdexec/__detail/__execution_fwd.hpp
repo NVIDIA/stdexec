@@ -338,18 +338,13 @@ namespace STDEXEC {
   extern const bulk_unchunked_t bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __let {
-    template <class _SetTag>
-    struct __let_t;
-  } // namespace __let
-
-  using let_value_t = __let::__let_t<set_value_t>;
+  struct let_value_t;
   extern const let_value_t let_value;
 
-  using let_error_t = __let::__let_t<set_error_t>;
+  struct let_error_t;
   extern const let_error_t let_error;
 
-  using let_stopped_t = __let::__let_t<set_stopped_t>;
+  struct let_stopped_t;
   extern const let_stopped_t let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -378,11 +373,3 @@ namespace STDEXEC {
   using __on::on_t;
   extern const on_t on;
 } // namespace STDEXEC
-
-template <class...>
-[[deprecated]]
-constexpr void __print() {
-}
-
-template <class...>
-struct __undef;
