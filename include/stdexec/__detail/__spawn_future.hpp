@@ -241,14 +241,14 @@ namespace STDEXEC {
           //     completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, _Env>
           //
           // but that's hard to justify--the future-spawned-sender will be connected to a receiver
-          // with an empty environment after all. This code works and seems sensible (neither
-          // write_env nor __stop_when change the completion signatures of their children, other than
-          // write_env modifying the environment for its child, which is exactly what we want).
-          completion_signatures_of_t<_Sender, _Env>
+          // with an empty environment after all. This code works; I don't understand why the extra
+          // env type changes the result, but this is a reasonably small change we can make to the
+          // spec to bring things into alignment.
+          completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>
         > {
       using __sigs_t =
         // this is "wrong" in the same way as the above
-        completion_signatures_of_t<_Sender, _Env>;
+        completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>;
 
       using __receiver_t = __spawn_future_receiver<__sigs_t>;
 
