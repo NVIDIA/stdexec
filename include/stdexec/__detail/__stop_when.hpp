@@ -150,8 +150,10 @@ namespace STDEXEC {
             // when the receiver's stop token is stoppable, the net token must be
             // a fused token that responds to signals from both the sender's captured
             // token and the receiver's token
-            return __fused_token{
-              static_cast<_SenderToken&&>(__sndr_token),
+            return __fused_token<
+              std::remove_cvref_t<_SenderToken>,
+              std::remove_cvref_t<_ReceiverToken>
+            >{static_cast<_SenderToken&&>(__sndr_token),
               static_cast<_ReceiverToken&&>(__rcvr_token)};
           }
         }
