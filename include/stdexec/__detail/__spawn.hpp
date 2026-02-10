@@ -72,13 +72,13 @@ namespace STDEXEC {
 
       void __complete() noexcept override {
         [[maybe_unused]]
-        auto assoc = std::move(__assoc_);
+        auto __assoc = std::move(__assoc_);
 
         {
-          using traits = std::allocator_traits<_Alloc>::template rebind_traits<__spawn_state>;
-          typename traits::allocator_type alloc(__alloc_);
-          traits::destroy(alloc, this);
-          traits::deallocate(alloc, this, 1);
+          using __traits = std::allocator_traits<_Alloc>::template rebind_traits<__spawn_state>;
+          typename __traits::allocator_type __alloc(__alloc_);
+          __traits::destroy(__alloc, this);
+          __traits::deallocate(__alloc, this, 1);
         }
       }
 
@@ -107,29 +107,32 @@ namespace STDEXEC {
 
       template <sender _Sender, scope_token _Token, class _Env>
       void operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const {
-        auto wrappedSender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
-        auto sndrEnv = get_env(wrappedSender);
+        auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
+        auto __sndr_env = get_env(__wrapped_sender);
 
-        using raw_alloc = decltype(__spawn_common::__choose_alloc(__env, sndrEnv));
+        using __raw_alloc = decltype(__spawn_common::__choose_alloc(__env, __sndr_env));
 
-        auto senderWithEnv =
-          write_env(std::move(wrappedSender), __spawn_common::__choose_senv(__env, sndrEnv));
+        auto __sender_with_env =
+          write_env(std::move(__wrapped_sender), __spawn_common::__choose_senv(__env, __sndr_env));
 
-        using spawn_state_t =
-          __spawn_state<raw_alloc, std::remove_cvref_t<_Token>, decltype(senderWithEnv)>;
+        using __spawn_state_t =
+          __spawn_state<__raw_alloc, std::remove_cvref_t<_Token>, decltype(__sender_with_env)>;
 
-        using traits = std::allocator_traits<raw_alloc>::template rebind_traits<spawn_state_t>;
-        typename traits::allocator_type alloc(__spawn_common::__choose_alloc(__env, sndrEnv));
+        using __traits =
+          std::allocator_traits<__raw_alloc>::template rebind_traits<__spawn_state_t>;
+        typename __traits::allocator_type __alloc(
+          __spawn_common::__choose_alloc(__env, __sndr_env));
 
-        auto* op = traits::allocate(alloc, 1);
+        auto* __op = __traits::allocate(__alloc, 1);
 
-        __scope_guard __guard{[&]() noexcept { traits::deallocate(alloc, op, 1); }};
+        __scope_guard __guard{[&]() noexcept { __traits::deallocate(__alloc, __op, 1); }};
 
-        traits::construct(alloc, op, alloc, std::move(senderWithEnv), static_cast<_Token&&>(__tkn));
+        __traits::construct(
+          __alloc, __op, __alloc, std::move(__sender_with_env), static_cast<_Token&&>(__tkn));
 
         __guard.__dismiss();
 
-        op->__run();
+        __op->__run();
       }
     };
   } // namespace __spawn

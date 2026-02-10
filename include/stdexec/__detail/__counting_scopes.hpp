@@ -58,9 +58,9 @@ namespace STDEXEC {
 
       explicit __join_state_base(
         __base_scope* __scope,
-        void (*__completeFn)(__join_state_base*) noexcept) noexcept
+        void (*__complete_fn)(__join_state_base*) noexcept) noexcept
         : __scope_(__scope)
-        , __complete_(__completeFn) {
+        , __complete_(__complete_fn) {
       }
 
       void __complete() noexcept {
@@ -138,11 +138,11 @@ namespace STDEXEC {
           noexcept(__nothrow_callable<connect_t, __sched_sender, __rcvr_t>)
           : __join_state_base(
               __scope,
-              [](__join_state_base* base) noexcept {
-                auto* self = static_cast<__join_state*>(base);
+              [](__join_state_base* __base) noexcept {
+                auto* __self = static_cast<__join_state*>(__base);
                 // if the schedule-sender is no-throw connectable with __rcvr_ then
                 // we could save some storage by deferring connection to this point
-                STDEXEC::start(self->__op_);
+                STDEXEC::start(__self->__op_);
               })
           , __rcvr_(std::move(__rcvr))
           , __op_(
@@ -163,8 +163,8 @@ namespace STDEXEC {
       static constexpr auto get_state =
         []<class _Sndr, class _Rcvr>(_Sndr&& __sender, _Rcvr __rcvr) noexcept(
           __nothrow_constructible_from<__join_state<_Rcvr>, __base_scope*, _Rcvr>) {
-          auto [_, scope] = __sender;
-          return __join_state<_Rcvr>(scope, std::move(__rcvr));
+          auto [_, __scope] = __sender;
+          return __join_state<_Rcvr>(__scope, std::move(__rcvr));
         };
 
       static constexpr auto start = [](auto& __state) noexcept {
@@ -206,9 +206,9 @@ namespace STDEXEC {
       friend _Scope;
 
       struct __disassociater {
-        void operator()(_Scope* p) const noexcept {
+        void operator()(_Scope* __p) const noexcept {
           // [exec.counting.scopes.general] paragraph 5.4
-          p->__disassociate();
+          __p->__disassociate();
         }
       };
 
@@ -224,6 +224,9 @@ namespace STDEXEC {
       // we represent the (count, state) pair in a single std::size_t by allocating
       // the lower three bits to state, leaving all the rest of the bits for count;
       // the result is that we can count up to MAX_SIZE_T >> 3 outstanding ops.
+      //
+      // The extra parens around the function name are to work around windows.h defining
+      // a function-like macro named max.
       static constexpr std::size_t max_associations = (std::numeric_limits<std::size_t>::max)()
                                                    >> 3;
 
@@ -252,8 +255,8 @@ namespace STDEXEC {
         // with all the now-completed associated operations but the scope may be destroyed
         // on yet another thread so we ought to execute a load-acquire to ensure the
         // current thread has properly synchronized.
-        auto bits = __bits_.load(__std::memory_order_acquire);
-        if (!__destructible(bits)) {
+        auto __bits = __bits_.load(__std::memory_order_acquire);
+        if (!__destructible(__bits)) {
           std::terminate();
         }
       }
@@ -278,12 +281,12 @@ namespace STDEXEC {
       }
 
       bool __try_associate() noexcept {
-        constexpr auto makeNewBits = [](std::size_t bits) noexcept {
+        constexpr auto __make_new_bits = [](std::size_t __bits) noexcept {
           // [exec.simple.counting.mem] paragraph 5 and 5.3 say there is no
           // effect if state is closed or if count is equal to max_associations
           // so we should not be calculating a new (count, state) pair if either
           // of those conditions hold.
-          STDEXEC_ASSERT(!__is_closed(bits) && __count(bits) < max_associations);
+          STDEXEC_ASSERT(!__is_closed(__bits) && __count(__bits) < max_associations);
 
           // [exec.simple.counting.mem] paragraph 5
           // Effects: .... Otherwise, if state is
@@ -294,14 +297,14 @@ namespace STDEXEC {
           //       with (__join_needed | __join_running) so we can implement the
           //       update to state by simply ensuring the __join_needed bit is
           //       set; incrementing count is done in the obvious way.
-          return __make_bits(__count(bits) + 1ul, __state(bits) | __join_needed);
+          return __make_bits(__count(__bits) + 1ul, __state(__bits) | __join_needed);
         };
 
         // we might be about to observe that the scope has been closed; we should
         // establish that the closure happened-before this attempt to associate
         // so this needs to be a load-acquire
-        auto oldBits = __bits_.load(__std::memory_order_acquire);
-        std::size_t newBits; //intentionally uninitialized
+        auto __old_bits = __bits_.load(__std::memory_order_acquire);
+        std::size_t __new_bits; //intentionally uninitialized
 
         do {
           // [exec.simple.counting.mem] paragraph 5
@@ -312,16 +315,16 @@ namespace STDEXEC {
           //
           // NOTE: Paragraph 5.3 applies when state is closed, closed-and-joining,
           //       or joined, all of which can be detected by checking the closed bit
-          if (__is_closed(oldBits) || __count(oldBits) == max_associations) {
+          if (__is_closed(__old_bits) || __count(__old_bits) == max_associations) {
             // Paragraph 6 (the Returns clause) says we return assoc-t() "otherwise",
             // which applies when count is not incremented, i.e. right here.
             return false;
           }
 
-          newBits = makeNewBits(oldBits);
+          __new_bits = __make_new_bits(__old_bits);
         } while (!__bits_.compare_exchange_weak(
-          oldBits,
-          newBits,
+          __old_bits,
+          __new_bits,
           // on success we only need store-relaxed because we're "just" incrementing
           // a reference count but on failure we need load-acquire to synchronize
           // with the thread that closed the scope if we happen to observe that; it's
@@ -345,9 +348,9 @@ namespace STDEXEC {
         //       decrementing and state is [joining] then changes state to
         //       joined...", which could be transliterated to code like so:
         //
-        //         auto oldCount = __count(__bits_.fetch_sub(1 << 3));
+        //         auto __old_count = __count(__bits_.fetch_sub(1 << 3));
         //
-        //         if (oldCount == 1)
+        //         if (__old_count == 1)
         //           __bits_.store(__closed);
         //
         //       but that would introduce a race condition: if the scope is
@@ -356,37 +359,38 @@ namespace STDEXEC {
         //       state. Instead, we use a CAS loop to atomically update the
         //       count and state simultaneously.
 
-        constexpr auto makeNewBits = [](std::size_t bits) noexcept {
+        constexpr auto __make_new_bits = [](std::size_t __bits) noexcept {
           // [exec.simple.counting.mem] paragraph 8
           // Effects: Decrements count. ...
-          const auto newCount = __count(bits) - 1ul;
+          const auto __new_count = __count(__bits) - 1ul;
           // ... If count is zero after decrementing and state is open-and-joining
           // or closed-and-joining, changes state to joined...
           //
           // NOTE: We can check for both open-and-joining and closed-and-joining by
           //       checking the joining bit; it doesn't matter whether the scope is
           //       open or closed, only whether a join-sender is pending or not.
-          const auto newState = (newCount == 0ul && __is_joining(bits) ? __closed : __state(bits));
+          const auto __new_state =
+            (__new_count == 0ul && __is_joining(__bits) ? __closed : __state(__bits));
 
-          STDEXEC_ASSERT(newCount < __count(bits));
+          STDEXEC_ASSERT(__new_count < __count(__bits));
 
-          return __make_bits(newCount, newState);
+          return __make_bits(__new_count, __new_state);
         };
 
         // relaxed is sufficient here because the CAS loop we're about to run won't
         // complete until we've synchronized with acquire-release semantics
-        auto oldBits = __bits_.load(__std::memory_order_relaxed);
-        std::size_t newBits; // intentionally uninitialized
+        auto __old_bits = __bits_.load(__std::memory_order_relaxed);
+        std::size_t __new_bits; // intentionally uninitialized
 
         // [exec.simple.counting.mem] paragraph 7
         // Preconditions: count > 0
-        STDEXEC_ASSERT(__count(oldBits) > 0ul);
+        STDEXEC_ASSERT(__count(__old_bits) > 0ul);
 
         do {
-          newBits = makeNewBits(oldBits);
+          __new_bits = __make_new_bits(__old_bits);
         } while (!__bits_.compare_exchange_weak(
-          oldBits,
-          newBits,
+          __old_bits,
+          __new_bits,
           // on success, we need store-release semantics to publish the consequences
           // of the just-finished operation to other scope users, and we also need
           // load-acquire semantics in case we're the last associated operation to
@@ -396,20 +400,20 @@ namespace STDEXEC {
           // can get away with relaxed semantics
           __std::memory_order_relaxed));
 
-        if (__is_joined(newBits)) {
+        if (__is_joined(__new_bits)) {
           // [exec.simple.counting.mem] paragraph 8 continued...
           // [state has been updated to joined so] call complete() on all objects
           // registered with *this
           __complete_registered_join_operations();
         } else {
-          STDEXEC_ASSERT(!__is_joining(newBits) || __count(newBits) > 0ul);
+          STDEXEC_ASSERT(!__is_joining(__new_bits) || __count(__new_bits) > 0ul);
         }
       }
 
-      bool __start_join_sender(__counting_scopes::__join_state_base& __joinOp) noexcept {
+      bool __start_join_sender(__counting_scopes::__join_state_base& __join_op) noexcept {
         // relaxed is sufficient because the CAS loop below will continue until
         // we've synchronized
-        auto oldBits = __bits_.load(__std::memory_order_relaxed);
+        auto __old_bits = __bits_.load(__std::memory_order_relaxed);
 
         do {
           // [exec.simple.counting.mem] para (9.1)
@@ -418,15 +422,15 @@ namespace STDEXEC {
           // NOTE: there's a spec bug; we need to move to the joined
           //       state and return true when count is zero, regardless
           //       of state
-          if (__count(oldBits) == 0ul) {
-            const auto newBits = __make_bits(__count(oldBits), __closed);
+          if (__count(__old_bits) == 0ul) {
+            const auto __new_bits = __make_bits(__count(__old_bits), __closed);
 
-            STDEXEC_ASSERT(__is_joined(newBits));
+            STDEXEC_ASSERT(__is_joined(__new_bits));
 
             // try to make it joined
             if (__bits_.compare_exchange_weak(
-                  oldBits,
-                  newBits,
+                  __old_bits,
+                  __new_bits,
                   // on success, we need to publish to future callers of try_associate
                   // that the scope is closed and consume from all the now-completed
                   // associated operations any updates they made so we need
@@ -443,19 +447,19 @@ namespace STDEXEC {
           // [exec.simple.counting.mem] para (9.3)
           // closed or closed-and-joining -> closed-and-joining
           else {
-            STDEXEC_ASSERT(__is_join_needed(oldBits));
+            STDEXEC_ASSERT(__is_join_needed(__old_bits));
 
             // try to make it {open|closed}-and-joining
-            const auto newBits = oldBits | __join_running;
+            const auto __new_bits = __old_bits | __join_running;
 
-            STDEXEC_ASSERT(__is_joining(newBits));
+            STDEXEC_ASSERT(__is_joining(__new_bits));
 
             if (__bits_.compare_exchange_weak(
-                  oldBits,
-                  newBits,
+                  __old_bits,
+                  __new_bits,
                   // on success, relaxed is sufficient because __register will further synchronize;
                   // it's fine for the joining thread to synchronize with associated operations on
-                  // __registeredJoinOps and not on __bits because __disassociate decrements the
+                  // __registered_join_ops_ and not on __bits because __disassociate decrements the
                   // outstanding operation count with acquire-release semantics and then the last
                   // decrementer dequeues the list of registered joiners with acquire-release
                   // semantics, establishing that all decrements strongly happen-before the
@@ -463,7 +467,7 @@ namespace STDEXEC {
                   //
                   // on failure, relaxed is sufficient because we'll loop around and try again
                   __std::memory_order_relaxed)) {
-              return !__register(__joinOp);
+              return !__register(__join_op);
             }
           }
         } while (true);
@@ -496,7 +500,7 @@ namespace STDEXEC {
       // indicates that the last associated operation has been disassociated
       // and any previously-registered join operations have been (or are about
       // to be) completed.
-      __std::atomic<void*> __registeredJoinOps_{nullptr};
+      __std::atomic<void*> __registered_join_ops_{nullptr};
 
       // returns true in the unused and unused-and-closed states; since the bit
       // pattern for joined matches the unused-and-closed bit pattern, returns
@@ -555,41 +559,41 @@ namespace STDEXEC {
         return __bits & 7ul;
       }
 
-      // composes __newCount and __newState into the packed representation we store
+      // composes ___new_count and __new_state into the packed representation we store
       // in __bits
       constexpr static std::size_t
-        __make_bits(std::size_t __newCount, std::size_t __newState) noexcept {
+        __make_bits(std::size_t ___new_count, std::size_t __new_state) noexcept {
         // no high bits set
-        STDEXEC_ASSERT(__count(__newCount << 3) == __newCount);
+        STDEXEC_ASSERT(__count(___new_count << 3) == ___new_count);
 
         // no high bits set
-        STDEXEC_ASSERT(__state(__newState) == __newState);
+        STDEXEC_ASSERT(__state(__new_state) == __new_state);
 
-        return (__newCount << 3) | __state(__newState);
+        return (___new_count << 3) | __state(__new_state);
       }
 
-      bool __register(__join_state_base& __joinOp) noexcept {
+      bool __register(__join_state_base& __join_op) noexcept {
         // we need acquire semantics in case the join operation being started is about to
         // observe that the last decrement has already happened; in that case, we need to
         // establish that all of the now-completed associated operations happen-before the
         // completion of this join operation
-        auto* head = __registeredJoinOps_.load(__std::memory_order_acquire);
+        auto* __head = __registered_join_ops_.load(__std::memory_order_acquire);
 
         do {
-          if (head == this) {
-            // __registeredJoinOps_ == this when the list has been cleared
+          if (__head == this) {
+            // __registered_join_ops_ == this when the list has been cleared
             return false;
           }
 
-          // make __joinOp's __next_ point to the current head; note that, on the first
+          // make __join_op's __next_ point to the current head; note that, on the first
           // iteration of this loop, this assignment is the first write to __next_ that
           // establishes a non-indeterminate value for the variable
-          __joinOp.__next_ = static_cast<__join_state_base*>(head);
+          __join_op.__next_ = static_cast<__join_state_base*>(__head);
         } while (
-          // try to make the head point to __joinOp
-          !__registeredJoinOps_.compare_exchange_weak(
-            head,
-            &__joinOp,
+          // try to make the head point to __join_op
+          !__registered_join_ops_.compare_exchange_weak(
+            __head,
+            std::addressof(__join_op),
             // on success, we need at least release semantics to ensure that the final
             // disassociation can see the full join operation when it dequeues the list
             // of registered operations with acquire semantics; however, the on-success
@@ -604,7 +608,7 @@ namespace STDEXEC {
       }
 
       __join_state_base* __dequeue_registered_join_operations() noexcept {
-        // leave __registeredJoinOps_ pointing at *this, which we use as a sentinel;
+        // leave __registered_join_ops_ pointing at *this, which we use as a sentinel;
         // any join operations that start after this exchange will observe the
         // sentinel, conclude that the scope has already been joined, and thus
         // complete inline
@@ -614,24 +618,24 @@ namespace STDEXEC {
         // need release semantics to ensure that any future join-senders that
         // observe the sentinel value perform that observation with a happens-after
         // relationship with the current update
-        void* waitingOps = __registeredJoinOps_.exchange(this, __std::memory_order_acq_rel);
+        void* __waiting_ops = __registered_join_ops_.exchange(this, __std::memory_order_acq_rel);
 
-        // at this point, waitingOps had better be either nullptr or the address
+        // at this point, __waiting_ops had better be either nullptr or the address
         // of a join operation waiting to be completed; otherwise, the upcoming
         // static_cast is UB
-        STDEXEC_ASSERT(waitingOps != this);
+        STDEXEC_ASSERT(__waiting_ops != this);
 
-        return static_cast<__join_state_base*>(waitingOps);
+        return static_cast<__join_state_base*>(__waiting_ops);
       }
 
       void __complete_registered_join_operations() noexcept {
-        for (auto* ops = __dequeue_registered_join_operations(); ops != nullptr; /*nothing*/) {
+        for (auto* __ops = __dequeue_registered_join_operations(); __ops != nullptr; /*nothing*/) {
           // completing an async operation is likely to lead to the end of that
           // operation's lifetime so make sure we advance the cursor before we
           // invoke __complete on the current list element; otherwise, it may
           // be UB to access __next_
-          auto* op = std::exchange(ops, ops->__next_);
-          op->__complete();
+          auto* __op = std::exchange(__ops, __ops->__next_);
+          __op->__complete();
         }
       }
     };
@@ -717,7 +721,7 @@ namespace STDEXEC {
       sender auto wrap(_Sender&& __snd) const
         noexcept(__nothrow_constructible_from<std::remove_cvref_t<_Sender>, _Sender>) {
         // [exec.scope.counting] paragraph 7
-        return __stop_when(static_cast<_Sender&&>(__snd), __scope_->__stopSource_.get_token());
+        return __stop_when(static_cast<_Sender&&>(__snd), __scope_->__stop_source_.get_token());
       }
 
       [[nodiscard]]
@@ -753,7 +757,7 @@ namespace STDEXEC {
 
     void request_stop() noexcept {
       // [exec.scope.counting] paragraphs 3 and 4
-      __stopSource_.request_stop();
+      __stop_source_.request_stop();
     }
 
    private:
@@ -762,7 +766,7 @@ namespace STDEXEC {
     // needs access to call the public members of __base_scope
     friend __counting_scopes::__scope_join_impl;
 
-    inplace_stop_source __stopSource_;
+    inplace_stop_source __stop_source_;
 
     __assoc_t __try_associate() noexcept {
       // [exec.scope.counting] paragraphs 5 and 6

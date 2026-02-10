@@ -90,7 +90,7 @@ namespace STDEXEC {
         requires __std::copy_constructible<__wrap_sender_t>
         : __assoc_(__other.__assoc_.try_associate()) {
         if (__assoc_) {
-          std::construct_at(&__sndr_, __other.__sndr_);
+          std::construct_at(std::addressof(__sndr_), __other.__sndr_);
         }
       }
 
@@ -106,15 +106,15 @@ namespace STDEXEC {
       }
 
       std::pair<__assoc_t, __sender_ref> release() && noexcept {
-        __sender_ref u(__assoc_ ? std::addressof(__sndr_) : nullptr);
-        return {std::move(__assoc_), std::move(u)};
+        __sender_ref __u(__assoc_ ? std::addressof(__sndr_) : nullptr);
+        return {std::move(__assoc_), std::move(__u)};
       }
 
      private:
       explicit __associate_data(std::pair<__assoc_t, __sender_ref> __parts)
         : __assoc_(std::move(__parts.first)) {
         if (__assoc_) {
-          std::construct_at(&__sndr_, std::move(*__parts.second));
+          std::construct_at(std::addressof(__sndr_), std::move(*__parts.second));
         }
       }
 
@@ -164,23 +164,23 @@ namespace STDEXEC {
         __op_t __op_;
       };
 
-      explicit __op_state(std::pair<__assoc_t, __sender_ref_t> parts, _Receiver&& __rcvr)
-        : __assoc_(std::move(parts.first)) {
+      explicit __op_state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
+        : __assoc_(std::move(__parts.first)) {
         if (__assoc_) {
           ::new ((void*) std::addressof(__op_))
-            __op_t(connect(std::move(*parts.second), std::move(__rcvr)));
+            __op_t(connect(std::move(*__parts.second), std::move(__rcvr)));
         } else {
           std::construct_at(std::addressof(__rcvr_), std::move(__rcvr));
         }
       }
 
-      explicit __op_state(__associate_data_t&& ad, _Receiver&& __rcvr)
-        : __op_state(std::move(ad).release(), std::move(__rcvr)) {
+      explicit __op_state(__associate_data_t&& __ad, _Receiver&& __rcvr)
+        : __op_state(std::move(__ad).release(), std::move(__rcvr)) {
       }
 
-      explicit __op_state(const __associate_data_t& ad, _Receiver&& __rcvr)
+      explicit __op_state(const __associate_data_t& __ad, _Receiver&& __rcvr)
         requires __std::copy_constructible<__associate_data_t>
-        : __op_state(__associate_data_t(ad).release(), std::move(__rcvr)) {
+        : __op_state(__associate_data_t(__ad).release(), std::move(__rcvr)) {
       }
 
       ~__op_state() {

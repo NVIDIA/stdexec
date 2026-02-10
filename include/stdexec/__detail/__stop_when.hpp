@@ -113,10 +113,10 @@ namespace STDEXEC {
 
          private:
           struct __cb {
-            callback_type* self;
+            callback_type* __self;
 
             void operator()() noexcept {
-              (*self)();
+              (*__self)();
             }
           };
 
@@ -142,10 +142,10 @@ namespace STDEXEC {
                 && unstoppable_token<std::remove_cvref_t<_ReceiverToken>>
         [[nodiscard]]
         std::remove_cvref_t<_SenderToken>
-          operator()(_SenderToken&& __sndrToken, _ReceiverToken&&) const noexcept {
+          operator()(_SenderToken&& __sndr_token, _ReceiverToken&&) const noexcept {
           // when the receiver's stop token is unstoppable, the net token is just
           // the sender's captured token
-          return __sndrToken;
+          return __sndr_token;
         }
 
         template <class _SenderToken, class _ReceiverToken>
@@ -153,12 +153,12 @@ namespace STDEXEC {
                 && stoppable_token<std::remove_cvref_t<_ReceiverToken>>
         [[nodiscard]]
         __fused_token<std::remove_cvref_t<_SenderToken>, std::remove_cvref_t<_ReceiverToken>>
-          operator()(_SenderToken&& __sndrToken, _ReceiverToken&& __rcvrToken) const noexcept {
+          operator()(_SenderToken&& __sndr_token, _ReceiverToken&& __rcvr_token) const noexcept {
           // when the receiver's stop token is stoppable, the net token must be
           // a fused token that responds to signals from both the sender's captured
           // token and the receiver's token
           return {
-            static_cast<_SenderToken&&>(__sndrToken), static_cast<_ReceiverToken&&>(__rcvrToken)};
+            static_cast<_SenderToken&&>(__sndr_token), static_cast<_ReceiverToken&&>(__rcvr_token)};
         }
       };
 
