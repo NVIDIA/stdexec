@@ -36,14 +36,21 @@ namespace STDEXEC {
   // [exec.spawn]
   namespace __spawn {
     struct __spawn_state_base {
-      __spawn_state_base() = default;
+      explicit __spawn_state_base(void (*__complete)(__spawn_state_base*) noexcept) noexcept
+        : __complete_(__complete) {
+      }
 
       __spawn_state_base(__spawn_state_base&&) = delete;
 
-      virtual void __complete() noexcept = 0;
+      void __complete() noexcept {
+        __complete_(this);
+      }
 
      protected:
       ~__spawn_state_base() = default;
+
+     private:
+      void (*__complete_)(__spawn_state_base*) noexcept;
     };
 
     struct __spawn_receiver {
@@ -65,21 +72,10 @@ namespace STDEXEC {
       using __op_t = connect_result_t<_Sender, __spawn_receiver>;
 
       __spawn_state(_Alloc __alloc, _Sender&& __sndr, _Token __token)
-        : __alloc_(std::move(__alloc))
+        : __spawn_state_base(__do_complete)
+        , __alloc_(std::move(__alloc))
         , __op_(connect(std::move(__sndr), __spawn_receiver(this)))
         , __assoc_(__token.try_associate()) {
-      }
-
-      void __complete() noexcept override {
-        [[maybe_unused]]
-        auto __assoc = std::move(__assoc_);
-
-        {
-          using __traits = std::allocator_traits<_Alloc>::template rebind_traits<__spawn_state>;
-          typename __traits::allocator_type __alloc(__alloc_);
-          __traits::destroy(__alloc, this);
-          __traits::deallocate(__alloc, this, 1);
-        }
       }
 
       void __run() noexcept {
@@ -96,6 +92,20 @@ namespace STDEXEC {
       _Alloc __alloc_;
       __op_t __op_;
       __assoc_t __assoc_;
+
+      static void __do_complete(__spawn_state_base* __base) noexcept {
+        auto* __self = static_cast<__spawn_state*>(__base);
+
+        [[maybe_unused]]
+        auto __assoc = std::move(__self->__assoc_);
+
+        {
+          using __traits = std::allocator_traits<_Alloc>::template rebind_traits<__spawn_state>;
+          typename __traits::allocator_type __alloc(std::move(__self->__alloc_));
+          __traits::destroy(__alloc, __self);
+          __traits::deallocate(__alloc, __self, 1);
+        }
+      }
     };
 
 
