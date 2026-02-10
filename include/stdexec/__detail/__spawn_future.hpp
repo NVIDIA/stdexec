@@ -203,13 +203,13 @@ namespace STDEXEC {
      private:
       template <class _CPO, class... _T>
       void __set_complete(_T&&... __t) noexcept {
-        constexpr bool __nothrow = (__nothrow_constructible_from<__decay_t<_T>, _T> && ...);
+        constexpr bool __non_throwing = (__nothrow_constructible_from<__decay_t<_T>, _T> && ...);
 
         try {
           __state_->__result_
             .template emplace<__decayed_tuple<_CPO, _T...>>(_CPO{}, static_cast<_T&&>(__t)...);
         } catch (...) {
-          if constexpr (!__nothrow) {
+          if constexpr (!__non_throwing) {
             using tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state_->__result_.template emplace<tuple_t>(set_error_t{}, std::current_exception());
           }
@@ -750,12 +750,12 @@ namespace STDEXEC {
       };
 
       static constexpr auto start = [](auto& __state) noexcept {
-        constexpr bool __nothrow = noexcept(__state.__run());
+        constexpr bool __non_throwing = noexcept(__state.__run());
 
         try {
           __state.__run();
         } catch (...) {
-          if constexpr (!__nothrow) {
+          if constexpr (!__non_throwing) {
             STDEXEC::set_error(std::move(__state.__rcvr_), std::current_exception());
           }
         }
