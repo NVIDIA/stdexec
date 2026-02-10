@@ -66,14 +66,12 @@ namespace STDEXEC {
     template <bool _NothrowStorable, class... _Sigs>
     struct __future_variant {
       // this case handles _NothrowStorable == true
-      using type =
-        __uniqued_variant<__monostate, __decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
+      using type = __uniqued_variant<__decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
     };
 
     template <class... _Sigs>
     struct __future_variant<false, _Sigs...> {
       using type = __uniqued_variant<
-        __monostate,
         __decayed_tuple<set_stopped_t>,
         __decayed_tuple<set_error_t, std::exception_ptr>,
         __as_tuple<_Sigs>...
@@ -166,7 +164,6 @@ namespace STDEXEC {
         void (*__complete)(__spawn_future_state_base*) noexcept) noexcept
         : __try_cancelable(__try_cancel)
         , __complete_(__complete) {
-        __result_.template emplace<__monostate>();
       }
 
       __spawn_future_state_base(__spawn_future_state_base&&) = delete;
@@ -400,13 +397,11 @@ namespace STDEXEC {
       void __do_consume(auto& __rcvr) noexcept {
         __visit(
           [&__rcvr](auto&& __tuple) noexcept {
-            if constexpr (!__same_as<std::remove_reference_t<decltype(__tuple)>, __monostate>) {
-              __apply(
-                [&__rcvr](auto cpo, auto&&... __vals) {
-                  cpo(std::move(__rcvr), std::move(__vals)...);
-                },
-                std::move(__tuple)); // NOLINT(bugprone-move-forwarding-reference)
-            }
+            __apply(
+              [&__rcvr](auto cpo, auto&&... __vals) {
+                cpo(std::move(__rcvr), std::move(__vals)...);
+              },
+              std::move(__tuple)); // NOLINT(bugprone-move-forwarding-reference)
           },
           std::move(this->__result_));
       }
