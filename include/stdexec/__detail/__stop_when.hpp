@@ -139,26 +139,21 @@ namespace STDEXEC {
       struct __make_token_fn {
         template <class _SenderToken, class _ReceiverToken>
           requires stoppable_token<std::remove_cvref_t<_SenderToken>>
-                && unstoppable_token<std::remove_cvref_t<_ReceiverToken>>
-        [[nodiscard]]
-        std::remove_cvref_t<_SenderToken>
-          operator()(_SenderToken&& __sndr_token, _ReceiverToken&&) const noexcept {
-          // when the receiver's stop token is unstoppable, the net token is just
-          // the sender's captured token
-          return __sndr_token;
-        }
-
-        template <class _SenderToken, class _ReceiverToken>
-          requires stoppable_token<std::remove_cvref_t<_SenderToken>>
                 && stoppable_token<std::remove_cvref_t<_ReceiverToken>>
         [[nodiscard]]
-        __fused_token<std::remove_cvref_t<_SenderToken>, std::remove_cvref_t<_ReceiverToken>>
-          operator()(_SenderToken&& __sndr_token, _ReceiverToken&& __rcvr_token) const noexcept {
-          // when the receiver's stop token is stoppable, the net token must be
-          // a fused token that responds to signals from both the sender's captured
-          // token and the receiver's token
-          return {
-            static_cast<_SenderToken&&>(__sndr_token), static_cast<_ReceiverToken&&>(__rcvr_token)};
+        auto operator()(_SenderToken&& __sndr_token, _ReceiverToken&& __rcvr_token) const noexcept {
+          if constexpr (unstoppable_token<std::remove_cvref_t<_ReceiverToken>>) {
+            // when the receiver's stop token is unstoppable, the net token is just
+            // the sender's captured token
+            return __sndr_token;
+          } else {
+            // when the receiver's stop token is stoppable, the net token must be
+            // a fused token that responds to signals from both the sender's captured
+            // token and the receiver's token
+            return __fused_token{
+              static_cast<_SenderToken&&>(__sndr_token),
+              static_cast<_ReceiverToken&&>(__rcvr_token)};
+          }
         }
       };
 
