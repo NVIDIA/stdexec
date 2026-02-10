@@ -47,8 +47,6 @@ namespace STDEXEC {
 
     template <class _Tag, class... _Args>
     struct __future_sig_fns<_Tag(_Args...)> {
-      using __tuple = __decayed_tuple<_Tag, _Args...>;
-
       static constexpr bool __is_nothrow_storable = __nothrow_decay_copyable<_Args...>;
 
       using __decayed_sig = _Tag(__decay_t<_Args>...);
@@ -56,7 +54,7 @@ namespace STDEXEC {
 
     // [exec.spawn.future] paragraph 4
     template <class _Sig>
-    using __as_tuple = __future_sig_fns<_Sig>::__tuple;
+    using __as_tuple = __mapply_q<__decayed_tuple, _Sig>;
 
     template <class _Sig>
     using __decayed_sig = __future_sig_fns<_Sig>::__decayed_sig;
