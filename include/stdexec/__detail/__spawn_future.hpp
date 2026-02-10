@@ -558,7 +558,7 @@ namespace STDEXEC {
         //     responsibility.
 
         const auto __rcvr = __sentinel;
-        auto __callback = __self->__callback_;
+        auto __cb = __self->__callback_;
 
         // We have already synchronized with the consumer by performing a load-acquire above (and
         // we know it was the *consumer* we synchronized with because __sentinel contains the address
@@ -572,7 +572,7 @@ namespace STDEXEC {
         // __registered_receiver_; when the producer completes, it will load-acquire that value and
         // clean up.
         //
-        // In the second case, the producere will complete the registered receiver, which will have
+        // In the second case, the producer will complete the registered receiver, which will have
         // the side effect of destroying the stop callback that we're running inside, which is a
         // synchronization point with us.
         //
@@ -582,12 +582,12 @@ namespace STDEXEC {
         if (__sentinel == __rcvr) {
           // __registered_receiver_ still contained the value we observed during the CAS, which means
           // the producer still hadn't updated it to contain (__self). This means we succeeded in
-          // marking the operation as abandonded and the producer will destroy it when it completes
+          // marking the operation as abandoned and the producer will destroy it when it completes
           // (which could happen at any moment); we need to complete the consumer with set_stopped. We
-          // invoke __callback (the copy of __callback_ that we put on the stack) with a null
-          // self-pointer to signal that it ought to invoke set_stopped(std::move(*__rcvr)) without
-          // touching the operation.
-          __callback(nullptr, __rcvr);
+          // invoke __cb (the copy of __callback_ that we put on the stack) with a null self-pointer
+          // to signal that it ought to invoke set_stopped(std::move(*__rcvr)) without touching the
+          // operation.
+          __cb(nullptr, __rcvr);
         } else {
           STDEXEC_ASSERT(__sentinel == __self);
           // The producer beat us to the punch; it's busy trying to complete and is about to
