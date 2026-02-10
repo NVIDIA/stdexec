@@ -224,7 +224,8 @@ namespace STDEXEC {
       // we represent the (count, state) pair in a single std::size_t by allocating
       // the lower three bits to state, leaving all the rest of the bits for count;
       // the result is that we can count up to MAX_SIZE_T >> 3 outstanding ops.
-      static constexpr std::size_t max_associations = std::numeric_limits<std::size_t>::max() >> 3;
+      static constexpr std::size_t max_associations = (std::numeric_limits<std::size_t>::max)()
+                                                   >> 3;
 
       __base_scope() = default;
 
