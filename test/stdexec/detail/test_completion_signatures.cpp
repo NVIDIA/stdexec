@@ -96,7 +96,7 @@ namespace {
     using snd_eptr_t = decltype(ex::just_error(exception_ptr{}));
     using snd_ec_t = decltype(ex::just_error(error_code{}));
     using snd_str_t = decltype(ex::just_error(std::string{}));
-    using snd_tr_just_t = decltype(ex::transfer_just(error_scheduler{}));
+    using snd_tr_just_t = decltype(ex::just() | ex::continues_on(error_scheduler{}));
 
     using err_types_eptr = ex::__error_types_of_t<snd_eptr_t>;
     using err_types_ec = ex::__error_types_of_t<snd_ec_t>;

@@ -47,35 +47,29 @@ namespace STDEXEC {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.starts_on]
-  namespace __starts_on_ns {
-    struct starts_on_t {
-      template <scheduler _Scheduler, sender _Sender>
-      constexpr auto
-        operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-        return __make_sexpr<starts_on_t>(
-          static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
-      }
+  struct starts_on_t {
+    template <scheduler _Scheduler, sender _Sender>
+    constexpr auto
+      operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
+      return __make_sexpr<starts_on_t>(
+        static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+    }
 
-      template <__decay_copyable _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        auto& [__tag, __sched, __child] = __sndr;
-        return let_value(
-          continues_on(just(), __sched),
-          __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
-      }
+    template <__decay_copyable _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      auto& [__tag, __sched, __child] = __sndr;
+      return let_value(
+        continues_on(just(), __sched),
+        __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
+    }
 
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
-      }
-    };
-  } // namespace __starts_on_ns
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
+      return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
+    }
+  };
 
-  using __starts_on_ns::starts_on_t;
   inline constexpr starts_on_t starts_on{};
-
-  using start_on_t = starts_on_t;
-  inline constexpr starts_on_t start_on{};
 
   template <>
   struct __sexpr_impl<starts_on_t> : __sexpr_defaults {

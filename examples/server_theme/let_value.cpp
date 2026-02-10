@@ -24,21 +24,20 @@
  *    - optional GPU context that may be used on some types of servers
  *
  * Specific problem description:
- * - we are looking at the flow of processing an HTTP request and sending back
- * the response
- * - show how one can break the (slightly complex) flow into steps with let_*
- * functions
- * - different phases of processing HTTP requests are broken down into separate
- * concerns
- * - each part of the processing might use different execution contexts (details
- * not shown in this example)
- * - error handling is generic, regardless which component fails; we always send
- * the right response to the clients
+ *
+ * - we are looking at the flow of processing an HTTP request and sending back the
+ *   response
+ * - show how one can break the (slightly complex) flow into steps with let_* functions
+ * - different phases of processing HTTP requests are broken down into separate concerns
+ * - each part of the processing might use different execution contexts (details not shown
+ *   in this example)
+ * - error handling is generic, regardless which component fails; we always send the right
+ *   response to the clients
  *
  * Example goals:
  * - show how one can break more complex flows into steps with let_* functions
- * - exemplify the use of let_value, let_error, let_stopped, transfer_just and just
- * algorithms
+ * - exemplify the use of let_value, let_error, let_stopped, continues_on and just
+ *   algorithms
  */
 
 #include <iostream>
@@ -77,7 +76,7 @@ auto schedule_request_start(S sched, int idx) -> ex::sender auto {
   std::cout << "HTTP request " << idx << " arrived\n";
 
   // Return a sender for the incoming http_request
-  return ex::transfer_just(std::forward<S>(sched), std::move(req));
+  return ex::just(std::move(req)) | ex::continues_on(std::forward<S>(sched));
 }
 
 // Sends a response back to the client; yields a void signal on success

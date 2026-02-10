@@ -50,14 +50,7 @@ namespace STDEXEC {
                               || __with_member<_Sender, _Receiver>
                               || __with_co_await<_Sender, _Receiver>
                               || __with_legacy_tag_invoke<_Sender, _Receiver>;
-  } // namespace __connect
 
-  template <class _Sender, class _Receiver>
-  concept __connectable_to = requires(__declfn_t<_Sender&&> __sndr, __declfn_t<_Receiver&> __rcvr) {
-    { transform_sender(__sndr(), get_env(__rcvr())) } -> __connect::__with_any_connect<_Receiver>;
-  };
-
-  namespace __connect {
 #if !STDEXEC_MSVC()
 
 #  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn_t<decltype(_EXPR), noexcept(_EXPR)>
@@ -197,44 +190,48 @@ namespace STDEXEC {
 #  undef STDEXEC_CONNECT_DECLFN_FOR
 
 #endif // STDEXEC_MSVC()
-
-    /////////////////////////////////////////////////////////////////////////////
-    // connect_t
-    struct connect_t {
-      template <
-        class _Sender,
-        class _Receiver,
-        class _DeclFn = __connect_declfn_t<_Sender, _Receiver>
-      >
-        requires __connectable_to<_Sender, _Receiver>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-        noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn> {
-        auto&& __new_sndr = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
-        using __new_sndr_t = decltype(__new_sndr);
-
-        if constexpr (__with_static_member<__new_sndr_t, _Receiver>) {
-          return STDEXEC_REMOVE_REFERENCE(__new_sndr_t)::static_connect(
-            static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__with_member<__new_sndr_t, _Receiver>) {
-          return static_cast<__new_sndr_t&&>(__new_sndr).connect(static_cast<_Receiver&&>(__rcvr));
-        } else if constexpr (__with_co_await<__new_sndr_t, _Receiver>) {
-          return __connect_awaitable(
-            static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
-        } else {
-          return __tag_invoke(
-            *this, static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
-        }
-      }
-
-      static constexpr auto query(forwarding_query_t) noexcept -> bool {
-        return false;
-      }
-    };
   } // namespace __connect
 
-  using __connect::connect_t;
-  inline constexpr __connect::connect_t connect{};
+  template <class _Sender, class _Receiver>
+  concept __connectable_to = requires(__declfn_t<_Sender&&> __sndr, __declfn_t<_Receiver&> __rcvr) {
+    { transform_sender(__sndr(), get_env(__rcvr())) } -> __connect::__with_any_connect<_Receiver>;
+  };
+
+  /////////////////////////////////////////////////////////////////////////////
+  // connect_t
+  struct connect_t {
+    template <
+      class _Sender,
+      class _Receiver,
+      class _DeclFn = __connect::__connect_declfn_t<_Sender, _Receiver>
+    >
+      requires __connectable_to<_Sender, _Receiver>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
+      noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn> {
+      auto&& __new_sndr = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
+      using __new_sndr_t = decltype(__new_sndr);
+
+      if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>) {
+        return STDEXEC_REMOVE_REFERENCE(__new_sndr_t)::static_connect(
+          static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
+      } else if constexpr (__connect::__with_member<__new_sndr_t, _Receiver>) {
+        return static_cast<__new_sndr_t&&>(__new_sndr).connect(static_cast<_Receiver&&>(__rcvr));
+      } else if constexpr (__connect::__with_co_await<__new_sndr_t, _Receiver>) {
+        return __connect_awaitable(
+          static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
+      } else {
+        return __tag_invoke(
+          *this, static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
+      }
+    }
+
+    static constexpr auto query(forwarding_query_t) noexcept -> bool {
+      return false;
+    }
+  };
+
+  inline constexpr connect_t connect{};
 
   template <class _Sender, class _Receiver>
   concept __nothrow_connectable = sender_to<_Sender, _Receiver>

@@ -27,7 +27,7 @@ namespace {
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
-    auto sender = STDEXEC::transfer_just(sch, std::move(data)) | STDEXEC::then(add);
+    auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch) | STDEXEC::then(add);
 
     auto completion_scheduler = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
       STDEXEC::get_env(sender));
@@ -50,7 +50,7 @@ namespace {
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
-    auto sender = STDEXEC::transfer_just(sch, std::move(data))
+    auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch)
                 | STDEXEC::bulk(STDEXEC::par, size, expensive_computation) | STDEXEC::then(add);
 
     auto completion_scheduler = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
@@ -75,7 +75,7 @@ namespace {
     auto add = [](auto const & data) {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
-    auto sender = STDEXEC::transfer_just(sch, std::move(data))
+    auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch)
                 | STDEXEC::bulk(STDEXEC::par, size, expensive_computation) | STDEXEC::then(add);
 
 

@@ -30,6 +30,9 @@
 #include <memory>
 #include <utility>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
+
 namespace STDEXEC {
 #if !STDEXEC_NO_STD_COROUTINES()
   namespace __task {
@@ -419,8 +422,21 @@ namespace STDEXEC {
       return __env{this};
     }
 
+    // When no allocator passed to the coroutine:
+    static void* operator new(size_t __bytes) {
+      return __promise::operator new(__bytes, std::allocator_arg, std::allocator<std::byte>{});
+    }
+
+    static void operator delete(void* __ptr, size_t __bytes) noexcept {
+      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
+      void* const __alloc_loc = static_cast<__task::__memblock*>(__ptr) + __promise_blocks;
+      auto* __alloc = static_cast<__task::__any_alloc_base*>(__alloc_loc);
+      __alloc->__deallocate_(__ptr, __bytes);
+    }
+
+    // When an allocator is passed to the coroutine:
     template <class _Alloc, class... _Args>
-    void* operator new(size_t __bytes, std::allocator_arg_t, _Alloc __alloc, _Args&&...) {
+    static void* operator new(size_t __bytes, std::allocator_arg_t, _Alloc __alloc, _Args&&...) {
       using __palloc_t = std::allocator_traits<_Alloc>::template rebind_alloc<__task::__memblock>;
       using __pointer_t = std::allocator_traits<__palloc_t>::pointer;
       static_assert(std::is_pointer_v<__pointer_t>, "Allocator pointer type must be a raw pointer");
@@ -441,15 +457,10 @@ namespace STDEXEC {
       return __ptr;
     }
 
-    void* operator new(size_t __bytes) {
-      return operator new(__bytes, std::allocator_arg, std::allocator<std::byte>{});
-    }
-
-    void operator delete(void* __ptr, size_t __bytes) noexcept {
-      size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
-      void* const __alloc_loc = static_cast<__task::__memblock*>(__ptr) + __promise_blocks;
-      auto* __alloc = static_cast<__task::__any_alloc_base*>(__alloc_loc);
-      __alloc->__deallocate_(__ptr, __bytes);
+    template <class _Alloc, class... _Args>
+    static void
+      operator delete(void* __ptr, size_t __bytes, std::allocator_arg_t, _Alloc, _Args&&...) {
+      __promise::operator delete(__ptr, __bytes);
     }
 
    private:
@@ -498,3 +509,5 @@ namespace STDEXEC {
   };
 #endif // !STDEXEC_NO_STD_COROUTINES()
 } // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

@@ -33,10 +33,10 @@ namespace exec {
     };
 
     template <class _Env, class _Query>
-    struct __without : STDEXEC::__env::__env_base_t<_Env> {
+    struct __without : STDEXEC::__env_base_t<_Env> {
       static_assert(STDEXEC::__nothrow_move_constructible<_Env>);
 
-      using STDEXEC::__env::__env_base_t<_Env>::query;
+      using STDEXEC::__env_base_t<_Env>::query;
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       auto query(_Query) const noexcept = delete;
@@ -168,9 +168,9 @@ namespace exec {
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
   [[deprecated("exec::write has been renamed to STDEXEC::write_env")]]
-  inline constexpr STDEXEC::__write::write_env_t write{};
-  [[deprecated("write_env has been moved to the STDEXEC:: namespace")]]
-  inline constexpr STDEXEC::__write::write_env_t write_env{};
+  inline constexpr STDEXEC::__write_env_t write{};
+  [[deprecated("exec::write_env has been moved to the STDEXEC:: namespace")]]
+  inline constexpr STDEXEC::__write_env_t write_env{};
 
   namespace __write_attrs {
     using namespace STDEXEC;

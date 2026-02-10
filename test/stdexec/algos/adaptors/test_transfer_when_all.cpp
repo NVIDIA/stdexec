@@ -20,6 +20,8 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+
 namespace ex = STDEXEC;
 
 // For testing `transfer_when_all` we assume that, the main implementation is based on `transfer`

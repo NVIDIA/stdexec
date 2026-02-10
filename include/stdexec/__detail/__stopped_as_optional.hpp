@@ -38,18 +38,6 @@ namespace STDEXEC {
   namespace __sao {
     struct _SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_;
 
-    struct stopped_as_optional_t {
-      template <sender _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
-        return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept {
-        return __closure(*this);
-      }
-    };
-
     template <class _Receiver, class _Value>
     struct __state {
       using __receiver_t = _Receiver;
@@ -65,6 +53,10 @@ namespace STDEXEC {
 
       template <class _Ty>
       using __set_error_t = completion_signatures<set_error_t(_Ty)>;
+
+      template <class _Sender, class _Receiver>
+      using __value_type_t =
+        __decay_t<__single_sender_value_t<__child_of<_Sender>, env_of_t<_Receiver>>>;
 
       template <class _Self, class... _Env>
       static constexpr auto get_completion_signatures() {
@@ -92,11 +84,12 @@ namespace STDEXEC {
 
       static constexpr auto get_state =
         []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
+        -> __state<_Receiver, __value_type_t<_Self, _Receiver>>
         requires sender_in<__child_of<_Self>, env_of_t<_Receiver>>
       {
         static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
-        using _Value = __decay_t<__single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>;
-        return __state<_Receiver, _Value>{static_cast<_Receiver&&>(__rcvr)};
+        using __value_t = __value_type_t<_Self, _Receiver>;
+        return __state<_Receiver, __value_t>{static_cast<_Receiver&&>(__rcvr)};
       };
 
       static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
@@ -126,7 +119,18 @@ namespace STDEXEC {
     };
   } // namespace __sao
 
-  using __sao::stopped_as_optional_t;
+  struct stopped_as_optional_t {
+    template <sender _Sender>
+    constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
+      return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto operator()() const noexcept {
+      return __closure(*this);
+    }
+  };
+
   inline constexpr stopped_as_optional_t stopped_as_optional{};
 
   template <>

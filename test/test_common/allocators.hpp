@@ -19,6 +19,8 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include <new>
+
 namespace ex = STDEXEC;
 
 namespace {
@@ -45,7 +47,11 @@ namespace {
     void deallocate(T* p, std::size_t n) {
       if (bytes_ != nullptr)
         *bytes_ -= n * sizeof(T);
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 2013'09L
       ::operator delete(p, n * sizeof(T));
+#else
+      ::operator delete(p);
+#endif
     }
 
     bool operator==(const test_allocator&) const = default;

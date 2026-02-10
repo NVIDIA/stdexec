@@ -40,7 +40,7 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::transfer_just(stream_ctx.get_scheduler(), 42) | ex::then([=](int val) {
+    auto snd = ex::just(42) | ex::continues_on(stream_ctx.get_scheduler()) | ex::then([=](int val) {
                  if (is_on_gpu()) {
                    if (val == 42) {
                      flags.set();
@@ -58,7 +58,7 @@ namespace {
     flags_storage_t flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::transfer_just(stream_ctx.get_scheduler(), 42, 4.2)
+    auto snd = ex::just(42, 4.2) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::then([=](int i, double d) {
                  if (is_on_gpu()) {
                    if (i == 42 && d == 4.2) {

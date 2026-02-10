@@ -179,7 +179,9 @@
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
-namespace execution {
+namespace execution::system_context_replaceability {
+}
+namespace this_thread {
 }
 STDEXEC_NAMESPACE_STD_END
 
@@ -206,6 +208,18 @@ STDEXEC_NAMESPACE_STD_END
 #if STDEXEC_NAMESPACE_IS_STD()
 #  error stdexec cannot be defined directly in namespace std, but a namespace nested inside std is allowed.
 #endif
+
+// clang-format off
+#if STDEXEC_NAMESPACE_IS_WITHIN_STD()
+#  define STDEXEC_P2300_NAMESPACE_BEGIN(...)   STDEXEC_NAMESPACE_STD_BEGIN __VA_OPT__(namespace __VA_ARGS__ {)
+#  define STDEXEC_P2300_NAMESPACE_END(...)     __VA_OPT__(}) STDEXEC_NAMESPACE_STD_END
+#  define STDEXEC_P2300_DEPRECATED_SYMBOL(...) using __VA_ARGS__;
+#else
+#  define STDEXEC_P2300_NAMESPACE_BEGIN(...)   namespace STDEXEC {
+#  define STDEXEC_P2300_NAMESPACE_END(...)     }
+#  define STDEXEC_P2300_DEPRECATED_SYMBOL(...)
+#endif
+// clang-format on
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L

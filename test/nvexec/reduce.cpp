@@ -29,7 +29,8 @@ namespace {
     std::fill_n(input, N, 1);
 
     nvexec::stream_context stream{};
-    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{input}) | nvexec::reduce(0);
+    auto snd = ex::just(std::span{input}) | ex::continues_on(stream.get_scheduler())
+             | nvexec::reduce(0);
 
     STATIC_REQUIRE(ex::sender_of<decltype(snd), ex::set_value_t(int&)>);
 
@@ -42,7 +43,7 @@ namespace {
     std::fill_n(input, N, 1);
 
     nvexec::stream_context stream{};
-    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{input})
+    auto snd = ex::just(std::span{input}) | ex::continues_on(stream.get_scheduler())
              | nvexec::reduce(0, cuda::std::plus{});
 
     STATIC_REQUIRE(ex::sender_of<decltype(snd), ex::set_value_t(int&)>);
@@ -59,7 +60,7 @@ namespace {
     int* last = thrust::raw_pointer_cast(input.data()) + input.size();
 
     nvexec::stream_context stream{};
-    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
+    auto snd = ex::just(std::span{first, last}) | ex::continues_on(stream.get_scheduler())
              | nvexec::reduce(init);
 
     auto [result] = ex::sync_wait(std::move(snd)).value();
@@ -76,7 +77,7 @@ namespace {
     int* last = thrust::raw_pointer_cast(input.data()) + input.size();
 
     nvexec::stream_context stream{};
-    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
+    auto snd = ex::just(std::span{first, last}) | ex::continues_on(stream.get_scheduler())
              | nvexec::reduce(init, minimum{});
 
     auto [result] = ex::sync_wait(std::move(snd)).value();
@@ -97,7 +98,7 @@ namespace {
     };
 
     nvexec::stream_context stream{};
-    auto snd = ex::transfer_just(stream.get_scheduler(), std::span{first, last})
+    auto snd = ex::just(std::span{first, last}) | ex::continues_on(stream.get_scheduler())
              | nvexec::reduce(init, is_on_gpu);
 
     auto [result] = ex::sync_wait(std::move(snd)).value();

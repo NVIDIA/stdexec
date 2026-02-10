@@ -28,27 +28,23 @@
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
-  namespace __execute_ {
-    struct execute_t {
-      template <scheduler _Scheduler, class _Fun>
-        requires __callable<_Fun&> && __std::move_constructible<_Fun>
-      void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
-        auto __domain = get_domain(__sched);
-        STDEXEC::apply_sender(
-          __domain,
-          *this,
-          schedule(static_cast<_Scheduler&&>(__sched)),
-          static_cast<_Fun&&>(__fun));
-      }
+  struct __execute_t {
+    template <scheduler _Scheduler, class _Fun>
+      requires __callable<_Fun&> && __std::move_constructible<_Fun>
+    void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
+      auto __domain = get_domain(__sched);
+      STDEXEC::apply_sender(
+        __domain, *this, schedule(static_cast<_Scheduler&&>(__sched)), static_cast<_Fun&&>(__fun));
+    }
 
-      template <sender_of<set_value_t()> _Sender, class _Fun>
-        requires __callable<_Fun&> && __std::move_constructible<_Fun>
-      void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
-        start_detached(then(static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)));
-      }
-    };
-  } // namespace __execute_
+    template <sender_of<set_value_t()> _Sender, class _Fun>
+      requires __callable<_Fun&> && __std::move_constructible<_Fun>
+    void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
+      start_detached(then(static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)));
+    }
+  };
 
-  using __execute_::execute_t;
+  using execute_t [[deprecated]] = __execute_t;
+  [[deprecated]]
   inline constexpr execute_t execute{};
 } // namespace STDEXEC

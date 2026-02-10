@@ -27,20 +27,6 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __write adaptor
   namespace __write {
-    struct write_env_t {
-      template <sender _Sender, class _Env>
-      constexpr auto operator()(_Sender&& __sndr, _Env __env) const {
-        return __make_sexpr<write_env_t>(
-          static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr));
-      }
-
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Env __env) const {
-        return __closure(*this, static_cast<_Env&&>(__env));
-      }
-    };
-
     struct __write_env_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
         []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
@@ -54,7 +40,7 @@ namespace STDEXEC {
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
-        static_assert(sender_expr_for<_Self, write_env_t>);
+        static_assert(sender_expr_for<_Self, __write_env_t>);
         return STDEXEC::get_completion_signatures<
           __child_of<_Self>,
           __minvoke_q<__join_env_t, const __decay_t<__data_of<_Self>>&, _Env>...
@@ -63,9 +49,22 @@ namespace STDEXEC {
     };
   } // namespace __write
 
-  using __write::write_env_t;
-  inline constexpr write_env_t write_env{};
+  struct __write_env_t {
+    template <sender _Sender, class _Env>
+    constexpr auto operator()(_Sender&& __sndr, _Env __env) const {
+      return __make_sexpr<__write_env_t>(
+        static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr));
+    }
+
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Env __env) const {
+      return __closure(*this, static_cast<_Env&&>(__env));
+    }
+  };
+
+  inline constexpr __write_env_t write_env{};
 
   template <>
-  struct __sexpr_impl<write_env_t> : __write::__write_env_impl { };
+  struct __sexpr_impl<__write_env_t> : __write::__write_env_impl { };
 } // namespace STDEXEC

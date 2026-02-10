@@ -144,21 +144,6 @@ namespace STDEXEC {
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
     };
 
-    struct continues_on_t {
-      template <scheduler _Scheduler, sender _Sender>
-      constexpr auto
-        operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto {
-        return __make_sexpr<continues_on_t>(
-          static_cast<_Scheduler&&>(__sched), schedule_from(static_cast<_Sender&&>(__sndr)));
-      }
-
-      template <scheduler _Scheduler>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Scheduler __sched) const noexcept {
-        return __closure(*this, static_cast<_Scheduler&&>(__sched));
-      }
-    };
-
     //! @brief The @c continues_on sender's attributes.
     template <class _Scheduler, class _Sender>
     struct __attrs {
@@ -401,7 +386,21 @@ namespace STDEXEC {
     };
   } // namespace __trnsfr
 
-  using __trnsfr::continues_on_t;
+  struct continues_on_t {
+    template <scheduler _Scheduler, sender _Sender>
+    constexpr auto
+      operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto {
+      return __make_sexpr<continues_on_t>(
+        static_cast<_Scheduler&&>(__sched), schedule_from(static_cast<_Sender&&>(__sndr)));
+    }
+
+    template <scheduler _Scheduler>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Scheduler __sched) const noexcept {
+      return __closure(*this, static_cast<_Scheduler&&>(__sched));
+    }
+  };
+
   inline constexpr continues_on_t continues_on{};
 
   template <>

@@ -58,7 +58,7 @@ namespace { namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = STDEXEC::transfer_just(stream.get_scheduler(), first, last)
+    auto snd = STDEXEC::just(first, last) | STDEXEC::continues_on(stream.get_scheduler())
              | nvexec::launch(
                  {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
                  [flags](cudaStream_t, int* first, int* last) -> void {

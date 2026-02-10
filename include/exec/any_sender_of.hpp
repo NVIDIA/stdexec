@@ -855,7 +855,7 @@ namespace exec {
       STDEXEC::inplace_stop_source __stop_source_{};
       using __stop_callback = typename STDEXEC::stop_token_of_t<
         STDEXEC::env_of_t<_Receiver>
-      >::template callback_type<__forward_stop_request>;
+      >::template callback_type<STDEXEC::__forward_stop_request>;
       std::optional<__stop_callback> __on_stop_{};
     };
 

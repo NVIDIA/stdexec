@@ -188,7 +188,7 @@ namespace exec {
 
     struct start_now_t {
       template <
-        STDEXEC::queryable _Env,
+        STDEXEC::__queryable _Env,
         exec::__scope::__async_scope _AsyncScope,
         STDEXEC::sender... _Sender
       >

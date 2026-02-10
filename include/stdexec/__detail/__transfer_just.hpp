@@ -25,74 +25,70 @@
 #include "__schedulers.hpp"
 #include "__tuple.hpp"
 
+// Hide transfer_just from Doxygen since it's deprecated and we don't want to document it:
+#if !defined(STDEXEC_DOXYGEN_INVOKED)
+
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.transfer_just]
-  namespace __transfer_just {
-    inline constexpr auto __make_transform_fn() {
-      return []<class _Scheduler, __decay_copyable... _Values>(
-               _Scheduler&& __sched, _Values&&... __vals) {
+  struct __transfer_just_t {
+    template <scheduler _Scheduler, __movable_value... _Values>
+    constexpr auto
+      operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
+      return __make_sexpr<__transfer_just_t>(
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
+    }
+
+    template <class _Sender>
+    static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      if constexpr (__decay_copyable<_Sender>) {
+        auto& [__tag, __data] = __sndr;
+        return __apply(__transform(), STDEXEC::__forward_like<_Sender>(__data));
+      } else {
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
+      }
+    }
+
+   private:
+    struct __transform {
+      template <class _Scheduler, __decay_copyable... _Values>
+      constexpr auto operator()(_Scheduler&& __sched, _Values&&... __vals) {
         return continues_on(
           just(static_cast<_Values&&>(__vals)...), static_cast<_Scheduler&&>(__sched));
-      };
-    }
-
-    inline constexpr auto __transform_sender_fn() {
-      return []<class _Data>(__ignore, _Data&& __data) {
-        return STDEXEC::__apply(__make_transform_fn(), static_cast<_Data&&>(__data));
-      };
-    }
-
-    struct transfer_just_t {
-      template <scheduler _Scheduler, __movable_value... _Values>
-      constexpr auto
-        operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto {
-        return __make_sexpr<transfer_just_t>(
-          __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
-      }
-
-      template <class _Sender>
-      static auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        if constexpr (__decay_copyable<_Sender>) {
-          return __apply(__transform_sender_fn(), static_cast<_Sender&&>(__sndr));
-        } else {
-          return __not_a_sender<
-            _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-            _WITH_PRETTY_SENDER_<_Sender>
-          >();
-        }
       }
     };
+  };
 
-    inline constexpr auto __make_attrs_fn() noexcept {
-      return []<class _Scheduler>(const _Scheduler& __sched, const auto&...) noexcept {
-        static_assert(scheduler<_Scheduler>, "transfer_just requires a scheduler");
-        return __sched_attrs{std::cref(__sched)};
-      };
-    }
-
-    struct __transfer_just_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = [](__ignore, const auto& __data) noexcept {
-        return STDEXEC::__apply(__make_attrs_fn(), __data);
-      };
-
-      template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
-        using __sndr_t =
-          __detail::__transform_sender_result_t<transfer_just_t, set_value_t, _Sender, env<>>;
-        return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
-    };
-  } // namespace __transfer_just
-
-  using __transfer_just::transfer_just_t;
-  inline constexpr transfer_just_t transfer_just{};
+  using transfer_just_t [[deprecated]] = __transfer_just_t;
+  [[deprecated]]
+  inline constexpr __transfer_just_t transfer_just{};
 
   template <>
-  struct __sexpr_impl<transfer_just_t> : __transfer_just::__transfer_just_impl { };
+  struct __sexpr_impl<__transfer_just_t> : __sexpr_defaults {
+    struct __mk_attrs {
+      template <class _Scheduler>
+      constexpr auto operator()(const _Scheduler& __sched, const auto&...) const noexcept {
+        static_assert(scheduler<_Scheduler>, "transfer_just requires a scheduler");
+        return __sched_attrs{std::cref(__sched)};
+      }
+    };
+
+    static constexpr auto get_attrs = [](__ignore, const auto& __data) noexcept {
+      return STDEXEC::__apply(__mk_attrs(), __data);
+    };
+
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      using __sndr_t =
+        __detail::__transform_sender_result_t<__transfer_just_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    };
+  };
 } // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
+
+#endif // STDEXEC_DOXYGEN_INVOKED

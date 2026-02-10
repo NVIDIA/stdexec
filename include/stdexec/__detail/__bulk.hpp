@@ -34,10 +34,6 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.bulk]
   namespace __bulk {
-    struct bulk_t;
-    struct bulk_chunked_t;
-    struct bulk_unchunked_t;
-
     //! Wrapper for a policy object.
     //!
     //! If we wrap a standard execution policy, we don't store anything, as we know the type.
@@ -240,29 +236,6 @@ namespace STDEXEC {
     template <class _Fun>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
 
-    struct bulk_t : __generic_bulk_t<bulk_t> {
-      struct __transform_sender_fn {
-        template <class _Data, class _Child>
-        constexpr auto operator()(__ignore, _Data&& __data, _Child&& __child) const {
-          // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
-          return bulk_chunked(
-            static_cast<_Child&&>(__child),
-            __data.__pol_.__get(),
-            __data.__shape_,
-            __as_bulk_chunked_fn(std::move(__data.__fun_)));
-        }
-      };
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        return __apply(__transform_sender_fn(), static_cast<_Sender&&>(__sndr));
-      }
-    };
-
-    struct bulk_chunked_t : __generic_bulk_t<bulk_chunked_t> { };
-
-    struct bulk_unchunked_t : __generic_bulk_t<bulk_unchunked_t> { };
-
     template <class _AlgoTag>
     struct __impl_base : __sexpr_defaults {
       template <class _Sender>
@@ -356,9 +329,23 @@ namespace STDEXEC {
     };
   } // namespace __bulk
 
-  using __bulk::bulk_t;
-  using __bulk::bulk_chunked_t;
-  using __bulk::bulk_unchunked_t;
+  struct bulk_t : __bulk::__generic_bulk_t<bulk_t> {
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      auto& [__tag, __data, __child] = __sndr;
+      // Lower `bulk` to `bulk_chunked`. If `bulk_chunked` is customized, we will see the customization.
+      return bulk_chunked(
+        STDEXEC::__forward_like<_Sender>(__child),
+        __data.__pol_.__get(),
+        __data.__shape_,
+        __bulk::__as_bulk_chunked_fn(STDEXEC::__forward_like<_Sender>(__data).__fun_));
+    }
+  };
+
+  struct bulk_chunked_t : __bulk::__generic_bulk_t<bulk_chunked_t> { };
+
+  struct bulk_unchunked_t : __bulk::__generic_bulk_t<bulk_unchunked_t> { };
+
   inline constexpr bulk_t bulk{};
   inline constexpr bulk_chunked_t bulk_chunked{};
   inline constexpr bulk_unchunked_t bulk_unchunked{};

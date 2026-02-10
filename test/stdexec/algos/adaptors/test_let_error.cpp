@@ -148,7 +148,7 @@ namespace {
   TEST_CASE("let_error function is not called when cancelled", "[adaptors][let_error]") {
     bool called{false};
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_error([&](std::exception_ptr) {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::let_error([&](std::exception_ptr) {
                             called = true;
                             return ex::just(0);
                           });
@@ -211,7 +211,7 @@ namespace {
                         | ex::let_error([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
-                            return ex::transfer_just(sched, 13);
+                            return ex::just(13) | ex::continues_on(sched);
                           });
     int res{0};
     {
@@ -299,24 +299,24 @@ namespace {
     error_scheduler<int> sched3{43};
 
     // Returning ex::just_error
-    check_err_types<ex::__mset<>>(ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) {
+    check_err_types<ex::__mset<>>(ex::just() | ex::continues_on(sched1) | ex::let_error([](std::exception_ptr) {
                                     return ex::just_error(std::string{"err"});
                                   }));
     check_err_types<ex::__mset<std::exception_ptr, std::string>>(
-      ex::transfer_just(sched2)
+      ex::just() | ex::continues_on(sched2)
       | ex::let_error([](std::exception_ptr) { return ex::just_error(std::string{"err"}); }));
     check_err_types<ex::__mset<std::exception_ptr, std::string>>(
-      ex::transfer_just(sched3) | ex::let_error([](ex::__one_of<int, std::exception_ptr> auto) {
+      ex::just() | ex::continues_on(sched3) | ex::let_error([](ex::__one_of<int, std::exception_ptr> auto) {
         return ex::just_error(std::string{"err"});
       }));
 
     // Returning ex::just
     check_err_types<ex::__mset<>>(
-      ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched3)
+      ex::just() | ex::continues_on(sched3)
       | ex::let_error([](ex::__one_of<int, std::exception_ptr> auto) { return ex::just(); }));
   }
 
@@ -326,11 +326,11 @@ namespace {
     stopped_scheduler sched3{};
 
     check_sends_stopped<false>(
-      ex::transfer_just(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
     check_sends_stopped<true>(
-      ex::transfer_just(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
     check_sends_stopped<true>(
-      ex::transfer_just(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
+      ex::just() | ex::continues_on(sched3) | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 
   // Return a different sender when we invoke this custom defined let_error implementation

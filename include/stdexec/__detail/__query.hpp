@@ -28,11 +28,11 @@
 namespace STDEXEC {
   // [exec.queries.queryable]
   template <class T>
-  concept queryable = __std::destructible<T>;
+  concept __queryable = __std::destructible<T>;
 
   template <class _Env, class _Query, class... _Args>
   concept __member_queryable_with =
-    queryable<_Env>
+    __queryable<_Env>
     && requires(const _Env& __env, const _Query& __query, __declfn_t<_Args&&>... __args) {
          { __env.query(__query, __args()...) };
        };
@@ -120,54 +120,11 @@ namespace STDEXEC {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
-  namespace __queries {
-    template <class _Tp>
-    concept __is_bool_constant = requires { typename __mbool<_Tp::value>; };
-
-    struct forwarding_query_t {
-      template <class _Query>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      consteval auto operator()(_Query) const noexcept -> bool {
-        if constexpr (__queryable_with<_Query, forwarding_query_t>) {
-          return __query<forwarding_query_t>()(_Query());
-        } else {
-          return __std::derived_from<_Query, forwarding_query_t>;
-        }
-      }
-    };
-
-  } // namespace __queries
-
-  using __queries::forwarding_query_t;
-  inline constexpr forwarding_query_t forwarding_query{};
+  template <class _Tp>
+  concept __is_bool_constant = requires { typename __mbool<_Tp::value>; };
 
   template <class _Tag>
   concept __forwarding_query = forwarding_query(_Tag{});
-
-  struct query_or_t {
-    template <class _Query, class _Queryable, class _Default, class... _Args>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(_Query, _Queryable&&, _Default&& __default, _Args&&...) const
-      noexcept(__nothrow_move_constructible<_Default>) -> _Default {
-      return static_cast<_Default&&>(__default);
-    }
-
-    template <class _Query, class _Queryable, class _Default, class... _Args>
-      requires __callable<_Query, _Queryable, _Args...>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto
-      operator()(_Query __query, _Queryable&& __queryable, _Default&&, _Args&&... __args) const
-      noexcept(__nothrow_callable<_Query, _Queryable, _Args...>)
-        -> __call_result_t<_Query, _Queryable, _Args...> {
-      return static_cast<_Query&&>(
-        __query)(static_cast<_Queryable&&>(__queryable), static_cast<_Args&&>(__args)...);
-    }
-  };
-
-  inline constexpr query_or_t query_or{}; // NOT TO SPEC
-
-  template <class _Query, class _Queryable, class _Default, class... _Args>
-  using __query_result_or_t = __call_result_t<query_or_t, _Query, _Queryable, _Default, _Args...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __is_completion_query
@@ -180,3 +137,19 @@ namespace STDEXEC {
   template <class _Tag>
   inline constexpr bool __is_completion_query<get_completion_behavior_t<_Tag>> = true;
 } // namespace STDEXEC
+
+STDEXEC_P2300_NAMESPACE_BEGIN()
+struct forwarding_query_t {
+  template <class _Query>
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  consteval auto operator()(_Query) const noexcept -> bool {
+    if constexpr (STDEXEC::__queryable_with<_Query, forwarding_query_t>) {
+      return STDEXEC::__query<forwarding_query_t>()(_Query());
+    } else {
+      return STDEXEC::__std::derived_from<_Query, forwarding_query_t>;
+    }
+  }
+};
+
+inline constexpr forwarding_query_t forwarding_query{};
+STDEXEC_P2300_NAMESPACE_END()

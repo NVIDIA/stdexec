@@ -287,7 +287,8 @@ namespace {
     std::mt19937_64 eng{std::random_device{}()}; // or seed however you want
     std::uniform_int_distribution<> dist{0, 1000};
 
-    auto split = ex::transfer_just(pool.get_scheduler(), std::chrono::microseconds{dist(eng)})
+    auto split = ex::just(std::chrono::microseconds{dist(eng)})
+               | ex::continues_on(pool.get_scheduler())
                | ex::then([](std::chrono::microseconds delay) {
                    std::this_thread::sleep_for(delay);
                    return 42;
@@ -475,7 +476,7 @@ namespace {
   TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
     inline_scheduler sched;
 
-    auto snd = ex::transfer_just(sched, 42) | ex::split();
+    auto snd = ex::just(42) | ex::continues_on(sched) | ex::split();
     using snd_t = decltype(snd);
     static_assert(!ex::__callable<ex::get_completion_scheduler_t<ex::set_value_t>, snd_t>);
     static_assert(!ex::__callable<ex::get_completion_scheduler_t<ex::set_error_t>, snd_t>);
