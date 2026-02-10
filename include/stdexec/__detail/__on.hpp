@@ -36,7 +36,6 @@ namespace STDEXEC {
   namespace __on {
     struct on_t;
     struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_ { };
-    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_ { };
 
     template <class _Sender, class _Env>
     struct __no_scheduler_in_environment {

@@ -70,7 +70,8 @@ namespace STDEXEC {
     template <sender _Sender, __sender_adaptor_closure_for<_Sender> _Closure>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto
-      operator|(_Sender&& __sndr, _Closure&& __clsur) -> __call_result_t<_Closure, _Sender> {
+      operator|(_Sender&& __sndr, _Closure&& __clsur)
+      noexcept(__nothrow_callable<_Closure, _Sender>) -> __call_result_t<_Closure, _Sender> {
       return static_cast<_Closure&&>(__clsur)(static_cast<_Sender&&>(__sndr));
     }
 
