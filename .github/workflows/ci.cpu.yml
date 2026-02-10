@@ -73,6 +73,8 @@ jobs:
           source /etc/profile
           set -x;
 
+          devcontainer-utils-install-sccache --version rapids;
+
           devcontainer-utils-init-sccache-dist                                          \
               --enable-sccache-dist - <<< "                                             \
               --auth-type 'token'                                                       \
