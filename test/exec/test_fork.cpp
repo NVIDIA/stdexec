@@ -147,4 +147,19 @@ namespace {
       std::get<0>(STDEXEC::sync_wait(std::move(sndr)).value())
       == "congrats on customizing fork_join_t");
   }
+
+  TEST_CASE("fork_join following a continues_on", "[adaptors][fork_join]") {
+    std::atomic<int> witness = 0;
+
+    auto make_then = [&witness]() {
+      return ::STDEXEC::then([&witness]() noexcept { ++witness; });
+    };
+
+    auto sndr = ::STDEXEC::just() | ::STDEXEC::continues_on(::STDEXEC::inline_scheduler{})
+              | exec::fork_join(make_then(), make_then());
+
+    ::STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(witness == 2);
+  }
 } // namespace
