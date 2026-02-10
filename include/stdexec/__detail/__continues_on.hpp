@@ -49,7 +49,7 @@ namespace STDEXEC {
     //        ...
     //   >
     template <class _CvSender, class _Env>
-    using __results_of = __for_each_completion_signature_t<
+    using __results_of_t = __for_each_completion_signature_t<
       __completion_signatures_of_t<_CvSender, _Env>,
       __decayed_tuple,
       __munique<__qq<STDEXEC::__variant>>::__f
@@ -95,7 +95,7 @@ namespace STDEXEC {
 
     template <class _Sexpr, class _Receiver>
     struct __state_base : __immovable {
-      using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver __rcvr_;
       __variant_t __data_{__no_init};
@@ -133,7 +133,7 @@ namespace STDEXEC {
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state : __state_base<_Sexpr, _Receiver> {
-      using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
@@ -342,6 +342,8 @@ namespace STDEXEC {
         }
       }
 
+      template <class _Sender, class _Receiver>
+      using __state_for_t = __state<__decay_t<__tuple_element_t<1, _Sender>>, _Sender, _Receiver>;
 
      public:
       static constexpr auto get_attrs =
@@ -365,12 +367,12 @@ namespace STDEXEC {
 
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr)
+        -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
-        auto __sched = STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr));
-        return __state<decltype(__sched), _Sender, _Receiver>{
-          __sched, static_cast<_Receiver&&>(__rcvr)};
+        auto& [__tag, __sched, __child] = __sndr;
+        return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
       };
 
       static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
