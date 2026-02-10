@@ -91,16 +91,14 @@ namespace nvexec::_strm {
     template <class Sender, class Receiver, class Fun, class Let>
     struct opstate;
 
-    template <class Sender, class Receiver, class Fun, class Let, class... Tuples>
+    template <class Sender, class Receiver, class Fun, class Set, class... Tuples>
     struct receiver : public stream_receiver_base {
       using env_t = _strm::opstate_base<Receiver>::env_t;
       static constexpr std::size_t memory_allocation_size() noexcept {
-        return __max_sender_size<Sender, propagate_receiver<Receiver>, Fun, Let>::value;
+        return __max_sender_size<Sender, propagate_receiver<Receiver>, Fun, Set>::value;
       }
 
-      template <__one_of<Let> Tag, class... Args>
-        requires __minvocable<_mk_result_sender_t<Fun>, Args...>
-              && sender_to<__minvoke<_mk_result_sender_t<Fun>, Args...>, propagate_receiver<Receiver>>
+      template <__same_as<Set> Tag, class... Args>
       void _complete(Tag, Args&&... args) noexcept {
         using result_sender_t = __minvoke<_mk_result_sender_t<Fun>, Args...>;
         using opstate_t = __minvoke<opstate_for_t<Receiver, Fun>, Args...>;
@@ -126,7 +124,6 @@ namespace nvexec::_strm {
       }
 
       template <class Tag, class... Args>
-        requires __none_of<Tag, Let> && __callable<Tag, Receiver, Args...>
       void _complete(Tag, Args&&... args) noexcept {
         static_assert(__nothrow_callable<Tag, Receiver, Args...>);
         opstate_->propagate_completion_signal(Tag(), static_cast<Args&&>(args)...);
@@ -155,29 +152,29 @@ namespace nvexec::_strm {
         Tuples...
       >;
 
-      opstate<Sender, Receiver, Fun, Let>* opstate_;
+      opstate<Sender, Receiver, Fun, Set>* opstate_;
     };
 
-    template <class Sender, class Receiver, class Fun, class Let>
+    template <class Sender, class Receiver, class Fun, class Set>
     using receiver_t = __gather_completions_of_t<
-      Let,
+      Set,
       Sender,
       stream_env_t<env_of_t<Receiver>>,
       __q<__decayed_std_tuple>,
-      __munique<__mbind_front_q<receiver, Sender, Receiver, Fun, Let>>
+      __munique<__mbind_front_q<receiver, Sender, Receiver, Fun, Set>>
     >;
 
-    template <class Sender, class Receiver, class Fun, class Let>
+    template <class Sender, class Receiver, class Fun, class Set>
     using opstate_base_t =
-      _strm::opstate<Sender, receiver_t<Sender, Receiver, Fun, Let>, Receiver>;
+      _strm::opstate<Sender, receiver_t<Sender, Receiver, Fun, Set>, Receiver>;
 
-    template <class Sender, class Receiver, class Fun, class Let>
-    struct opstate : opstate_base_t<Sender, Receiver, Fun, Let> {
-      using receiver_t = receiver_t<Sender, Receiver, Fun, Let>;
+    template <class Sender, class Receiver, class Fun, class Set>
+    struct opstate : opstate_base_t<Sender, Receiver, Fun, Set> {
+      using receiver_t = receiver_t<Sender, Receiver, Fun, Set>;
       using opstate_variant_t = receiver_t::opstate_variant_t;
 
       opstate(Sender&& sndr, Receiver rcvr, Fun fun)
-        : opstate_base_t<Sender, Receiver, Fun, Let>(
+        : opstate_base_t<Sender, Receiver, Fun, Set>(
             static_cast<Sender&&>(sndr),
             static_cast<Receiver&&>(rcvr),
             [this](_strm::opstate_base<Receiver>&) -> receiver_t { return receiver_t{{}, this}; },
