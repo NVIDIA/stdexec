@@ -115,6 +115,18 @@ namespace STDEXEC {
     _WITH_ENVIRONMENT_(_Env)...
   >;
 
+  struct _CONNECT_ERROR_ {};
+  struct _UNABLE_TO_CONNECT_THE_SENDER_TO_THE_RECEIVER_ { };
+
+  template <class _Sender, class _Receiver>
+  using __connect_error_t = __mexception<
+    _WHAT_(_CONNECT_ERROR_),
+    _WHY_(_UNABLE_TO_CONNECT_THE_SENDER_TO_THE_RECEIVER_),
+    _WITH_PRETTY_SENDER_<_Sender>,
+    _WITH_RECEIVER_(_Receiver),
+    _WITH_ENVIRONMENT_(env_of_t<_Receiver>)
+  >;
+
 #if __cpp_lib_constexpr_exceptions >= 2025'02L // constexpr exception types, https://wg21.link/p3378
 
   using __exception = ::std::exception;
@@ -258,6 +270,22 @@ namespace STDEXEC {
 
     constexpr bool operator==(const __not_a_scheduler&) const noexcept = default;
   };
+
+  template<bool _MustBeTrue, class _WithError>
+  struct __assert_with;
+
+  template<class _WithError>
+  struct __assert_with<false, _WithError> {
+    static constexpr bool value = __ok<_WithError>;
+    static_assert(__ok<_WithError>, "concept assertion failed with..");
+  };
+  template<class _Elide>
+  struct __assert_with<true, _Elide> {
+    static constexpr bool value = true;
+  };
+  
+  template<bool _MustBeTrue, class _WithError>
+  concept assert_with = __assert_with<_MustBeTrue, _WithError>::value;
 } // namespace STDEXEC
 
 ////////////////////////////////////////////////////////////////////////////////
