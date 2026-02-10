@@ -69,13 +69,13 @@ namespace STDEXEC {
     struct __future_variant {
       // this case handles _NothrowStorable == true
       using type =
-        __uniqued_variant<std::monostate, __decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
+        __uniqued_variant<__monostate, __decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
     };
 
     template <class... _Sigs>
     struct __future_variant<false, _Sigs...> {
       using type = __uniqued_variant<
-        std::monostate,
+        __monostate,
         __decayed_tuple<set_stopped_t>,
         __decayed_tuple<set_error_t, std::exception_ptr>,
         __as_tuple<_Sigs>...
@@ -157,7 +157,7 @@ namespace STDEXEC {
       __variant_t __result_{__no_init};
 
       __spawn_future_state_base() noexcept {
-        __result_.template emplace<std::monostate>();
+        __result_.template emplace<__monostate>();
       }
 
       __spawn_future_state_base(__spawn_future_state_base&&) = delete;
@@ -569,7 +569,7 @@ namespace STDEXEC {
       void __do_consume(auto& __rcvr) noexcept {
         __visit(
           [&__rcvr](auto&& __tuple) noexcept {
-            if constexpr (!__same_as<std::remove_reference_t<decltype(__tuple)>, std::monostate>) {
+            if constexpr (!__same_as<std::remove_reference_t<decltype(__tuple)>, __monostate>) {
               __apply(
                 [&__rcvr](auto cpo, auto&&... __vals) {
                   cpo(std::move(__rcvr), std::move(__vals)...);

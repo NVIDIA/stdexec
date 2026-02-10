@@ -35,6 +35,8 @@
 #include <utility>
 
 namespace STDEXEC {
+  struct _JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_ { };
+
   namespace __counting_scopes {
     struct __base_scope;
 
@@ -85,9 +87,18 @@ namespace STDEXEC {
       using __sched_sender_of_t = __call_result_t<schedule_t, __scheduler_of_t<_Env>>;
 
       template <class _Sender, class _Env>
-      static consteval auto get_completion_signatures() //
-        -> __completion_signatures_of_t<__sched_sender_of_t<_Env>, _Env> {
-        return STDEXEC::get_completion_signatures<__sched_sender_of_t<_Env>, _Env>();
+      static consteval auto get_completion_signatures() {
+        if constexpr (__callable<get_scheduler_t, const _Env&>) {
+          return STDEXEC::get_completion_signatures<__sched_sender_of_t<_Env>, _Env>();
+        } else {
+          return STDEXEC::__throw_compile_time_error<
+            _WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
+            _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+            _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
+            _WITH_PRETTY_SENDER_<_Sender>,
+            _WITH_ENVIRONMENT_(_Env)
+          >();
+        }
       };
 
       template <class _Rcvr>
