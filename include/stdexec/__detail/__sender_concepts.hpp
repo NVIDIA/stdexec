@@ -47,8 +47,8 @@ namespace STDEXEC {
 
   // [exec.snd.concepts]
   template <class _Sender>
-  concept sender = enable_sender<__decay_t<_Sender>>       //
-                && environment_provider<__cref_t<_Sender>> //
+  concept sender = enable_sender<__decay_t<_Sender>>         //
+                && __environment_provider<__cref_t<_Sender>> //
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 

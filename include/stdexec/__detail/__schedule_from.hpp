@@ -25,26 +25,21 @@
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
-  namespace __schfr {
-    struct schedule_from_t {
-      template <sender _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const {
-        return __make_sexpr<schedule_from_t>({}, static_cast<_Sender&&>(__sndr));
-      }
-    };
+  struct schedule_from_t {
+    template <sender _Sender>
+    constexpr auto operator()(_Sender&& __sndr) const {
+      return __make_sexpr<schedule_from_t>({}, static_cast<_Sender&&>(__sndr));
+    }
+  };
 
-    struct __schedule_from_impl : __sexpr_defaults {
-      template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
-        static_assert(sender_expr_for<_Sender, schedule_from_t>);
-        return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
-      }
-    };
-  } // namespace __schfr
-
-  using __schfr::schedule_from_t;
   inline constexpr schedule_from_t schedule_from{};
 
   template <>
-  struct __sexpr_impl<schedule_from_t> : __schfr::__schedule_from_impl { };
+  struct __sexpr_impl<schedule_from_t> : __sexpr_defaults {
+    template <class _Sender, class... _Env>
+    static consteval auto get_completion_signatures() {
+      static_assert(sender_expr_for<_Sender, schedule_from_t>);
+      return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
+    }
+  };
 } // namespace STDEXEC

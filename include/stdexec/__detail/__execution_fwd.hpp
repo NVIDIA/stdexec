@@ -64,15 +64,10 @@ namespace STDEXEC {
   struct indeterminate_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __rcvrs {
-    struct set_value_t;
-    struct set_error_t;
-    struct set_stopped_t;
-  } // namespace __rcvrs
+  struct set_value_t;
+  struct set_error_t;
+  struct set_stopped_t;
 
-  using __rcvrs::set_value_t;
-  using __rcvrs::set_error_t;
-  using __rcvrs::set_stopped_t;
   extern const set_value_t set_value;
   extern const set_error_t set_error;
   extern const set_stopped_t set_stopped;
@@ -80,33 +75,24 @@ namespace STDEXEC {
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
-  struct receiver_t;
-
   template <class _Sender>
   extern const bool enable_receiver;
 
   namespace __env {
-    template <class _Query, class _Value>
-    struct prop;
-
     template <class _Query, auto _Value>
     struct cprop;
-
-    template <class... _Envs>
-    struct env;
   } // namespace __env
 
-  using __env::prop;
-  using __env::cprop;
-  using __env::env;
+  template <class _Query, class _Value>
+  struct prop;
+
+  template <class... _Envs>
+  struct env;
+
   using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __get_env {
-    struct get_env_t;
-  } // namespace __get_env
-
-  using __get_env::get_env_t;
+  struct get_env_t;
   extern const get_env_t get_env;
 
   template <class _EnvProvider>
@@ -119,44 +105,24 @@ namespace STDEXEC {
     weakly_parallel
   };
 
-  namespace __queries {
-    struct forwarding_query_t;
-    struct execute_may_block_caller_t;
-    struct get_forward_progress_guarantee_t;
-    struct get_scheduler_t;
-    struct get_delegation_scheduler_t;
-    struct get_allocator_t;
-    struct get_stop_token_t;
-    template <__completion_tag _CPO>
-    struct get_completion_scheduler_t;
-    template <class _CPO = void>
-    struct get_completion_domain_t;
-    template <__completion_tag _CPO>
-    struct get_completion_behavior_t;
-    struct get_domain_t;
+  struct __execute_may_block_caller_t;
+  struct get_forward_progress_guarantee_t;
+  struct get_scheduler_t;
+  struct get_delegation_scheduler_t;
+  template <__completion_tag _CPO>
+  struct get_completion_scheduler_t;
+  template <class _CPO = void>
+  struct get_completion_domain_t;
+  template <__completion_tag _CPO>
+  struct get_completion_behavior_t;
+  struct get_domain_t;
 
-    struct __debug_env_t;
-  } // namespace __queries
+  struct __debug_env_t;
 
-  using __queries::forwarding_query_t;
-  using __queries::execute_may_block_caller_t;
-  using __queries::get_forward_progress_guarantee_t;
-  using __queries::get_allocator_t;
-  using __queries::get_scheduler_t;
-  using __queries::get_delegation_scheduler_t;
-  using __queries::get_stop_token_t;
-  using __queries::get_completion_scheduler_t;
-  using __queries::get_completion_domain_t;
-  using __queries::get_completion_behavior_t;
-  using __queries::get_domain_t;
-
-  extern const forwarding_query_t forwarding_query;
-  extern const execute_may_block_caller_t execute_may_block_caller;
+  extern const __execute_may_block_caller_t execute_may_block_caller;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
   extern const get_scheduler_t get_scheduler;
   extern const get_delegation_scheduler_t get_delegation_scheduler;
-  extern const get_allocator_t get_allocator;
-  extern const get_stop_token_t get_stop_token;
   template <__completion_tag _CPO>
   extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
   template <class _CPO = void>
@@ -164,24 +130,22 @@ namespace STDEXEC {
   extern const get_domain_t get_domain;
 
   template <class _Env>
-  concept __is_debug_env = __callable<__queries::__debug_env_t, _Env>;
+  concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
   namespace __debug {
     struct __completion_signatures { };
   } // namespace __debug
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // concept tag types:
+  struct sender_t;
+  struct operation_state_t;
+  struct scheduler_t;
+  struct receiver_t;
+
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto get_completion_behavior() noexcept;
-
-  struct never_stop_token;
-  class inplace_stop_source;
-  class inplace_stop_token;
-  template <class _Fn>
-  class inplace_stop_callback;
-
-  template <class _Env>
-  using stop_token_of_t = __decay_t<__call_result_t<get_stop_token_t, _Env>>;
 
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
@@ -221,47 +185,25 @@ namespace STDEXEC {
   consteval auto __throw_compile_time_error(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __connect {
-    struct connect_t;
-  } // namespace __connect
-
-  using __connect::connect_t;
+  struct connect_t;
   extern const connect_t connect;
 
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
-  struct sender_t;
-
   template <class _Sender>
   extern const bool enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct operation_state_t;
-
-  namespace __start {
-    struct start_t;
-  } // namespace __start
-
-  using __start::start_t;
+  struct start_t;
   extern const start_t start;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __sched {
-    struct schedule_t;
-  } // namespace __sched
-
-  using __sched::schedule_t;
+  struct schedule_t;
   extern const schedule_t schedule;
 
-  struct scheduler_t;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __as_awaitable {
-    struct as_awaitable_t;
-  } // namespace __as_awaitable
-
-  using __as_awaitable::as_awaitable_t;
+  struct as_awaitable_t;
   extern const as_awaitable_t as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,11 +214,7 @@ namespace STDEXEC {
   using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __starts_on_ns {
-    struct starts_on_t;
-  } // namespace __starts_on_ns
-
-  using __starts_on_ns::starts_on_t;
+  struct starts_on_t;
   extern const starts_on_t starts_on;
 
   using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
@@ -284,18 +222,10 @@ namespace STDEXEC {
   extern const starts_on_t start_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __schfr {
-    struct schedule_from_t;
-  } // namespace __schfr
-
-  using __schfr::schedule_from_t;
+  struct schedule_from_t;
   extern const schedule_from_t schedule_from;
 
-  namespace __trnsfr {
-    struct continues_on_t;
-  } // namespace __trnsfr
-
-  using __trnsfr::continues_on_t;
+  struct continues_on_t;
   extern const continues_on_t continues_on;
 
   // Backward compatibility:
@@ -303,39 +233,38 @@ namespace STDEXEC {
   [[deprecated("transfer has been renamed continues_on")]]
   inline constexpr const continues_on_t& transfer = continues_on;
 
-  // Backward compatibility:
-  namespace v2 {
-    using continue_on_t
-      [[deprecated("continue_on_t has been renamed continues_on_t")]] = continues_on_t;
-    [[deprecated("continue_on has been renamed continues_on")]]
-    inline constexpr const continues_on_t& continue_on = continues_on;
-  } // namespace v2
-
-  // Backward compatibility:
-  using v2::continue_on_t;
-  using v2::continue_on;
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct __transfer_just_t;
+  extern const __transfer_just_t transfer_just;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __transfer_just {
-    struct transfer_just_t;
-  } // namespace __transfer_just
+  struct bulk_t;
+  struct bulk_chunked_t;
+  struct bulk_unchunked_t;
 
-  using __transfer_just::transfer_just_t;
-  extern const transfer_just_t transfer_just;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __bulk {
-    struct bulk_t;
-    struct bulk_chunked_t;
-    struct bulk_unchunked_t;
-  } // namespace __bulk
-
-  using __bulk::bulk_t;
-  using __bulk::bulk_chunked_t;
-  using __bulk::bulk_unchunked_t;
   extern const bulk_t bulk;
   extern const bulk_chunked_t bulk_chunked;
   extern const bulk_unchunked_t bulk_unchunked;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct just_t;
+  extern const just_t just;
+
+  struct just_error_t;
+  extern const just_error_t just_error;
+
+  struct just_stopped_t;
+  extern const just_stopped_t just_stopped;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct then_t;
+  extern const then_t then;
+
+  struct upon_error_t;
+  extern const upon_error_t upon_error;
+
+  struct upon_stopped_t;
+  extern const upon_stopped_t upon_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct let_value_t;
@@ -346,6 +275,24 @@ namespace STDEXEC {
 
   struct let_stopped_t;
   extern const let_stopped_t let_stopped;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct when_all_t;
+  extern const when_all_t when_all;
+
+  struct when_all_with_variant_t;
+  extern const when_all_with_variant_t when_all_with_variant;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct __read_env_t;
+  extern const __read_env_t read_env;
+
+  struct __write_env_t;
+  extern const __write_env_t write_env;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct into_variant_t;
+  extern const into_variant_t into_variant;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   namespace __split {
@@ -366,10 +313,68 @@ namespace STDEXEC {
   extern const ensure_started_t ensure_started;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __on {
-    struct on_t;
-  } // namespace __on
-
-  using __on::on_t;
+  struct on_t;
   extern const on_t on;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct stopped_as_error_t;
+  extern const stopped_as_error_t stopped_as_error;
+
+  struct stopped_as_optional_t;
+  extern const stopped_as_optional_t stopped_as_optional;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  template <__class _Derived>
+  struct sender_adaptor_closure;
+} // namespace STDEXEC
+
+STDEXEC_P2300_NAMESPACE_BEGIN()
+struct forwarding_query_t;
+struct get_allocator_t;
+struct get_stop_token_t;
+
+extern const forwarding_query_t forwarding_query;
+extern const get_allocator_t get_allocator;
+extern const get_stop_token_t get_stop_token;
+
+template <class _Env>
+using stop_token_of_t = STDEXEC::__decay_t<STDEXEC::__call_result_t<get_stop_token_t, _Env>>;
+
+struct never_stop_token;
+class inplace_stop_source;
+class inplace_stop_token;
+template <class _Fn>
+class inplace_stop_callback;
+STDEXEC_P2300_NAMESPACE_END()
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
+struct sync_wait_t;
+struct sync_wait_with_variant_t;
+extern const sync_wait_t sync_wait;
+extern const sync_wait_with_variant_t sync_wait_with_variant;
+STDEXEC_P2300_NAMESPACE_END(this_thread)
+
+// NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly
+// std::execution) as well:
+namespace STDEXEC {
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::forwarding_query_t)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_allocator_t)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_stop_token_t)
+
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::forwarding_query)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_stop_token)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_allocator)
+
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::stop_token_of_t)
+
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::never_stop_token)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::inplace_stop_source)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::inplace_stop_token)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::inplace_stop_callback)
+
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_t)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant_t)
+  STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant)
 } // namespace STDEXEC

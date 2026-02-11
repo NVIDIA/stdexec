@@ -23,8 +23,8 @@
 
 #include <thrust/device_vector.h>
 
-constexpr std::size_t N = 2 * 1024;
-constexpr std::size_t THREAD_BLOCK_SIZE = 128u;
+constexpr std::size_t N = 2ul * 1024ul;
+constexpr std::size_t THREAD_BLOCK_SIZE = 128ul;
 constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
 
 enum {
@@ -46,12 +46,13 @@ auto main() -> int {
 
   nvexec::stream_context stream{};
 
-  auto snd = stdexec::transfer_just(stream.get_scheduler(), first, last)
+  auto snd = stdexec::just(first, last) //
+           | stdexec::continues_on(stream.get_scheduler())
            | nvexec::launch(
                {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
                [](cudaStream_t, int* first, int* last) {
                  assert(nvexec::is_on_gpu());
-                 int32_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+                 ptrdiff_t idx = blockIdx.x * blockDim.x + threadIdx.x;
                  if (idx < (last - first)) {
                    first[idx] *= scaling;
                  }

@@ -20,8 +20,6 @@
 
 #if STDEXEC_ENABLE_LIBDISPATCH
 #  include "../../exec/libdispatch_queue.hpp" // IWYU pragma: keep
-#elif STDEXEC_ENABLE_IO_URING
-#  include "../../exec/linux/io_uring_context.hpp" // IWYU pragma: keep
 #elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
 #  include "../../exec/windows/windows_thread_pool.hpp" // IWYU pragma: keep
 #else
@@ -371,8 +369,6 @@ namespace STDEXEC::__system_context_default_impl {
 
 #if STDEXEC_ENABLE_LIBDISPATCH
   using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
-#elif STDEXEC_ENABLE_IO_URING
-  using __parallel_scheduler_backend_impl = __generic_impl<exec::io_uring_context>;
 #elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
   using __parallel_scheduler_backend_impl = __generic_impl<exec::windows_thread_pool>;
 #else

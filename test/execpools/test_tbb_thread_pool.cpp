@@ -45,7 +45,7 @@ namespace {
     std::vector<double> partials(tile_count + 1);
     partials[0] = init;
 
-    return transfer_just(sch, std::move(partials)) //
+    return just(std::move(partials)) | continues_on(sch) //
          | bulk(
              ex::par,
              tile_count,

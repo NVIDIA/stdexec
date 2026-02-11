@@ -165,79 +165,80 @@ namespace STDEXEC {
 
       _Receiver& __rcvr_;
     };
+  } // namespace __connect_await
 
-    struct __connect_awaitable_t {
-     private:
-      template <class _Fun, class... _Ts>
-      static constexpr auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
-        auto __fn = [&, __fun]() noexcept {
-          __fun(static_cast<_Ts&&>(__as)...);
-        };
+  struct __connect_awaitable_t {
+   private:
+    template <class _Fun, class... _Ts>
+    static constexpr auto __co_call(_Fun __fun, _Ts&&... __as) noexcept {
+      auto __fn = [&, __fun]() noexcept {
+        __fun(static_cast<_Ts&&>(__as)...);
+      };
 
-        struct __awaiter {
-          decltype(__fn) __fn_;
+      struct __awaiter {
+        decltype(__fn) __fn_;
 
-          static constexpr auto await_ready() noexcept -> bool {
-            return false;
-          }
+        static constexpr auto await_ready() noexcept -> bool {
+          return false;
+        }
 
-          constexpr void await_suspend(__std::coroutine_handle<>) noexcept {
-            __fn_();
-          }
+        constexpr void await_suspend(__std::coroutine_handle<>) noexcept {
+          __fn_();
+        }
 
-          [[noreturn]]
-          void await_resume() noexcept {
-            std::terminate();
-          }
-        };
+        [[noreturn]]
+        void await_resume() noexcept {
+          std::terminate();
+        }
+      };
 
-        return __awaiter{__fn};
-      }
+      return __awaiter{__fn};
+    }
 
-      template <class _Awaitable, class _Receiver>
+    template <class _Awaitable, class _Receiver>
 #  if STDEXEC_GCC() && (STDEXEC_GCC_VERSION >= 12'00)
-      __attribute__((__used__))
+    __attribute__((__used__))
 #  endif
-      static auto __co_impl(_Awaitable __awaitable, _Receiver __rcvr) -> __operation<_Receiver> {
-        using __result_t = __await_result_t<_Awaitable, __promise<_Receiver>>;
-        std::exception_ptr __eptr;
-        STDEXEC_TRY {
-          if constexpr (__std::same_as<__result_t, void>)
-            co_await (
-              co_await static_cast<_Awaitable&&>(__awaitable),
-              __co_call(set_value, static_cast<_Receiver&&>(__rcvr)));
-          else
-            co_await __co_call(
-              set_value,
-              static_cast<_Receiver&&>(__rcvr),
-              co_await static_cast<_Awaitable&&>(__awaitable));
-        }
-        STDEXEC_CATCH_ALL {
-          __eptr = std::current_exception();
-        }
-        co_await __co_call(
-          set_error, static_cast<_Receiver&&>(__rcvr), static_cast<std::exception_ptr&&>(__eptr));
+    static auto __co_impl(_Awaitable __awaitable, _Receiver __rcvr)
+      -> __connect_await::__operation<_Receiver> {
+      using __result_t = __await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>;
+      std::exception_ptr __eptr;
+      STDEXEC_TRY {
+        if constexpr (__std::same_as<__result_t, void>)
+          co_await (
+            co_await static_cast<_Awaitable&&>(__awaitable),
+            __co_call(set_value, static_cast<_Receiver&&>(__rcvr)));
+        else
+          co_await __co_call(
+            set_value,
+            static_cast<_Receiver&&>(__rcvr),
+            co_await static_cast<_Awaitable&&>(__awaitable));
       }
+      STDEXEC_CATCH_ALL {
+        __eptr = std::current_exception();
+      }
+      co_await __co_call(
+        set_error, static_cast<_Receiver&&>(__rcvr), static_cast<std::exception_ptr&&>(__eptr));
+    }
 
-      template <receiver _Receiver, class _Awaitable>
+    template <receiver _Receiver, class _Awaitable>
       using __completions_t =
         completion_signatures<
           __minvoke< // set_value_t() or set_value_t(T)
             __mremove<void, __qf<set_value_t>>,
-            __await_result_t<_Awaitable, __promise<_Receiver>>>,
+            __await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>>,
           set_error_t(std::exception_ptr),
           set_stopped_t()>;
 
-     public:
-      template <class _Receiver, __awaitable<__promise<_Receiver>> _Awaitable>
-        requires receiver_of<_Receiver, __completions_t<_Receiver, _Awaitable>>
-      auto operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const -> __operation<_Receiver> {
-        return __co_impl(static_cast<_Awaitable&&>(__awaitable), static_cast<_Receiver&&>(__rcvr));
-      }
-    };
-  } // namespace __connect_await
+   public:
+    template <class _Receiver, __awaitable<__connect_await::__promise<_Receiver>> _Awaitable>
+      requires receiver_of<_Receiver, __completions_t<_Receiver, _Awaitable>>
+    auto operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const
+      -> __connect_await::__operation<_Receiver> {
+      return __co_impl(static_cast<_Awaitable&&>(__awaitable), static_cast<_Receiver&&>(__rcvr));
+    }
+  };
 
-  using __connect_await::__connect_awaitable_t;
 #else
   namespace __connect_await {
     template <class>

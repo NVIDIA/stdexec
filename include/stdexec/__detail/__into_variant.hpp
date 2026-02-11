@@ -56,22 +56,9 @@ namespace STDEXEC {
       __mconst<completion_signatures<>>::__f
     >;
 
-    struct into_variant_t {
-      template <sender _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
-        return __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr));
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept {
-        return __closure(*this);
-      }
-    };
-
     template <class _Receiver, class _Variant>
     struct __state {
       using __variant_t = _Variant;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
     };
 
@@ -90,7 +77,7 @@ namespace STDEXEC {
         if constexpr (__same_as<_Tag, set_value_t>) {
           using __variant_t = _State::__variant_t;
           STDEXEC_TRY {
-            set_value(
+            STDEXEC::set_value(
               static_cast<_State&&>(__state).__rcvr_,
               __variant_t{std::tuple<_Args&&...>{static_cast<_Args&&>(__args)...}});
           }
@@ -110,7 +97,18 @@ namespace STDEXEC {
     };
   } // namespace __into_variant
 
-  using __into_variant::into_variant_t;
+  struct into_variant_t {
+    template <sender _Sender>
+    constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto {
+      return __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr));
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()() const noexcept {
+      return __closure(*this);
+    }
+  };
+
   inline constexpr into_variant_t into_variant{};
 
   template <>

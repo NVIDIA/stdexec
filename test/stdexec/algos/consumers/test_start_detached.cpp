@@ -67,7 +67,7 @@ namespace {
     impulse_scheduler sched;
     bool called{false};
     // Start the sender
-    ex::start_detached(ex::transfer_just(sched) | ex::then([&] { called = true; }));
+    ex::start_detached(ex::just() | ex::continues_on(sched) | ex::then([&] { called = true; }));
     // The `then` function is not yet called
     CHECK_FALSE(called);
     // After an impulse to the scheduler, the function would complete
@@ -80,7 +80,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::transfer_just(pool.get_scheduler())
+      ex::sender auto snd = ex::just() | ex::continues_on(pool.get_scheduler())
                           | ex::then([&] { called.store(true); });
       ex::start_detached(std::move(snd));
     }

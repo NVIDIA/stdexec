@@ -20,11 +20,14 @@
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 
-#include <chrono>
+#include <atomic>
+#include <chrono> // IWYU pragma: keep for std::chrono_literals
 
 namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
+
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 
 // Trying to test `execute` with error flows will result in calling `std::terminate()`.
 // We don't want that

@@ -41,7 +41,7 @@ namespace {
     flags_storage_t<1024> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::transfer_just(stream_ctx.get_scheduler(), 42)
+    auto snd = ex::just(42) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::bulk(ex::par, 1024, [=](int idx, int val) {
                  if (is_on_gpu()) {
                    if (val == 42) {
@@ -60,7 +60,7 @@ namespace {
     flags_storage_t<2> flags_storage{};
     auto flags = flags_storage.get();
 
-    auto snd = ex::transfer_just(stream_ctx.get_scheduler(), 42, 4.2)
+    auto snd = ex::just(42, 4.2) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::bulk(ex::par, 2, [=](int idx, int i, double d) {
                  if (is_on_gpu()) {
                    if (i == 42 && d == 4.2) {
@@ -84,7 +84,7 @@ namespace {
     using flags_t = flags_storage_t<1024>::flags_t;
     auto flags = flags_storage.get();
 
-    auto snd = ex::transfer_just(stream_ctx.get_scheduler(), flags)
+    auto snd = ex::just(flags) | ex::continues_on(stream_ctx.get_scheduler())
              | ex::bulk(ex::par, 1024, [](int idx, const flags_t& flags) {
                  if (is_on_gpu()) {
                    flags.set(idx);
@@ -168,7 +168,8 @@ namespace {
     const int nelems = 10;
     cudaMallocManaged(&inout, nelems * sizeof(double));
 
-    auto task = STDEXEC::transfer_just(ctx.get_scheduler(), cuda::std::span<double>{inout, nelems})
+    auto task = STDEXEC::just(cuda::std::span<double>{inout, nelems})
+              | STDEXEC::continues_on(ctx.get_scheduler())
               | STDEXEC::bulk(
                   ex::par,
                   nelems,

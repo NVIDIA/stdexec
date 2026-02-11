@@ -145,7 +145,7 @@ namespace {
   }
 
   TEST_CASE("associate is the identity with null_token", "[adaptors][associate]") {
-    auto checkForIdentity = []<class... V>(ex::sender auto&& snd, V... values) {
+    auto checkForIdentity = []<class... V>(ex::sender auto snd, V... values) {
       // wait_for_values wants prvalue expected values
       wait_for_value(snd, V(values)...);
       wait_for_value(std::as_const(snd), V(values)...);

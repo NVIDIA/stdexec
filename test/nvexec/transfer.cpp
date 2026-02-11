@@ -97,12 +97,12 @@ namespace {
   }
 
   TEST_CASE(
-    "nvexec transfer_just changes context to GPU",
+    "nvexec just/continues_on changes context to GPU",
     "[cuda][stream][adaptors][continues_on]") {
     nvexec::stream_context stream_ctx{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::transfer_just(gpu, 42) //
+    auto snd = ex::just(42) | ex::continues_on(gpu) //
              | ex::then([=](auto i) {
                  if (is_on_gpu() && i == 42) {
                    return true;
@@ -115,12 +115,12 @@ namespace {
   }
 
   TEST_CASE(
-    "nvexec transfer_just supports move-only types",
+    "nvexec just/continues_on supports move-only types",
     "[cuda][stream][adaptors][continues_on]") {
     nvexec::stream_context stream_ctx{};
     nvexec::stream_scheduler gpu = stream_ctx.get_scheduler();
 
-    auto snd = ex::transfer_just(gpu, move_only_t{42}) //
+    auto snd = ex::just(move_only_t{42}) | ex::continues_on(gpu) //
              | ex::then(
                  [=](move_only_t&& val) noexcept { return is_on_gpu() && val.contains(42); });
 

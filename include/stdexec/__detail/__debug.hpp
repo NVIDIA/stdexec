@@ -29,13 +29,11 @@
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
-  namespace __queries {
-    struct __debug_env_t : __query<__debug_env_t> {
-      static constexpr auto query(forwarding_query_t) noexcept -> bool {
-        return true;
-      }
-    };
-  } // namespace __queries
+  struct __debug_env_t : __query<__debug_env_t> {
+    static constexpr auto query(forwarding_query_t) noexcept -> bool {
+      return true;
+    }
+  };
 
   namespace __debug {
     struct _COMPLETION_SIGNATURES_MISMATCH_ { };
@@ -59,7 +57,7 @@ namespace STDEXEC {
     }
 
     template <class _Env>
-    using __env_t = env<prop<__queries::__debug_env_t, bool>, _Env>;
+    using __env_t = env<prop<__debug_env_t, bool>, _Env>;
 
     template <class _CvSender, class _Env, class... _Sigs>
     struct __receiver {

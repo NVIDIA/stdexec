@@ -34,23 +34,23 @@ namespace STDEXEC {
   } // namespace
 #endif
 
+  // A type that describes a sender's metadata
+  template <class _Tag, class _Data, class... _Child>
+  struct __desc {
+    using __tag = _Tag;
+    using __data = _Data;
+    using __indices = __make_indices<sizeof...(_Child)>;
+    using __children = __mlist<_Child...>;
+
+    constexpr auto operator()() const noexcept -> __desc {
+      return __desc{};
+    }
+
+    template <class _Fn, class... _Args>
+    using __f = __minvoke<_Fn, _Args..., _Tag, _Data, _Child...>;
+  };
+
   namespace __detail {
-    // A type that describes a sender's metadata
-    template <class _Tag, class _Data, class... _Child>
-    struct __desc {
-      using __tag = _Tag;
-      using __data = _Data;
-      using __indices = __make_indices<sizeof...(_Child)>;
-      using __children = __mlist<_Child...>;
-
-      constexpr auto operator()() const noexcept -> __desc {
-        return __desc{};
-      }
-
-      template <class _Fn, class... _Args>
-      using __f = __minvoke<_Fn, _Args..., _Tag, _Data, _Child...>;
-    };
-
     template <class _Sender>
     using __desc_of = STDEXEC_REMOVE_REFERENCE(_Sender)::__desc_t;
 

@@ -105,7 +105,7 @@ namespace {
   TEST_CASE("let_stopped function is not called on error flow", "[adaptors][let_stopped]") {
     bool called{false};
     error_scheduler<int> sched{42};
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_stopped([&] {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::let_stopped([&] {
                             called = true;
                             return ex::just(0);
                           });
@@ -149,7 +149,7 @@ namespace {
 
   TEST_CASE("let_stopped adds to error_type of the input sender", "[adaptors][let_stopped]") {
     impulse_scheduler sched;
-    ex::sender auto in_snd = ex::transfer_just(sched, 11);
+    ex::sender auto in_snd = ex::just(11) | ex::continues_on(sched);
     check_err_types<ex::__mset<std::exception_ptr, int>>(
       in_snd | ex::let_stopped([] { return ex::just_error(0); }));
     check_err_types<ex::__mset<std::exception_ptr, double>>(
@@ -160,7 +160,7 @@ namespace {
 
   TEST_CASE("let_stopped can be used instead of stopped_as_error", "[adaptors][let_stopped]") {
     impulse_scheduler sched;
-    ex::sender auto in_snd = ex::transfer_just(sched, 11);
+    ex::sender auto in_snd = ex::just(11) | ex::continues_on(sched);
     check_val_types<ex::__mset<pack<int>>>(in_snd);
     check_err_types<ex::__mset<>>(in_snd);
     check_sends_stopped<true>(in_snd);
@@ -179,19 +179,19 @@ namespace {
 
     // Returning ex::just
     check_sends_stopped<false>(
-      ex::transfer_just(sched1) | ex::let_stopped([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_stopped([] { return ex::just(); }));
     check_sends_stopped<false>(
-      ex::transfer_just(sched2) | ex::let_stopped([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_stopped([] { return ex::just(); }));
     check_sends_stopped<false>(
-      ex::transfer_just(sched3) | ex::let_stopped([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched3) | ex::let_stopped([] { return ex::just(); }));
 
     // Returning ex::just_stopped
     check_sends_stopped<false>(
-      ex::transfer_just(sched1) | ex::let_stopped([] { return ex::just_stopped(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_stopped([] { return ex::just_stopped(); }));
     check_sends_stopped<true>(
-      ex::transfer_just(sched2) | ex::let_stopped([] { return ex::just_stopped(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_stopped([] { return ex::just_stopped(); }));
     check_sends_stopped<true>(
-      ex::transfer_just(sched3) | ex::let_stopped([] { return ex::just_stopped(); }));
+      ex::just() | ex::continues_on(sched3) | ex::let_stopped([] { return ex::just_stopped(); }));
   }
 
   // Return a different sender when we invoke this custom defined let_stopped implementation

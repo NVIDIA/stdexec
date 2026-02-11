@@ -29,32 +29,29 @@ namespace STDEXEC {
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
-  namespace __start {
+  template <class _Op>
+  concept __has_start_member = requires(_Op &__op) { __op.start(); };
+
+  struct start_t {
     template <class _Op>
-    concept __has_start = requires(_Op &__op) { __op.start(); };
+      requires __has_start_member<_Op>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr void operator()(_Op &__op) const noexcept {
+      static_assert(noexcept(__op.start()), "start() members must be noexcept");
+      static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
+      __op.start();
+    }
 
-    struct start_t {
-      template <class _Op>
-        requires __has_start<_Op>
-      STDEXEC_ATTRIBUTE(always_inline)
+    template <class _Op>
+      requires __has_start_member<_Op> || __tag_invocable<start_t, _Op &>
+    [[deprecated("the use of tag_invoke for start is deprecated")]]
+    STDEXEC_ATTRIBUTE(always_inline) //
       constexpr void operator()(_Op &__op) const noexcept {
-        static_assert(noexcept(__op.start()), "start() members must be noexcept");
-        static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
-        __op.start();
-      }
+      static_assert(__nothrow_tag_invocable<start_t, _Op &>);
+      (void) __tag_invoke(start_t{}, __op);
+    }
+  };
 
-      template <class _Op>
-        requires __has_start<_Op> || __tag_invocable<start_t, _Op &>
-      [[deprecated("the use of tag_invoke for start is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline) //
-        constexpr void operator()(_Op &__op) const noexcept {
-        static_assert(__nothrow_tag_invocable<start_t, _Op &>);
-        (void) __tag_invoke(start_t{}, __op);
-      }
-    };
-  } // namespace __start
-
-  using __start::start_t;
   inline constexpr start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////

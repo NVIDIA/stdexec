@@ -46,7 +46,7 @@ namespace STDEXEC {
 #else // ^^^ EDG ^^^ / vvv !EDG vvv
 #  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor) ([] { return _Descriptor(); })
 #  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                            \
-    STDEXEC::__descriptor_fn_v<STDEXEC::__detail::__desc<_Tag, _Data, _Child>>
+    STDEXEC::__descriptor_fn_v<STDEXEC::__desc<_Tag, _Data, _Child>>
 #endif
 
 #if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
@@ -59,7 +59,7 @@ namespace STDEXEC {
 
   template <class _Tag, class _Data, class... _Child>
   consteval auto __descriptor_fn() noexcept {
-    return __descriptor_fn_v<__detail::__desc<_Tag, _Data, _Child...>>;
+    return __descriptor_fn_v<__desc<_Tag, _Data, _Child...>>;
   }
 
   template <class _Tag>

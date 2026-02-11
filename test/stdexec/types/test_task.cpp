@@ -33,6 +33,8 @@
 
 namespace ex = STDEXEC;
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
+
 namespace {
   constinit std::atomic<int> g_thread_id = 0;
   thread_local const int thread_id = g_thread_id++;

@@ -30,7 +30,6 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped {
-    struct upon_stopped_t;
     using __on_not_callable = __mbind_front_q<__callable_error_t, upon_stopped_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
@@ -41,23 +40,6 @@ namespace STDEXEC {
       __cmplsigs::__default_set_error,
       __set_value_from_t<_Fun>
     >;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct upon_stopped_t {
-      template <sender _Sender, __movable_value _Fun>
-        requires __callable<_Fun>
-      auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        return __make_sexpr<upon_stopped_t>(
-          static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
-      }
-
-      template <__movable_value _Fun>
-        requires __callable<_Fun>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
-        return __closure(*this, static_cast<_Fun&&>(__fun));
-      }
-    };
 
     struct __upon_stopped_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
@@ -85,7 +67,23 @@ namespace STDEXEC {
     };
   } // namespace __upon_stopped
 
-  using __upon_stopped::upon_stopped_t;
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  struct upon_stopped_t {
+    template <sender _Sender, __movable_value _Fun>
+      requires __callable<_Fun>
+    auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+      return __make_sexpr<upon_stopped_t>(
+        static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+    }
+
+    template <__movable_value _Fun>
+      requires __callable<_Fun>
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+      return __closure(*this, static_cast<_Fun&&>(__fun));
+    }
+  };
+
   inline constexpr upon_stopped_t upon_stopped{};
 
   template <>
