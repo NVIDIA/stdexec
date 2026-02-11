@@ -147,59 +147,6 @@ namespace STDEXEC {
       }
     };
 
-    // NOTE: the spec declares this class template inside the get_state function
-    //       but I couldn't get that to build with Clang 21 so I moved it out to
-    //       this namespace-scoped template and __uglified all the symbols
-    template <class _Sender, class _Receiver>
-    struct __op_state {
-      using __associate_data_t = std::remove_cvref_t<__data_of<_Sender>>;
-      using __assoc_t = __associate_data_t::__assoc_t;
-      using __sender_ref_t = __associate_data_t::__sender_ref;
-
-      using __op_t = connect_result_t<typename __sender_ref_t::element_type, _Receiver>;
-
-      __assoc_t __assoc_;
-      union {
-        _Receiver __rcvr_;
-        __op_t __op_;
-      };
-
-      explicit __op_state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
-        : __assoc_(std::move(__parts.first)) {
-        if (__assoc_) {
-          ::new ((void*) std::addressof(__op_))
-            __op_t(connect(std::move(*__parts.second), std::move(__rcvr)));
-        } else {
-          std::construct_at(std::addressof(__rcvr_), std::move(__rcvr));
-        }
-      }
-
-      explicit __op_state(__associate_data_t&& __ad, _Receiver&& __rcvr)
-        : __op_state(std::move(__ad).release(), std::move(__rcvr)) {
-      }
-
-      explicit __op_state(const __associate_data_t& __ad, _Receiver&& __rcvr)
-        requires __std::copy_constructible<__associate_data_t>
-        : __op_state(__associate_data_t(__ad).release(), std::move(__rcvr)) {
-      }
-
-      ~__op_state() {
-        if (__assoc_) {
-          std::destroy_at(std::addressof(__op_));
-        } else {
-          std::destroy_at(std::addressof(__rcvr_));
-        }
-      }
-
-      void __run() noexcept {
-        if (__assoc_) {
-          STDEXEC::start(__op_);
-        } else {
-          STDEXEC::set_stopped(std::move(__rcvr_));
-        }
-      }
-    };
-
     struct __associate_impl : __sexpr_defaults {
 #if 0 // TODO: I don't know how to implement this correctly
       static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
@@ -231,8 +178,56 @@ namespace STDEXEC {
             >) {
           auto& [__tag, __data] = __self;
 
-          using op_state_t = __op_state<std::remove_cvref_t<_Self>, _Receiver>;
-          return op_state_t{__forward_like<_Self>(__data), std::move(__rcvr)};
+          using __associate_data_t = std::remove_cvref_t<decltype(__data)>;
+          using __assoc_t = __associate_data_t::__assoc_t;
+          using __sender_ref_t = __associate_data_t::__sender_ref;
+
+          using __op_t = connect_result_t<typename __sender_ref_t::element_type, _Receiver>;
+
+          struct __op_state {
+            __assoc_t __assoc_;
+            union {
+              _Receiver* __rcvr_;
+              __op_t __op_;
+            };
+
+            explicit __op_state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver& __rcvr)
+              : __assoc_(std::move(__parts.first)) {
+              if (__assoc_) {
+                ::new ((void*) std::addressof(__op_))
+                  __op_t(STDEXEC::connect(std::move(*__parts.second), std::move(__rcvr)));
+              } else {
+                __rcvr_ = std::addressof(__rcvr);
+              }
+            }
+
+            explicit __op_state(__associate_data_t&& __ad, _Receiver& __rcvr)
+              : __op_state(std::move(__ad).release(), __rcvr) {
+            }
+
+            explicit __op_state(const __associate_data_t& __ad, _Receiver& __rcvr)
+              requires __std::copy_constructible<__associate_data_t>
+              : __op_state(__associate_data_t(__ad).release(), __rcvr) {
+            }
+
+            __op_state(__op_state&&) = delete;
+
+            ~__op_state() {
+              if (__assoc_) {
+                std::destroy_at(std::addressof(__op_));
+              }
+            }
+
+            void __run() noexcept {
+              if (__assoc_) {
+                STDEXEC::start(__op_);
+              } else {
+                set_stopped(std::move(*__rcvr_));
+              }
+            }
+          };
+
+          return __op_state{__forward_like<_Self>(__data), __rcvr};
         };
 
       static constexpr auto start = [](auto& __state) noexcept -> void {
