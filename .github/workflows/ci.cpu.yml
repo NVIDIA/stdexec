@@ -73,10 +73,18 @@ jobs:
           source /etc/profile
           set -x;
 
-          devcontainer-utils-init-sccache-dist                           \
-              --enable-sccache-dist - <<< "                              \
-              --auth-type 'token'                                        \
-              --auth-token '${{ secrets.STDEXEC_BUILD_CLUSTER_SECRET }}' \
+          devcontainer-utils-install-sccache --version rapids;
+
+          devcontainer-utils-init-sccache-dist                                          \
+              --enable-sccache-dist - <<< "                                             \
+              --auth-type 'token'                                                       \
+              --auth-token '$(                                                          \
+                curl -fsSL -H "Authorization: Bearer $(                                 \
+                  curl -fsSL -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                    "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=token.rapids.nvidia.com"  \
+                | jq -r '.value'                                                        \
+                )" https://token.rapids.nvidia.com/gh/token/exchange                    \
+              | jq -r '.token')'                                                        \
           ";
 
           # Copy source folder into ~/stdexec
