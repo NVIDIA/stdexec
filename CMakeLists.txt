@@ -214,7 +214,7 @@ target_compile_options(stdexec INTERFACE
 
 # Do you want a preprocessor that works? Picky, picky.
 target_compile_options(stdexec INTERFACE
-                       $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor>
+                       $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr>
                        )
 
 set(STDEXEC_NAMESPACE "stdexec" CACHE STRING "The name of the top-level namespace for stdexec")

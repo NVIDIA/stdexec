@@ -29,6 +29,7 @@ namespace ex = STDEXEC;
 using namespace std::chrono_literals;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
 
 // Trying to test `execute` with error flows will result in calling `std::terminate()`.
 // We don't want that
