@@ -89,8 +89,6 @@ namespace STDEXEC {
   template <class... _Envs>
   struct env;
 
-  using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct get_env_t;
   extern const get_env_t get_env;
@@ -159,8 +157,6 @@ namespace STDEXEC {
                                        && __is_instance_of<_Completions, completion_signatures>;
 
   struct dependent_sender_error;
-  using dependent_completions [[deprecated(
-    "use dependent_sender_error instead of dependent_completions")]] = dependent_sender_error;
 
   namespace __cmplsigs {
     struct get_completion_signatures_t;
@@ -217,21 +213,12 @@ namespace STDEXEC {
   struct starts_on_t;
   extern const starts_on_t starts_on;
 
-  using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
-  [[deprecated("start_on has been renamed starts_on")]]
-  extern const starts_on_t start_on;
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct schedule_from_t;
   extern const schedule_from_t schedule_from;
 
   struct continues_on_t;
   extern const continues_on_t continues_on;
-
-  // Backward compatibility:
-  using transfer_t [[deprecated("transfer_t has been renamed continues_on_t")]] = continues_on_t;
-  [[deprecated("transfer has been renamed continues_on")]]
-  inline constexpr const continues_on_t& transfer = continues_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __transfer_just_t;
@@ -293,24 +280,6 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct into_variant_t;
   extern const into_variant_t into_variant;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __split {
-    struct split_t;
-    struct __split_t;
-  } // namespace __split
-
-  using __split::split_t;
-  extern const split_t split;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  namespace __ensure_started {
-    struct ensure_started_t;
-    struct __ensure_started_t;
-  } // namespace __ensure_started
-
-  using __ensure_started::ensure_started_t;
-  extern const ensure_started_t ensure_started;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct on_t;

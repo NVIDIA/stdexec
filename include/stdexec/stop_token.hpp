@@ -402,15 +402,4 @@ namespace STDEXEC {
 
     inplace_stop_source& __stop_source_;
   };
-
-  using in_place_stop_token
-    [[deprecated("in_place_stop_token has been renamed inplace_stop_token")]] = inplace_stop_token;
-
-  using in_place_stop_source [[deprecated(
-    "in_place_stop_token has been renamed inplace_stop_source")]] = inplace_stop_source;
-
-  template <class _Fun>
-  using in_place_stop_callback
-    [[deprecated("in_place_stop_callback has been renamed inplace_stop_callback")]] =
-      inplace_stop_callback<_Fun>;
 } // namespace STDEXEC

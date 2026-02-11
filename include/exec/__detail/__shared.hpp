@@ -15,22 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "../../stdexec/__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../stop_token.hpp"
-#include "__atomic.hpp"
-#include "__basic_sender.hpp"
-#include "__env.hpp"
-#include "__intrusive_slist.hpp"
-#include "__memory.hpp"
-#include "__meta.hpp"
-#include "__optional.hpp"
-#include "__queries.hpp"
-#include "__receivers.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__tuple.hpp"
-#include "__variant.hpp" // IWYU pragma: keep
+#include "../../stdexec/__detail/__atomic.hpp"
+#include "../../stdexec/__detail/__basic_sender.hpp"
+#include "../../stdexec/__detail/__env.hpp"
+#include "../../stdexec/__detail/__intrusive_slist.hpp"
+#include "../../stdexec/__detail/__memory.hpp"
+#include "../../stdexec/__detail/__meta.hpp"
+#include "../../stdexec/__detail/__optional.hpp"
+#include "../../stdexec/__detail/__queries.hpp"
+#include "../../stdexec/__detail/__receivers.hpp"
+#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../../stdexec/__detail/__tuple.hpp"
+#include "../../stdexec/__detail/__variant.hpp" // IWYU pragma: keep
+#include "../../stdexec/stop_token.hpp"
 
 #include <exception>
 #include <mutex>
@@ -56,7 +56,14 @@
 // The shared state should add-ref itself when the input async
 // operation is started and release itself when its completion
 // is notified.
-namespace STDEXEC::__shared {
+namespace exec {
+  struct split_t;
+  struct ensure_started_t;
+} // namespace exec
+
+namespace exec::__shared {
+  using namespace STDEXEC;
+
   template <class _Env, class _Variant>
   struct __shared_state_base;
 
@@ -488,7 +495,7 @@ namespace STDEXEC::__shared {
     }
 
    private:
-    friend struct __ensure_started::ensure_started_t;
+    friend struct exec::ensure_started_t;
     std::shared_ptr<__shared_state<_CvChild, _Env>> __sh_state_;
   };
 
@@ -496,4 +503,4 @@ namespace STDEXEC::__shared {
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __sndr(_Tag, _CvChild&&, _Env) -> __sndr<_Tag, _CvChild, _Env>;
 
-} // namespace STDEXEC::__shared
+} // namespace exec::__shared

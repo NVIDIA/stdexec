@@ -127,7 +127,7 @@ auto handle_edge_detection_request(const http_request& req) -> ex::sender auto {
   ex::sender auto in_img_sender = ex::just(req) | ex::then(extract_image);
 
   // Prepare for using multiple parallel flows on the same input sender
-  // ex::sender auto multi_shot_img = ex::split(in_img_sender);
+  // ex::sender auto multi_shot_img = exec::split(in_img_sender);
   auto& multi_shot_img = in_img_sender;
 
   // Apply the three methods of edge detection on the same input image, in parallel.

@@ -138,9 +138,6 @@ namespace STDEXEC {
 
   inline constexpr __read_env_t read_env{};
 
-  [[deprecated("read has been renamed to read_env")]]
-  inline constexpr __read_env_t read{};
-
   template <>
   struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl { };
 

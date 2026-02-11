@@ -134,9 +134,6 @@ namespace STDEXEC {
     }
   };
 
-  [[deprecated("use STDEXEC::completion_behavior::weakest instead")]]
-  inline constexpr const auto& min = completion_behavior::weakest;
-
   template <class... _CBs>
   using __common_completion_behavior_t = __result_of<completion_behavior::weakest, _CBs...>;
 

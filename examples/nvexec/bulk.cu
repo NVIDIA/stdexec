@@ -39,7 +39,7 @@ auto main() -> int {
     };
   };
 
-  auto fork = ex::schedule(sch) | ex::then(then_fn(0)) | ex::split();
+  auto fork = ex::schedule(sch) | ex::then(then_fn(0)) | exec::split();
 
   auto snd = ex::transfer_when_all(
                sch,

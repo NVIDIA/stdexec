@@ -17,6 +17,7 @@
 #include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
 #include <exec/env.hpp>
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -260,7 +261,7 @@ namespace {
                               CHECK(x == 13);
                               called.store(true);
                             });
-      ex::start_detached(std::move(snd));
+      exec::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync

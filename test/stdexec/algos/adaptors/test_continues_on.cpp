@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -113,7 +114,7 @@ namespace {
       // lunch some work on the thread pool
       ex::sender auto snd = ex::continues_on(ex::just(), pool.get_scheduler())
                           | ex::then([&] { called.store(true); });
-      ex::start_detached(std::move(snd));
+      exec::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync

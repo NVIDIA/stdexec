@@ -19,6 +19,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/when_any.hpp>
+#include <exec/split.hpp>
 #include <stdexec/stop_token.hpp>
 
 #include <test_common/receivers.hpp>
@@ -337,7 +338,7 @@ namespace {
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
-    auto split_sender = split(just(42));
+    auto split_sender = exec::split(just(42));
     static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
     static_assert(sender_of<decltype(split_sender), set_value_t(const int&)>);
     my_stoppable_sender_of<int> sender = split_sender;

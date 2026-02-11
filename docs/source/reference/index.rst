@@ -75,7 +75,7 @@ TODO: More sender consumer algorithms
 
 .. doxygenvariable:: stdexec::sync_wait
 
-.. doxygenvariable:: stdexec::start_detached
+.. doxygenvariable:: exec::start_detached
 
 Utilities
 ---------

@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "./common.hpp"
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 
 struct RunThread {
@@ -49,7 +50,7 @@ struct RunThread {
       stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
                            auto nested_scheduler = pool.get_scheduler();
                            while (scheds) {
-                             stdexec::start_detached(
+                             exec::start_detached(
                                stdexec::schedule(nested_scheduler) | stdexec::then([&] {
                                  auto prev = counter.fetch_sub(1);
                                  if (prev == 1) {
@@ -68,7 +69,7 @@ struct RunThread {
       stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
                            auto nested_scheduler = pool.get_scheduler();
                            while (scheds) {
-                             stdexec::start_detached(
+                             exec::start_detached(
                                stdexec::schedule(nested_scheduler) | stdexec::then([&] {
                                  auto prev = counter.fetch_sub(1);
                                  if (prev == 1) {

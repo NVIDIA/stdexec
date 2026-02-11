@@ -49,6 +49,7 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 // Use a thread pool
+#include "exec/start_detached.hpp"
 #include "exec/static_thread_pool.hpp"
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
@@ -144,7 +145,7 @@ auto main() -> int {
       ;
 
     // execute the whole flow asynchronously
-    ex::start_detached(std::move(snd));
+    exec::start_detached(std::move(snd));
   }
 
   pool.request_stop();

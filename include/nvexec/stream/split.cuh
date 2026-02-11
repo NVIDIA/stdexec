@@ -22,6 +22,7 @@
 
 // include these after execution.hpp
 #include "../../exec/env.hpp"
+#include "../../exec/split.hpp"
 #include "../detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
@@ -342,7 +343,7 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<split_t, Env> {
+  struct transform_sender_for<exec::split_t, Env> {
     template <class Sender>
     using _sender_t = split_sender<__decay_t<Sender>>;
 
