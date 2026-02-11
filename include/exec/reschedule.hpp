@@ -18,13 +18,13 @@
 #include "../stdexec/execution.hpp"
 
 namespace exec {
+  struct _CANNOT_RESCHEDULE_ { };
+  using STDEXEC::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_;
+
   namespace __resched {
     using namespace STDEXEC;
 
     struct reschedule_t;
-    struct _CANNOT_RESCHEDULE_ { };
-    struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_ { };
-
     template <class _Env>
     using __no_scheduler_error = __mexception<
       _WHAT_(_CANNOT_RESCHEDULE_),

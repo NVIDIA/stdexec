@@ -30,6 +30,8 @@ set(stdexec_test_sources
     stdexec/concepts/test_concept_operation_state.cpp
     stdexec/concepts/test_concepts_sender.cpp
     stdexec/concepts/test_concepts_stop_tokens.cpp
+    stdexec/concepts/test_concepts_scope_association.cpp
+    stdexec/concepts/test_concepts_scope_token.cpp
     stdexec/concepts/test_awaitables.cpp
     stdexec/algos/factories/test_just.cpp
     stdexec/algos/factories/test_transfer_just.cpp
@@ -37,6 +39,7 @@ set(stdexec_test_sources
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
     stdexec/algos/factories/test_schedule.cpp
+    stdexec/algos/adaptors/test_associate.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
     stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
@@ -57,8 +60,11 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_ensure_started.cpp
     stdexec/algos/adaptors/test_write_env.cpp
+    stdexec/algos/adaptors/test_stop_when.cpp
+    stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/consumers/test_start_detached.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
+    stdexec/algos/consumers/test_spawn.cpp
     stdexec/algos/other/test_execute.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
@@ -68,6 +74,7 @@ set(stdexec_test_sources
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
+    stdexec/types/test_counting_scopes.cpp
     )
 
 add_library(common_test_settings INTERFACE)
