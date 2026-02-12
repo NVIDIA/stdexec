@@ -199,12 +199,12 @@ namespace exec {
 
     struct __repeat_until_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         // TODO: port this to use constant evaluation
         return __completions_t<__child_of<_Sender>, _Env...>{};
       };
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver __rcvr) noexcept(
           noexcept(__opstate(STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>()))) {
           return __opstate(

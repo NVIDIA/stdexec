@@ -647,14 +647,14 @@ namespace STDEXEC {
         __mbind_front_q<__opstate, __t<_LetTag>, __child_of<_Sender>, __fn_t<_Sender>, _Receiver>
       >;
      public:
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept -> decltype(auto) {
         // TODO(ericniebler): this needs a proper implementation
         return __fwd_env(STDEXEC::get_env(__child));
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, _LetTag>);
         if constexpr (__decay_copyable<_Sender>) {
           // TODO: update this to use constant evaluation
@@ -673,7 +673,7 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _CvSender, class _Receiver>(_CvSender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_constructible_from<
             __opstate_t<_CvSender, _Receiver>,

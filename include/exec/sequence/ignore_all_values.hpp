@@ -285,12 +285,12 @@ namespace exec {
 
     struct __ignore_all_values_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
       }
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_applicable<__connect_fn, _Sender, _Receiver&>)
         -> __apply_result_t<__connect_fn, _Sender, _Receiver&> {

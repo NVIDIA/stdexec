@@ -396,13 +396,13 @@ namespace STDEXEC {
       template <class _Self, class... _Env>
       using __completions_t = __children_of<_Self, __when_all::__completions<__env_t<_Env>...>>;
 
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {
           return __when_all::__attrs<_Child...>{};
         };
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Self, when_all_t>);
         if constexpr (__minvocable_q<__completions_t, _Self, _Env...>) {
           // TODO: update this to use constant evaluation:
@@ -418,12 +418,12 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
+      static constexpr auto __get_env = []<class _State>(__ignore, const _State& __state) noexcept
         -> __env_t<env_of_t<const typename _State::__receiver_t&>> {
         return __when_all::__mk_env(STDEXEC::get_env(__state.__rcvr_), __state.__stop_source_);
       };
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver&& __rcvr) noexcept
         -> __apply_result_t<__mk_state_fn_t<_Receiver>, _Self> {
         return __apply(
@@ -431,7 +431,7 @@ namespace STDEXEC {
           static_cast<_Self&&>(__self));
       };
 
-      static constexpr auto start = []<class _State, class... _Operations>(
+      static constexpr auto __start = []<class _State, class... _Operations>(
                                       _State& __state,
                                       _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
@@ -472,7 +472,7 @@ namespace STDEXEC {
         }
       }
 
-      static constexpr auto complete = []<class _Index, class _State, class _Set, class... _Args>(
+      static constexpr auto __complete = []<class _Index, class _State, class _Set, class... _Args>(
                                          _Index,
                                          _State& __state,
                                          _Set,
@@ -515,13 +515,13 @@ namespace STDEXEC {
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {
           return __when_all::__attrs<_Child...>{};
         };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         using __sndr_t = __detail::__transform_sender_result_t<
           when_all_with_variant_t,
           set_value_t,
@@ -533,7 +533,7 @@ namespace STDEXEC {
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+      static constexpr auto __get_attrs = []<class _Scheduler, class... _Child>(
                                           __ignore,
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
@@ -542,7 +542,7 @@ namespace STDEXEC {
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         using __sndr_t =
           __detail::__transform_sender_result_t<transfer_when_all_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
@@ -550,7 +550,7 @@ namespace STDEXEC {
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
+      static constexpr auto __get_attrs = []<class _Scheduler, class... _Child>(
                                           __ignore,
                                           const _Scheduler& __sched,
                                           const _Child&...) noexcept {
@@ -558,7 +558,7 @@ namespace STDEXEC {
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         using __sndr_t = __detail::__transform_sender_result_t<
           transfer_when_all_with_variant_t,
           set_value_t,

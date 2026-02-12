@@ -175,12 +175,12 @@ namespace exec {
 
     struct __impls : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         // TODO: port this to use constant evaluation
         return __completions_t<__child_of<_Sender>, _Env...>{};
       }
 
-      static constexpr auto connect = //
+      static constexpr auto __connect = //
         []<class _Receiver, class _Sender>(_Sender &&__sndr, _Receiver &&__rcvr) noexcept(
           noexcept(__opstate(0, STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>()))) {
           const std::size_t __count = STDEXEC::__get<1>(__sndr);

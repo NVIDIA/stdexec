@@ -242,7 +242,7 @@ namespace exec::__fork_join {
   struct __impls : STDEXEC::__sexpr_defaults {
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       using namespace STDEXEC;
 
       using _closures_t = STDEXEC::__data_of<Self>;
@@ -267,7 +267,7 @@ namespace exec::__fork_join {
       }
     }
 
-    static constexpr auto connect =
+    static constexpr auto __connect =
       []<class _Receiver, class _Sender>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept {
         using _closures_t = STDEXEC::__data_of<_Sender>;
         using _sndr_t = STDEXEC::__child_of<_Sender>;

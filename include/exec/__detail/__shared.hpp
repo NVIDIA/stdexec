@@ -429,7 +429,7 @@ namespace exec::__shared {
   template <class _Tag>
   struct __impls : __sexpr_defaults {
     template <class _CvChild, class _Env>
-    static consteval auto __get_completion_signatures() {
+    static consteval auto __get_completion_signatures_impl() {
       // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
       // TODO: update this for constant evaluation
       if constexpr (__decay_copyable<_CvChild>) {
@@ -444,9 +444,12 @@ namespace exec::__shared {
     }
 
     template <class _CvSender>
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       static_assert(sender_expr_for<_CvSender, _Tag>);
-      return __get_completion_signatures<__child_of<_CvSender>, __decay_t<__data_of<_CvSender>>>();
+      return __get_completion_signatures_impl<
+        __child_of<_CvSender>,
+        __decay_t<__data_of<_CvSender>>
+      >();
     };
   };
 
@@ -476,7 +479,7 @@ namespace exec::__shared {
 
     template <class>
     static consteval auto get_completion_signatures() {
-      return __impls<_Tag>::template __get_completion_signatures<_CvChild, _Env>();
+      return __impls<_Tag>::template __get_completion_signatures_impl<_CvChild, _Env>();
     }
 
     template <class _Receiver>

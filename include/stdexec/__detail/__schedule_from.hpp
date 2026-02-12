@@ -37,7 +37,7 @@ namespace STDEXEC {
   template <>
   struct __sexpr_impl<schedule_from_t> : __sexpr_defaults {
     template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       static_assert(sender_expr_for<_Sender, schedule_from_t>);
       return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
     }

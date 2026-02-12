@@ -118,14 +118,14 @@ namespace STDEXEC {
       env_of_t<_Child> __attr_;
     };
 
-    static constexpr auto get_attrs =
+    static constexpr auto __get_attrs =
       []<class _Data, class _Child>(__ignore, const _Data& __data, const _Child& __child) noexcept
       -> __attrs<_Data, _Child> {
       return __attrs<_Data, _Child>{__data, STDEXEC::get_env(__child)};
     };
 
     template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       using __sndr_t =
         __detail::__transform_sender_result_t<starts_on_t, set_value_t, _Sender, env<>>;
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
