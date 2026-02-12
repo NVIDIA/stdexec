@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/split.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -250,7 +251,7 @@ namespace {
 
     // if children send references, they get decayed
     check_val_types<ex::__mset<pack<int, double>>>(
-      ex::when_all(ex::split(ex::just(3)), ex::split(ex::just(0.14))));
+      ex::when_all(exec::split(ex::just(3)), exec::split(ex::just(0.14))));
   }
 
   TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {

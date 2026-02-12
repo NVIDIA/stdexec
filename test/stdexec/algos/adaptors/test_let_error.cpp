@@ -16,6 +16,8 @@
 
 #include <catch2/catch.hpp>
 #include <exec/env.hpp>
+#include <exec/split.hpp>
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -59,7 +61,7 @@ namespace {
   TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
     bool called{false};
     auto snd =
-      ex::let_error(ex::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
+      ex::let_error(exec::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
         called = true;
         return ex::just();
       });
@@ -256,7 +258,7 @@ namespace {
                               CHECK(x == 13);
                               called.store(true);
                             });
-      ex::start_detached(std::move(snd));
+      exec::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync

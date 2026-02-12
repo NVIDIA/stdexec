@@ -283,8 +283,6 @@ namespace STDEXEC {
     }
   };
 
-  using execute_may_block_caller_t [[deprecated]] = __execute_may_block_caller_t;
-
   struct get_forward_progress_guarantee_t
     : __query<
         get_forward_progress_guarantee_t,
@@ -300,8 +298,7 @@ namespace STDEXEC {
     }
   };
 
-  [[deprecated]]
-  inline constexpr __execute_may_block_caller_t execute_may_block_caller{};
+  inline constexpr __execute_may_block_caller_t __execute_may_block_caller{};
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   inline constexpr get_scheduler_t get_scheduler{};
   inline constexpr get_delegation_scheduler_t get_delegation_scheduler{};

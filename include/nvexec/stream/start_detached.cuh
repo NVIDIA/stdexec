@@ -19,6 +19,7 @@
 #pragma once
 
 #include "../../exec/scope.hpp"
+#include "../../exec/start_detached.hpp"
 #include "../../stdexec/execution.hpp"
 
 #include <exception>
@@ -137,7 +138,7 @@ namespace nvexec::_strm {
   } // namespace _start_detached
 
   template <>
-  struct apply_sender_for<start_detached_t> {
+  struct apply_sender_for<exec::start_detached_t> {
     template <class CvSender, class Env = __root_env>
     void operator()(CvSender&& sndr, Env&& env = {}) const noexcept(false) {
       using op_t = _start_detached::opstate<CvSender, __decay_t<Env>>;

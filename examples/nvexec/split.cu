@@ -39,7 +39,7 @@ auto main() -> int {
     };
   };
 
-  auto fork = ex::schedule(sch) | ex::bulk(ex::par, 4, bulk_fn(0)) | ex::split();
+  auto fork = ex::schedule(sch) | ex::bulk(ex::par, 4, bulk_fn(0)) | exec::split();
 
   auto snd = ex::transfer_when_all(
                sch,

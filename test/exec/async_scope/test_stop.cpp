@@ -1,4 +1,5 @@
 #include "exec/single_thread_context.hpp"
+#include "exec/start_detached.hpp"
 #include "test_common/receivers.hpp"
 #include "test_common/schedulers.hpp"
 #include <catch2/catch.hpp>
@@ -41,7 +42,7 @@ namespace {
       // start a thread waiting on when the scope is empty:
       exec::single_thread_context thread;
       auto thread_sch = thread.get_scheduler();
-      ex::start_detached(
+      exec::start_detached(
         ex::starts_on(thread_sch, scope.on_empty()) | ex::then([&] { empty = true; }));
       REQUIRE_FALSE(empty);
 

@@ -139,7 +139,7 @@ resulting operation. Here are some key sender consumer algorithms:
     - **Description**
   * - :cpp:member:`stdexec::sync_wait`
     - Blocks the calling thread until the sender completes and returns the result.
-  * - :cpp:member:`stdexec::start_detached`
+  * - :cpp:member:`exec::start_detached`
     - Starts the operation without waiting for it to complete.
 
 Here is an example of using sender algorithms to create a simple async pipeline:
@@ -164,7 +164,7 @@ that can complete successfully in exactly one way is an awaitable sender.
 
 .. code-block:: cpp
 
-    auto my_task() -> exec::task<int> {
+    auto my_task() -> stdexec::task<int> {
       int x = co_await some_sender();
       co_return x + 1;
     }

@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <catch2/catch.hpp>
+#include <exec/execute.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
@@ -28,6 +29,7 @@ namespace ex = STDEXEC;
 using namespace std::chrono_literals;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
 
 // Trying to test `execute` with error flows will result in calling `std::terminate()`.
 // We don't want that
@@ -37,7 +39,7 @@ namespace {
   TEST_CASE("execute works with inline scheduler", "[other][execute]") {
     inline_scheduler sched;
     bool called{false};
-    ex::execute(sched, [&] { called = true; });
+    exec::execute(sched, [&] { called = true; });
     // The function should already have been called
     CHECK(called);
   }
@@ -47,7 +49,7 @@ namespace {
     "[other][execute]") {
     impulse_scheduler sched;
     bool called{false};
-    ex::execute(sched, [&] { called = true; });
+    exec::execute(sched, [&] { called = true; });
     // The function has not yet been called
     CHECK_FALSE(called);
     // After an impulse to the scheduler, the function should have been called
@@ -60,7 +62,7 @@ namespace {
     std::atomic<bool> called{false};
     {
       // launch some work on the thread pool
-      ex::execute(pool.get_scheduler(), [&] { called.store(true, std::memory_order_relaxed); });
+      exec::execute(pool.get_scheduler(), [&] { called.store(true, std::memory_order_relaxed); });
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync

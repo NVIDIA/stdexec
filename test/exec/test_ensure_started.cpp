@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <exec/ensure_started.hpp>
 
 #include <exec/async_scope.hpp>
 #include <stdexec/execution.hpp>
@@ -23,13 +23,15 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <catch2/catch.hpp>
+
 namespace ex = STDEXEC;
 using exec::async_scope;
 
 namespace {
 
   TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
-    auto snd = ex::ensure_started(ex::just(19));
+    auto snd = exec::ensure_started(ex::just(19));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
@@ -37,7 +39,7 @@ namespace {
   static const auto env = ex::prop{ex::get_scheduler, inline_scheduler{}};
 
   TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
-    auto snd = ex::ensure_started(ex::just(19), env);
+    auto snd = exec::ensure_started(ex::just(19), env);
     static_assert(ex::sender_in<decltype(snd), decltype(env)>);
     (void) snd;
   }
@@ -46,7 +48,7 @@ namespace {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
@@ -57,7 +59,7 @@ namespace {
     bool called{false};
     auto snd1 = ex::starts_on(sch, ex::just()) | ex::then([&] { called = true; });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
     // execute the next scheduled item
     sch.start_next();
@@ -73,7 +75,7 @@ namespace {
                   return 42;
                 });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42});
     ex::start(op);
@@ -87,7 +89,7 @@ namespace {
                   return 42;
                 });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
     // execute the next scheduled item
     sch.start_next();
@@ -103,7 +105,7 @@ namespace {
       return ex::just(42, movable{56});
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42, movable{56}});
     ex::start(op);
@@ -117,7 +119,7 @@ namespace {
       return ex::just(42, movable{56});
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
     // execute the next scheduled item
     sch.start_next();
@@ -133,7 +135,7 @@ namespace {
       return ex::just_error(42);
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_error_receiver{42});
     ex::start(op);
@@ -147,7 +149,7 @@ namespace {
       return ex::just_error(42);
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
     // execute the next scheduled item
     sch.start_next();
@@ -163,7 +165,7 @@ namespace {
       return ex::just_stopped();
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
@@ -177,7 +179,7 @@ namespace {
       return ex::just_stopped();
     });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
     // execute the next scheduled item
     sch.start_next();
@@ -194,7 +196,7 @@ namespace {
     bool called{false};
     auto snd = ex::starts_on(sch, ex::just(19))
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
-             | ex::ensure_started();
+             | exec::ensure_started();
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
     ex::start(op);
     // request stop before the source yields a value
@@ -215,7 +217,7 @@ namespace {
                  ex::just() | ex::then([&] { ++count; }),
                  [=] { return ex::starts_on(sch, ex::just(19)); })
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
-             | ex::ensure_started();
+             | exec::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
     // request stop before the source yields a value
@@ -236,7 +238,7 @@ namespace {
                  return 42;
                })
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
-             | ex::ensure_started();
+             | exec::ensure_started();
     CHECK(count == 1);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42});
     // request stop before the source yields a value
@@ -251,7 +253,7 @@ namespace {
     bool called = false;
     {
       auto snd = ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { called = true; })
-               | ex::ensure_started();
+               | exec::ensure_started();
     }
     // make the source yield the value
     sch.start_next();
@@ -266,7 +268,7 @@ namespace {
     bool called = false;
     {
       auto snd = ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { called = true; })
-               | ex::ensure_started();
+               | exec::ensure_started();
       auto op = ex::connect(std::move(snd), logging_receiver{state});
     }
     // make the source yield the value
@@ -280,8 +282,8 @@ namespace {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
     CHECK_FALSE(called);
-    auto snd2 = ex::ensure_started(std::move(snd1));
-    auto snd = ex::ensure_started(std::move(snd2));
+    auto snd2 = exec::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd2));
     STATIC_REQUIRE(std::same_as<decltype(snd2), decltype(snd)>);
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
@@ -292,7 +294,7 @@ namespace {
     bool called{false};
     auto snd1 = ex::just(movable(42)) | ex::then([&](movable&&) { called = true; });
     CHECK_FALSE(called);
-    auto snd = ex::ensure_started(std::move(snd1));
+    auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
@@ -301,7 +303,7 @@ namespace {
   TEST_CASE(
     "Repeated ensure_started with operator| does not return reference to temporary",
     "[adaptors][ensure_started]") {
-    auto snd = ex::ensure_started(ex::just()) | ex::ensure_started();
+    auto snd = exec::ensure_started(ex::just()) | exec::ensure_started();
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
   }
@@ -320,7 +322,7 @@ namespace {
 
   TEST_CASE("ensure_started accepts a custom sender", "[adaptors][ensure_started]") {
     auto snd1 = my_sender();
-    auto snd2 = ex::ensure_started(std::move(snd1));
+    auto snd2 = exec::ensure_started(std::move(snd1));
     static_assert(ex::__well_formed_sender<decltype(snd1)>);
     static_assert(ex::__well_formed_sender<decltype(snd2)>);
     using Snd = decltype(snd2);

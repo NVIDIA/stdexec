@@ -62,9 +62,7 @@ namespace STDEXEC {
     };
   };
 
-  using transfer_just_t [[deprecated]] = __transfer_just_t;
-  [[deprecated]]
-  inline constexpr __transfer_just_t transfer_just{};
+  inline constexpr __transfer_just_t __transfer_just{};
 
   template <>
   struct __sexpr_impl<__transfer_just_t> : __sexpr_defaults {

@@ -3,6 +3,7 @@
 #include <stdexec/execution.hpp>
 
 #include "common.cuh"
+#include "exec/start_detached.hpp"
 #include "nvexec/detail/cuda_atomic.cuh" // IWYU pragma: keep
 #include "nvexec/stream/common.cuh"
 #include "nvexec/stream_context.cuh"
@@ -42,7 +43,7 @@ namespace {
                });
 
     // then won't complete until we set flag, so if the `start_detached` is blocking, we'll deadlock
-    ex::start_detached(std::move(snd));
+    exec::start_detached(std::move(snd));
 
     cuda::atomic_ref<int, cuda::thread_scope_system> host_flag_ref(*host_flag);
     cuda::atomic_ref<int, cuda::thread_scope_system> device_flag_ref(*device_flag);

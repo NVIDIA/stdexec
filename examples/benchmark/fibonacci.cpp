@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <iostream>
 
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
@@ -57,7 +58,7 @@ struct fib_s {
           return stdexec::starts_on(sched, fib_sender(fib_s{cutoff, n, sched}));
         };
 
-        stdexec::start_detached(
+        exec::start_detached(
           stdexec::when_all(mkchild(n - 1), mkchild(n - 2))
           | stdexec::then([rcvr = static_cast<Receiver&&>(rcvr_)](long a, long b) mutable {
               stdexec::set_value(static_cast<Receiver&&>(rcvr), a + b);

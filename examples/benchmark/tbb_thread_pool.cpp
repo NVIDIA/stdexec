@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 #include "./common.hpp"
+#include <exec/start_detached.hpp>
 #include <execpools/tbb/tbb_thread_pool.hpp>
 
 struct RunThread {
@@ -47,7 +48,7 @@ struct RunThread {
       std::atomic<std::size_t> counter{scheds};
       auto env = stdexec::prop{stdexec::get_allocator, alloc};
       while (scheds) {
-        stdexec::start_detached(
+        exec::start_detached(
           stdexec::schedule(scheduler) | stdexec::then([&] {
             auto prev = counter.fetch_sub(1);
             if (prev == 1) {
@@ -63,13 +64,13 @@ struct RunThread {
       std::size_t scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       while (scheds) {
-        stdexec::start_detached(stdexec::schedule(scheduler) | stdexec::then([&] {
-                                  auto prev = counter.fetch_sub(1);
-                                  if (prev == 1) {
-                                    std::lock_guard lock{mut};
-                                    cv.notify_one();
-                                  }
-                                }));
+        exec::start_detached(stdexec::schedule(scheduler) | stdexec::then([&] {
+                               auto prev = counter.fetch_sub(1);
+                               if (prev == 1) {
+                                 std::lock_guard lock{mut};
+                                 cv.notify_one();
+                               }
+                             }));
         --scheds;
       }
 #endif

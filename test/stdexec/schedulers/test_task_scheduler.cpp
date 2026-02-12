@@ -75,7 +75,7 @@ struct test_domain
 TEST_CASE("bulk_unchunked dispatches correctly through task_scheduler", "[scheduler][task_scheduler]")
 {
   ex::task_scheduler sched{dummy_scheduler<test_domain>{}};
-  auto sndr  = ex::on(sched, ex::just(-1) | ex::bulk_chunked(ex::par_unseq, 100, [](int, int, int&) {}));
+  auto sndr  = ex::on(sched, ex::just(-1) | ex::bulk_chunked(ex::par_unseq, 100, [](size_t, size_t, int&) {}));
   g_called   = false;
   auto [val] = ex::sync_wait(std::move(sndr)).value();
   CHECK(val == -1);
@@ -85,7 +85,7 @@ TEST_CASE("bulk_unchunked dispatches correctly through task_scheduler", "[schedu
 TEST_CASE("bulk dispatches correctly through task_scheduler", "[scheduler][task_scheduler]")
 {
   ex::task_scheduler sched{dummy_scheduler<test_domain>{}};
-  auto sndr  = ex::on(sched, ex::just(-1) | ex::bulk(ex::par_unseq, 100, [](int, int&) {}));
+  auto sndr  = ex::on(sched, ex::just(-1) | ex::bulk(ex::par_unseq, 100, [](size_t, int&) {}));
   g_called   = false;
   auto [val] = ex::sync_wait(std::move(sndr)).value();
   CHECK(val == -1);
