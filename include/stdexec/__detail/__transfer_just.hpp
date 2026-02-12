@@ -62,6 +62,8 @@ namespace STDEXEC {
     };
   };
 
+  inline constexpr __transfer_just_t __transfer_just{};
+
   template <>
   struct __sexpr_impl<__transfer_just_t> : __sexpr_defaults {
     struct __mk_attrs {

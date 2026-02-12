@@ -117,7 +117,7 @@ namespace STDEXEC {
 
   struct __debug_env_t;
 
-  extern const __execute_may_block_caller_t execute_may_block_caller;
+  extern const __execute_may_block_caller_t __execute_may_block_caller;
   extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
   extern const get_scheduler_t get_scheduler;
   extern const get_delegation_scheduler_t get_delegation_scheduler;
@@ -221,10 +221,6 @@ namespace STDEXEC {
   extern const continues_on_t continues_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct __transfer_just_t;
-  extern const __transfer_just_t transfer_just;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   struct bulk_t;
   struct bulk_chunked_t;
   struct bulk_unchunked_t;
@@ -295,7 +291,25 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <__class _Derived>
   struct sender_adaptor_closure;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // deprecated interfaces (see __deprecations.hpp):
+  struct __transfer_just_t;
+  extern const __transfer_just_t __transfer_just;
 } // namespace STDEXEC
+
+// Moved to namespace exec from namespace STDEXEC because they are no longer getting standardized:
+namespace exec {
+  struct split_t;
+  struct ensure_started_t;
+  struct start_detached_t;
+  struct __execute_t;
+
+  extern const split_t split;
+  extern const ensure_started_t ensure_started;
+  extern const start_detached_t start_detached;
+  extern const __execute_t __execute;
+} // namespace exec
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
 struct forwarding_query_t;

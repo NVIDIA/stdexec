@@ -17,25 +17,12 @@
 
 #include "__execution_fwd.hpp"
 
-// include these after __execution_fwd.hpp
-
-namespace exec {
-  struct split_t;
-  struct ensure_started_t;
-  struct start_detached_t;
-  struct __execute_t;
-
-  extern const split_t split;
-  extern const ensure_started_t ensure_started;
-  extern const start_detached_t start_detached;
-  extern const __execute_t __execute;
-} // namespace exec
-
 namespace STDEXEC {
   using execute_may_block_caller_t [[deprecated]] = __execute_may_block_caller_t;
 
   [[deprecated]]
-  inline constexpr __execute_may_block_caller_t execute_may_block_caller{};
+  inline constexpr const __execute_may_block_caller_t& execute_may_block_caller =
+    __execute_may_block_caller;
 
   [[deprecated("use STDEXEC::completion_behavior::weakest instead")]]
   inline constexpr const auto& min = completion_behavior::weakest;
@@ -66,10 +53,10 @@ namespace STDEXEC {
 
   using transfer_just_t [[deprecated]] = __transfer_just_t;
   [[deprecated]]
-  inline constexpr __transfer_just_t transfer_just{};
+  inline constexpr const __transfer_just_t& transfer_just = __transfer_just;
 
   [[deprecated("read has been renamed to read_env")]]
-  inline constexpr __read_env_t read{};
+  inline constexpr const __read_env_t& read = read_env;
 
   // Moved to namespace exec:
   using split_t

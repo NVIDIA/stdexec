@@ -135,7 +135,9 @@ namespace {
       decltype(ex::just(0)) operator()(int&) && {
         throw std::logic_error{"err"};
       }
-      decltype(ex::just()) operator()(int&&) && noexcept;
+      auto operator()(int&&) && noexcept {
+        return ex::just();
+      }
     };
     auto snd = ex::just(13) | ex::let_value(invocable{});
     static_assert(set_equivalent<

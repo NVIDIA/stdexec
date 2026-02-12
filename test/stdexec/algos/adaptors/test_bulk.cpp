@@ -64,8 +64,8 @@ namespace {
   constexpr auto test_constexpr() noexcept {
     struct receiver {
       using receiver_concept = ex::receiver_t;
-      constexpr void set_value(const int i) && noexcept {
-        this->i = i;
+      constexpr void set_value(const int j) && noexcept {
+        i = j;
       }
       void set_error(std::exception_ptr) && noexcept {
       }
@@ -74,7 +74,8 @@ namespace {
     int i = 0;
     auto op = ex::connect(
       ex::just(666)
-        | ex::bulk(ex::par, 42, [](std::size_t item, auto& val) noexcept { val += item; }),
+        | ex::bulk(
+          ex::par, 42, [](std::size_t item, int& val) noexcept { val += static_cast<int>(item); }),
       receiver{i});
     ex::start(op);
     return i;
@@ -163,6 +164,7 @@ namespace {
   }
 
   TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
+    [[maybe_unused]]
     constexpr int n = 42;
     inline_scheduler sched1{};
     error_scheduler sched2{};

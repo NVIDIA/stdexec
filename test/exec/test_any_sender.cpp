@@ -30,6 +30,9 @@
 using namespace STDEXEC;
 using namespace exec;
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_MSVC(4702) // unreachable code
+
 namespace {
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -138,6 +141,8 @@ namespace {
     STDEXEC::set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
 #if !STDEXEC_NO_STD_EXCEPTIONS()
+    // MSVC issues a warning about unreachable code in this block, hence the warning
+    // suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
 #endif
     // Check set stopped
@@ -765,3 +770,5 @@ namespace {
   }
 
 } // namespace
+
+STDEXEC_PRAGMA_POP()

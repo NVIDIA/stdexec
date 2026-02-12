@@ -30,8 +30,8 @@ namespace {
   constexpr int test_constexpr() noexcept {
     struct receiver {
       using receiver_concept = ex::receiver_t;
-      constexpr void set_value(const int i) && noexcept {
-        this->i = i;
+      constexpr void set_value(const int j) && noexcept {
+        i = j;
       }
       int& i;
     };

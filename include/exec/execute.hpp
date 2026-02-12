@@ -49,6 +49,6 @@ namespace exec {
 
   using execute_t [[deprecated]] = __execute_t;
   [[deprecated]]
-  inline constexpr const execute_t& execute = __execute;
+  inline constexpr const __execute_t& execute = __execute;
 } // namespace exec
 

@@ -29,8 +29,6 @@
 namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////
   // get_completion_behavior
-  struct min_t;
-
   struct completion_behavior {
     enum class behavior : int {
       unknown, ///< The completion behavior is unknown.
@@ -54,8 +52,6 @@ namespace STDEXEC {
     using __asynchronous_t = __constant_t<behavior::asynchronous>;
     using __asynchronous_affine_t = __constant_t<behavior::asynchronous_affine>;
     using __inline_completion_t = __constant_t<behavior::inline_completion>;
-
-    friend struct min_t;
 
    public:
     struct unknown_t : __unknown_t { };
@@ -118,8 +114,10 @@ namespace STDEXEC {
     template <class _Attrs, class... _Env>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(const _Attrs&, const _Env&...) const noexcept {
-      if constexpr (
-        __member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>, _Env...>) {
+      if constexpr (__member_queryable_with<
+                      const _Attrs&,
+                      get_completion_behavior_t<_Tag>,
+                      _Env...>) {
         return __validate<_Attrs, _Env...>();
       } else if constexpr (__member_queryable_with<const _Attrs&, get_completion_behavior_t<_Tag>>) {
         return __validate<_Attrs>();
