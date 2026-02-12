@@ -156,9 +156,13 @@ endif()
 # doesn't do anything since Relacy simulates threads with fibers anyway. Relacy
 # has primtive (compared to ASAN) use-after-free detection which doesn't compose
 # with ASAN.
+# Additionally, we require GCC-12 or newer for Relacy, at __atomic.hpp has fallback
+# when std::atomic<std::shared_ptr<>> is not provided, and GCC-12 is the first
+# libstdc++ that provides it.
 if(
   ${STDEXEC_BUILD_TESTS} AND
   CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+  CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12 AND
   NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize")
   set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT ON)
 else()

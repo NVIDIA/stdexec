@@ -42,7 +42,7 @@ out a more stable build on all environments/compilers, we should revisit this.
 ## Supported platforms
 
 The STDEXEC Relacy tests have been verified to build and run on
- * Linux based GCC+11-14 with libstdc++ (`x86_64`)
+ * Linux based GCC+12-14 with libstdc++ (`x86_64`)
  * Mac with Apple Clang 15 and 17 with libc++ (`x86_64`)
 
 ## Caveat
