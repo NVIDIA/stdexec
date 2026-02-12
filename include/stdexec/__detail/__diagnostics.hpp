@@ -69,9 +69,13 @@ namespace STDEXEC {
 
   struct _WITH_QUERY_ { };
 
+  struct _WITH_SCHEDULER_ { };
+
   struct _TO_FIX_THIS_ERROR_ { };
 
   struct _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_ { };
+
+  struct _SENDER_RESULTS_ARE_NOT_DECAY_COPYABLE_ { };
 
   struct _TYPE_IS_NOT_DECAY_COPYABLE_ { };
 

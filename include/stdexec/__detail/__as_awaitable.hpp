@@ -185,6 +185,9 @@ namespace STDEXEC {
       constexpr void return_void() noexcept;
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
     };
+
+    template <class _Sender, class _Promise>
+    concept __incompatible_sender = sender<_Sender> && __merror<__detail::__value_t<_Sender, _Promise>>;
   } // namespace __as_awaitable
 
   struct as_awaitable_t {
@@ -204,6 +207,12 @@ namespace STDEXEC {
         constexpr bool __is_nothrow =
           __nothrow_constructible_from<__result_t, _Tp, __std::coroutine_handle<_Promise>>;
         return __declfn<__result_t, __is_nothrow>();
+        // NOT TO SPEC
+      } else if constexpr (__as_awaitable::__incompatible_sender<_Tp, _Promise>) {
+        // It's a sender, but it isn't a sender in the current promise's environment, so
+        // we can return the error type that results from trying to compute the sender's
+        // value type:
+        return __declfn<__detail::__value_t<_Tp, _Promise>>();
       } else {
         return __declfn<_Tp&&>();
       }
@@ -224,6 +233,8 @@ namespace STDEXEC {
       } else if constexpr (__as_awaitable::__awaitable_sender<_Tp, _Promise>) {
         auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
         return __as_awaitable::__sender_awaitable<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
+      } else if constexpr (__as_awaitable::__incompatible_sender<_Tp, _Promise>) {
+        return __detail::__value_t<_Tp, _Promise>();
       } else {
         return static_cast<_Tp&&>(__t);
       }

@@ -18,7 +18,7 @@
 
 #include "__execution_fwd.hpp"
 
-#include "../stop_token.hpp"
+#include "../stop_token.hpp" // IWYU pragma: keep for inplace_stop_source
 #include "__atomic.hpp"
 #include "__concepts.hpp"
 #include "__env.hpp"
