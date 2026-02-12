@@ -142,11 +142,12 @@ namespace STDEXEC {
   // STDEXEC::with_error
   template <class _Error>
   struct with_error {
-    _Error __error_;
+    using type = __decay_t<_Error>;
+    type error;
   };
 
   template <class _Error>
-  with_error(_Error) -> with_error<_Error>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE with_error(_Error) -> with_error<_Error>;
 
   ////////////////////////////////////////////////////////////////////////////////
   // STDEXEC::task
@@ -357,7 +358,9 @@ namespace STDEXEC {
 
     __std::coroutine_handle<promise_type> __coro_;
     _Rcvr __rcvr_;
+    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     __own_env_t __own_env_;
+    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     _Env __env_;
   };
 
@@ -412,8 +415,7 @@ namespace STDEXEC {
       if constexpr (__same_as<scheduler_type, STDEXEC::inline_scheduler>) {
         return STDEXEC::as_awaitable(static_cast<_Sender&&>(__sndr), *this);
       } else {
-        return STDEXEC::as_awaitable(
-          STDEXEC::affine_on(static_cast<_Sender&&>(__sndr), __state_->__sch_), *this);
+        return STDEXEC::as_awaitable(STDEXEC::affine_on(static_cast<_Sender&&>(__sndr)), *this);
       }
     }
 
@@ -495,9 +497,9 @@ namespace STDEXEC {
       [[nodiscard]]
       constexpr auto query(get_stop_token_t) const noexcept -> stop_token_type {
         if (__promise_->__stop_.index() == 0) {
-          return __promise_->__stop_.template get<0>().get_token();
+          return __var::__get<0>(__promise_->__stop_).get_token();
         } else {
-          return __promise_->__stop_.template get<1>();
+          return __var::__get<1>(__promise_->__stop_);
         }
       }
 

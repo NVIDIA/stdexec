@@ -328,7 +328,7 @@ namespace STDEXEC {
       }
 
       template <class _Sender, class _Receiver>
-      using __state_for_t = __state<__decay_t<__tuple_element_t<1, _Sender>>, _Sender, _Receiver>;
+      using __state_for_t = __state<__decay_t<__data_of<_Sender>>, _Sender, _Receiver>;
 
      public:
       static constexpr auto __get_attrs =
