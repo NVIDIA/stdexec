@@ -17,7 +17,7 @@
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
-STDEXEC_PRAGMA_IGNORE_MSVC(4996)
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
 
 namespace ex = STDEXEC;
 

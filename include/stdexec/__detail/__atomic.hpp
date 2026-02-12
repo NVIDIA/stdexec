@@ -30,6 +30,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
 
 namespace STDEXEC::__std {
 #if STDEXEC_HAS_CUDA_STD_ATOMIC()

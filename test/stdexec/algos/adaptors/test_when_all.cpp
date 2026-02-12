@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/split.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -133,10 +134,10 @@ namespace {
     impulse_scheduler sched;
     bool called{false};
     ex::sender auto snd = ex::when_all(
-                            ex::transfer_just(sched, 11),
-                            ex::transfer_just(sched, 13),
-                            ex::transfer_just(sched, 17))
-                        | ex::then([&](int a, int b, int c) {
+                            ex::just(11) | ex::continues_on(sched),
+                            ex::just(13) | ex::continues_on(sched),
+                            ex::just(17))
+                        | ex::continues_on(sched) | ex::then([&](int a, int b, int c) {
                             called = true;
                             return a + b + c;
                           });
@@ -163,14 +164,16 @@ namespace {
     "when_all terminates with error if one child terminates with error",
     "[adaptors][when_all]") {
     error_scheduler sched;
-    ex::sender auto snd = ex::when_all(ex::just(2), ex::transfer_just(sched, 5), ex::just(7));
+    ex::sender auto snd = ex::when_all(ex::just(2), ex::just(5), ex::just(7))
+                        | ex::continues_on(sched);
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
 
   TEST_CASE("when_all terminates with stopped if one child is cancelled", "[adaptors][when_all]") {
     stopped_scheduler sched;
-    ex::sender auto snd = ex::when_all(ex::just(2), ex::transfer_just(sched, 5), ex::just(7));
+    ex::sender auto snd = ex::when_all(ex::just(2), ex::just(5), ex::just(7))
+                        | ex::continues_on(sched);
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
   }
@@ -183,7 +186,7 @@ namespace {
     bool cancelled{false};
     ex::sender auto snd = ex::when_all(
       ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }),
-      ex::starts_on(sched, ex::transfer_just(err_sched, 5)),
+      ex::starts_on(sched, ex::just(5)) | ex::continues_on(err_sched),
       ex::starts_on(sched, ex::just()) | ex::then([&] { called3 = true; }) | ex::let_stopped([&] {
         cancelled = true;
         return ex::just();
@@ -210,7 +213,7 @@ namespace {
     bool cancelled{false};
     ex::sender auto snd = ex::when_all(
       ex::starts_on(sched, ex::just()) | ex::then([&] { called1 = true; }),
-      ex::starts_on(sched, ex::transfer_just(stopped_sched, 5)),
+      ex::starts_on(sched, ex::just(5)) | ex::continues_on(stopped_sched),
       ex::starts_on(sched, ex::just()) | ex::then([&] { called3 = true; }) | ex::let_stopped([&] {
         cancelled = true;
         return ex::just();
@@ -248,7 +251,7 @@ namespace {
 
     // if children send references, they get decayed
     check_val_types<ex::__mset<pack<int, double>>>(
-      ex::when_all(ex::split(ex::just(3)), ex::split(ex::just(0.14))));
+      ex::when_all(exec::split(ex::just(3)), exec::split(ex::just(0.14))));
   }
 
   TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]") {
@@ -317,8 +320,9 @@ namespace {
       using domain = basic_domain<ex::when_all_t, customize::none, hello>;
       using scheduler = basic_inline_scheduler<domain>;
 
-      auto snd =
-        ex::when_all(ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
+      auto snd = ex::when_all(
+        ex::just(3) | ex::continues_on(scheduler()),
+        ex::just(0.1415) | ex::continues_on(scheduler()));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
@@ -343,7 +347,8 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
+        ex::just(3) | ex::continues_on(scheduler()),
+        ex::just(0.1415) | ex::continues_on(scheduler()));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
@@ -369,7 +374,8 @@ namespace {
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::when_all_with_variant(
-        ex::transfer_just(scheduler(), 3), ex::transfer_just(scheduler(), 0.1415));
+        ex::just(3) | ex::continues_on(scheduler()),
+        ex::just(0.1415) | ex::continues_on(scheduler()));
       static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});

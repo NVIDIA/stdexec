@@ -456,7 +456,7 @@ namespace exec {
       }
 
       _Receiver __rcvr_;
-      _ErrorStorage __error_storage_{};
+      _ErrorStorage __error_storage_{__no_init};
       std::exception_ptr __ex_ = nullptr;
       std::atomic_int32_t __active_ = 0;
       std::atomic<__completion_t> __completion_{__completion_t::__started};
@@ -656,7 +656,7 @@ namespace exec {
 
       _NextReceiver __rcvr_;
       _OperationBase* __op_;
-      _NestedSeqOp __nested_seq_op_{};
+      _NestedSeqOp __nested_seq_op_{__no_init};
     };
 
     //
@@ -868,7 +868,7 @@ namespace exec {
 
       template <class _Sequence, class... _Env>
       using __error_variant_t =
-        __mapply_q<STDEXEC::__uniqued_variant_for, __errors_t<_Sequence, _Env...>>;
+        __mapply_q<STDEXEC::__uniqued_variant, __errors_t<_Sequence, _Env...>>;
 
       //
       // __nested_values extracts the types of all the nested value senders and
@@ -917,7 +917,7 @@ namespace exec {
       using __nested_sequence_ops_variant = __mapply<
         STDEXEC::__mtransform<
           __nested_sequence_op_fn<__operation_base_t<_Sequence, _Receiver>>,
-          STDEXEC::__qq<STDEXEC::__uniqued_variant_for>
+          STDEXEC::__qq<STDEXEC::__uniqued_variant>
         >,
         __nested_sequences_t<
           _Sequence,

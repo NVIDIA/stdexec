@@ -38,6 +38,9 @@ namespace STDEXEC {
 
   struct __none_such { };
 
+  inline constexpr struct __no_init_t {
+  } __no_init{};
+
   namespace {
     struct __anon { };
   } // namespace
@@ -316,6 +319,7 @@ namespace STDEXEC {
 
   inline void __debug_vprintf(const char* __fmt, va_list __args) noexcept {
     std::vprintf(__fmt, __args);
+    std::putchar('\n');
     std::fflush(stdout);
   }
 
@@ -333,8 +337,7 @@ namespace STDEXEC {
     STDEXEC_IF_CONSTEVAL {
       // The following `if constexpr` is needed to keep compilers from complaining that
       // neither branch of the `if consteval` (above) is a constant expression.
-      if constexpr (!__mnever<_Return>)
-      {
+      if constexpr (!__mnever<_Return>) {
         __std::unreachable();
       }
     }

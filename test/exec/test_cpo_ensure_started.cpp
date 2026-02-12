@@ -14,26 +14,29 @@
  * limitations under the License.
  */
 
-#include "cpo_helpers.cuh"
-#include "test_common/receivers.hpp"
+#include <exec/ensure_started.hpp>
+
+#include "../stdexec/cpos/cpo_helpers.cuh"
+#include "../test_common/receivers.hpp"
+
 #include <catch2/catch.hpp>
 
 namespace {
 
-  TEST_CASE("split is customizable", "[cpo][cpo_split]") {
+  TEST_CASE("ensure_started is customizable", "[cpo][cpo_ensure_started]") {
     SECTION("by completion scheduler domain") {
-      cpo_test_scheduler_t<ex::split_t>::sender_t snd{};
+      cpo_test_scheduler_t<exec::ensure_started_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope =
-          decltype(ex::connect(ex::split(snd), empty_recv::recv0_ec{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(
+          snd | exec::ensure_started(), empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
         void(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)));
         constexpr scope_t scope =
-          decltype(ex::connect(snd | ex::split(), empty_recv::recv0_ec{}))::sender_t::scope;
+          decltype(ex::connect(exec::ensure_started(snd), empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }

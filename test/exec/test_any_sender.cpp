@@ -19,6 +19,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <exec/when_any.hpp>
+#include <exec/split.hpp>
 #include <stdexec/stop_token.hpp>
 
 #include <test_common/receivers.hpp>
@@ -28,6 +29,9 @@
 
 using namespace STDEXEC;
 using namespace exec;
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_MSVC(4702) // unreachable code
 
 namespace {
 
@@ -137,6 +141,8 @@ namespace {
     STDEXEC::set_error(static_cast<receiver_ref&&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
 #if !STDEXEC_NO_STD_EXCEPTIONS()
+    // MSVC issues a warning about unreachable code in this block, hence the warning
+    // suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
 #endif
     // Check set stopped
@@ -337,7 +343,7 @@ namespace {
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]") {
-    auto split_sender = split(just(42));
+    auto split_sender = exec::split(just(42));
     static_assert(sender_of<decltype(split_sender), set_error_t(const std::exception_ptr&)>);
     static_assert(sender_of<decltype(split_sender), set_value_t(const int&)>);
     my_stoppable_sender_of<int> sender = split_sender;
@@ -764,3 +770,5 @@ namespace {
   }
 
 } // namespace
+
+STDEXEC_PRAGMA_POP()

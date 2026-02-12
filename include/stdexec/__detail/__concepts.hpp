@@ -273,6 +273,12 @@ namespace STDEXEC {
   template <class... _Ts>
   concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, const _Ts&> && ...);
 
+  template <class _Ty, class _A>
+  concept __nothrow_assignable_from = STDEXEC_IS_NOTHROW_ASSIGNABLE(_Ty, _A);
+
+  template <class... _Ts>
+  concept __nothrow_move_assignable = (__nothrow_assignable_from<_Ts, _Ts> && ...);
+
   template <class... _Ts>
   concept __decay_copyable = (__std::constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
@@ -290,9 +296,9 @@ namespace STDEXEC {
 
   namespace __detail {
     template <class _Alloc>
-    constexpr auto __test_alloc_pointer(int) -> typename _Alloc::pointer;
+    constexpr auto __test_alloc_pointer(int) -> _Alloc::pointer;
     template <class _Alloc>
-    constexpr auto __test_alloc_pointer(long) -> typename _Alloc::value_type*;
+    constexpr auto __test_alloc_pointer(long) -> _Alloc::value_type*;
 
     template <class _Alloc>
     using __alloc_pointer_t = decltype(__detail::__test_alloc_pointer<__decay_t<_Alloc>>(0));

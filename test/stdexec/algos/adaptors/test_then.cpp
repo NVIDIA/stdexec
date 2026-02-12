@@ -99,7 +99,7 @@ namespace {
   TEST_CASE("then function is not called on error", "[adaptors][then]") {
     bool called{false};
     error_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::then([&](int x) -> int {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::then([&](int x) -> int {
                             called = true;
                             return x + 5;
                           });
@@ -111,7 +111,7 @@ namespace {
   TEST_CASE("then function is not called when cancelled", "[adaptors][then]") {
     bool called{false};
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::then([&](int x) -> int {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::then([&](int x) -> int {
                             called = true;
                             return x + 5;
                           });
@@ -156,11 +156,12 @@ namespace {
     error_scheduler sched2{};
     error_scheduler<int> sched3{43};
 
-    check_err_types<ex::__mset<>>(ex::transfer_just(sched1) | ex::then([]() noexcept { }));
+    check_err_types<ex::__mset<>>(
+      ex::just() | ex::continues_on(sched1) | ex::then([]() noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::then([]() noexcept { }));
+      ex::just() | ex::continues_on(sched2) | ex::then([]() noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::transfer_just(sched3) | ex::then([] { }));
+      ex::just() | ex::continues_on(sched3) | ex::then([] { }));
   }
 
   TEST_CASE("then keeps sends_stopped from input sender", "[adaptors][then]") {
@@ -168,9 +169,9 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>(ex::transfer_just(sched1) | ex::then([] { }));
-    check_sends_stopped<true>(ex::transfer_just(sched2) | ex::then([] { }));
-    check_sends_stopped<true>(ex::transfer_just(sched3) | ex::then([] { }));
+    check_sends_stopped<false>(ex::just() | ex::continues_on(sched1) | ex::then([] { }));
+    check_sends_stopped<true>(ex::just() | ex::continues_on(sched2) | ex::then([] { }));
+    check_sends_stopped<true>(ex::just() | ex::continues_on(sched3) | ex::then([] { }));
   }
 
   // Return a different sender when we invoke this custom defined then implementation

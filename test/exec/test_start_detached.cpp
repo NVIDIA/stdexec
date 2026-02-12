@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include "stdexec/__detail/__env.hpp"
-#include <catch2/catch.hpp>
+#include <exec/start_detached.hpp>
+
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
-// #include <exec/env.hpp>
+
+#include <catch2/catch.hpp>
 
 #include <chrono> // IWYU pragma: keep for std::chrono_literals
 
@@ -40,16 +41,16 @@ namespace {
 
   TEST_CASE("start_detached simple test", "[consumers][start_detached]") {
     bool called{false};
-    ex::start_detached(ex::just() | ex::then([&] { called = true; }));
+    exec::start_detached(ex::just() | ex::then([&] { called = true; }));
     CHECK(called);
   }
 
   TEST_CASE("start_detached works with void senders", "[consumers][start_detached]") {
-    ex::start_detached(ex::just());
+    exec::start_detached(ex::just());
   }
 
   TEST_CASE("start_detached works with multi-value senders", "[consumers][start_detached]") {
-    ex::start_detached(ex::just(3, 0.1415));
+    exec::start_detached(ex::just(3, 0.1415));
   }
 
   // Trying to test `start_detached` with error flows will result in calling `std::terminate()`.
@@ -58,7 +59,7 @@ namespace {
   TEST_CASE(
     "start_detached works with sender ending with `set_stopped`",
     "[consumers][start_detached]") {
-    ex::start_detached(ex::just_stopped());
+    exec::start_detached(ex::just_stopped());
   }
 
   TEST_CASE(
@@ -67,7 +68,7 @@ namespace {
     impulse_scheduler sched;
     bool called{false};
     // Start the sender
-    ex::start_detached(ex::transfer_just(sched) | ex::then([&] { called = true; }));
+    exec::start_detached(ex::just() | ex::continues_on(sched) | ex::then([&] { called = true; }));
     // The `then` function is not yet called
     CHECK_FALSE(called);
     // After an impulse to the scheduler, the function would complete
@@ -80,9 +81,9 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::transfer_just(pool.get_scheduler())
+      ex::sender auto snd = ex::just() | ex::continues_on(pool.get_scheduler())
                           | ex::then([&] { called.store(true); });
-      ex::start_detached(std::move(snd));
+      exec::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync
@@ -100,7 +101,7 @@ namespace {
 
     struct domain {
       template <class Sender, class... Env>
-      static void apply_sender(ex::start_detached_t, Sender self, Env&&...) {
+      static void apply_sender(exec::start_detached_t, Sender self, Env&&...) {
         *self.called = true;
       }
     };
@@ -149,7 +150,7 @@ namespace {
 
     struct domain {
       template <class Sender, class Env>
-      void apply_sender(ex::start_detached_t, Sender, const Env& env) const {
+      void apply_sender(exec::start_detached_t, Sender, const Env& env) const {
         custom_scheduler sched = ex::get_scheduler(env);
         *sched.called = true;
       }
@@ -185,14 +186,14 @@ namespace {
 
   TEST_CASE("start_detached can be customized on sender", "[consumers][start_detached]") {
     bool called = false;
-    ex::start_detached(custom_sender{&called});
+    exec::start_detached(custom_sender{&called});
     CHECK(called);
   }
 
   // NOT TO SPEC
   TEST_CASE("start_detached can be customized on scheduler", "[consumers][start_detached]") {
     bool called = false;
-    ex::start_detached(ex::just(), ex::prop{ex::get_scheduler, custom_scheduler{&called}});
+    exec::start_detached(ex::just(), ex::prop{ex::get_scheduler, custom_scheduler{&called}});
     CHECK(called);
   }
 
@@ -236,7 +237,7 @@ namespace {
     bool called = false;
     counting_resource res;
     std::pmr::polymorphic_allocator<std::byte> alloc(&res);
-    ex::start_detached(
+    exec::start_detached(
       ex::just() | ex::then([&] { called = true; }), ex::prop{ex::get_allocator, alloc});
     CHECK(called);
     CHECK(res.get_count() == 1);
@@ -251,7 +252,7 @@ namespace {
                  static_assert(std::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
-    ex::start_detached(ex::on(sch, std::move(snd)));
+    exec::start_detached(ex::on(sch, std::move(snd)));
     loop.finish();
     loop.run();
   }
@@ -265,7 +266,7 @@ namespace {
                  static_assert(std::same_as<decltype(sched), ex::run_loop::scheduler>);
                  return ex::starts_on(sched, ex::just());
                });
-    ex::start_detached(ex::on(sch, std::move(snd)), env{});
+    exec::start_detached(ex::on(sch, std::move(snd)), env{});
     loop.finish();
     loop.run();
   }

@@ -63,7 +63,7 @@ namespace {
     // Ensure that ex::sync_wait will rethrow the error
     try {
       error_scheduler<std::exception_ptr> sched{eptr};
-      ex::sync_wait(ex::transfer_just(sched, 19));
+      ex::sync_wait(ex::just(19) | ex::continues_on(sched));
       FAIL("exception not thrown?");
     } catch (const std::logic_error& e) {
       CHECK(std::string{e.what()} == "err");
@@ -76,7 +76,7 @@ namespace {
     try {
       error_scheduler<std::error_code> sched{
         std::make_error_code(std::errc::argument_out_of_domain)};
-      ex::sender auto snd = ex::transfer_just(sched, 19);
+      ex::sender auto snd = ex::just(19) | ex::continues_on(sched);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
       ex::sync_wait(std::move(snd)); // doesn't work
       FAIL("expecting exception to be thrown");
@@ -90,7 +90,7 @@ namespace {
   TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]") {
     try {
       error_scheduler<std::string> sched{std::string{"err"}};
-      ex::sender auto snd = ex::transfer_just(sched, 19);
+      ex::sender auto snd = ex::just(19) | ex::continues_on(sched);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
       ex::sync_wait(std::move(snd)); // doesn't work
       FAIL("expecting exception to be thrown");
@@ -104,7 +104,7 @@ namespace {
 
   TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
     stopped_scheduler sched;
-    std::optional<std::tuple<int>> res = ex::sync_wait(ex::transfer_just(sched, 19));
+    std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(19) | ex::continues_on(sched));
     CHECK_FALSE(res.has_value());
   }
 
@@ -158,7 +158,7 @@ namespace {
       thread_started.store(true);
 
       // Wait for a result that is triggered by the impulse scheduler
-      std::optional<std::tuple<int>> res = ex::sync_wait(ex::transfer_just(sched, 49));
+      std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(49) | ex::continues_on(sched));
       CHECK(res.has_value());
       CHECK(std::get<0>(res.value()) == 49);
 
@@ -187,9 +187,9 @@ namespace {
     exec::static_thread_pool pool{3};
     ex::scheduler auto sched = pool.get_scheduler();
     ex::sender auto snd = ex::when_all(
-      ex::transfer_just(sched, 2) | ex::then(square),
-      ex::transfer_just(sched, 3) | ex::then(square),
-      ex::transfer_just(sched, 5) | ex::then(square));
+      ex::just(2) | ex::continues_on(sched) | ex::then(square),
+      ex::just(3) | ex::continues_on(sched) | ex::then(square),
+      ex::just(5) | ex::continues_on(sched) | ex::then(square));
     std::optional<std::tuple<int, int, int>> res = ex::sync_wait(std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 4);
@@ -261,5 +261,15 @@ namespace {
         ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>
       >);
   }
+
+#if STDEXEC_NAMESPACE_IS_WITHIN_STD()
+  TEST_CASE(
+    "std::this_thread::sync_wait is available when STDEXEC is std::execution",
+    "[consumers][sync_wait]") {
+    std::optional<std::tuple<int>> res = std::this_thread::sync_wait(ex::just(49));
+    CHECK(res.has_value());
+    CHECK(std::get<0>(res.value()) == 49);
+  }
+#endif
 
 } // namespace

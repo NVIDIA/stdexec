@@ -26,6 +26,9 @@
 
 namespace ex = STDEXEC;
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
+
 namespace {
   void expect_empty(exec::async_scope& scope) {
     ex::run_loop loop;

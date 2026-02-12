@@ -17,6 +17,7 @@
 #include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
 #include <exec/env.hpp>
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -134,7 +135,9 @@ namespace {
       decltype(ex::just(0)) operator()(int&) && {
         throw std::logic_error{"err"};
       }
-      decltype(ex::just()) operator()(int&&) && noexcept;
+      auto operator()(int&&) && noexcept {
+        return ex::just();
+      }
     };
     auto snd = ex::just(13) | ex::let_value(invocable{});
     static_assert(set_equivalent<
@@ -165,7 +168,7 @@ namespace {
   TEST_CASE("let_value function is not called on error", "[adaptors][let_value]") {
     bool called{false};
     error_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_value([&](int& x) {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -177,7 +180,7 @@ namespace {
   TEST_CASE("let_value function is not called when cancelled", "[adaptors][let_value]") {
     bool called{false};
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::let_value([&](int& x) {
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::let_value([&](int& x) {
                             called = true;
                             return ex::just(x + 5);
                           });
@@ -224,7 +227,7 @@ namespace {
     ex::sender auto snd = ex::just(my_type(&param_destructed)) | ex::let_value([&](const my_type&) {
                             CHECK_FALSE(param_destructed);
                             fun_called = true;
-                            return ex::transfer_just(sched, 13);
+                            return ex::just(13) | ex::continues_on(sched);
                           });
 
     {
@@ -254,13 +257,13 @@ namespace {
     std::atomic<bool> called{false};
     {
       // lunch some work on the thread pool
-      ex::sender auto snd = ex::transfer_just(pool.get_scheduler(), 7)
+      ex::sender auto snd = ex::just(7) | ex::continues_on(pool.get_scheduler())
                           | ex::let_value([](int& x) { return ex::just(x * 2 - 1); })
                           | ex::then([&](int x) {
                               CHECK(x == 13);
                               called.store(true);
                             });
-      ex::start_detached(std::move(snd));
+      exec::start_detached(std::move(snd));
     }
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync
@@ -287,18 +290,18 @@ namespace {
     error_scheduler<int> sched3{43};
 
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_value([] { return ex::just(); }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_value([] { return ex::just(); }));
     check_err_types<ex::__mset<int, std::exception_ptr>>(
-      ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched3) | ex::let_value([] { return ex::just(); }));
 
     check_err_types<ex::__mset<>>(
-      ex::transfer_just(sched1) | ex::let_value([]() noexcept { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_value([]() noexcept { return ex::just(); }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::let_value([]() noexcept { return ex::just(); }));
+      ex::just() | ex::continues_on(sched2) | ex::let_value([]() noexcept { return ex::just(); }));
     check_err_types<ex::__mset<int>>(
-      ex::transfer_just(sched3) | ex::let_value([]() noexcept { return ex::just(); }));
+      ex::just() | ex::continues_on(sched3) | ex::let_value([]() noexcept { return ex::just(); }));
   }
 
   TEST_CASE("let_value keeps sends_stopped from input sender", "[adaptors][let_value]") {
@@ -307,9 +310,11 @@ namespace {
     stopped_scheduler sched3{};
 
     check_sends_stopped<false>(
-      ex::transfer_just(sched1) | ex::let_value([] { return ex::just(); }));
-    check_sends_stopped<true>(ex::transfer_just(sched2) | ex::let_value([] { return ex::just(); }));
-    check_sends_stopped<true>(ex::transfer_just(sched3) | ex::let_value([] { return ex::just(); }));
+      ex::just() | ex::continues_on(sched1) | ex::let_value([] { return ex::just(); }));
+    check_sends_stopped<true>(
+      ex::just() | ex::continues_on(sched2) | ex::let_value([] { return ex::just(); }));
+    check_sends_stopped<true>(
+      ex::just() | ex::continues_on(sched3) | ex::let_value([] { return ex::just(); }));
   }
 
   // Return a different sender when we invoke this custom defined let_value implementation

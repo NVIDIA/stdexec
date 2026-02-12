@@ -36,10 +36,10 @@ namespace STDEXEC {
     extern const __q<__decayed_std_tuple> __as_single;
 
     template <>
-    inline const __q<__midentity> __as_single<1>;
+    inline constexpr __q<__midentity> __as_single<1>;
 
     template <>
-    inline const __mconst<void> __as_single<0>;
+    inline constexpr __mconst<void> __as_single<0>;
 
     template <class... _Values>
     using __single_value = __minvoke<decltype(__as_single<sizeof...(_Values)>), _Values...>;
@@ -185,61 +185,62 @@ namespace STDEXEC {
       constexpr void return_void() noexcept;
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
     };
-
-    struct as_awaitable_t {
-      template <class _Tp, class _Promise>
-      static consteval auto __get_declfn() noexcept {
-        if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
-          using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
-          constexpr bool __is_nothrow = noexcept(__declval<_Tp>()
-                                                   .as_awaitable(__declval<_Promise&>()));
-          return __declfn<__result_t, __is_nothrow>();
-          // NOLINTNEXTLINE(bugprone-branch-clone)
-        } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
-          return __declfn<_Tp&&>();
-        } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
-          using __result_t = __sender_awaitable<_Promise, _Tp>;
-          constexpr bool __is_nothrow =
-            __nothrow_constructible_from<__result_t, _Tp, __std::coroutine_handle<_Promise>>;
-          return __declfn<__result_t, __is_nothrow>();
-        } else {
-          return __declfn<_Tp&&>();
-        }
-      }
-
-      template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
-        requires __callable<__mtypeof<_DeclFn>>
-      auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
-        -> decltype(_DeclFn()) {
-        if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
-          using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
-          static_assert(__awaitable<__result_t, _Promise>);
-          return static_cast<_Tp&&>(__t).as_awaitable(__promise);
-          // NOLINTNEXTLINE(bugprone-branch-clone)
-        } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
-          return static_cast<_Tp&&>(__t);
-        } else if constexpr (__awaitable_sender<_Tp, _Promise>) {
-          auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
-          return __sender_awaitable<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
-        } else {
-          return static_cast<_Tp&&>(__t);
-        }
-      }
-
-      template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
-        requires __callable<__mtypeof<_DeclFn>> || __tag_invocable<as_awaitable_t, _Tp, _Promise&>
-      [[deprecated("the use of tag_invoke for as_awaitable is deprecated")]]
-      auto operator()(_Tp&& __t, _Promise& __promise) const
-        noexcept(__nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
-          -> __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
-        using __result_t = __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
-        static_assert(__awaitable<__result_t, _Promise>);
-        return __tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
-      }
-    };
   } // namespace __as_awaitable
 
-  using __as_awaitable::as_awaitable_t;
+  struct as_awaitable_t {
+    template <class _Tp, class _Promise>
+    static consteval auto __get_declfn() noexcept {
+      using __as_awaitable::__unspecified;
+      if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
+        using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
+        constexpr bool __is_nothrow = noexcept(__declval<_Tp>()
+                                                 .as_awaitable(__declval<_Promise&>()));
+        return __declfn<__result_t, __is_nothrow>();
+        // NOLINTNEXTLINE(bugprone-branch-clone)
+      } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
+        return __declfn<_Tp&&>();
+      } else if constexpr (__as_awaitable::__awaitable_sender<_Tp, _Promise>) {
+        using __result_t = __as_awaitable::__sender_awaitable<_Promise, _Tp>;
+        constexpr bool __is_nothrow =
+          __nothrow_constructible_from<__result_t, _Tp, __std::coroutine_handle<_Promise>>;
+        return __declfn<__result_t, __is_nothrow>();
+      } else {
+        return __declfn<_Tp&&>();
+      }
+    }
+
+    template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
+      requires __callable<__mtypeof<_DeclFn>>
+    auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
+      -> decltype(_DeclFn()) {
+      using __as_awaitable::__unspecified;
+      if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>) {
+        using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
+        static_assert(__awaitable<__result_t, _Promise>);
+        return static_cast<_Tp&&>(__t).as_awaitable(__promise);
+        // NOLINTNEXTLINE(bugprone-branch-clone)
+      } else if constexpr (__awaitable<_Tp, __unspecified>) { // NOT __awaitable<_Tp, _Promise> !!
+        return static_cast<_Tp&&>(__t);
+      } else if constexpr (__as_awaitable::__awaitable_sender<_Tp, _Promise>) {
+        auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
+        return __as_awaitable::__sender_awaitable<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
+      } else {
+        return static_cast<_Tp&&>(__t);
+      }
+    }
+
+    template <class _Tp, class _Promise, auto _DeclFn = __get_declfn<_Tp, _Promise>()>
+      requires __callable<__mtypeof<_DeclFn>> || __tag_invocable<as_awaitable_t, _Tp, _Promise&>
+    [[deprecated("the use of tag_invoke for as_awaitable is deprecated")]]
+    auto operator()(_Tp&& __t, _Promise& __promise) const
+      noexcept(__nothrow_tag_invocable<as_awaitable_t, _Tp, _Promise&>)
+        -> __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&> {
+      using __result_t = __tag_invoke_result_t<as_awaitable_t, _Tp, _Promise&>;
+      static_assert(__awaitable<__result_t, _Promise>);
+      return __tag_invoke(*this, static_cast<_Tp&&>(__t), __promise);
+    }
+  };
+
   inline constexpr as_awaitable_t as_awaitable{};
 #endif
 } // namespace STDEXEC

@@ -74,7 +74,7 @@ namespace exec {
     using __result_type_t = __for_each_completion_signature_t<
       __minvoke<__completions_fn<_Env>, _CvSenders...>,
       __decayed_tuple,
-      __uniqued_variant_for
+      __uniqued_variant
     >;
 
     template <class _Receiver>
@@ -107,7 +107,7 @@ namespace exec {
       __std::atomic<std::size_t> __count_{};
 
       _Receiver __rcvr_;
-      _ResultVariant __result_{};
+      _ResultVariant __result_{__no_init};
 
       template <class _Tag, class... _Args>
       void notify(_Tag, _Args&&... __args) noexcept {

@@ -89,6 +89,8 @@ namespace STDEXEC {
 
   struct _CONCEPT_CHECK_FAILURE_ { };
 
+  struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_ { };
+
   template <class _Sender>
   using __bad_pipe_sink_t = __mexception<
     _WHAT_(_INVALID_EXPRESSION_),

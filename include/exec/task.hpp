@@ -264,7 +264,7 @@ namespace exec {
         __data_.template emplace<0>(std::move(value));
       }
 
-      __variant_for<_Ty, std::exception_ptr> __data_{};
+      __variant<_Ty, std::exception_ptr> __data_{__no_init};
     };
 
     template <>
@@ -275,7 +275,7 @@ namespace exec {
         __data_.template emplace<0>(__void{});
       }
 
-      __variant_for<__void, std::exception_ptr> __data_{};
+      __variant<__void, std::exception_ptr> __data_{__no_init};
     };
 
     template <class _Sch>
@@ -334,7 +334,7 @@ namespace exec {
 
      private:
       using __scheduler_t =
-        __query_result_or_t<get_scheduler_t, _Context, STDEXEC::inline_scheduler>;
+        __call_result_or_t<get_scheduler_t, STDEXEC::inline_scheduler, _Context>;
 
       struct __final_awaitable {
         static constexpr auto await_ready() noexcept -> bool {
@@ -467,22 +467,24 @@ namespace exec {
         constexpr auto await_resume() -> _Ty {
           __context_.reset();
           scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
+
           if (__coro_.promise().__data_.index() == 1)
-            std::rethrow_exception(std::move(__coro_.promise().__data_.template get<1>()));
+            std::rethrow_exception(std::move(__var::__get<1>(__coro_.promise().__data_)));
+
           if constexpr (!std::is_void_v<_Ty>)
-            return std::move(__coro_.promise().__data_.template get<0>());
+            return std::move(__var::__get<0>(__coro_.promise().__data_));
         }
       };
 
      public:
       // Make this task awaitable within a particular context:
       template <class _ParentPromise>
-      constexpr // requires __std::constructible_from<
-        //   awaiter_context_t<__promise, _ParentPromise>,
-        //   __promise_context_t&,
-        //   _ParentPromise&
-        // >
-        auto as_awaitable(_ParentPromise&) && noexcept { //-> __task_awaitable<_ParentPromise> {
+        requires __std::constructible_from<
+          awaiter_context_t<__promise, _ParentPromise>,
+          __promise_context_t&,
+          _ParentPromise&
+        >
+      constexpr auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaitable<_ParentPromise> {
         return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
       }
 

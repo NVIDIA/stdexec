@@ -325,7 +325,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
-    // using _nullable_variant_t = STDEXEC::__variant_for<::cuda::std::tuple<set_noop>, Ts...>;
+    // using _nullable_variant_t = STDEXEC::__variant<::cuda::std::tuple<set_noop>, Ts...>;
     using _nullable_variant_t = variant_t<::cuda::std::tuple<set_noop>, Ts...>;
 
     template <class... Ts>
@@ -407,11 +407,13 @@ namespace nvexec {
     concept stream_sender = sender_in<Sender, E>
                          && STDEXEC_IS_BASE_OF(
                               stream_sender_base,
-                              STDEXEC_REMOVE_REFERENCE(STDEXEC::transform_sender_result_t<Sender, E>));
+                              STDEXEC_REMOVE_REFERENCE(
+                                STDEXEC::transform_sender_result_t<Sender, E>));
 
     template <class Receiver>
-    concept stream_receiver = receiver<Receiver>
-                           && STDEXEC_IS_BASE_OF(stream_receiver_base, STDEXEC_REMOVE_REFERENCE(Receiver));
+    concept stream_receiver =
+      receiver<Receiver>
+      && STDEXEC_IS_BASE_OF(stream_receiver_base, STDEXEC_REMOVE_REFERENCE(Receiver));
 
     struct stream_opstate_base { };
 
@@ -632,8 +634,7 @@ namespace nvexec {
 
       template <class... Args>
       void set_value(Args&&... args) noexcept {
-        opstate_
-          .propagate_completion_signal(set_value_t(), static_cast<Args&&>(args)...);
+        opstate_.propagate_completion_signal(set_value_t(), static_cast<Args&&>(args)...);
       }
 
       template <class Error>
@@ -775,11 +776,13 @@ namespace nvexec {
     template <class Sender, class E>
     concept stream_completing_sender =
       sender<Sender>
-      && gpu_stream_scheduler<__result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, E>, E>;
+      && gpu_stream_scheduler<
+        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, E>,
+        E
+      >;
 
     template <class InnerReceiverProvider, class OuterReceiver>
-    using inner_receiver_t =
-      __call_result_t<InnerReceiverProvider, opstate_base<OuterReceiver>&>;
+    using inner_receiver_t = __call_result_t<InnerReceiverProvider, opstate_base<OuterReceiver>&>;
 
     template <class CvSender, class InnerReceiver, class OuterReceiver>
     using stream_opstate_t = _strm::opstate<CvSender, InnerReceiver, OuterReceiver>;

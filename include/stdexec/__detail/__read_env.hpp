@@ -35,7 +35,7 @@
 #include <exception>
 
 namespace STDEXEC {
-  namespace __read {
+  namespace __read_env {
     struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_;
 
     template <
@@ -86,13 +86,6 @@ namespace STDEXEC {
       }
     };
 
-    struct read_env_t {
-      template <class _Query>
-      constexpr auto operator()(_Query) const noexcept {
-        return __make_sexpr<read_env_t>(_Query());
-      }
-    };
-
     struct __read_env_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Query>(__ignore, _Query) noexcept {
         return __attrs<_Query>{};
@@ -111,7 +104,7 @@ namespace STDEXEC {
         } else {
           return STDEXEC::__throw_compile_time_error<
             _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
-            _WHERE_(_IN_ALGORITHM_, read_env_t),
+            _WHERE_(_IN_ALGORITHM_, __read_env_t),
             _WITH_QUERY_(__query_t),
             _WITH_ENVIRONMENT_(_Env)
           >();
@@ -128,41 +121,45 @@ namespace STDEXEC {
         []<class _Sender, class _Receiver>(const _Sender&, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, read_env_t>);
+        static_assert(sender_expr_for<_Sender, __read_env_t>);
         using __query_t = __data_of<_Sender>;
         STDEXEC::__set_value_from(
           static_cast<_Receiver&&>(__rcvr), __query_t(), STDEXEC::get_env(__rcvr));
       };
     };
-  } // namespace __read
+  } // namespace __read_env
 
-  using __read::read_env_t;
-  [[deprecated("read has been renamed to read_env")]]
-  inline constexpr read_env_t read{};
-  inline constexpr read_env_t read_env{};
+  struct __read_env_t {
+    template <class _Query>
+    constexpr auto operator()(_Query) const noexcept {
+      return __make_sexpr<__read_env_t>(_Query());
+    }
+  };
+
+  inline constexpr __read_env_t read_env{};
 
   template <>
-  struct __sexpr_impl<__read::read_env_t> : __read::__read_env_impl { };
+  struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl { };
 
-  namespace __queries {
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto get_scheduler_t::operator()() const noexcept {
-      return read_env(get_scheduler);
-    }
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_scheduler_t::operator()() const noexcept {
+    return read_env(get_scheduler);
+  }
 
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto get_delegation_scheduler_t::operator()() const noexcept {
-      return read_env(get_delegation_scheduler);
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto get_allocator_t::operator()() const noexcept {
-      return read_env(get_allocator);
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto get_stop_token_t::operator()() const noexcept {
-      return read_env(get_stop_token);
-    }
-  } // namespace __queries
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_delegation_scheduler_t::operator()() const noexcept {
+    return read_env(get_delegation_scheduler);
+  }
 } // namespace STDEXEC
+
+STDEXEC_P2300_NAMESPACE_BEGIN()
+STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+constexpr auto get_allocator_t::operator()() const noexcept {
+  return STDEXEC::read_env(get_allocator);
+}
+
+STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+constexpr auto get_stop_token_t::operator()() const noexcept {
+  return STDEXEC::read_env(get_stop_token);
+}
+STDEXEC_P2300_NAMESPACE_END()

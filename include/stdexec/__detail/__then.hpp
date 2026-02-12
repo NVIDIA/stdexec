@@ -31,7 +31,6 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
   namespace __then {
-    struct then_t;
     using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
@@ -40,20 +39,6 @@ namespace STDEXEC {
       __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvSender, _Env...>,
       __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
     >;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct then_t {
-      template <sender _Sender, __movable_value _Fun>
-      constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
-      }
-
-      template <__movable_value _Fun>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Fun __fun) const {
-        return __closure(*this, static_cast<_Fun&&>(__fun));
-      }
-    };
 
     struct __then_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
@@ -89,7 +74,19 @@ namespace STDEXEC {
     };
   } // namespace __then
 
-  using __then::then_t;
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  struct then_t {
+    template <sender _Sender, __movable_value _Fun>
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+      return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+    }
+
+    template <__movable_value _Fun>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Fun __fun) const {
+      return __closure(*this, static_cast<_Fun&&>(__fun));
+    }
+  };
 
   /// @brief The then sender adaptor, which invokes a function with the result of
   ///        a sender, making the result available to the next receiver.

@@ -30,7 +30,6 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_error]
   namespace __upon_error {
-    struct upon_error_t;
     using __on_not_callable = __mbind_front_q<__callable_error_t, upon_error_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
@@ -40,21 +39,6 @@ namespace STDEXEC {
       __cmplsigs::__default_set_value,
       __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
     >;
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    struct upon_error_t {
-      template <sender _Sender, __movable_value _Fun>
-      constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-        return __make_sexpr<upon_error_t>(
-          static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
-      }
-
-      template <__movable_value _Fun>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
-        return __closure(*this, static_cast<_Fun&&>(__fun));
-      }
-    };
 
     struct __upon_error_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
@@ -82,7 +66,20 @@ namespace STDEXEC {
     };
   } // namespace __upon_error
 
-  using __upon_error::upon_error_t;
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  struct upon_error_t {
+    template <sender _Sender, __movable_value _Fun>
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+      return __make_sexpr<upon_error_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+    }
+
+    template <__movable_value _Fun>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+      return __closure(*this, static_cast<_Fun&&>(__fun));
+    }
+  };
+
   inline constexpr upon_error_t upon_error{};
 
   template <>

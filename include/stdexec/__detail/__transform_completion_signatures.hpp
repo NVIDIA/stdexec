@@ -30,6 +30,31 @@
 
 namespace STDEXEC {
   namespace __cmplsigs {
+#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+    // Without constexpr exceptions, we cannot always produce a valid
+    // completion_signatures type. We must permit get_completion_signatures to return an
+    // error type because we can't throw it.
+    template <class _Completions>
+    concept __well_formed_completions_helper =
+      __valid_completion_signatures<_Completions>
+      || STDEXEC_IS_BASE_OF(STDEXEC::dependent_sender_error, _Completions)
+      || __is_instance_of<_Completions, _ERROR_>;
+#else
+    // When we have constexpr exceptions, we can require that get_completion_signatures
+    // always produces a valid completion_signatures type.
+    template <class _Completions>
+    concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>;
+#endif
+  } // namespace __cmplsigs
+
+  using __cmplsigs::get_completion_signatures_t;
+
+  // The cast to bool is to hide the disjunction in __well_formed_completions_helper.
+  template <class _Completions>
+  concept __well_formed_completions = bool(
+    __cmplsigs::__well_formed_completions_helper<_Completions>);
+
+  namespace __cmplsigs {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     template <template <class...> class _Tuple, class _Tag, class... _Args>
     constexpr auto __for_each_sig(_Tag (*)(_Args...)) -> _Tuple<_Tag, _Args...>;

@@ -338,7 +338,7 @@ namespace STDEXEC {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env2 __env2_;
       //! Variant to hold the child sender's results before passing them to the function:
-      __variant_for<_Tuples...> __args_{};
+      __variant<_Tuples...> __args_{__no_init};
     };
 
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
@@ -400,7 +400,7 @@ namespace STDEXEC {
       using __first_rcvr_t = __first_rcvr<_SetTag, _Fun, _Receiver, __env2_t, _Tuples...>;
       using __second_rcvr_t = __opstate::__opstate_base::__second_rcvr_t;
 
-      using __op_state_variant_t = __variant_for<
+      using __op_state_variant_t = __variant<
         connect_result_t<_Child, __first_rcvr_t>,
         __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...
       >;
@@ -418,7 +418,7 @@ namespace STDEXEC {
 
       constexpr void start() noexcept {
         STDEXEC_ASSERT(__storage_.index() == 0);
-        STDEXEC::start(__storage_.template get<0>());
+        STDEXEC::start(__var::__get<0>(__storage_));
       };
 
       constexpr void __start_next() final {
@@ -430,7 +430,7 @@ namespace STDEXEC {
       }
 
       //! Variant type for holding the operation state of the currently in flight operation
-      __op_state_variant_t __storage_{};
+      __op_state_variant_t __storage_{__no_init};
     };
 
     // The set_value completions of:
@@ -603,15 +603,26 @@ namespace STDEXEC {
       }
     };
 
+    template <class _Tag, class = void>
+    extern const __undefined<_Tag> __set_tag_from_let_v;
+
+    template <class _Void>
+    extern const __declfn_t<set_value_t> __set_tag_from_let_v<let_value_t, _Void>;
+
+    template <class _Void>
+    extern const __declfn_t<set_error_t> __set_tag_from_let_v<let_error_t, _Void>;
+
+    template <class _Void>
+    extern const __declfn_t<set_stopped_t> __set_tag_from_let_v<let_stopped_t, _Void>;
+
     //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
-    template <class _SetTag>
-    struct __let_t {
-      using __t = _SetTag;
+    template <class _LetTag>
+    struct __let_t { // NOLINT(bugprone-crtp-constructor-accessibility)
+      using __t = decltype(__set_tag_from_let_v<_LetTag>());
 
       template <sender _Sender, __movable_value _Fun>
       constexpr auto operator()(_Sender&& __sndr, _Fun __fn) const -> __well_formed_sender auto {
-        return __make_sexpr<__let_t<_SetTag>>(
-          static_cast<_Fun&&>(__fn), static_cast<_Sender&&>(__sndr));
+        return __make_sexpr<_LetTag>(static_cast<_Fun&&>(__fn), static_cast<_Sender&&>(__sndr));
       }
 
       template <class _Fun>
@@ -621,7 +632,7 @@ namespace STDEXEC {
       }
     };
 
-    template <class _SetTag>
+    template <class _LetTag>
     struct __impls : __sexpr_defaults {
      private:
       template <class _Sender>
@@ -629,11 +640,11 @@ namespace STDEXEC {
 
       template <class _Sender, class _Receiver>
       using __opstate_t = __gather_completions_of_t<
-        _SetTag,
+        __t<_LetTag>,
         __child_of<_Sender>,
         __fwd_env_t<env_of_t<_Receiver>>,
         __q<__decayed_tuple>,
-        __mbind_front_q<__opstate, _SetTag, __child_of<_Sender>, __fn_t<_Sender>, _Receiver>
+        __mbind_front_q<__opstate, __t<_LetTag>, __child_of<_Sender>, __fn_t<_Sender>, _Receiver>
       >;
      public:
       static constexpr auto get_attrs =
@@ -644,11 +655,11 @@ namespace STDEXEC {
 
       template <class _Sender, class... _Env>
       static consteval auto get_completion_signatures() {
-        static_assert(sender_expr_for<_Sender, __let_t<_SetTag>>);
+        static_assert(sender_expr_for<_Sender, _LetTag>);
         if constexpr (__decay_copyable<_Sender>) {
           // TODO: update this to use constant evaluation
           using __result_t =
-            __completions_t<__let_t<_SetTag>, __fn_t<_Sender>, __child_of<_Sender>, _Env...>;
+            __completions_t<_LetTag, __fn_t<_Sender>, __child_of<_Sender>, _Env...>;
           if constexpr (__ok<__result_t>) {
             return __result_t();
           } else {
@@ -670,7 +681,7 @@ namespace STDEXEC {
             __data_of<_CvSender>,
             _Receiver
           >) -> __opstate_t<_CvSender, _Receiver> {
-        static_assert(sender_expr_for<_CvSender, __let_t<_SetTag>>);
+        static_assert(sender_expr_for<_CvSender, _LetTag>);
         auto& [__tag, __fn, __child] = __sndr;
         return __opstate_t<_CvSender, _Receiver>(
           STDEXEC::__forward_like<_CvSender>(__child),
@@ -680,10 +691,20 @@ namespace STDEXEC {
     };
   } // namespace __let
 
+  struct let_value_t : __let::__let_t<let_value_t> { };
+  struct let_error_t : __let::__let_t<let_error_t> { };
+  struct let_stopped_t : __let::__let_t<let_stopped_t> { };
+
   inline constexpr let_value_t let_value{};
   inline constexpr let_error_t let_error{};
   inline constexpr let_stopped_t let_stopped{};
 
-  template <class _SetTag>
-  struct __sexpr_impl<__let::__let_t<_SetTag>> : __let::__impls<_SetTag> { };
+  template <>
+  struct __sexpr_impl<let_value_t> : __let::__impls<let_value_t> { };
+
+  template <>
+  struct __sexpr_impl<let_error_t> : __let::__impls<let_error_t> { };
+
+  template <>
+  struct __sexpr_impl<let_stopped_t> : __let::__impls<let_stopped_t> { };
 } // namespace STDEXEC

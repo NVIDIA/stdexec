@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <exec/split.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
+
+#include <catch2/catch.hpp>
 
 namespace ex = STDEXEC;
 
@@ -30,7 +32,7 @@ using namespace std::chrono_literals;
 namespace {
 
   TEST_CASE("split returns a sender", "[adaptors][split]") {
-    auto snd = ex::split(ex::just(19));
+    auto snd = exec::split(ex::just(19));
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender<Snd>);
@@ -39,7 +41,7 @@ namespace {
   }
 
   TEST_CASE("split with environment returns a sender", "[adaptors][split]") {
-    auto snd = ex::split(ex::just(19));
+    auto snd = exec::split(ex::just(19));
     using Snd = decltype(snd);
     static_assert(ex::enable_sender<Snd>);
     static_assert(ex::sender_in<Snd, ex::env<>>);
@@ -48,7 +50,7 @@ namespace {
   }
 
   TEST_CASE("split simple example", "[adaptors][split]") {
-    auto snd = ex::split(ex::just(19));
+    auto snd = exec::split(ex::just(19));
     auto op1 = ex::connect(snd, expect_value_receiver{19});
     auto op2 = ex::connect(snd, expect_value_receiver{19});
     ex::start(op1);
@@ -59,7 +61,7 @@ namespace {
   TEST_CASE("split executes predecessor sender once", "[adaptors][split]") {
     SECTION("when parameters are passed") {
       int counter{};
-      auto snd = ex::split(ex::just() | ex::then([&] {
+      auto snd = exec::split(ex::just() | ex::then([&] {
                              counter++;
                              return counter;
                            }));
@@ -75,7 +77,7 @@ namespace {
 
     SECTION("without parameters") {
       int counter{};
-      auto snd = ex::split(ex::just() | ex::then([&] { counter++; }));
+      auto snd = exec::split(ex::just() | ex::then([&] { counter++; }));
       ex::sync_wait(snd | ex::then([] { }));
       ex::sync_wait(snd | ex::then([] { }));
       REQUIRE(counter == 1);
@@ -83,7 +85,7 @@ namespace {
   }
 
   TEST_CASE("split passes lvalue references", "[adaptors][split]") {
-    auto split = ex::split(ex::just(42));
+    auto split = exec::split(ex::just(42));
     using split_t = decltype(split);
     using value_t = ex::value_types_of_t<split_t, ex::env<>, pack, ex::__mmake_set>;
     static_assert(ex::__mset_eq<value_t, ex::__mset<pack<const int&>>>);
@@ -104,7 +106,7 @@ namespace {
 
   TEST_CASE("split forwards errors", "[adaptors][split]") {
     SECTION("of exception_ptr type") {
-      auto split = ex::split(ex::just_error(std::exception_ptr{}));
+      auto split = exec::split(ex::just_error(std::exception_ptr{}));
       using split_t = decltype(split);
       using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
       static_assert(ex::__mset_eq<error_t, ex::__mset<const std::exception_ptr&>>);
@@ -115,7 +117,7 @@ namespace {
     }
 
     SECTION("of any type") {
-      auto split = ex::split(ex::just_error(42));
+      auto split = exec::split(ex::just_error(42));
       using split_t = decltype(split);
       using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
       static_assert(ex::__mset_eq<error_t, ex::__mset<const std::exception_ptr&, const int&>>);
@@ -126,7 +128,7 @@ namespace {
   }
 
   TEST_CASE("split forwards stop signal", "[adaptors][split]") {
-    auto split = ex::split(ex::just_stopped());
+    auto split = exec::split(ex::just_stopped());
     using split_t = decltype(split);
     static_assert(ex::sends_stopped<split_t, ex::env<>>);
 
@@ -139,7 +141,7 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::just() | ex::then([&] { called = true; }));
+    auto split = exec::split(ex::just() | ex::then([&] { called = true; }));
     auto sndr = ex::write_env(
       ex::upon_stopped(
         std::move(split),
@@ -164,7 +166,7 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::just() | ex::then([&] {
+    auto split = exec::split(ex::just() | ex::then([&] {
                              called = true;
                              return 7;
                            }));
@@ -192,7 +194,7 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::starts_on(sched, ex::just() | ex::then([&] {
+    auto split = exec::split(ex::starts_on(sched, ex::just() | ex::then([&] {
                                                   called = true;
                                                   return 7;
                                                 })));
@@ -230,7 +232,7 @@ namespace {
     ex::inplace_stop_source ssource;
     bool called = false;
     int counter{};
-    auto split = ex::split(ex::just() | ex::then([&] {
+    auto split = exec::split(ex::just() | ex::then([&] {
                              called = true;
                              return 7;
                            }));
@@ -275,7 +277,7 @@ namespace {
                    std::this_thread::sleep_for(1ms);
                    return 42;
                  })
-               | ex::split();
+               | exec::split();
 
     auto [val] = ex::sync_wait(split).value();
     REQUIRE(val == 42);
@@ -287,12 +289,13 @@ namespace {
     std::mt19937_64 eng{std::random_device{}()}; // or seed however you want
     std::uniform_int_distribution<> dist{0, 1000};
 
-    auto split = ex::transfer_just(pool.get_scheduler(), std::chrono::microseconds{dist(eng)})
+    auto split = ex::just(std::chrono::microseconds{dist(eng)})
+               | ex::continues_on(pool.get_scheduler())
                | ex::then([](std::chrono::microseconds delay) {
                    std::this_thread::sleep_for(delay);
                    return 42;
                  })
-               | ex::split();
+               | exec::split();
 
     const unsigned n_threads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads(n_threads);
@@ -322,7 +325,7 @@ namespace {
   }
 
   TEST_CASE("split can be an rvalue", "[adaptors][split]") {
-    auto [val] = ex::sync_wait(ex::just(42) | ex::split() | ex::then([](int v) { return v; }))
+    auto [val] = ex::sync_wait(ex::just(42) | exec::split() | ex::then([](int v) { return v; }))
                    .value();
 
     REQUIRE(val == 42);
@@ -351,30 +354,30 @@ namespace {
 
   TEST_CASE("split into then", "[adaptors][split]") {
     SECTION("split with move only input sender of temporary") {
-      auto snd = ex::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) { });
+      auto snd = exec::split(ex::just(move_only_type{0})) | ex::then([](const move_only_type&) { });
       ex::sync_wait(std::move(snd));
     }
 
     SECTION("split with move only input sender by moving in") {
       auto snd0 = ex::just(move_only_type{});
-      auto snd = ex::split(std::move(snd0)) | ex::then([](const move_only_type&) { });
+      auto snd = exec::split(std::move(snd0)) | ex::then([](const move_only_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("split with copyable rvalue input sender") {
-      auto snd = ex::split(ex::just(copy_and_movable_type{0}))
+      auto snd = exec::split(ex::just(copy_and_movable_type{0}))
                | ex::then([](const copy_and_movable_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("split with copyable lvalue input sender") {
       auto snd0 = ex::just(copy_and_movable_type{0});
-      auto snd = ex::split(snd0) | ex::then([](const copy_and_movable_type&) { });
+      auto snd = exec::split(snd0) | ex::then([](const copy_and_movable_type&) { });
       ex::sync_wait(snd);
     }
 
     SECTION("lvalue split move only sender") {
-      auto multishot = ex::split(ex::just(move_only_type{0}));
+      auto multishot = exec::split(ex::just(move_only_type{0}));
       auto snd = multishot | ex::then([](const move_only_type&) { });
 
       REQUIRE(ex::sender_of<decltype(multishot), ex::set_value_t(const move_only_type&)>);
@@ -386,7 +389,7 @@ namespace {
     }
 
     SECTION("lvalue split copyable sender") {
-      auto multishot = ex::split(ex::just(copy_and_movable_type{0}));
+      auto multishot = exec::split(ex::just(copy_and_movable_type{0}));
       (void) ex::get_completion_signatures(multishot, ex::env<>{});
       auto snd = multishot | ex::then([](const copy_and_movable_type&) { });
 
@@ -411,7 +414,7 @@ namespace {
                        ++called;
                        return TestType(obj.val + 1);
                      })
-                   | ex::split();
+                   | exec::split();
     auto wa = ex::when_all(
       ex::then(multishot, [](const TestType& obj) { return obj.val; }),
       ex::then(multishot, [](const TestType& obj) { return obj.val * 2; }),
@@ -426,7 +429,7 @@ namespace {
   }
 
   template <class T>
-  concept can_split_lvalue_of = requires(T t) { ex::split(t); };
+  concept can_split_lvalue_of = requires(T t) { exec::split(t); };
 
   TEST_CASE("split can only accept copyable lvalue input senders", "[adaptors][split]") {
     static_assert(!can_split_lvalue_of<decltype(ex::just(move_only_type{0}))>);
@@ -435,7 +438,7 @@ namespace {
 
   TEST_CASE("split into when_all", "[adaptors][split]") {
     int counter{};
-    auto snd = ex::split(ex::just() | ex::then([&] {
+    auto snd = exec::split(ex::just() | ex::then([&] {
                            counter++;
                            return counter;
                          }));
@@ -450,8 +453,8 @@ namespace {
   }
 
   TEST_CASE("split can nest", "[adaptors][split]") {
-    auto split_1 = ex::just(42) | ex::split();
-    auto split_2 = split_1 | ex::split();
+    auto split_1 = ex::just(42) | exec::split();
+    auto split_2 = split_1 | exec::split();
 
     auto [v1] = ex::sync_wait(split_1 | ex::then([](const int& cv) {
                                 int& v = const_cast<int&>(cv);
@@ -475,7 +478,7 @@ namespace {
   TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]") {
     inline_scheduler sched;
 
-    auto snd = ex::transfer_just(sched, 42) | ex::split();
+    auto snd = ex::just(42) | ex::continues_on(sched) | exec::split();
     using snd_t = decltype(snd);
     static_assert(!ex::__callable<ex::get_completion_scheduler_t<ex::set_value_t>, snd_t>);
     static_assert(!ex::__callable<ex::get_completion_scheduler_t<ex::set_error_t>, snd_t>);
@@ -497,7 +500,7 @@ namespace {
 
   TEST_CASE("split accepts a custom sender", "[adaptors][split]") {
     auto snd1 = my_sender();
-    auto snd2 = ex::split(std::move(snd1));
+    auto snd2 = exec::split(std::move(snd1));
     static_assert(ex::__well_formed_sender<decltype(snd1)>);
     static_assert(ex::__well_formed_sender<decltype(snd2)>);
     using Snd = decltype(snd2);

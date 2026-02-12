@@ -124,10 +124,8 @@ namespace exec {
       template <class Sender, class IsLast>
       using _child_opstate_t = STDEXEC::connect_result_t<Sender, _rcvr_t<IsLast::value>>;
 
-      using _mk_child_ops_variant_fn = STDEXEC::__mzip_with2<
-        STDEXEC::__q2<_child_opstate_t>,
-        STDEXEC::__qq<STDEXEC::__variant_for>
-      >;
+      using _mk_child_ops_variant_fn =
+        STDEXEC::__mzip_with2<STDEXEC::__q2<_child_opstate_t>, STDEXEC::__qq<STDEXEC::__variant>>;
 
       using _ops_variant_t = STDEXEC::__minvoke<
         _mk_child_ops_variant_fn,
@@ -174,11 +172,11 @@ namespace exec {
         if (sizeof...(Senders) != 0) {
           this->_start_next_ = &_start_next<sizeof...(Senders)>;
         }
-        STDEXEC::start(_ops.template get<0>());
+        STDEXEC::start(STDEXEC::__var::__get<0>(_ops));
       }
 
       _senders_tuple_t _sndrs;
-      _ops_variant_t _ops{};
+      _ops_variant_t _ops{STDEXEC::__no_init};
     };
 
     // The completions of the sequence sender are the error and stopped completions of all the

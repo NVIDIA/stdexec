@@ -179,7 +179,9 @@
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
-namespace execution {
+namespace execution::system_context_replaceability {
+}
+namespace this_thread {
 }
 STDEXEC_NAMESPACE_STD_END
 
@@ -206,6 +208,18 @@ STDEXEC_NAMESPACE_STD_END
 #if STDEXEC_NAMESPACE_IS_STD()
 #  error stdexec cannot be defined directly in namespace std, but a namespace nested inside std is allowed.
 #endif
+
+// clang-format off
+#if STDEXEC_NAMESPACE_IS_WITHIN_STD()
+#  define STDEXEC_P2300_NAMESPACE_BEGIN(...)   STDEXEC_NAMESPACE_STD_BEGIN __VA_OPT__(namespace __VA_ARGS__ {)
+#  define STDEXEC_P2300_NAMESPACE_END(...)     __VA_OPT__(}) STDEXEC_NAMESPACE_STD_END
+#  define STDEXEC_P2300_DEPRECATED_SYMBOL(...) using __VA_ARGS__;
+#else
+#  define STDEXEC_P2300_NAMESPACE_BEGIN(...)   namespace STDEXEC {
+#  define STDEXEC_P2300_NAMESPACE_END(...)     }
+#  define STDEXEC_P2300_DEPRECATED_SYMBOL(...)
+#endif
+// clang-format on
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
@@ -450,6 +464,12 @@ namespace STDEXEC::__std {
 #  define STDEXEC_IS_TRIVIALLY_CONSTRUCTIBLE(...) std::is_trivially_constructible_v<__VA_ARGS__>
 #endif
 
+#if STDEXEC_HAS_BUILTIN(__is_nothrow_assignable) || STDEXEC_MSVC()
+#  define STDEXEC_IS_NOTHROW_ASSIGNABLE(...) __is_nothrow_assignable(__VA_ARGS__)
+#else
+#  define STDEXEC_IS_NOTHROW_ASSIGNABLE(...) std::is_nothrow_assignable_v<__VA_ARGS__>
+#endif
+
 #if STDEXEC_HAS_BUILTIN(__is_empty) || STDEXEC_MSVC()
 #  define STDEXEC_IS_EMPTY(...) __is_empty(__VA_ARGS__)
 #else
@@ -571,11 +591,13 @@ namespace STDEXEC {
 #endif
 
 #if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
-#  define STDEXEC_IF_CONSTEVAL if consteval
+#  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
 #else
 #  define STDEXEC_IF_CONSTEVAL if (std::is_constant_evaluated())
-#  define STDEXEC_IF_NOT_CONSTEVAL if (std::is_constant_evaluated()) {} else
+#  define STDEXEC_IF_NOT_CONSTEVAL                                                                 \
+    if (std::is_constant_evaluated()) {                                                            \
+    } else
 #endif
 
 #ifdef STDEXEC_ASSERT
@@ -799,9 +821,11 @@ namespace STDEXEC {
 #endif
 
 #if __cplusplus >= 2022'11L
-#  define STDEXEC_CONSTEXPR_CXX23 constexpr
+#  define STDEXEC_CONSTEXPR_CXX23        constexpr
+#  define STDEXEC_STATIC_CONSTEXPR_LOCAL static constexpr
 #else
 #  define STDEXEC_CONSTEXPR_CXX23
+#  define STDEXEC_STATIC_CONSTEXPR_LOCAL constexpr
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

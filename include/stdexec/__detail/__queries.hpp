@@ -26,87 +26,59 @@
 namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
-  namespace __queries {
-    //////////////////////////////////////////////////////////////////////////////////
-    // [exec.get.allocator]
-    struct get_allocator_t : __query<get_allocator_t> {
-      using __query<get_allocator_t>::operator();
 
-      // defined in __read_env.hpp
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()() const noexcept;
-
-      template <class _Env>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      static constexpr void __validate() noexcept {
-        static_assert(__nothrow_callable<get_allocator_t, const _Env&>);
-        static_assert(__allocator_<__call_result_t<get_allocator_t, const _Env&>>);
+  // NOT TO SPEC:
+  struct __is_scheduler_affine_t {
+    template <class _Result>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto __ensure_bool_constant() noexcept {
+      if constexpr (__is_bool_constant<_Result>) {
+        return static_cast<bool>(_Result::value);
+      } else {
+        static_assert(
+          __is_bool_constant<_Result>,
+          "The __is_scheduler_affine query must be one of the following forms:\n"
+          "  static constexpr bool query(__is_scheduler_affine_t) noexcept;\n"
+          "  bool_constant<Bool> query(__is_scheduler_affine_t) const noexcept;\n"
+          "  bool_constant<Bool> query(__is_scheduler_affine_t, const Env&) const noexcept;\n");
       }
+    }
 
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto query(forwarding_query_t) noexcept -> bool {
-        return true;
+    template <class _Attrs, class... _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    consteval auto operator()() const noexcept -> bool {
+      return __completes_where_it_starts<set_value_t, _Attrs, const _Env&...>;
+    }
+
+    template <__queryable_with<__is_scheduler_affine_t> _Attrs, class... _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    consteval auto operator()() const noexcept -> bool {
+      if constexpr (__statically_queryable_with<_Attrs, __is_scheduler_affine_t>) {
+        return _Attrs::query(__is_scheduler_affine_t());
+      } else {
+        return __ensure_bool_constant<__query_result_t<_Attrs, __is_scheduler_affine_t>>();
       }
-    };
+    }
 
-    // NOT TO SPEC:
-    struct __is_scheduler_affine_t {
-      template <class _Result>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto __ensure_bool_constant() noexcept {
-        if constexpr (__is_bool_constant<_Result>) {
-          return static_cast<bool>(_Result::value);
-        } else {
-          static_assert(
-            __is_bool_constant<_Result>,
-            "The __is_scheduler_affine query must be one of the following forms:\n"
-            "  static constexpr bool query(__is_scheduler_affine_t) noexcept;\n"
-            "  bool_constant<Bool> query(__is_scheduler_affine_t) const noexcept;\n"
-            "  bool_constant<Bool> query(__is_scheduler_affine_t, const Env&) const noexcept;\n");
-        }
-      }
+    template <class _Attrs, class _Env>
+      requires __queryable_with<_Attrs, __is_scheduler_affine_t, const _Env&>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    consteval auto operator()() const noexcept -> bool {
+      using __result_t = __query_result_t<_Attrs, __is_scheduler_affine_t, const _Env&>;
+      return __ensure_bool_constant<__result_t>();
+    }
 
-      template <class _Attrs, class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      consteval auto operator()() const noexcept -> bool {
-        return __completes_where_it_starts<set_value_t, _Attrs, const _Env&...>;
-      }
+    template <class _Attrs, class... _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    consteval auto operator()(const _Attrs&, const _Env&...) const noexcept -> bool {
+      return operator()<_Attrs, _Env...>();
+    }
 
-      template <__queryable_with<__is_scheduler_affine_t> _Attrs, class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      consteval auto operator()() const noexcept -> bool {
-        if constexpr (__statically_queryable_with<_Attrs, __is_scheduler_affine_t>) {
-          return _Attrs::query(__is_scheduler_affine_t());
-        } else {
-          return __ensure_bool_constant<__query_result_t<_Attrs, __is_scheduler_affine_t>>();
-        }
-      }
-
-      template <class _Attrs, class _Env>
-        requires __queryable_with<_Attrs, __is_scheduler_affine_t, const _Env&>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      consteval auto operator()() const noexcept -> bool {
-        using __result_t = __query_result_t<_Attrs, __is_scheduler_affine_t, const _Env&>;
-        return __ensure_bool_constant<__result_t>();
-      }
-
-      template <class _Attrs, class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      consteval auto operator()(const _Attrs&, const _Env&...) const noexcept -> bool {
-        return operator()<_Attrs, _Env...>();
-      }
-
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto query(forwarding_query_t) noexcept -> bool {
-        return false;
-      }
-    };
-  } // namespace __queries
-
-  using __queries::get_allocator_t;
-  using __queries::__is_scheduler_affine_t;
-
-  inline constexpr get_allocator_t get_allocator{};
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool {
+      return false;
+    }
+  };
 
   template <class _Sender, class... _Env>
   concept __is_scheduler_affine = requires {
@@ -142,3 +114,29 @@ namespace STDEXEC {
   template <class _Sender>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sync_attrs(const _Sender&) -> __sync_attrs<_Sender>;
 } // namespace STDEXEC
+
+STDEXEC_P2300_NAMESPACE_BEGIN()
+//////////////////////////////////////////////////////////////////////////////////
+// [exec.get.allocator]
+struct get_allocator_t : STDEXEC::__query<get_allocator_t> {
+  using STDEXEC::__query<get_allocator_t>::operator();
+
+  // defined in __read_env.hpp
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto operator()() const noexcept;
+
+  template <class _Env>
+  STDEXEC_ATTRIBUTE(always_inline, host, device)
+  static constexpr void __validate() noexcept {
+    static_assert(STDEXEC::__nothrow_callable<get_allocator_t, const _Env&>);
+    static_assert(STDEXEC::__allocator_<STDEXEC::__call_result_t<get_allocator_t, const _Env&>>);
+  }
+
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  static consteval auto query(forwarding_query_t) noexcept -> bool {
+    return true;
+  }
+};
+
+inline constexpr get_allocator_t get_allocator{};
+STDEXEC_P2300_NAMESPACE_END()

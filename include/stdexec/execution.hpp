@@ -20,17 +20,17 @@
 // include these after __execution_fwd.hpp
 // IWYU pragma: begin_exports
 #include "__detail/__as_awaitable.hpp"
+#include "__detail/__associate.hpp"
 #include "__detail/__basic_sender.hpp"
 #include "__detail/__bulk.hpp"
 #include "__detail/__completion_signatures.hpp"
 #include "__detail/__connect_awaitable.hpp"
 #include "__detail/__continues_on.hpp"
+#include "__detail/__counting_scopes.hpp"
 #include "__detail/__cpo.hpp"
 #include "__detail/__debug.hpp"
 #include "__detail/__domain.hpp"
-#include "__detail/__ensure_started.hpp"
 #include "__detail/__env.hpp"
-#include "__detail/__execute.hpp"
 #include "__detail/__execution_legacy.hpp"
 #include "__detail/__inline_scheduler.hpp"
 #include "__detail/__into_variant.hpp"
@@ -47,15 +47,17 @@
 #include "__detail/__run_loop.hpp"
 #include "__detail/__schedule_from.hpp"
 #include "__detail/__schedulers.hpp"
+#include "__detail/__scope_concepts.hpp"
 #include "__detail/__sender_adaptor_closure.hpp"
 #include "__detail/__senders.hpp"
-#include "__detail/__split.hpp"
-#include "__detail/__start_detached.hpp"
+#include "__detail/__spawn.hpp"
+#include "__detail/__spawn_future.hpp"
 #include "__detail/__starts_on.hpp"
 #include "__detail/__stopped_as_error.hpp"
 #include "__detail/__stopped_as_optional.hpp"
 #include "__detail/__submit.hpp"
 #include "__detail/__sync_wait.hpp"
+#include "__detail/__task.hpp"
 #include "__detail/__task_scheduler.hpp"
 #include "__detail/__then.hpp"
 #include "__detail/__transfer_just.hpp"
@@ -75,6 +77,8 @@
 #include "functional.hpp"
 #include "stop_token.hpp"
 // IWYU pragma: end_exports
+
+#include "__detail/__deprecations.hpp"
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
 template <STDEXEC::sender _Ignore, STDEXEC::sender _Sender>

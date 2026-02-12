@@ -64,8 +64,8 @@ namespace {
   constexpr auto test_constexpr() noexcept {
     struct receiver {
       using receiver_concept = ex::receiver_t;
-      constexpr void set_value(const int i) && noexcept {
-        this->i = i;
+      constexpr void set_value(const int j) && noexcept {
+        i = j;
       }
       void set_error(std::exception_ptr) && noexcept {
       }
@@ -74,7 +74,8 @@ namespace {
     int i = 0;
     auto op = ex::connect(
       ex::just(666)
-        | ex::bulk(ex::par, 42, [](std::size_t item, auto& val) noexcept { val += item; }),
+        | ex::bulk(
+          ex::par, 42, [](std::size_t item, int& val) noexcept { val += static_cast<int>(item); }),
       receiver{i});
     ex::start(op);
     return i;
@@ -163,6 +164,7 @@ namespace {
   }
 
   TEST_CASE("bulk keeps error_types from input sender", "[adaptors][bulk]") {
+    [[maybe_unused]]
     constexpr int n = 42;
     inline_scheduler sched1{};
     error_scheduler sched2{};
@@ -171,16 +173,17 @@ namespace {
 #if !STDEXEC_MSVC()
     // MSVCBUG https://developercommunity.visualstudio.com/t/noexcept-expression-in-lambda-template-n/10718680
     check_err_types<ex::__mset<>>(
-      ex::transfer_just(sched1) | ex::bulk(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched1) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::bulk(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched2) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::just_error(n) | ex::bulk(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
-      ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched3) | ex::bulk(ex::par, n, [](int) noexcept { }));
 #  if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::transfer_just(sched3) | ex::bulk(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
+      ex::just() | ex::continues_on(sched3)
+      | ex::bulk(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
 #  endif
 #endif
   }
@@ -192,16 +195,19 @@ namespace {
     error_scheduler<int> sched3{43};
 
     check_err_types<ex::__mset<>>(
-      ex::transfer_just(sched1) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
+      ex::just() | ex::continues_on(sched1)
+      | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
+      ex::just() | ex::continues_on(sched2)
+      | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::just_error(n) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
     check_err_types<ex::__mset<int>>(
-      ex::transfer_just(sched3) | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
+      ex::just() | ex::continues_on(sched3)
+      | ex::bulk_chunked(ex::par, n, [](int, int) noexcept { }));
 #if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::transfer_just(sched3)
+      ex::just() | ex::continues_on(sched3)
       | ex::bulk_chunked(ex::par, n, [](int, int) { throw std::logic_error{"err"}; }));
 #endif
   }
@@ -213,16 +219,16 @@ namespace {
     error_scheduler<int> sched3{43};
 
     check_err_types<ex::__mset<>>(
-      ex::transfer_just(sched1) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched1) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched2) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
       ex::just_error(n) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
     check_err_types<ex::__mset<int>>(
-      ex::transfer_just(sched3) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
+      ex::just() | ex::continues_on(sched3) | ex::bulk_unchunked(ex::par, n, [](int) noexcept { }));
 #if !STDEXEC_NO_STD_EXCEPTIONS()
     check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::transfer_just(sched3)
+      ex::just() | ex::continues_on(sched3)
       | ex::bulk_unchunked(ex::par, n, [](int) { throw std::logic_error{"err"}; }));
 #endif
   }
@@ -615,7 +621,7 @@ namespace {
       for (std::size_t n = 0; n < 9u; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch)
+        auto snd = ex::just() | ex::continues_on(sch)
                  | ex::bulk(ex::par, n, [&counter](std::size_t idx) { counter[idx] = 0; })
                  | ex::bulk(ex::par, n, [&counter](std::size_t idx) { counter[idx]++; });
         ex::sync_wait(std::move(snd));
@@ -632,7 +638,7 @@ namespace {
       for (std::size_t n = 0; n < 9; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch, 42)
+        auto snd = ex::just(42) | ex::continues_on(sch)
                  | ex::bulk(
                      ex::par,
                      n,
@@ -665,7 +671,7 @@ namespace {
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
         auto snd =
-          ex::transfer_just(sch, std::move(vals))
+          ex::just(std::move(vals)) | ex::continues_on(sch)
           | ex::bulk(
             ex::par,
             n,
@@ -680,7 +686,7 @@ namespace {
 #if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       constexpr int n = 9;
-      auto snd = ex::transfer_just(sch)
+      auto snd = ex::just() | ex::continues_on(sch)
                | ex::bulk(ex::par, n, [](int) { throw std::runtime_error("bulk"); });
 
       CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
@@ -711,7 +717,7 @@ namespace {
       for (std::size_t n = 0; n < 9u; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch)
+        auto snd = ex::just() | ex::continues_on(sch)
                  | ex::bulk_chunked(
                      ex::par,
                      n,
@@ -737,7 +743,7 @@ namespace {
       for (std::size_t n = 0; n < 9; n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch, 42)
+        auto snd = ex::just(42) | ex::continues_on(sch)
                  | ex::bulk_chunked(
                      ex::par,
                      n,
@@ -772,7 +778,7 @@ namespace {
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
         auto snd =
-          ex::transfer_just(sch, std::move(vals))
+          ex::just(std::move(vals)) | ex::continues_on(sch)
           | ex::bulk_chunked(
             ex::par,
             n,
@@ -795,7 +801,7 @@ namespace {
 #if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       constexpr int n = 9;
-      auto snd = ex::transfer_just(sch) | ex::bulk_chunked(ex::par, n, [](int, int) {
+      auto snd = ex::just() | ex::continues_on(sch) | ex::bulk_chunked(ex::par, n, [](int, int) {
                    throw std::runtime_error("bulk_chunked");
                  });
 
@@ -837,7 +843,7 @@ namespace {
       for (std::size_t n = 0; n < pool.available_parallelism(); n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch)
+        auto snd = ex::just() | ex::continues_on(sch)
                  | ex::bulk_unchunked(ex::par, n, [&counter](std::size_t idx) { counter[idx] = 0; })
                  | ex::bulk_unchunked(ex::par, n, [&counter](std::size_t idx) { counter[idx]++; });
         ex::sync_wait(std::move(snd));
@@ -854,7 +860,7 @@ namespace {
       for (std::size_t n = 0; n < pool.available_parallelism(); n++) {
         std::vector<int> counter(n, 42);
 
-        auto snd = ex::transfer_just(sch, 42)
+        auto snd = ex::just(42) | ex::continues_on(sch)
                  | ex::bulk_unchunked(
                      ex::par,
                      n,
@@ -886,7 +892,7 @@ namespace {
         std::vector<int> vals_expected(n);
         std::iota(vals_expected.begin(), vals_expected.end(), 1);
 
-        auto snd = ex::transfer_just(sch, std::move(vals))
+        auto snd = ex::just(std::move(vals)) | ex::continues_on(sch)
                  | ex::bulk_unchunked(
                      ex::par,
                      n,
@@ -905,7 +911,7 @@ namespace {
 #if !STDEXEC_NO_STD_EXCEPTIONS()
     SECTION("With exception") {
       auto const n = pool.available_parallelism();
-      auto snd = ex::transfer_just(sch) | ex::bulk_unchunked(ex::par, n, [](int) {
+      auto snd = ex::just() | ex::continues_on(sch) | ex::bulk_unchunked(ex::par, n, [](int) {
                    throw std::runtime_error("bulk_unchunked");
                  });
 

@@ -252,5 +252,44 @@ namespace {
     std::shared_ptr<std::atomic<int>> counter_;
   };
 
+  // A sender that sends by reference
+  template <class Type>
+  struct just_ref {
+    using sender_concept = ex::sender_t;
+
+    explicit just_ref(Type& value)
+      : value_(value) {
+    }
+
+    template <class>
+    static consteval auto get_completion_signatures() noexcept {
+      return ex::completion_signatures<ex::set_value_t(Type&)>{};
+    }
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) const noexcept {
+      return opstate<Receiver>{value_, static_cast<Receiver&&>(rcvr)};
+    }
+
+   private:
+    template <class Receiver>
+    struct opstate {
+      using operation_state_concept = ex::operation_state_t;
+
+      explicit opstate(Type& value, Receiver rcvr)
+        : value_(value)
+        , rcvr_(std::move(rcvr)) {
+      }
+
+      void start() noexcept {
+        ex::set_value(static_cast<Receiver&&>(rcvr_), value_);
+      }
+
+      Type& value_;
+      Receiver rcvr_;
+    };
+
+    Type& value_;
+  };
 
 } // namespace

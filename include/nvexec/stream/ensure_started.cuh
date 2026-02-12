@@ -22,6 +22,7 @@
 
 // include these after execution.hpp
 #include "../../exec/env.hpp"
+#include "../../exec/ensure_started.hpp"
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
@@ -359,7 +360,7 @@ namespace nvexec::_strm {
   };
 
   template <class Env>
-  struct transform_sender_for<ensure_started_t, Env> {
+  struct transform_sender_for<exec::ensure_started_t, Env> {
     template <class Sender>
     using _sender_t = ensure_started_sender<__decay_t<Sender>>;
 

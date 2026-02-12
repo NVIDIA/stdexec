@@ -20,6 +20,9 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
+
 namespace ex = STDEXEC;
 
 namespace {
@@ -181,7 +184,7 @@ namespace {
 
   // Modify the value when we invoke this custom defined transfer_just implementation
   struct transfer_just_test_domain {
-    template <ex::sender_expr_for<ex::transfer_just_t> Sender>
+    template <ex::sender_expr_for<ex::__transfer_just_t> Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, auto&&...) {
       auto&& [tag, data] = sndr;
       auto [sched, value] = data;

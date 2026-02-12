@@ -16,6 +16,7 @@
 
 #include <stdexec_relacy.hpp>
 
+#include <exec/split.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 
@@ -26,7 +27,7 @@ struct split_bug : rl::test_suite<split_bug, 1> {
 
   void thread(unsigned) {
     exec::static_thread_pool pool{1};
-    auto split = ex::schedule(pool.get_scheduler()) | ex::then([] { return 42; }) | ex::split();
+    auto split = ex::schedule(pool.get_scheduler()) | ex::then([] { return 42; }) | exec::split();
 
     auto [val] = ex::sync_wait(split).value();
     RL_ASSERT(val == 42);

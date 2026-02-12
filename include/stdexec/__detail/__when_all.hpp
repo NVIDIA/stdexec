@@ -44,9 +44,78 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.when_all]
   // [execution.senders.adaptors.when_all_with_variant]
-  namespace __when_all {
-    struct when_all_t;
+  struct when_all_t {
+    template <sender... _Senders>
+    constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
+      return __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...);
+    }
+  };
 
+  struct when_all_with_variant_t {
+    template <sender... _Senders>
+    constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
+      return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
+    }
+
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
+      return __apply(
+        [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
+          return when_all(into_variant(static_cast<_Child&&>(__child))...);
+        },
+        static_cast<_Sender&&>(__sndr));
+    }
+  };
+
+  struct transfer_when_all_t {
+    template <scheduler _Scheduler, sender... _Senders>
+    constexpr auto
+      operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
+      return __make_sexpr<transfer_when_all_t>(
+        static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
+    }
+
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      // transform transfer_when_all(sch, sndrs...) into
+      // continues_on(when_all(sndrs...), sch).
+      return __apply(
+        [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
+          return continues_on(
+            when_all(static_cast<_Child&&>(__child)...), static_cast<_Data&&>(__data));
+        },
+        static_cast<_Sender&&>(__sndr));
+    }
+  };
+
+  struct transfer_when_all_with_variant_t {
+    template <scheduler _Scheduler, sender... _Senders>
+    constexpr auto
+      operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
+      return __make_sexpr<transfer_when_all_with_variant_t>(
+        static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
+    }
+
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+      // transform the transfer_when_all_with_variant(sch, sndrs...) into
+      // transfer_when_all(sch, into_variant(sndrs...))
+      return __apply(
+        [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
+          return transfer_when_all_t()(
+            static_cast<_Data&&>(__data), into_variant(static_cast<_Child&&>(__child))...);
+        },
+        static_cast<_Sender&&>(__sndr));
+    }
+  };
+
+  inline constexpr when_all_t when_all{};
+  inline constexpr when_all_with_variant_t when_all_with_variant{};
+  inline constexpr transfer_when_all_t transfer_when_all{};
+  inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
+
+  namespace __when_all {
     enum __state_t {
       __started,
       __error,
@@ -172,7 +241,7 @@ namespace STDEXEC {
         __error_types_of_t<_Senders, __env_t<_Env>, __q<__mlist>>...
       >;
 
-      using __errors_variant = __mapply<__q<__uniqued_variant_for>, __errors_list>;
+      using __errors_variant = __mapply<__q<__uniqued_variant>, __errors_list>;
     };
 
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_ { };
@@ -223,7 +292,7 @@ namespace STDEXEC {
           }
           break;
         case __error:
-          if constexpr (!__same_as<_ErrorsVariant, __variant_for<>>) {
+          if constexpr (!__same_as<_ErrorsVariant, __variant<>>) {
             // One or more child operations completed with an error:
             STDEXEC::__visit(
               __mk_completion_fn(set_error, __rcvr_), static_cast<_ErrorsVariant&&>(__errors_));
@@ -246,7 +315,7 @@ namespace STDEXEC {
       inplace_stop_source __stop_source_{};
       // Could be non-atomic here and atomic_ref everywhere except __completion_fn
       __std::atomic<__state_t> __state_{__started};
-      _ErrorsVariant __errors_{};
+      _ErrorsVariant __errors_{__no_init};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _ValuesTuple __values_{};
       __optional<__stop_callback_t> __on_stop_{};
@@ -322,13 +391,6 @@ namespace STDEXEC {
 
     template <class _Receiver>
     using __mk_state_fn_t = decltype(__when_all::__mk_state_fn(__declval<_Receiver>()));
-
-    struct when_all_t {
-      template <sender... _Senders>
-      constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        return __make_sexpr<when_all_t>(__(), static_cast<_Senders&&>(__sndrs)...);
-      }
-    };
 
     struct __when_all_impl : __sexpr_defaults {
       template <class _Self, class... _Env>
@@ -452,23 +514,6 @@ namespace STDEXEC {
       };
     };
 
-    struct when_all_with_variant_t {
-      template <sender... _Senders>
-      constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto {
-        return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
-      }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
-        return __apply(
-          [&]<class... _Child>(__ignore, __ignore, _Child&&... __child) {
-            return when_all_t()(into_variant(static_cast<_Child&&>(__child))...);
-          },
-          static_cast<_Sender&&>(__sndr));
-      }
-    };
-
     struct __when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto get_attrs =
         []<class... _Child>(__ignore, __ignore, const _Child&...) noexcept {
@@ -487,27 +532,6 @@ namespace STDEXEC {
       };
     };
 
-    struct transfer_when_all_t {
-      template <scheduler _Scheduler, sender... _Senders>
-      constexpr auto
-        operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        return __make_sexpr<transfer_when_all_t>(
-          static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
-      }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        // transform transfer_when_all(sch, sndrs...) into
-        // continues_on(when_all(sndrs...), sch).
-        return __apply(
-          [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
-            return continues_on(
-              when_all_t()(static_cast<_Child&&>(__child)...), static_cast<_Data&&>(__data));
-          },
-          static_cast<_Sender&&>(__sndr));
-      }
-    };
-
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto get_attrs = []<class _Scheduler, class... _Child>(
                                           __ignore,
@@ -523,27 +547,6 @@ namespace STDEXEC {
           __detail::__transform_sender_result_t<transfer_when_all_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       };
-    };
-
-    struct transfer_when_all_with_variant_t {
-      template <scheduler _Scheduler, sender... _Senders>
-      constexpr auto
-        operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto {
-        return __make_sexpr<transfer_when_all_with_variant_t>(
-          static_cast<_Scheduler&&>(__sched), static_cast<_Senders&&>(__sndrs)...);
-      }
-
-      template <class _Sender>
-      static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
-        // transform the transfer_when_all_with_variant(sch, sndrs...) into
-        // transfer_when_all(sch, into_variant(sndrs...))
-        return __apply(
-          [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child) {
-            return transfer_when_all_t()(
-              static_cast<_Data&&>(__data), into_variant(static_cast<_Child&&>(__child))...);
-          },
-          static_cast<_Sender&&>(__sndr));
-      }
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
@@ -566,18 +569,6 @@ namespace STDEXEC {
       };
     };
   } // namespace __when_all
-
-  using __when_all::when_all_t;
-  inline constexpr when_all_t when_all{};
-
-  using __when_all::when_all_with_variant_t;
-  inline constexpr when_all_with_variant_t when_all_with_variant{};
-
-  using __when_all::transfer_when_all_t;
-  inline constexpr transfer_when_all_t transfer_when_all{};
-
-  using __when_all::transfer_when_all_with_variant_t;
-  inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
 
   template <>
   struct __sexpr_impl<when_all_t> : __when_all::__when_all_impl { };

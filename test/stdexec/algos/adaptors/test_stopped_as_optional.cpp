@@ -47,7 +47,7 @@ namespace {
 
   TEST_CASE("stopped_as_optional simple example", "[adaptors][stopped_as_optional]") {
     stopped_scheduler sched;
-    auto snd = ex::stopped_as_optional(ex::transfer_just(sched, 11));
+    auto snd = ex::stopped_as_optional(ex::just(11) | ex::continues_on(sched));
     auto op = ex::connect(std::move(snd), expect_value_receiver{std::optional<int>{}});
     ex::start(op);
   }
@@ -77,14 +77,14 @@ namespace {
 
   TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]") {
     error_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::stopped_as_optional();
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::stopped_as_optional();
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
 
   TEST_CASE("stopped_as_optional doesn't forward cancellation", "[adaptors][stopped_as_optional]") {
     stopped_scheduler sched;
-    ex::sender auto snd = ex::transfer_just(sched, 13) | ex::stopped_as_optional();
+    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::stopped_as_optional();
     wait_for_value(std::move(snd), std::optional<int>{});
   }
 
@@ -104,12 +104,12 @@ namespace {
     error_scheduler<int> sched3{-1};
 
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched1, 11) | ex::stopped_as_optional());
+      ex::just(11) | ex::continues_on(sched1) | ex::stopped_as_optional());
     check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::transfer_just(sched2, 13) | ex::stopped_as_optional());
+      ex::just(13) | ex::continues_on(sched2) | ex::stopped_as_optional());
 
     check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::transfer_just(sched3, 13) | ex::stopped_as_optional());
+      ex::just(13) | ex::continues_on(sched3) | ex::stopped_as_optional());
   }
 
   TEST_CASE(
@@ -119,8 +119,8 @@ namespace {
     error_scheduler sched2{};
     stopped_scheduler sched3{};
 
-    check_sends_stopped<false>(ex::transfer_just(sched1, 1) | ex::stopped_as_optional());
-    check_sends_stopped<false>(ex::transfer_just(sched2, 2) | ex::stopped_as_optional());
-    check_sends_stopped<false>(ex::transfer_just(sched3, 3) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::just(1) | ex::continues_on(sched1) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::just(2) | ex::continues_on(sched2) | ex::stopped_as_optional());
+    check_sends_stopped<false>(ex::just(3) | ex::continues_on(sched3) | ex::stopped_as_optional());
   }
 } // namespace

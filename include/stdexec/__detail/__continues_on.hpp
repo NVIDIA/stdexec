@@ -30,7 +30,7 @@
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__utility.hpp"
-#include "__variant.hpp" // IWYU pragma: keep for __variant_for
+#include "__variant.hpp" // IWYU pragma: keep for __variant
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -49,10 +49,10 @@ namespace STDEXEC {
     //        ...
     //   >
     template <class _CvSender, class _Env>
-    using __results_of = __for_each_completion_signature_t<
+    using __results_of_t = __for_each_completion_signature_t<
       __completion_signatures_of_t<_CvSender, _Env>,
       __decayed_tuple,
-      __munique<__qq<STDEXEC::__variant_for>>::__f
+      __munique<__qq<STDEXEC::__variant>>::__f
     >;
 
     template <class... _Values>
@@ -95,10 +95,10 @@ namespace STDEXEC {
 
     template <class _Sexpr, class _Receiver>
     struct __state_base : __immovable {
-      using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver __rcvr_;
-      __variant_t __data_{};
+      __variant_t __data_{__no_init};
     };
 
     // This receiver is to be completed on the execution context associated with the scheduler. When
@@ -133,30 +133,15 @@ namespace STDEXEC {
 
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state : __state_base<_Sexpr, _Receiver> {
-      using __variant_t = __results_of<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
-        : __state::__state_base{{}, static_cast<_Receiver&&>(__rcvr), {}}
+        : __state::__state_base{{}, static_cast<_Receiver&&>(__rcvr)}
         , __state2_(connect(schedule(__sched), __receiver2_t{this})) {
       }
 
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
-    };
-
-    struct continues_on_t {
-      template <scheduler _Scheduler, sender _Sender>
-      constexpr auto
-        operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto {
-        return __make_sexpr<continues_on_t>(
-          static_cast<_Scheduler&&>(__sched), schedule_from(static_cast<_Sender&&>(__sndr)));
-      }
-
-      template <scheduler _Scheduler>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Scheduler __sched) const noexcept {
-        return __closure(*this, static_cast<_Scheduler&&>(__sched));
-      }
     };
 
     //! @brief The @c continues_on sender's attributes.
@@ -342,6 +327,8 @@ namespace STDEXEC {
         }
       }
 
+      template <class _Sender, class _Receiver>
+      using __state_for_t = __state<__decay_t<__tuple_element_t<1, _Sender>>, _Sender, _Receiver>;
 
      public:
       static constexpr auto get_attrs =
@@ -365,12 +352,12 @@ namespace STDEXEC {
 
       static constexpr auto get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr)
+        -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
-        auto __sched = STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr));
-        return __state<decltype(__sched), _Sender, _Receiver>{
-          __sched, static_cast<_Receiver&&>(__rcvr)};
+        auto& [__tag, __sched, __child] = __sndr;
+        return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
       };
 
       static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
@@ -399,7 +386,21 @@ namespace STDEXEC {
     };
   } // namespace __trnsfr
 
-  using __trnsfr::continues_on_t;
+  struct continues_on_t {
+    template <scheduler _Scheduler, sender _Sender>
+    constexpr auto
+      operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto {
+      return __make_sexpr<continues_on_t>(
+        static_cast<_Scheduler&&>(__sched), schedule_from(static_cast<_Sender&&>(__sndr)));
+    }
+
+    template <scheduler _Scheduler>
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(_Scheduler __sched) const noexcept {
+      return __closure(*this, static_cast<_Scheduler&&>(__sched));
+    }
+  };
+
   inline constexpr continues_on_t continues_on{};
 
   template <>
