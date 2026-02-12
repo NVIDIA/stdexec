@@ -69,18 +69,18 @@ namespace exec {
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         // TODO: port this to use constant evaluation
         return __completions_t<__child_of<_Sender>, _Env...>{};
       }
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender &&, _Receiver &&__rcvr) {
           using __tuple_t = __result_tuple_t<__child_of<_Sender>, env_of_t<_Receiver>>;
           return __state<_Receiver, __tuple_t>{static_cast<_Receiver &&>(__rcvr)};
         };
 
-      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+      static constexpr auto __complete = []<class _State, class _Tag, class... _Args>(
                                          __ignore,
                                          _State &__state,
                                          _Tag,

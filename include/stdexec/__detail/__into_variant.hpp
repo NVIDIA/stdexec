@@ -63,13 +63,13 @@ namespace STDEXEC {
     };
 
     struct __into_variant_impl : __sexpr_defaults {
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept {
           using __variant_t = value_types_of_t<__child_of<_Self>, env_of_t<_Receiver>>;
           return __state<_Receiver, __variant_t>{static_cast<_Receiver&&>(__rcvr)};
         };
 
-      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+      static constexpr auto __complete = []<class _State, class _Tag, class... _Args>(
                                          __ignore,
                                          _State& __state,
                                          _Tag,
@@ -90,7 +90,7 @@ namespace STDEXEC {
       };
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Self, into_variant_t>);
         return __completions<__child_of<_Self>, _Env...>{};
       };

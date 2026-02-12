@@ -87,12 +87,12 @@ namespace STDEXEC {
     };
 
     struct __read_env_impl : __sexpr_defaults {
-      static constexpr auto get_attrs = []<class _Query>(__ignore, _Query) noexcept {
+      static constexpr auto __get_attrs = []<class _Query>(__ignore, _Query) noexcept {
         return __attrs<_Query>{};
       };
 
       template <class _Self, class _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         using __query_t = __data_of<_Self>;
         if constexpr (__callable<__query_t, _Env>) {
           using __result_t = __call_result_t<__query_t, _Env>;
@@ -111,13 +111,13 @@ namespace STDEXEC {
         }
       };
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _Self, class _Receiver>(const _Self&, _Receiver&& __rcvr) noexcept {
           using __query_t = __data_of<_Self>;
           return __opstate<_Receiver, __query_t>{static_cast<_Receiver&&>(__rcvr)};
         };
 
-      static constexpr auto submit =
+      static constexpr auto __submit =
         []<class _Sender, class _Receiver>(const _Sender&, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {

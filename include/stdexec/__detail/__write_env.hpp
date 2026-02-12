@@ -28,18 +28,18 @@ namespace STDEXEC {
   // __write adaptor
   namespace __write {
     struct __write_env_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
           return __sync_attrs{__child};
         };
 
-      static constexpr auto get_env = []<class _State>(__ignore, const _State& __state) noexcept
+      static constexpr auto __get_env = []<class _State>(__ignore, const _State& __state) noexcept
         -> decltype(__env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_))) {
         return __env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_));
       };
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Self, __write_env_t>);
         return STDEXEC::get_completion_signatures<
           __child_of<_Self>,

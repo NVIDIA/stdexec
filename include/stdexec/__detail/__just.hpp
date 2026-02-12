@@ -53,17 +53,17 @@ namespace STDEXEC {
     struct __impl : __sexpr_defaults {
       using __set_tag_t = _JustTag::__tag_t;
 
-      static constexpr auto get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t> {
+      static constexpr auto __get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t> {
         return {};
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, _JustTag>);
         return completion_signatures<__mapply<__qf<__set_tag_t>, __decay_t<__data_of<_Sender>>>>{};
       }
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
           __nothrow_decay_copyable<_Sender>) {
           auto& [__tag, __data] = __sndr;

@@ -76,7 +76,7 @@ namespace exec {
 
     struct __impls : __sexpr_defaults {
       template <class _Self, class _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Self, unless_stop_requested_t>);
         // TODO: port this to use constant evaluation
         return __completions_t<__child_of<_Self>, _Env>{};
@@ -86,7 +86,7 @@ namespace exec {
       using __rcvr_t =
         __if_c<__unstoppable_receiver<_Receiver>, _Receiver, __rcvr_ref_t<_Receiver>>;
 
-      static constexpr auto connect = //
+      static constexpr auto __connect = //
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_connectable<__child_of<_Sender>, __rcvr_t<_Receiver>>) {
           auto& [__tag, __ign, __child] = __sndr;
