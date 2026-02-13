@@ -33,6 +33,7 @@
 
 #include <concepts>
 #include <exception>
+#include <mutex>
 #include <system_error>
 #include <type_traits>
 #include <utility>
@@ -215,16 +216,24 @@ namespace experimental::execution::asio
     template <typename Sender>
     explicit sender(Sender) -> sender<Sender>;
 
+    template <typename Mutex>
+    struct token
+    {
+      static constexpr auto as_default_on = asio::as_default_on<token>;
+      template <typename IoObject>
+      using as_default_on_t = asio::as_default_on_t<token, IoObject>;
+    };
+
   }  // namespace detail::use_sender
 
-  struct use_sender_t
-  {
-    static constexpr auto as_default_on = asio::as_default_on<use_sender_t>;
-    template <typename IoObject>
-    using as_default_on_t = asio::as_default_on_t<use_sender_t, IoObject>;
-  };
+  using use_sender_t = detail::use_sender::token<std::recursive_mutex>;
 
   inline use_sender_t const use_sender{};
+
+  using thread_unsafe_use_sender_t =
+    detail::use_sender::token<detail::completion_token::null_basic_lockable>;
+
+  inline thread_unsafe_use_sender_t const thread_unsafe_use_sender{};
 
 }  // namespace experimental::execution::asio
 
@@ -233,18 +242,18 @@ namespace exec = experimental::execution;
 namespace ASIOEXEC_ASIO_NAMESPACE
 {
 
-  template <typename... Signatures>
-  struct async_result<::exec::asio::use_sender_t, Signatures...>
+  template <typename Mutex, typename... Signatures>
+  struct async_result<::exec::asio::detail::use_sender::token<Mutex>, Signatures...>
   {
     template <typename Initiation, typename... Args>
       requires(std::is_constructible_v<std::decay_t<Args>, Args> && ...)
     static constexpr auto
-    initiate(Initiation&& i, ::exec::asio::use_sender_t const &, Args&&... args)
+    initiate(Initiation&& i, ::exec::asio::detail::use_sender::token<Mutex> const &, Args&&... args)
     {
       return ::exec::asio::detail::use_sender::sender(
-        async_result<::exec::asio::completion_token_t, Signatures...>::initiate(
+        async_result<::exec::asio::detail::completion_token::token<Mutex>, Signatures...>::initiate(
           static_cast<Initiation&&>(i),
-          ::exec::asio::completion_token,
+          ::exec::asio::detail::completion_token::token<Mutex>{},
           static_cast<Args&&>(args)...));
     }
   };
