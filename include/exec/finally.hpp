@@ -29,10 +29,10 @@
 #include "completion_signatures.hpp"
 
 namespace exec {
-  namespace __finally {
+  namespace __final {
     template <class _Initial, class _Final>
     struct __sender;
-  } // namespace __finally
+  } // namespace __final
 
   struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_ { };
   struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_ { };
@@ -54,7 +54,7 @@ namespace exec {
     template <class _Sender>
     static auto transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, STDEXEC::__ignore) {
       auto& [__tag, __ign, __initial, __final] = __sndr;
-      return __finally ::__sender{
+      return __final ::__sender{
         STDEXEC::__forward_like<_Sender>(__initial), //
         STDEXEC::__forward_like<_Sender>(__final)};
     }
@@ -62,7 +62,7 @@ namespace exec {
 
   inline constexpr finally_t finally{};
 
-  namespace __finally {
+  namespace __final {
     using namespace STDEXEC;
 
     template <bool _FinalSenderHasValueCompletions>
@@ -309,7 +309,7 @@ namespace exec {
 
       template <__decays_to<__sender> _Self, class... _Env>
       static consteval auto get_completion_signatures() {
-        return __finally ::__get_completion_signatures<
+        return __final ::__get_completion_signatures<
           __copy_cvref_t<_Self, _InitialSender>,
           __copy_cvref_t<_Self, _FinalSender>,
           _Env...
@@ -321,9 +321,9 @@ namespace exec {
     };
 
     template <class _InitialSender, class _FinalSender>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sender(_InitialSender, _FinalSender)
-      -> __sender<_InitialSender, _FinalSender>;
-  } // namespace __finally
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __sender(_InitialSender, _FinalSender) -> __sender<_InitialSender, _FinalSender>;
+  } // namespace __final
 } // namespace exec
 
 namespace STDEXEC {
@@ -331,7 +331,7 @@ namespace STDEXEC {
   struct __sexpr_impl<exec::finally_t> : __sexpr_defaults {
     template <class _Sender, class... _Env>
     static consteval auto __get_completion_signatures() {
-      return exec::__finally ::__get_completion_signatures<
+      return exec::__final ::__get_completion_signatures<
         __nth_child_of_c<0, _Sender>,
         __nth_child_of_c<1, _Sender>,
         _Env...
