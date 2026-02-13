@@ -772,13 +772,13 @@ namespace exec {
           // else remove
           STDEXEC::__mconst<STDEXEC::__mlist<>>::__f,
           // concat to __mlist result
-          STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>::__f
+          STDEXEC::__mtry<STDEXEC::__mconcat<STDEXEC::__q<STDEXEC::__mlist>>>::__f
         >;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
       using __nested_sequences_from_item_type_t = STDEXEC::__minvoke<
-        __mtry<__gather_sequences_t<_Sequence, _Sender, _Env...>>,
+        __gather_sequences_t<_Sequence, _Sender, _Env...>,
         STDEXEC::__completion_signatures_of_t<_Sender, _Env...>
       >;
 
@@ -1131,7 +1131,6 @@ namespace exec {
       >
     >;
 
-
     template <class _Receiver>
     struct __subscribe_fn {
       template <class _Sequence>
@@ -1206,8 +1205,9 @@ namespace exec {
         __compute::__nested_sequences_t<__child_of<_Self>, _Env...>
       >;
 
-      template <sender_expr_for<merge_each_t> _Self, class... _Env>
+      template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() {
+        static_assert(sender_expr_for<_Self, merge_each_t>);
         // TODO: update this to use constant evaluation:
         using __result_t = __minvoke<
           __mtry_q<__completions_t>,
@@ -1215,7 +1215,7 @@ namespace exec {
           __env_with_inplace_stop_token_result_t<_Env>...
         >;
         if constexpr (__ok<__result_t>) {
-          static_assert(__valid_completion_signatures<__result_t>);
+          static_assert(STDEXEC::__well_formed_completions<__result_t>);
           return __result_t();
         } else {
           return STDEXEC::__throw_compile_time_error(__result_t());
