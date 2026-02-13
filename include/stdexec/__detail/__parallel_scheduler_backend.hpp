@@ -20,7 +20,6 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-// #include "any_allocator.cuh"
 #include "../functional.hpp" // IWYU pragma: keep for __with_default
 #include "../stop_token.hpp" // IWYU pragma: keep for get_stop_token_t
 #include "__any_allocator.hpp"
@@ -83,28 +82,47 @@ namespace STDEXEC {
       virtual void execute(size_t, size_t) noexcept = 0;
     };
 
-    /// Interface for the parallel scheduler backend.
-    struct parallel_scheduler_backend {
-      virtual ~parallel_scheduler_backend() = 0;
-
-      /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
-      /// memory.
-      virtual void schedule(receiver_proxy&, std::span<std::byte>) noexcept = 0;
-
-      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
-      /// subranges of [0, __n), and using `__s` for preallocated memory.
-      virtual void
-        schedule_bulk_chunked(size_t, bulk_item_receiver_proxy&, std::span<std::byte>) noexcept = 0;
-
-      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
-      /// using `__s` for preallocated memory.
-      virtual void schedule_bulk_unchunked(
-        size_t,
-        bulk_item_receiver_proxy&,
-        std::span<std::byte>) noexcept = 0;
+    // This base class associates the STDEXEC::system_context_replaceability namespace
+    // with the parallel_scheduler_backend for the purposes of ADL.
+    struct __parallel_scheduler_backend_base {
+      virtual ~__parallel_scheduler_backend_base() = 0;
     };
 
-    inline parallel_scheduler_backend::~parallel_scheduler_backend() = default;
+    inline __parallel_scheduler_backend_base::~__parallel_scheduler_backend_base() = default;
+  } // namespace system_context_replaceability
+} // namespace STDEXEC
+
+// Give parallel_scheduler_backend a mangled name that does not depend on the value of the
+// STDEXEC macro. This is so that we can use weak linking to make
+// query_parallel_scheduler_backend replaceable.
+namespace __system_context_replaceability {
+  using namespace STDEXEC::system_context_replaceability;
+
+  /// Interface for the parallel scheduler backend.
+  struct parallel_scheduler_backend : __parallel_scheduler_backend_base {
+    /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
+    /// memory.
+    virtual void schedule(receiver_proxy&, std::span<std::byte>) noexcept = 0;
+
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
+    /// subranges of [0, __n), and using `__s` for preallocated memory.
+    virtual void schedule_bulk_chunked(
+      std::size_t,
+      bulk_item_receiver_proxy&,
+      std::span<std::byte>) noexcept = 0;
+
+    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
+    /// using `__s` for preallocated memory.
+    virtual void schedule_bulk_unchunked(
+      std::size_t,
+      bulk_item_receiver_proxy&,
+      std::span<std::byte>) noexcept = 0;
+  };
+} // namespace __system_context_replaceability
+
+namespace STDEXEC {
+  namespace system_context_replaceability {
+    using namespace ::__system_context_replaceability;
   } // namespace system_context_replaceability
 
   namespace __detail {
