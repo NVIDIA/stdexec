@@ -27,7 +27,7 @@
 #endif
 
 namespace STDEXEC::__system_context_default_impl {
-  using system_context_replaceability::__parallel_scheduler_backend_factory;
+  using system_context_replaceability::__parallel_scheduler_backend_factory_t;
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -321,7 +321,7 @@ namespace STDEXEC::__system_context_default_impl {
 
       // Otherwise, create a new instance using the factory.
       // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
-      auto __new_instance = __factory_.load(STDEXEC::__std::memory_order_relaxed)();
+      auto __new_instance = __factory_.load(__std::memory_order_relaxed)();
 
       // Store the newly created instance.
       __acquire_instance_lock();
@@ -331,8 +331,8 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
     /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
-    auto __set_backend_factory(__parallel_scheduler_backend_factory __new_factory)
-      -> __parallel_scheduler_backend_factory {
+    auto __set_backend_factory(__parallel_scheduler_backend_factory_t __new_factory)
+      -> __parallel_scheduler_backend_factory_t {
       // Replace the factory, keeping track of the old one.
       auto __old_factory = __factory_.exchange(__new_factory);
       // Create a new instance with the new factory.
@@ -347,9 +347,9 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
    private:
-    STDEXEC::__std::atomic<bool> __instance_locked_{false};
+    __std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
-    STDEXEC::__std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
+    __std::atomic<__parallel_scheduler_backend_factory_t> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
@@ -357,13 +357,13 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
     void __acquire_instance_lock() {
-      while (__instance_locked_.exchange(true, STDEXEC::__std::memory_order_acquire)) {
+      while (__instance_locked_.exchange(true, __std::memory_order_acquire)) {
         // Spin until we acquire the lock.
       }
     }
 
     void __release_instance_lock() {
-      __instance_locked_.store(false, STDEXEC::__std::memory_order_release);
+      __instance_locked_.store(false, __std::memory_order_release);
     }
   };
 
