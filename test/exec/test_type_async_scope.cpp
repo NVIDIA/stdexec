@@ -27,6 +27,7 @@
 namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
 STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
 
 namespace {
