@@ -37,10 +37,6 @@ namespace STDEXEC {
 
     template <class _Sig>
     using __tag_of_sig_t = decltype(__tag_of_sig_v<_Sig>);
-
-    template <class _Error>
-      requires false
-    using __nofail_t = _Error;
   } // namespace __detail
 
   template <class _Sender, class _SetSig, class... _Env>
