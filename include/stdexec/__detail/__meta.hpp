@@ -146,7 +146,7 @@ namespace STDEXEC {
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __ignore(_Ts&&...) noexcept {
+    constexpr __ignore(_Ts &&...) noexcept {
     }
   };
 
@@ -558,10 +558,10 @@ namespace STDEXEC {
     using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
   };
 
-  template <class _What, class... _With>
-  struct __mfor<_ERROR_<_What, _With...>> {
+  template <class... _What>
+  struct __mfor<_ERROR_<_What...>> {
     template <class _Fn>
-    using __f = _ERROR_<_What, _With...>;
+    using __f = _ERROR_<_What...>;
   };
 
   template <class _Fn, class _List>
