@@ -365,17 +365,10 @@ namespace asioexec {
         , args_(static_cast<Us&&>(us)...) {
       }
 
-      template <typename Env>
-        requires std::is_copy_constructible_v<Initiation>
-              && std::is_copy_constructible_v<args_type_>
-      constexpr Signatures get_completion_signatures(const Env&) const & noexcept {
-        return {};
-      }
-
-      template <typename Env>
-        requires std::is_move_constructible_v<Initiation>
-              && std::is_move_constructible_v<args_type_>
-      constexpr Signatures get_completion_signatures(const Env&) && noexcept {
+      template <typename Self, typename... Env>
+        requires std::is_constructible_v<Initiation, ::STDEXEC::__copy_cvref_t<Self, Initiation>>
+              && std::is_constructible_v<args_type_, ::STDEXEC::__copy_cvref_t<Self, args_type_>>
+      static consteval Signatures get_completion_signatures() noexcept {
         return {};
       }
 
