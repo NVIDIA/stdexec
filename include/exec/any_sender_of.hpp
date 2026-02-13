@@ -342,7 +342,7 @@ namespace exec {
         static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
         _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         std::allocator_traits<_Alloc>::construct(__alloc, __pointer, static_cast<_As&&>(__args)...);
         __object_pointer_ = __pointer;
       }
@@ -350,7 +350,7 @@ namespace exec {
       template <class _Tp, class... _As>
       void __construct_large(_As&&... __args) {
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
         STDEXEC_TRY {
           std::allocator_traits<_Alloc>::construct(
@@ -369,7 +369,7 @@ namespace exec {
           return;
         }
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         if constexpr (!__is_small<_Tp>) {
@@ -382,7 +382,7 @@ namespace exec {
       void* __object_pointer_{nullptr};
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Allocator __allocator_{};
+      _Allocator __alloc_{};
     };
 
     template <
@@ -510,7 +510,7 @@ namespace exec {
         static_assert(sizeof(_Tp) <= __buffer_size && alignof(_Tp) <= __alignment);
         _Tp* __pointer = reinterpret_cast<_Tp*>(&__buffer_[0]);
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         std::allocator_traits<_Alloc>::construct(__alloc, __pointer, static_cast<_As&&>(__args)...);
         __object_pointer_ = __pointer;
       }
@@ -518,7 +518,7 @@ namespace exec {
       template <class _Tp, class... _As>
       void __construct_large(_As&&... __args) {
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         _Tp* __pointer = std::allocator_traits<_Alloc>::allocate(__alloc, 1);
         STDEXEC_TRY {
           std::allocator_traits<_Alloc>::construct(
@@ -537,7 +537,7 @@ namespace exec {
           return;
         }
         using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-        _Alloc __alloc{__allocator_};
+        _Alloc __alloc{__alloc_};
         _Tp* __pointer = static_cast<_Tp*>(std::exchange(__object_pointer_, nullptr));
         std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         if constexpr (!__is_small<_Tp>) {
@@ -555,7 +555,7 @@ namespace exec {
           _Tp& __other_object = *__pointer;
           this->template __construct_small<_Tp>(static_cast<_Tp&&>(__other_object));
           using _Alloc = std::allocator_traits<_Allocator>::template rebind_alloc<_Tp>;
-          _Alloc __alloc{__allocator_};
+          _Alloc __alloc{__alloc_};
           std::allocator_traits<_Alloc>::destroy(__alloc, __pointer);
         } else {
           __object_pointer_ = __pointer;
@@ -582,7 +582,7 @@ namespace exec {
       const __vtable_t* __vtable_{__default_storage_vtable(static_cast<__vtable_t*>(nullptr))};
       void* __object_pointer_{nullptr};
       alignas(__alignment) std::byte __buffer_[__buffer_size]{};
-      STDEXEC_ATTRIBUTE(no_unique_address) _Allocator __allocator_ { };
+      STDEXEC_ATTRIBUTE(no_unique_address) _Allocator __alloc_ { };
     };
 
     struct __empty_vtable {
