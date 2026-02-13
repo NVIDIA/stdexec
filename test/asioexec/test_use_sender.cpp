@@ -83,6 +83,11 @@ namespace {
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::years(1));
     auto sender = t.async_wait(use_sender);
+    static_assert(::STDEXEC::sender_in<decltype(sender)>);
+    static_assert(
+      ::STDEXEC::sender_of<
+        decltype(sender),
+        ::STDEXEC::set_value_t()>);
     static_assert(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
