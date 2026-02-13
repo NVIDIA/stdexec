@@ -18,9 +18,9 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__connect.hpp"                   // IWYU pragma: export
-#include "__get_completion_signatures.hpp" // IWYU pragma: export
-#include "__transform_completion_signatures.hpp"
+#include "__completion_signatures.hpp" // IWYU pragma: export
+#include "__connect.hpp"               // IWYU pragma: export
+#include "__sender_concepts.hpp"       // IWYU pragma: export
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -39,33 +39,20 @@ namespace STDEXEC {
     using __tag_of_sig_t = decltype(__tag_of_sig_v<_Sig>);
   } // namespace __detail
 
-  template <class _Sender, class _SetSig, class _Env = env<>>
-  concept sender_of = sender_in<_Sender, _Env>
-                   && __std::same_as<
+  template <class _Sender, class _SetSig, class... _Env>
+  concept sender_of = sender_in<_Sender, _Env...>
+                   && __same_as<
                         __mlist<_SetSig>,
-                        __gather_completions_of_t<
+                        __gather_completions_t<
                           __detail::__tag_of_sig_t<_SetSig>,
-                          _Sender,
-                          _Env,
+                          __completion_signatures_of_t<_Sender, _Env...>,
                           __mcompose<__qq<__mlist>, __qf<__detail::__tag_of_sig_t<_SetSig>>>,
                           __mconcat<__qq<__mlist>>
                         >
                    >;
 
-  template <class _Error>
-    requires false
-  using __nofail_t = _Error;
-
-  template <class _Sender, class _Env = env<>>
-  concept __nofail_sender = sender_in<_Sender, _Env> && requires {
-    typename __gather_completion_signatures_t<
-      __completion_signatures_of_t<_Sender, _Env>,
-      set_error_t,
-      __nofail_t,
-      __cmplsigs::__default_completion,
-      __mlist
-    >;
-  };
+  template <class _Sender, class... _Env>
+  concept __nofail_sender = __never_sends<set_error_t, _Sender, _Env...>;
 
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking

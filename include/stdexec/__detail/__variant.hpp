@@ -149,14 +149,14 @@ namespace STDEXEC {
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr __variant(__variant &&__other) noexcept {
+      constexpr __variant(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>) {
         if (!__other.__is_valueless()) {
           __visit(__move_visitor{}, std::move(__other), *this);
         }
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr __variant(const __variant &__other) {
+      constexpr __variant(const __variant &__other) noexcept(__nothrow_copy_constructible<_Ts...>) {
         if (!__other.__is_valueless()) {
           __visit(__copy_visitor{}, __other, *this);
         }
