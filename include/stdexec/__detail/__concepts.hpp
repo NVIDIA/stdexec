@@ -294,22 +294,13 @@ namespace STDEXEC {
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = __std::derived_from<__decay_t<_Ty>, _Up>;
 
-  namespace __detail {
-    template <class _Alloc>
-    constexpr auto __test_alloc_pointer(int) -> _Alloc::pointer;
-    template <class _Alloc>
-    constexpr auto __test_alloc_pointer(long) -> _Alloc::value_type*;
-
-    template <class _Alloc>
-    using __alloc_pointer_t = decltype(__detail::__test_alloc_pointer<__decay_t<_Alloc>>(0));
-  } // namespace __detail
-
+  // See [allocator.requirements.general]/p99 (https://eel.is/c++draft/allocator.requirements.general#99)
   template <class _Alloc>
-  concept __allocator_ = //
-    requires(__decay_t<_Alloc>& __alloc, std::size_t __bytes) {
-      { __alloc.allocate(__bytes) } -> __std::same_as<__detail::__alloc_pointer_t<_Alloc>>;
-      __alloc.deallocate(__alloc.allocate(__bytes), __bytes);
+  concept __simple_allocator = //
+    requires(_Alloc __alloc, std::size_t __count) {
+      { *__alloc.allocate(__count) } -> __std::same_as<typename _Alloc::value_type&>;
+      __alloc.deallocate(__alloc.allocate(__count), __count);
     } //
-    && __std::copy_constructible<__decay_t<_Alloc>> //
-    && __std::equality_comparable<__decay_t<_Alloc>>;
+    && __std::copy_constructible<_Alloc> //
+    && __std::equality_comparable<_Alloc>;
 } // namespace STDEXEC

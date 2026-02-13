@@ -22,7 +22,8 @@
 // include these after __execution_fwd.hpp
 // #include "any_allocator.cuh"
 #include "../functional.hpp" // IWYU pragma: keep for __with_default
-#include "../stop_token.hpp"
+#include "../stop_token.hpp" // IWYU pragma: keep for get_stop_token_t
+#include "__any_allocator.hpp"
 #include "__queries.hpp"
 #include "__typeinfo.hpp"
 
@@ -34,26 +35,6 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_MSVC(4702) // warning C4702: unreachable code
 
 namespace STDEXEC {
-  template <class _Ty>
-  class any_allocator : public std::allocator<_Ty> {
-   public:
-    template <class _OtherTy>
-    struct rebind {
-      using other = any_allocator<_OtherTy>;
-    };
-
-    template <__not_same_as<any_allocator> _Alloc>
-    any_allocator(const _Alloc&) noexcept {
-    }
-  };
-
-  template <class _Alloc>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    any_allocator(_Alloc) -> any_allocator<typename _Alloc::value_type>;
-
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-  any_allocator(std::allocator<void>) -> any_allocator<std::byte>;
-
   class task_scheduler;
 
   // namespace __detail {
@@ -61,7 +42,7 @@ namespace STDEXEC {
   //     [[nodiscard]]
   //     virtual auto query(const get_stop_token_t&) const noexcept -> inplace_stop_token = 0;
   //     [[nodiscard]]
-  //     virtual auto query(const get_allocator_t&) const noexcept -> any_allocator<std::byte> = 0;
+  //     virtual auto query(const get_allocator_t&) const noexcept -> __any_allocator<std::byte> = 0;
   //     [[nodiscard]]
   //     virtual auto query(const get_scheduler_t&) const noexcept -> task_scheduler = 0;
   //   };
@@ -168,10 +149,12 @@ namespace STDEXEC {
       }
 
       void __query(get_allocator_t, __type_index __value_type, void* __dest) const noexcept {
-        if (__value_type == __mtypeid<any_allocator<std::byte>>) {
-          using __dest_t = std::optional<any_allocator<std::byte>>;
-          *static_cast<__dest_t*>(__dest) = any_allocator{
-            __with_default(get_allocator, std::allocator<std::byte>())(STDEXEC::get_env(__rcvr_))};
+        if (__value_type == __mtypeid<__any_allocator<std::byte>>) {
+          using __dest_t = std::optional<__any_allocator<std::byte>>;
+          constexpr auto __get_alloc = __with_default(get_allocator, std::allocator<std::byte>());
+          auto __alloc = STDEXEC::__rebind_allocator<std::byte>(
+            __get_alloc(STDEXEC::get_env(__rcvr_)));
+          *static_cast<__dest_t*>(__dest) = __any_allocator{std::move(__alloc)};
         }
       }
 
@@ -212,9 +195,10 @@ namespace STDEXEC {
       }
     };
 
-    // A receiver type that forwards its completion operations to a _RcvrProxy member held by
-    // reference (where _RcvrProxy is one of receiver_proxy or bulk_item_receiver_proxy). It
-    // is also responsible to destroying and, if necessary, deallocating the operation state.
+    // A receiver type that forwards its completion operations to a _RcvrProxy member held
+    // by reference (where _RcvrProxy is one of receiver_proxy or
+    // bulk_item_receiver_proxy). It is also responsible for destroying and, if necessary,
+    // deallocating the operation state.
     template <class _RcvrProxy>
     struct __proxy_receiver {
       using receiver_concept = receiver_t;
