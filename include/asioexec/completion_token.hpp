@@ -159,51 +159,64 @@ namespace asioexec {
       bool abandoned_{false};
 
       class frame_ {
-        operation_state_base& self_;
-        std::unique_lock<std::recursive_mutex> l_;
+        operation_state_base* self_;
         frame_* prev_;
        public:
         explicit frame_(operation_state_base& self) noexcept
-          : self_(self)
-          , l_(self.m_)
+          : self_([&]() noexcept {
+            self.m_.lock();
+            return &self;
+          }())
           , prev_(self.frames_) {
           self.frames_ = this;
+        }
+
+        constexpr frame_(frame_&& other) noexcept
+          : self_(std::exchange(other.self_, nullptr))
+          , prev_(std::exchange(other.prev_, nullptr)) {
         }
 
         frame_(const frame_&) = delete;
 
         ~frame_() noexcept {
-          if (l_) {
-            STDEXEC_ASSERT(self_.frames_ == this);
-            self_.frames_ = prev_;
-            if (!self_.frames_ && self_.abandoned_) {
+          if (self_) {
+            std::unique_lock l(self_->m_, std::adopt_lock);
+            STDEXEC_ASSERT(self_->frames_ == this);
+            self_->frames_ = prev_;
+            if (!self_->frames_ && self_->abandoned_) {
               //  We are the last frame and the handler is gone so it's up to us to
               //  finalize the operation
-              l_.unlock();
-              self_.callback_.reset();
-              if (self_.ex_) {
-                ::STDEXEC::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
+              l.unlock();
+              self_->callback_.reset();
+              if (self_->ex_) {
+                ::STDEXEC::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
               } else {
-                ::STDEXEC::set_stopped(static_cast<Receiver&&>(self_.r_));
+                ::STDEXEC::set_stopped(static_cast<Receiver&&>(self_->r_));
               }
             }
           }
         }
 
         explicit operator bool() const noexcept {
-          return bool(l_);
+          return bool(self_);
         }
 
         void release() noexcept {
-          auto ptr = this;
-          do {
-            STDEXEC_ASSERT(ptr->l_);
-            STDEXEC_ASSERT(self_.frames_ == ptr);
-            ptr = ptr->prev_;
-            self_.frames_->l_.unlock();
-            self_.frames_->prev_ = nullptr;
-            self_.frames_ = ptr;
-          } while (ptr);
+          auto&& self = *self_;
+          STDEXEC_ASSERT(this == self.frames_);
+          for (;;) {
+            STDEXEC_ASSERT(self.frames_);
+            STDEXEC_ASSERT(self.frames_->self_ == &self);
+            self.frames_->self_ = nullptr;
+            const auto prev = self.frames_->prev_;
+            self.frames_->prev_ = nullptr;
+            self.frames_ = prev;
+            self.m_.unlock();
+            if (!prev) {
+              break;
+            }
+          }
+          STDEXEC_ASSERT(!self_);
         }
       };
 
