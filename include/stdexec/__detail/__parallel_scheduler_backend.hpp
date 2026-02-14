@@ -20,7 +20,6 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-// #include "any_allocator.cuh"
 #include "../functional.hpp" // IWYU pragma: keep for __with_default
 #include "../stop_token.hpp" // IWYU pragma: keep for get_stop_token_t
 #include "__any_allocator.hpp"
@@ -93,13 +92,15 @@ namespace STDEXEC {
 
       /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
       /// subranges of [0, __n), and using `__s` for preallocated memory.
-      virtual void
-        schedule_bulk_chunked(size_t, bulk_item_receiver_proxy&, std::span<std::byte>) noexcept = 0;
+      virtual void schedule_bulk_chunked(
+        std::size_t,
+        bulk_item_receiver_proxy&,
+        std::span<std::byte>) noexcept = 0;
 
       /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
       /// using `__s` for preallocated memory.
       virtual void schedule_bulk_unchunked(
-        size_t,
+        std::size_t,
         bulk_item_receiver_proxy&,
         std::span<std::byte>) noexcept = 0;
     };

@@ -24,7 +24,7 @@
 #include <memory>
 
 namespace exec::system_context_replaceability {
-  using STDEXEC::system_context_replaceability::__parallel_scheduler_backend_factory;
+  using STDEXEC::system_context_replaceability::__parallel_scheduler_backend_factory_t;
 
   /// Interface for the parallel scheduler backend.
   using parallel_scheduler_backend [[deprecated(
@@ -40,15 +40,20 @@ namespace exec::system_context_replaceability {
     return STDEXEC::system_context_replaceability::query_parallel_scheduler_backend();
   }
 
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+  STDEXEC_PRAGMA_IGNORE_MSVC(4996) // warning C4996: 'function': was declared deprecated
+  STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
   /// Out of spec.
   [[deprecated(
     "Use STDEXEC::system_context_replaceability::set_parallel_scheduler_backend instead.")]]
-  inline auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory)
-    -> __parallel_scheduler_backend_factory {
+  inline auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
+    -> __parallel_scheduler_backend_factory_t {
     return STDEXEC::system_context_replaceability::set_parallel_scheduler_backend(__new_factory);
   }
+  STDEXEC_PRAGMA_POP()
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.

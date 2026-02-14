@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <stdexec/__detail/__parallel_scheduler.hpp>
 #include <stdexec/__detail/__system_context_default_impl.hpp>
-#include <exec/system_context.hpp>
 #include <stdexec/execution.hpp>
+
+#include <catch2/catch.hpp>
+
+#if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
+#  error This should be testing replacement of the system context with weak linking.
+#endif
 
 namespace ex = STDEXEC;
 namespace scr = ex::system_context_replaceability;
@@ -41,7 +46,7 @@ namespace {
 } // namespace
 
 namespace STDEXEC::system_context_replaceability {
-  // Should replace the function defined in __system_context_default_impl.hpp
+  // Should replace the function defined in __system_context_default_impl_entry.hpp
   auto query_parallel_scheduler_backend()
     -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend> {
     return std::make_shared<my_parallel_scheduler_backend_impl>();
@@ -50,10 +55,10 @@ namespace STDEXEC::system_context_replaceability {
 
 TEST_CASE(
   "Check that we are using a replaced system context (with weak linking)",
-  "[system_scheduler][replaceability]") {
+  "[scheduler][parallel_scheduler][replaceability]") {
   std::thread::id this_id = std::this_thread::get_id();
   std::thread::id pool_id{};
-  exec::parallel_scheduler sched = exec::get_parallel_scheduler();
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });
 

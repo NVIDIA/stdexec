@@ -22,17 +22,22 @@
 #include <memory>
 
 namespace STDEXEC::system_context_replaceability {
-  /// The type of a factory that can create `parallel_scheduler_backend` instances.
-  /// TODO(ericniebler): NOT TO SPEC.
-  using __parallel_scheduler_backend_factory = std::shared_ptr<parallel_scheduler_backend> (*)();
-
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
+  STDEXEC_ATTRIBUTE(weak)
   auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>;
+
+  /// The type of a factory that can create `parallel_scheduler_backend` instances.
+  /// NOT TO SPEC
+  using __parallel_scheduler_backend_factory_t = std::shared_ptr<parallel_scheduler_backend> (*)();
 
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
-  /// TODO(ericniebler): NOT TO SPEC.
-  auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory __new_factory)
-    -> __parallel_scheduler_backend_factory;
+  /// NOT TO SPEC
+  [[deprecated(
+    "Replacing the parallel scheduler backend at runtime is not recommended and may lead to "
+    "unexpected behavior. Use weak linking to replace the parallel scheduler at compile time "
+    "instead.")]]
+  auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
+    -> __parallel_scheduler_backend_factory_t;
 } // namespace STDEXEC::system_context_replaceability
