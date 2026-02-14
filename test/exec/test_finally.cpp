@@ -28,6 +28,11 @@ namespace {
     STATIC_REQUIRE(sender<decltype(s)>);
   }
 
+  TEST_CASE("finally with pipe syntax is a sender", "[adaptors][finally]") {
+    auto s = just() | exec::finally(just());
+    STATIC_REQUIRE(sender<decltype(s)>);
+  }
+
   TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
     STATIC_REQUIRE(sender_in<decltype(s), ex::env<>>);
