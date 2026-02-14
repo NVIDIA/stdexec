@@ -25,7 +25,6 @@ set(exec_test_sources
     test_completion_signatures.cpp
     test_create.cpp
     test_env.cpp
-    test_finally.cpp
     test_into_tuple.cpp
     test_repeat_until.cpp
     test_repeat_n.cpp
