@@ -21,6 +21,7 @@
 // include these after execution_fwd.hpp
 #include "../stdexec/__detail/__basic_sender.hpp"
 #include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/__detail/__sender_adaptor_closure.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
 #include "../stdexec/__detail/__utility.hpp"
@@ -48,7 +49,7 @@ namespace exec {
     template <STDEXEC::sender _Final>
     STDEXEC_ATTRIBUTE(always_inline)
     auto operator()(_Final&& __final) const {
-      return __closure(*this, static_cast<_Final&&>(__final));
+      return STDEXEC::__closure(*this, static_cast<_Final&&>(__final));
     }
 
     template <class _Sender>
