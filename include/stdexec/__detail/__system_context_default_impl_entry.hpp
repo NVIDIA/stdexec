@@ -42,10 +42,12 @@ namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE {
 
 // If query_parallel_scheduler_backend is defined by the user, it will override the
 // default implementation. If not, the linker will resolve to the default implementation.
-#  pragma comment(linker, "/alternatename:"
-  "?query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ"
-  "="
-  "?__default_query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ")
+#  pragma comment(                                                                                                                                               \
+    linker,                                                                                                                                                      \
+    "/alternatename:"                                                                                                                                            \
+    "?query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ" \
+    "="                                                                                                                                                          \
+    "?__default_query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ")
 
 #else // ^^^ MSVC ^^^ / vvv non-MSVC vvv
 
