@@ -141,4 +141,47 @@ namespace {
     REQUIRE(called);
     REQUIRE(!failed.load());
   }
+
+  TEST_CASE("repeat_n conditionally adds set_error_t(exception)", "[adaptors][repeat_n]") {
+    SECTION("ensure exception isn't always added") {
+      ex::sender auto snd = ex::just() | exec::repeat_n(1);
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(snd)>, ex::__detail::__not_a_variant>,
+        "Expected no errors ");
+    }
+
+    // There are two main cases that will contribute set_error_t(std::exception_ptr)
+    // 1. error's copy constructor could throw
+    // 2. connect() could throw
+    SECTION("error completion is added when an error's copy ctor can throw") {
+      // 1.
+      struct Error_with_throw_copy {
+        Error_with_throw_copy() noexcept = default;
+        Error_with_throw_copy(const Error_with_throw_copy&) noexcept(false) {};
+      };
+      ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_n(1);
+      static_assert(
+        std::same_as<
+          ex::error_types_of_t<decltype(snd)>,
+          std::variant<Error_with_throw_copy, std::exception_ptr>
+        >,
+        "Missing added set_error_t(std::exception_ptr)");
+    }
+
+    SECTION("error completion is added when connect can throw") {
+      // 2.
+      using Sender_connect_throws = just_with_env<ex::env<>>;
+      static_assert(
+        !ex::__error_types_t<
+          ex::completion_signatures_of_t<Sender_connect_throws>,
+          ex::__mcontains<ex::set_error_t(std::exception_ptr)>
+        >::value,
+        "Sender can't already emit exception to test if repeat_until() adds it");
+      ex::sender auto snd = Sender_connect_throws{} | exec::repeat_n(1);
+      static_assert(
+        std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
+        "Missing added set_error_t(std::exception_ptr)");
+    }
+  }
+
 } // namespace

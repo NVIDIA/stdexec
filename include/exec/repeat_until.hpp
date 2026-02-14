@@ -36,15 +36,21 @@ namespace exec {
 
     template <class _Receiver>
     struct __opstate_base {
-      constexpr explicit __opstate_base(_Receiver &&__rcvr)
+      constexpr explicit __opstate_base(_Receiver &&__rcvr) noexcept
         : __rcvr_{static_cast<_Receiver &&>(__rcvr)} {
+        static_assert(
+          __nothrow_constructible_from<trampoline_scheduler>,
+          "trampoline_scheduler c'tor is always expected to be noexcept");
       }
 
       virtual constexpr void __cleanup() noexcept = 0;
       virtual constexpr void __repeat() noexcept = 0;
 
       _Receiver __rcvr_;
-      trampoline_scheduler __sched_;
+      trampoline_scheduler __sched_{};
+
+     protected:
+      ~__opstate_base() noexcept = default;
     };
 
     template <class _Boolean, bool _Expected>
@@ -123,12 +129,11 @@ namespace exec {
       using __bouncy_sndr_t =
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
-      static constexpr bool __nothrow_connect =
-        STDEXEC::__nothrow_connectable<__bouncy_sndr_t, __receiver_t>;
 
-      constexpr explicit __opstate(_Child __child, _Receiver __rcvr) noexcept(__nothrow_connect)
-        : __opstate_base<_Receiver>(static_cast<_Receiver &&>(__rcvr))
-        , __child_(static_cast<_Child &&>(__child)) {
+      constexpr explicit __opstate(_Child __child, _Receiver __rcvr)
+        noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
+        : __opstate_base<_Receiver>(std::move(__rcvr))
+        , __child_(std::move(__child)) {
         __connect();
       }
 
@@ -136,7 +141,10 @@ namespace exec {
         STDEXEC::start(*__child_op_);
       }
 
-      constexpr auto __connect() noexcept(__nothrow_connect) -> __child_op_t & {
+      constexpr auto __connect() noexcept(
+        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler &>
+        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
+        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>) -> __child_op_t & {
         return __child_op_.__emplace_from(
           STDEXEC::connect,
           exec::sequence(STDEXEC::schedule(this->__sched_), __child_),
@@ -152,13 +160,19 @@ namespace exec {
           STDEXEC::start(__connect());
         }
         STDEXEC_CATCH_ALL {
-          STDEXEC::set_error(static_cast<_Receiver &&>(this->__rcvr_), std::current_exception());
+          if constexpr (!noexcept(__connect())) {
+            STDEXEC::set_error(static_cast<_Receiver &&>(this->__rcvr_), std::current_exception());
+          }
         }
       }
 
       _Child __child_;
       STDEXEC::__optional<__child_op_t> __child_op_;
     };
+
+    template <class _Child, class _Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __opstate(_Child, _Receiver) -> __opstate<_Child, _Receiver>;
 
     STDEXEC_PRAGMA_POP()
 
@@ -183,6 +197,26 @@ namespace exec {
         >
       >;
 
+    template <class... _Booleans>
+    using __values_overload_nothrow_bool_convertible_t =
+      __mand<std::is_nothrow_convertible<_Booleans, bool>...>;
+
+    template <class _Sender, class... _Env>
+    using __values_nothrow_bool_convertible_t = __value_types_t<
+      __completion_signatures_of_t<_Sender, _Env...>,     // sigs
+      __qq<__values_overload_nothrow_bool_convertible_t>, // tuple
+      __qq<__mand>                                        // variant
+    >;
+
+    template <typename _Sender, typename... _Env>
+    using __with_eptr_completion_t = __eptr_completion_unless<
+      __values_nothrow_bool_convertible_t<_Sender, _Env...>::value
+      && __cmplsigs::__partitions_of_t<
+        __completion_signatures_of_t<_Sender, _Env...>
+      >::__nothrow_decay_copyable::__errors::value
+      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)
+    >;
+
     template <class...>
     using __delete_set_value_t = completion_signatures<>;
 
@@ -190,8 +224,8 @@ namespace exec {
     using __completions_t = STDEXEC::transform_completion_signatures<
       __completion_signatures_of_t<__decay_t<_Child> &, _Env...>,
       STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<exec::trampoline_scheduler>, _Env...>,
-        __eptr_completion,
+        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
+        __with_eptr_completion_t<_Child, _Env...>,
         __delete_set_value_t
       >,
       __mbind_front_q<__values_t, _Child>::template __f
