@@ -33,27 +33,6 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_MSVC(4702) // warning C4702: unreachable code
 
-// For weak linking to work on Windows, we must leave query_parallel_scheduler_backend
-// undefined, and in a separate translation unit, provide a default implementation with a
-// different name, and then use a linker directive to alias the weak symbol to the default
-// implementation. For this, it is necessary to utter the mangled names of both
-// query_parallel_scheduler_backend and __default_query_parallel_scheduler_backend. We
-// don't want the mangled name to depend on the value of the STDEXEC macro, so we put both
-// functions in a separate namespace.
-#if STDEXEC_MSVC()
-namespace STDEXEC::system_context_replaceability {
-}
-namespace __system_context_replaceability {
-  using namespace STDEXEC::system_context_replaceability;
-} // namespace __system_context_replaceability
-namespace STDEXEC::system_context_replaceability {
-  using namespace ::__system_context_replaceability;
-} // namespace STDEXEC::system_context_replaceability
-#  define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE __system_context_replaceability
-#else
-#  define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE STDEXEC::system_context_replaceability
-#endif
-
 namespace STDEXEC {
   class task_scheduler;
 
@@ -103,166 +82,157 @@ namespace STDEXEC {
       virtual void execute(size_t, size_t) noexcept = 0;
     };
 
-    // This base class associates the STDEXEC::system_context_replaceability namespace
-    // with the parallel_scheduler_backend for the purposes of ADL.
-    struct __parallel_scheduler_backend_base {
-      virtual ~__parallel_scheduler_backend_base() = 0;
+    /// Interface for the parallel scheduler backend.
+    struct parallel_scheduler_backend {
+      virtual ~parallel_scheduler_backend() = 0;
+
+      /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
+      /// memory.
+      virtual void schedule(receiver_proxy&, std::span<std::byte>) noexcept = 0;
+
+      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
+      /// subranges of [0, __n), and using `__s` for preallocated memory.
+      virtual void schedule_bulk_chunked(
+        std::size_t,
+        bulk_item_receiver_proxy&,
+        std::span<std::byte>) noexcept = 0;
+
+      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
+      /// using `__s` for preallocated memory.
+      virtual void schedule_bulk_unchunked(
+        std::size_t,
+        bulk_item_receiver_proxy&,
+        std::span<std::byte>) noexcept = 0;
     };
 
-    inline __parallel_scheduler_backend_base::~__parallel_scheduler_backend_base() = default;
+    inline parallel_scheduler_backend::~parallel_scheduler_backend() = default;
   } // namespace system_context_replaceability
-} // namespace STDEXEC
 
-// Give parallel_scheduler_backend a mangled name that does not depend on the value of the
-// STDEXEC macro. This is so that we can use weak linking to make
-// query_parallel_scheduler_backend replaceable.
-namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE {
-  /// Interface for the parallel scheduler backend.
-  struct parallel_scheduler_backend : __parallel_scheduler_backend_base {
-    /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
-    /// memory.
-    virtual void schedule(receiver_proxy&, std::span<std::byte>) noexcept = 0;
+  namespace __detail {
+    // Partially implements the _RcvrProxy interface (either receiver_proxy or
+    // bulk_item_receiver_proxy) in terms of a concrete receiver type _Rcvr.
+    template <class _Rcvr, class _RcvrProxy>
+    struct __receiver_proxy_base : _RcvrProxy {
+     public:
+      using receiver_concept = receiver_t;
 
-    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
-    /// subranges of [0, __n), and using `__s` for preallocated memory.
-    virtual void schedule_bulk_chunked(
-      std::size_t,
-      bulk_item_receiver_proxy&,
-      std::span<std::byte>) noexcept = 0;
-
-    /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
-    /// using `__s` for preallocated memory.
-    virtual void schedule_bulk_unchunked(
-      std::size_t,
-      bulk_item_receiver_proxy&,
-      std::span<std::byte>) noexcept = 0;
-  };
-} // namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE
-
-namespace STDEXEC::__detail {
-  // Partially implements the _RcvrProxy interface (either receiver_proxy or
-  // bulk_item_receiver_proxy) in terms of a concrete receiver type _Rcvr.
-  template <class _Rcvr, class _RcvrProxy>
-  struct __receiver_proxy_base : _RcvrProxy {
-   public:
-    using receiver_concept = receiver_t;
-
-    explicit __receiver_proxy_base(_Rcvr rcvr) noexcept
-      : __rcvr_(static_cast<_Rcvr&&>(rcvr)) {
-    }
-
-    void set_error(std::exception_ptr&& eptr) noexcept final {
-      STDEXEC::set_error(std::move(__rcvr_), std::move(eptr));
-    }
-
-    void set_stopped() noexcept final {
-      STDEXEC::set_stopped(std::move(__rcvr_));
-    }
-
-   protected:
-    void __query_env(__type_index __query_id, __type_index __value, void* __dest)
-      const noexcept final {
-      if (__query_id == __mtypeid<get_stop_token_t>) {
-        __query(get_stop_token, __value, __dest);
-      } else if (__query_id == __mtypeid<get_allocator_t>) {
-        __query(get_allocator, __value, __dest);
+      explicit __receiver_proxy_base(_Rcvr rcvr) noexcept
+        : __rcvr_(static_cast<_Rcvr&&>(rcvr)) {
       }
-    }
 
-   private:
-    void __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
-      using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
-      if constexpr (std::is_same_v<inplace_stop_token, __stop_token_t>) {
-        if (__value_type == __mtypeid<inplace_stop_token>) {
-          using __dest_t = std::optional<inplace_stop_token>;
-          *static_cast<__dest_t*>(__dest) = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
+      void set_error(std::exception_ptr&& eptr) noexcept final {
+        STDEXEC::set_error(std::move(__rcvr_), std::move(eptr));
+      }
+
+      void set_stopped() noexcept final {
+        STDEXEC::set_stopped(std::move(__rcvr_));
+      }
+
+     protected:
+      void __query_env(__type_index __query_id, __type_index __value, void* __dest)
+        const noexcept final {
+        if (__query_id == __mtypeid<get_stop_token_t>) {
+          __query(get_stop_token, __value, __dest);
+        } else if (__query_id == __mtypeid<get_allocator_t>) {
+          __query(get_allocator, __value, __dest);
         }
       }
-    }
 
-    void __query(get_allocator_t, __type_index __value_type, void* __dest) const noexcept {
-      if (__value_type == __mtypeid<__any_allocator<std::byte>>) {
-        using __dest_t = std::optional<__any_allocator<std::byte>>;
-        constexpr auto __get_alloc = __with_default(get_allocator, std::allocator<std::byte>());
-        auto __alloc = STDEXEC::__rebind_allocator<std::byte>(
-          __get_alloc(STDEXEC::get_env(__rcvr_)));
-        *static_cast<__dest_t*>(__dest) = __any_allocator{std::move(__alloc)};
+     private:
+      void __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
+        using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
+        if constexpr (std::is_same_v<inplace_stop_token, __stop_token_t>) {
+          if (__value_type == __mtypeid<inplace_stop_token>) {
+            using __dest_t = std::optional<inplace_stop_token>;
+            *static_cast<__dest_t*>(__dest) = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
+          }
+        }
       }
-    }
 
-    //   [[nodiscard]]
-    //   auto query(const get_stop_token_t&) const noexcept -> inplace_stop_token final {
-    //     if constexpr (__callable<const get_stop_token_t&, env_of_t<_Rcvr>>) {
-    //       if constexpr (__same_as<stop_token_of_t<env_of_t<_Rcvr>>, inplace_stop_token>) {
-    //         return get_stop_token(get_env(__rcvr_));
-    //       }
-    //     }
-    //     return inplace_stop_token{}; // MSVC thinks this is unreachable. :-?
-    //   }
+      void __query(get_allocator_t, __type_index __value_type, void* __dest) const noexcept {
+        if (__value_type == __mtypeid<__any_allocator<std::byte>>) {
+          using __dest_t = std::optional<__any_allocator<std::byte>>;
+          constexpr auto __get_alloc = __with_default(get_allocator, std::allocator<std::byte>());
+          auto __alloc = STDEXEC::__rebind_allocator<std::byte>(
+            __get_alloc(STDEXEC::get_env(__rcvr_)));
+          *static_cast<__dest_t*>(__dest) = __any_allocator{std::move(__alloc)};
+        }
+      }
 
-    //   [[nodiscard]]
-    //   auto query(const get_allocator_t&) const noexcept -> any_allocator<std::byte> final {
-    //     return any_allocator{
-    //       __with_default(get_allocator, std::allocator<std::byte>())(get_env(__rcvr_))};
-    //   }
+      //   [[nodiscard]]
+      //   auto query(const get_stop_token_t&) const noexcept -> inplace_stop_token final {
+      //     if constexpr (__callable<const get_stop_token_t&, env_of_t<_Rcvr>>) {
+      //       if constexpr (__same_as<stop_token_of_t<env_of_t<_Rcvr>>, inplace_stop_token>) {
+      //         return get_stop_token(get_env(__rcvr_));
+      //       }
+      //     }
+      //     return inplace_stop_token{}; // MSVC thinks this is unreachable. :-?
+      //   }
 
-    //   // defined in task_scheduler.cuh:
-    //   [[nodiscard]]
-    //   auto query(const get_scheduler_t& __query) const noexcept -> task_scheduler final;
+      //   [[nodiscard]]
+      //   auto query(const get_allocator_t&) const noexcept -> any_allocator<std::byte> final {
+      //     return any_allocator{
+      //       __with_default(get_allocator, std::allocator<std::byte>())(get_env(__rcvr_))};
+      //   }
 
-   public:
-    _Rcvr __rcvr_;
-  };
+      //   // defined in task_scheduler.cuh:
+      //   [[nodiscard]]
+      //   auto query(const get_scheduler_t& __query) const noexcept -> task_scheduler final;
 
-  template <class _Rcvr>
-  struct __receiver_proxy
-    : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy> {
-    using __receiver_proxy_base<
-      _Rcvr,
-      system_context_replaceability::receiver_proxy
-    >::__receiver_proxy_base;
+     public:
+      _Rcvr __rcvr_;
+    };
 
-    void set_value() noexcept final {
-      STDEXEC::set_value(std::move(this->__rcvr_));
-    }
-  };
+    template <class _Rcvr>
+    struct __receiver_proxy
+      : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy> {
+      using __receiver_proxy_base<
+        _Rcvr,
+        system_context_replaceability::receiver_proxy
+      >::__receiver_proxy_base;
 
-  // A receiver type that forwards its completion operations to a _RcvrProxy member held
-  // by reference (where _RcvrProxy is one of receiver_proxy or
-  // bulk_item_receiver_proxy). It is also responsible for destroying and, if necessary,
-  // deallocating the operation state.
-  template <class _RcvrProxy>
-  struct __proxy_receiver {
-    using receiver_concept = receiver_t;
-    using __delete_fn_t = void(void*) noexcept;
+      void set_value() noexcept final {
+        STDEXEC::set_value(std::move(this->__rcvr_));
+      }
+    };
 
-    void set_value() noexcept {
-      auto& __proxy = __rcvr_proxy_;
-      __delete_fn_(__opstate_storage_); // NB: destroys *this
-      __proxy.set_value();
-    }
+    // A receiver type that forwards its completion operations to a _RcvrProxy member held
+    // by reference (where _RcvrProxy is one of receiver_proxy or
+    // bulk_item_receiver_proxy). It is also responsible for destroying and, if necessary,
+    // deallocating the operation state.
+    template <class _RcvrProxy>
+    struct __proxy_receiver {
+      using receiver_concept = receiver_t;
+      using __delete_fn_t = void(void*) noexcept;
 
-    void set_error(std::exception_ptr eptr) noexcept {
-      auto& __proxy = __rcvr_proxy_;
-      __delete_fn_(__opstate_storage_); // NB: destroys *this
-      __proxy.set_error(std::move(eptr));
-    }
+      void set_value() noexcept {
+        auto& __proxy = __rcvr_proxy_;
+        __delete_fn_(__opstate_storage_); // NB: destroys *this
+        __proxy.set_value();
+      }
 
-    void set_stopped() noexcept {
-      auto& __proxy = __rcvr_proxy_;
-      __delete_fn_(__opstate_storage_); // NB: destroys *this
-      __proxy.set_stopped();
-    }
+      void set_error(std::exception_ptr eptr) noexcept {
+        auto& __proxy = __rcvr_proxy_;
+        __delete_fn_(__opstate_storage_); // NB: destroys *this
+        __proxy.set_error(std::move(eptr));
+      }
 
-    [[nodiscard]]
-    auto get_env() const noexcept -> env_of_t<_RcvrProxy> {
-      return STDEXEC::get_env(__rcvr_proxy_);
-    }
+      void set_stopped() noexcept {
+        auto& __proxy = __rcvr_proxy_;
+        __delete_fn_(__opstate_storage_); // NB: destroys *this
+        __proxy.set_stopped();
+      }
 
-    _RcvrProxy& __rcvr_proxy_;
-    void* __opstate_storage_;
-    __delete_fn_t* __delete_fn_;
-  };
-} // namespace STDEXEC::__detail
+      [[nodiscard]]
+      auto get_env() const noexcept -> env_of_t<_RcvrProxy> {
+        return STDEXEC::get_env(__rcvr_proxy_);
+      }
+
+      _RcvrProxy& __rcvr_proxy_;
+      void* __opstate_storage_;
+      __delete_fn_t* __delete_fn_;
+    };
+  } // namespace __detail
+} // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

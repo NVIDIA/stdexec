@@ -671,7 +671,6 @@ namespace STDEXEC {
   };
 
   inline auto get_parallel_scheduler() -> parallel_scheduler {
-    STDEXEC_ASSERT(&system_context_replaceability::query_parallel_scheduler_backend != nullptr);
     auto __impl = system_context_replaceability::query_parallel_scheduler_backend();
     if (!__impl) {
       STDEXEC_THROW(std::runtime_error{"No system context implementation found"});

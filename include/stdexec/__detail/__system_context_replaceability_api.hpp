@@ -21,7 +21,7 @@
 
 #include <memory>
 
-namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE {
+namespace STDEXEC::system_context_replaceability {
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
   STDEXEC_ATTRIBUTE(weak)
@@ -40,4 +40,4 @@ namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE {
     "instead.")]]
   auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
     -> __parallel_scheduler_backend_factory_t;
-} // namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE
+} // namespace STDEXEC::system_context_replaceability
