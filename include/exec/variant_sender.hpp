@@ -51,9 +51,9 @@ namespace exec {
 
   template <class... _Senders>
   struct variant_sender {
-    template <class _Self, class _Env>
+    template <class _Self, class... _Env>
     using __completions_t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
-      STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Env>...
+      STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Env...>...
     >;
 
     template <std::size_t _Index>
@@ -125,8 +125,8 @@ namespace exec {
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
-    template <STDEXEC::__decays_to<variant_sender> _Self, class _Env>
-    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env> {
+    template <STDEXEC::__decays_to<variant_sender> _Self, class... _Env>
+    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...> {
       return {};
     }
   };
