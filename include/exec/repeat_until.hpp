@@ -170,6 +170,10 @@ namespace exec {
       STDEXEC::__optional<__child_op_t> __child_op_;
     };
 
+    template <class _Child, class _Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __opstate(_Child, _Receiver) -> __opstate<_Child, _Receiver>;
+
     STDEXEC_PRAGMA_POP()
 
     struct _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_ { };

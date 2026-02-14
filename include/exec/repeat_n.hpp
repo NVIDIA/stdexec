@@ -115,7 +115,7 @@ namespace exec {
       }
 
       constexpr auto __connect() noexcept(
-        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler&>
+        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler &>
         && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
         && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>) -> __child_op_t & {
         return __child_op_.__emplace_from(
@@ -148,6 +148,10 @@ namespace exec {
       _Child __child_;
       STDEXEC::__optional<__child_op_t> __child_op_;
     };
+
+    template <class _Child, class _Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __opstate(std::size_t, _Child, _Receiver) -> __opstate<_Child, _Receiver>;
 
     struct repeat_n_t;
     struct _THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_;
