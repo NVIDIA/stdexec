@@ -29,20 +29,20 @@
 
 #include "__system_context_default_impl.hpp" // IWYU pragma: keep
 
-namespace __system_context_replaceability {
+namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE {
 
 #if STDEXEC_MSVC()
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
   STDEXEC_SYSTEM_CONTEXT_INLINE auto __default_query_parallel_scheduler_backend() //
     -> std::shared_ptr<parallel_scheduler_backend> {
-    return __system_context_default_impl::__parallel_scheduler_backend_singleton
+    return STDEXEC::__system_context_default_impl::__parallel_scheduler_backend_singleton
       .__get_current_instance();
   }
 
 // If query_parallel_scheduler_backend is defined by the user, it will override the
 // default implementation. If not, the linker will resolve to the default implementation.
-#pragma comment(linker, "/alternatename:"
+#  pragma comment(linker, "/alternatename:"
   "?query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ"
   "="
   "?__default_query_parallel_scheduler_backend@__system_context_replaceability@@YA?AV?$shared_ptr@Uparallel_scheduler_backend@__system_context_replaceability@@@std@@XZ")
@@ -51,8 +51,7 @@ namespace __system_context_replaceability {
 
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
-  extern STDEXEC_SYSTEM_CONTEXT_INLINE STDEXEC_ATTRIBUTE(weak) //
-    auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend> {
+  auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend> {
     return STDEXEC::__system_context_default_impl::__parallel_scheduler_backend_singleton
       .__get_current_instance();
   }
@@ -67,4 +66,4 @@ namespace __system_context_replaceability {
     return STDEXEC::__system_context_default_impl::__parallel_scheduler_backend_singleton
       .__set_backend_factory(__new_factory);
   }
-} // namespace __system_context_replaceability
+} // namespace STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_NAMESPACE
