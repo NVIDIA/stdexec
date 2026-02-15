@@ -43,6 +43,7 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
+    stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_then.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
     stdexec/algos/adaptors/test_upon_stopped.cpp
