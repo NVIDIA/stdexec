@@ -129,8 +129,7 @@ namespace STDEXEC {
     }
 
     template <class _Env>
-    using __env_t =
-      decltype(__when_all::__mk_env(__declval<_Env>(), __declval<inplace_stop_source&>()));
+    using __env_t = __result_of<__when_all::__mk_env<_Env>, _Env, const inplace_stop_source&>;
 
     template <class _Sender, class _Env>
     concept __max1_sender =
@@ -432,8 +431,8 @@ namespace STDEXEC {
       };
 
       static constexpr auto __start = []<class _State, class... _Operations>(
-                                      _State& __state,
-                                      _Operations&... __child_ops) noexcept -> void {
+                                        _State& __state,
+                                        _Operations&... __child_ops) noexcept -> void {
         // register stop callback:
         __state.__on_stop_.emplace(
           get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
@@ -473,10 +472,10 @@ namespace STDEXEC {
       }
 
       static constexpr auto __complete = []<class _Index, class _State, class _Set, class... _Args>(
-                                         _Index,
-                                         _State& __state,
-                                         _Set,
-                                         _Args&&... __args) noexcept -> void {
+                                           _Index,
+                                           _State& __state,
+                                           _Set,
+                                           _Args&&... __args) noexcept -> void {
         using _ValuesTuple = decltype(_State::__values_);
         if constexpr (__same_as<_Set, set_error_t>) {
           __set_error(__state, static_cast<_Args&&>(__args)...);
@@ -534,9 +533,9 @@ namespace STDEXEC {
 
     struct __transfer_when_all_impl : __sexpr_defaults {
       static constexpr auto __get_attrs = []<class _Scheduler, class... _Child>(
-                                          __ignore,
-                                          const _Scheduler& __sched,
-                                          const _Child&...) noexcept {
+                                            __ignore,
+                                            const _Scheduler& __sched,
+                                            const _Child&...) noexcept {
         // TODO(ericniebler): check this use of __sched_attrs
         return __sched_attrs{std::cref(__sched)};
       };
@@ -551,9 +550,9 @@ namespace STDEXEC {
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults {
       static constexpr auto __get_attrs = []<class _Scheduler, class... _Child>(
-                                          __ignore,
-                                          const _Scheduler& __sched,
-                                          const _Child&...) noexcept {
+                                            __ignore,
+                                            const _Scheduler& __sched,
+                                            const _Child&...) noexcept {
         return __sched_attrs{std::cref(__sched)};
       };
 
