@@ -129,7 +129,8 @@ namespace STDEXEC {
     }
 
     template <class _Env>
-    using __env_t = __result_of<__when_all::__mk_env<_Env>, _Env, const inplace_stop_source&>;
+    using __env_t =
+      decltype(__when_all::__mk_env(__declval<_Env>(), __declval<inplace_stop_source&>()));
 
     template <class _Sender, class _Env>
     concept __max1_sender =
