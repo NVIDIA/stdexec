@@ -118,53 +118,6 @@ namespace STDEXEC {
         return completion_behavior::asynchronous_affine;
       }
     };
-
-    template <class _Self, class _Env>
-    consteval auto __get_completion_signatures() {
-      STDEXEC_COMPLSIGS_LET(
-        __child_completions, get_completion_signatures<__child_of<_Self>, __fwd_env_t<_Env>>()) {
-        using __child_completions_t = decltype(__child_completions);
-        using __sched_t = __call_result_or_t<get_scheduler_t, __not_a_scheduler<>, const _Env&>;
-        using __eptr_completion_t =
-          __eptr_completion_unless_t<__nothrow_decay_copyable_results_t<__child_completions_t>>;
-
-        constexpr auto __completions = __transform_completion_signatures(
-          __child_completions,
-          __decay_arguments<set_value_t, affine_on_t>(),
-          __decay_arguments<set_error_t, affine_on_t>(),
-          {},
-          __eptr_completion_t{});
-
-        if constexpr (!__decay_copyable_results_t<__child_completions_t>::value) {
-          // If the child sender's completion signatures aren't decay-copyable, then we can't
-          // adapt it to be affine.
-          return __throw_compile_time_error<
-            _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_CURRENT_SCHEDULER_),
-            _WHY_(_SENDER_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-            _WITH_PRETTY_SENDER_<__child_of<_Self>>,
-            _WITH_ENVIRONMENT_(_Env),
-            _WHERE_(_IN_ALGORITHM_, affine_on_t)
-          >();
-        } else if constexpr (__is_affine<__child_of<_Self>, _Env>) { // NOLINT(bugprone-branch-clone)
-          return __completions;
-        } else if constexpr (__same_as<__sched_t, __not_a_scheduler<>>) {
-          return __throw_compile_time_error<
-            _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_CURRENT_SCHEDULER_),
-            _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
-            _WHERE_(_IN_ALGORITHM_, affine_on_t)
-          >();
-        } else if constexpr (!__infallible_scheduler<__sched_t, _Env>) {
-          return __throw_compile_time_error<
-            _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_CURRENT_SCHEDULER_),
-            _WHY_(_THE_SCHEDULER_IN_THE_CURRENT_EXECUTION_ENVIRONMENT_IS_NOT_INFALLIBLE_),
-            _WHERE_(_IN_ALGORITHM_, affine_on_t),
-            _WITH_SCHEDULER_(__sched_t)
-          >();
-        } else {
-          return __completions;
-        }
-      }
-    }
   } // namespace __affine_on
 
   template <>
@@ -173,10 +126,5 @@ namespace STDEXEC {
       [](__ignore, __ignore, __ignore) noexcept {
         return __affine_on::__attrs{};
       };
-
-    template <class _Self, class _Env>
-    static consteval auto __get_completion_signatures() {
-      return __affine_on::__get_completion_signatures<_Self, _Env>();
-    }
   };
 } // namespace STDEXEC

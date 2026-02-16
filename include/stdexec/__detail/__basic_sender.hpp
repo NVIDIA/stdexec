@@ -184,7 +184,7 @@ namespace STDEXEC {
         _Set()(static_cast<_State&&>(__state).__rcvr_, static_cast<_As&&>(__as)...);
       };
 
-      template <class _Sender, class... _Env>
+      template <class _Sender, class _Env>
       static consteval auto __get_completion_signatures() {
         static_assert(
           __mnever<tag_of_t<_Sender>>,
