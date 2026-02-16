@@ -404,7 +404,7 @@ namespace {
                   ex::completion_signatures_of_t<decltype(snd), decltype(env)>,
                   ex::completion_signatures<ex::set_value_t()>
     >);
-    auto op = ex::connect(snd, expect_void_receiver{});
+    auto op = ex::connect(snd, expect_void_receiver(env));
     ex::start(op);
   }
 
