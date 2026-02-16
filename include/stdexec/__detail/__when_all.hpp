@@ -285,6 +285,15 @@ namespace STDEXEC {
         __on_stop_.reset();
         // All child operations have completed and arrived at the barrier.
         switch (__state_.load(__std::memory_order_relaxed)) {
+        case __stopped:
+          if constexpr (_SendsStopped) {
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+            break;
+          }
+          // This is reachable because the stop callback sets __stopped whether
+          // or not any child can send set_stopped, therefore we handle this the
+          // same as __started
+          [[fallthrough]];
         case __started:
           if constexpr (!__std::same_as<_ValuesTuple, __ignore>) {
             // All child operations completed successfully:
@@ -296,13 +305,6 @@ namespace STDEXEC {
             // One or more child operations completed with an error:
             STDEXEC::__visit(
               __mk_completion_fn(set_error, __rcvr_), static_cast<_ErrorsVariant&&>(__errors_));
-          }
-          break;
-        case __stopped:
-          if constexpr (_SendsStopped) {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-          } else {
-            STDEXEC_UNREACHABLE();
           }
           break;
         default:;
@@ -489,23 +491,19 @@ namespace STDEXEC {
             __state.__stop_source_.request_stop();
           }
         } else if constexpr (!__same_as<_ValuesTuple, __ignore>) {
-          // We only need to bother recording the completion values
-          // if we're not already in the "error" or "stopped" state.
-          if (__state.__state_.load() == __started) {
-            auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
-            using _Tuple = __decayed_tuple<_Args...>;
-            static_assert(
-              __same_as<decltype(*__opt_values), _Tuple&>,
-              "One of the senders in this when_all() is fibbing about what types it sends");
-            if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
+          auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
+          using _Tuple = __decayed_tuple<_Args...>;
+          static_assert(
+            __same_as<decltype(*__opt_values), _Tuple&>,
+            "One of the senders in this when_all() is fibbing about what types it sends");
+          if constexpr ((__nothrow_decay_copyable<_Args> && ...)) {
+            __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
+          } else {
+            STDEXEC_TRY {
               __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-            } else {
-              STDEXEC_TRY {
-                __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-              }
-              STDEXEC_CATCH_ALL {
-                __set_error(__state, std::current_exception());
-              }
+            }
+            STDEXEC_CATCH_ALL {
+              __set_error(__state, std::current_exception());
             }
           }
         }
