@@ -57,20 +57,20 @@ namespace STDEXEC {
         : __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
       }
 
-      void set_value() noexcept override {
+      constexpr void set_value() noexcept override {
         STDEXEC::set_value(std::forward<_Rcvr>(__rcvr_));
       }
 
-      void set_error(std::exception_ptr&& __ex) noexcept override {
+      STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr __ex) noexcept override {
         STDEXEC::set_error(std::forward<_Rcvr>(__rcvr_), std::move(__ex));
       }
 
-      void set_stopped() noexcept override {
+      constexpr void set_stopped() noexcept override {
         STDEXEC::set_stopped(std::forward<_Rcvr>(__rcvr_));
       }
 
      protected:
-      void __query_env(__type_index __query_type, __type_index __value_type, void* __dest)
+      constexpr void __query_env(__type_index __query_type, __type_index __value_type, void* __dest)
         const noexcept override {
         if (__query_type == __mtypeid<get_stop_token_t>) {
           __query(get_stop_token, __value_type, __dest);
@@ -78,7 +78,8 @@ namespace STDEXEC {
       }
 
      private:
-      void __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
+      constexpr void
+        __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
         using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
         if constexpr (std::is_same_v<inplace_stop_token, __stop_token_t>) {
           if (__value_type == __mtypeid<inplace_stop_token>) {
@@ -89,7 +90,7 @@ namespace STDEXEC {
       }
 
      public:
-      STDEXEC_ATTRIBUTE(no_unique_address)
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Rcvr __rcvr_;
     };
 
@@ -119,7 +120,8 @@ namespace STDEXEC {
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
   struct __parallel_scheduler_domain : default_domain {
     template <__bulk_chunked_or_unchunked _Sender, class _Env>
-    auto transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) const noexcept;
+    constexpr auto
+      transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env) const noexcept;
   };
 
   namespace __detail {
@@ -318,7 +320,7 @@ namespace STDEXEC {
 
     /// Implementation __detail. Constructs the scheduler to wrap `__impl`.
     explicit parallel_scheduler(__detail::__backend_ptr_t&& __impl)
-      : __impl_(__impl) {
+      : __impl_(std::move(__impl)) {
     }
 
     /// The underlying implementation of the scheduler.
@@ -728,7 +730,7 @@ namespace STDEXEC {
   };
 
   template <__bulk_chunked_or_unchunked _Sender, class _Env>
-  auto
+  constexpr auto
     __parallel_scheduler_domain::transform_sender(set_value_t, _Sender&& __sndr, const _Env& __env)
       const noexcept {
     if constexpr (__completes_on<_Sender, parallel_scheduler, _Env>) {
