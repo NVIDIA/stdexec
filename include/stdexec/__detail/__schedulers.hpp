@@ -141,7 +141,7 @@ namespace STDEXEC {
       template <class _Attrs, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch>
       constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
-        -> __query_result_t<_Attrs, _GetComplSch> {
+        -> __decay_t<__query_result_t<_Attrs, _GetComplSch>> {
         static_assert(noexcept(__attrs.query(_GetComplSch{})));
         static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch>>);
         return __attrs.query(_GetComplSch{});
@@ -150,7 +150,7 @@ namespace STDEXEC {
       template <class _Attrs, class _Env, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch, const _Env&>
       constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
-        -> __query_result_t<_Attrs, _GetComplSch, const _Env&> {
+        -> __decay_t<__query_result_t<_Attrs, _GetComplSch, const _Env&>> {
         static_assert(noexcept(__attrs.query(_GetComplSch{}, __env)));
         static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch, const _Env&>>);
         return __attrs.query(_GetComplSch{}, __env);
