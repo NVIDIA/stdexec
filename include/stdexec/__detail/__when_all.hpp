@@ -375,17 +375,16 @@ namespace STDEXEC {
 
     template <class _Receiver>
     static constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept {
-      using __env_of_t = env_of_t<_Receiver>;
-      return [&]<__max1_sender<__env_t<__env_of_t>>... _Child>(
+      return [&]<__max1_sender<__env_t<env_of_t<_Receiver>>>... _Child>(
                __ignore, __ignore, _Child&&...) noexcept {
-        using _Traits = __traits<__env_of_t, _Child...>;
+        using _Traits = __traits<env_of_t<_Receiver>, _Child...>;
         using _ErrorsVariant = _Traits::__errors_variant;
         using _ValuesTuple = _Traits::__values_tuple;
         using _State = __state<
           _ErrorsVariant,
           _ValuesTuple,
           _Receiver,
-          (sends_stopped<_Child, __env_of_t> || ...)
+          (sends_stopped<_Child, env_of_t<_Receiver>> || ...)
         >;
         return _State{static_cast<_Receiver&&>(__rcvr), sizeof...(_Child)};
       };
