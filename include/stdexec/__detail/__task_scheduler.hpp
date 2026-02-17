@@ -127,12 +127,12 @@ namespace STDEXEC {
 
     template <__task::__non_task_scheduler _Sch>
     [[nodiscard]]
-    constexpr auto operator==(const _Sch& __other) const noexcept -> bool {
+    auto operator==(const _Sch& __other) const noexcept -> bool {
       return __backend_->__equal_to(std::addressof(__other), __mtypeid<_Sch>);
     }
 
     [[nodiscard]]
-    constexpr auto
+    auto
       query(get_forward_progress_guarantee_t) const noexcept -> forward_progress_guarantee {
       return __backend_->query(get_forward_progress_guarantee);
     }
@@ -169,7 +169,7 @@ namespace STDEXEC {
         , __backend_(std::move(__backend)) {
       }
 
-      constexpr void start() noexcept {
+      void start() noexcept {
         STDEXEC_TRY {
           __backend_->schedule(__rcvr_proxy_, std::span{__storage_});
         }
@@ -227,7 +227,7 @@ namespace STDEXEC {
       using receiver_concept = receiver_t;
 
       template <class... _As>
-      constexpr void set_value(_As&&... __as) noexcept {
+      void set_value(_As&&... __as) noexcept {
         STDEXEC_TRY {
           // Store the predecessor's values in the bulk operation state.
           using __values_t = __decayed_tuple<_As...>;
