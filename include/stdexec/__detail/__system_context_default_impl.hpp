@@ -60,13 +60,13 @@ namespace STDEXEC::__system_context_default_impl {
 
   struct __env {
     [[nodiscard]]
-    constexpr auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
+    auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
       auto __opt_alloc = __rcvr_.template try_query<__any_allocator<std::byte>>(get_allocator);
       return __opt_alloc ? *__opt_alloc : __any_allocator<std::byte>{std::allocator<std::byte>()};
     }
 
     [[nodiscard]]
-    constexpr auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+    auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
       auto __opt_alloc = __rcvr_.template try_query<inplace_stop_token>(get_stop_token);
       return __opt_alloc ? *__opt_alloc : inplace_stop_token{};
     }

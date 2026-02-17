@@ -67,7 +67,7 @@ namespace STDEXEC {
     // __env
     struct __env {
       [[nodiscard]]
-      constexpr auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
+      auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
         auto __opt_alloc = __rcvr_.template try_query<__any_allocator<std::byte>>(get_allocator);
         return __opt_alloc ? *__opt_alloc : __any_allocator<std::byte>{std::allocator<std::byte>()};
       }
