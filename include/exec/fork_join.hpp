@@ -239,6 +239,8 @@ namespace exec {
 } // namespace exec
 
 namespace exec::__fork_join {
+  struct _INVALID_ARGUMENTS_TO_FORK_JOIN_ { };
+
   struct __impls : STDEXEC::__sexpr_defaults {
     template <class Self, class... Env>
     STDEXEC_ATTRIBUTE(host, device)
@@ -248,22 +250,33 @@ namespace exec::__fork_join {
       using _closures_t = STDEXEC::__data_of<Self>;
       using _child_sndr_t = STDEXEC::__child_of<Self>;
 
-      using _domain_t = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
-      using _child_t = __copy_cvref_t<Self, _child_sndr_t>;
-      using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
-      using __decay_copyable_results_t = STDEXEC::__decay_copyable_results_t<_child_completions_t>;
+      if constexpr (__minvocable_q<__completion_domain_of_t, set_value_t, _child_sndr_t, Env...>) {
+        using _domain_t = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
+        using _child_t = __copy_cvref_t<Self, _child_sndr_t>;
+        using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
+        using __decay_copyable_results_t =
+          STDEXEC::__decay_copyable_results_t<_child_completions_t>;
 
-      if constexpr (!STDEXEC::__valid_completion_signatures<_child_completions_t>) {
-        return _child_completions_t{};
-      } else if constexpr (!__decay_copyable_results_t::value) {
-        return _ERROR_<
-          _WHAT_(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
-          _IN_ALGORITHM_(exec::fork_join_t)
-        >();
+        if constexpr (!STDEXEC::__valid_completion_signatures<_child_completions_t>) {
+          return _child_completions_t{};
+        } else if constexpr (!__decay_copyable_results_t::value) {
+          return _ERROR_<
+            _WHAT_(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
+            _IN_ALGORITHM_(exec::fork_join_t)
+          >();
+        } else {
+          using _sndr_t =
+            fork_join_impl_t::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
+          return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+        }
+      } else if constexpr (sizeof...(Env) == 0) {
+        return STDEXEC::__dependent_sender<Self>();
       } else {
-        using _sndr_t =
-          fork_join_impl_t::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
-        return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
+        return STDEXEC::__throw_compile_time_error<
+          _INVALID_ARGUMENTS_TO_FORK_JOIN_,
+          __children_of<Self, __qq<_WITH_PRETTY_SENDERS_>>,
+          __fn_t<_WITH_ENVIRONMENT_, Env>...
+        >();
       }
     }
 
