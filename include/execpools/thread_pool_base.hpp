@@ -85,8 +85,17 @@ namespace execpools {
       class sender {
        public:
         using sender_concept = STDEXEC::sender_t;
-        using completion_signatures =
-          STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
+        template <class Self, class Env>
+        static consteval auto get_completion_signatures() noexcept {
+          if constexpr (STDEXEC::unstoppable_token<STDEXEC::stop_token_of_t<Env>>) {
+            return STDEXEC::completion_signatures<STDEXEC::set_value_t()>();
+          } else {
+            return STDEXEC::completion_signatures<
+              STDEXEC::set_value_t(),
+              STDEXEC::set_stopped_t()
+            >();
+          }
+        }
 
         template <class CPO>
         auto query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept
@@ -465,10 +474,13 @@ namespace execpools {
       this->execute_ = [](task_base* t, std::uint32_t /* tid What is this needed for? */) noexcept {
         auto& op = *static_cast<operation*>(t);
         auto stoken = STDEXEC::get_stop_token(STDEXEC::get_env(op.rcvr_));
-        if (stoken.stop_requested()) {
-          STDEXEC::set_stopped(std::move(op.rcvr_));
+        // NOLINTNEXTLINE(bugprone-branch-clone)
+        if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>) {
+          STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
+        } else if (stoken.stop_requested()) {
+          STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
         } else {
-          STDEXEC::set_value(std::move(op.rcvr_));
+          STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
         }
       };
     }
