@@ -89,7 +89,7 @@ namespace STDEXEC {
       return static_cast<_Ty*>(__void_ptr);
     }
 
-    constexpr virtual void deallocate(_Ty* __ptr, size_t __n) noexcept {
+    constexpr void deallocate(_Ty* __ptr, size_t __n) noexcept {
       void* __void_ptr = static_cast<void*>(__ptr);
       __alloc_.deallocate(static_cast<std::byte*>(__void_ptr), __n * sizeof(_Ty));
     }

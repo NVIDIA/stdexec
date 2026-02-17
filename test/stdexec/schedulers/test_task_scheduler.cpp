@@ -50,10 +50,10 @@ TEST_CASE("task_scheduler starts work on the correct execution context", "[sched
 static bool g_called = false;
 
 template <class Sndr>
-struct protect : private Sndr
+struct opaque_sender : private Sndr
 {
   using sender_concept = ex::sender_t;
-  explicit protect(Sndr sndr)
+  explicit opaque_sender(Sndr sndr)
       : Sndr{std::move(sndr)}
   {}
   using Sndr::connect;
@@ -66,7 +66,7 @@ struct test_domain
   template<ex::sender_expr_for<ex::bulk_chunked_t> Sndr, class Env>
   auto transform_sender(ex::set_value_t, Sndr sndr, const Env&) const
   {
-    return ex::then(protect{std::move(sndr)}, []() noexcept {
+    return ex::then(opaque_sender{std::move(sndr)}, []() noexcept {
       g_called = true;
     });
   }
@@ -90,5 +90,10 @@ TEST_CASE("bulk dispatches correctly through task_scheduler", "[scheduler][task_
   auto [val] = ex::sync_wait(std::move(sndr)).value();
   CHECK(val == -1);
   CHECK(g_called);
+}
+
+TEST_CASE("task_scheduler cannot be constructed from a parallel_scheduler", "[scheduler][task_scheduler]")
+{
+  STATIC_REQUIRE(!std::is_constructible_v<ex::task_scheduler, ex::parallel_scheduler>);
 }
 }

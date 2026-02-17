@@ -55,6 +55,9 @@ namespace STDEXEC {
     return std::unique_ptr<_Ty, __deleter_t>(__ptr, __deleter_t{__alloc2});
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // __rebind_allocator: Rebinds an allocator to a different type, unless the allocator is
+  // already bound to the correct type, in which case it is returned as-is.
   template <class _Ty, class _Alloc>
   [[nodiscard]]
   constexpr auto __rebind_allocator(const _Alloc& __alloc) noexcept {
@@ -62,4 +65,16 @@ namespace STDEXEC {
     static_assert(noexcept(__rebound_alloc_t(__alloc)));
     return __rebound_alloc_t(__alloc);
   }
+
+  template <class _Ty, class _Alloc>
+    requires __same_as<_Ty, typename _Alloc::value_type>
+  [[nodiscard]]
+  constexpr auto __rebind_allocator(const _Alloc& __alloc) noexcept -> const _Alloc& {
+    return __alloc; // NOLINT(bugprone-return-const-ref-from-parameter)
+  }
+
+  template <class _Ty, class _Alloc>
+    requires __same_as<_Ty, typename _Alloc::value_type>
+  [[nodiscard]]
+  constexpr auto __rebind_allocator(const _Alloc&&) noexcept = delete;
 } // namespace STDEXEC
