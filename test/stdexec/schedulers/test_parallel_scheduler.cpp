@@ -402,7 +402,7 @@ TEST_CASE("empty environment always returns nullopt for any query", "[scheduler]
     void set_value() noexcept override {
     }
 
-    void set_error(std::exception_ptr&&) noexcept override {
+    void set_error(std::exception_ptr) noexcept override {
     }
 
     void set_stopped() noexcept override {
@@ -421,7 +421,7 @@ TEST_CASE("environment with a stop token can expose its stop token", "[scheduler
     void set_value() noexcept override {
     }
 
-    void set_error(std::exception_ptr&&) noexcept override {
+    void set_error(std::exception_ptr) noexcept override {
     }
 
     void set_stopped() noexcept override {
