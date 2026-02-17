@@ -335,8 +335,14 @@ namespace exec {
           template <class Receiver>
           using _opstate_t = _opstate<Receiver>;
 
-          using completion_signatures =
-            STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
+          template <class _Self, class _Env>
+          static consteval auto get_completion_signatures() noexcept {
+            if constexpr (unstoppable_token<stop_token_of_t<_Env>>) {
+              return STDEXEC::completion_signatures<set_value_t()>();
+            } else {
+              return STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>();
+            }
+          }
 
           [[nodiscard]]
           auto get_env() const noexcept -> env {
@@ -1067,14 +1073,13 @@ namespace exec {
         this->execute_ = [](task_base* t, const std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<_opstate*>(t);
           auto stoken = get_stop_token(get_env(op.rcvr_));
+          // NOLINTNEXTLINE(bugprone-branch-clone)
           if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>) {
             STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
+          } else if (stoken.stop_requested()) {
+            STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
           } else {
-            if (stoken.stop_requested()) {
-              STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
-            } else {
-              STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
-            }
+            STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
           }
         };
       }
