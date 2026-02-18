@@ -35,10 +35,10 @@
 
 namespace exec {
   namespace _numa {
-    using small = void* [1];
+    using _small_t = void* [1];
 
     template <class T>
-    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(small)>;
+    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(_small_t)>;
 
     union _storage {
       _storage() noexcept = default;
@@ -56,7 +56,7 @@ namespace exec {
       }
 
       void* ptr{};
-      char buf[sizeof(small)];
+      char buf[sizeof(_small_t)];
     };
 
     struct _vtable {
