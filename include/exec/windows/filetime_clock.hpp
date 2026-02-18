@@ -20,7 +20,7 @@
 
 #include <windows.h>
 
-namespace exec::__win32 {
+namespace experimental::execution::__win32 {
 
   class filetime_clock {
    public:
@@ -139,5 +139,6 @@ namespace exec::__win32 {
       return time_point::from_ticks(ticks.QuadPart);
     }
   };
+} // namespace experimental::execution::__win32
 
-} // namespace exec::__win32
+namespace exec = experimental::execution;

@@ -18,7 +18,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   struct AN_ERROR_COMPLETION_MUST_HAVE_EXACTLY_ONE_ERROR_ARGUMENT;
   struct A_STOPPED_COMPLETION_MUST_HAVE_NO_ARGUMENTS;
 
@@ -261,4 +261,7 @@ namespace exec {
   inline constexpr just_error_from_t just_error_from{};
   inline constexpr just_stopped_from_t just_stopped_from{};
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

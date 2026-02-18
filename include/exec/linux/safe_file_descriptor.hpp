@@ -16,7 +16,7 @@
  */
 #pragma once
 
-namespace exec {
+namespace experimental::execution {
   class safe_file_descriptor {
     int __fd_{-1};
    public:
@@ -42,6 +42,8 @@ namespace exec {
     [[nodiscard]]
     auto native_handle() const noexcept -> int;
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #include "__detail/safe_file_descriptor.hpp"

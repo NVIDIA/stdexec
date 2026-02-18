@@ -30,7 +30,7 @@
 #  include "../stdexec/execution.hpp"
 #  include <dispatch/dispatch.h>
 
-namespace exec {
+namespace experimental::execution {
   struct libdispatch_queue;
 
   namespace __libdispatch {
@@ -453,6 +453,8 @@ namespace exec {
       inner_op_state inner_op_;
     };
   } // namespace __libdispatch
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #endif // __has_include(<dispatch/dispatch.h>)

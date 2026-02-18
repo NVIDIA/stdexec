@@ -74,7 +74,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "FAILURE: The subscribe customization did not return an `STDEXEC::operation_state`.\n"           \
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
-namespace exec {
+namespace experimental::execution {
   template <class _Sequence>
   struct _WITH_SEQUENCE_ { };
 
@@ -1021,6 +1021,8 @@ namespace exec {
       }
     }
   } // namespace __debug
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

@@ -20,7 +20,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
-namespace exec {
+namespace experimental::execution {
   template <class _Tag, class _Value>
   using with_t = STDEXEC::prop<_Tag, _Value>;
 
@@ -223,6 +223,8 @@ namespace exec {
 
   inline constexpr __write_attrs::__write_attrs_t write_attrs{};
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

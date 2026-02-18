@@ -22,7 +22,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace exec {
+namespace experimental::execution {
   namespace _seq {
     template <class... Senders>
     struct _sndr;
@@ -266,7 +266,9 @@ namespace exec {
 
   using _seq::sequence_t;
   inline constexpr sequence_t sequence{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace std {
   template <class... Senders>

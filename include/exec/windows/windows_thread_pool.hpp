@@ -37,7 +37,7 @@
 #  include <system_error>
 #  include <utility>
 
-namespace exec::__win32 {
+namespace experimental::execution::__win32 {
   class windows_thread_pool {
     struct attrs;
     class scheduler;
@@ -913,14 +913,16 @@ namespace exec::__win32 {
         static_cast<int>(errorCode), std::system_category(), "CreateThreadpoolWork()"};
     }
   }
-} // namespace exec::__win32
+} // namespace experimental::execution::__win32
 
-namespace exec {
+namespace experimental::execution {
   using __win32::windows_thread_pool;
 
   static_assert(
     STDEXEC::scheduler<decltype(windows_thread_pool{}.get_scheduler())>,
     "windows_thread_pool::scheduler must model STDEXEC::scheduler");
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #endif

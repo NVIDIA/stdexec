@@ -33,7 +33,7 @@
 #include <optional>
 #include <utility>
 
-namespace exec {
+namespace experimental::execution {
   class timed_thread_scheduler;
 
   namespace _time_thrd_sched {
@@ -389,4 +389,7 @@ namespace exec {
   inline constexpr auto timed_thread_context::get_scheduler() noexcept -> timed_thread_scheduler {
     return timed_thread_scheduler{*this};
   }
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

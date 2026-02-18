@@ -22,7 +22,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace exec {
+namespace experimental::execution {
   namespace __any {
     using namespace STDEXEC;
 
@@ -1312,4 +1312,7 @@ namespace exec {
       };
     };
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

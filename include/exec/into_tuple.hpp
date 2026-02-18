@@ -19,7 +19,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __into_tuple {
     using namespace STDEXEC;
 
@@ -115,7 +115,9 @@ namespace exec {
 
   using __into_tuple::into_tuple_t;
   inline constexpr into_tuple_t into_tuple{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

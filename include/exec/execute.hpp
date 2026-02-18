@@ -26,7 +26,7 @@
 
 #include "start_detached.hpp"
 
-namespace exec {
+namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
   struct __execute_t {
@@ -58,4 +58,7 @@ namespace exec {
   using execute_t [[deprecated]] = __execute_t;
   [[deprecated]]
   inline constexpr const __execute_t& execute = __execute;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

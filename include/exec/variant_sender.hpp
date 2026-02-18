@@ -19,7 +19,7 @@
 #include "../stdexec/__detail/__variant.hpp"
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __var {
     using namespace STDEXEC;
 
@@ -130,4 +130,7 @@ namespace exec {
       return {};
     }
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

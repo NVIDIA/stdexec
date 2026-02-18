@@ -24,7 +24,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace exec {
+namespace experimental::execution {
   namespace __when_any {
     using namespace STDEXEC;
 
@@ -280,6 +280,8 @@ namespace exec {
   } // namespace __when_any
 
   using __when_any::when_any;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

@@ -24,7 +24,7 @@
 #include "../stdexec/__detail/__transform_sender.hpp"
 #include "__detail/__shared.hpp"
 
-namespace exec {
+namespace experimental::execution {
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
   struct split_t {
@@ -55,7 +55,9 @@ namespace exec {
   };
 
   inline constexpr split_t split{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

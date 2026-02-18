@@ -21,7 +21,6 @@
 
 #pragma once
 
-
 #include "__atomic.hpp"
 
 #include "./__spin_loop_pause.hpp"

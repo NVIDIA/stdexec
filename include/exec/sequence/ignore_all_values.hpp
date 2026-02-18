@@ -25,7 +25,7 @@
 
 #include "../../stdexec/__detail/__atomic.hpp"
 
-namespace exec {
+namespace experimental::execution {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
     __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
@@ -302,7 +302,9 @@ namespace exec {
 
   using __ignore_all_values::ignore_all_values_t;
   inline constexpr ignore_all_values_t ignore_all_values{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

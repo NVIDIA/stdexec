@@ -58,7 +58,7 @@ namespace STDEXEC {
   [[deprecated("read has been renamed to read_env")]]
   inline constexpr const __read_env_t& read = read_env;
 
-  // Moved to namespace exec:
+  // Moved to namespace experimental::execution:
   using split_t
     [[deprecated("Include <exec/split.hpp> and use exec::split_t instead")]] = exec::split_t;
 

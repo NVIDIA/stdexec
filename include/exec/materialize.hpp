@@ -18,7 +18,7 @@
 
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __materialize {
     using namespace STDEXEC;
 
@@ -212,4 +212,7 @@ namespace exec {
   } // namespace __dematerialize
 
   inline constexpr __dematerialize::__dematerialize_t dematerialize;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+
