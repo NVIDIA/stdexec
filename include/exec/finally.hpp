@@ -19,7 +19,10 @@
 
 #include "../stdexec/__detail/__finally.hpp"
 
-namespace exec {
+namespace experimental::execution {
   using finally_t = STDEXEC::__finally_t;
   inline constexpr finally_t const & finally = STDEXEC::__finally_;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

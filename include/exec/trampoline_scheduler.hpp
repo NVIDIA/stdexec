@@ -21,7 +21,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace exec {
+namespace experimental::execution {
   namespace __trampoline {
     using namespace STDEXEC;
 
@@ -251,4 +251,7 @@ namespace exec {
 
   using trampoline_scheduler = __trampoline::__scheduler;
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

@@ -17,9 +17,12 @@
 
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   // A simple scheduler that executes its continuation inline, on the
   // thread of the caller of start().
   using inline_scheduler
     [[deprecated("Use STDEXEC::inline_scheduler instead")]] = STDEXEC::inline_scheduler;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

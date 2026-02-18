@@ -26,7 +26,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 
-namespace exec {
+namespace experimental::execution {
   namespace __merge {
     using namespace STDEXEC;
 
@@ -181,6 +181,8 @@ namespace exec {
 
   using __merge::merge_t;
   inline constexpr merge_t merge{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

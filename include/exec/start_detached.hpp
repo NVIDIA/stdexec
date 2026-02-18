@@ -26,7 +26,7 @@
 
 #include <memory>
 
-namespace exec {
+namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumer.start_detached]
   namespace __start_detached {
@@ -214,4 +214,7 @@ namespace exec {
   };
 
   inline constexpr start_detached_t start_detached{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

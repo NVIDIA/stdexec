@@ -31,7 +31,7 @@
 #  include <exception>
 #  include <ranges>
 
-namespace exec {
+namespace experimental::execution {
   namespace __iterate {
     using namespace STDEXEC;
 
@@ -223,6 +223,8 @@ namespace exec {
 
   using __iterate::iterate_t;
   inline constexpr iterate_t iterate{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #endif // STDEXEC_HAS_STD_RANGES()

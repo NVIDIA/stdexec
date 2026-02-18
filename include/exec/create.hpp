@@ -18,7 +18,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __create {
     using namespace STDEXEC;
 
@@ -99,4 +99,7 @@ namespace exec {
   template <STDEXEC::__completion_signature... _Sigs>
   inline constexpr __create::__create_t<_Sigs...>
     create<STDEXEC::completion_signatures<_Sigs...>>{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

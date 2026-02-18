@@ -17,7 +17,7 @@
 
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   struct _CANNOT_RESCHEDULE_ { };
   using STDEXEC::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_;
 
@@ -88,4 +88,7 @@ namespace exec {
   } // namespace __resched
 
   inline constexpr auto reschedule = __resched::reschedule_t{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

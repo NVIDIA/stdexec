@@ -24,7 +24,7 @@
 #include "../stdexec/__detail/__transform_sender.hpp"
 #include "__detail/__shared.hpp"
 
-namespace exec {
+namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.ensure_started]
   namespace __ensure_started {
@@ -71,7 +71,9 @@ namespace exec {
   };
 
   inline constexpr ensure_started_t ensure_started{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

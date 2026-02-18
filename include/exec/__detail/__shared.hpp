@@ -56,12 +56,14 @@
 // The shared state should add-ref itself when the input async
 // operation is started and release itself when its completion
 // is notified.
-namespace exec {
+namespace experimental::execution {
   struct split_t;
   struct ensure_started_t;
-} // namespace exec
+} // namespace experimental::execution
 
-namespace exec::__shared {
+namespace exec = experimental::execution;
+
+namespace experimental::execution::__shared {
   using namespace STDEXEC;
 
   template <class _Env, class _Variant>
@@ -506,4 +508,6 @@ namespace exec::__shared {
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __sndr(_Tag, _CvChild&&, _Env) -> __sndr<_Tag, _CvChild, _Env>;
 
-} // namespace exec::__shared
+} // namespace experimental::execution::__shared
+
+namespace exec = experimental::execution;

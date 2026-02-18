@@ -20,7 +20,7 @@
 
 #include <exception>
 
-namespace exec {
+namespace experimental::execution {
   struct PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE { };
 
   struct fork_join_impl_t {
@@ -236,9 +236,11 @@ namespace exec {
 
   inline constexpr fork_join_t fork_join{};
 
-} // namespace exec
+} // namespace experimental::execution
 
-namespace exec::__fork_join {
+namespace exec = experimental::execution;
+
+namespace experimental::execution::__fork_join {
   struct _INVALID_ARGUMENTS_TO_FORK_JOIN_ { };
 
   struct __impls : STDEXEC::__sexpr_defaults {
@@ -291,7 +293,9 @@ namespace exec::__fork_join {
           static_cast<_Receiver&&>(__rcvr)};
       };
   };
-} // namespace exec::__fork_join
+} // namespace experimental::execution::__fork_join
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

@@ -28,7 +28,7 @@
     "The header <exec/system_context.hpp> is deprecated. Please include <stdexec/execution.hpp> instead."
 #endif
 
-namespace exec {
+namespace experimental::execution {
   using parallel_scheduler
     [[deprecated("Please use stdexec::parallel_scheduler instead")]] = STDEXEC::parallel_scheduler;
 
@@ -36,4 +36,7 @@ namespace exec {
   inline auto get_parallel_scheduler() noexcept -> STDEXEC::parallel_scheduler {
     return STDEXEC::get_parallel_scheduler();
   }
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

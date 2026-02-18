@@ -21,7 +21,7 @@
 #include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/execution.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __unless_stop_requested {
     using namespace STDEXEC;
 
@@ -103,7 +103,9 @@ namespace exec {
 
   using __unless_stop_requested::unless_stop_requested_t;
   inline constexpr unless_stop_requested_t unless_stop_requested{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

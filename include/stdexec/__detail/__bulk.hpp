@@ -164,7 +164,6 @@ namespace STDEXEC {
       __eptr_completion
     >;
 
-
     template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
     using __completion_signatures = transform_completion_signatures<
       __completion_signatures_of_t<_CvSender, _Env...>,

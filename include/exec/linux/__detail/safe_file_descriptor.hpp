@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <utility>
 
-namespace exec {
+namespace experimental::execution {
   inline safe_file_descriptor::safe_file_descriptor(int __fd) noexcept
     : __fd_(__fd) {
   }
@@ -63,4 +63,6 @@ namespace exec {
   inline auto safe_file_descriptor::native_handle() const noexcept -> int {
     return __fd_;
   }
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;

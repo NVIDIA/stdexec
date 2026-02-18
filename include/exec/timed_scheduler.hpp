@@ -20,7 +20,7 @@
 
 #include <chrono>
 
-namespace exec {
+namespace experimental::execution {
   namespace __now {
     using namespace STDEXEC;
 
@@ -259,4 +259,7 @@ namespace exec {
 
   template <timed_scheduler _Scheduler>
   using schedule_at_result_t = STDEXEC::__call_result_t<schedule_at_t, _Scheduler>;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

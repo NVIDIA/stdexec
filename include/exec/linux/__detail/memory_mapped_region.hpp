@@ -21,7 +21,7 @@
 #include <sys/mman.h>
 #include <utility>
 
-namespace exec {
+namespace experimental::execution {
   inline memory_mapped_region::memory_mapped_region(void* __ptr, std::size_t __size) noexcept
     : __ptr_(__ptr)
     , __size_(__size) {
@@ -64,4 +64,6 @@ namespace exec {
   inline auto memory_mapped_region::size() const noexcept -> std::size_t {
     return __size_;
   }
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;

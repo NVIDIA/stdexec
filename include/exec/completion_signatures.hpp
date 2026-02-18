@@ -20,7 +20,7 @@
 #include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
-namespace exec {
+namespace experimental::execution {
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // make_completion_signatures
   namespace detail {
@@ -119,4 +119,7 @@ namespace exec {
     return STDEXEC::__transform_completion_signatures(
       _Completions{}, __value_fn, __error_fn, __stopped_fn, _ExtraSigs{});
   }
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

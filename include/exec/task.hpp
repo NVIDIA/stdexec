@@ -32,7 +32,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wundefined-inline")
 
-namespace exec {
+namespace experimental::execution {
   namespace __task {
     using namespace STDEXEC;
 
@@ -518,7 +518,9 @@ namespace exec {
   using task = basic_task<_Ty, default_task_context<_Ty>>;
 
   inline constexpr __task::__reschedule_coroutine_on reschedule_coroutine_on{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <class _Ty, class _Context>

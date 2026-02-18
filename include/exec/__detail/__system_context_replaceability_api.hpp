@@ -23,7 +23,7 @@
 #include <cstddef>
 #include <memory>
 
-namespace exec::system_context_replaceability {
+namespace experimental::execution::system_context_replaceability {
   using STDEXEC::system_context_replaceability::__parallel_scheduler_backend_factory_t;
 
   /// Interface for the parallel scheduler backend.
@@ -65,6 +65,8 @@ namespace exec::system_context_replaceability {
   using bulk_item_receiver [[deprecated(
     "Use STDEXEC::system_context_replaceability::bulk_item_receiver_proxy instead.")]] =
     STDEXEC::system_context_replaceability::bulk_item_receiver_proxy;
-} // namespace exec::system_context_replaceability
+} // namespace experimental::execution::system_context_replaceability
+
+namespace exec = experimental::execution;
 
 #endif

@@ -17,7 +17,7 @@
 
 #include "../stdexec/__detail/__scope.hpp"
 
-namespace exec {
+namespace experimental::execution {
 
   template <class _Fn, class... _Ts>
     requires STDEXEC::__nothrow_callable<_Fn, _Ts...>
@@ -32,4 +32,7 @@ namespace exec {
   template <class _Fn, class... _Ts>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE scope_guard(_Fn, _Ts...) -> scope_guard<_Fn, _Ts...>;
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

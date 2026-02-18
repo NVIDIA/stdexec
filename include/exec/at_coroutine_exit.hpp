@@ -24,7 +24,7 @@
 
 #include "any_sender_of.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __at_coro_exit {
     using namespace STDEXEC;
 
@@ -249,4 +249,7 @@ namespace exec {
   } // namespace __at_coro_exit
 
   inline constexpr __at_coro_exit::__at_coro_exit_t at_coroutine_exit{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

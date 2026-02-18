@@ -108,7 +108,6 @@ namespace STDEXEC {
       }
     };
 
-
     struct spawn_t {
       template <sender _Sender, scope_token _Token>
       void operator()(_Sender&& __sndr, _Token&& __tkn) const {

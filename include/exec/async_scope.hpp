@@ -24,7 +24,7 @@
 #include "../stdexec/__detail/__atomic.hpp"
 #include <mutex>
 
-namespace exec {
+namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////
   // async_scope
   namespace __scope {
@@ -784,4 +784,7 @@ namespace exec {
   template <class _AsyncScope, class _Sender>
   using nest_result_t = decltype(STDEXEC::__declval<_AsyncScope&>()
                                    .nest(STDEXEC::__declval<_Sender&&>()));
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

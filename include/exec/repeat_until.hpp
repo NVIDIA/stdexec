@@ -27,7 +27,7 @@
 #include <exception>
 #include <type_traits>
 
-namespace exec {
+namespace experimental::execution {
   namespace __repeat {
     using namespace STDEXEC;
 
@@ -311,7 +311,9 @@ namespace exec {
   inline constexpr const repeat_t &repeat_effect = repeat;
   [[deprecated("use exec::repeat_until instead")]]
   inline constexpr const repeat_until_t &repeat_effect_until = repeat_until;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

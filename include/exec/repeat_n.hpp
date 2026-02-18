@@ -30,7 +30,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
-namespace exec {
+namespace experimental::execution {
   namespace __repeat_n {
     using namespace STDEXEC;
 
@@ -227,7 +227,9 @@ namespace exec {
 
   using __repeat_n::repeat_n_t;
   inline constexpr repeat_n_t repeat_n{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

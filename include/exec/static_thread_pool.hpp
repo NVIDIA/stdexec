@@ -42,7 +42,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace exec {
+namespace experimental::execution {
   struct bwos_params {
     std::size_t numBlocks{32};
     std::size_t blockSize{8};
@@ -1649,4 +1649,7 @@ namespace exec {
   inline constexpr _pool_::schedule_all_t schedule_all{};
 #endif
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+
