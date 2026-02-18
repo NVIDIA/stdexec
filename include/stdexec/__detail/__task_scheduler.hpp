@@ -65,6 +65,7 @@ namespace STDEXEC {
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __env
+    template <bool _Unstoppable>
     struct __env {
       [[nodiscard]]
       auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
@@ -73,8 +74,13 @@ namespace STDEXEC {
       }
 
       [[nodiscard]]
-      constexpr auto query(get_stop_token_t) const noexcept -> never_stop_token {
-        return {};
+      constexpr auto query(get_stop_token_t) const noexcept {
+        if constexpr (_Unstoppable) {
+          return never_stop_token{};
+        } else {
+          auto __opt_token = __rcvr_.template try_query<inplace_stop_token>(get_stop_token);
+          return __opt_token ? *__opt_token : inplace_stop_token{};
+        }
       }
 
       system_context_replaceability::receiver_proxy& __rcvr_;
@@ -128,7 +134,7 @@ namespace STDEXEC {
     using scheduler_concept = scheduler_t;
 
     template <__not_same_as<task_scheduler> _Sch, class _Alloc = std::allocator<std::byte>>
-      requires __infallible_scheduler<_Sch, __task::__env>
+      requires __infallible_scheduler<_Sch, __task::__env<true>>
     explicit task_scheduler(_Sch __sch, _Alloc __alloc = {})
       : __backend_(
           std::allocate_shared<__backend_for<_Sch, _Alloc>>(__alloc, std::move(__sch), __alloc)) {
@@ -141,7 +147,7 @@ namespace STDEXEC {
     bool operator==(const task_scheduler& __rhs) const noexcept = default;
 
     template <__not_same_as<task_scheduler> _Sch>
-      requires __infallible_scheduler<_Sch, __task::__env>
+      requires __infallible_scheduler<_Sch, __task::__env<true>>
     [[nodiscard]]
     auto operator==(const _Sch& __other) const noexcept -> bool {
       return __backend_->__equal_to(std::addressof(__other), __mtypeid<_Sch>);
@@ -533,12 +539,12 @@ namespace STDEXEC {
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __opstate
-    template <class _Alloc, class _Sndr>
+    template <class _Alloc, class _Sndr, class _Env>
     class __opstate : _Alloc {
      public:
       using allocator_type = _Alloc;
       using receiver_proxy = system_context_replaceability::receiver_proxy;
-      using __receiver_t = __detail::__proxy_receiver<receiver_proxy, __env>;
+      using __receiver_t = __detail::__proxy_receiver<receiver_proxy, _Env>;
 
       constexpr explicit __opstate(
         _Alloc __alloc,
@@ -581,7 +587,7 @@ namespace STDEXEC {
 
       using __child_opstate_t = connect_result_t<
         _Sndr,
-        __detail::__proxy_receiver<system_context_replaceability::receiver_proxy, __env>
+        __detail::__proxy_receiver<system_context_replaceability::receiver_proxy, _Env>
       >;
       __child_opstate_t __opstate_;
     };
@@ -600,17 +606,17 @@ namespace STDEXEC {
     template <class _RcvrProxy, class _Env>
     friend struct __detail::__proxy_receiver;
 
-    template <class _RcvrProxy, class _Sndr>
+    template <class _Env, class _RcvrProxy, class _Sndr>
     constexpr void __schedule(
       _RcvrProxy& __rcvr_proxy,
       _Sndr&& __sndr,
       std::span<std::byte> __storage) noexcept {
       STDEXEC_TRY {
         using __opstate_t =
-          connect_result_t<_Sndr, __detail::__proxy_receiver<_RcvrProxy, __task::__env>>;
+          connect_result_t<_Sndr, __detail::__proxy_receiver<_RcvrProxy, _Env>>;
         const bool __in_situ = __storage.size() >= sizeof(__opstate_t);
         _Alloc& __alloc = *this;
-        auto& __opstate = __task::__emplace_into<__task::__opstate<_Alloc, _Sndr>>(
+        auto& __opstate = __task::__emplace_into<__task::__opstate<_Alloc, _Sndr, _Env>>(
           __storage, __alloc, __alloc, static_cast<_Sndr&&>(__sndr), __rcvr_proxy, __in_situ);
         STDEXEC::start(__opstate);
       }
@@ -628,7 +634,16 @@ namespace STDEXEC {
     constexpr void schedule(
       system_context_replaceability::receiver_proxy& __rcvr_proxy,
       std::span<std::byte> __storage) noexcept final {
-      __schedule(__rcvr_proxy, STDEXEC::schedule(__sch_), __storage);
+      // Check whether the receiver's stop token is unstoppable. If so, we can connect the
+      // schedule sender with a receiver that doesn't propagate stop requests, which may
+      // prevent stopped signals from being sent.
+      const auto __token = __rcvr_proxy.template try_query<inplace_stop_token>(get_stop_token);
+      const bool __unstoppable = (!__token.has_value() || !(*__token).stop_possible());
+      if (__unstoppable) {
+        __schedule<__task::__env<true>>(__rcvr_proxy, STDEXEC::schedule(__sch_), __storage);
+      } else {
+        __schedule<__task::__env<false>>(__rcvr_proxy, STDEXEC::schedule(__sch_), __storage);
+      }
     }
 
     constexpr void schedule_bulk_chunked(
@@ -637,7 +652,7 @@ namespace STDEXEC {
       std::span<std::byte> __storage) noexcept final {
       auto __sndr = STDEXEC::bulk_chunked(
         STDEXEC::schedule(__sch_), par, __size, __task::__bulk_chunked_fn{__rcvr_proxy});
-      __schedule(__rcvr_proxy, std::move(__sndr), __storage);
+      __schedule<__task::__env<true>>(__rcvr_proxy, std::move(__sndr), __storage);
     }
 
     constexpr void schedule_bulk_unchunked(
@@ -646,7 +661,7 @@ namespace STDEXEC {
       std::span<std::byte> __storage) noexcept final {
       auto __sndr = STDEXEC::bulk_unchunked(
         STDEXEC::schedule(__sch_), par, __size, __task::__bulk_unchunked_fn{__rcvr_proxy});
-      __schedule(__rcvr_proxy, std::move(__sndr), __storage);
+      __schedule<__task::__env<true>>(__rcvr_proxy, std::move(__sndr), __storage);
     }
 
     [[nodiscard]]
