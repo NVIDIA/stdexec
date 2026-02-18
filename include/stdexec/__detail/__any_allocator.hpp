@@ -94,6 +94,8 @@ namespace STDEXEC {
       __alloc_.deallocate(static_cast<std::byte*>(__void_ptr), __n * sizeof(_Ty));
     }
 
+    constexpr auto operator==(const __any_allocator&) const noexcept -> bool = default;
+
    private:
     __any::__any<__detail::__byte_allocator> __alloc_{};
   };

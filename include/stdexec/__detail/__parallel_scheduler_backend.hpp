@@ -163,7 +163,8 @@ namespace STDEXEC {
       bool __register_stop_callback() {
         if constexpr (!unstoppable_token<__stop_token_t>) {
           __stop_callback_for<stop_token_of_t<env_of_t<_Rcvr>>>& __self = *this;
-          return __self.__register_stop_callback(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
+          return __self
+            .__register_stop_callback(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
         }
         return false;
       }
@@ -195,6 +196,8 @@ namespace STDEXEC {
           __query(get_stop_token, __value, __dest);
         } else if (__query_id == __mtypeid<get_allocator_t>) {
           __query(get_allocator, __value, __dest);
+        } else if (__query_id == __mtypeid<get_scheduler_t>) {
+          __query(get_scheduler, __value, __dest);
         }
       }
 
@@ -235,6 +238,9 @@ namespace STDEXEC {
         }
       }
 
+      // Defined in __task_scheduler.hpp
+      constexpr void __query(get_scheduler_t, __type_index, void*) const noexcept;
+
      public:
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Rcvr __rcvr_;
@@ -249,6 +255,26 @@ namespace STDEXEC {
         this->__unregister_stop_callback();
         STDEXEC::set_value(std::move(this->__rcvr_));
       }
+    };
+
+    struct __proxy_env {
+      [[nodiscard]]
+      auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
+        auto __alloc = __rcvr_.template try_query<__any_allocator<std::byte>>(get_allocator);
+        return __alloc ? *__alloc : __any_allocator<std::byte>{std::allocator<std::byte>()};
+      }
+
+      [[nodiscard]]
+      auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
+        auto __token = __rcvr_.template try_query<inplace_stop_token>(get_stop_token);
+        return __token ? *__token : inplace_stop_token{};
+      }
+
+      // Implemented in __task_scheduler.hpp
+      [[nodiscard]]
+      auto query(get_scheduler_t) const noexcept -> task_scheduler;
+
+      system_context_replaceability::receiver_proxy& __rcvr_;
     };
 
     // A receiver type that forwards its completion operations to a _RcvrProxy member held
@@ -280,7 +306,7 @@ namespace STDEXEC {
 
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> _Env {
-        return _Env(__rcvr_proxy_);
+        return _Env{__rcvr_proxy_};
       }
 
       _RcvrProxy& __rcvr_proxy_;
