@@ -65,6 +65,7 @@ set(stdexec_test_sources
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_utility.cpp
     stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp

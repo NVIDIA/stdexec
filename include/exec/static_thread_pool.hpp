@@ -111,7 +111,7 @@ namespace exec {
       std::vector<__atomic_intrusive_queue<&task_base::next>> queues_{};
       std::thread::id id_{std::this_thread::get_id()};
       // This marks whether the submitter is a thread in the pool or not.
-      std::size_t index_{std::numeric_limits<std::size_t>::max()};
+      std::size_t index_{(std::numeric_limits<std::size_t>::max)()};
     };
 
     struct remote_queue_list {
@@ -371,7 +371,7 @@ namespace exec {
 
           _static_thread_pool& pool_;
           remote_queue* queue_;
-          std::size_t threadIndex_{std::numeric_limits<std::size_t>::max()};
+          std::size_t threadIndex_{(std::numeric_limits<std::size_t>::max)()};
           nodemask constraints_{};
         };
 
@@ -406,7 +406,7 @@ namespace exec {
         _static_thread_pool* pool_;
         remote_queue* queue_;
         const nodemask* nodemask_ = &nodemask::any();
-        std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
+        std::size_t thread_idx_{(std::numeric_limits<std::size_t>::max)()};
 
        public:
         auto operator==(const scheduler&) const -> bool = default;

@@ -23,6 +23,7 @@
 #include "../functional.hpp" // IWYU pragma: keep for __with_default
 #include "../stop_token.hpp" // IWYU pragma: keep for get_stop_token_t
 #include "__any_allocator.hpp"
+#include "__optional.hpp"
 #include "__queries.hpp"
 #include "__typeinfo.hpp"
 
@@ -39,7 +40,7 @@ namespace STDEXEC {
   namespace system_context_replaceability {
     /// Interface for completing a sender operation. Backend will call frontend though
     /// this interface for completing the `schedule` and `schedule_bulk` operations.
-    class receiver_proxy { //: __detail::__env_proxy {
+    class receiver_proxy {
      public:
       virtual constexpr ~receiver_proxy() = 0;
 
@@ -47,12 +48,12 @@ namespace STDEXEC {
       virtual STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr) noexcept = 0;
       virtual constexpr void set_stopped() noexcept = 0;
 
-      /// Query the receiver for a property of type `_P`.
+      /// Query the receiver for a property of type `_Query`.
       template <class _Value, __class _Query>
       constexpr auto try_query(_Query) const noexcept -> std::optional<_Value> {
-        std::optional<_Value> __p;
-        __query_env(__mtypeid<_Query>, __mtypeid<_Value>, &__p);
-        return __p;
+        std::optional<_Value> __val;
+        __query_env(__mtypeid<_Query>, __mtypeid<_Value>, &__val);
+        return __val;
       }
 
      protected:
@@ -102,23 +103,89 @@ namespace STDEXEC {
   } // namespace system_context_replaceability
 
   namespace __detail {
+    template <class _Token>
+    struct __stop_callback_for {
+      using __callback_t = stop_callback_for_t<_Token, __forward_stop_request>;
+
+      bool __register_stop_callback(_Token __token) {
+        if (__token.stop_possible()) {
+          __callback_.emplace(__token, __forward_stop_request{__source_});
+        }
+        return __token.stop_requested();
+      }
+
+      void __unregister_stop_callback() {
+        __callback_.reset();
+      }
+
+      inplace_stop_source __source_{};
+      __optional<__callback_t> __callback_{};
+    };
+
+    template <>
+    struct __stop_callback_for<inplace_stop_token> {
+      bool __register_stop_callback(inplace_stop_token __token) {
+        return __token.stop_requested();
+      }
+
+      void __unregister_stop_callback() {
+      }
+    };
+
+    template <unstoppable_token _Token>
+    struct __stop_callback_for<_Token> {
+      bool __register_stop_callback(__ignore) {
+        return false;
+      }
+
+      void __unregister_stop_callback() {
+      }
+    };
+
     // Partially implements the _RcvrProxy interface (either receiver_proxy or
     // bulk_item_receiver_proxy) in terms of a concrete receiver type _Rcvr.
-    template <class _Rcvr, class _RcvrProxy>
-    struct __receiver_proxy_base : _RcvrProxy {
+    template <class _Rcvr, class _RcvrProxy, bool _Infallible = false>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __receiver_proxy_base
+      : _RcvrProxy
+      , __stop_callback_for<stop_token_of_t<env_of_t<_Rcvr>>> {
      public:
       using receiver_concept = receiver_t;
+      using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
+      using __allocator_t = std::allocator_traits<
+        __call_result_or_t<get_allocator_t, __any_allocator<std::byte>, env_of_t<_Rcvr>>
+      >::template rebind_alloc<std::byte>;
 
       constexpr explicit __receiver_proxy_base(_Rcvr rcvr) noexcept
         : __rcvr_(static_cast<_Rcvr&&>(rcvr)) {
       }
 
+      // Returns true if stop was requested at the time of registration.
+      bool __register_stop_callback() {
+        if constexpr (!unstoppable_token<__stop_token_t>) {
+          __stop_callback_for<stop_token_of_t<env_of_t<_Rcvr>>>& __self = *this;
+          return __self.__register_stop_callback(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
+        }
+        return false;
+      }
+
       STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr eptr) noexcept final {
-        STDEXEC::set_error(std::move(__rcvr_), std::move(eptr));
+        if constexpr (_Infallible) {
+          STDEXEC_ASSERT(!+"set_error called on an infallible receiver proxy");
+          STDEXEC_UNREACHABLE();
+        } else {
+          this->__unregister_stop_callback();
+          STDEXEC::set_error(std::move(__rcvr_), std::move(eptr));
+        }
       }
 
       constexpr void set_stopped() noexcept final {
-        STDEXEC::set_stopped(std::move(__rcvr_));
+        if constexpr (_Infallible && unstoppable_token<__stop_token_t>) {
+          STDEXEC_ASSERT(!+"set_stopped called on an unstoppable receiver proxy");
+          STDEXEC_UNREACHABLE();
+        } else {
+          this->__unregister_stop_callback();
+          STDEXEC::set_stopped(std::move(__rcvr_));
+        }
       }
 
      protected:
@@ -132,36 +199,54 @@ namespace STDEXEC {
       }
 
      private:
-      constexpr void __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
-        using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
-        if constexpr (std::is_same_v<inplace_stop_token, __stop_token_t>) {
-          if (__value_type == __mtypeid<inplace_stop_token>) {
-            using __dest_t = std::optional<inplace_stop_token>;
-            *static_cast<__dest_t*>(__dest) = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
+      constexpr void
+        __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
+        // Branch taken when the user has requested an inplace_stop_token
+        if (__value_type == __mtypeid<inplace_stop_token>) {
+          auto& __val = *static_cast<std::optional<inplace_stop_token>*>(__dest);
+          if constexpr (__same_as<__stop_token_t, inplace_stop_token>) {
+            __val.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
+          } else if constexpr (unstoppable_token<__stop_token_t>) {
+            __val.emplace();
+          } else {
+            __val.emplace(this->__source_.get_token());
           }
+        } else if (__value_type == __mtypeid<never_stop_token>) {
+          auto& __val = *static_cast<std::optional<never_stop_token>*>(__dest);
+          __val.emplace();
+        } else if (__value_type == __mtypeid<__stop_token_t>) {
+          auto& __val = *static_cast<std::optional<__stop_token_t>*>(__dest);
+          __val.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)));
         }
       }
 
-      constexpr void __query(get_allocator_t, __type_index __value_type, void* __dest) const noexcept {
+      constexpr void
+        __query(get_allocator_t, __type_index __value_type, void* __dest) const noexcept {
+        auto __alloc_def = std::allocator<std::byte>();
+        auto __alloc = __with_default(get_allocator, __alloc_def)(STDEXEC::get_env(__rcvr_));
+        auto __byte_alloc = STDEXEC::__rebind_allocator<std::byte>(__alloc);
+
         if (__value_type == __mtypeid<__any_allocator<std::byte>>) {
-          using __dest_t = std::optional<__any_allocator<std::byte>>;
-          constexpr auto __get_alloc = __with_default(get_allocator, std::allocator<std::byte>());
-          auto __alloc = STDEXEC::__rebind_allocator<std::byte>(
-            __get_alloc(STDEXEC::get_env(__rcvr_)));
-          *static_cast<__dest_t*>(__dest) = __any_allocator{std::move(__alloc)};
+          auto& __val = *static_cast<std::optional<__any_allocator<std::byte>>*>(__dest);
+          __val.emplace(__byte_alloc);
+        } else if (__value_type == __mtypeid<__allocator_t>) {
+          auto& __val = *static_cast<std::optional<__allocator_t>*>(__dest);
+          __val.emplace(__byte_alloc);
         }
       }
 
      public:
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Rcvr __rcvr_;
     };
 
-    template <class _Rcvr>
+    template <class _Rcvr, bool _Infallible = false>
     struct __receiver_proxy
-      : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy> {
+      : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy, _Infallible> {
       using __receiver_proxy::__receiver_proxy_base::__receiver_proxy_base;
 
       constexpr void set_value() noexcept final {
+        this->__unregister_stop_callback();
         STDEXEC::set_value(std::move(this->__rcvr_));
       }
     };
@@ -170,7 +255,7 @@ namespace STDEXEC {
     // by reference (where _RcvrProxy is one of receiver_proxy or
     // bulk_item_receiver_proxy). It is also responsible for destroying and, if necessary,
     // deallocating the operation state.
-    template <class _RcvrProxy>
+    template <class _RcvrProxy, class _Env>
     struct __proxy_receiver {
       using receiver_concept = receiver_t;
       using __delete_fn_t = void(void*) noexcept;
@@ -194,8 +279,8 @@ namespace STDEXEC {
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_RcvrProxy> {
-        return STDEXEC::get_env(__rcvr_proxy_);
+      constexpr auto get_env() const noexcept -> _Env {
+        return _Env(__rcvr_proxy_);
       }
 
       _RcvrProxy& __rcvr_proxy_;

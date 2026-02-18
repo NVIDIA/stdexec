@@ -23,13 +23,17 @@
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <exec/system_context.hpp>
 
 #include <catch2/catch.hpp>
 #include <test_common/receivers.hpp>
 
 namespace ex = STDEXEC;
 namespace scr = ex::system_context_replaceability;
+
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996) // warning C4996: 'function': was declared deprecated
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
 
 TEST_CASE("system_context can return a scheduler", "[scheduler][parallel_scheduler]") {
   auto sched = STDEXEC::get_parallel_scheduler();

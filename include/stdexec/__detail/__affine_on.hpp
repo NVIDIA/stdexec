@@ -42,15 +42,6 @@ namespace STDEXEC {
     concept __is_affine = __already_affine<set_value_t, _Sender, _Env>
                        && __already_affine<set_error_t, _Sender, _Env>
                        && __already_affine<set_stopped_t, _Sender, _Env>;
-
-    template <class _Sender, class _Env>
-    concept __infallible_scheduler_i = (!__sends<set_error_t, _Sender, _Env>)
-                                    && (!__sends<set_stopped_t, _Sender, _Env>);
-
-    template <class _Scheduler, class _Env>
-    concept __infallible_scheduler =
-      scheduler<_Scheduler>
-      && __infallible_scheduler_i<__result_of<unstoppable, __result_of<schedule, _Scheduler>>, _Env>;
   } // namespace __affine_on
 
   struct affine_on_t {
@@ -88,7 +79,7 @@ namespace STDEXEC {
           _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
           _WHERE_(_IN_ALGORITHM_, affine_on_t)
         >{};
-      } else if constexpr (!__affine_on::__infallible_scheduler<__sched_t, _Env>) {
+      } else if constexpr (!__infallible_scheduler<__sched_t, __unstoppable_env_t<_Env>>) {
         // The scheduler in the environment isn't infallible, so we can't adapt the sender to be
         // affine. Instead, return a type describing the problem.
         return __not_a_sender<

@@ -50,56 +50,11 @@ namespace STDEXEC {
   struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
 
   namespace __detail {
-    /// Allows a frontend receiver of type `_Rcvr` to be passed to the backend.
-    template <class _Rcvr>
-    struct __receiver_adapter : system_context_replaceability::receiver_proxy {
-      explicit __receiver_adapter(_Rcvr&& __rcvr)
-        : __rcvr_{static_cast<_Rcvr&&>(__rcvr)} {
-      }
-
-      constexpr void set_value() noexcept override {
-        STDEXEC::set_value(std::forward<_Rcvr>(__rcvr_));
-      }
-
-      STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr __ex) noexcept override {
-        STDEXEC::set_error(std::forward<_Rcvr>(__rcvr_), std::move(__ex));
-      }
-
-      constexpr void set_stopped() noexcept override {
-        STDEXEC::set_stopped(std::forward<_Rcvr>(__rcvr_));
-      }
-
-     protected:
-      constexpr void __query_env(__type_index __query_type, __type_index __value_type, void* __dest)
-        const noexcept override {
-        if (__query_type == __mtypeid<get_stop_token_t>) {
-          __query(get_stop_token, __value_type, __dest);
-        }
-      }
-
-     private:
-      constexpr void
-        __query(get_stop_token_t, __type_index __value_type, void* __dest) const noexcept {
-        using __stop_token_t = stop_token_of_t<env_of_t<_Rcvr>>;
-        if constexpr (std::is_same_v<inplace_stop_token, __stop_token_t>) {
-          if (__value_type == __mtypeid<inplace_stop_token>) {
-            using __dest_t = std::optional<inplace_stop_token>;
-            *static_cast<__dest_t*>(__dest) = get_stop_token(STDEXEC::get_env(__rcvr_));
-          }
-        }
-      }
-
-     public:
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Rcvr __rcvr_;
-    };
-
     /// The type large enough to store the data produced by a sender.
     /// BUGBUG: this seems wrong. i think this should be a variant of tuples of possible
     /// results.
     template <class _Sender>
     using __sender_data_t = decltype(STDEXEC::sync_wait(std::declval<_Sender>()).value());
-
   } // namespace __detail
 
   class parallel_scheduler;
@@ -191,8 +146,8 @@ namespace STDEXEC {
     */
 
     /// The operation state used to execute the work described by this sender.
-    template <class _S, class _Rcvr>
-    struct __system_op {
+    template <class _Rcvr>
+    struct __system_op : __immovable {
       /// Constructs `this` from `__rcvr` and `__sched_impl`.
       __system_op(_Rcvr&& __rcvr, __backend_ptr_t __sched_impl)
         : __rcvr_{std::forward<_Rcvr>(__rcvr)} {
@@ -203,18 +158,11 @@ namespace STDEXEC {
         std::construct_at(__p, std::move(__sched_impl));
       }
 
-      ~__system_op() = default;
-
-      __system_op(const __system_op&) = delete;
-      __system_op(__system_op&&) = delete;
-      auto operator=(const __system_op&) -> __system_op& = delete;
-      auto operator=(__system_op&&) -> __system_op& = delete;
-
       /// Starts the work stored in `this`.
       void start() & noexcept {
-        auto st = get_stop_token(STDEXEC::get_env(__rcvr_.__rcvr_));
-        if (st.stop_requested()) {
-          STDEXEC::set_stopped(__rcvr_);
+        const bool __stop_requested = __rcvr_.__register_stop_callback();
+        if (__stop_requested) {
+          __rcvr_.set_stopped();
           return;
         }
         auto& __sched_impl = __preallocated_.__as<__backend_ptr_t>();
@@ -224,7 +172,7 @@ namespace STDEXEC {
       }
 
       /// Object that receives completion from the work described by the sender.
-      __receiver_adapter<_Rcvr> __rcvr_;
+      __receiver_proxy<_Rcvr> __rcvr_;
 
       /// Preallocated space for storing the operation state on the implementation size.
       /// We also store here the backend interface for the scheduler before we actually
@@ -270,14 +218,12 @@ namespace STDEXEC {
 
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <receiver _Rcvr>
-    auto connect(_Rcvr __rcvr) && noexcept(__nothrow_move_constructible<_Rcvr>)
-      -> __detail::__system_op<__parallel_sender, _Rcvr> {
+    auto connect(_Rcvr __rcvr) && noexcept -> __detail::__system_op<_Rcvr> {
       return {std::move(__rcvr), std::move(__sched_)};
     }
 
     template <receiver _Rcvr>
-    auto connect(_Rcvr __rcvr) & noexcept(__nothrow_move_constructible<_Rcvr>)
-      -> __detail::__system_op<__parallel_sender, _Rcvr> {
+    auto connect(_Rcvr __rcvr) const & noexcept -> __detail::__system_op<_Rcvr> {
       return {std::move(__rcvr), __sched_};
     }
 
