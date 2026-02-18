@@ -29,7 +29,7 @@
 
 #include <cuda/std/tuple>
 
-namespace nvexec {
+namespace nv::execution {
 
   namespace detail {
     template <std::unsigned_integral IndexT>
@@ -176,4 +176,6 @@ namespace nvexec {
     union_t storage_;
     index_t index_;
   };
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;

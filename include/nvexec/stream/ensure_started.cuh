@@ -36,7 +36,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _ensure_started {
     template <class Tag, class... Args, class Variant>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
@@ -372,7 +372,9 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender>

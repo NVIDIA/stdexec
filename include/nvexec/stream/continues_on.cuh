@@ -31,7 +31,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _trnsfr {
     template <class Tag, class Storage, class... Args>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
@@ -249,7 +249,9 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 // Decode the sender name for diagnostics:
 namespace STDEXEC::__detail {

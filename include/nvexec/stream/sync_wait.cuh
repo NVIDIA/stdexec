@@ -29,7 +29,7 @@
 #include <utility>
 #include <variant>
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _sync_wait {
     struct env {
       [[nodiscard]]
@@ -195,4 +195,6 @@ namespace nvexec::_strm {
       return _sync_wait::sync_wait_t{}(sched.ctx_, static_cast<Sender&&>(sndr));
     }
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;

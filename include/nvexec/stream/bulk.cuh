@@ -33,7 +33,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 __host__ auto operator new[](std::size_t) -> void*;
 #endif
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _bulk {
     template <int BlockThreads, class... Args, std::integral Shape, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(BlockThreads))
@@ -382,7 +382,9 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Shape, class Fun>

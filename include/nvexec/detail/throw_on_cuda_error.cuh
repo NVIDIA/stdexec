@@ -25,7 +25,7 @@
 
 #include <cuda_runtime_api.h>
 
-namespace nvexec::detail {
+namespace nv::execution::detail {
   struct _msg_storage {
     char buffer[256];
   };
@@ -99,4 +99,6 @@ namespace nvexec::detail {
 #define STDEXEC_LOG_CUDA_API(...) \
   ::nvexec::detail::log_on_cuda_error((__VA_ARGS__), __FILE__, __LINE__)
   // clang-format on
-} // namespace nvexec::detail
+} // namespace nv::execution::detail
+
+namespace nvexec = nv::execution;

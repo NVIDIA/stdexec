@@ -24,7 +24,7 @@
 
 #include <utility>
 
-namespace nvexec::detail {
+namespace nv::execution::detail {
   struct cuda_event {
     cuda_event() {
       STDEXEC_TRY_CUDA_API(::cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
@@ -56,4 +56,6 @@ namespace nvexec::detail {
    private:
     cudaEvent_t event_{};
   };
-} // namespace nvexec::detail
+} // namespace nv::execution::detail
+
+namespace nvexec = nv::execution;
