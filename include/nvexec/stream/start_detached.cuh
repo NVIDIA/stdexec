@@ -27,7 +27,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _start_detached {
     struct submit_receiver {
       using receiver_concept = receiver_t;
@@ -181,4 +181,6 @@ namespace nvexec::_strm {
       }
     }
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;

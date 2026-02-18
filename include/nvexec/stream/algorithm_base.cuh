@@ -28,7 +28,7 @@
 
 #include "common.cuh"
 
-namespace nvexec::_strm::__algo_range_init_fun {
+namespace nv::execution::_strm::__algo_range_init_fun {
   template <class Range, class InitT, class Fun>
   using binary_invoke_result_t = ::cuda::std::decay_t<
     ::cuda::std::invoke_result_t<Fun, STDEXEC::ranges::range_reference_t<Range>, InitT>
@@ -128,7 +128,9 @@ namespace nvexec::_strm::__algo_range_init_fun {
     STDEXEC_ATTRIBUTE(no_unique_address) InitT init_;
     STDEXEC_ATTRIBUTE(no_unique_address) Fun fun_;
   };
-} // namespace nvexec::_strm::__algo_range_init_fun
+} // namespace nv::execution::_strm::__algo_range_init_fun
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class InitT, class Fun, class DerivedSender>

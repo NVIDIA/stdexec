@@ -25,7 +25,7 @@
 
 #include "common.cuh"
 
-namespace nvexec {
+namespace nv::execution {
   struct CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER;
   struct BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT;
   struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM;
@@ -188,7 +188,9 @@ namespace nvexec {
       const Env& env_;
     };
   } // namespace _strm
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender>

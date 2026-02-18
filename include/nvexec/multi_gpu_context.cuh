@@ -25,7 +25,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec {
+namespace nv::execution {
   namespace _strm {
     struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler> {
       multi_gpu_stream_scheduler(int num_devices, context ctx)
@@ -187,6 +187,8 @@ namespace nvexec {
     int dev_id_{};
     _strm::queue::task_hub hub_;
   };
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 STDEXEC_PRAGMA_POP()

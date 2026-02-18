@@ -29,7 +29,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace let_xxx {
     using namespace STDEXEC;
 
@@ -256,7 +256,9 @@ namespace nvexec::_strm {
   template <class Env>
   struct transform_sender_for<STDEXEC::let_stopped_t, Env>
     : _transform_let_xxx_sender<set_stopped_t, Env> { };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Fun, class Set>

@@ -32,7 +32,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
 
   namespace _then {
     template <class... Args, class Fun>
@@ -198,7 +198,9 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Fun>

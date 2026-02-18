@@ -37,7 +37,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec {
+namespace nv::execution {
   enum class stream_priority {
     high,
     normal,
@@ -76,9 +76,11 @@ namespace nvexec {
     template <class Tag>
     struct apply_sender_for;
   } // namespace _strm
-} // namespace nvexec
+} // namespace nv::execution
 
-namespace nvexec {
+namespace nvexec = nv::execution;
+
+namespace nv::execution {
   struct stream_context;
 
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
@@ -853,6 +855,8 @@ namespace nvexec {
     template <class Fun, class... Args>
     using __f = STDEXEC::__msize_t<_sizeof_v<STDEXEC::__call_result_t<Fun, Args...>>>;
   };
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 STDEXEC_PRAGMA_POP()

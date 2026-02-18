@@ -27,7 +27,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace repeat_n {
     template <class OpState>
     struct receiver : stream_receiver_base {
@@ -167,6 +167,8 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 STDEXEC_PRAGMA_POP()

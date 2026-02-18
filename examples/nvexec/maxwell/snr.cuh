@@ -29,11 +29,13 @@
 #  include <nvexec/multi_gpu_context.cuh> // IWYU pragma: export
 #  include <nvexec/stream_context.cuh>    // IWYU pragma: export
 #else
-namespace nvexec {
+namespace nv::execution {
   inline constexpr bool is_on_gpu() noexcept {
     return false;
   }
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 #endif
 
 namespace ex = stdexec;

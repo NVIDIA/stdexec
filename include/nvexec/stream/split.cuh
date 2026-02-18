@@ -37,7 +37,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _split {
     inline auto _make_env(
       const inplace_stop_source& stop_source,
@@ -355,7 +355,9 @@ namespace nvexec::_strm {
 
     const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender>
