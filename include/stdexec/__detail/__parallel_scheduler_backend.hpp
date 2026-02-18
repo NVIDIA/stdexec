@@ -124,8 +124,8 @@ namespace STDEXEC {
 
     template <>
     struct __stop_callback_for<inplace_stop_token> {
-      bool __register_stop_callback(__ignore) {
-        return false;
+      bool __register_stop_callback(inplace_stop_token __token) {
+        return __token.stop_requested();
       }
 
       void __unregister_stop_callback() {
@@ -133,7 +133,14 @@ namespace STDEXEC {
     };
 
     template <unstoppable_token _Token>
-    struct __stop_callback_for<_Token> : __stop_callback_for<inplace_stop_token> { };
+    struct __stop_callback_for<_Token> {
+      bool __register_stop_callback(__ignore) {
+        return false;
+      }
+
+      void __unregister_stop_callback() {
+      }
+    };
 
     // Partially implements the _RcvrProxy interface (either receiver_proxy or
     // bulk_item_receiver_proxy) in terms of a concrete receiver type _Rcvr.
