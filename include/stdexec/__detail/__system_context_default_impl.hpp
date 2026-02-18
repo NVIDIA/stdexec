@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__atomic.hpp"
+#include "__parallel_scheduler_backend.hpp"
 #include "__system_context_replaceability_api.hpp"
 
 #if STDEXEC_ENABLE_LIBDISPATCH
@@ -58,22 +59,6 @@ namespace STDEXEC::__system_context_default_impl {
   [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
   */
 
-  struct __env {
-    [[nodiscard]]
-    auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
-      auto __opt_alloc = __rcvr_.template try_query<__any_allocator<std::byte>>(get_allocator);
-      return __opt_alloc ? *__opt_alloc : __any_allocator<std::byte>{std::allocator<std::byte>()};
-    }
-
-    [[nodiscard]]
-    auto query(get_stop_token_t) const noexcept -> inplace_stop_token {
-      auto __opt_alloc = __rcvr_.template try_query<inplace_stop_token>(get_stop_token);
-      return __opt_alloc ? *__opt_alloc : inplace_stop_token{};
-    }
-
-    system_context_replaceability::receiver_proxy& __rcvr_;
-  };
-
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
   inline auto __ensure_alignment(std::span<std::byte> __storage, size_t __alignment) noexcept
     -> std::span<std::byte> {
@@ -93,8 +78,10 @@ namespace STDEXEC::__system_context_default_impl {
   template <typename _Sender>
   struct __operation {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
-    using __receiver_t =
-      __detail::__proxy_receiver<system_context_replaceability::receiver_proxy, __env>;
+    using __receiver_t = __detail::__proxy_receiver<
+      system_context_replaceability::receiver_proxy,
+      __detail::__proxy_env
+    >;
     STDEXEC::connect_result_t<_Sender, __receiver_t> __inner_op_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.

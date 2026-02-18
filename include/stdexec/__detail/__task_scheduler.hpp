@@ -23,6 +23,7 @@
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
+#include "__inline_scheduler.hpp"
 #include "__meta.hpp"
 #include "__parallel_scheduler_backend.hpp"
 #include "__schedulers.hpp"
@@ -56,35 +57,26 @@ namespace STDEXEC {
 
     struct __task_scheduler_backend : system_context_replaceability::parallel_scheduler_backend {
       [[nodiscard]]
-      virtual auto query(get_forward_progress_guarantee_t) const noexcept //
+      virtual constexpr auto query(get_forward_progress_guarantee_t) const noexcept //
         -> forward_progress_guarantee = 0;
-      virtual auto __equal_to(const void* __other, __type_index __type) -> bool = 0;
+      virtual constexpr auto __equal_to(const void* __other, __type_index __type) -> bool = 0;
     };
 
     using __backend_ptr_t = std::shared_ptr<__task_scheduler_backend>;
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __env
-    template <bool _Unstoppable>
-    struct __env {
-      [[nodiscard]]
-      auto query(get_allocator_t) const noexcept -> __any_allocator<std::byte> {
-        auto __opt_alloc = __rcvr_.template try_query<__any_allocator<std::byte>>(get_allocator);
-        return __opt_alloc ? *__opt_alloc : __any_allocator<std::byte>{std::allocator<std::byte>()};
-      }
+    struct __unstoppable_env : __detail::__proxy_env {
+      using __detail::__proxy_env::query;
 
       [[nodiscard]]
-      constexpr auto query(get_stop_token_t) const noexcept {
-        if constexpr (_Unstoppable) {
-          return never_stop_token{};
-        } else {
-          auto __opt_token = __rcvr_.template try_query<inplace_stop_token>(get_stop_token);
-          return __opt_token ? *__opt_token : inplace_stop_token{};
-        }
+      auto query(get_stop_token_t) const noexcept -> never_stop_token {
+        return never_stop_token{};
       }
-
-      system_context_replaceability::receiver_proxy& __rcvr_;
     };
+
+    template <bool _Unstoppable>
+    using __env = __if_c<_Unstoppable, __unstoppable_env, __detail::__proxy_env>;
   } // namespace __task
 
   struct _CANNOT_DISPATCH_BULK_ALGORITHM_TO_TASK_SCHEDULER_BECAUSE_THERE_IS_NO_TASK_SCHEDULER_IN_THE_ENVIRONMENT;
@@ -682,17 +674,28 @@ namespace STDEXEC {
     _Sch __sch_;
   };
 
-  // namespace __detail {
-  //   // Implementation of the get_scheduler_t query for __receiver_proxy_base from
-  //   // __parallel_scheduler_backend.hpp.
-  //   template <class _Rcvr, class _Proxy>
-  //   STDEXEC_CONSTEXPR_CXX23 auto __receiver_proxy_base<_Rcvr, _Proxy>::query(const get_scheduler_t&) const noexcept
-  //     -> task_scheduler {
-  //     if constexpr (__callable<const get_scheduler_t&, env_of_t<_Rcvr>>) {
-  //       return task_scheduler{get_scheduler(get_env(__rcvr_))};
-  //     } else {
-  //       return task_scheduler{inline_scheduler{}};
-  //     }
-  //   }
-  // } // namespace __detail
+  namespace __detail {
+    // Implementation of the get_scheduler_t query for __receiver_proxy_base and
+    // __proxy_env from __parallel_scheduler_backend.hpp.
+    template <class _Rcvr, class _Proxy, bool _Infallible>
+    constexpr void __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(
+      get_scheduler_t,
+      __type_index __value_type,
+      void* __dest) const noexcept {
+      if (__value_type == __mtypeid<task_scheduler>) {
+        auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
+        if constexpr (__callable<get_scheduler_t, env_of_t<_Rcvr>>) {
+          __val.emplace(get_scheduler(get_env(__rcvr_)));
+        } else {
+          __val.emplace(inline_scheduler{});
+        }
+      }
+    }
+
+    [[nodiscard]]
+    inline auto __proxy_env::query(get_scheduler_t) const noexcept -> task_scheduler {
+      auto __sched = __rcvr_.template try_query<task_scheduler>(get_scheduler);
+      return __sched ? *__sched : task_scheduler(inline_scheduler{});
+    }
+  } // namespace __detail
 } // namespace STDEXEC
