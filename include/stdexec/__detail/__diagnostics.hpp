@@ -272,7 +272,7 @@ namespace STDEXEC {
   "\n"                                                                                             \
   "The given type is not a sender because STDEXEC::enable_sender<Sender> is false. Either:\n"      \
   "\n"                                                                                             \
-  "1. Give the type a nested `::sender_concept` type that is an alias for `STDEXEC::sender_t`,\n"  \
+  "1. Give the type a nested '::sender_concept' type that is an alias for 'STDEXEC::sender_t',\n"  \
   "   as in:\n"                                                                                    \
   "\n"                                                                                             \
   "     class MySender\n"                                                                          \
@@ -284,7 +284,7 @@ namespace STDEXEC {
   "\n"                                                                                             \
   "   or,\n"                                                                                       \
   "\n"                                                                                             \
-  "2. Specialize the `STDEXEC::enable_sender` boolean trait for this type to true, as follows:\n"  \
+  "2. Specialize the 'STDEXEC::enable_sender' boolean trait for this type to true, as follows:\n"  \
   "\n"                                                                                             \
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
@@ -304,8 +304,8 @@ namespace STDEXEC {
   "\n"                                                                                             \
   "A sender can declare its completion signatures in one of two ways:\n"                           \
   "\n"                                                                                             \
-  "1. By defining a nested type alias named `completion_signatures` that is a\n"                   \
-  "  specialization of `STDEXEC::completion_signatures<...>`, as follows:\n"                       \
+  "1. By defining a nested type alias named 'completion_signatures' that is a\n"                   \
+  "  specialization of 'STDEXEC::completion_signatures<...>', as follows:\n"                       \
   "\n"                                                                                             \
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
@@ -321,8 +321,8 @@ namespace STDEXEC {
   "\n"                                                                                             \
   "   or,\n"                                                                                       \
   "\n"                                                                                             \
-  "2. By defining a member function named `get_completion_signatures` that returns\n"              \
-  "   a specialization of `STDEXEC::completion_signatures<...>`, as follows:\n"                    \
+  "2. By defining a member function named 'get_completion_signatures' that returns\n"              \
+  "   a specialization of 'STDEXEC::completion_signatures<...>', as follows:\n"                    \
   "\n"                                                                                             \
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
@@ -351,11 +351,11 @@ namespace STDEXEC {
 #define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE                            \
   "\n"                                                                                             \
   "\n"                                                                                             \
-  "The member function `get_completion_signatures` of the sender returned an\n"                    \
+  "The member function 'get_completion_signatures' of the sender returned an\n"                    \
   "invalid type.\n"                                                                                \
   "\n"                                                                                             \
-  "A sender's `get_completion_signatures` function must return a specialization of\n"              \
-  "`STDEXEC::completion_signatures<...>`, as follows:\n"                                           \
+  "A sender's 'get_completion_signatures' function must return a specialization of\n"              \
+  "'STDEXEC::completion_signatures<...>', as follows:\n"                                           \
   "\n"                                                                                             \
   "  class MySender\n"                                                                             \
   "  {\n"                                                                                          \
@@ -377,8 +377,8 @@ namespace STDEXEC {
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                                            \
   "\n"                                                                                             \
-  "A sender must provide a `connect` member function that takes a receiver as an\n"                \
-  "argument and returns an object whose type satisfies `STDEXEC::operation_state`,\n"              \
+  "A sender must provide a 'connect' member function that takes a receiver as an\n"                \
+  "argument and returns an object whose type satisfies 'STDEXEC::operation_state',\n"              \
   "as shown below:\n"                                                                              \
   "\n"                                                                                             \
   "  class MySender\n"                                                                             \
@@ -414,6 +414,6 @@ namespace STDEXEC {
 #define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER                                  \
   "\n"                                                                                             \
   "\n"                                                                                             \
-  "The sender passed to `STDEXEC::sync_wait()` does not have a `connect`\n"                        \
+  "The sender passed to 'STDEXEC::sync_wait()' does not have a 'connect'\n"                        \
   "member function that accepts sync_wait's "                                                      \
   "receiver.\n" STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER

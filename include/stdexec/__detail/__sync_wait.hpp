@@ -236,10 +236,7 @@ struct sync_wait_t {
 
   template <class _CvSender>
   constexpr auto operator()(_CvSender&&) const {
-    STDEXEC::__diagnose_sender_concept_failure<
-      STDEXEC::__demangle_t<_CvSender>,
-      STDEXEC::__sync_wait::__env
-    >();
+    STDEXEC::__diagnose_sender_concept_failure<_CvSender, STDEXEC::__sync_wait::__env>();
     // dummy return type to silence follow-on errors
     return std::optional<std::tuple<int>>{};
   }

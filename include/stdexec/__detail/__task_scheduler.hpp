@@ -612,8 +612,7 @@ namespace STDEXEC {
       _Sndr&& __sndr,
       std::span<std::byte> __storage) noexcept {
       STDEXEC_TRY {
-        using __opstate_t =
-          connect_result_t<_Sndr, __detail::__proxy_receiver<_RcvrProxy, _Env>>;
+        using __opstate_t = connect_result_t<_Sndr, __detail::__proxy_receiver<_RcvrProxy, _Env>>;
         const bool __in_situ = __storage.size() >= sizeof(__opstate_t);
         _Alloc& __alloc = *this;
         auto& __opstate = __task::__emplace_into<__task::__opstate<_Alloc, _Sndr, _Env>>(

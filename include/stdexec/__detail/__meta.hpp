@@ -738,17 +738,11 @@ namespace STDEXEC {
 
     template <class _Ty>
     using __demangle_t = decltype(__demangle_v<_Ty>());
-
-    template <class _Sender>
-    using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled_t>;
   } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
   template <class _Ty>
   using __demangle_t = __copy_cvref_t<_Ty, __detail::__demangle_t<std::remove_cvref_t<_Ty>>>;
-
-  template <class _Sender>
-  using __remangle_t = __minvoke_or_q<__detail::__remangle_t, _Sender, _Sender>;
 
   namespace __detail {
     //////////////////////////////////////////////////////////////////////////////////////////

@@ -106,4 +106,4 @@ namespace {
     auto result = ex::sync_wait(std::move(sndr));
     CHECK(!result.has_value());
   }
-}
+} // namespace

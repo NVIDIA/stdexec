@@ -225,7 +225,8 @@ namespace STDEXEC {
 
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr void set_stopped() noexcept {
-      static_assert(__noexcept_of<__sexpr_impl<_Tag>::__complete, __index_t, _State&, set_stopped_t>);
+      static_assert(
+        __noexcept_of<__sexpr_impl<_Tag>::__complete, __index_t, _State&, set_stopped_t>);
       __sexpr_impl<_Tag>::__complete(__index_t(), __state_, STDEXEC::set_stopped);
     }
 
@@ -261,7 +262,8 @@ namespace STDEXEC {
 
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr void start() noexcept {
-      static_assert(noexcept(STDEXEC::__apply(__sexpr_impl<__tag_t>::__start, __child_ops_, __state_)));
+      static_assert(
+        noexcept(STDEXEC::__apply(__sexpr_impl<__tag_t>::__start, __child_ops_, __state_)));
       STDEXEC::__apply(__sexpr_impl<__tag_t>::__start, __child_ops_, __state_);
     }
 
@@ -279,7 +281,9 @@ namespace STDEXEC {
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   template <class _Tag, class _Data, class... _Child>
   struct __basic_sender {
-    using __mangled_t = __sexpr_t<_Tag, _Data, __remangle_t<_Child>...>;
+    struct type {
+      using sender_concept = sender_t;
+    };
   };
 
 #if !defined(STDEXEC_DEMANGLE_SENDER_NAMES)
@@ -390,7 +394,7 @@ namespace STDEXEC {
   // senders in compiler diagnostics.
   namespace __detail {
     template <class _Tag, class _Data, class... _Child>
-    using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>;
+    using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>::type;
 
     template <auto _Descriptor>
     extern __declfn_t<__minvoke<__result_of<_Descriptor>, __q<__basic_sender_t>>>
