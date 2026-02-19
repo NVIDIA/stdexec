@@ -89,8 +89,7 @@ namespace nv::execution {
     template <STDEXEC::sender_expr Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
       requires STDEXEC::__applicable<_strm::transform_sender_for<Tag>, Sender, const Env&>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
-      return STDEXEC::__apply(
-        _strm::transform_sender_for<Tag>{}, static_cast<Sender&&>(sndr), env);
+      return STDEXEC::__apply(_strm::transform_sender_for<Tag>{}, static_cast<Sender&&>(sndr), env);
     }
 
     template <class Tag, STDEXEC::sender Sender, class... Args>
@@ -374,8 +373,8 @@ namespace nv::execution {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept {
-      return __env::__join(
-        prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
+      return STDEXEC::__env::__join(
+        STDEXEC::prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
     }
 
     template <class BaseEnv>
@@ -390,14 +389,15 @@ namespace nv::execution {
       static_cast<stream_provider*>(nullptr)));
 
     template <class BaseEnv>
-    auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept {
-      return __env::__join(
-        prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
-    }
+    using terminal_stream_env_t =
+      STDEXEC::__join_env_t<STDEXEC::prop<get_stream_provider_t, stream_provider*>, BaseEnv>;
+
     template <class BaseEnv>
-    using terminal_stream_env_t = decltype(_strm::make_terminal_stream_env(
-      __declval<BaseEnv>(),
-      static_cast<stream_provider*>(nullptr)));
+    auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept
+      -> terminal_stream_env_t<BaseEnv> {
+      return STDEXEC::__env::__join(
+        STDEXEC::prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
+    }
 
     template <class BaseEnv>
     using make_stream_env_t = stream_env_t<BaseEnv>;
