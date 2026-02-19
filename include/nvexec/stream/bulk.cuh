@@ -360,14 +360,14 @@ namespace nv::execution::_strm {
     Fun fun_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::bulk_t, Env> {
-    template <class Data, stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, Data data, Sender&& sndr) const {
+  template <>
+  struct transform_sender_for<STDEXEC::bulk_t> {
+    template <class Env, class Data, stream_completing_sender<Env> Sender>
+    auto operator()(const Env& env, __ignore, Data data, Sender&& sndr) const {
       auto [policy, shape, fun] = static_cast<Data&&>(data);
       using shape_t = decltype(shape);
       using fun_t = decltype(fun);
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
       if constexpr (__std::same_as<decltype(sched), stream_scheduler>) {
         // Use the bulk sender for a single GPU
         using _sender_t = bulk_sender<__decay_t<Sender>, shape_t, fun_t>;
@@ -379,8 +379,6 @@ namespace nv::execution::_strm {
           {}, sched.num_devices_, static_cast<Sender&&>(sndr), shape, static_cast<fun_t&&>(fun)};
       }
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 

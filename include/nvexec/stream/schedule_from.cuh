@@ -159,17 +159,13 @@ namespace nv::execution {
       Sender sndr_;
     };
 
-    template <class Env>
-    struct transform_sender_for<STDEXEC::schedule_from_t, Env> {
-      template <class Sender>
-      using _current_scheduler_t =
-        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, const Env&>;
-
-      template <class Sender>
-      auto operator()(__ignore, __ignore, Sender&& sndr) const {
+    template <>
+    struct transform_sender_for<STDEXEC::schedule_from_t> {
+      template <class Env, class Sender>
+      auto operator()(const Env& env, __ignore, __ignore, Sender&& sndr) const {
         if constexpr (stream_completing_sender<Sender, Env>) {
           using _sender_t = schedule_from_sender<__decay_t<Sender>>;
-          auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
+          auto stream_sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
           return _sender_t{stream_sched.ctx_, static_cast<Sender&&>(sndr)};
         } else {
           return STDEXEC::__not_a_sender<
@@ -184,8 +180,6 @@ namespace nv::execution {
           >{};
         }
       }
-
-      const Env& env_;
     };
   } // namespace _strm
 } // namespace nv::execution
