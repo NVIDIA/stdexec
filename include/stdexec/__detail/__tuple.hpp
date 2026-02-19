@@ -359,6 +359,15 @@ namespace STDEXEC {
   inline constexpr size_t __tuple_size_v = decltype(__detail::__tuple_sizer(
     __declval<_Tuple>()))::value;
 
+  template <class... _Ts>
+  inline constexpr size_t __tuple_size_v<__tuple<_Ts...>> = sizeof...(_Ts);
+
+  //
+  // __is_tuple
+  //
+  template <class _Ty>
+  concept __is_tuple = requires(_Ty&& __arg) { __detail::__tuple_sizer(__arg); };
+
   //
   // __tuple_element_t
   //

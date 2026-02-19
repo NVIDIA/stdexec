@@ -93,7 +93,7 @@ namespace STDEXEC {
     using __env_type_t = __result_of<__sexpr_impl<_Tag>::__get_env, _Index, const _State&>;
 
     template <class _Sexpr>
-    using __child_indices_t = __desc_of<_Sexpr>::__indices;
+    using __child_indices_t = STDEXEC::__desc_of_t<_Sexpr>::__indices;
 
     template <class _Receiver, class _Data>
     struct __state {

@@ -245,8 +245,38 @@ namespace experimental::execution {
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
+      template <std::size_t Index, class Self>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      static constexpr auto&& static_get(Self&& self) noexcept {
+        if constexpr (Index == 0) {
+          return static_cast<Self&&>(self)._tag;
+        } else if constexpr (Index == 1) {
+          return static_cast<Self&&>(self)._ign;
+        } else {
+          return STDEXEC::__get<Index - 2>(static_cast<Self&&>(self)._sndrs);
+        }
+      }
+
+      template <std::size_t Index>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto&& get() && noexcept {
+        return static_get<Index>(static_cast<_sndr&&>(*this));
+      }
+
+      template <std::size_t Index>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto&& get() & noexcept {
+        return static_get<Index>(*this);
+      }
+
+      template <std::size_t Index>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto&& get() const & noexcept {
+        return static_get<Index>(*this);
+      }
+
       STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) sequence_t _tag;
-      STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) STDEXEC::__ignore _ignore;
+      STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused) STDEXEC::__ _ign;
       STDEXEC::__tuple<Sender0, Senders...> _sndrs;
     };
 
