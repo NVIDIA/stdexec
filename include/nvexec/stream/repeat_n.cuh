@@ -157,15 +157,13 @@ namespace nv::execution::_strm {
     };
   } // namespace repeat_n
 
-  template <class Env>
-  struct transform_sender_for<exec::repeat_n_t, Env> {
-    template <class CvSender>
-    auto operator()(STDEXEC::__ignore, size_t count, CvSender&& sndr) const {
+  template <>
+  struct transform_sender_for<exec::repeat_n_t> {
+    template <class Env, class CvSender>
+    auto operator()(const Env&, STDEXEC::__ignore, size_t count, CvSender&& sndr) const {
       using sender_t = repeat_n::sender<CvSender>;
       return sender_t{static_cast<CvSender&&>(sndr), count};
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 

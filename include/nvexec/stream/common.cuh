@@ -70,7 +70,7 @@ namespace nv::execution {
   namespace _strm {
     // Used by stream_domain to late-customize senders for execution
     // on the stream_scheduler.
-    template <class Tag, class Env>
+    template <class Tag>
     struct transform_sender_for;
 
     template <class Tag>
@@ -87,10 +87,10 @@ namespace nv::execution {
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : STDEXEC::default_domain {
     template <STDEXEC::sender_expr Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
-      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag, Env>, Sender>
+      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag>, Sender, const Env&>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
       return STDEXEC::__apply(
-        _strm::transform_sender_for<Tag, Env>{env}, static_cast<Sender&&>(sndr));
+        _strm::transform_sender_for<Tag>{}, static_cast<Sender&&>(sndr), env);
     }
 
     template <class Tag, STDEXEC::sender Sender, class... Args>

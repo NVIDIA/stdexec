@@ -342,18 +342,16 @@ namespace nv::execution::_strm {
     std::shared_ptr<sh_state_t> sh_state_;
   };
 
-  template <class Env>
-  struct transform_sender_for<exec::split_t, Env> {
+  template <>
+  struct transform_sender_for<exec::split_t> {
     template <class Sender>
     using _sender_t = split_sender<__decay_t<Sender>>;
 
-    template <stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, __ignore, Sender&& sndr) const -> _sender_t<Sender> {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env_);
+    template <class Env, stream_completing_sender<Env> Sender>
+    auto operator()(const Env& env, __ignore, __ignore, Sender&& sndr) const -> _sender_t<Sender> {
+      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
       return _sender_t<Sender>{sched.ctx_, static_cast<Sender&&>(sndr)};
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 

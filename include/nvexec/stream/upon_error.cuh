@@ -172,15 +172,13 @@ namespace nv::execution::_strm {
     Fun fun_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::upon_error_t, Env> {
-    template <class Fun, stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, Fun fun, Sender&& sndr) const {
+  template <>
+  struct transform_sender_for<STDEXEC::upon_error_t> {
+    template <class Env, class Fun, stream_completing_sender<Env> Sender>
+    auto operator()(const Env&, __ignore, Fun fun, Sender&& sndr) const {
       using _sender_t = upon_error_sender<__decay_t<Sender>, Fun>;
       return _sender_t{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun)};
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 

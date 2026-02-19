@@ -486,10 +486,10 @@ namespace nv::execution::_strm {
     STDEXEC::__tuple<Senders...> sndrs_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::when_all_t, Env> {
-    template <stream_completing_sender<Env>... CvSenders>
-    constexpr auto operator()(__ignore, __ignore, CvSenders&&... sndrs) const {
+  template <>
+  struct transform_sender_for<STDEXEC::when_all_t> {
+    template <class Env, stream_completing_sender<Env>... CvSenders>
+    constexpr auto operator()(const Env&, __ignore, __ignore, CvSenders&&... sndrs) const {
       using sender_t =
         when_all_sender<STDEXEC::when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{
@@ -497,20 +497,16 @@ namespace nv::execution::_strm {
         static_cast<CvSenders&&>(sndrs)...
       };
     }
-
-    const Env& env_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::transfer_when_all_t, Env> {
-    template <gpu_stream_scheduler<Env> Scheduler, stream_completing_sender<Env>... CvSenders>
-    auto operator()(__ignore, Scheduler sched, CvSenders&&... sndrs) const {
+  template <>
+  struct transform_sender_for<STDEXEC::transfer_when_all_t> {
+    template <class Env, gpu_stream_scheduler<Env> Scheduler, stream_completing_sender<Env>... CvSenders>
+    auto operator()(const Env&, __ignore, Scheduler sched, CvSenders&&... sndrs) const {
       using sender_t =
         when_all_sender<STDEXEC::transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{sched.ctx_, static_cast<CvSenders&&>(sndrs)...};
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 

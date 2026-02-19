@@ -238,16 +238,14 @@ namespace nv::execution::_strm {
     source_sender_t sndr_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::continues_on_t, Env> {
-    template <class Sched, class Sender>
-    auto operator()(__ignore, Sched sched, Sender&& sndr) const {
+  template <>
+  struct transform_sender_for<STDEXEC::continues_on_t> {
+    template <class Env, class Sched, class Sender>
+    auto operator()(const Env&, __ignore, Sched sched, Sender&& sndr) const {
       static_assert(gpu_stream_scheduler<Sched, Env>);
       using __sender_t = continues_on_sender<Sched, __decay_t<Sender>>;
       return __sender_t{sched, static_cast<Sender&&>(sndr)};
     }
-
-    const Env& env_;
   };
 } // namespace nv::execution::_strm
 
