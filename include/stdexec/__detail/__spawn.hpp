@@ -31,18 +31,22 @@
 #include <type_traits>
 #include <utility>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [exec.spawn]
-  namespace __spawn {
-    struct __spawn_state_base {
+  namespace __spawn
+  {
+    struct __spawn_state_base
+    {
       explicit __spawn_state_base(void (*__complete)(__spawn_state_base*) noexcept) noexcept
-        : __complete_(__complete) {
-      }
+        : __complete_(__complete)
+      {}
 
       __spawn_state_base(__spawn_state_base&&) = delete;
 
-      void __complete() noexcept {
+      void __complete() noexcept
+      {
         __complete_(this);
       }
 
@@ -53,35 +57,43 @@ namespace STDEXEC {
       void (*__complete_)(__spawn_state_base*) noexcept;
     };
 
-    struct __spawn_receiver {
+    struct __spawn_receiver
+    {
       using receiver_concept = receiver_t;
 
       __spawn_state_base* __state_;
 
-      void set_value() && noexcept {
+      void set_value() && noexcept
+      {
         __state_->__complete();
       }
 
-      void set_stopped() && noexcept {
+      void set_stopped() && noexcept
+      {
         __state_->__complete();
       }
     };
 
     template <class _Alloc, scope_token _Token, sender _Sender>
-    struct __spawn_state final : __spawn_state_base {
+    struct __spawn_state final : __spawn_state_base
+    {
       using __op_t = connect_result_t<_Sender, __spawn_receiver>;
 
       __spawn_state(_Alloc __alloc, _Sender&& __sndr, _Token __token)
         : __spawn_state_base(__do_complete)
         , __alloc_(std::move(__alloc))
         , __op_(connect(std::move(__sndr), __spawn_receiver(this)))
-        , __assoc_(__token.try_associate()) {
-      }
+        , __assoc_(__token.try_associate())
+      {}
 
-      void __run() noexcept {
-        if (__assoc_) {
+      void __run() noexcept
+      {
+        if (__assoc_)
+        {
           start(__op_);
-        } else {
+        }
+        else
+        {
           __complete();
         }
       }
@@ -89,11 +101,12 @@ namespace STDEXEC {
      private:
       using __assoc_t = std::remove_cvref_t<decltype(__declval<_Token&>().try_associate())>;
 
-      _Alloc __alloc_;
-      __op_t __op_;
+      _Alloc    __alloc_;
+      __op_t    __op_;
       __assoc_t __assoc_;
 
-      static void __do_complete(__spawn_state_base* __base) noexcept {
+      static void __do_complete(__spawn_state_base* __base) noexcept
+      {
         auto* __self = static_cast<__spawn_state*>(__base);
 
         [[maybe_unused]]
@@ -108,21 +121,24 @@ namespace STDEXEC {
       }
     };
 
-    struct spawn_t {
+    struct spawn_t
+    {
       template <sender _Sender, scope_token _Token>
-      void operator()(_Sender&& __sndr, _Token&& __tkn) const {
+      void operator()(_Sender&& __sndr, _Token&& __tkn) const
+      {
         return (*this)(static_cast<_Sender&&>(__sndr), static_cast<_Token&&>(__tkn), env<>{});
       }
 
       template <sender _Sender, scope_token _Token, class _Env>
-      void operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const {
+      void operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const
+      {
         auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
-        auto __sndr_env = get_env(__wrapped_sender);
+        auto __sndr_env       = get_env(__wrapped_sender);
 
         using __raw_alloc = decltype(__spawn_common::__choose_alloc(__env, __sndr_env));
 
-        auto __sender_with_env =
-          write_env(std::move(__wrapped_sender), __spawn_common::__choose_senv(__env, __sndr_env));
+        auto __sender_with_env = write_env(std::move(__wrapped_sender),
+                                           __spawn_common::__choose_senv(__env, __sndr_env));
 
         using __spawn_state_t =
           __spawn_state<__raw_alloc, std::remove_cvref_t<_Token>, decltype(__sender_with_env)>;
@@ -136,17 +152,20 @@ namespace STDEXEC {
 
         __scope_guard __guard{[&]() noexcept { __traits::deallocate(__alloc, __op, 1); }};
 
-        __traits::construct(
-          __alloc, __op, __alloc, std::move(__sender_with_env), static_cast<_Token&&>(__tkn));
+        __traits::construct(__alloc,
+                            __op,
+                            __alloc,
+                            std::move(__sender_with_env),
+                            static_cast<_Token&&>(__tkn));
 
         __guard.__dismiss();
 
         __op->__run();
       }
     };
-  } // namespace __spawn
+  }  // namespace __spawn
 
   using __spawn::spawn_t;
 
   inline constexpr spawn_t spawn{};
-} // namespace STDEXEC
+}  // namespace STDEXEC

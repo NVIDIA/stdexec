@@ -30,108 +30,130 @@
 #include "__queries.hpp"
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
-#include "__submit.hpp" // IWYU pragma: keep
+#include "__submit.hpp"  // IWYU pragma: keep
 
 #include <exception>
 
-namespace STDEXEC {
-  namespace __read_env {
+namespace STDEXEC
+{
+  namespace __read_env
+  {
     struct _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_;
 
-    template <
-      class _Receiver,
-      class _Query,
-      class _Ty = __call_result_t<_Query, env_of_t<_Receiver>>
-    >
-    struct __opstate {
-      constexpr void start() noexcept {
-        constexpr bool _Nothrow = __nothrow_callable<_Query, env_of_t<_Receiver>>;
-        auto __query_fn = [&]() noexcept(_Nothrow) -> _Ty&& {
+    template <class _Receiver,
+              class _Query,
+              class _Ty = __call_result_t<_Query, env_of_t<_Receiver>>>
+    struct __opstate
+    {
+      constexpr void start() noexcept
+      {
+        constexpr bool _Nothrow   = __nothrow_callable<_Query, env_of_t<_Receiver>>;
+        auto           __query_fn = [&]() noexcept(_Nothrow) -> _Ty&&
+        {
           auto& __result = __result_.__emplace_from(_Query(), STDEXEC::get_env(__rcvr_));
           return static_cast<_Ty&&>(__result);
         };
         STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_), __query_fn);
       }
 
-      _Receiver __rcvr_;
+      _Receiver       __rcvr_;
       __optional<_Ty> __result_;
     };
 
     template <class _Receiver, class _Query, class _Ty>
       requires __same_as<_Ty, _Ty&&>
-    struct __opstate<_Receiver, _Query, _Ty> {
-      constexpr void start() noexcept {
+    struct __opstate<_Receiver, _Query, _Ty>
+    {
+      constexpr void start() noexcept
+      {
         // The query returns a reference type; pass it straight through to the receiver.
-        STDEXEC::__set_value_from(
-          static_cast<_Receiver&&>(__rcvr_), _Query(), STDEXEC::get_env(__rcvr_));
+        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr_),
+                                  _Query(),
+                                  STDEXEC::get_env(__rcvr_));
       }
 
       _Receiver __rcvr_;
     };
 
     template <class _Query>
-    struct __attrs {
+    struct __attrs
+    {
       template <class _Env>
         requires __callable<_Query, _Env>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_completion_behavior_t<set_value_t>, const _Env&) const noexcept {
+      constexpr auto query(get_completion_behavior_t<set_value_t>, _Env const &) const noexcept
+      {
         return completion_behavior::inline_completion;
       }
 
       template <class _Env>
         requires __callable<_Query, _Env> && (!__nothrow_callable<_Query, _Env>)
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_completion_behavior_t<set_error_t>, const _Env&) const noexcept {
+      constexpr auto query(get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
+      {
         return completion_behavior::inline_completion;
       }
     };
 
-    struct __read_env_impl : __sexpr_defaults {
-      static constexpr auto __get_attrs = []<class _Query>(__ignore, _Query) noexcept {
+    struct __read_env_impl : __sexpr_defaults
+    {
+      static constexpr auto __get_attrs = []<class _Query>(__ignore, _Query) noexcept
+      {
         return __attrs<_Query>{};
       };
 
       template <class _Self, class _Env>
-      static consteval auto __get_completion_signatures() {
+      static consteval auto __get_completion_signatures()
+      {
         using __query_t = __data_of<_Self>;
-        if constexpr (__callable<__query_t, _Env>) {
+        if constexpr (__callable<__query_t, _Env>)
+        {
           using __result_t = __call_result_t<__query_t, _Env>;
-          if constexpr (__nothrow_callable<__query_t, _Env>) {
+          if constexpr (__nothrow_callable<__query_t, _Env>)
+          {
             return completion_signatures<set_value_t(__result_t)>();
-          } else {
-            return completion_signatures<set_value_t(__result_t), set_error_t(std::exception_ptr)>();
           }
-        } else {
+          else
+          {
+            return completion_signatures<set_value_t(__result_t),
+                                         set_error_t(std::exception_ptr)>();
+          }
+        }
+        else
+        {
           return STDEXEC::__throw_compile_time_error<
             _THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_VALUE_FOR_THE_GIVEN_QUERY_,
             _WHERE_(_IN_ALGORITHM_, __read_env_t),
             _WITH_QUERY_(__query_t),
-            _WITH_ENVIRONMENT_(_Env)
-          >();
+            _WITH_ENVIRONMENT_(_Env)>();
         }
       };
 
       static constexpr auto __connect =
-        []<class _Self, class _Receiver>(const _Self&, _Receiver&& __rcvr) noexcept {
-          using __query_t = __data_of<_Self>;
-          return __opstate<_Receiver, __query_t>{static_cast<_Receiver&&>(__rcvr)};
-        };
+        []<class _Self, class _Receiver>(_Self const &, _Receiver&& __rcvr) noexcept
+      {
+        using __query_t = __data_of<_Self>;
+        return __opstate<_Receiver, __query_t>{static_cast<_Receiver&&>(__rcvr)};
+      };
 
       static constexpr auto __submit =
-        []<class _Sender, class _Receiver>(const _Sender&, _Receiver&& __rcvr) noexcept
+        []<class _Sender, class _Receiver>(_Sender const &, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
         static_assert(sender_expr_for<_Sender, __read_env_t>);
         using __query_t = __data_of<_Sender>;
-        STDEXEC::__set_value_from(
-          static_cast<_Receiver&&>(__rcvr), __query_t(), STDEXEC::get_env(__rcvr));
+        STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr),
+                                  __query_t(),
+                                  STDEXEC::get_env(__rcvr));
       };
     };
-  } // namespace __read_env
+  }  // namespace __read_env
 
-  struct __read_env_t {
+  struct __read_env_t
+  {
     template <class _Query>
-    constexpr auto operator()(_Query) const noexcept {
+    constexpr auto operator()(_Query) const noexcept
+    {
       return __make_sexpr<__read_env_t>(_Query());
     }
   };
@@ -139,27 +161,32 @@ namespace STDEXEC {
   inline constexpr __read_env_t read_env{};
 
   template <>
-  struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl { };
+  struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl
+  {};
 
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto get_scheduler_t::operator()() const noexcept {
+  constexpr auto get_scheduler_t::operator()() const noexcept
+  {
     return read_env(get_scheduler);
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto get_delegation_scheduler_t::operator()() const noexcept {
+  constexpr auto get_delegation_scheduler_t::operator()() const noexcept
+  {
     return read_env(get_delegation_scheduler);
   }
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
 STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-constexpr auto get_allocator_t::operator()() const noexcept {
+constexpr auto get_allocator_t::operator()() const noexcept
+{
   return STDEXEC::read_env(get_allocator);
 }
 
 STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-constexpr auto get_stop_token_t::operator()() const noexcept {
+constexpr auto get_stop_token_t::operator()() const noexcept
+{
   return STDEXEC::read_env(get_stop_token);
 }
 STDEXEC_P2300_NAMESPACE_END()

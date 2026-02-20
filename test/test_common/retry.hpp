@@ -24,7 +24,8 @@
 #include <optional>
 #include <type_traits>
 
-namespace {
+namespace
+{
 
   template <class From, class To>
   using _copy_cvref_t = STDEXEC::__copy_cvref_t<From, To>;
@@ -39,61 +40,71 @@ namespace {
   // a std::optional.
   template <std::invocable F>
     requires std::is_nothrow_move_constructible_v<F>
-  struct _conv {
+  struct _conv
+  {
     F f_;
 
     explicit _conv(F f) noexcept
-      : f_(static_cast<F&&>(f)) {
-    }
+      : f_(static_cast<F&&>(f))
+    {}
 
-    operator std::invoke_result_t<F>() && {
+    operator std::invoke_result_t<F>() &&
+    {
       return static_cast<F&&>(f_)();
     }
   };
 
   template <class R>
-  struct _op_base {
+  struct _op_base
+  {
     explicit _op_base(R r) noexcept(std::is_nothrow_move_constructible_v<R>)
-      : r_(static_cast<R&&>(r)) {
-    }
+      : r_(static_cast<R&&>(r))
+    {}
     virtual void _retry() noexcept = 0;
-    R r_;
+    R            r_;
   };
 
   // pass through all customizations except set_error, which retries the operation.
   template <class S, class R>
-  struct _retry_receiver {
+  struct _retry_receiver
+  {
     using receiver_concept = STDEXEC::receiver_t;
     _op_base<R>* o_;
 
-    auto base() && noexcept -> R&& {
+    auto base() && noexcept -> R&&
+    {
       return static_cast<R&&>(o_->r_);
     }
 
-    auto base() const & noexcept -> const R& {
+    auto base() const & noexcept -> R const &
+    {
       return o_->r_;
     }
 
     explicit _retry_receiver(_op_base<R>* o)
-      : o_(o) {
-    }
+      : o_(o)
+    {}
 
     template <class... Ts>
-    void set_value(Ts&&... ts) noexcept {
+    void set_value(Ts&&... ts) noexcept
+    {
       STDEXEC::set_value(std::move(o_->r_), std::forward<Ts>(ts)...);
     }
 
     template <class Error>
-    void set_error(Error&&) noexcept {
-      o_->_retry(); // This causes the op to be retried
+    void set_error(Error&&) noexcept
+    {
+      o_->_retry();  // This causes the op to be retried
     }
 
-    void set_stopped() noexcept {
+    void set_stopped() noexcept
+    {
       STDEXEC::set_stopped(std::move(o_->r_));
     }
 
     [[nodiscard]]
-    auto get_env() const noexcept -> STDEXEC::env_of_t<R> {
+    auto get_env() const noexcept -> STDEXEC::env_of_t<R>
+    {
       return STDEXEC::get_env(o_->r_);
     }
   };
@@ -101,45 +112,52 @@ namespace {
   // Hold the nested operation state in an optional so we can
   // re-construct and re-start it if the operation fails.
   template <class S, class R>
-  struct _op : _op_base<R> {
-    S s_;
+  struct _op : _op_base<R>
+  {
+    S                                                                   s_;
     std::optional<STDEXEC::connect_result_t<S&, _retry_receiver<S, R>>> o_;
 
     _op(S s, R r)
       : _op_base<R>{std::move(r)}
       , s_(std::move(s))
-      , o_{_connect()} {
-    }
+      , o_{_connect()}
+    {}
 
     _op(_op&&) = delete;
 
-    auto _connect() noexcept {
+    auto _connect() noexcept
+    {
       return _conv{[this] { return STDEXEC::connect(s_, _retry_receiver<S, R>{this}); }};
     }
 
-    void _retry() noexcept final {
-      STDEXEC_TRY {
-        o_.emplace(_connect()); // potentially throwing
+    void _retry() noexcept final
+    {
+      STDEXEC_TRY
+      {
+        o_.emplace(_connect());  // potentially throwing
         STDEXEC::start(*o_);
       }
-      STDEXEC_CATCH_ALL {
+      STDEXEC_CATCH_ALL
+      {
         STDEXEC::set_error(static_cast<R&&>(this->r_), std::current_exception());
       }
     }
 
-    void start() & noexcept {
+    void start() & noexcept
+    {
       STDEXEC::start(*o_);
     }
   };
 
   template <class S>
-  struct _retry_sender {
+  struct _retry_sender
+  {
     using sender_concept = STDEXEC::sender_t;
     S s_;
 
     explicit _retry_sender(S s)
-      : s_(static_cast<S&&>(s)) {
-    }
+      : s_(static_cast<S&&>(s))
+    {}
 
     template <class>
     using _swallow_errors = STDEXEC::completion_signatures<>;
@@ -151,23 +169,26 @@ namespace {
       STDEXEC::completion_signatures_of_t<S&, Env...>,
       STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
       _keep_values,
-      _swallow_errors
-    > {
+      _swallow_errors>
+    {
       return {};
     }
 
     template <STDEXEC::receiver R>
-    auto connect(R r) && -> _op<S, R> {
+    auto connect(R r) && -> _op<S, R>
+    {
       return {static_cast<S&&>(s_), static_cast<R&&>(r)};
     }
 
-    auto get_env() const noexcept -> STDEXEC::env_of_t<S> {
+    auto get_env() const noexcept -> STDEXEC::env_of_t<S>
+    {
       return STDEXEC::get_env(s_);
     }
   };
 
   template <STDEXEC::sender S>
-  auto retry(S s) -> STDEXEC::sender auto {
+  auto retry(S s) -> STDEXEC::sender auto
+  {
     return _retry_sender{static_cast<S&&>(s)};
   }
-} // namespace
+}  // namespace

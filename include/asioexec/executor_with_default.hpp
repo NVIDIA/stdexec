@@ -26,11 +26,13 @@
     "The header <exec/asio/executor_with_default.hpp> is deprecated. Please include <exec/asio/executor_with_default.hpp> instead."
 #endif
 
-#include "../exec/asio/executor_with_default.hpp" // IWYU pragma: export
+#include "../exec/asio/executor_with_default.hpp"  // IWYU pragma: export
 
-namespace asioexec {
+namespace asioexec
+{
   template <typename Executor, typename CompletionToken>
-  using executor_with_default [[deprecated(
-    "asioexec::executor_with_default is deprecated. Please use exec::asio::executor_with_default "
-    "instead.")]] = exec::asio::executor_with_default<Executor, CompletionToken>;
-} // namespace asioexec
+  using executor_with_default
+    [[deprecated("asioexec::executor_with_default is deprecated. Please use "
+                 "exec::asio::executor_with_default "
+                 "instead.")]] = exec::asio::executor_with_default<Executor, CompletionToken>;
+}  // namespace asioexec

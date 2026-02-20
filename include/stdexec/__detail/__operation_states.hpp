@@ -23,20 +23,24 @@
 
 #include <type_traits>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   // operation state tag type
-  struct operation_state_t { };
+  struct operation_state_t
+  {};
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   template <class _Op>
   concept __has_start_member = requires(_Op &__op) { __op.start(); };
 
-  struct start_t {
+  struct start_t
+  {
     template <class _Op>
       requires __has_start_member<_Op>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr void operator()(_Op &__op) const noexcept {
+    constexpr void operator()(_Op &__op) const noexcept
+    {
       static_assert(noexcept(__op.start()), "start() members must be noexcept");
       static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
       __op.start();
@@ -45,8 +49,9 @@ namespace STDEXEC {
     template <class _Op>
       requires __has_start_member<_Op> || __tag_invocable<start_t, _Op &>
     [[deprecated("the use of tag_invoke for start is deprecated")]]
-    STDEXEC_ATTRIBUTE(always_inline) //
-      constexpr void operator()(_Op &__op) const noexcept {
+    STDEXEC_ATTRIBUTE(always_inline)  //
+      constexpr void operator()(_Op &__op) const noexcept
+    {
       static_assert(__nothrow_tag_invocable<start_t, _Op &>);
       (void) __tag_invoke(start_t{}, __op);
     }
@@ -59,4 +64,4 @@ namespace STDEXEC {
   template <class _Op>
   concept operation_state = __std::destructible<_Op> && std::is_object_v<_Op>
                          && requires(_Op &__op) { STDEXEC::start(__op); };
-} // namespace STDEXEC
+}  // namespace STDEXEC

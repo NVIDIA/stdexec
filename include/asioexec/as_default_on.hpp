@@ -26,19 +26,20 @@
     "The header <exec/asio/as_default_on.hpp> is deprecated. Please include <exec/asio/as_default_on.hpp> instead."
 #endif
 
-#include "../exec/asio/as_default_on.hpp" // IWYU pragma: export
+#include "../exec/asio/as_default_on.hpp"  // IWYU pragma: export
 
-namespace asioexec {
+namespace asioexec
+{
 
   template <typename CompletionToken, typename IoObject>
-  using as_default_on_t [[deprecated(
-    "asioexec::as_default_on_t is deprecated. Please use exec::asio::as_default_on_t "
-    "instead.")]] = exec::asio::as_default_on_t<CompletionToken, IoObject>;
+  using as_default_on_t
+    [[deprecated("asioexec::as_default_on_t is deprecated. Please use exec::asio::as_default_on_t "
+                 "instead.")]] = exec::asio::as_default_on_t<CompletionToken, IoObject>;
 
   template <typename CompletionToken>
-  [[deprecated(
-    "asioexec::as_default_on is deprecated. Please use exec::asio::as_default_on instead.")]]
+  [[deprecated("asioexec::as_default_on is deprecated. Please use exec::asio::as_default_on "
+               "instead.")]]
   inline constexpr exec::asio::detail::as_default_on::t<CompletionToken>
     as_default_on{};
 
-} // namespace asioexec
+}  // namespace asioexec

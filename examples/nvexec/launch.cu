@@ -23,44 +23,50 @@
 
 #include <thrust/device_vector.h>
 
-constexpr std::size_t N = 2ul * 1024ul;
+constexpr std::size_t N                 = 2ul * 1024ul;
 constexpr std::size_t THREAD_BLOCK_SIZE = 128ul;
-constexpr std::size_t NUM_BLOCKS = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
+constexpr std::size_t NUM_BLOCKS        = (N + THREAD_BLOCK_SIZE - 1) / THREAD_BLOCK_SIZE;
 
-enum {
+enum
+{
   scaling = 2
 };
 
-auto bench() -> int {
+auto bench() -> int
+{
   std::vector<int> input(N, 0);
   std::iota(input.begin(), input.end(), 1);
   std::ranges::transform(input, input.begin(), [](int i) { return i * scaling; });
   return std::accumulate(input.begin(), input.end(), 0);
 }
 
-auto main() -> int {
+auto main() -> int
+{
   thrust::device_vector<int> input(N, 0);
   std::iota(input.begin(), input.end(), 1);
   int* first = thrust::raw_pointer_cast(input.data());
-  int* last = first + input.size();
+  int* last  = first + input.size();
 
   nvexec::stream_context stream{};
 
-  auto snd = stdexec::just(first, last) //
+  auto snd = stdexec::just(first, last)  //
            | stdexec::continues_on(stream.get_scheduler())
-           | nvexec::launch(
-               {.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
-               [](cudaStream_t, int* first, int* last) {
+           | nvexec::launch({.grid_size = NUM_BLOCKS, .block_size = THREAD_BLOCK_SIZE},
+                            [](cudaStream_t, int* first, int* last)
+                            {
+                              assert(nvexec::is_on_gpu());
+                              ptrdiff_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+                              if (idx < (last - first))
+                              {
+                                first[idx] *= scaling;
+                              }
+                            })
+           | stdexec::then(
+               [](int* first, int* last)
+               {
                  assert(nvexec::is_on_gpu());
-                 ptrdiff_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-                 if (idx < (last - first)) {
-                   first[idx] *= scaling;
-                 }
-               })
-           | stdexec::then([](int* first, int* last) {
-               assert(nvexec::is_on_gpu());
-               return std::accumulate(first, last, 0);
-             });
+                 return std::accumulate(first, last, 0);
+               });
 
   auto [result] = stdexec::sync_wait(std::move(snd)).value();
 

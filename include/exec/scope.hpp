@@ -17,14 +17,17 @@
 
 #include "../stdexec/__detail/__scope.hpp"
 
-namespace experimental::execution {
+namespace experimental::execution
+{
 
   template <class _Fn, class... _Ts>
     requires STDEXEC::__nothrow_callable<_Fn, _Ts...>
-  struct scope_guard {
+  struct scope_guard
+  {
     STDEXEC::__scope_guard<_Fn, _Ts...> __guard_;
 
-    constexpr void dismiss() noexcept {
+    constexpr void dismiss() noexcept
+    {
       __guard_.__dismiss();
     }
   };
@@ -32,7 +35,6 @@ namespace experimental::execution {
   template <class _Fn, class... _Ts>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE scope_guard(_Fn, _Ts...) -> scope_guard<_Fn, _Ts...>;
 
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

@@ -17,11 +17,12 @@
 
 #include "__config.hpp"
 
-#include <exception>   // IWYU pragma: keep for std::terminate
-#include <type_traits> // IWYU pragma: keep
-#include <utility>     // IWYU pragma: keep
+#include <exception>    // IWYU pragma: keep for std::terminate
+#include <type_traits>  // IWYU pragma: keep
+#include <utility>      // IWYU pragma: keep
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
@@ -36,12 +37,14 @@ namespace STDEXEC {
 
 #if STDEXEC_MSVC()
   template <class _Tp, bool _Noexcept = true>
-  _Tp __declfn_() noexcept(_Noexcept) {
+  _Tp __declfn_() noexcept(_Noexcept)
+  {
     STDEXEC_ASSERT(false && +"__declfn() should never be called" == nullptr);
     STDEXEC_TERMINATE();
   }
   template <class _Tp, bool _Noexcept = true>
-  inline constexpr __declfn_t<_Tp, _Noexcept> __declfn() noexcept {
+  inline constexpr __declfn_t<_Tp, _Noexcept> __declfn() noexcept
+  {
     return &__declfn_<_Tp, _Noexcept>;
   }
 #else
@@ -52,16 +55,18 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
 #if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 21'00)
-  namespace __tt {
+  namespace __tt
+  {
     template <class>
     struct __wrap;
 
     template <bool>
-    struct __decay_ {
+    struct __decay_
+    {
       template <class _Ty>
       using __f = __decay(_Ty);
     };
-  } // namespace __tt
+  }  // namespace __tt
 
   template <class _Ty>
   using __decay_t = __tt::__decay_<bool(sizeof(__declfn_t<_Ty>))>::template __f<_Ty>;
@@ -72,48 +77,54 @@ namespace STDEXEC {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __copy_cvref_t: For copying cvref from one type to another
-  struct __cp {
+  struct __cp
+  {
     template <class _Tp>
     using __f = _Tp;
   };
 
-  struct __cpc {
+  struct __cpc
+  {
     template <class _Tp>
-    using __f = const _Tp;
+    using __f = _Tp const;
   };
 
-  struct __cplr {
+  struct __cplr
+  {
     template <class _Tp>
     using __f = _Tp &;
   };
 
-  struct __cprr {
+  struct __cprr
+  {
     template <class _Tp>
     using __f = _Tp &&;
   };
 
-  struct __cpclr {
+  struct __cpclr
+  {
     template <class _Tp>
-    using __f = const _Tp &;
+    using __f = _Tp const &;
   };
 
-  struct __cpcrr {
+  struct __cpcrr
+  {
     template <class _Tp>
-    using __f = const _Tp &&;
+    using __f = _Tp const &&;
   };
 
   template <class>
   extern __cp __cpcvr;
   template <class _Tp>
-  extern __cpc __cpcvr<const _Tp>;
+  extern __cpc __cpcvr<_Tp const>;
   template <class _Tp>
   extern __cplr __cpcvr<_Tp &>;
   template <class _Tp>
   extern __cprr __cpcvr<_Tp &&>;
   template <class _Tp>
-  extern __cpclr __cpcvr<const _Tp &>;
+  extern __cpclr __cpcvr<_Tp const &>;
   template <class _Tp>
-  extern __cpcrr __cpcvr<const _Tp &&>;
+  extern __cpcrr __cpcvr<_Tp const &&>;
   template <class _Tp>
   using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
@@ -125,10 +136,11 @@ namespace STDEXEC {
   template <class _Up>
   inline constexpr bool __is_const_<_Up const> = true;
 
-  namespace __tt {
+  namespace __tt
+  {
     template <class _Ty>
     constexpr auto __remove_rvalue_reference_fn(_Ty &&) -> _Ty;
-  } // namespace __tt
+  }  // namespace __tt
 
   template <class _Ty>
   using __remove_rvalue_reference_t = decltype(__tt::__remove_rvalue_reference_fn(
@@ -136,9 +148,10 @@ namespace STDEXEC {
 
   // Implemented as a class instead of a free function
   // because of a bizarre nvc++ compiler bug:
-  struct __cref_fn {
+  struct __cref_fn
+  {
     template <class _Ty>
-    constexpr auto operator()(const _Ty &) -> const _Ty &;
+    constexpr auto operator()(_Ty const &) -> _Ty const &;
   };
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
@@ -150,9 +163,10 @@ namespace STDEXEC {
   // using __mbool = __mconstant<_Bp>;
 
   template <bool _Bp>
-  struct __mbool : std::bool_constant<_Bp> { };
+  struct __mbool : std::bool_constant<_Bp>
+  {};
 
-  using __mtrue = __mbool<true>;
+  using __mtrue  = __mbool<true>;
   using __mfalse = __mbool<false>;
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

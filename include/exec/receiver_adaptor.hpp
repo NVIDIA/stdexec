@@ -17,7 +17,8 @@
 
 #include "../stdexec/__detail/__receiver_adaptor.hpp"
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   template <class _Derived, class _Base = STDEXEC::__adaptors::__not_a_receiver>
   using receiver_adaptor = STDEXEC::__receiver_adaptor<_Derived, _Base>;
-} // namespace experimental::execution
+}  // namespace experimental::execution

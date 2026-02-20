@@ -15,10 +15,12 @@
  */
 #pragma once
 
-#include "repeat_until.hpp" // IWYU pragma: export
+#include "repeat_until.hpp"  // IWYU pragma: export
 
 #if STDEXEC_MSVC()
-#  pragma message("WARNING: The header <exec/repeat_effect_until.hpp> is deprecated. Please include <exec/repeat_until.hpp> instead.")
+#  pragma message(                                                                                 \
+    "WARNING: The header <exec/repeat_effect_until.hpp> is deprecated. Please include <exec/repeat_until.hpp> instead.")
 #else
-#  warning "The header <exec/repeat_effect_until.hpp> is deprecated. Please include <exec/repeat_until.hpp> instead."
+#  warning                                                                                         \
+    "The header <exec/repeat_effect_until.hpp> is deprecated. Please include <exec/repeat_until.hpp> instead."
 #endif

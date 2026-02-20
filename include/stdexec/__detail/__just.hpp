@@ -28,93 +28,113 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.factories]
-  namespace __just {
+  namespace __just
+  {
     template <class _SetTag>
-    struct __attrs {
-      static constexpr auto query(get_completion_behavior_t<_SetTag>) noexcept {
+    struct __attrs
+    {
+      static constexpr auto query(get_completion_behavior_t<_SetTag>) noexcept
+      {
         return completion_behavior::inline_completion;
       }
     };
 
     template <class _SetTag, class _Tuple, class _Receiver>
-    struct __opstate {
-      constexpr void start() noexcept {
+    struct __opstate
+    {
+      constexpr void start() noexcept
+      {
         __apply(_SetTag(), static_cast<_Tuple&&>(__data_), static_cast<_Receiver&&>(__rcvr_));
       }
 
       _Receiver __rcvr_;
-      _Tuple __data_;
+      _Tuple    __data_;
     };
 
     template <class _JustTag>
-    struct __impl : __sexpr_defaults {
+    struct __impl : __sexpr_defaults
+    {
       using __set_tag_t = _JustTag::__tag_t;
 
-      static constexpr auto __get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t> {
+      static constexpr auto __get_attrs = [](__ignore, __ignore) noexcept -> __attrs<__set_tag_t>
+      {
         return {};
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures() {
+      static consteval auto __get_completion_signatures()
+      {
         static_assert(sender_expr_for<_Sender, _JustTag>);
         return completion_signatures<__mapply<__qf<__set_tag_t>, __decay_t<__data_of<_Sender>>>>{};
       }
 
       static constexpr auto __connect =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
-          __nothrow_decay_copyable<_Sender>) {
-          auto& [__tag, __data] = __sndr;
-          return __opstate<__set_tag_t, decltype(__data), _Receiver>{
-            static_cast<_Receiver&&>(__rcvr), STDEXEC::__forward_like<_Sender>(__data)};
-        };
+          __nothrow_decay_copyable<_Sender>)
+      {
+        auto& [__tag, __data] = __sndr;
+        return __opstate<__set_tag_t, decltype(__data), _Receiver>{static_cast<_Receiver&&>(__rcvr),
+                                                                   STDEXEC::__forward_like<_Sender>(
+                                                                     __data)};
+      };
     };
-  } // namespace __just
+  }  // namespace __just
 
-  struct just_t {
+  struct just_t
+  {
     using __tag_t = set_value_t;
 
     template <__movable_value... _Ts>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>) {
+    constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>)
+    {
       return __make_sexpr<just_t>(__tuple{static_cast<_Ts&&>(__ts)...});
     }
   };
 
-  struct just_error_t {
+  struct just_error_t
+  {
     using __tag_t = set_error_t;
 
     template <__movable_value _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>) {
+    constexpr auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>)
+    {
       return __make_sexpr<just_error_t>(__tuple{static_cast<_Error&&>(__err)});
     }
   };
 
-  struct just_stopped_t {
+  struct just_stopped_t
+  {
     using __tag_t = set_stopped_t;
 
     template <class _Tag = just_stopped_t>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator()() const noexcept {
+    constexpr auto operator()() const noexcept
+    {
       return __make_sexpr<_Tag>(__tuple{});
     }
   };
 
   template <>
-  struct __sexpr_impl<just_t> : __just::__impl<just_t> { };
+  struct __sexpr_impl<just_t> : __just::__impl<just_t>
+  {};
 
   template <>
-  struct __sexpr_impl<just_error_t> : __just::__impl<just_error_t> { };
+  struct __sexpr_impl<just_error_t> : __just::__impl<just_error_t>
+  {};
 
   template <>
-  struct __sexpr_impl<just_stopped_t> : __just::__impl<just_stopped_t> { };
+  struct __sexpr_impl<just_stopped_t> : __just::__impl<just_stopped_t>
+  {};
 
-  inline constexpr just_t just{};
-  inline constexpr just_error_t just_error{};
+  inline constexpr just_t         just{};
+  inline constexpr just_error_t   just_error{};
   inline constexpr just_stopped_t just_stopped{};
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

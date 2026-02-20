@@ -22,14 +22,16 @@
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
+#include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
 #include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_error]
-  namespace __upon_error {
+  namespace __upon_error
+  {
     using __on_not_callable = __mbind_front_q<__callable_error_t, upon_error_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
@@ -37,45 +39,52 @@ namespace STDEXEC {
       __completion_signatures_of_t<_CvSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_error_t, _Fun, _CvSender, _Env...>,
       __cmplsigs::__default_set_value,
-      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
-    >;
+      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f>;
 
-    struct __upon_error_impl : __sexpr_defaults {
+    struct __upon_error_impl : __sexpr_defaults
+    {
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures() //
-        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+      static consteval auto __get_completion_signatures()  //
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
+      {
         static_assert(sender_expr_for<_Sender, upon_error_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };
 
-      static constexpr auto __complete = []<class _Tag, class _State, class... _Args>(
-                                         __ignore,
-                                         _State& __state,
-                                         _Tag,
-                                         _Args&&... __args) noexcept -> void {
-        if constexpr (__same_as<_Tag, set_error_t>) {
-          STDEXEC::__set_value_from(
-            static_cast<_State&&>(__state).__rcvr_,
-            static_cast<_State&&>(__state).__data_,
-            static_cast<_Args&&>(__args)...);
-        } else {
+      static constexpr auto __complete =
+        []<class _Tag, class _State, class... _Args>(__ignore,
+                                                     _State& __state,
+                                                     _Tag,
+                                                     _Args&&... __args) noexcept -> void
+      {
+        if constexpr (__same_as<_Tag, set_error_t>)
+        {
+          STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
+                                    static_cast<_State&&>(__state).__data_,
+                                    static_cast<_Args&&>(__args)...);
+        }
+        else
+        {
           _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
     };
-  } // namespace __upon_error
+  }  // namespace __upon_error
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  struct upon_error_t {
+  struct upon_error_t
+  {
     template <sender _Sender, __movable_value _Fun>
-    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
+    {
       return __make_sexpr<upon_error_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
     }
 
     template <__movable_value _Fun>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+    constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
+    {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
@@ -83,5 +92,6 @@ namespace STDEXEC {
   inline constexpr upon_error_t upon_error{};
 
   template <>
-  struct __sexpr_impl<upon_error_t> : __upon_error::__upon_error_impl { };
-} // namespace STDEXEC
+  struct __sexpr_impl<upon_error_t> : __upon_error::__upon_error_impl
+  {};
+}  // namespace STDEXEC

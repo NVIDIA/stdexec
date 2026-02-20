@@ -21,12 +21,17 @@
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
 
-namespace STDEXEC {
-  namespace __adaptors {
-    namespace __no {
-      struct __nope { };
+namespace STDEXEC
+{
+  namespace __adaptors
+  {
+    namespace __no
+    {
+      struct __nope
+      {};
 
-      struct __receiver : __nope {
+      struct __receiver : __nope
+      {
         using receiver_concept = receiver_t;
 
         constexpr void set_error(std::exception_ptr) noexcept;
@@ -34,39 +39,44 @@ namespace STDEXEC {
         [[nodiscard]]
         constexpr auto get_env() const noexcept -> env<>;
       };
-    } // namespace __no
+    }  // namespace __no
 
     using __not_a_receiver = __no::__receiver;
 
     template <class _Base>
-    struct __adaptor_base {
+    struct __adaptor_base
+    {
       template <class _T1>
         requires __std::constructible_from<_Base, _T1>
       explicit __adaptor_base(_T1&& __base)
-        : __base_(static_cast<_T1&&>(__base)) {
-      }
+        : __base_(static_cast<_T1&&>(__base))
+      {}
 
      private:
       STDEXEC_ATTRIBUTE(no_unique_address) _Base __base_;
 
      protected:
-      STDEXEC_ATTRIBUTE(host, device, always_inline) auto base() & noexcept -> _Base& {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) auto base() & noexcept -> _Base&
+      {
         return __base_;
       }
 
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      auto base() const & noexcept -> const _Base& {
+      auto base() const & noexcept -> _Base const &
+      {
         return __base_;
       }
 
-      STDEXEC_ATTRIBUTE(host, device, always_inline) auto base() && noexcept -> _Base&& {
+      STDEXEC_ATTRIBUTE(host, device, always_inline) auto base() && noexcept -> _Base&&
+      {
         return static_cast<_Base&&>(__base_);
       }
     };
 
     template <__std::derived_from<__no::__nope> _Base>
-    struct __adaptor_base<_Base> { };
-  } // namespace __adaptors
+    struct __adaptor_base<_Base>
+    {};
+  }  // namespace __adaptors
 
 // BUGBUG Not to spec: on gcc and nvc++, member functions in derived classes
 // don't shadow type aliases of the same name in base classes. :-O
@@ -100,8 +110,8 @@ namespace STDEXEC {
   template <__class _Derived, class _Base = __adaptors::__not_a_receiver>
   struct __receiver_adaptor
     : __adaptors::__adaptor_base<_Base>
-    , receiver_t {
-
+    , receiver_t
+  {
     static constexpr bool __has_base = !__std::derived_from<_Base, __adaptors::__no::__nope>;
 
     template <class _Self>
@@ -115,10 +125,14 @@ namespace STDEXEC {
 
     template <class _Self>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr static auto __get_base(_Self&& __self) noexcept -> __base_t<_Self> {
-      if constexpr (__has_base) {
+    constexpr static auto __get_base(_Self&& __self) noexcept -> __base_t<_Self>
+    {
+      if constexpr (__has_base)
+      {
         return __c_upcast<__receiver_adaptor>(static_cast<_Self&&>(__self)).base();
-      } else {
+      }
+      else
+      {
         return static_cast<_Self&&>(__self).base();
       }
     }
@@ -132,35 +146,39 @@ namespace STDEXEC {
     template <class... _As, class _Self = _Derived>
       requires __callable<set_value_t, __base_t<_Self>, _As...>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_value(_As&&... __as) && noexcept {
-      return STDEXEC::set_value(
-        __get_base(static_cast<_Self&&>(*this)), static_cast<_As&&>(__as)...);
+    void set_value(_As&&... __as) && noexcept
+    {
+      return STDEXEC::set_value(__get_base(static_cast<_Self&&>(*this)),
+                                static_cast<_As&&>(__as)...);
     }
 
     template <class _Error, class _Self = _Derived>
       requires __callable<set_error_t, __base_t<_Self>, _Error>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_error(_Error&& __err) && noexcept {
-      return STDEXEC::set_error(
-        __get_base(static_cast<_Self&&>(*this)), static_cast<_Error&&>(__err));
+    void set_error(_Error&& __err) && noexcept
+    {
+      return STDEXEC::set_error(__get_base(static_cast<_Self&&>(*this)),
+                                static_cast<_Error&&>(__err));
     }
 
     template <class _Self = _Derived>
       requires __callable<set_stopped_t, __base_t<_Self>>
     STDEXEC_ATTRIBUTE(host, device)
-    void set_stopped() && noexcept {
+    void set_stopped() && noexcept
+    {
       return STDEXEC::set_stopped(__get_base(static_cast<_Self&&>(*this)));
     }
 
     template <class _Self = _Derived>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto get_env() const noexcept -> env_of_t<__base_t<const _Self&>> {
-      return STDEXEC::get_env(__get_base(static_cast<const _Self&>(*this)));
+    constexpr auto get_env() const noexcept -> env_of_t<__base_t<_Self const &>>
+    {
+      return STDEXEC::get_env(__get_base(static_cast<_Self const &>(*this)));
     }
   };
 
   template <__class _Derived, class _Base = __adaptors::__not_a_receiver>
-  using receiver_adaptor
-    [[deprecated("use exec::receiver_adaptor from <exec/receiver_adaptor.hpp> instead")]]
-    = __receiver_adaptor<_Derived, _Base>;
-} // namespace STDEXEC
+  using receiver_adaptor [[deprecated("use exec::receiver_adaptor from <exec/receiver_adaptor.hpp> "
+                                      "instead")]]
+  = __receiver_adaptor<_Derived, _Base>;
+}  // namespace STDEXEC

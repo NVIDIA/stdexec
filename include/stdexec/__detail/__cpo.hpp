@@ -99,12 +99,14 @@
 #  pragma clang deprecated(STDEXEC_MEMFN_DECL)
 #endif
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <class>
   struct __arg_type;
 
   template <class _Arg>
-  struct __arg_type<void(_Arg (*)())> {
+  struct __arg_type<void(_Arg (*)())>
+  {
     using type = _Arg;
   };
 
@@ -115,14 +117,16 @@ namespace STDEXEC {
   struct __tag_type;
 
   template <class _Ret, class _Tag>
-  struct __tag_type<_Ret _Tag::*> {
+  struct __tag_type<_Ret _Tag::*>
+  {
     using type = _Tag;
   };
 
   template <class _Fn>
   using __tag_type_t = __tag_type<_Fn>::type;
 
-  namespace tags {
+  namespace tags
+  {
     using STDEXEC::set_value_t;
     using STDEXEC::set_error_t;
     using STDEXEC::set_stopped_t;
@@ -130,5 +134,5 @@ namespace STDEXEC {
     using STDEXEC::start_t;
     using STDEXEC::get_env_t;
     using STDEXEC::get_completion_signatures_t;
-  } // namespace tags
-} // namespace STDEXEC
+  }  // namespace tags
+}  // namespace STDEXEC

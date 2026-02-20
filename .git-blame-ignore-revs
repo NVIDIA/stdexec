@@ -30,3 +30,6 @@ aee392a046a26ae2340849fe98e38332d9537397
 
 # Reformat everything with clang-format-21 again
 1957788ce7a55843c0bcf81e4c97a4027547dcb1
+
+# new formatting style for improved readability
+0cccd586b8d75c64b289e38f334e95846dfb4f33

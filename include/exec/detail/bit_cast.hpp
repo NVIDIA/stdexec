@@ -27,7 +27,8 @@
 
 #include <cstring>
 
-namespace experimental::execution {
+namespace experimental::execution
+{
 
   template <class _Ty>
   concept __trivially_copyable = STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
@@ -38,7 +39,8 @@ namespace experimental::execution {
   template <__trivially_copyable _To, __trivially_copyable _From>
     requires(sizeof(_To) == sizeof(_From))
   [[nodiscard]]
-  constexpr _To bit_cast(const _From& __from) noexcept {
+  constexpr _To bit_cast(const _From& __from) noexcept
+  {
 #  if STDEXEC_HAS_BUILTIN(__builtin_bit_cast) || (STDEXEC_MSVC() && STDEXEC_MSVC_VERSION >= 19'26)
     return __builtin_bit_cast(_To, __from);
 #  else
@@ -48,7 +50,6 @@ namespace experimental::execution {
 #  endif
   }
 #endif
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

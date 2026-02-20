@@ -27,68 +27,78 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 // __type_info, __mtypeid, and __mtypeof
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_info
-  struct __type_info {
-    constexpr __type_info(__type_info &&) = delete;
+  struct __type_info
+  {
+    constexpr __type_info(__type_info &&)            = delete;
     constexpr __type_info &operator=(__type_info &&) = delete;
 
     constexpr explicit __type_info(std::string_view __name) noexcept
-      : __name_(__name) {
-    }
+      : __name_(__name)
+    {}
 
     [[nodiscard]]
-    constexpr std::string_view name() const noexcept {
+    constexpr std::string_view name() const noexcept
+    {
       return __name_;
     }
 
     [[nodiscard]]
-    constexpr auto operator==(const __type_info &__other) const noexcept -> bool {
+    constexpr auto operator==(__type_info const &__other) const noexcept -> bool
+    {
       return this == &__other || __name_ == __other.__name_;
     }
 
     constexpr auto
-      operator<=>(const __type_info &) const noexcept -> std::strong_ordering = default;
+    operator<=>(__type_info const &) const noexcept -> std::strong_ordering = default;
 
    private:
     std::string_view __name_;
   };
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _Ty>
     inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>};
 
     template <class _Ty>
-    inline constexpr const __type_info &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
-  } // namespace __detail
+    inline constexpr __type_info const &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
+  }  // namespace __detail
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_index
-  struct __type_index {
-    constexpr __type_index(const __type_info &info) noexcept
-      : __info_(&info) {
-    }
+  struct __type_index
+  {
+    constexpr __type_index(__type_info const &info) noexcept
+      : __info_(&info)
+    {}
 
     [[nodiscard]]
-    constexpr std::string_view name() const noexcept {
+    constexpr std::string_view name() const noexcept
+    {
       return (*__info_).name();
     }
 
     [[nodiscard]]
-    constexpr bool operator==(const __type_index &other) const noexcept {
+    constexpr bool operator==(__type_index const &other) const noexcept
+    {
       return *__info_ == *other.__info_;
     }
 
     [[nodiscard]]
-    constexpr std::strong_ordering operator<=>(const __type_index &other) const noexcept {
+    constexpr std::strong_ordering operator<=>(__type_index const &other) const noexcept
+    {
       return *__info_ <=> *other.__info_;
     }
 
-    const __type_info *__info_;
+    __type_info const *__info_;
   };
 
-  namespace __detail {
+  namespace __detail
+  {
     STDEXEC_PRAGMA_PUSH()
     STDEXEC_PRAGMA_IGNORE_GNU("-Wnon-template-friend")
     STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
@@ -96,16 +106,19 @@ namespace STDEXEC {
     // The following two classes use the stateful metaprogramming trick to create a spooky
     // association between a __type_index object and the type it represents.
     template <__type_index Id>
-    struct __mtypeid_key {
+    struct __mtypeid_key
+    {
       friend constexpr auto __typeid_lookup(__mtypeid_key<Id>) noexcept;
     };
 
     template <class _Ty>
-    struct __mtypeid_value {
-      using __t = _Ty;
+    struct __mtypeid_value
+    {
+      using __t                          = _Ty;
       static constexpr __type_index __id = __type_index(__mtypeid_v<_Ty>);
 
-      friend constexpr auto __typeid_lookup(__mtypeid_key<__id>) noexcept {
+      friend constexpr auto __typeid_lookup(__mtypeid_key<__id>) noexcept
+      {
         return __mtypeid_value<_Ty>();
       }
     };
@@ -117,7 +130,7 @@ namespace STDEXEC {
       requires __same_as<decltype(_Index) const, __type_index const>
     extern __fn_t<__t<decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))>>
       *__mtypeof_v<_Index>;
-  } // namespace __detail
+  }  // namespace __detail
 
   // For a given type, return a __type_index object
   template <class _Ty>
@@ -125,4 +138,4 @@ namespace STDEXEC {
 
   // Sanity check:
   static_assert(STDEXEC_IS_SAME(void, __mtypeof<__mtypeid<void>>));
-} // namespace STDEXEC
+}  // namespace STDEXEC

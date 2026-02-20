@@ -24,16 +24,17 @@
 
 namespace ex = stdexec;
 
-auto main() -> int {
-  const int n = 2 * 1024;
+auto main() -> int
+{
+  int const                    n = 2 * 1024;
   thrust::device_vector<float> input(n, 1.0f);
-  float* first = thrust::raw_pointer_cast(input.data());
-  float* last = thrust::raw_pointer_cast(input.data()) + input.size();
+  float*                       first = thrust::raw_pointer_cast(input.data());
+  float*                       last  = thrust::raw_pointer_cast(input.data()) + input.size();
 
   nvexec::stream_context stream_ctx{};
 
-  auto snd = ex::just(std::span{first, last})             //
-           | ex::continues_on(stream_ctx.get_scheduler()) //
+  auto snd = ex::just(std::span{first, last})              //
+           | ex::continues_on(stream_ctx.get_scheduler())  //
            | nvexec::reduce(42.0f);
 
   auto [result] = stdexec::sync_wait(std::move(snd)).value();

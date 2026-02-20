@@ -19,14 +19,18 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-namespace experimental::execution {
-  namespace __empty_sequence {
+namespace experimental::execution
+{
+  namespace __empty_sequence
+  {
 
     using namespace STDEXEC;
 
     template <class _Receiver>
-    struct __operation {
-      void start() & noexcept {
+    struct __operation
+    {
+      void start() & noexcept
+      {
         STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
       }
 
@@ -34,29 +38,32 @@ namespace experimental::execution {
       _Receiver __rcvr_;
     };
 
-    struct __sender {
-      using sender_concept = sequence_sender_t;
+    struct __sender
+    {
+      using sender_concept        = sequence_sender_t;
       using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
-      using item_types = exec::item_types<>;
+      using item_types            = exec::item_types<>;
 
       template <receiver_of<completion_signatures> _Rcvr>
-      auto subscribe(_Rcvr __rcvr) const noexcept {
+      auto subscribe(_Rcvr __rcvr) const noexcept
+      {
         return __operation<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)};
       }
     };
 
-    struct empty_sequence_t {
-      auto operator()() const noexcept -> __sender {
+    struct empty_sequence_t
+    {
+      auto operator()() const noexcept -> __sender
+      {
         return {};
       }
     };
 
-  } // namespace __empty_sequence
+  }  // namespace __empty_sequence
 
   using __empty_sequence::empty_sequence_t;
   inline constexpr empty_sequence_t empty_sequence{};
 
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

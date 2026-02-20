@@ -25,10 +25,12 @@
 
 #include <type_traits>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // completion_signatures
-  namespace __cmplsigs {
+  namespace __cmplsigs
+  {
     template <class _Sig>
     inline constexpr bool __is_compl_sig = false;
     template <class... _Args>
@@ -37,12 +39,13 @@ namespace STDEXEC {
     inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
     template <>
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
-  } // namespace __cmplsigs
+  }  // namespace __cmplsigs
 
   template <class _Sig>
   concept __completion_signature = __cmplsigs::__is_compl_sig<_Sig>;
 
-  namespace __cmplsigs {
+  namespace __cmplsigs
+  {
     // The following code is used to normalize completion signatures. "Normalization" means that
     // that rvalue-references are stripped from the types in the completion signatures. For example,
     // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
@@ -68,7 +71,7 @@ namespace STDEXEC {
 
     template <class _Sig>
     using __normalize_sig_t = decltype(__cmplsigs::__normalize_sig(static_cast<_Sig*>(nullptr)));
-  } // namespace __cmplsigs
+  }  // namespace __cmplsigs
 
   template <class... _SigPtrs>
   using __completion_signature_ptrs_t = decltype(__cmplsigs::__repack_completions(
@@ -78,27 +81,35 @@ namespace STDEXEC {
 
   template <class, class... _What, class... _Values>
   [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...> {
+  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
+  {
     return {};
   }
 
   template <class... _What, class... _Values>
   [[nodiscard]]
-  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...> {
+  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
+  {
     return {};
   }
 
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#else   // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _Return, class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
-  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return {
-    if constexpr (__same_as<_What, dependent_sender_error>) {
+  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
+  {
+    if constexpr (__same_as<_What, dependent_sender_error>)
+    {
       throw __mexception<dependent_sender_error, _More...>();
-    } else if constexpr (sizeof...(_Values) == 1) {
+    }
+    else if constexpr (sizeof...(_Values) == 1)
+    {
       throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
-    } else {
+    }
+    else
+    {
       throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
     }
   }
@@ -106,37 +117,40 @@ namespace STDEXEC {
   template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto
-    __throw_compile_time_error([[maybe_unused]] _Values... __values) -> completion_signatures<> {
+  __throw_compile_time_error([[maybe_unused]] _Values... __values) -> completion_signatures<>
+  {
     return;
   }
-#endif // ^^^ constexpr exceptions ^^^
+#endif  // ^^^ constexpr exceptions ^^^
 
   template <class _Return, class... _What>
   [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(__mexception<_What...>) {
+  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
+  {
     return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
   }
 
   template <class... _What>
   [[nodiscard]]
-  consteval auto __throw_compile_time_error(__mexception<_What...>) {
+  consteval auto __throw_compile_time_error(__mexception<_What...>)
+  {
     return STDEXEC::__throw_compile_time_error<_What...>();
   }
 
-  namespace __cmplsigs {
+  namespace __cmplsigs
+  {
     // __partitions is a cache of completion signatures for fast access. The
     // completion_signatures<Sigs...>::__partitioned nested struct contains an alias to a
     // __partitions specialization. If the cache is never accessed, it is never
     // instantiated.
-    template <
-      class _ValueTuplesList = __mlist<>,
-      class _ErrorsList = __mlist<>,
-      class _StoppedList = __mlist<>
-    >
+    template <class _ValueTuplesList = __mlist<>,
+              class _ErrorsList      = __mlist<>,
+              class _StoppedList     = __mlist<>>
     struct __partitions;
 
     template <class... _ValueTuples, class... _Errors, class... _Stopped>
-    struct __partitions<__mlist<_ValueTuples...>, __mlist<_Errors...>, __mlist<_Stopped...>> {
+    struct __partitions<__mlist<_ValueTuples...>, __mlist<_Errors...>, __mlist<_Stopped...>>
+    {
       template <class _Tuple, class _Variant>
       using __value_types = _Variant::template __f<__mapply<_Tuple, _ValueTuples>...>;
 
@@ -146,34 +160,42 @@ namespace STDEXEC {
       template <class _Variant, class _Type = set_stopped_t()>
       using __stopped_types = _Variant::template __f<__msecond<_Stopped, _Type>...>;
 
-      using __count_values = __msize_t<sizeof...(_ValueTuples)>;
-      using __count_errors = __msize_t<sizeof...(_Errors)>;
+      using __count_values  = __msize_t<sizeof...(_ValueTuples)>;
+      using __count_errors  = __msize_t<sizeof...(_Errors)>;
       using __count_stopped = __msize_t<sizeof...(_Stopped)>;
 
-      struct __decay_copyable {
+      struct __decay_copyable
+      {
         // These aliases are placed in a separate struct to avoid computing them
         // if they are not needed.
-        struct __values {
-          static constexpr bool value =
-            (__mapply_q<__decay_copyable_t, _ValueTuples>::value && ...);
+        struct __values
+        {
+          static constexpr bool value = (__mapply_q<__decay_copyable_t, _ValueTuples>::value
+                                         && ...);
         };
-        struct __errors {
+        struct __errors
+        {
           static constexpr bool value = STDEXEC::__decay_copyable<_Errors...>;
         };
-        struct __all : __mand_t<__values, __errors> { };
+        struct __all : __mand_t<__values, __errors>
+        {};
       };
 
-      struct __nothrow_decay_copyable {
+      struct __nothrow_decay_copyable
+      {
         // These aliases are placed in a separate struct to avoid computing them
         // if they are not needed.
-        struct __values {
-          static constexpr bool value =
-            (__mapply_q<__nothrow_decay_copyable_t, _ValueTuples>::value && ...);
+        struct __values
+        {
+          static constexpr bool value = (__mapply_q<__nothrow_decay_copyable_t, _ValueTuples>::value
+                                         && ...);
         };
-        struct __errors {
+        struct __errors
+        {
           static constexpr bool value = STDEXEC::__nothrow_decay_copyable<_Errors...>;
         };
-        struct __all : __mand_t<__values, __errors> { };
+        struct __all : __mand_t<__values, __errors>
+        {};
       };
     };
 
@@ -181,25 +203,26 @@ namespace STDEXEC {
     struct __partitioned_fold_fn;
 
     template <>
-    struct __partitioned_fold_fn<set_value_t> {
+    struct __partitioned_fold_fn<set_value_t>
+    {
       template <class... _ValueTuples, class _Errors, class _Stopped, class _Values>
-      constexpr auto operator()(
-        __partitions<__mlist<_ValueTuples...>, _Errors, _Stopped>&,
-        __undefined<_Values>&) const
+      constexpr auto operator()(__partitions<__mlist<_ValueTuples...>, _Errors, _Stopped>&,
+                                __undefined<_Values>&) const
         -> __undefined<__partitions<__mlist<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
     };
 
     template <>
-    struct __partitioned_fold_fn<set_error_t> {
+    struct __partitioned_fold_fn<set_error_t>
+    {
       template <class _Values, class... _Errors, class _Stopped, class _Error>
-      constexpr auto operator()(
-        __partitions<_Values, __mlist<_Errors...>, _Stopped>&,
-        __undefined<__mlist<_Error>>&) const
+      constexpr auto operator()(__partitions<_Values, __mlist<_Errors...>, _Stopped>&,
+                                __undefined<__mlist<_Error>>&) const
         -> __undefined<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>&;
     };
 
     template <>
-    struct __partitioned_fold_fn<set_stopped_t> {
+    struct __partitioned_fold_fn<set_stopped_t>
+    {
       template <class _Values, class _Errors, class _Stopped>
       constexpr auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
         -> __undefined<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>>&;
@@ -210,32 +233,29 @@ namespace STDEXEC {
     // cache. `__undefined` is used here to prevent the instantiation of the intermediate
     // types.
     template <class _Partitioned, class _Tag, class... _Args>
-    constexpr auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...)) -> __call_result_t<
-      __partitioned_fold_fn<_Tag>,
-      _Partitioned&,
-      __undefined<__mlist<_Args...>>&
-    >;
+    constexpr auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...))
+      -> __call_result_t<__partitioned_fold_fn<_Tag>,
+                         _Partitioned&,
+                         __undefined<__mlist<_Args...>>&>;
 
     // This function declaration is used to extract the cache from the `__undefined` type.
     template <class _Partitioned>
     constexpr auto __unpack_partitioned_completions(__undefined<_Partitioned>&) -> _Partitioned;
 
     template <class... _Sigs>
-    using __partition_completion_signatures_t = //
+    using __partition_completion_signatures_t =  //
       decltype(__cmplsigs::__unpack_partitioned_completions(
         (__declval<__undefined<__partitions<>>&>() * ... * static_cast<_Sigs*>(nullptr))));
 
     template <class _Completions>
     using __partitions_of_t = _Completions::__partitioned::__t;
-  } // namespace __cmplsigs
+  }  // namespace __cmplsigs
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // completion signatures type traits
-  template <
-    class _Sigs,
-    class _Tuple = __qq<__decayed_std_tuple>,
-    class _Variant = __qq<__std_variant>
-  >
+  template <class _Sigs,
+            class _Tuple   = __qq<__decayed_std_tuple>,
+            class _Variant = __qq<__std_variant>>
   using __value_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
 
@@ -261,17 +281,21 @@ namespace STDEXEC {
   using __concat_completion_signatures_t =
     __mconcat<__qq<completion_signatures>>::__f<__mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
 
-  namespace __detail {
-    struct __concat_completion_signatures_fn {
+  namespace __detail
+  {
+    struct __concat_completion_signatures_fn
+    {
       template <STDEXEC::__valid_completion_signatures... Sigs>
       [[nodiscard]]
-      consteval auto operator()(Sigs...) const noexcept {
+      consteval auto operator()(Sigs...) const noexcept
+      {
         return __concat_completion_signatures_t<Sigs...>{};
       }
 
       template <class... Errors>
       [[nodiscard]]
-      consteval auto operator()(Errors...) const noexcept {
+      consteval auto operator()(Errors...) const noexcept
+      {
         // NB: this uses an overloaded comma operator on the _ERROR_ type to find an error
         // in a pack of types.
         using __error_t = decltype(+(Errors{}, ...));
@@ -279,20 +303,21 @@ namespace STDEXEC {
         return STDEXEC::__throw_compile_time_error(__error_t());
       }
     };
-  } // namespace __detail
+  }  // namespace __detail
 
   inline constexpr __detail::__concat_completion_signatures_fn __concat_completion_signatures{};
 
   STDEXEC_PRAGMA_POP()
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _Fn, class _Sig>
     concept __filter_pass = requires { requires _Fn()(__midentity<_Sig*>()); };
 
     template <class _Fn, class _Sig>
     using __filer_one_t =
       __if_c<__filter_pass<_Fn, _Sig>, completion_signatures<_Sig>, completion_signatures<>>;
-  } // namespace __detail
+  }  // namespace __detail
 
   struct _IN_COMPLETION_SIGNATURES_APPLY_;
 
@@ -316,20 +341,22 @@ namespace STDEXEC {
   //! static_assert(sigs.contains<set_value_t(int)>());
   //! @endcode
   template <class... _Sigs>
-  struct completion_signatures {
-    static_assert(
-      (__completion_signature<_Sigs> && ...),
-      "All types in completion_signatures must be valid completion signatures.");
+  struct completion_signatures
+  {
+    static_assert((__completion_signature<_Sigs> && ...),
+                  "All types in completion_signatures must be valid completion signatures.");
 
     //! @brief Partitioned view of the completion signatures for efficient querying.
-    struct __partitioned {
+    struct __partitioned
+    {
       // This is defined in a nested struct to avoid computing these types if they are not
       // needed.
       using __t = __cmplsigs::__partition_completion_signatures_t<_Sigs...>;
     };
 
     //! @brief Type set view of the completion signatures for set operations.
-    struct __type_set {
+    struct __type_set
+    {
       // This is defined in a nested struct to avoid computing this type if it is not
       // needed.
       using __t = __mmake_set<_Sigs...>;
@@ -337,7 +364,8 @@ namespace STDEXEC {
 
     //! @brief Returns the number of completion signatures in the set.
     //! @return The number of signatures.
-    static constexpr auto __size() noexcept -> std::size_t {
+    static constexpr auto __size() noexcept -> std::size_t
+    {
       return sizeof...(_Sigs);
     }
 
@@ -346,12 +374,18 @@ namespace STDEXEC {
     //! @return The number of signatures with the given tag.
     template <class _Tag>
     [[nodiscard]]
-    static consteval auto __count(_Tag) noexcept -> std::size_t {
-      if constexpr (_Tag{} == set_value) {
+    static consteval auto __count(_Tag) noexcept -> std::size_t
+    {
+      if constexpr (_Tag{} == set_value)
+      {
         return __partitioned::__t::__count_values::value;
-      } else if constexpr (_Tag{} == set_error) {
+      }
+      else if constexpr (_Tag{} == set_error)
+      {
         return __partitioned::__t::__count_errors::value;
-      } else {
+      }
+      else
+      {
         return __partitioned::__t::__count_stopped::value;
       }
     }
@@ -361,7 +395,8 @@ namespace STDEXEC {
     //! @return true if the signature is present, false otherwise.
     template <class _Sig>
     [[nodiscard]]
-    static consteval auto __contains(_Sig* = nullptr) noexcept -> bool {
+    static consteval auto __contains(_Sig* = nullptr) noexcept -> bool
+    {
       return __mset_contains<__t<__type_set>, _Sig>;
     }
 
@@ -370,16 +405,19 @@ namespace STDEXEC {
     //! @param __fn The callable instance.
     //! @return The result of calling __fn with all signatures as arguments.
     template <class _Fn>
-    static consteval auto __apply(_Fn __fn) {
-      if constexpr (__callable<_Fn, _Sigs*...>) {
+    static consteval auto __apply(_Fn __fn)
+    {
+      if constexpr (__callable<_Fn, _Sigs*...>)
+      {
         return __fn(static_cast<_Sigs*>(nullptr)...);
-      } else {
+      }
+      else
+      {
         return STDEXEC::__throw_compile_time_error<
           _WHERE_(_IN_COMPLETION_SIGNATURES_APPLY_),
           _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_,
           _WITH_FUNCTION_(_Fn),
-          _WITH_ARGUMENTS_(_Sigs * ...)
-        >();
+          _WITH_ARGUMENTS_(_Sigs * ...)>();
       }
     }
 
@@ -391,10 +429,10 @@ namespace STDEXEC {
     //! predicate returns true.
     template <class _Fn>
     [[nodiscard]]
-    static consteval auto __filter(_Fn) {
-      static_assert(
-        std::is_empty_v<_Fn> && std::is_trivially_constructible_v<_Fn>,
-        "The filter function must be empty and trivially constructible.");
+    static consteval auto __filter(_Fn)
+    {
+      static_assert(std::is_empty_v<_Fn> && std::is_trivially_constructible_v<_Fn>,
+                    "The filter function must be empty and trivially constructible.");
       return __concat_completion_signatures_t<__detail::__filer_one_t<_Fn, _Sigs>...>{};
     }
 
@@ -404,20 +442,22 @@ namespace STDEXEC {
     //! tag.
     template <__completion_tag _Tag>
     [[nodiscard]]
-    static consteval auto __select(_Tag) noexcept {
-      if constexpr (_Tag{} == set_value) {
-        return __value_types_t<
-          completion_signatures,
-          __qf<set_value_t>,
-          __qq<STDEXEC::completion_signatures>
-        >{};
-      } else if constexpr (_Tag{} == set_error) {
-        return __error_types_t<
-          completion_signatures,
-          __qq<STDEXEC::completion_signatures>,
-          __qf<set_error_t>
-        >{};
-      } else {
+    static consteval auto __select(_Tag) noexcept
+    {
+      if constexpr (_Tag{} == set_value)
+      {
+        return __value_types_t<completion_signatures,
+                               __qf<set_value_t>,
+                               __qq<STDEXEC::completion_signatures>>{};
+      }
+      else if constexpr (_Tag{} == set_error)
+      {
+        return __error_types_t<completion_signatures,
+                               __qq<STDEXEC::completion_signatures>,
+                               __qf<set_error_t>>{};
+      }
+      else
+      {
         return __stopped_types_t<completion_signatures, __qq<STDEXEC::completion_signatures>>{};
       }
     }
@@ -431,13 +471,15 @@ namespace STDEXEC {
     template <class _Transform, class _Reduce>
     [[nodiscard]]
     static consteval auto __transform_reduce(_Transform __transform, _Reduce __reduce)
-      -> __call_result_t<_Reduce, __call_result_t<_Transform, _Sigs*>...> {
+      -> __call_result_t<_Reduce, __call_result_t<_Transform, _Sigs*>...>
+    {
       return __reduce(__transform(static_cast<_Sigs*>(nullptr))...);
     }
 
     template <class... _OtherSigs>
     [[nodiscard]]
-    consteval bool operator==(completion_signatures<_OtherSigs...> const &) const noexcept {
+    consteval bool operator==(completion_signatures<_OtherSigs...> const &) const noexcept
+    {
       using __other_set = completion_signatures<_OtherSigs...>::__type_set::__t;
       return __mset_eq<__t<__type_set>, __other_set>;
     }
@@ -445,34 +487,39 @@ namespace STDEXEC {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // __gather_completion_signatures_t
-  namespace __detail {
+  namespace __detail
+  {
     template <class _WantedTag>
     struct __gather_sigs_fn;
 
     template <>
-    struct __gather_sigs_fn<set_value_t> {
+    struct __gather_sigs_fn<set_value_t>
+    {
       template <class _Sigs, class _Tuple, class _Variant>
       using __f = __value_types_t<_Sigs, _Tuple, _Variant>;
     };
 
     template <>
-    struct __gather_sigs_fn<set_error_t> {
+    struct __gather_sigs_fn<set_error_t>
+    {
       template <class _Sigs, class _Tuple, class _Variant>
       using __f = __error_types_t<_Sigs, _Variant, _Tuple>;
     };
 
     template <>
-    struct __gather_sigs_fn<set_stopped_t> {
+    struct __gather_sigs_fn<set_stopped_t>
+    {
       template <class _Sigs, class _Tuple, class _Variant>
       using __f = __stopped_types_t<_Sigs, _Variant, __minvoke<_Tuple>>;
     };
-  } // namespace __detail
+  }  // namespace __detail
 
   template <class _WantedTag, class _Sigs, class _Tuple, class _Variant>
   using __gather_completions_t =
     __detail::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Tuple, _Variant>;
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _Tag, class _Sigs>
     inline constexpr std::size_t __count_of = 0;
 
@@ -486,7 +533,7 @@ namespace STDEXEC {
     template <class _Sigs>
     inline constexpr std::size_t __count_of<set_stopped_t, _Sigs> =
       __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
-  } // namespace __detail
+  }  // namespace __detail
 
   // Below is the definition of the STDEXEC_COMPLSIGS_LET portability macro. It
   // is used to check that an expression's type is a valid completion_signature
@@ -525,11 +572,12 @@ namespace STDEXEC {
 
   template <class _Sndr>
   [[nodiscard]]
-  consteval auto __dependent_sender() noexcept -> __dependent_sender_error_t<_Sndr> {
+  consteval auto __dependent_sender() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
     return {};
   }
 
-#else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
 #  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
     if constexpr ([[maybe_unused]]                                                                 \
@@ -539,9 +587,10 @@ namespace STDEXEC {
 
   template <class _Sndr>
   [[noreturn, nodiscard]]
-  consteval auto __dependent_sender() -> completion_signatures<> {
+  consteval auto __dependent_sender() -> completion_signatures<>
+  {
     throw __dependent_sender_error_t<_Sndr>{};
   }
 
-#endif // ^^^ constexpr exceptions ^^^
-} // namespace STDEXEC
+#endif  // ^^^ constexpr exceptions ^^^
+}  // namespace STDEXEC
