@@ -18,7 +18,7 @@
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
 #include "../stdexec/__detail/__parallel_scheduler.hpp" // IWYU pragma: export
-#include "__detail/__system_context_replaceability_api.hpp" // IWYU pragma: export
+#include "detail/system_context_replaceability_api.hpp" // IWYU pragma: export
 
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \

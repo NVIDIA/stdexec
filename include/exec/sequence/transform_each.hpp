@@ -20,7 +20,7 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-#include "../__detail/__basic_sequence.hpp"
+#include "../detail/basic_sequence.hpp"
 #include "stdexec/__detail/__diagnostics.hpp"
 #include "stdexec/__detail/__meta.hpp"
 

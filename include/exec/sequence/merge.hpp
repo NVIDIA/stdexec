@@ -18,7 +18,7 @@
 
 #include "../../stdexec/execution.hpp"
 
-#include "../__detail/__basic_sequence.hpp"
+#include "../detail/basic_sequence.hpp"
 #include "../sequence_senders.hpp"
 #include "ignore_all_values.hpp"
 #include "transform_each.hpp"

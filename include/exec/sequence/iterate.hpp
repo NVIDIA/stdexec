@@ -23,7 +23,7 @@
 #  include "../../stdexec/__detail/__optional.hpp"
 #  include "../../stdexec/execution.hpp"
 
-#  include "../__detail/__basic_sequence.hpp"
+#  include "../detail/basic_sequence.hpp"
 #  include "../sequence.hpp"
 #  include "../sequence_senders.hpp"
 #  include "../trampoline_scheduler.hpp"

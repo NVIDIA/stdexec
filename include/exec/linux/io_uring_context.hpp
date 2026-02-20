@@ -25,8 +25,8 @@
 #  include "../../stdexec/execution.hpp"
 #  include "../timed_scheduler.hpp"
 
-#  include "../__detail/__atomic_intrusive_queue.hpp"
-#  include "../__detail/__bit_cast.hpp"
+#  include "../detail/atomic_intrusive_queue.hpp"
+#  include "../detail/bit_cast.hpp"
 
 #  include "./memory_mapped_region.hpp"
 #  include "./safe_file_descriptor.hpp"
