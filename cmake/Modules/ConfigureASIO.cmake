@@ -18,19 +18,19 @@ if(STDEXEC_ENABLE_ASIO)
   set(ASIOEXEC_USES_STANDALONE ${STDEXEC_ASIO_USES_STANDALONE})
 
   set(STDEXEC_ASIO_POOL_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/execpools/asio/asio_config.hpp)
-  set(ASIOEXEC_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/asioexec/asio_config.hpp)
+  set(ASIOEXEC_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/exec/asio/asio_config.hpp)
 
   configure_file(
     include/execpools/asio/asio_config.hpp.in
     ${STDEXEC_ASIO_POOL_CONFIG_HPP}
   )
   configure_file(
-    include/asioexec/asio_config.hpp.in
+    include/exec/asio/asio_config.hpp.in
     ${ASIOEXEC_CONFIG_HPP}
   )
 
   file(GLOB_RECURSE boost_pool_sources CONFIGURE_DEPENDS include/execpools/asio/*.hpp)
-  file(GLOB_RECURSE asioexec_sources CONFIGURE_DEPENDS include/asioexec/*.hpp)
+  file(GLOB_RECURSE asioexec_sources CONFIGURE_DEPENDS include/exec/asio/*.hpp)
 
   if(${STDEXEC_ASIO_USES_BOOST})
     set(BOOST_INCLUDE_LIBRARIES asio system)

@@ -16,15 +16,15 @@
  * limitations under the License.
  */
 
-#include <asioexec/completion_token.hpp>
+#include <exec/asio/completion_token.hpp>
 
-#include <asioexec/asio_config.hpp>
 #include <barrier>
 #include <catch2/catch.hpp>
 #include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <exception>
+#include <exec/asio/asio_config.hpp>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -38,7 +38,7 @@
 #include <utility>
 
 using namespace STDEXEC;
-using namespace asioexec;
+using namespace exec::asio;
 
 namespace {
 
