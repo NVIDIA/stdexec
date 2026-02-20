@@ -167,16 +167,11 @@ namespace STDEXEC {
       (STDEXEC_PP_WHEN(
         STDEXEC_EDG(),
         requires { typename _Receiver::receiver_concept; } &&)
-         __std::derived_from<typename _Receiver::receiver_concept, receiver_t>)
-      || requires { typename _Receiver::is_receiver; } // back-compat, NOT TO SPEC
-      || STDEXEC_IS_BASE_OF(receiver_t, _Receiver);    // NOT TO SPEC, for receiver_adaptor
+         __std::derived_from<typename _Receiver::receiver_concept, receiver_t>);
   } // namespace __detail
 
   template <class _Receiver>
-  inline constexpr bool enable_receiver = __detail::__enable_receiver<_Receiver>; // NOT TO SPEC
-
-  template <class _Receiver>
-  concept receiver = enable_receiver<__decay_t<_Receiver>>
+  concept receiver = __detail::__enable_receiver<__decay_t<_Receiver>>
                   && __environment_provider<__cref_t<_Receiver>>
                   && __nothrow_move_constructible<__decay_t<_Receiver>>
                   && __std::constructible_from<__decay_t<_Receiver>, _Receiver>;

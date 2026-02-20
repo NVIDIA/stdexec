@@ -38,7 +38,6 @@ namespace STDEXEC {
   namespace __detail {
     template <class _Sender>
     concept __enable_sender = __std::derived_from<typename _Sender::sender_concept, sender_t>
-                           || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
                            || __awaitable<_Sender, __detail::__promise<env<>>>;
   } // namespace __detail
 
