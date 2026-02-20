@@ -37,7 +37,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec {
+namespace nv::execution {
   enum class stream_priority {
     high,
     normal,
@@ -70,25 +70,26 @@ namespace nvexec {
   namespace _strm {
     // Used by stream_domain to late-customize senders for execution
     // on the stream_scheduler.
-    template <class Tag, class Env>
+    template <class Tag>
     struct transform_sender_for;
 
     template <class Tag>
     struct apply_sender_for;
   } // namespace _strm
-} // namespace nvexec
+} // namespace nv::execution
 
-namespace nvexec {
+namespace nvexec = nv::execution;
+
+namespace nv::execution {
   struct stream_context;
 
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : STDEXEC::default_domain {
     template <STDEXEC::sender_expr Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
-      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag, Env>, Sender>
+      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag>, Sender, const Env&>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) {
-      return STDEXEC::__apply(
-        _strm::transform_sender_for<Tag, Env>{env}, static_cast<Sender&&>(sndr));
+      return STDEXEC::__apply(_strm::transform_sender_for<Tag>{}, static_cast<Sender&&>(sndr), env);
     }
 
     template <class Tag, STDEXEC::sender Sender, class... Args>
@@ -372,8 +373,8 @@ namespace nvexec {
 
     template <class BaseEnv>
     auto make_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept {
-      return __env::__join(
-        prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
+      return STDEXEC::__env::__join(
+        STDEXEC::prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
     }
 
     template <class BaseEnv>
@@ -388,14 +389,15 @@ namespace nvexec {
       static_cast<stream_provider*>(nullptr)));
 
     template <class BaseEnv>
-    auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept {
-      return __env::__join(
-        prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
-    }
+    using terminal_stream_env_t =
+      STDEXEC::__join_env_t<STDEXEC::prop<get_stream_provider_t, stream_provider*>, BaseEnv>;
+
     template <class BaseEnv>
-    using terminal_stream_env_t = decltype(_strm::make_terminal_stream_env(
-      __declval<BaseEnv>(),
-      static_cast<stream_provider*>(nullptr)));
+    auto make_terminal_stream_env(BaseEnv&& base_env, stream_provider* stream_provider) noexcept
+      -> terminal_stream_env_t<BaseEnv> {
+      return STDEXEC::__env::__join(
+        STDEXEC::prop{get_stream_provider, stream_provider}, static_cast<BaseEnv&&>(base_env));
+    }
 
     template <class BaseEnv>
     using make_stream_env_t = stream_env_t<BaseEnv>;
@@ -853,6 +855,8 @@ namespace nvexec {
     template <class Fun, class... Args>
     using __f = STDEXEC::__msize_t<_sizeof_v<STDEXEC::__call_result_t<Fun, Args...>>>;
   };
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 STDEXEC_PRAGMA_POP()

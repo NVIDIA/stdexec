@@ -119,15 +119,15 @@ namespace STDEXEC {
         ::static_get_completion_signatures(__sndr(), __env()...);
       };
 
-    template <class _Sender, class... _Env>
-    concept __with_consteval_static_member = //
-      (__non_sender<_Env> && ...)            //
-      && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env...); };
-
     // [WAR]: see nvbugs#5813160
     template <class _Sender>
-    concept __with_non_dependent_consteval_static_member = //
+    concept __with_consteval_static_member = //
       requires { STDEXEC_GET_COMPLSIGS(_Sender); };
+
+    template <class _Sender, class _Env>
+    concept __with_consteval_static_member_with_env = //
+      __non_sender<_Env>                              //
+      && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env); };
 
     template <class _Sender, class... _Env>
     concept __with_legacy_tag_invoke =
@@ -146,13 +146,13 @@ namespace STDEXEC {
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
     template <class _Sender, class _Env>
-    concept __with = __with_legacy_static_member<_Sender, _Env>            //
-                  || __with_legacy_member<_Sender, _Env>                   //
-                  || __with_legacy_member_alias<_Sender>                   //
-                  || __with_consteval_static_member<_Sender, _Env>         //
-                  || __with_non_dependent_consteval_static_member<_Sender> //
-                  || __with_legacy_tag_invoke<_Sender, _Env>               //
-                  || __with_legacy_non_dependent_tag_invoke<_Sender, _Env> //
+    concept __with = __with_legacy_static_member<_Sender, _Env>             //
+                  || __with_legacy_member<_Sender, _Env>                    //
+                  || __with_legacy_member_alias<_Sender>                    //
+                  || __with_consteval_static_member_with_env<_Sender, _Env> //
+                  || __with_consteval_static_member<_Sender>                //
+                  || __with_legacy_tag_invoke<_Sender, _Env>                //
+                  || __with_legacy_non_dependent_tag_invoke<_Sender, _Env>  //
                   || __with_co_await<_Sender, _Env>;
   } // namespace __cmplsigs
 
@@ -194,9 +194,9 @@ namespace STDEXEC {
     consteval auto __get_completion_signatures_helper() {
       if constexpr (__with_legacy_member_alias<_Sender>) {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __legacy_member_alias_t<_Sender>());
-      } else if constexpr (__with_consteval_static_member<_Sender, _Env>) {
+      } else if constexpr (__with_consteval_static_member_with_env<_Sender, _Env>) {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), STDEXEC_GET_COMPLSIGS(_Sender, _Env));
-      } else if constexpr (__with_non_dependent_consteval_static_member<_Sender>) {
+      } else if constexpr (__with_consteval_static_member<_Sender>) {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), STDEXEC_GET_COMPLSIGS(_Sender));
       } else if constexpr (__with_legacy_static_member<_Sender, _Env>) {
         using __completions_t = __legacy_static_member_result_t<_Sender, _Env>;

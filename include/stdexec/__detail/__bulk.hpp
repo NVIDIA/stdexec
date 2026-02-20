@@ -16,12 +16,12 @@
 #pragma once
 
 #include "__execution_fwd.hpp"
-#include "__execution_legacy.hpp"
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__completion_signatures_of.hpp"
 #include "__diagnostics.hpp"
+#include "__execution_legacy.hpp" // IWYU pragma: export
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
@@ -164,7 +164,6 @@ namespace STDEXEC {
       __eptr_completion
     >;
 
-
     template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
     using __completion_signatures = transform_completion_signatures<
       __completion_signatures_of_t<_CvSender, _Env...>,
@@ -245,12 +244,12 @@ namespace STDEXEC {
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       // Forward the child sender's environment (which contains completion scheduler)
-      static constexpr auto get_attrs = [](__ignore, __ignore, const auto& __child) noexcept {
+      static constexpr auto __get_attrs = [](__ignore, __ignore, const auto& __child) noexcept {
         return __fwd_env(STDEXEC::get_env(__child));
       };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, _AlgoTag>);
         // TODO: port this to use constant evaluation
         return __completion_signatures<
@@ -268,7 +267,7 @@ namespace STDEXEC {
       //! When setting value, it calls the function with the entire range.
       //! Note: This is not done in parallel. That is customized by the scheduler.
       //! See, e.g., static_thread_pool::bulk_receiver::__t.
-      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+      static constexpr auto __complete = []<class _Tag, class _State, class... _Args>(
                                          __ignore,
                                          _State& __state,
                                          _Tag,
@@ -297,7 +296,7 @@ namespace STDEXEC {
       //! This implements the core default behavior for `bulk_unchunked`:
       //! When setting value, it loops over the shape and invokes the function.
       //! Note: This is not done in concurrently. That is customized by the scheduler.
-      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+      static constexpr auto __complete = []<class _Tag, class _State, class... _Args>(
                                          __ignore,
                                          _State& __state,
                                          _Tag,

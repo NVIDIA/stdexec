@@ -24,7 +24,7 @@
 #include <cstdint>
 #include <random>
 
-namespace exec {
+namespace experimental::execution {
 
   class xorshift {
    public:
@@ -73,4 +73,6 @@ namespace exec {
     std::uint64_t m_seed;
   };
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;

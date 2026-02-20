@@ -33,12 +33,12 @@
 #  define STDEXEC_NUMA_VTABLE_INLINE inline
 #endif
 
-namespace exec {
+namespace experimental::execution {
   namespace _numa {
-    using small = void* [1];
+    using _small_t = void* [1];
 
     template <class T>
-    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(small)>;
+    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(_small_t)>;
 
     union _storage {
       _storage() noexcept = default;
@@ -56,7 +56,7 @@ namespace exec {
       }
 
       void* ptr{};
-      char buf[sizeof(small)];
+      char buf[sizeof(_small_t)];
     };
 
     struct _vtable {
@@ -215,12 +215,14 @@ namespace exec {
       return 0;
     }
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #if STDEXEC_ENABLE_NUMA
 #  include <numa.h>
 
-namespace exec {
+namespace experimental::execution {
   inline std::size_t _get_numa_num_cpus(int node) {
     struct ::bitmask* cpus = ::numa_allocate_cpumask();
     if (!cpus) {
@@ -375,9 +377,12 @@ namespace exec {
    private:
     ::nodemask_t mask_;
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+
 #else
-namespace exec {
+namespace experimental::execution {
   using default_numa_policy = no_numa_policy;
 
   inline auto get_numa_policy() noexcept -> numa_policy {
@@ -440,5 +445,8 @@ namespace exec {
    private:
     bool mask_{false};
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+
 #endif

@@ -494,8 +494,8 @@ namespace STDEXEC {
         return __msuccess();
       } else {
         return STDEXEC::__throw_compile_time_error<
+          _WHAT_(_TYPE_IS_NOT_DECAY_COPYABLE_),
           _WHERE_(_IN_ALGORITHM_, _AlgoTag)...,
-          _TYPE_IS_NOT_DECAY_COPYABLE_,
           _WITH_TYPE_<_Arg>
         >();
       }

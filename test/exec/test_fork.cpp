@@ -16,6 +16,7 @@
 
 #include "exec/fork_join.hpp"
 #include "exec/just_from.hpp"
+#include "exec/static_thread_pool.hpp"
 #include "test_common/schedulers.hpp"
 #include "test_common/type_helpers.hpp"
 
@@ -163,5 +164,31 @@ namespace {
     ::STDEXEC::sync_wait(std::move(sndr));
 
     CHECK(witness == 2);
+  }
+
+  TEST_CASE("fork_join with exec::static_thread_pool", "[adaptors][fork_join]") {
+    std::atomic<int> witness{0};
+
+    ::exec::static_thread_pool pool{4};
+
+    auto sndr = ::STDEXEC::schedule(pool.get_scheduler())
+              | ::STDEXEC::then([&witness]() noexcept -> int {
+                  ++witness;
+                  return witness;
+                })
+              | ::exec::fork_join(
+                  ::STDEXEC::then([&witness](const int received) noexcept { witness += received; }),
+                  ::STDEXEC::then(
+                    [&witness](const int received) noexcept { witness += received; }));
+
+    static_assert(requires {
+      {
+        ::STDEXEC::get_completion_signatures(sndr)
+      } -> std::derived_from<::STDEXEC::dependent_sender_error>;
+    });
+
+    ::STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(witness == 3);
   }
 } // namespace

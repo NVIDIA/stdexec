@@ -34,7 +34,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace _when_all {
     enum disposition : std::uint32_t {
       started,
@@ -203,9 +203,9 @@ namespace nvexec::_strm {
       using receiver_t = __decay_t<CvReceiver>;
       using sender_t = __m_at_c<Index, Senders...>;
       using completions_t = when_all_sender::_completions_t<env_of_t<receiver_t>, CvReceiver>;
-      using env_t = make_terminal_stream_env_t<
-        STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<receiver_t>>
-      >;
+      using local_env_t =
+        STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<receiver_t>>;
+      using env_t = make_terminal_stream_env_t<local_env_t>;
 
       template <class... Values>
       STDEXEC_ATTRIBUTE(always_inline)
@@ -226,7 +226,7 @@ namespace nvexec::_strm {
       [[nodiscard]]
       auto get_env() const noexcept -> env_t {
         return make_terminal_stream_env(
-          STDEXEC::env{
+          local_env_t{
             STDEXEC::prop{get_stop_token, opstate_->stop_source_.get_token()},
             STDEXEC::get_env(opstate_->rcvr_)
         },
@@ -486,10 +486,10 @@ namespace nvexec::_strm {
     STDEXEC::__tuple<Senders...> sndrs_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::when_all_t, Env> {
-    template <stream_completing_sender<Env>... CvSenders>
-    constexpr auto operator()(__ignore, __ignore, CvSenders&&... sndrs) const {
+  template <>
+  struct transform_sender_for<STDEXEC::when_all_t> {
+    template <class Env, stream_completing_sender<Env>... CvSenders>
+    constexpr auto operator()(const Env&, __ignore, __ignore, CvSenders&&... sndrs) const {
       using sender_t =
         when_all_sender<STDEXEC::when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{
@@ -497,22 +497,24 @@ namespace nvexec::_strm {
         static_cast<CvSenders&&>(sndrs)...
       };
     }
-
-    const Env& env_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::transfer_when_all_t, Env> {
-    template <gpu_stream_scheduler<Env> Scheduler, stream_completing_sender<Env>... CvSenders>
-    auto operator()(__ignore, Scheduler sched, CvSenders&&... sndrs) const {
+  template <>
+  struct transform_sender_for<STDEXEC::transfer_when_all_t> {
+    template <
+      class Env,
+      gpu_stream_scheduler<Env> Scheduler,
+      stream_completing_sender<Env>... CvSenders
+    >
+    auto operator()(const Env&, __ignore, Scheduler sched, CvSenders&&... sndrs) const {
       using sender_t =
         when_all_sender<STDEXEC::transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{sched.ctx_, static_cast<CvSenders&&>(sndrs)...};
     }
-
-    const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class WhenAllTag, class Scheduler, class... Senders>

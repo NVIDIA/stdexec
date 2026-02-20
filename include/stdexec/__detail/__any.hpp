@@ -1210,7 +1210,10 @@ namespace STDEXEC::__any {
   // __bad_any_cast
   struct __bad_any_cast : std::exception {
     [[nodiscard]]
-    constexpr char const *what() const noexcept override {
+#if __cpp_lib_constexpr_exceptions >= 2025'02L // constexpr support for std::exception
+    constexpr
+#endif
+      char const *what() const noexcept override {
       return "__bad_any_cast";
     }
   };

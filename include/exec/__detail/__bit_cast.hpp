@@ -27,7 +27,7 @@
 
 #include <cstring>
 
-namespace exec {
+namespace experimental::execution {
 
   template <class _Ty>
   concept __trivially_copyable = STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
@@ -48,4 +48,7 @@ namespace exec {
 #  endif
   }
 #endif
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

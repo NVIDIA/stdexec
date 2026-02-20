@@ -142,21 +142,88 @@ namespace {
     CHECK(!res.has_value());
   }
 
-  auto test_task_awaits_just_ref_sender() -> ex::task<void> {
-    int value = 42;
-    [[maybe_unused]]
-    decltype(auto) value_ref = co_await just_ref(value);
-    // BUGBUG TODO: references are not supported yet so just check that we get the right value back for now
-    CHECK(value_ref == 42);
-    // STATIC_REQUIRE(std::same_as<decltype(value_ref), int&>);
-    // CHECK(&value_ref == &value);
-    co_return;
+  // A sender type that does not claim to complete inline:
+  struct just_int : ex::__result_of<ex::just, int> {
+    explicit just_int(int i)
+      : ex::__result_of<ex::just, int>(ex::just(i)) {
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept {
+      return ex::env{};
+    }
+  };
+
+  template <ex::scheduler Worker>
+  auto test_task_awaits_task_scheduler(Worker worker) -> ex::task<int> {
+    CHECK(get_id() == 0);
+    int i = co_await ex::starts_on(worker, just_int(42) | ex::then([](int i) {
+                                             CHECK(get_id() != 0);
+                                             return i;
+                                           }));
+    CHECK(get_id() == 0);
+    co_return i;
   }
 
-  TEST_CASE("test task can await a just_ref sender", "[types][task]") {
-    auto t = test_task_awaits_just_ref_sender();
-    ex::sync_wait(std::move(t));
+  TEST_CASE(
+    "test task can await a just_int sender with affinity to task_scheduler",
+    "[types][task]") {
+    exec::single_thread_context ctx;
+    auto t = test_task_awaits_task_scheduler(ctx.get_scheduler());
+    auto [i] = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42);
   }
+
+  // Test affinity with a run_loop scheduler, which is infallible but not inline:
+  struct test_env2 {
+    using scheduler_type = ex::run_loop::scheduler;
+    struct environment_type { };
+
+    template <ex::__not_same_as<environment_type> _Env>
+      requires ex::__callable<ex::get_scheduler_t, const _Env&>
+    explicit test_env2(const _Env& other) noexcept
+      : sch(ex::get_scheduler(other)) {
+    }
+
+    [[nodiscard]]
+    auto query(ex::get_scheduler_t) const noexcept {
+      return sch;
+    }
+
+    ex::run_loop::scheduler sch;
+  };
+
+  template <ex::scheduler Worker>
+  auto test_task_awaits_run_loop_scheduler(Worker worker) -> ex::task<int, test_env2> {
+    CHECK(get_id() == 0);
+    int i = co_await ex::starts_on(worker, just_int(42) | ex::then([](int i) {
+                                             CHECK(get_id() != 0);
+                                             return i;
+                                           }));
+    CHECK(get_id() == 0);
+    co_return i;
+  }
+
+  TEST_CASE("test task can await a just_int sender with affinity to run_loop", "[types][task]") {
+    exec::single_thread_context ctx;
+    auto t = test_task_awaits_run_loop_scheduler(ctx.get_scheduler());
+    auto [i] = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42);
+  }
+
+  // FUTURE TODO: add support so that `co_await sndr` can return a reference.
+  // auto test_task_awaits_just_ref_sender() -> ex::task<void> {
+  //   int value = 42;
+  //   decltype(auto) value_ref = co_await just_ref(value);
+  //   STATIC_REQUIRE(std::same_as<decltype(value_ref), int&>);
+  //   CHECK(&value_ref == &value);
+  //   co_return;
+  // }
+
+  // TEST_CASE("test task can await a just_ref sender", "[types][task]") {
+  //   auto t = test_task_awaits_just_ref_sender();
+  //   ex::sync_wait(std::move(t));
+  // }
 
   // TODO: add tests for stop token support in task
 

@@ -30,7 +30,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec {
+namespace nv::execution {
   namespace _strm {
     struct launch_t;
 
@@ -178,7 +178,9 @@ namespace nvexec {
 
   inline constexpr _strm::launch_t launch{};
 
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Fun>

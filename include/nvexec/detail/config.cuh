@@ -25,6 +25,8 @@
 #  error The NVIDIA schedulers and utilities require CUDA support
 #endif
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   using namespace STDEXEC;
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;

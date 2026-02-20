@@ -328,16 +328,16 @@ namespace STDEXEC {
       }
 
       template <class _Sender, class _Receiver>
-      using __state_for_t = __state<__decay_t<__tuple_element_t<1, _Sender>>, _Sender, _Receiver>;
+      using __state_for_t = __state<__decay_t<__data_of<_Sender>>, _Sender, _Receiver>;
 
      public:
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         [](__ignore, const auto& __data, const auto& __child) noexcept {
           return __attrs{__data, __child};
         };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, continues_on_t>);
         using __scheduler_t = __decay_t<__data_of<_Sender>>;
         using __child_t = __child_of<_Sender>;
@@ -350,7 +350,7 @@ namespace STDEXEC {
           >());
       }
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr)
         -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
@@ -360,7 +360,7 @@ namespace STDEXEC {
         return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
       };
 
-      static constexpr auto complete = []<class _State, class _Tag, class... _Args>(
+      static constexpr auto __complete = []<class _State, class _Tag, class... _Args>(
                                          __ignore,
                                          _State& __state,
                                          _Tag __tag,

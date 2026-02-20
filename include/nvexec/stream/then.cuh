@@ -32,7 +32,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
 
   namespace _then {
     template <class... Args, class Fun>
@@ -188,17 +188,17 @@ namespace nvexec::_strm {
     Fun fun_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::then_t, Env> {
-    template <class Fn, stream_completing_sender<Env> CvSender>
-    auto operator()(__ignore, Fn fun, CvSender&& sndr) const {
+  template <>
+  struct transform_sender_for<STDEXEC::then_t> {
+    template <class Env, class Fn, stream_completing_sender<Env> CvSender>
+    auto operator()(const Env&, __ignore, Fn fun, CvSender&& sndr) const {
       using _sender_t = then_sender<__decay_t<CvSender>, Fn>;
       return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fn&&>(fun)};
     }
-
-    const Env& env_;
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Fun>

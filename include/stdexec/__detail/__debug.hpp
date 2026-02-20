@@ -174,7 +174,7 @@ namespace STDEXEC {
           }
         }
       } else {
-        STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_CvSender>, _Env>();
+        STDEXEC::__diagnose_sender_concept_failure<_CvSender, _Env>();
       }
     }
   }
@@ -186,7 +186,7 @@ namespace STDEXEC {
         using __completions_t = __completion_signatures_of_t<_CvSender, __debug::__env_t<_Env>>;
         __debug_sender<__completions_t>(static_cast<_CvSender&&>(__sndr), __env);
       } else {
-        STDEXEC::__diagnose_sender_concept_failure<__demangle_t<_CvSender>, _Env>();
+        STDEXEC::__diagnose_sender_concept_failure<_CvSender, _Env>();
       }
     }
   }

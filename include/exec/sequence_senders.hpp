@@ -74,7 +74,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "FAILURE: The subscribe customization did not return an `STDEXEC::operation_state`.\n"           \
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
-namespace exec {
+namespace experimental::execution {
   template <class _Sequence>
   struct _WITH_SEQUENCE_ { };
 
@@ -392,14 +392,14 @@ namespace exec {
     requires STDEXEC::__well_formed_sender<_Item>
   auto __check_item(_Item*) -> STDEXEC::__msuccess;
 
-  template <class _Sequence, class _Items>
-    requires STDEXEC::__merror<_Items>
-  auto __check_items(_Items*) -> _Items;
-
   struct _SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_ { };
 
   template <template <class...> class _Class>
   struct _EXPECTED_A_SPECIALIZATION_OF_ { };
+
+  template <class _Sequence, class _Items>
+    requires STDEXEC::__merror<_Items>
+  auto __check_items(_Items*) -> _Items;
 
   template <class _Sequence, class _Items>
     requires(!STDEXEC::__merror<_Items>)
@@ -411,7 +411,7 @@ namespace exec {
   >;
 
   template <class _Sequence, class... _Items>
-  constexpr auto __check_items(exec::item_types<_Items...>*) -> decltype((
+  auto __check_items(exec::item_types<_Items...>*) -> decltype((
     STDEXEC::__msuccess(),
     ...,
     exec::__check_item<_Sequence>(static_cast<_Items*>(nullptr))));
@@ -442,9 +442,13 @@ namespace exec {
   auto __check_sequence(_Sequence*) -> decltype(exec::__check_items<_Sequence>(
     static_cast<__item_types_of_t<_Sequence>*>(nullptr)));
 
+  template <class _Ty>
+  concept __ok_or_dependent = STDEXEC::__ok<_Ty>
+                           || STDEXEC::__std::derived_from<_Ty, STDEXEC::dependent_sender_error>;
+
   template <class _Sequence>
   concept __well_formed_item_senders = requires(STDEXEC::__decay_t<_Sequence>* __sequence) {
-    { exec::__check_sequence(__sequence) } -> STDEXEC::__ok;
+    { exec::__check_sequence(__sequence) } -> __ok_or_dependent;
   };
 
   template <class _Sequence>
@@ -936,7 +940,7 @@ namespace exec {
           __well_formed_item_senders<_Sequence>,
           STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE);
       } else {
-        STDEXEC::__diagnose_sender_concept_failure<STDEXEC::__demangle_t<_Sequence>, _Env...>();
+        STDEXEC::__diagnose_sender_concept_failure<_Sequence, _Env...>();
       }
     }
   }
@@ -1017,6 +1021,8 @@ namespace exec {
       }
     }
   } // namespace __debug
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

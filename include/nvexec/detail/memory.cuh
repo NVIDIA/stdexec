@@ -33,7 +33,7 @@
 #include "config.cuh"
 #include "throw_on_cuda_error.cuh"
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
 
   struct device_deleter {
     template <class Type>
@@ -377,4 +377,6 @@ namespace nvexec::_strm {
       return &resource_;
     }
   };
-} // namespace nvexec::_strm
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;

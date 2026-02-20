@@ -22,7 +22,7 @@
 
 #include "../sequence_senders.hpp"
 
-namespace exec {
+namespace experimental::execution {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __seqexpr
   template <class...>
@@ -93,7 +93,9 @@ namespace exec {
 
   template <class _Tag, class _Domain = STDEXEC::default_domain>
   inline constexpr __mkseqexpr::make_sequence_expr_t<_Tag, _Domain> make_sequence_expr{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC::__detail {
   template <auto _DescriptorFn>

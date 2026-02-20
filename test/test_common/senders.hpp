@@ -271,7 +271,19 @@ namespace {
       return opstate<Receiver>{value_, static_cast<Receiver&&>(rcvr)};
     }
 
+    [[nodiscard]]
+    auto get_env() const noexcept {
+      return attrs{};
+    }
+
    private:
+    struct attrs {
+      [[nodiscard]]
+      static constexpr auto query(ex::get_completion_behavior_t<ex::set_value_t>) noexcept {
+        return ex::completion_behavior::inline_completion;
+       }
+    };
+
     template <class Receiver>
     struct opstate {
       using operation_state_concept = ex::operation_state_t;

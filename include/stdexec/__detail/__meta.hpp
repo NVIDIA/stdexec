@@ -146,7 +146,7 @@ namespace STDEXEC {
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __ignore(_Ts&&...) noexcept {
+    constexpr __ignore(_Ts &&...) noexcept {
     }
   };
 
@@ -558,10 +558,10 @@ namespace STDEXEC {
     using __f = __minvoke<_Fn, std::integral_constant<_Np, _Ns>...>;
   };
 
-  template <class _What, class... _With>
-  struct __mfor<_ERROR_<_What, _With...>> {
+  template <class... _What>
+  struct __mfor<_ERROR_<_What...>> {
     template <class _Fn>
-    using __f = _ERROR_<_What, _With...>;
+    using __f = _ERROR_<_What...>;
   };
 
   template <class _Fn, class _List>
@@ -738,17 +738,11 @@ namespace STDEXEC {
 
     template <class _Ty>
     using __demangle_t = decltype(__demangle_v<_Ty>());
-
-    template <class _Sender>
-    using __remangle_t = __copy_cvref_t<_Sender, typename __decay_t<_Sender>::__mangled_t>;
   } // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
   template <class _Ty>
   using __demangle_t = __copy_cvref_t<_Ty, __detail::__demangle_t<std::remove_cvref_t<_Ty>>>;
-
-  template <class _Sender>
-  using __remangle_t = __minvoke_or_q<__detail::__remangle_t, _Sender, _Sender>;
 
   namespace __detail {
     //////////////////////////////////////////////////////////////////////////////////////////

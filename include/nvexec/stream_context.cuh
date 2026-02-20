@@ -41,7 +41,7 @@
 #include "stream/upon_stopped.cuh"        // IWYU pragma: export
 #include "stream/when_all.cuh"            // IWYU pragma: export
 
-namespace nvexec {
+namespace nv::execution {
   namespace _strm {
     struct stream_scheduler;
 
@@ -174,4 +174,6 @@ namespace nvexec {
     int dev_id_{};
     _strm::queue::task_hub hub_;
   };
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;

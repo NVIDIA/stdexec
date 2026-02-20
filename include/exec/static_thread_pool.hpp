@@ -42,7 +42,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace exec {
+namespace experimental::execution {
   struct bwos_params {
     std::size_t numBlocks{32};
     std::size_t blockSize{8};
@@ -111,7 +111,7 @@ namespace exec {
       std::vector<__atomic_intrusive_queue<&task_base::next>> queues_{};
       std::thread::id id_{std::this_thread::get_id()};
       // This marks whether the submitter is a thread in the pool or not.
-      std::size_t index_{std::numeric_limits<std::size_t>::max()};
+      std::size_t index_{(std::numeric_limits<std::size_t>::max)()};
     };
 
     struct remote_queue_list {
@@ -335,8 +335,14 @@ namespace exec {
           template <class Receiver>
           using _opstate_t = _opstate<Receiver>;
 
-          using completion_signatures =
-            STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
+          template <class _Self, class _Env>
+          static consteval auto get_completion_signatures() noexcept {
+            if constexpr (unstoppable_token<stop_token_of_t<_Env>>) {
+              return STDEXEC::completion_signatures<set_value_t()>();
+            } else {
+              return STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>();
+            }
+          }
 
           [[nodiscard]]
           auto get_env() const noexcept -> env {
@@ -365,7 +371,7 @@ namespace exec {
 
           _static_thread_pool& pool_;
           remote_queue* queue_;
-          std::size_t threadIndex_{std::numeric_limits<std::size_t>::max()};
+          std::size_t threadIndex_{(std::numeric_limits<std::size_t>::max)()};
           nodemask constraints_{};
         };
 
@@ -400,7 +406,7 @@ namespace exec {
         _static_thread_pool* pool_;
         remote_queue* queue_;
         const nodemask* nodemask_ = &nodemask::any();
-        std::size_t thread_idx_{std::numeric_limits<std::size_t>::max()};
+        std::size_t thread_idx_{(std::numeric_limits<std::size_t>::max)()};
 
        public:
         auto operator==(const scheduler&) const -> bool = default;
@@ -1067,14 +1073,13 @@ namespace exec {
         this->execute_ = [](task_base* t, const std::uint32_t /* tid */) noexcept {
           auto& op = *static_cast<_opstate*>(t);
           auto stoken = get_stop_token(get_env(op.rcvr_));
+          // NOLINTNEXTLINE(bugprone-branch-clone)
           if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>) {
             STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
+          } else if (stoken.stop_requested()) {
+            STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
           } else {
-            if (stoken.stop_requested()) {
-              STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
-            } else {
-              STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
-            }
+            STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
           }
         };
       }
@@ -1644,4 +1649,7 @@ namespace exec {
   inline constexpr _pool_::schedule_all_t schedule_all{};
 #endif
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

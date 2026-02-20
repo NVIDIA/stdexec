@@ -43,6 +43,7 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
+    stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_then.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
     stdexec/algos/adaptors/test_upon_stopped.cpp
@@ -65,6 +66,7 @@ set(stdexec_test_sources
     stdexec/detail/test_utility.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/queries/test_forwarding_queries.cpp
@@ -94,6 +96,18 @@ target_link_libraries(test.stdexec
     PRIVATE
     common_test_settings)
 
+add_executable(test.system_context_replaceability
+               test_main.cpp
+               stdexec/schedulers/test_system_context_replaceability.cpp)
+target_link_libraries(test.system_context_replaceability
+    PUBLIC
+    STDEXEC::stdexec
+    STDEXEC::system_context
+    stdexec_executable_flags
+    Catch2::Catch2
+    PRIVATE
+    common_test_settings)
+
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
 target_link_libraries(test.scratch
     PUBLIC
@@ -112,6 +126,9 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 catch_discover_tests(test.stdexec)
 catch_discover_tests(test.scratch)
+if(NOT STDEXEC_ENABLE_CUDA)
+    catch_discover_tests(test.system_context_replaceability)
+endif()
 
 add_subdirectory(exec)
 

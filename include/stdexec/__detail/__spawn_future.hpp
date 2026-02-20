@@ -27,7 +27,6 @@
 #include "__scope_concepts.hpp"
 #include "__senders.hpp"
 #include "__spawn_common.hpp"
-#include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
 #include "__variant.hpp"
@@ -737,19 +736,19 @@ namespace STDEXEC {
       using __completions_t = __spawn_future_state_t<_Sender>::template __completions_t<_Env>;
 
       template <class _Sender, class _Env>
-      static consteval auto get_completion_signatures() //
+      static consteval auto __get_completion_signatures() //
         -> __completions_t<_Sender, _Env> {
         return {};
       };
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */
         -> __future_operation<std::remove_cvref_t<_Sender>, _Receiver> {
         auto& [_, __future] = __sndr;
         return {std::move(__future), std::move(__rcvr)};
       };
 
-      static constexpr auto start = [](auto& __state) noexcept {
+      static constexpr auto __start = [](auto& __state) noexcept {
         constexpr bool __non_throwing = noexcept(__state.__run());
 
         try {

@@ -20,7 +20,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(1302)
 
-namespace exec {
+namespace experimental::execution {
   template <class _Tag, class _Value>
   using with_t = STDEXEC::prop<_Tag, _Value>;
 
@@ -33,13 +33,17 @@ namespace exec {
     };
 
     template <class _Env, class _Query>
-    struct __without : STDEXEC::__env_base_t<_Env> {
-      static_assert(STDEXEC::__nothrow_move_constructible<_Env>);
+    struct __without {
+      template <STDEXEC::__not_same_as<_Query> _OtherQuery, class... _Args>
+        requires STDEXEC::__queryable_with<_Env, _OtherQuery, _Args...>
+      constexpr auto query(_OtherQuery, _Args&&... __args) const
+        noexcept(STDEXEC::__nothrow_queryable_with<_Env, _OtherQuery, _Args...>)
+          -> STDEXEC::__query_result_t<_Env, _OtherQuery, _Args...> {
+        return STDEXEC::__query<_OtherQuery>()(__env_, static_cast<_Args&&>(__args)...);
+      }
 
-      using STDEXEC::__env_base_t<_Env>::query;
-
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto query(_Query) const noexcept = delete;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      _Env __env_;
     };
 
     struct __without_t {
@@ -219,6 +223,8 @@ namespace exec {
 
   inline constexpr __write_attrs::__write_attrs_t write_attrs{};
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

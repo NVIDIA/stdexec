@@ -158,15 +158,10 @@ namespace asioexec {
 
       using sender_concept = ::STDEXEC::sender_t;
 
-      template <typename Env>
-      constexpr completion_signatures<::STDEXEC::completion_signatures_of_t<Sender, Env>>
-        get_completion_signatures(const Env&) && noexcept {
-        return {};
-      }
-
-      template <typename Env>
-      constexpr completion_signatures<::STDEXEC::completion_signatures_of_t<const Sender&, Env>>
-        get_completion_signatures(const Env&) const & noexcept {
+      template <typename Self, typename... Env>
+      static consteval completion_signatures<
+        ::STDEXEC::completion_signatures_of_t<::STDEXEC::__copy_cvref_t<Self, Sender>, Env...>>
+        get_completion_signatures() noexcept {
         return {};
       }
 

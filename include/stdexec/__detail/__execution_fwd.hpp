@@ -282,6 +282,10 @@ namespace STDEXEC {
   extern const on_t on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  struct affine_on_t;
+  extern const affine_on_t affine_on;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
   struct stopped_as_error_t;
   extern const stopped_as_error_t stopped_as_error;
 
@@ -298,8 +302,8 @@ namespace STDEXEC {
   extern const __transfer_just_t __transfer_just;
 } // namespace STDEXEC
 
-// Moved to namespace exec from namespace STDEXEC because they are no longer getting standardized:
-namespace exec {
+// Moved to namespace experimental::execution from namespace STDEXEC because they are no longer getting standardized:
+namespace experimental::execution {
   struct split_t;
   struct ensure_started_t;
   struct start_detached_t;
@@ -309,7 +313,9 @@ namespace exec {
   extern const ensure_started_t ensure_started;
   extern const start_detached_t start_detached;
   extern const __execute_t __execute;
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
 struct forwarding_query_t;

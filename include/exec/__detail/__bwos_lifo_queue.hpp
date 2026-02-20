@@ -32,7 +32,7 @@
  * BWoS: Formally Verified Block-based Work Stealing for Parallel Processing (Wang et al. 2023)
  */
 
-namespace exec::bwos {
+namespace experimental::execution::bwos {
   inline constexpr std::size_t hardware_destructive_interference_size = 64;
   inline constexpr std::size_t hardware_constructive_interference_size = 64;
 
@@ -497,4 +497,6 @@ namespace exec::bwos {
   auto lifo_queue<Tp, Allocator>::block_type::is_stealable() const noexcept -> bool {
     return steal_tail_.load(STDEXEC::__std::memory_order_acquire) != block_size();
   }
-} // namespace exec::bwos
+} // namespace experimental::execution::bwos
+
+namespace exec = experimental::execution;

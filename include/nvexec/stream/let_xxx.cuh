@@ -29,7 +29,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nvexec::_strm {
+namespace nv::execution::_strm {
   namespace let_xxx {
     using namespace STDEXEC;
 
@@ -234,29 +234,29 @@ namespace nvexec::_strm {
     Fun fun_;
   };
 
-  template <class Set, class Env>
+  template <class Set>
   struct _transform_let_xxx_sender {
-    template <class Fun, stream_completing_sender<Env> Sender>
-    auto operator()(__ignore, Fun fn, Sender&& sndr) const {
+    template <class Env, class Fun, stream_completing_sender<Env> Sender>
+    auto operator()(const Env&, __ignore, Fun fn, Sender&& sndr) const {
       using __sender_t = let_sender<__decay_t<Sender>, Fun, Set>;
       return __sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn)};
     }
-
-    const Env& env_;
   };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::let_value_t, Env>
-    : _transform_let_xxx_sender<set_value_t, Env> { };
+  template <>
+  struct transform_sender_for<STDEXEC::let_value_t>
+    : _transform_let_xxx_sender<set_value_t> { };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::let_error_t, Env>
-    : _transform_let_xxx_sender<set_error_t, Env> { };
+  template <>
+  struct transform_sender_for<STDEXEC::let_error_t>
+    : _transform_let_xxx_sender<set_error_t> { };
 
-  template <class Env>
-  struct transform_sender_for<STDEXEC::let_stopped_t, Env>
-    : _transform_let_xxx_sender<set_stopped_t, Env> { };
-} // namespace nvexec::_strm
+  template <>
+  struct transform_sender_for<STDEXEC::let_stopped_t>
+    : _transform_let_xxx_sender<set_stopped_t> { };
+} // namespace nv::execution::_strm
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Fun, class Set>

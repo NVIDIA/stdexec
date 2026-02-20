@@ -41,13 +41,13 @@ namespace STDEXEC {
     >;
 
     struct __then_impl : __sexpr_defaults {
-      static constexpr auto get_attrs =
+      static constexpr auto __get_attrs =
         []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
           return __sync_attrs{__child};
         };
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() //
+      static consteval auto __get_completion_signatures() //
         -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, then_t>);
         // TODO: update this to use constant evaluation:
@@ -70,7 +70,7 @@ namespace STDEXEC {
         }
       };
 
-      static constexpr auto complete = __complete_fn{};
+      static constexpr auto __complete = __complete_fn{};
     };
   } // namespace __then
 

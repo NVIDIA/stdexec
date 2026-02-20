@@ -25,7 +25,6 @@ set(exec_test_sources
     test_completion_signatures.cpp
     test_create.cpp
     test_env.cpp
-    test_finally.cpp
     test_into_tuple.cpp
     test_repeat_until.cpp
     test_repeat_n.cpp
@@ -64,7 +63,6 @@ set(exec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TASKFLOW}>:../execpools/test_taskflow_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_ASIO}>:../execpools/test_asio_thread_pool.cpp>
-    test_system_context.cpp
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     test_unless_stop_requested.cpp
     )
@@ -81,21 +79,8 @@ target_link_libraries(test.exec
     PRIVATE
     common_test_settings)
 
-add_executable(test.system_context_replaceability ../test_main.cpp test_system_context_replaceability.cpp)
-target_link_libraries(test.system_context_replaceability
-    PUBLIC
-    STDEXEC::stdexec
-    STDEXEC::system_context
-    stdexec_executable_flags
-    Catch2::Catch2
-    PRIVATE
-    common_test_settings)
-
 # Discover the Catch2 test built by the application
 catch_discover_tests(test.exec)
-if(NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability)
-endif()
 
 # Test which parses a source file for an expected error message
 icm_add_build_failure_test(

@@ -43,14 +43,14 @@ namespace STDEXEC {
 
     struct __upon_stopped_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() //
+      static consteval auto __get_completion_signatures() //
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, upon_stopped_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };
 
-      static constexpr auto complete = []<class _Tag, class _State, class... _Args>(
+      static constexpr auto __complete = []<class _Tag, class _State, class... _Args>(
                                          __ignore,
                                          _State& __state,
                                          _Tag,

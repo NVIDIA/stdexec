@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__atomic.hpp"
+#include "__parallel_scheduler_backend.hpp"
 #include "__system_context_replaceability_api.hpp"
 
 #if STDEXEC_ENABLE_LIBDISPATCH
@@ -27,7 +28,7 @@
 #endif
 
 namespace STDEXEC::__system_context_default_impl {
-  using system_context_replaceability::__parallel_scheduler_backend_factory;
+  using system_context_replaceability::__parallel_scheduler_backend_factory_t;
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -58,48 +59,6 @@ namespace STDEXEC::__system_context_default_impl {
   [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
   */
 
-  template <class _Sender>
-  struct __recv {
-    using receiver_concept = STDEXEC::receiver_t;
-
-    //! The operation state on the frontend.
-    STDEXEC::system_context_replaceability::receiver_proxy* __r_;
-
-    //! The parent operation state that we will destroy when we complete.
-    __operation<_Sender>* __op_;
-
-    void set_value() noexcept {
-      auto __op = __op_;
-      auto __rcvr = __r_;
-      __op->__destruct(); // destroys the operation, including `this`.
-      __rcvr->set_value();
-      // Note: when calling a completion signal, the parent operation might complete, making the
-      // static storage passed to this operation invalid. Thus, we need to ensure that we are not
-      // using the operation state after the completion signal.
-    }
-
-    void set_error(std::exception_ptr __ptr) noexcept {
-      auto __op = __op_;
-      auto __rcvr = __r_;
-      __op->__destruct(); // destroys the operation, including `this`.
-      __rcvr->set_error(std::move(__ptr));
-    }
-
-    void set_stopped() noexcept {
-      auto __op = __op_;
-      auto __rcvr = __r_;
-      __op->__destruct(); // destroys the operation, including `this`.
-      __rcvr->set_stopped();
-    }
-
-    [[nodiscard]]
-    auto get_env() const noexcept -> decltype(auto) {
-      auto __o = __r_->try_query<STDEXEC::inplace_stop_token>(STDEXEC::get_stop_token);
-      STDEXEC::inplace_stop_token __st = __o ? *__o : STDEXEC::inplace_stop_token{};
-      return STDEXEC::prop{STDEXEC::get_stop_token, __st};
-    }
-  };
-
   /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
   inline auto __ensure_alignment(std::span<std::byte> __storage, size_t __alignment) noexcept
     -> std::span<std::byte> {
@@ -119,20 +78,23 @@ namespace STDEXEC::__system_context_default_impl {
   template <typename _Sender>
   struct __operation {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
-    STDEXEC::connect_result_t<_Sender, __recv<_Sender>> __inner_op_;
-    /// True if the operation is on the heap, false if it is in the preallocated space.
-    bool __on_heap_;
+    using __receiver_t = __detail::__proxy_receiver<
+      system_context_replaceability::receiver_proxy,
+      __detail::__proxy_env
+    >;
+    STDEXEC::connect_result_t<_Sender, __receiver_t> __inner_op_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
     static auto __construct_maybe_alloc(
       std::span<std::byte> __storage,
-      STDEXEC::system_context_replaceability::receiver_proxy* __completion,
+      system_context_replaceability::receiver_proxy& __completion,
       _Sender __sndr) -> __operation* {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.data() == nullptr || __storage.size() < sizeof(__operation)) {
-        return new __operation(std::move(__sndr), __completion, true);
+        return new __operation(std::move(__sndr), __completion, &__destruct_<true>);
       } else {
-        return new (__storage.data()) __operation(std::move(__sndr), __completion, false);
+        return new (__storage.data())
+          __operation(std::move(__sndr), __completion, &__destruct_<false>);
       }
     }
 
@@ -141,22 +103,25 @@ namespace STDEXEC::__system_context_default_impl {
       STDEXEC::start(__inner_op_);
     }
 
-    /// Destructs the operation; frees any allocated memory.
-    void __destruct() {
-      if (__on_heap_) {
-        delete this;
-      } else {
-        std::destroy_at(this);
-      }
+   private:
+    using __destruct_fn_t = void(void*) noexcept;
+
+    explicit __operation(
+      _Sender __sndr,
+      system_context_replaceability::receiver_proxy& __completion,
+      __destruct_fn_t* __destruct)
+      : __inner_op_(
+          STDEXEC::connect(std::move(__sndr), __receiver_t{__completion, this, __destruct})) {
     }
 
-   private:
-    __operation(
-      _Sender __sndr,
-      STDEXEC::system_context_replaceability::receiver_proxy* __completion,
-      bool __on_heap)
-      : __inner_op_(STDEXEC::connect(std::move(__sndr), __recv<_Sender>{__completion, this}))
-      , __on_heap_(__on_heap) {
+    /// Destructs the operation; frees any allocated memory.
+    template <bool _OnHeap>
+    static void __destruct_(void* __ptr) noexcept {
+      if constexpr (_OnHeap) {
+        delete static_cast<__operation*>(__ptr);
+      } else {
+        std::destroy_at(static_cast<__operation*>(__ptr));
+      }
     }
   };
 
@@ -166,7 +131,7 @@ namespace STDEXEC::__system_context_default_impl {
   };
 
   template <typename _BaseSchedulerContext>
-  struct __generic_impl : STDEXEC::system_context_replaceability::parallel_scheduler_backend {
+  struct __generic_impl : system_context_replaceability::parallel_scheduler_backend {
     __generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler()) {
       // If the pool exposes the available parallelism, use it to determine the chunk size.
@@ -177,7 +142,7 @@ namespace STDEXEC::__system_context_default_impl {
       }
     }
    private:
-    using __pool_scheduler_t = decltype(std::declval<_BaseSchedulerContext>().get_scheduler());
+    using __pool_scheduler_t = decltype(__declval<_BaseSchedulerContext>().get_scheduler());
 
     //! The underlying thread pool.
     _BaseSchedulerContext __pool_;
@@ -205,7 +170,7 @@ namespace STDEXEC::__system_context_default_impl {
 
     //! Functor called by the `bulk_chunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_chunked_functor {
-      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy* __r_;
+      system_context_replaceability::bulk_item_receiver_proxy* __r_;
       __chunker __chunker_;
 
       void operator()(size_t const __idx) const noexcept {
@@ -215,7 +180,7 @@ namespace STDEXEC::__system_context_default_impl {
 
     //! Functor called by the `bulk_unchunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_unchunked_functor {
-      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy* __r_;
+      system_context_replaceability::bulk_item_receiver_proxy* __r_;
 
       void operator()(size_t const __idx) const noexcept {
         __r_->execute(__idx, __idx + 1);
@@ -223,28 +188,28 @@ namespace STDEXEC::__system_context_default_impl {
     };
 
     using __schedule_operation_t =
-      __operation<decltype(STDEXEC::schedule(std::declval<__pool_scheduler_t>()))>;
+      __operation<decltype(STDEXEC::schedule(__declval<__pool_scheduler_t>()))>;
 
     using __schedule_bulk_chunked_operation_t = __operation<decltype(STDEXEC::bulk(
-      STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
+      STDEXEC::schedule(__declval<__pool_scheduler_t>()),
       STDEXEC::par,
-      std::declval<size_t>(),
-      std::declval<__bulk_chunked_functor>()))>;
+      __declval<size_t>(),
+      __declval<__bulk_chunked_functor>()))>;
 
     using __schedule_bulk_unchunked_operation_t = __operation<decltype(STDEXEC::bulk(
-      STDEXEC::schedule(std::declval<__pool_scheduler_t>()),
+      STDEXEC::schedule(__declval<__pool_scheduler_t>()),
       STDEXEC::par,
-      std::declval<size_t>(),
-      std::declval<__bulk_unchunked_functor>()))>;
+      __declval<size_t>(),
+      __declval<__bulk_unchunked_functor>()))>;
 
    public:
     void schedule(
-      STDEXEC::system_context_replaceability::receiver_proxy& __rcvr,
+      system_context_replaceability::receiver_proxy& __rcvr,
       std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         auto __sndr = STDEXEC::schedule(__pool_scheduler_);
         auto __os =
-          __schedule_operation_t::__construct_maybe_alloc(__storage, &__rcvr, std::move(__sndr));
+          __schedule_operation_t::__construct_maybe_alloc(__storage, __rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
@@ -254,7 +219,7 @@ namespace STDEXEC::__system_context_default_impl {
 
     void schedule_bulk_chunked(
       size_t __size,
-      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+      system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
       std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
@@ -273,7 +238,7 @@ namespace STDEXEC::__system_context_default_impl {
             &__rcvr, __chunker{__chunk_size, __size}
         });
         auto __os = __schedule_bulk_chunked_operation_t::__construct_maybe_alloc(
-          __storage, &__rcvr, std::move(__sndr));
+          __storage, __rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
@@ -283,7 +248,7 @@ namespace STDEXEC::__system_context_default_impl {
 
     void schedule_bulk_unchunked(
       size_t __size,
-      STDEXEC::system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+      system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
       std::span<std::byte> __storage) noexcept override {
       STDEXEC_TRY {
         auto __sndr = STDEXEC::bulk(
@@ -292,7 +257,7 @@ namespace STDEXEC::__system_context_default_impl {
           __size,
           __bulk_unchunked_functor{&__rcvr});
         auto __os = __schedule_bulk_unchunked_operation_t::__construct_maybe_alloc(
-          __storage, &__rcvr, std::move(__sndr));
+          __storage, __rcvr, std::move(__sndr));
         __os->start();
       }
       STDEXEC_CATCH_ALL {
@@ -321,7 +286,7 @@ namespace STDEXEC::__system_context_default_impl {
 
       // Otherwise, create a new instance using the factory.
       // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
-      auto __new_instance = __factory_.load(STDEXEC::__std::memory_order_relaxed)();
+      auto __new_instance = __factory_.load(__std::memory_order_relaxed)();
 
       // Store the newly created instance.
       __acquire_instance_lock();
@@ -331,8 +296,8 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
     /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
-    auto __set_backend_factory(__parallel_scheduler_backend_factory __new_factory)
-      -> __parallel_scheduler_backend_factory {
+    auto __set_backend_factory(__parallel_scheduler_backend_factory_t __new_factory)
+      -> __parallel_scheduler_backend_factory_t {
       // Replace the factory, keeping track of the old one.
       auto __old_factory = __factory_.exchange(__new_factory);
       // Create a new instance with the new factory.
@@ -347,9 +312,9 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
    private:
-    STDEXEC::__std::atomic<bool> __instance_locked_{false};
+    __std::atomic<bool> __instance_locked_{false};
     std::shared_ptr<_Interface> __instance_{nullptr};
-    STDEXEC::__std::atomic<__parallel_scheduler_backend_factory> __factory_{__default_factory};
+    __std::atomic<__parallel_scheduler_backend_factory_t> __factory_{__default_factory};
 
     /// The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface> {
@@ -357,13 +322,13 @@ namespace STDEXEC::__system_context_default_impl {
     }
 
     void __acquire_instance_lock() {
-      while (__instance_locked_.exchange(true, STDEXEC::__std::memory_order_acquire)) {
+      while (__instance_locked_.exchange(true, __std::memory_order_acquire)) {
         // Spin until we acquire the lock.
       }
     }
 
     void __release_instance_lock() {
-      __instance_locked_.store(false, STDEXEC::__std::memory_order_release);
+      __instance_locked_.store(false, __std::memory_order_release);
     }
   };
 
@@ -377,7 +342,7 @@ namespace STDEXEC::__system_context_default_impl {
 
   /// The singleton to hold the `parallel_scheduler_backend` instance.
   inline constinit __instance_data<
-    STDEXEC::system_context_replaceability::parallel_scheduler_backend,
+    system_context_replaceability::parallel_scheduler_backend,
     __parallel_scheduler_backend_impl
   >
     __parallel_scheduler_backend_singleton{};

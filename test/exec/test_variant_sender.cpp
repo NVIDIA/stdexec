@@ -33,10 +33,17 @@ namespace {
 
   using just_int_t = decltype(just(0));
   using just_void_t = decltype(just());
+  using just_then_void_t = decltype(then(just(), [] { }));
 
   TEST_CASE("variant_sender - default constructible", "[types][variant_sender]") {
     variant_sender<just_void_t, just_int_t> variant{just()};
+    STATIC_REQUIRE(sender_in<decltype(variant)>);
     CHECK(variant.index() == 0);
+  }
+
+  TEST_CASE("variant_sender - sender_of concept", "[types][variant_sender]") {
+    variant_sender<just_void_t, just_then_void_t> variant{just()};
+    STATIC_REQUIRE(sender_of<decltype(variant), set_value_t()>);
   }
 
   TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]") {

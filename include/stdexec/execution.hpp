@@ -41,6 +41,7 @@
 #include "__detail/__meta.hpp"
 #include "__detail/__on.hpp"
 #include "__detail/__operation_states.hpp"
+#include "__detail/__parallel_scheduler.hpp"
 #include "__detail/__read_env.hpp"
 #include "__detail/__receiver_adaptor.hpp"
 #include "__detail/__receivers.hpp"
@@ -78,7 +79,7 @@
 #include "stop_token.hpp"
 // IWYU pragma: end_exports
 
-#include "__detail/__deprecations.hpp"
+#include "__detail/__deprecations.hpp" // IWYU pragma: keep
 
 // For issuing a meaningful diagnostic for the erroneous `snd1 | snd2`.
 template <STDEXEC::sender _Ignore, STDEXEC::sender _Sender>

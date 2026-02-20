@@ -31,7 +31,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace exec {
+namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////
   // NOT TO SPEC: __start_now
   namespace __start_now {
@@ -237,6 +237,8 @@ namespace exec {
 
   using __start_now::start_now_t;
   inline constexpr start_now_t start_now{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()

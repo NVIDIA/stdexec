@@ -224,10 +224,14 @@ namespace STDEXEC {
               &__loop_->__task_count_, &__loop_->__queue_, static_cast<_Rcvr&&>(__rcvr)};
           }
 
-          template <class, class...>
+          template <class, class _RcvrEnv>
           STDEXEC_ATTRIBUTE(nodiscard, host, device)
           static consteval auto get_completion_signatures() noexcept {
-            return completion_signatures<set_value_t(), set_stopped_t()>{};
+            if constexpr (unstoppable_token<stop_token_of_t<_RcvrEnv>>) {
+              return completion_signatures<set_value_t()>{};
+            } else {
+              return completion_signatures<set_value_t(), set_stopped_t()>{};
+            }
           }
 
           STDEXEC_ATTRIBUTE(nodiscard, host, device)

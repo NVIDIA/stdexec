@@ -20,7 +20,7 @@
 
 #include "../../stdexec/__detail/__atomic.hpp"
 
-namespace exec {
+namespace experimental::execution {
   template <auto _NextPtr>
   class __atomic_intrusive_queue;
 
@@ -89,4 +89,6 @@ namespace exec {
 
     __atomic_node_pointer __head_{nullptr};
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;

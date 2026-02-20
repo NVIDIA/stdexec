@@ -21,7 +21,6 @@
 
 #pragma once
 
-
 #include "__atomic.hpp"
 
 #include "stdexec/__detail/__config.hpp"

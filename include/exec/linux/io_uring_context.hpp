@@ -55,7 +55,7 @@
 
 #    include <cstring>
 
-namespace exec {
+namespace experimental::execution {
   namespace __io_uring {
     inline void __throw_error_code_if(bool __cond, int __ec) {
       if (__cond) {
@@ -1180,7 +1180,9 @@ namespace exec {
 
   static_assert(__timed_scheduler<io_uring_scheduler>);
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 #  endif // if __has_include(<linux/verison.h>)
 #endif   // if __has_include(<linux/io_uring.h>)

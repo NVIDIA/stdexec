@@ -18,7 +18,7 @@
 
 #include "__execution_fwd.hpp"
 
-#include "../stop_token.hpp"
+#include "../stop_token.hpp" // IWYU pragma: keep for inplace_stop_source
 #include "__atomic.hpp"
 #include "__concepts.hpp"
 #include "__env.hpp"
@@ -87,7 +87,7 @@ namespace STDEXEC {
       using __sched_sender_of_t = __call_result_t<schedule_t, __scheduler_of_t<_Env>>;
 
       template <class _Sender, class _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         if constexpr (__callable<get_scheduler_t, const _Env&>) {
           return STDEXEC::get_completion_signatures<__sched_sender_of_t<_Env>, _Env>();
         } else {
@@ -160,14 +160,14 @@ namespace STDEXEC {
         }
       };
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Sndr, class _Rcvr>(_Sndr&& __sender, _Rcvr __rcvr) noexcept(
           __nothrow_constructible_from<__join_state<_Rcvr>, __base_scope*, _Rcvr>) {
           auto [_, __scope] = __sender;
           return __join_state<_Rcvr>(__scope, std::move(__rcvr));
         };
 
-      static constexpr auto start = [](auto& __state) noexcept {
+      static constexpr auto __start = [](auto& __state) noexcept {
         if (__state.__scope_->__start_join_sender(__state)) {
           __state.__complete_inline();
         }

@@ -28,13 +28,18 @@ namespace {
     STATIC_REQUIRE(sender<decltype(s)>);
   }
 
+  TEST_CASE("finally with pipe syntax is a sender", "[adaptors][finally]") {
+    auto s = just() | exec::finally(just());
+    STATIC_REQUIRE(sender<decltype(s)>);
+  }
+
   TEST_CASE("finally is a sender in empty env", "[adaptors][finally]") {
     auto s = exec::finally(just(), just());
     STATIC_REQUIRE(sender_in<decltype(s), ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>
+        completion_signatures<set_value_t()>
       >);
   }
 
@@ -44,7 +49,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t()>
+        completion_signatures<set_value_t()>
       >);
     sync_wait(s);
     CHECK(called);
@@ -56,7 +61,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(int)>
+        completion_signatures<set_value_t(int)>
       >);
     auto [i] = *sync_wait(s);
     CHECK(called);
@@ -69,7 +74,7 @@ namespace {
 
     auto s = exec::finally(
       just(21) | then([](int) -> int { throw 42; }),
-      just() | then([&called]() noexcept { called = true; }));
+      just() | then([&called]() noexcept(false) { called = true; }));
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
@@ -85,7 +90,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_error_t(int)>
+        completion_signatures<set_error_t(int)>
       >);
   }
 
@@ -94,7 +99,7 @@ namespace {
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<decltype(s), ex::env<>>,
-        completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>
+        completion_signatures<set_stopped_t()>
       >);
   }
 } // namespace

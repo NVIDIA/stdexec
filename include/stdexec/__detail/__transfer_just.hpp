@@ -74,12 +74,12 @@ namespace STDEXEC {
       }
     };
 
-    static constexpr auto get_attrs = [](__ignore, const auto& __data) noexcept {
+    static constexpr auto __get_attrs = [](__ignore, const auto& __data) noexcept {
       return STDEXEC::__apply(__mk_attrs(), __data);
     };
 
     template <class _Sender, class... _Env>
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       using __sndr_t =
         __detail::__transform_sender_result_t<__transfer_just_t, set_value_t, _Sender, env<>>;
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();

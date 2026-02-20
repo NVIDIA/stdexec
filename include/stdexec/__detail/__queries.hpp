@@ -129,7 +129,8 @@ struct get_allocator_t : STDEXEC::__query<get_allocator_t> {
   STDEXEC_ATTRIBUTE(always_inline, host, device)
   static constexpr void __validate() noexcept {
     static_assert(STDEXEC::__nothrow_callable<get_allocator_t, const _Env&>);
-    static_assert(STDEXEC::__allocator_<STDEXEC::__call_result_t<get_allocator_t, const _Env&>>);
+    using __alloc_t = STDEXEC::__call_result_t<get_allocator_t, const _Env&>;
+    static_assert(STDEXEC::__simple_allocator<STDEXEC::__decay_t<__alloc_t>>);
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

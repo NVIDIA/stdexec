@@ -56,12 +56,14 @@
 // The shared state should add-ref itself when the input async
 // operation is started and release itself when its completion
 // is notified.
-namespace exec {
+namespace experimental::execution {
   struct split_t;
   struct ensure_started_t;
-} // namespace exec
+} // namespace experimental::execution
 
-namespace exec::__shared {
+namespace exec = experimental::execution;
+
+namespace experimental::execution::__shared {
   using namespace STDEXEC;
 
   template <class _Env, class _Variant>
@@ -429,7 +431,7 @@ namespace exec::__shared {
   template <class _Tag>
   struct __impls : __sexpr_defaults {
     template <class _CvChild, class _Env>
-    static consteval auto __get_completion_signatures() {
+    static consteval auto __get_completion_signatures_impl() {
       // Use the senders decay-copyability as a proxy for whether it is lvalue-connectable.
       // TODO: update this for constant evaluation
       if constexpr (__decay_copyable<_CvChild>) {
@@ -444,9 +446,12 @@ namespace exec::__shared {
     }
 
     template <class _CvSender>
-    static consteval auto get_completion_signatures() {
+    static consteval auto __get_completion_signatures() {
       static_assert(sender_expr_for<_CvSender, _Tag>);
-      return __get_completion_signatures<__child_of<_CvSender>, __decay_t<__data_of<_CvSender>>>();
+      return __get_completion_signatures_impl<
+        __child_of<_CvSender>,
+        __decay_t<__data_of<_CvSender>>
+      >();
     };
   };
 
@@ -476,7 +481,7 @@ namespace exec::__shared {
 
     template <class>
     static consteval auto get_completion_signatures() {
-      return __impls<_Tag>::template __get_completion_signatures<_CvChild, _Env>();
+      return __impls<_Tag>::template __get_completion_signatures_impl<_CvChild, _Env>();
     }
 
     template <class _Receiver>
@@ -503,4 +508,6 @@ namespace exec::__shared {
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __sndr(_Tag, _CvChild&&, _Env) -> __sndr<_Tag, _CvChild, _Env>;
 
-} // namespace exec::__shared
+} // namespace experimental::execution::__shared
+
+namespace exec = experimental::execution;

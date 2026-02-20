@@ -41,13 +41,13 @@ namespace {
   inline constexpr with_attrs_t with_attrs{};
 
   struct with_attrs_impl : ex::__sexpr_defaults {
-    static constexpr auto get_attrs =
+    static constexpr auto __get_attrs =
       []<class Env>(auto, const Env& env, const ex::sender auto& child) noexcept {
         return ex::__env::__join(env, ex::get_env(child));
       };
 
     template <class Sender, class... Env>
-    static consteval auto get_completion_signatures() //
+    static consteval auto __get_completion_signatures() //
       -> ex::completion_signatures_of_t<ex::__child_of<std::remove_cvref_t<Sender>>, Env...> {
       return {};
     };

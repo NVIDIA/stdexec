@@ -21,6 +21,7 @@
 #include "__completion_signatures_of.hpp" // IWYU pragma: keep for the sender concept
 #include "__config.hpp"
 #include "__domain.hpp"
+#include "__env.hpp"
 #include "__query.hpp"
 #include "__utility.hpp"
 
@@ -141,7 +142,7 @@ namespace STDEXEC {
       template <class _Attrs, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch>
       constexpr auto operator()(const _Attrs& __attrs, __ignore = {}) const noexcept
-        -> __query_result_t<_Attrs, _GetComplSch> {
+        -> __decay_t<__query_result_t<_Attrs, _GetComplSch>> {
         static_assert(noexcept(__attrs.query(_GetComplSch{})));
         static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch>>);
         return __attrs.query(_GetComplSch{});
@@ -150,7 +151,7 @@ namespace STDEXEC {
       template <class _Attrs, class _Env, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch, const _Env&>
       constexpr auto operator()(const _Attrs& __attrs, const _Env& __env) const noexcept
-        -> __query_result_t<_Attrs, _GetComplSch, const _Env&> {
+        -> __decay_t<__query_result_t<_Attrs, _GetComplSch, const _Env&>> {
         static_assert(noexcept(__attrs.query(_GetComplSch{}, __env)));
         static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch, const _Env&>>);
         return __attrs.query(_GetComplSch{}, __env);
@@ -384,6 +385,20 @@ namespace STDEXEC {
   };
 
   inline constexpr __mk_sch_env_t __mk_sch_env{};
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  // __infallible_scheduler
+  template <class _Env>
+  using __unstoppable_env_t = env<prop<get_stop_token_t, never_stop_token>, _Env>;
+
+  template <class _Sender, class... _Env>
+  concept __infallible_sender = (!__sends<set_error_t, _Sender, _Env...>)
+                             && (!__sends<set_stopped_t, _Sender, _Env...>);
+
+  template <class _Scheduler, class... _Env>
+  concept __infallible_scheduler =
+    scheduler<_Scheduler>
+    && __infallible_sender<__result_of<schedule, _Scheduler>, _Env...>;
 
   // Deprecated interfaces
   using get_delegatee_scheduler_t

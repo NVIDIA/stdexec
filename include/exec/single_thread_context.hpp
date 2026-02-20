@@ -20,7 +20,7 @@
 
 #include <thread>
 
-namespace exec {
+namespace experimental::execution {
   class single_thread_context {
     STDEXEC::run_loop loop_;
     std::thread thread_;
@@ -45,4 +45,7 @@ namespace exec {
       return thread_.get_id();
     }
   };
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

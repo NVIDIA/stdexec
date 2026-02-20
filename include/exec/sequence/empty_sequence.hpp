@@ -19,7 +19,7 @@
 #include "../../stdexec/execution.hpp"
 #include "../sequence_senders.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __empty_sequence {
 
     using namespace STDEXEC;
@@ -56,4 +56,7 @@ namespace exec {
   using __empty_sequence::empty_sequence_t;
   inline constexpr empty_sequence_t empty_sequence{};
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

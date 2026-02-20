@@ -26,7 +26,7 @@
 
 #include <exception>
 
-namespace exec {
+namespace experimental::execution {
   namespace __on_coro_disp {
     using namespace STDEXEC;
 
@@ -223,4 +223,7 @@ namespace exec {
   inline constexpr __on_coro_disp::__succeeded_t on_coroutine_succeeded{};
   inline constexpr __on_coro_disp::__stopped_t on_coroutine_stopped{};
   inline constexpr __on_coro_disp::__failed_t on_coroutine_failed{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
+

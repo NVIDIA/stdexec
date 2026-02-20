@@ -202,7 +202,7 @@ namespace STDEXEC {
 
     struct __associate_impl : __sexpr_defaults {
 #if 0 // TODO: I don't know how to implement this correctly
-      static constexpr auto get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
+      static constexpr auto __get_attrs = []<class _Child>(__ignore, const _Child& __child) noexcept {
         return __sync_attrs{__child};
       };
 #endif
@@ -212,7 +212,7 @@ namespace STDEXEC {
         __copy_cvref_t<_Sender, typename __data_of<std::remove_cvref_t<_Sender>>::__wrap_sender_t>;
 
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() //
+      static consteval auto __get_completion_signatures() //
         -> transform_completion_signatures<
           __completion_signatures_of_t<__wrap_sender_of_t<_Sender>, _Env...>,
           completion_signatures<set_stopped_t()>
@@ -221,7 +221,7 @@ namespace STDEXEC {
         return {};
       };
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept(
           (__std::same_as<_Self, std::remove_cvref_t<_Self>> || __nothrow_decay_copyable<_Self>) &&
             __nothrow_callable<
@@ -235,7 +235,7 @@ namespace STDEXEC {
           return op_state_t{__forward_like<_Self>(__data), std::move(__rcvr)};
         };
 
-      static constexpr auto start = [](auto& __state) noexcept -> void {
+      static constexpr auto __start = [](auto& __state) noexcept -> void {
         __state.__run();
       };
     };

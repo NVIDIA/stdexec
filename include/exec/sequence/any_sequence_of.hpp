@@ -21,7 +21,7 @@
 #include "../any_sender_of.hpp"
 #include "../sequence_senders.hpp"
 
-namespace exec {
+namespace experimental::execution {
   namespace __any {
     namespace __next {
       template <__valid_completion_signatures _Sigs>
@@ -246,7 +246,6 @@ namespace exec {
           static_cast<__sequence_sender&&>(*this), static_cast<_Rcvr&&>(__rcvr)};
       }
 
-
       auto get_env() const noexcept -> __env_t {
         return __env_t{__storage_.__get_vtable(), __storage_.__get_object_pointer()};
       }
@@ -333,4 +332,6 @@ namespace exec {
     }
   };
 
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;

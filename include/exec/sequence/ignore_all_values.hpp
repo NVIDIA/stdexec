@@ -25,7 +25,7 @@
 
 #include "../../stdexec/__detail/__atomic.hpp"
 
-namespace exec {
+namespace experimental::execution {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
     __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
@@ -285,12 +285,12 @@ namespace exec {
 
     struct __ignore_all_values_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() {
+      static consteval auto __get_completion_signatures() {
         static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
         return __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
       }
 
-      static constexpr auto connect =
+      static constexpr auto __connect =
         []<class _Sender, receiver _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
           __nothrow_applicable<__connect_fn, _Sender, _Receiver&>)
         -> __apply_result_t<__connect_fn, _Sender, _Receiver&> {
@@ -302,7 +302,9 @@ namespace exec {
 
   using __ignore_all_values::ignore_all_values_t;
   inline constexpr ignore_all_values_t ignore_all_values{};
-} // namespace exec
+} // namespace experimental::execution
+
+namespace exec = experimental::execution;
 
 namespace STDEXEC {
   template <>

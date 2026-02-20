@@ -31,7 +31,7 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace nvexec {
+namespace nv::execution {
   namespace _strm {
     namespace reduce_ {
       template <class Sender, class Receiver, class InitT, class Fun>
@@ -160,7 +160,9 @@ namespace nvexec {
   } // namespace _strm
 
   inline constexpr _strm::reduce_t reduce{};
-} // namespace nvexec
+} // namespace nv::execution
+
+namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail {
   template <class Sender, class Init, class Fun>

@@ -61,13 +61,13 @@ namespace STDEXEC {
 
     struct __stop_when_impl : __sexpr_defaults {
       template <class _Sender, class... _Env>
-      static consteval auto get_completion_signatures() //
+      static consteval auto __get_completion_signatures() //
         -> __completion_signatures_of_t<__child_of<_Sender>, _Env...> {
         static_assert(sender_expr_for<_Sender, __stop_when_t>);
         return {};
       };
 
-      static constexpr auto get_env = [](__ignore, const auto& __state) noexcept {
+      static constexpr auto __get_env = [](__ignore, const auto& __state) noexcept {
         return __env::__join(
           prop(get_stop_token, __state.__token_), STDEXEC::get_env(__state.__rcvr_));
       };
@@ -159,7 +159,7 @@ namespace STDEXEC {
         }
       };
 
-      static constexpr auto get_state =
+      static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept {
           auto& [__tag, __token, __child] = __self;
           auto __new_token = __make_token_fn{}(

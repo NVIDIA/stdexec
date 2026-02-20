@@ -27,7 +27,7 @@
 #include "memory.cuh"
 #include "throw_on_cuda_error.cuh"
 
-namespace nvexec::_strm::queue {
+namespace nv::execution::_strm::queue {
   struct task_base {
     using fn_t = void(task_base*) noexcept;
 
@@ -133,4 +133,6 @@ namespace nvexec::_strm::queue {
       return queue::producer{tail_ptr_.get()};
     }
   };
-} // namespace nvexec::_strm::queue
+} // namespace nv::execution::_strm::queue
+
+namespace nvexec = nv::execution;
