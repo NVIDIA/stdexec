@@ -16,12 +16,12 @@
  * limitations under the License.
  */
 
-#include <asioexec/use_sender.hpp>
+#include <exec/asio/use_sender.hpp>
 
-#include <asioexec/asio_config.hpp>
 #include <catch2/catch.hpp>
 #include <chrono>
 #include <exception>
+#include <exec/asio/asio_config.hpp>
 #include <functional>
 #include <stdexec/execution.hpp>
 #include <system_error>
@@ -31,7 +31,7 @@
 #include <utility>
 
 using namespace STDEXEC;
-using namespace asioexec;
+using namespace exec::asio;
 
 namespace {
 
@@ -84,10 +84,7 @@ namespace {
     t.expires_after(std::chrono::years(1));
     auto sender = t.async_wait(use_sender);
     static_assert(::STDEXEC::sender_in<decltype(sender)>);
-    static_assert(
-      ::STDEXEC::sender_of<
-        decltype(sender),
-        ::STDEXEC::set_value_t()>);
+    static_assert(::STDEXEC::sender_of<decltype(sender), ::STDEXEC::set_value_t()>);
     static_assert(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,

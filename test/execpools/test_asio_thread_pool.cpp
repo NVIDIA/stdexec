@@ -27,7 +27,7 @@
 
 #include <execpools/asio/asio_thread_pool.hpp>
 
-#include <asioexec/use_sender.hpp>
+#include <exec/asio/use_sender.hpp>
 
 namespace ex = STDEXEC;
 
@@ -168,20 +168,20 @@ namespace {
     CHECK(output == std::array{1.0, 3.0, 2.0, 0.0});
   }
 
-  TEST_CASE("asiothreadpool with asioexec interoperability", "[asio_thread_pool]") {
+  TEST_CASE("asiothreadpool with exec::asio interoperability", "[asio_thread_pool]") {
     const auto current_thread_id = std::this_thread::get_id();
 
     execpools::asio_thread_pool pool{1ul};
-    asioexec::asio_impl::system_timer timer{pool.get_executor()};
+    exec::asio::asio_impl::system_timer timer{pool.get_executor()};
     const auto [other_thread_id] = ex::sync_wait(
-                                     timer.async_wait(asioexec::use_sender)
+                                     timer.async_wait(exec::asio::use_sender)
                                      | ex::then(
                                        [](auto&&...) { return std::this_thread::get_id(); }))
                                      .value();
     REQUIRE(current_thread_id != other_thread_id);
 
     // demo to access underlying execution context
-    asioexec::asio_impl::query(pool.get_executor(), asioexec::asio_impl::execution::context_t{})
+    exec::asio::asio_impl::query(pool.get_executor(), exec::asio::asio_impl::execution::context_t{})
       .stop();
   }
 } // namespace
