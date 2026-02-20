@@ -43,6 +43,9 @@ namespace experimental::execution {
         stop
       };
 
+      // Default ctor for __intrusive_mpsc_queue's internal stub node
+      constexpr timed_thread_operation_base() = default;
+
       constexpr timed_thread_operation_base(
         void (*set_value)(timed_thread_operation_base*) noexcept,
         command_type command = command_type::schedule) noexcept
@@ -50,7 +53,7 @@ namespace experimental::execution {
         , set_value_{set_value} {
       }
 
-      STDEXEC::__std::atomic<void*> next_{nullptr};
+      STDEXEC::__std::atomic<timed_thread_operation_base*> next_{nullptr};
       command_type command_;
       void (*set_value_)(timed_thread_operation_base*) noexcept;
     };
