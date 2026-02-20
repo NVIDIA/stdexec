@@ -22,7 +22,7 @@
 #include "../stdexec/__detail/__sender_adaptor_closure.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__transform_sender.hpp"
-#include "__detail/__shared.hpp"
+#include "detail/shared.hpp"
 
 namespace experimental::execution {
   /////////////////////////////////////////////////////////////////////////////

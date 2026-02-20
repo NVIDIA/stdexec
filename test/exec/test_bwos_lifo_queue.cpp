@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "exec/__detail/__bwos_lifo_queue.hpp"
+#include "exec/detail/bwos_lifo_queue.hpp"
 
 #include <catch2/catch.hpp>
 

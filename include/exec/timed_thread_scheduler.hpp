@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "__detail/intrusive_heap.hpp"
+#include "detail/intrusive_heap.hpp"
 #include "timed_scheduler.hpp" // IWYU pragma: keep for schedule_at and schedule_after
 
 #include "../stdexec/__detail/__atomic.hpp"

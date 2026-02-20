@@ -48,4 +48,4 @@ namespace experimental::execution {
 
 namespace exec = experimental::execution;
 
-#include "__detail/memory_mapped_region.hpp"
+#include "detail/memory_mapped_region.hpp"

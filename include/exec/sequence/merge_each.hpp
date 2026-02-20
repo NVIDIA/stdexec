@@ -32,7 +32,7 @@
 #include "../../stdexec/__detail/__stop_token.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
-#include "../__detail/__basic_sequence.hpp"
+#include "../detail/basic_sequence.hpp"
 
 #include <atomic>
 

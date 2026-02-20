@@ -23,10 +23,10 @@
 #include "../stdexec/__detail/__manual_lifetime.hpp" // IWYU pragma: keep
 #include "../stdexec/__detail/__meta.hpp"            // IWYU pragma: keep
 #include "../stdexec/execution.hpp"
-#include "__detail/__atomic_intrusive_queue.hpp"
-#include "__detail/__bwos_lifo_queue.hpp"
-#include "__detail/__numa.hpp"
-#include "__detail/__xorshift.hpp"
+#include "detail/atomic_intrusive_queue.hpp"
+#include "detail/bwos_lifo_queue.hpp"
+#include "detail/numa.hpp"
+#include "detail/xorshift.hpp"
 
 #include "sequence/iterate.hpp"
 #include "sequence_senders.hpp"
