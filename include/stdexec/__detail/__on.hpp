@@ -29,6 +29,7 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__sender_introspection.hpp"
 #include "__utility.hpp"
+#include "__write_env.hpp"
 
 namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
@@ -131,15 +132,12 @@ namespace STDEXEC {
     >;
 
     template <class _Sender, class _OldSched, class _NewSched>
-    static constexpr auto __reschedule(
-      _Sender&& __sndr,
-      [[maybe_unused]] _OldSched&& __old_sched,
-      _NewSched&& __new_sched) {
-      // BUGBUG TODO(ericniebler): FIXME
-      // return continues_on(
-      //   write_env(static_cast<_Sender&&>(__sndr), __sched_env{__old_sched}),
-      //   static_cast<_NewSched&&>(__new_sched));
-      return continues_on(static_cast<_Sender&&>(__sndr), static_cast<_NewSched&&>(__new_sched));
+    static constexpr auto
+      __reschedule(_Sender&& __sndr, _OldSched&& __old_sched, _NewSched&& __new_sched) {
+      return continues_on(
+        write_env(static_cast<_Sender&&>(__sndr), __sched_env{__old_sched}),
+        static_cast<_NewSched&&>(__new_sched));
+      // return continues_on(static_cast<_Sender&&>(__sndr), static_cast<_NewSched&&>(__new_sched));
     }
   };
 

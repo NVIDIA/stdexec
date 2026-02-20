@@ -152,7 +152,7 @@ namespace STDEXEC {
 
   using __msuccess = int;
 
-  template <class _What, class... _With>
+  template <class... _What>
   struct _WARNING_ { };
 
   template <class... _What>
