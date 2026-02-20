@@ -16,7 +16,7 @@
 #pragma once
 
 #include "__concepts.hpp"
-#include "__config.hpp" // IWYU pragma: export
+#include "__config.hpp"  // IWYU pragma: export
 #include "__meta.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"
@@ -24,31 +24,32 @@
 // IWYU pragma: always_keep
 
 STDEXEC_NAMESPACE_STD_BEGIN
-struct monostate;
+  struct monostate;
 
-template <class...>
-class variant;
+  template <class...>
+  class variant;
 
-template <class...>
-class tuple;
+  template <class...>
+  class tuple;
 STDEXEC_NAMESPACE_STD_END
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   struct __none_such;
 
-  namespace __detail {
-    struct __not_a_variant {
+  namespace __detail
+  {
+    struct __not_a_variant
+    {
       constexpr __not_a_variant() = delete;
     };
-  } // namespace __detail
+  }  // namespace __detail
 
   template <class... _Ts>
-  using __std_variant = __minvoke_if_c<
-    sizeof...(_Ts) == 0,
-    __mconst<__detail::__not_a_variant>,
-    __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-    _Ts...
-  >;
+  using __std_variant = __minvoke_if_c<sizeof...(_Ts) == 0,
+                                       __mconst<__detail::__not_a_variant>,
+                                       __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
+                                       _Ts...>;
 
   template <class... _Ts>
   using __nullable_std_variant =
@@ -68,20 +69,21 @@ namespace STDEXEC {
   struct set_error_t;
   struct set_stopped_t;
 
-  extern const set_value_t set_value;
-  extern const set_error_t set_error;
-  extern const set_stopped_t set_stopped;
+  extern set_value_t const   set_value;
+  extern set_error_t const   set_error;
+  extern set_stopped_t const set_stopped;
 
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
   template <class _Sender>
-  extern const bool enable_receiver;
+  extern bool const enable_receiver;
 
-  namespace __env {
+  namespace __env
+  {
     template <class _Query, auto _Value>
     struct cprop;
-  } // namespace __env
+  }  // namespace __env
 
   template <class _Query, class _Value>
   struct prop;
@@ -91,13 +93,14 @@ namespace STDEXEC {
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct get_env_t;
-  extern const get_env_t get_env;
+  extern get_env_t const get_env;
 
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  enum class forward_progress_guarantee {
+  enum class forward_progress_guarantee
+  {
     concurrent,
     parallel,
     weakly_parallel
@@ -117,22 +120,24 @@ namespace STDEXEC {
 
   struct __debug_env_t;
 
-  extern const __execute_may_block_caller_t __execute_may_block_caller;
-  extern const get_forward_progress_guarantee_t get_forward_progress_guarantee;
-  extern const get_scheduler_t get_scheduler;
-  extern const get_delegation_scheduler_t get_delegation_scheduler;
+  extern __execute_may_block_caller_t const     __execute_may_block_caller;
+  extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
+  extern get_scheduler_t const                  get_scheduler;
+  extern get_delegation_scheduler_t const       get_delegation_scheduler;
   template <__completion_tag _CPO>
-  extern const get_completion_scheduler_t<_CPO> get_completion_scheduler;
+  extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
   template <class _CPO = void>
-  extern const get_completion_domain_t<_CPO> get_completion_domain;
-  extern const get_domain_t get_domain;
+  extern get_completion_domain_t<_CPO> const get_completion_domain;
+  extern get_domain_t const                  get_domain;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
-  namespace __debug {
-    struct __completion_signatures { };
-  } // namespace __debug
+  namespace __debug
+  {
+    struct __completion_signatures
+    {};
+  }  // namespace __debug
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // concept tag types:
@@ -158,9 +163,10 @@ namespace STDEXEC {
 
   struct dependent_sender_error;
 
-  namespace __cmplsigs {
+  namespace __cmplsigs
+  {
     struct get_completion_signatures_t;
-  } // namespace __cmplsigs
+  }  // namespace __cmplsigs
 
   using __cmplsigs::get_completion_signatures_t;
 
@@ -169,128 +175,128 @@ namespace STDEXEC {
   template <class... _What, class... _Values>
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
 
-#else // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _What, class... _More, class... _Values>
   consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
 
-#endif // ^^^ constexpr exceptions ^^^
+#endif  // ^^^ constexpr exceptions ^^^
 
   template <class... _What>
   consteval auto __throw_compile_time_error(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct connect_t;
-  extern const connect_t connect;
+  extern connect_t const connect;
 
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
   template <class _Sender>
-  extern const bool enable_sender;
+  extern bool const enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct start_t;
-  extern const start_t start;
+  extern start_t const start;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct schedule_t;
-  extern const schedule_t schedule;
+  extern schedule_t const schedule;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct as_awaitable_t;
-  extern const as_awaitable_t as_awaitable;
+  extern as_awaitable_t const as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct transform_sender_t;
-  extern const transform_sender_t transform_sender;
+  extern transform_sender_t const transform_sender;
 
   template <class _Sender, class... _Env>
   using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct starts_on_t;
-  extern const starts_on_t starts_on;
+  extern starts_on_t const starts_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct schedule_from_t;
-  extern const schedule_from_t schedule_from;
+  extern schedule_from_t const schedule_from;
 
   struct continues_on_t;
-  extern const continues_on_t continues_on;
+  extern continues_on_t const continues_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct bulk_t;
   struct bulk_chunked_t;
   struct bulk_unchunked_t;
 
-  extern const bulk_t bulk;
-  extern const bulk_chunked_t bulk_chunked;
-  extern const bulk_unchunked_t bulk_unchunked;
+  extern bulk_t const           bulk;
+  extern bulk_chunked_t const   bulk_chunked;
+  extern bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct just_t;
-  extern const just_t just;
+  extern just_t const just;
 
   struct just_error_t;
-  extern const just_error_t just_error;
+  extern just_error_t const just_error;
 
   struct just_stopped_t;
-  extern const just_stopped_t just_stopped;
+  extern just_stopped_t const just_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct then_t;
-  extern const then_t then;
+  extern then_t const then;
 
   struct upon_error_t;
-  extern const upon_error_t upon_error;
+  extern upon_error_t const upon_error;
 
   struct upon_stopped_t;
-  extern const upon_stopped_t upon_stopped;
+  extern upon_stopped_t const upon_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct let_value_t;
-  extern const let_value_t let_value;
+  extern let_value_t const let_value;
 
   struct let_error_t;
-  extern const let_error_t let_error;
+  extern let_error_t const let_error;
 
   struct let_stopped_t;
-  extern const let_stopped_t let_stopped;
+  extern let_stopped_t const let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct when_all_t;
-  extern const when_all_t when_all;
+  extern when_all_t const when_all;
 
   struct when_all_with_variant_t;
-  extern const when_all_with_variant_t when_all_with_variant;
+  extern when_all_with_variant_t const when_all_with_variant;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __read_env_t;
-  extern const __read_env_t read_env;
+  extern __read_env_t const read_env;
 
   struct __write_env_t;
-  extern const __write_env_t write_env;
+  extern __write_env_t const write_env;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct into_variant_t;
-  extern const into_variant_t into_variant;
+  extern into_variant_t const into_variant;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct on_t;
-  extern const on_t on;
+  extern on_t const on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct affine_on_t;
-  extern const affine_on_t affine_on;
+  extern affine_on_t const affine_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct stopped_as_error_t;
-  extern const stopped_as_error_t stopped_as_error;
+  extern stopped_as_error_t const stopped_as_error;
 
   struct stopped_as_optional_t;
-  extern const stopped_as_optional_t stopped_as_optional;
+  extern stopped_as_optional_t const stopped_as_optional;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <__class _Derived>
@@ -299,21 +305,22 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // deprecated interfaces (see __deprecations.hpp):
   struct __transfer_just_t;
-  extern const __transfer_just_t __transfer_just;
-} // namespace STDEXEC
+  extern __transfer_just_t const __transfer_just;
+}  // namespace STDEXEC
 
 // Moved to namespace experimental::execution from namespace STDEXEC because they are no longer getting standardized:
-namespace experimental::execution {
+namespace experimental::execution
+{
   struct split_t;
   struct ensure_started_t;
   struct start_detached_t;
   struct __execute_t;
 
-  extern const split_t split;
-  extern const ensure_started_t ensure_started;
-  extern const start_detached_t start_detached;
-  extern const __execute_t __execute;
-} // namespace experimental::execution
+  extern split_t const          split;
+  extern ensure_started_t const ensure_started;
+  extern start_detached_t const start_detached;
+  extern __execute_t const      __execute;
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 
@@ -322,9 +329,9 @@ struct forwarding_query_t;
 struct get_allocator_t;
 struct get_stop_token_t;
 
-extern const forwarding_query_t forwarding_query;
-extern const get_allocator_t get_allocator;
-extern const get_stop_token_t get_stop_token;
+extern forwarding_query_t const forwarding_query;
+extern get_allocator_t const    get_allocator;
+extern get_stop_token_t const   get_stop_token;
 
 template <class _Env>
 using stop_token_of_t = STDEXEC::__decay_t<STDEXEC::__call_result_t<get_stop_token_t, _Env>>;
@@ -340,13 +347,14 @@ STDEXEC_P2300_NAMESPACE_END()
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
 struct sync_wait_t;
 struct sync_wait_with_variant_t;
-extern const sync_wait_t sync_wait;
-extern const sync_wait_with_variant_t sync_wait_with_variant;
+extern sync_wait_t const              sync_wait;
+extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 
 // NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly
 // std::execution) as well:
-namespace STDEXEC {
+namespace STDEXEC
+{
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::forwarding_query_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_allocator_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::get_stop_token_t)
@@ -366,4 +374,4 @@ namespace STDEXEC {
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant)
-} // namespace STDEXEC
+}  // namespace STDEXEC

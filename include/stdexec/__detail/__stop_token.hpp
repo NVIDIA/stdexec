@@ -21,7 +21,7 @@
 #include "__concepts.hpp"
 
 #if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
-#  include <stop_token> // IWYU pragma: export
+#  include <stop_token>  // IWYU pragma: export
 #endif
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
@@ -40,14 +40,16 @@ inline constexpr bool __has_stop_callback_v<std::stop_token> = true;
 #endif
 
 template <class _Token>
-struct __stop_callback_for {
+struct __stop_callback_for
+{
   template <class _Callback>
   using __f = _Token::template callback_type<_Callback>;
 };
 
 #if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
 template <>
-struct __stop_callback_for<std::stop_token> {
+struct __stop_callback_for<std::stop_token>
+{
   template <class _Callback>
   using __f = std::stop_callback<_Callback>;
 };
@@ -58,12 +60,12 @@ using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Call
 
 template <class _Token>
 concept stoppable_token =
-  requires(const _Token __token) {
+  requires(_Token const __token) {
     requires __has_stop_callback_v<_Token>;
     { __token.stop_requested() } noexcept -> STDEXEC::__boolean_testable_;
     { __token.stop_possible() } noexcept -> STDEXEC::__boolean_testable_;
     { _Token(__token) } noexcept;
-  } && STDEXEC::__std::copyable<_Token> //
+  } && STDEXEC::__std::copyable<_Token>  //
   && STDEXEC::__std::equality_comparable<_Token>;
 
 template <class _Token>
@@ -75,31 +77,35 @@ concept unstoppable_token =
   && (!_Token::stop_possible());
 
 // [stoptoken.never], class never_stop_token
-struct never_stop_token {
+struct never_stop_token
+{
  private:
-  struct __callback_type {
-    constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept {
-    }
+  struct __callback_type
+  {
+    constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept {}
   };
  public:
   template <class>
   using callback_type = __callback_type;
 
-  static constexpr auto stop_requested() noexcept -> bool {
+  static constexpr auto stop_requested() noexcept -> bool
+  {
     return false;
   }
 
-  static constexpr auto stop_possible() noexcept -> bool {
+  static constexpr auto stop_possible() noexcept -> bool
+  {
     return false;
   }
 
-  constexpr auto operator==(const never_stop_token&) const noexcept -> bool = default;
+  constexpr auto operator==(never_stop_token const &) const noexcept -> bool = default;
 };
 STDEXEC_P2300_NAMESPACE_END()
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::stop_callback_for_t)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::stoppable_token)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::unstoppable_token)
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::never_stop_token)
-} // namespace STDEXEC
+}  // namespace STDEXEC

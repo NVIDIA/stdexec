@@ -17,21 +17,23 @@
 
 #include "../stdexec/execution.hpp"
 
-namespace experimental::execution {
-  struct _CANNOT_RESCHEDULE_ { };
+namespace experimental::execution
+{
+  struct _CANNOT_RESCHEDULE_
+  {};
   using STDEXEC::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_;
 
-  namespace __resched {
+  namespace __resched
+  {
     using namespace STDEXEC;
 
     struct reschedule_t;
     template <class _Env>
-    using __no_scheduler_error = __mexception<
-      _WHAT_(_CANNOT_RESCHEDULE_),
-      _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
-      _WHERE_(_IN_ALGORITHM_, reschedule_t),
-      _WITH_ENVIRONMENT_(_Env)
-    >;
+    using __no_scheduler_error =
+      __mexception<_WHAT_(_CANNOT_RESCHEDULE_),
+                   _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+                   _WHERE_(_IN_ALGORITHM_, reschedule_t),
+                   _WITH_ENVIRONMENT_(_Env)>;
 
     template <class _Env>
     using __schedule_sender_t = schedule_result_t<__call_result_t<get_scheduler_t, _Env>>;
@@ -44,51 +46,59 @@ namespace experimental::execution {
     using __completions =
       __minvoke_q<__completion_signatures_of_t, __try_schedule_sender_t<_Env>, _Env>;
 
-    struct __scheduler {
-      struct __sender {
+    struct __scheduler
+    {
+      struct __sender
+      {
         using sender_concept = sender_t;
 
         template <class _Self, class _Env>
-        static consteval auto get_completion_signatures() -> __completions<_Env> {
+        static consteval auto get_completion_signatures() -> __completions<_Env>
+        {
           return {};
         }
 
         template <receiver _Receiver>
           requires receiver_of<_Receiver, __completions<env_of_t<_Receiver>>>
         auto connect(_Receiver __rcvr) const
-          -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver> {
+          -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver>
+        {
           auto __sched = get_scheduler(STDEXEC::get_env(__rcvr));
           return STDEXEC::connect(STDEXEC::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 
         [[nodiscard]]
-        constexpr auto get_env() const noexcept {
+        constexpr auto get_env() const noexcept
+        {
           return STDEXEC::prop{get_completion_scheduler<set_value_t>, __scheduler()};
         }
       };
 
       [[nodiscard]]
-      constexpr auto schedule() const noexcept -> __sender {
+      constexpr auto schedule() const noexcept -> __sender
+      {
         return {};
       }
 
-      constexpr auto operator==(const __scheduler&) const noexcept -> bool = default;
+      constexpr auto operator==(__scheduler const &) const noexcept -> bool = default;
     };
 
-    struct reschedule_t {
+    struct reschedule_t
+    {
       template <sender _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const {
+      constexpr auto operator()(_Sender&& __sndr) const
+      {
         return STDEXEC::continues_on(static_cast<_Sender&&>(__sndr), __resched::__scheduler{});
       }
 
-      constexpr auto operator()() const {
+      constexpr auto operator()() const
+      {
         return STDEXEC::continues_on(__resched::__scheduler{});
       }
     };
-  } // namespace __resched
+  }  // namespace __resched
 
   inline constexpr auto reschedule = __resched::reschedule_t{};
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

@@ -21,49 +21,60 @@
 #include <sys/mman.h>
 #include <utility>
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   inline memory_mapped_region::memory_mapped_region(void* __ptr, std::size_t __size) noexcept
     : __ptr_(__ptr)
-    , __size_(__size) {
-    if (__ptr_ == MAP_FAILED) {
+    , __size_(__size)
+  {
+    if (__ptr_ == MAP_FAILED)
+    {
       __ptr_ = nullptr;
     }
   }
 
-  inline memory_mapped_region::~memory_mapped_region() {
-    if (__ptr_) {
+  inline memory_mapped_region::~memory_mapped_region()
+  {
+    if (__ptr_)
+    {
       ::munmap(__ptr_, __size_);
     }
   }
 
   inline memory_mapped_region::memory_mapped_region(memory_mapped_region&& __other) noexcept
     : __ptr_(std::exchange(__other.__ptr_, nullptr))
-    , __size_(std::exchange(__other.__size_, 0)) {
-  }
+    , __size_(std::exchange(__other.__size_, 0))
+  {}
 
-  inline auto memory_mapped_region::operator=(memory_mapped_region&& __other) noexcept
-    -> memory_mapped_region& {
-    if (this != &__other) {
-      if (__ptr_) {
+  inline auto
+  memory_mapped_region::operator=(memory_mapped_region&& __other) noexcept -> memory_mapped_region&
+  {
+    if (this != &__other)
+    {
+      if (__ptr_)
+      {
         ::munmap(__ptr_, __size_);
       }
-      __ptr_ = std::exchange(__other.__ptr_, nullptr);
+      __ptr_  = std::exchange(__other.__ptr_, nullptr);
       __size_ = std::exchange(__other.__size_, 0);
     }
     return *this;
   }
 
-  inline memory_mapped_region::operator bool() const noexcept {
+  inline memory_mapped_region::operator bool() const noexcept
+  {
     return __ptr_ != nullptr;
   }
 
-  inline auto memory_mapped_region::data() const noexcept -> void* {
+  inline auto memory_mapped_region::data() const noexcept -> void*
+  {
     return __ptr_;
   }
 
-  inline auto memory_mapped_region::size() const noexcept -> std::size_t {
+  inline auto memory_mapped_region::size() const noexcept -> std::size_t
+  {
     return __size_;
   }
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;

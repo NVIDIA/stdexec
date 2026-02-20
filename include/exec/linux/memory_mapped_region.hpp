@@ -18,9 +18,11 @@
 
 #include <cstddef>
 
-namespace experimental::execution {
-  class memory_mapped_region {
-    void* __ptr_{nullptr};
+namespace experimental::execution
+{
+  class memory_mapped_region
+  {
+    void*       __ptr_{nullptr};
     std::size_t __size_{0};
    public:
     memory_mapped_region() = default;
@@ -29,8 +31,8 @@ namespace experimental::execution {
 
     ~memory_mapped_region();
 
-    memory_mapped_region(const memory_mapped_region&) = delete;
-    auto operator=(const memory_mapped_region&) -> memory_mapped_region& = delete;
+    memory_mapped_region(memory_mapped_region const &)                    = delete;
+    auto operator=(memory_mapped_region const &) -> memory_mapped_region& = delete;
 
     memory_mapped_region(memory_mapped_region&& __other) noexcept;
 
@@ -44,7 +46,7 @@ namespace experimental::execution {
     [[nodiscard]]
     auto size() const noexcept -> std::size_t;
   };
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 

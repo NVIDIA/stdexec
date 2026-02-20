@@ -17,8 +17,8 @@
 
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
-#include "../stdexec/__detail/__parallel_scheduler.hpp" // IWYU pragma: export
-#include "detail/system_context_replaceability_api.hpp" // IWYU pragma: export
+#include "../stdexec/__detail/__parallel_scheduler.hpp"  // IWYU pragma: export
+#include "detail/system_context_replaceability_api.hpp"  // IWYU pragma: export
 
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
@@ -28,15 +28,16 @@
     "The header <exec/system_context.hpp> is deprecated. Please include <stdexec/execution.hpp> instead."
 #endif
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   using parallel_scheduler
     [[deprecated("Please use stdexec::parallel_scheduler instead")]] = STDEXEC::parallel_scheduler;
 
   [[deprecated("Please use stdexec::get_parallel_scheduler instead")]]
-  inline auto get_parallel_scheduler() noexcept -> STDEXEC::parallel_scheduler {
+  inline auto get_parallel_scheduler() noexcept -> STDEXEC::parallel_scheduler
+  {
     return STDEXEC::get_parallel_scheduler();
   }
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

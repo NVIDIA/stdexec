@@ -24,27 +24,33 @@
 #include <cassert>
 #include <cstddef>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 
   // An atomic queue that supports multiple producers and a single consumer.
   template <auto _NextPtr>
   class __atomic_intrusive_queue;
 
   template <class _Tp, _Tp* _Tp::* _NextPtr>
-  class alignas(64) __atomic_intrusive_queue<_NextPtr> {
+  class alignas(64) __atomic_intrusive_queue<_NextPtr>
+  {
    public:
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto push(_Tp* __node) noexcept -> bool {
+    constexpr auto push(_Tp* __node) noexcept -> bool
+    {
       STDEXEC_ASSERT(__node != nullptr);
       _Tp* __old_head = __head_.load(__std::memory_order_relaxed);
-      do {
+      do
+      {
         __node->*_NextPtr = __old_head;
-      } while (!__head_.compare_exchange_weak(__old_head, __node, __std::memory_order_acq_rel));
+      }
+      while (!__head_.compare_exchange_weak(__old_head, __node, __std::memory_order_acq_rel));
 
       // If the queue was empty before, we notify the consumer thread that there is now an
       // item available. If the queue was not empty, we do not notify, because the consumer
       // thread has already been notified.
-      if (__old_head != nullptr) {
+      if (__old_head != nullptr)
+      {
         return false;
       }
 
@@ -55,13 +61,15 @@ namespace STDEXEC {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr void wait_for_item() noexcept {
+    constexpr void wait_for_item() noexcept
+    {
       // Wait until the queue has an item in it:
       __head_.wait(nullptr);
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto pop_all() noexcept -> __intrusive_queue<_NextPtr> {
+    constexpr auto pop_all() noexcept -> __intrusive_queue<_NextPtr>
+    {
       auto* const __list = __head_.exchange(nullptr, __std::memory_order_acquire);
       return __intrusive_queue<_NextPtr>::make_reversed(__list);
     }
@@ -70,4 +78,4 @@ namespace STDEXEC {
     __std::atomic<_Tp*> __head_{nullptr};
   };
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

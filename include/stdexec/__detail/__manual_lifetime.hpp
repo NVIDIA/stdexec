@@ -21,12 +21,14 @@
 #include <memory>
 #include <new>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 
   //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`, `__destry()`,
   //! and `__get()` the `_Ty` without regard for usual lifetime rules.
   template <class _Ty>
-  class __manual_lifetime {
+  class __manual_lifetime
+  {
    public:
     //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
     //! if you want the `_Ty`'s lifetime to begin.
@@ -35,17 +37,18 @@ namespace STDEXEC {
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
     constexpr ~__manual_lifetime() = default;
 
-    constexpr __manual_lifetime(const __manual_lifetime&) = delete;
-    constexpr auto operator=(const __manual_lifetime&) -> __manual_lifetime& = delete;
+    constexpr __manual_lifetime(__manual_lifetime const &)                    = delete;
+    constexpr auto operator=(__manual_lifetime const &) -> __manual_lifetime& = delete;
 
-    constexpr __manual_lifetime(__manual_lifetime&&) = delete;
+    constexpr __manual_lifetime(__manual_lifetime&&)                    = delete;
     constexpr auto operator=(__manual_lifetime&&) -> __manual_lifetime& = delete;
 
     //! Construct the `_Ty` in place.
     //! There are no safeties guarding against the case that there's already one there.
     template <class... _Args>
     constexpr auto __construct(_Args&&... __args)
-      noexcept(STDEXEC::__nothrow_constructible_from<_Ty, _Args...>) -> _Ty& {
+      noexcept(STDEXEC::__nothrow_constructible_from<_Ty, _Args...>) -> _Ty&
+    {
       // Use placement new instead of std::construct_at to support aggregate initialization with
       // brace elision.
       return *std::launder(::new (static_cast<void*>(__buffer_))
@@ -55,7 +58,8 @@ namespace STDEXEC {
     //! Construct the `_Ty` in place from the result of calling `func`.
     //! There are no safeties guarding against the case that there's already one there.
     template <class _Func, class... _Args>
-    constexpr auto __construct_from(_Func&& func, _Args&&... __args) -> _Ty& {
+    constexpr auto __construct_from(_Func&& func, _Args&&... __args) -> _Ty&
+    {
       // Use placement new instead of std::construct_at in case the function returns an immovable
       // type.
       return *std::launder(::new (static_cast<void*>(__buffer_))
@@ -64,33 +68,37 @@ namespace STDEXEC {
 
     //! End the lifetime of the contained `_Ty`.
     //! Precondition: The lifetime has started.
-    constexpr void __destroy() noexcept {
+    constexpr void __destroy() noexcept
+    {
       std::destroy_at(&__get());
     }
 
     //! Get access to the `_Ty`.
     //! Precondition: The lifetime has started.
-    constexpr auto __get() & noexcept -> _Ty& {
+    constexpr auto __get() & noexcept -> _Ty&
+    {
       return *reinterpret_cast<_Ty*>(__buffer_);
     }
 
     //! Get access to the `_Ty`.
     //! Precondition: The lifetime has started.
-    constexpr auto __get() && noexcept -> _Ty&& {
+    constexpr auto __get() && noexcept -> _Ty&&
+    {
       return static_cast<_Ty&&>(*reinterpret_cast<_Ty*>(__buffer_));
     }
 
     //! Get access to the `_Ty`.
     //! Precondition: The lifetime has started.
-    constexpr auto __get() const & noexcept -> const _Ty& {
-      return *reinterpret_cast<const _Ty*>(__buffer_);
+    constexpr auto __get() const & noexcept -> _Ty const &
+    {
+      return *reinterpret_cast<_Ty const *>(__buffer_);
     }
 
     //! Move semantics aren't supported.
     //! If you want to move the `_Ty`, use `std::move(ml.__get())`.
-    constexpr auto __get() const && noexcept -> const _Ty&& = delete;
+    constexpr auto __get() const && noexcept -> _Ty const && = delete;
 
    private:
     alignas(_Ty) unsigned char __buffer_[sizeof(_Ty)]{};
   };
-} // namespace STDEXEC
+}  // namespace STDEXEC

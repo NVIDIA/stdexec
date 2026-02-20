@@ -31,84 +31,79 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
-namespace nv::execution {
-  namespace _strm {
-    namespace reduce_ {
+namespace nv::execution
+{
+  namespace _strm
+  {
+    namespace reduce_
+    {
       template <class Sender, class Receiver, class InitT, class Fun>
       struct receiver
-        : public __algo_range_init_fun::receiver<
-            Sender,
-            Receiver,
-            InitT,
-            Fun,
-            receiver<Sender, Receiver, InitT, Fun>
-          > {
-        using base_t = __algo_range_init_fun::receiver<
-          Sender,
-          Receiver,
-          InitT,
-          Fun,
-          receiver<Sender, Receiver, InitT, Fun>
-        >;
+        : public __algo_range_init_fun::
+            receiver<Sender, Receiver, InitT, Fun, receiver<Sender, Receiver, InitT, Fun>>
+      {
+        using base_t = __algo_range_init_fun::
+          receiver<Sender, Receiver, InitT, Fun, receiver<Sender, Receiver, InitT, Fun>>;
 
         template <class Range>
         using result_t = __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>;
 
         template <class Range>
-        static void set_value_impl(base_t&& self, Range&& range) noexcept {
-          cudaError_t status{cudaSuccess};
+        static void set_value_impl(base_t&& self, Range&& range) noexcept
+        {
+          cudaError_t  status{cudaSuccess};
           cudaStream_t stream = self.opstate_.get_stream();
 
           // `range` is produced asynchronously, so we need to wait for it to be ready
-          if (status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream)); status != cudaSuccess) {
+          if (status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream)); status != cudaSuccess)
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
           using value_t = result_t<Range>;
-          auto* d_out = static_cast<value_t*>(self.opstate_.temp_storage_);
+          auto* d_out   = static_cast<value_t*>(self.opstate_.temp_storage_);
 
-          void* d_temp_storage{};
+          void*       d_temp_storage{};
           std::size_t temp_storage_size{};
 
           auto first = begin(range);
-          auto last = end(range);
+          auto last  = end(range);
 
           std::size_t num_items = std::distance(first, last);
 
-          if (status = STDEXEC_LOG_CUDA_API(
-                cub::DeviceReduce::Reduce(
-                  d_temp_storage,
-                  temp_storage_size,
-                  first,
-                  d_out,
-                  num_items,
-                  self.fun_,
-                  self.init_,
-                  stream));
-              status != cudaSuccess) {
+          if (status = STDEXEC_LOG_CUDA_API(cub::DeviceReduce::Reduce(d_temp_storage,
+                                                                      temp_storage_size,
+                                                                      first,
+                                                                      d_out,
+                                                                      num_items,
+                                                                      self.fun_,
+                                                                      self.init_,
+                                                                      stream));
+              status != cudaSuccess)
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
           if (status = STDEXEC_LOG_CUDA_API(
                 cudaMallocAsync(&d_temp_storage, temp_storage_size, stream));
-              status != cudaSuccess) {
+              status != cudaSuccess)
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
 
-          if (status = STDEXEC_LOG_CUDA_API(
-                cub::DeviceReduce::Reduce(
-                  d_temp_storage,
-                  temp_storage_size,
-                  first,
-                  d_out,
-                  num_items,
-                  self.fun_,
-                  self.init_,
-                  stream));
-              status != cudaSuccess) {
+          if (status = STDEXEC_LOG_CUDA_API(cub::DeviceReduce::Reduce(d_temp_storage,
+                                                                      temp_storage_size,
+                                                                      first,
+                                                                      d_out,
+                                                                      num_items,
+                                                                      self.fun_,
+                                                                      self.init_,
+                                                                      stream));
+              status != cudaSuccess)
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
             return;
           }
@@ -116,35 +111,38 @@ namespace nv::execution {
           status = STDEXEC_LOG_CUDA_API(cudaFreeAsync(d_temp_storage, stream));
           self.opstate_.defer_temp_storage_destruction(d_out);
 
-          if (status == cudaSuccess) {
+          if (status == cudaSuccess)
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_value, *d_out);
-          } else {
+          }
+          else
+          {
             self.opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
       };
 
       template <class Sender, class InitT, class Fun>
-      struct sender
-        : __algo_range_init_fun::sender<Sender, InitT, Fun, sender<Sender, InitT, Fun>> {
+      struct sender : __algo_range_init_fun::sender<Sender, InitT, Fun, sender<Sender, InitT, Fun>>
+      {
         template <class Receiver>
         using receiver_t = reduce_::receiver<Sender, Receiver, InitT, Fun>;
 
         template <class Range>
         using _set_value_t = completion_signatures<set_value_t(
           ::std::add_lvalue_reference_t<
-            __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>
-          >)>;
+            __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
       };
-    } // namespace reduce_
+    }  // namespace reduce_
 
-    struct reduce_t {
+    struct reduce_t
+    {
       template <class CvSender, class InitT, class Fun>
       using _sender_t = reduce_::sender<__decay_t<CvSender>, InitT, Fun>;
 
       template <sender CvSender, __movable_value InitT, __movable_value Fun = cuda::std::plus<>>
-      auto
-        operator()(CvSender&& sndr, InitT init, Fun fun) const -> _sender_t<CvSender, InitT, Fun> {
+      auto operator()(CvSender&& sndr, InitT init, Fun fun) const -> _sender_t<CvSender, InitT, Fun>
+      {
         return _sender_t<CvSender, InitT, Fun>{
           {{}, static_cast<CvSender&&>(sndr), static_cast<InitT&&>(init), static_cast<Fun&&>(fun)}
         };
@@ -152,22 +150,23 @@ namespace nv::execution {
 
       template <class InitT, class Fun = cuda::std::plus<>>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto
-        operator()(InitT init, Fun fun = {}) const noexcept(__nothrow_decay_copyable<InitT, Fun>) {
+      auto operator()(InitT init, Fun fun = {}) const noexcept(__nothrow_decay_copyable<InitT, Fun>)
+      {
         return STDEXEC::__closure(*this, static_cast<InitT&&>(init), static_cast<Fun&&>(fun));
       }
     };
-  } // namespace _strm
+  }  // namespace _strm
 
   inline constexpr _strm::reduce_t reduce{};
-} // namespace nv::execution
+}  // namespace nv::execution
 
 namespace nvexec = nv::execution;
 
-namespace STDEXEC::__detail {
+namespace STDEXEC::__detail
+{
   template <class Sender, class Init, class Fun>
   extern __declfn_t<nvexec::_strm::reduce_::sender<__demangle_t<Sender>, Init, Fun>>
     __demangle_v<nvexec::_strm::reduce_::sender<Sender, Init, Fun>>;
-} // namespace STDEXEC::__detail
+}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

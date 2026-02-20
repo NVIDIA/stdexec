@@ -22,30 +22,35 @@
 #include "__query.hpp"
 #include "__tag_invoke.hpp"
 
-#include <exception>  // IWYU pragma: keep for std::terminate
-#include <functional> // IWYU pragma: keep for unwrap_reference_t
+#include <exception>   // IWYU pragma: keep for std::terminate
+#include <functional>  // IWYU pragma: keep for unwrap_reference_t
 #include <type_traits>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
-  namespace __env {
+  namespace __env
+  {
     //////////////////////////////////////////////////////////////////////
     // cprop
     template <class _Query, auto _Value>
-    struct cprop {
+    struct cprop
+    {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static constexpr auto query(_Query, auto&&...) noexcept {
+      static constexpr auto query(_Query, auto&&...) noexcept
+      {
         return _Value;
       }
     };
 
     template <class _Env>
-    struct __fwd {
+    struct __fwd
+    {
       static_assert(__nothrow_move_constructible<_Env>);
 
       template <__forwarding_query _Query, class... _Args>
@@ -53,7 +58,8 @@ namespace STDEXEC {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(_Query, _Args&&... __args) const
         noexcept(__nothrow_queryable_with<_Env, _Query, _Args...>)
-          -> __query_result_t<_Env, _Query, _Args...> {
+          -> __query_result_t<_Env, _Query, _Args...>
+      {
         return __query<_Query>()(__env_, static_cast<_Args&&>(__args)...);
       }
 
@@ -64,13 +70,18 @@ namespace STDEXEC {
     template <class _Env>
     concept __is_fwd_env = __is_instance_of<__decay_t<_Env>, __fwd>;
 
-    struct __fwd_fn {
+    struct __fwd_fn
+    {
       template <class _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(_Env&& __env) const -> decltype(auto) {
-        if constexpr (__decays_to<_Env, env<>> || __is_fwd_env<_Env>) {
+      constexpr auto operator()(_Env&& __env) const -> decltype(auto)
+      {
+        if constexpr (__decays_to<_Env, env<>> || __is_fwd_env<_Env>)
+        {
           return static_cast<_Env>(static_cast<_Env&&>(__env));
-        } else {
+        }
+        else
+        {
           return __fwd<_Env>{static_cast<_Env&&>(__env)};
         }
       }
@@ -79,17 +90,24 @@ namespace STDEXEC {
     template <class _Env>
     using __fwd_env_t = __call_result_t<__fwd_fn, _Env>;
 
-    struct __join_fn {
+    struct __join_fn
+    {
       template <class _Env1, class _Env2>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(_Env1&& __env1, _Env2&& __env2) const noexcept -> decltype(auto) {
-        if constexpr (__decays_to<_Env1, env<>>) {
+      constexpr auto operator()(_Env1&& __env1, _Env2&& __env2) const noexcept -> decltype(auto)
+      {
+        if constexpr (__decays_to<_Env1, env<>>)
+        {
           return __fwd_fn()(static_cast<_Env2&&>(__env2));
-        } else if constexpr (__decays_to<_Env2, env<>>) {
+        }
+        else if constexpr (__decays_to<_Env2, env<>>)
+        {
           return static_cast<_Env1>(static_cast<_Env1&&>(__env1));
-        } else {
-          return env<_Env1, __fwd_env_t<_Env2>>{
-            {static_cast<_Env1&&>(__env1)}, __fwd_fn()(static_cast<_Env2&&>(__env2))};
+        }
+        else
+        {
+          return env<_Env1, __fwd_env_t<_Env2>>{{static_cast<_Env1&&>(__env1)},
+                                                __fwd_fn()(static_cast<_Env2&&>(__env2))};
         }
       }
     };
@@ -99,37 +117,43 @@ namespace STDEXEC {
     template <class _First, class... _Second>
     using __join_env_t = __result_of<__join, _First, _Second...>;
 
-    struct __root_t : __query<__root_t> {
+    struct __root_t : __query<__root_t>
+    {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static consteval auto query(forwarding_query_t) noexcept -> bool {
+      static consteval auto query(forwarding_query_t) noexcept -> bool
+      {
         return false;
       }
     };
 
-    struct __root_env {
+    struct __root_env
+    {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      static constexpr auto query(__root_t) noexcept -> bool {
+      static constexpr auto query(__root_t) noexcept -> bool
+      {
         return true;
       }
     };
 
-    struct __as_root_env_fn {
+    struct __as_root_env_fn
+    {
       template <class _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(_Env __env) const noexcept
-        -> __join_env_t<__root_env, std::unwrap_reference_t<_Env>> {
+        -> __join_env_t<__root_env, std::unwrap_reference_t<_Env>>
+      {
         return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env>&&>(__env));
       }
     };
 
-  } // namespace __env
+  }  // namespace __env
 
   using __env::__join_env_t;
   using __env::__fwd_env_t;
   using __env::__root_t;
   using __env::__root_env;
 
-  inline constexpr __env::__fwd_fn __fwd_env{};
+  inline constexpr __env::__fwd_fn         __fwd_env{};
   inline constexpr __env::__as_root_env_fn __as_root_env{};
 
   template <class _Env>
@@ -143,9 +167,11 @@ namespace STDEXEC {
   //////////////////////////////////////////////////////////////////////
   // A singleton environment from a query/value pair
   template <class _Query, class _Value>
-  struct prop {
+  struct prop
+  {
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(_Query, auto&&...) const noexcept -> const _Value& {
+    constexpr auto query(_Query, auto&&...) const noexcept -> _Value const &
+    {
       return __value;
     }
 
@@ -153,9 +179,11 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(no_unique_address) _Value __value;
 
    private:
-    struct __prop_like {
+    struct __prop_like
+    {
       STDEXEC_ATTRIBUTE(noreturn, nodiscard, host, device)
-      constexpr auto query(_Query) const noexcept -> const _Value& {
+      constexpr auto query(_Query) const noexcept -> _Value const &
+      {
         STDEXEC_TERMINATE();
       }
     };
@@ -173,22 +201,26 @@ namespace STDEXEC {
   struct env;
 
   template <>
-  struct env<> {
+  struct env<>
+  {
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     auto query() const = delete;
   };
 
   template <class _Env>
-  struct env<_Env> : _Env { };
+  struct env<_Env> : _Env
+  {};
 
   template <class _Env1, class _Env2>
-  struct env<_Env1, _Env2> {
+  struct env<_Env1, _Env2>
+  {
     template <class _Query, class... _Args>
       requires __queryable_with<_Env1, _Query, _Args...>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(_Query, _Args&&... __args) const
       noexcept(__nothrow_queryable_with<_Env1, _Query, _Args...>)
-        -> __query_result_t<_Env1, _Query, _Args...> {
+        -> __query_result_t<_Env1, _Query, _Args...>
+    {
       return __query<_Query>()(__env1_, static_cast<_Args&&>(__args)...);
     }
 
@@ -198,7 +230,8 @@ namespace STDEXEC {
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(_Query, _Args&&... __args) const
       noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
-        -> __query_result_t<_Env2, _Query, _Args...> {
+        -> __query_result_t<_Env2, _Query, _Args...>
+    {
       return __query<_Query>()(__env2_, static_cast<_Args&&>(__args)...);
     }
 
@@ -207,46 +240,51 @@ namespace STDEXEC {
   };
 
   template <class _Env1, class _Env2, class... _Envs>
-  struct env<_Env1, _Env2, _Envs...> : env<env<_Env1, _Env2>, _Envs...> { };
+  struct env<_Env1, _Env2, _Envs...> : env<env<_Env1, _Env2>, _Envs...>
+  {};
 
   template <class... _Envs>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE env(_Envs...) -> env<std::unwrap_reference_t<_Envs>...>;
 
   /////////////////////////////////////////////////////////////////////////////
-  namespace __detail {
+  namespace __detail
+  {
     template <class _EnvProvider>
     using __get_env_member_result_t = decltype(__declval<_EnvProvider>().get_env());
 
     template <class _EnvProvider>
     concept __has_get_env_member = requires { typename __get_env_member_result_t<_EnvProvider>; };
-  } // namespace __detail
+  }  // namespace __detail
 
   // For getting an execution environment from a receiver or the attributes from a sender.
-  struct get_env_t {
+  struct get_env_t
+  {
     template <class _EnvProvider>
-      requires __detail::__has_get_env_member<const _EnvProvider&>
+      requires __detail::__has_get_env_member<_EnvProvider const &>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
-      -> __detail::__get_env_member_result_t<const _EnvProvider&> {
+    constexpr auto operator()(_EnvProvider const & __env_provider) const noexcept
+      -> __detail::__get_env_member_result_t<_EnvProvider const &>
+    {
       static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
       return __env_provider.get_env();
     }
 
     template <class _EnvProvider>
-      requires __detail::__has_get_env_member<const _EnvProvider&>
-            || __tag_invocable<get_env_t, const _EnvProvider&>
+      requires __detail::__has_get_env_member<_EnvProvider const &>
+            || __tag_invocable<get_env_t, _EnvProvider const &>
     [[deprecated("the use of tag_invoke for get_env is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device) //
-      constexpr auto operator()(const _EnvProvider& __env_provider) const noexcept
-      -> __tag_invoke_result_t<get_env_t, const _EnvProvider&> {
-      static_assert(
-        __nothrow_tag_invocable<get_env_t, const _EnvProvider&>,
-        "get_env __tag_invoke overloads must be noexcept");
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
+      constexpr auto operator()(_EnvProvider const & __env_provider) const noexcept
+      -> __tag_invoke_result_t<get_env_t, _EnvProvider const &>
+    {
+      static_assert(__nothrow_tag_invocable<get_env_t, _EnvProvider const &>,
+                    "get_env __tag_invoke overloads must be noexcept");
       return __tag_invoke(*this, __env_provider);
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(__ignore) const noexcept -> env<> {
+    constexpr auto operator()(__ignore) const noexcept -> env<>
+    {
       return {};
     }
   };
@@ -254,7 +292,7 @@ namespace STDEXEC {
   inline constexpr get_env_t get_env{};
 
   template <class _EnvProvider>
-  concept __environment_provider = __minvocable_q<__call_result_t, get_env_t, const _EnvProvider&>;
-} // namespace STDEXEC
+  concept __environment_provider = __minvocable_q<__call_result_t, get_env_t, _EnvProvider const &>;
+}  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

@@ -26,14 +26,17 @@
     "The header <exec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead."
 #endif
 
-#include "../exec/asio/completion_token.hpp" // IWYU pragma: export
+#include "../exec/asio/completion_token.hpp"  // IWYU pragma: export
 
-namespace asioexec {
-  using completion_token_t [[deprecated(
-    "asioexec::completion_token_t is deprecated. Please use exec::asio::completion_token_t "
-    "instead.")]] = exec::asio::completion_token_t;
+namespace asioexec
+{
+  using completion_token_t [[deprecated("asioexec::completion_token_t is deprecated. Please use "
+                                        "exec::asio::completion_token_t "
+                                        "instead.")]] = exec::asio::completion_token_t;
 
-  inline constexpr const auto& completion_token [[deprecated(
-    "asioexec::completion_token is deprecated. Please use exec::asio::completion_token instead.")]]
+  inline constexpr auto const & completion_token [[deprecated("asioexec::completion_token is "
+                                                              "deprecated. Please use "
+                                                              "exec::asio::completion_token "
+                                                              "instead.")]]
   = exec::asio::completion_token;
-} // namespace asioexec
+}  // namespace asioexec

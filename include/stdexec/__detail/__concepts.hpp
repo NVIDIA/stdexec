@@ -22,7 +22,7 @@
 #include "__config.hpp"
 #include "__type_traits.hpp"
 
-#include <utility> // IWYU pragma: keep for std::swap
+#include <utility>  // IWYU pragma: keep for std::swap
 #include <version>
 
 // Perhaps the stdlib lacks support for concepts though:
@@ -38,16 +38,17 @@
 #  include <type_traits>
 #endif
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Fun, class... _As>
   concept __callable = requires(_Fun&& __fun, _As&&... __as) {
-    static_cast<_Fun&&>(__fun)(static_cast<_As&&>(__as)...);
+    static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...);
   };
 
   template <class _Fun, class... _As>
   concept __nothrow_callable = __callable<_Fun, _As...> && requires(_Fun&& __fun, _As&&... __as) {
-    { static_cast<_Fun&&>(__fun)(static_cast<_As&&>(__as)...) } noexcept;
+    { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +57,7 @@ namespace STDEXEC {
 
   template <class... _Ts>
   concept __typename = requires {
-    typename __mlist<_Ts...>; // NOLINT
+    typename __mlist<_Ts...>;  // NOLINT
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +81,7 @@ namespace STDEXEC {
   concept __true = true;
 
   template <class _Cp>
-  concept __class = __true<int _Cp::*> && (!__same_as<const _Cp, _Cp>);
+  concept __class = __true<int _Cp::*> && (!__same_as<_Cp const, _Cp>);
 
   template <class _Ty, class... _As>
   concept __one_of = (__same_as<_Ty, _As> || ...);
@@ -103,7 +104,8 @@ namespace STDEXEC {
   template <class _Ay, template <class...> class _Ty>
   concept __is_not_instance_of = !__is_instance_of<_Ay, _Ty>;
 
-  namespace __std {
+  namespace __std
+  {
 
     // Make sure we're using a same_as concept that doesn't instantiate a class template
     // (i.e., std::is_same)
@@ -124,7 +126,7 @@ namespace STDEXEC {
 
     template <class _Ap, class _Bp>
     concept derived_from = STDEXEC_IS_BASE_OF(_Bp, _Ap)
-                        && STDEXEC_IS_CONVERTIBLE_TO(const volatile _Ap*, const volatile _Bp*);
+                        && STDEXEC_IS_CONVERTIBLE_TO(_Ap const volatile *, _Bp const volatile *);
 
     template <class _From, class _To>
     concept convertible_to = STDEXEC_IS_CONVERTIBLE_TO(_From, _To)
@@ -136,13 +138,14 @@ namespace STDEXEC {
       { __t != __t } -> convertible_to<bool>;
     };
 #endif
-  } // namespace __std
+  }  // namespace __std
 
   // Not exactly right, but close.
   template <class _Ty>
   concept __boolean_testable_ = __std::convertible_to<_Ty, bool>;
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _Ty>
     inline constexpr bool __destructible_ = requires(__declfn_t<_Ty&&> __fn) {
       { __fn().~_Ty() } noexcept;
@@ -156,9 +159,10 @@ namespace STDEXEC {
 
     template <class _Ty, std::size_t _Np>
     inline constexpr bool __destructible_<_Ty[_Np]> = __destructible_<_Ty>;
-  } // namespace __detail
+  }  // namespace __detail
 
-  namespace __std {
+  namespace __std
+  {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // Avoid using libstdc++'s object concepts because they instantiate a
     // LOT of templates.
@@ -166,10 +170,10 @@ namespace STDEXEC {
 #if STDEXEC_HAS_BUILTIN(__is_nothrow_destructible) || STDEXEC_MSVC()
     template <class _Ty>
     concept destructible = __is_nothrow_destructible(_Ty);
-#else  // ^^^ has __is_nothrow_destructible / no __is_nothrow_destructible vvv
+#else   // ^^^ has __is_nothrow_destructible / no __is_nothrow_destructible vvv
     template <class T>
     concept destructible = __detail::__destructible_<T>;
-#endif // ^^^ no __is_nothrow_destructible
+#endif  // ^^^ no __is_nothrow_destructible
 
     template <class _Ty, class... _As>
     concept constructible_from = destructible<_Ty> && STDEXEC_IS_CONSTRUCTIBLE(_Ty, _As...);
@@ -190,23 +194,25 @@ namespace STDEXEC {
                               //   const std::remove_reference_t<_LHS>&,
                               //   const std::remove_reference_t<_RHS>&> &&
                               requires(_LHS __lhs, _RHS&& __rhs) {
-                                { __lhs = static_cast<_RHS&&>(__rhs) } -> __std::same_as<_LHS>;
+                                { __lhs = static_cast<_RHS &&>(__rhs) } -> __std::same_as<_LHS>;
                               };
 
-    namespace __swap {
+    namespace __swap
+    {
       using std::swap;
 
       template <class _Ty, class _Uy>
       concept swappable_with = requires(_Ty&& __t, _Uy&& __u) {
-        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
+        swap(static_cast<_Ty &&>(__t), static_cast<_Uy &&>(__u));
       };
 
       inline constexpr auto const __fn =
         []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) noexcept(
-          noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u)))) {
-          swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
-        };
-    } // namespace __swap
+          noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u))))
+      {
+        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
+      };
+    }  // namespace __swap
 
     using __swap::swappable_with;
 
@@ -216,24 +222,24 @@ namespace STDEXEC {
     concept swappable = requires(_Ty& a, _Ty& b) { swap(a, b); };
 
     template <class _Ty>
-    concept movable = std::is_object_v<_Ty>      //
-                   && move_constructible<_Ty>    //
-                   && assignable_from<_Ty&, _Ty> //
+    concept movable = std::is_object_v<_Ty>       //
+                   && move_constructible<_Ty>     //
+                   && assignable_from<_Ty&, _Ty>  //
                    && swappable<_Ty>;
 
     template <class _Ty>
-    concept copyable = copy_constructible<_Ty>           //
-                    && movable<_Ty>                      //
-                    && assignable_from<_Ty&, _Ty&>       //
-                    && assignable_from<_Ty&, const _Ty&> //
-                    && assignable_from<_Ty&, const _Ty>;
+    concept copyable = copy_constructible<_Ty>             //
+                    && movable<_Ty>                        //
+                    && assignable_from<_Ty&, _Ty&>         //
+                    && assignable_from<_Ty&, _Ty const &>  //
+                    && assignable_from<_Ty&, _Ty const>;
 
     template <class _Ty>
-    concept semiregular = copyable<_Ty> //
+    concept semiregular = copyable<_Ty>  //
                        && default_initializable<_Ty>;
 
     template <class _Ty>
-    concept regular = semiregular<_Ty> //
+    concept regular = semiregular<_Ty>  //
                    && equality_comparable<_Ty>;
 
     template <class T, class U>
@@ -251,14 +257,14 @@ namespace STDEXEC {
     template <class _Ty>
     concept totally_ordered = equality_comparable<_Ty> && __partially_ordered_with<_Ty, _Ty>;
 
-  } // namespace __std
+  }  // namespace __std
 
   template <class _Ty>
   concept __movable_value = __std::move_constructible<__decay_t<_Ty>>
                          && __std::constructible_from<__decay_t<_Ty>, _Ty>;
 
   template <class _Ty>
-  concept __nothrow_movable_value = __movable_value<_Ty> //
+  concept __nothrow_movable_value = __movable_value<_Ty>  //
                                  && requires(__declfn_t<_Ty&&> __t) {
                                       { __decay_t<_Ty>(__decay_t<_Ty>(__t())) } noexcept;
                                     };
@@ -271,7 +277,7 @@ namespace STDEXEC {
   concept __nothrow_move_constructible = (__nothrow_constructible_from<_Ts, _Ts> && ...);
 
   template <class... _Ts>
-  concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, const _Ts&> && ...);
+  concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, _Ts const &> && ...);
 
   template <class _Ty, class _A>
   concept __nothrow_assignable_from = STDEXEC_IS_NOTHROW_ASSIGNABLE(_Ty, _A);
@@ -296,11 +302,11 @@ namespace STDEXEC {
 
   // See [allocator.requirements.general]/p99 (https://eel.is/c++draft/allocator.requirements.general#99)
   template <class _Alloc>
-  concept __simple_allocator = //
+  concept __simple_allocator =  //
     requires(_Alloc __alloc, std::size_t __count) {
       { *__alloc.allocate(__count) } -> __std::same_as<typename _Alloc::value_type&>;
       __alloc.deallocate(__alloc.allocate(__count), __count);
-    } //
-    && __std::copy_constructible<_Alloc> //
+    }  //
+    && __std::copy_constructible<_Alloc>  //
     && __std::equality_comparable<_Alloc>;
-} // namespace STDEXEC
+}  // namespace STDEXEC

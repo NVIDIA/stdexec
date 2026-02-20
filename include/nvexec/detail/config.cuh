@@ -19,14 +19,15 @@
 
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp" // IWYU pragma: export
+#include "../../stdexec/__detail/__config.hpp"  // IWYU pragma: export
 
 #if !STDEXEC_CUDA_COMPILATION()
 #  error The NVIDIA schedulers and utilities require CUDA support
 #endif
 
-namespace nv::execution::_strm {
+namespace nv::execution::_strm
+{
   using namespace STDEXEC;
-} // namespace nv::execution::_strm
+}  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;

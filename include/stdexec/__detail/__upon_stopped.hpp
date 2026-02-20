@@ -22,14 +22,16 @@
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp" // IWYU pragma: keep for __well_formed_sender
+#include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
 #include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.upon_stopped]
-  namespace __upon_stopped {
+  namespace __upon_stopped
+  {
     using __on_not_callable = __mbind_front_q<__callable_error_t, upon_stopped_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
@@ -38,48 +40,55 @@ namespace STDEXEC {
       __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvSender, _Env...>,
       __cmplsigs::__default_set_value,
       __cmplsigs::__default_set_error,
-      __set_value_from_t<_Fun>
-    >;
+      __set_value_from_t<_Fun>>;
 
-    struct __upon_stopped_impl : __sexpr_defaults {
+    struct __upon_stopped_impl : __sexpr_defaults
+    {
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures() //
-        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+      static consteval auto __get_completion_signatures()  //
+        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
+      {
         static_assert(sender_expr_for<_Sender, upon_stopped_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };
 
-      static constexpr auto __complete = []<class _Tag, class _State, class... _Args>(
-                                         __ignore,
-                                         _State& __state,
-                                         _Tag,
-                                         _Args&&... __args) noexcept -> void {
-        if constexpr (__same_as<_Tag, set_stopped_t>) {
-          STDEXEC::__set_value_from(
-            static_cast<_State&&>(__state).__rcvr_,
-            static_cast<_State&&>(__state).__data_,
-            static_cast<_Args&&>(__args)...);
-        } else {
+      static constexpr auto __complete =
+        []<class _Tag, class _State, class... _Args>(__ignore,
+                                                     _State& __state,
+                                                     _Tag,
+                                                     _Args&&... __args) noexcept -> void
+      {
+        if constexpr (__same_as<_Tag, set_stopped_t>)
+        {
+          STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
+                                    static_cast<_State&&>(__state).__data_,
+                                    static_cast<_Args&&>(__args)...);
+        }
+        else
+        {
           _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
         }
       };
     };
-  } // namespace __upon_stopped
+  }  // namespace __upon_stopped
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  struct upon_stopped_t {
+  struct upon_stopped_t
+  {
     template <sender _Sender, __movable_value _Fun>
       requires __callable<_Fun>
-    auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
-      return __make_sexpr<upon_stopped_t>(
-        static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
+    auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
+    {
+      return __make_sexpr<upon_stopped_t>(static_cast<_Fun&&>(__fun),
+                                          static_cast<_Sender&&>(__sndr));
     }
 
     template <__movable_value _Fun>
       requires __callable<_Fun>
     STDEXEC_ATTRIBUTE(always_inline)
-    auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>) {
+    auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
+    {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
@@ -87,6 +96,7 @@ namespace STDEXEC {
   inline constexpr upon_stopped_t upon_stopped{};
 
   template <>
-  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__upon_stopped_impl { };
+  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__upon_stopped_impl
+  {};
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

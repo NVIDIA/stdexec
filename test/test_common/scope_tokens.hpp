@@ -21,25 +21,32 @@
 
 #include <utility>
 
-namespace {
-  struct null_token {
-    struct assoc {
-      constexpr explicit operator bool() const noexcept {
+namespace
+{
+  struct null_token
+  {
+    struct assoc
+    {
+      constexpr explicit operator bool() const noexcept
+      {
         return true;
       }
 
-      constexpr assoc try_associate() const noexcept {
+      constexpr assoc try_associate() const noexcept
+      {
         return {};
       }
     };
 
     template <STDEXEC::sender Sender>
-    constexpr Sender&& wrap(Sender&& sndr) const noexcept {
+    constexpr Sender&& wrap(Sender&& sndr) const noexcept
+    {
       return std::forward<Sender>(sndr);
     }
 
-    constexpr assoc try_associate() const noexcept {
+    constexpr assoc try_associate() const noexcept
+    {
       return {};
     }
   };
-} // namespace
+}  // namespace

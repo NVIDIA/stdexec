@@ -22,88 +22,95 @@
 
 #include <concepts>
 #include <cstddef>
-#include <exception> // IWYU pragma: keep
+#include <exception>  // IWYU pragma: keep
 #include <type_traits>
 
 #include "config.cuh"
 
 #include <cuda/std/tuple>
 
-namespace nv::execution {
+namespace nv::execution
+{
 
-  namespace detail {
+  namespace detail
+  {
     template <std::unsigned_integral IndexT>
-    constexpr auto npos() -> IndexT {
+    constexpr auto npos() -> IndexT
+    {
       return ~IndexT(0);
     }
 
     template <std::size_t Alignment, std::size_t Size>
-    struct alignas(Alignment) static_storage_t {
+    struct alignas(Alignment) static_storage_t
+    {
       std::byte data_[Size];
     };
 
     template <std::size_t Alignment>
-    struct alignas(Alignment) static_storage_t<Alignment, 0> {
+    struct alignas(Alignment) static_storage_t<Alignment, 0>
+    {
       std::byte* data_ = nullptr;
     };
 
     template <class VisitorT, class V>
     STDEXEC_ATTRIBUTE(host, device)
-    void visit_impl(
-      std::integral_constant<std::size_t, 0>,
-      VisitorT&& visitor,
-      V&& v,
-      std::size_t index) {
-      if (0 == index) {
+    void visit_impl(std::integral_constant<std::size_t, 0>,
+                    VisitorT&&  visitor,
+                    V&&         v,
+                    std::size_t index)
+    {
+      if (0 == index)
+      {
         static_cast<VisitorT&&>(visitor)(static_cast<V&&>(v).template get<0>());
       }
     }
 
     template <std::size_t I, class VisitorT, class V>
     STDEXEC_ATTRIBUTE(host, device)
-    void visit_impl(
-      std::integral_constant<std::size_t, I>,
-      VisitorT&& visitor,
-      V&& v,
-      std::size_t index) {
-      if (I == index) {
+    void visit_impl(std::integral_constant<std::size_t, I>,
+                    VisitorT&&  visitor,
+                    V&&         v,
+                    std::size_t index)
+    {
+      if (I == index)
+      {
         static_cast<VisitorT&&>(visitor)(static_cast<V&&>(v).template get<I>());
         return;
       }
 
-      visit_impl(
-        std::integral_constant<std::size_t, I - 1>{},
-        static_cast<VisitorT&&>(visitor),
-        static_cast<V&&>(v),
-        index);
+      visit_impl(std::integral_constant<std::size_t, I - 1>{},
+                 static_cast<VisitorT&&>(visitor),
+                 static_cast<V&&>(v),
+                 index);
     }
-  } // namespace detail
+  }  // namespace detail
 
   template <class VisitorT, class V>
   STDEXEC_ATTRIBUTE(host, device)
-  void visit(VisitorT&& visitor, V&& v) {
-    detail::visit_impl(
-      std::integral_constant<std::size_t, STDEXEC::__decay_t<V>::size - 1>{},
-      static_cast<VisitorT&&>(visitor),
-      static_cast<V&&>(v),
-      v.index_);
+  void visit(VisitorT&& visitor, V&& v)
+  {
+    detail::visit_impl(std::integral_constant<std::size_t, STDEXEC::__decay_t<V>::size - 1>{},
+                       static_cast<VisitorT&&>(visitor),
+                       static_cast<V&&>(v),
+                       v.index_);
   }
 
   template <class VisitorT, class V>
   STDEXEC_ATTRIBUTE(host, device)
-  void visit(VisitorT&& visitor, V&& v, std::size_t index) {
-    detail::visit_impl(
-      std::integral_constant<std::size_t, STDEXEC::__decay_t<V>::size - 1>{},
-      static_cast<VisitorT&&>(visitor),
-      static_cast<V&&>(v),
-      index);
+  void visit(VisitorT&& visitor, V&& v, std::size_t index)
+  {
+    detail::visit_impl(std::integral_constant<std::size_t, STDEXEC::__decay_t<V>::size - 1>{},
+                       static_cast<VisitorT&&>(visitor),
+                       static_cast<V&&>(v),
+                       index);
   }
 
   template <class... Ts>
   // requires (sizeof...(Ts) > 0) && (std::is_trivial_v<Ts> && ...)
-  struct variant_t {
-    static constexpr std::size_t size = sizeof...(Ts);
-    static constexpr std::size_t max_size = STDEXEC::__umax({sizeof(Ts)...});
+  struct variant_t
+  {
+    static constexpr std::size_t size          = sizeof...(Ts);
+    static constexpr std::size_t max_size      = STDEXEC::__umax({sizeof(Ts)...});
     static constexpr std::size_t max_alignment = STDEXEC::__umax({std::alignment_of_v<Ts>...});
 
     using index_t = unsigned int;
@@ -112,14 +119,16 @@ namespace nv::execution {
 
     template <STDEXEC::__one_of<Ts...> Type>
     STDEXEC_ATTRIBUTE(host, device)
-    auto get() noexcept -> Type& {
+    auto get() noexcept -> Type&
+    {
       void* data = storage_.data_;
       return *static_cast<Type*>(data);
     }
 
     template <std::size_t I>
     STDEXEC_ATTRIBUTE(host, device)
-    auto get() noexcept -> STDEXEC::__m_at_c<I, Ts...>& {
+    auto get() noexcept -> STDEXEC::__m_at_c<I, Ts...>&
+    {
       return get<STDEXEC::__m_at_c<I, Ts...>>();
     }
 
@@ -131,40 +140,49 @@ namespace nv::execution {
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-    ~variant_t() {
+    ~variant_t()
+    {
       destroy();
     }
 
-    STDEXEC_ATTRIBUTE(host, device) auto holds_alternative() const -> bool {
+    STDEXEC_ATTRIBUTE(host, device) auto holds_alternative() const -> bool
+    {
       return index_ != detail::npos<index_t>();
     }
 
     template <STDEXEC::__one_of<Ts...> Type, class... Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void emplace(Args&&... args) {
+    void emplace(Args&&... args)
+    {
       destroy();
       construct<Type>(static_cast<Args&&>(args)...);
     }
 
     template <STDEXEC::__one_of<Ts...> Type, class... Args>
     STDEXEC_ATTRIBUTE(host, device)
-    void construct(Args&&... args) {
+    void construct(Args&&... args)
+    {
       ::new (storage_.data_) Type(static_cast<Args&&>(args)...);
       index_ = STDEXEC::__mcall<STDEXEC::__mfind_i<Type>, Ts...>::value;
     }
 
     STDEXEC_ATTRIBUTE(host, device)
-    void destroy() {
-      if (holds_alternative()) {
+    void destroy()
+    {
+      if (holds_alternative())
+      {
         nvexec::visit(
-          [](auto& val) noexcept {
+          [](auto& val) noexcept
+          {
             using val_t = STDEXEC::__decay_t<decltype(val)>;
             if constexpr (std::is_same_v<
                             val_t,
-                            ::cuda::std::tuple<STDEXEC::set_error_t, std::exception_ptr>
-                          >) {
+                            ::cuda::std::tuple<STDEXEC::set_error_t, std::exception_ptr>>)
+            {
               // TODO Not quite possible at the moment
-            } else {
+            }
+            else
+            {
               val.~val_t();
             }
           },
@@ -176,6 +194,6 @@ namespace nv::execution {
     union_t storage_;
     index_t index_;
   };
-} // namespace nv::execution
+}  // namespace nv::execution
 
 namespace nvexec = nv::execution;

@@ -34,13 +34,13 @@
 #if __has_include(<version>)
 #  include <version>
 #else
-#  include <ciso646> // For stdlib feature-test macros when <version> is not available
+#  include <ciso646>  // For stdlib feature-test macros when <version> is not available
 #endif
 
 #include <cassert>
 #include <cstdlib>
-#include <type_traits> // IWYU pragma: keep
-#include <utility>     // IWYU pragma: keep for std::unreachable
+#include <type_traits>  // IWYU pragma: keep
+#include <utility>      // IWYU pragma: keep for std::unreachable
 
 // When used with no arguments, these macros expand to 1 if the current
 // compiler corresponds to the macro name; 0, otherwise. When used with arguments,
@@ -179,10 +179,10 @@
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
-namespace execution::system_context_replaceability {
-}
-namespace this_thread {
-}
+  namespace execution::system_context_replaceability
+  {}
+  namespace this_thread
+  {}
 STDEXEC_NAMESPACE_STD_END
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,28 +223,31 @@ STDEXEC_NAMESPACE_STD_END
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
-#  include <coroutine> // IWYU pragma: keep
+#  include <coroutine>  // IWYU pragma: keep
 #  define STDEXEC_NO_STD_COROUTINES() 0
-namespace STDEXEC::__std {
-  namespace __coro = std; // NOLINT(misc-unused-alias-decls)
-}
+namespace STDEXEC::__std
+{
+  namespace __coro = std;  // NOLINT(misc-unused-alias-decls)
+}  // namespace STDEXEC::__std
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
 #  include <experimental/coroutine>
 #  define STDEXEC_NO_STD_COROUTINES() 0
-namespace STDEXEC::__std {
-  namespace __coro = std::experimental; // NOLINT(misc-unused-alias-decls)
-}
+namespace STDEXEC::__std
+{
+  namespace __coro = std::experimental;  // NOLINT(misc-unused-alias-decls)
+}  // namespace STDEXEC::__std
 #else
 #  define STDEXEC_NO_STD_COROUTINES() 1
 #endif
 
 #if !STDEXEC_NO_STD_COROUTINES()
-namespace STDEXEC::__std {
+namespace STDEXEC::__std
+{
   using __coro::coroutine_handle;
   using __coro::suspend_always;
   using __coro::suspend_never;
   using __coro::noop_coroutine;
-} // namespace STDEXEC::__std
+}  // namespace STDEXEC::__std
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -477,30 +480,33 @@ namespace STDEXEC::__std {
 #endif
 
 #if STDEXEC_HAS_BUILTIN(__remove_reference)
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <class Ty>
   using __unref_t = __remove_reference(Ty);
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 #  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <class Ty>
   using __unref_t = __remove_reference_t(Ty);
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 #  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #else
 #  define STDEXEC_REMOVE_REFERENCE(...) ::std::remove_reference_t<__VA_ARGS__>
 #endif
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <class _Ap, class _Bp>
   inline constexpr bool __same_as_v = false;
 
   template <class _Ap>
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 #if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
 #  define STDEXEC_UNREACHABLE() std::unreachable()
@@ -546,9 +552,9 @@ namespace STDEXEC {
 #if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
   && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
 #  define STDEXEC_NO_STD_PACK_INDEXING() 0
-#else // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
+#else  // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
 #  define STDEXEC_NO_STD_PACK_INDEXING() 1
-#endif // no pack indexing
+#endif  // no pack indexing
 
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
 #  define STDEXEC_TSAN() 1
@@ -620,7 +626,7 @@ namespace STDEXEC {
   }
 
 // GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
-#if STDEXEC_CLANG() // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 13'00)
+#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 13'00)
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
 #else
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
@@ -725,21 +731,24 @@ namespace STDEXEC {
 
 // clang-format on
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
-  constexpr struct __catch_any_lvalue_t {
+  constexpr struct __catch_any_lvalue_t
+  {
     template <class _Tp>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr operator _Tp&() const noexcept;
   } __catch_any_lvalue{};
 
   STDEXEC_ATTRIBUTE(noreturn, host, device)
-  inline void __terminate() noexcept {
+  inline void __terminate() noexcept
+  {
     STDEXEC_IF_HOST(::exit(-1))
     STDEXEC_IF_DEVICE(__trap())
     STDEXEC_UNREACHABLE();
   }
-} // namespace STDEXEC
+}  // namespace STDEXEC
 
 ///////////////////////////////////////////////////////////////////////////////
 /// To hook a customization point like STDEXEC::connect, define a member
@@ -795,12 +804,13 @@ namespace STDEXEC {
 #  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
 #  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_PP_CAT(static_, _NAME)
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <class... _Ts, class _Self>
-  constexpr auto __get_self(const _Self&) -> _Self;
-} // namespace STDEXEC
+  constexpr auto __get_self(_Self const &) -> _Self;
+}  // namespace STDEXEC
 
-#endif // !STDEXEC_HAS_STD_EXPLICIT_THIS()
+#endif  // !STDEXEC_HAS_STD_EXPLICIT_THIS()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && !defined(STDEXEC_CLANG_TIDY_INVOKED)
@@ -836,7 +846,7 @@ namespace STDEXEC {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)
-#  include <cuda_runtime_api.h> // IWYU pragma: keep
+#  include <cuda_runtime_api.h>  // IWYU pragma: keep
 #  if !defined(__launch_bounds__)
 #    define __launch_bounds__(...)
 #  endif
@@ -854,5 +864,5 @@ namespace STDEXEC {
 #  endif
 #endif
 
-namespace STDEXEC {
-}
+namespace STDEXEC
+{}

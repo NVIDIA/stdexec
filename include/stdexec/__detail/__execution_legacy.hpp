@@ -21,13 +21,15 @@
 #  include <execution>
 #endif
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 
 #if STDEXEC_HAS_EXECUTION_POLICY()
 
   // Import the execution policies from std::execution. The __policy namespace is used to
   // avoid name clashes if the macro STDEXEC expands to std::execution.
-  namespace __policy {
+  namespace __policy
+  {
     using std::execution::sequenced_policy;
     using std::execution::parallel_policy;
     using std::execution::parallel_unsequenced_policy;
@@ -38,18 +40,21 @@ namespace STDEXEC {
 
     using std::is_execution_policy_v;
     using std::is_execution_policy;
-  } // namespace __policy
+  }  // namespace __policy
 
   using namespace __policy;
 
 #else
 
-  struct sequenced_policy { };
-  struct parallel_policy { };
-  struct parallel_unsequenced_policy { };
+  struct sequenced_policy
+  {};
+  struct parallel_policy
+  {};
+  struct parallel_unsequenced_policy
+  {};
 
-  inline constexpr sequenced_policy seq{};
-  inline constexpr parallel_policy par{};
+  inline constexpr sequenced_policy            seq{};
+  inline constexpr parallel_policy             par{};
   inline constexpr parallel_unsequenced_policy par_unseq{};
 
   template <typename>
@@ -65,22 +70,25 @@ namespace STDEXEC {
   inline constexpr bool is_execution_policy_v<parallel_unsequenced_policy> = true;
 
   template <class _T>
-  struct is_execution_policy : std::bool_constant<is_execution_policy_v<_T>> { };
+  struct is_execution_policy : std::bool_constant<is_execution_policy_v<_T>>
+  {};
 
 #endif
 
 #if STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY()
 
-  namespace __policy {
+  namespace __policy
+  {
     using std::execution::unsequenced_policy;
     using std::execution::unseq;
-  } // namespace __policy
+  }  // namespace __policy
 
   using namespace __policy;
 
 #else
 
-  struct unsequenced_policy { };
+  struct unsequenced_policy
+  {};
 
   inline constexpr unsequenced_policy unseq{};
 
@@ -89,4 +97,4 @@ namespace STDEXEC {
 
 #endif
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

@@ -20,10 +20,12 @@
 #include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // make_completion_signatures
-  namespace detail {
+  namespace detail
+  {
     template <class Tag, class... As>
     constexpr auto normalize_impl(As&&...) -> Tag (*)(As...);
 
@@ -38,17 +40,16 @@ namespace experimental::execution {
     template <class... Sigs>
     using make_completion_signatures_t = decltype(detail::make_unique(
       detail::normalize(static_cast<Sigs*>(nullptr))...));
-  } // namespace detail
+  }  // namespace detail
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // get_child_completion_signatures
   template <STDEXEC::sender _Parent, STDEXEC::sender _Child, class... _Env>
   [[nodiscard]]
-  consteval auto get_child_completion_signatures() {
-    return STDEXEC::get_completion_signatures<
-      STDEXEC::__copy_cvref_t<_Parent, _Child>,
-      STDEXEC::__fwd_env_t<_Env>...
-    >();
+  consteval auto get_child_completion_signatures()
+  {
+    return STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<_Parent, _Child>,
+                                              STDEXEC::__fwd_env_t<_Env>...>();
   }
 
   //! Creates a compile-time completion signatures type from explicit and deduced signature types.
@@ -73,7 +74,8 @@ namespace experimental::execution {
   template <class... ExplicitSigs, class... DeducedSigs>
   [[nodiscard]]
   consteval auto make_completion_signatures(DeducedSigs*...) noexcept
-    -> detail::make_completion_signatures_t<ExplicitSigs..., DeducedSigs...> {
+    -> detail::make_completion_signatures_t<ExplicitSigs..., DeducedSigs...>
+  {
     return {};
   }
 
@@ -86,7 +88,8 @@ namespace experimental::execution {
   // throw_compile_time_error
   template <class... What, class... Values>
   [[nodiscard]]
-  consteval auto throw_compile_time_error(Values... vals) {
+  consteval auto throw_compile_time_error(Values... vals)
+  {
     return STDEXEC::__throw_compile_time_error<What...>(static_cast<Values&&>(vals)...);
   }
 
@@ -103,23 +106,23 @@ namespace experimental::execution {
   template <class _SetTag, class... _AlgoTag>
   using decay_arguments = STDEXEC::__decay_arguments<_SetTag, _AlgoTag...>;
 
-  template <
-    class _Completions,
-    class _ValueFn = keep_completion<STDEXEC::set_value_t>,
-    class _ErrorFn = keep_completion<STDEXEC::set_error_t>,
-    class _StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
-    class _ExtraSigs = STDEXEC::completion_signatures<>
-  >
-  consteval auto transform_completion_signatures(
-    _Completions,
-    _ValueFn __value_fn = {},
-    _ErrorFn __error_fn = {},
-    _StoppedFn __stopped_fn = {},
-    _ExtraSigs = {}) {
-    return STDEXEC::__transform_completion_signatures(
-      _Completions{}, __value_fn, __error_fn, __stopped_fn, _ExtraSigs{});
+  template <class _Completions,
+            class _ValueFn   = keep_completion<STDEXEC::set_value_t>,
+            class _ErrorFn   = keep_completion<STDEXEC::set_error_t>,
+            class _StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
+            class _ExtraSigs = STDEXEC::completion_signatures<>>
+  consteval auto transform_completion_signatures(_Completions,
+                                                 _ValueFn   __value_fn   = {},
+                                                 _ErrorFn   __error_fn   = {},
+                                                 _StoppedFn __stopped_fn = {},
+                                                 _ExtraSigs              = {})
+  {
+    return STDEXEC::__transform_completion_signatures(_Completions{},
+                                                      __value_fn,
+                                                      __error_fn,
+                                                      __stopped_fn,
+                                                      _ExtraSigs{});
   }
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

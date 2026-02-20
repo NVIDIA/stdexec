@@ -22,25 +22,30 @@
 #include <exec/static_thread_pool.hpp>
 #include <execpools/thread_pool_base.hpp>
 
-namespace execpools {
+namespace execpools
+{
 
-  class tbb_thread_pool : public thread_pool_base<tbb_thread_pool> {
+  class tbb_thread_pool : public thread_pool_base<tbb_thread_pool>
+  {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
     template <class... Args>
       requires STDEXEC::__std::constructible_from<tbb::task_arena, Args...>
     explicit tbb_thread_pool(Args&&... args)
-      : arena_{std::forward<Args>(args)...} {
+      : arena_{std::forward<Args>(args)...}
+    {
       arena_.initialize();
     }
 
     [[nodiscard]]
-    auto available_parallelism() const -> std::uint32_t {
+    auto available_parallelism() const -> std::uint32_t
+    {
       return static_cast<std::uint32_t>(arena_.max_concurrency());
     }
    private:
     [[nodiscard]]
-    static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee {
+    static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
+    {
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
@@ -49,10 +54,11 @@ namespace execpools {
     template <class PoolType, class Receiver>
     friend struct operation;
 
-    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept {
+    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept
+    {
       arena_.enqueue([task, tid] { task->execute_(task, /*tid=*/tid); });
     }
 
     tbb::task_arena arena_{tbb::task_arena::attach{}};
   };
-} // namespace execpools
+}  // namespace execpools

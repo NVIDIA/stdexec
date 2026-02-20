@@ -37,7 +37,8 @@ _LIBCUDACXX_BEGIN_NAMESPACE_STD
 
 enum class memory_order : unsigned int;
 
-namespace __detail {
+namespace __detail
+{
 
   template <class Tag>
   __device__ void __atomic_thread_fence_cuda(memory_order order, Tag);
@@ -55,24 +56,21 @@ namespace __detail {
   __device__ Type __atomic_load_n_cuda(const volatile Type *ptr, memory_order order, Tag);
 
   template <class Type, class Tag>
-  __device__ void
-    __atomic_store_n_cuda(volatile Type *ptr, Type, memory_order order, Tag);
+  __device__ void __atomic_store_n_cuda(Type volatile *ptr, Type, memory_order order, Tag);
 
   template <class Type, class Tag>
-  __device__ Type
-    __atomic_exchange_n_cuda(volatile Type *ptr, Type val, memory_order order, Tag);
+  __device__ Type __atomic_exchange_n_cuda(Type volatile *ptr, Type val, memory_order order, Tag);
 
   template <class Type, class Tag>
-  __device__ bool __atomic_compare_exchange_cuda(
-    volatile Type *ptr,
-    Type *expected,
-    const Type *desired,
-    bool weak,
-    memory_order __success_memorder,
-    memory_order __failure_memorder,
-    Tag);
+  __device__ bool __atomic_compare_exchange_cuda(Type volatile *ptr,
+                                                 Type          *expected,
+                                                 Type const    *desired,
+                                                 bool           weak,
+                                                 memory_order   __success_memorder,
+                                                 memory_order   __failure_memorder,
+                                                 Tag);
 
-} // namespace __detail
+}  // namespace __detail
 
 _LIBCUDACXX_END_NAMESPACE_STD
-#endif // STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND()
+#endif  // STDEXEC_LIBCUDACXX_NEEDS_ATOMIC_WORKAROUND()

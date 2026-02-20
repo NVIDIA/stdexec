@@ -22,12 +22,15 @@
 #include "__completion_signatures_of.hpp"
 #include "__sender_introspection.hpp"
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.schedule_from]
-  struct schedule_from_t {
+  struct schedule_from_t
+  {
     template <sender _Sender>
-    constexpr auto operator()(_Sender&& __sndr) const {
+    constexpr auto operator()(_Sender&& __sndr) const
+    {
       return __make_sexpr<schedule_from_t>({}, static_cast<_Sender&&>(__sndr));
     }
   };
@@ -35,11 +38,13 @@ namespace STDEXEC {
   inline constexpr schedule_from_t schedule_from{};
 
   template <>
-  struct __sexpr_impl<schedule_from_t> : __sexpr_defaults {
+  struct __sexpr_impl<schedule_from_t> : __sexpr_defaults
+  {
     template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures() {
+    static consteval auto __get_completion_signatures()
+    {
       static_assert(sender_expr_for<_Sender, schedule_from_t>);
       return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
     }
   };
-} // namespace STDEXEC
+}  // namespace STDEXEC

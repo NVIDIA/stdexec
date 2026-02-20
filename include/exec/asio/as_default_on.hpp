@@ -25,31 +25,32 @@
 #include <type_traits>
 #include <utility>
 
-namespace experimental::execution::asio {
+namespace experimental::execution::asio
+{
 
   template <typename CompletionToken, typename IoObject>
-  using as_default_on_t =
-    std::remove_cvref_t<IoObject>::template rebind_executor<executor_with_default<
-      std::remove_cvref_t<decltype(std::declval<IoObject&>().get_executor())>,
-      CompletionToken
-    >>::other;
+  using as_default_on_t = std::remove_cvref_t<IoObject>::template rebind_executor<
+    executor_with_default<std::remove_cvref_t<decltype(std::declval<IoObject&>().get_executor())>,
+                          CompletionToken>>::other;
 
-  namespace detail::as_default_on {
+  namespace detail::as_default_on
+  {
 
     template <typename CompletionToken>
-    struct t {
+    struct t
+    {
       template <typename IoObject>
-      constexpr asio::as_default_on_t<CompletionToken, IoObject>
-        operator()(IoObject&& io) const {
+      constexpr asio::as_default_on_t<CompletionToken, IoObject> operator()(IoObject&& io) const
+      {
         return asio::as_default_on_t<CompletionToken, IoObject>((IoObject&&) io);
       }
     };
 
-  } // namespace detail::as_default_on
+  }  // namespace detail::as_default_on
 
   template <typename CompletionToken>
   inline constexpr detail::as_default_on::t<CompletionToken> as_default_on;
 
-} // namespace experimental::execution::asio
+}  // namespace experimental::execution::asio
 
 namespace exec = experimental::execution;

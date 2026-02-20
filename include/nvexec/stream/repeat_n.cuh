@@ -21,34 +21,41 @@
 #include "../../exec/repeat_n.hpp"
 #include "../../stdexec/execution.hpp"
 
-#include "algorithm_base.cuh" // IWYU pragma: keep
+#include "algorithm_base.cuh"  // IWYU pragma: keep
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
-namespace nv::execution::_strm {
-  namespace repeat_n {
+namespace nv::execution::_strm
+{
+  namespace repeat_n
+  {
     template <class OpState>
-    struct receiver : stream_receiver_base {
+    struct receiver : stream_receiver_base
+    {
       receiver(OpState& opstate) noexcept
-        : opstate_(opstate) {
-      }
+        : opstate_(opstate)
+      {}
 
-      void set_value() noexcept {
+      void set_value() noexcept
+      {
         opstate_._complete(STDEXEC::set_value);
       }
 
       template <class Error>
-      void set_error(Error&& err) noexcept {
+      void set_error(Error&& err) noexcept
+      {
         opstate_._complete(STDEXEC::set_error, static_cast<Error&&>(err));
       }
 
-      void set_stopped() noexcept {
+      void set_stopped() noexcept
+      {
         opstate_._complete(STDEXEC::set_stopped);
       }
 
-      auto get_env() const noexcept -> OpState::env_t {
+      auto get_env() const noexcept -> OpState::env_t
+      {
         return opstate_.make_env();
       }
 
@@ -56,15 +63,15 @@ namespace nv::execution::_strm {
     };
 
     template <class CvSender, class Receiver>
-    struct opstate : _strm::opstate_base<Receiver> {
+    struct opstate : _strm::opstate_base<Receiver>
+    {
       using operation_state_concept = STDEXEC::operation_state_t;
 
       using sender_t = STDEXEC::__decay_t<CvSender>;
-      using scheduler_t = STDEXEC::__result_of<
-        STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>,
-        STDEXEC::env_of_t<sender_t>,
-        STDEXEC::env_of_t<Receiver>
-      >;
+      using scheduler_t =
+        STDEXEC::__result_of<STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>,
+                             STDEXEC::env_of_t<sender_t>,
+                             STDEXEC::env_of_t<Receiver>>;
 
       using inner_sender_t =
         STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<scheduler_t&>, sender_t&>;
@@ -74,98 +81,123 @@ namespace nv::execution::_strm {
         : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), sched.ctx_)
         , sndr_(static_cast<CvSender&&>(sndr))
         , sched_(std::move(sched))
-        , count_(count) {
+        , count_(count)
+      {
         _connect();
       }
 
-      void _connect() {
-        inner_opstate_.__emplace_from(
-          STDEXEC::connect, exec::sequence(STDEXEC::schedule(sched_), sndr_), receiver{*this});
+      void _connect()
+      {
+        inner_opstate_.__emplace_from(STDEXEC::connect,
+                                      exec::sequence(STDEXEC::schedule(sched_), sndr_),
+                                      receiver{*this});
       }
 
       template <class Tag, class... Args>
-      void _complete(Tag, Args&&... args) noexcept {
+      void _complete(Tag, Args&&... args) noexcept
+      {
         static_assert(sizeof...(Args) <= 1);
         static_assert(sizeof...(Args) == 0 || std::is_same_v<Tag, STDEXEC::set_error_t>);
         STDEXEC_ASSERT(count_ > 0);
 
-        STDEXEC_TRY {
-          auto arg_copy = (0, ..., static_cast<Args&&>(args)); // copy any arg...
-          inner_opstate_.reset(); // ... because this could potentially invalidate it.
+        STDEXEC_TRY
+        {
+          auto arg_copy = (0, ..., static_cast<Args&&>(args));  // copy any arg...
+          inner_opstate_.reset();  // ... because this could potentially invalidate it.
 
-          if constexpr (__std::same_as<Tag, STDEXEC::set_value_t>) {
-            if (--count_ == 0) {
+          if constexpr (__std::same_as<Tag, STDEXEC::set_value_t>)
+          {
+            if (--count_ == 0)
+            {
               this->propagate_completion_signal(STDEXEC::set_value);
-            } else {
+            }
+            else
+            {
               _connect();
               STDEXEC::start(*inner_opstate_);
             }
-          } else {
+          }
+          else
+          {
             this->propagate_completion_signal(Tag{}, static_cast<__decay_t<Args>&&>(arg_copy)...);
           }
         }
-        STDEXEC_CATCH_ALL {
+        STDEXEC_CATCH_ALL
+        {
           this->propagate_completion_signal(Tag{}, std::current_exception());
         }
       }
 
-      void start() noexcept {
-        if (this->stream_provider_.status_ != cudaSuccess) {
+      void start() noexcept
+      {
+        if (this->stream_provider_.status_ != cudaSuccess)
+        {
           // Couldn't allocate memory for operation state, complete with error
-          this->propagate_completion_signal(
-            STDEXEC::set_error, cudaError_t(this->stream_provider_.status_));
-        } else if (count_ == 0) {
+          this->propagate_completion_signal(STDEXEC::set_error,
+                                            cudaError_t(this->stream_provider_.status_));
+        }
+        else if (count_ == 0)
+        {
           this->propagate_completion_signal(STDEXEC::set_value);
-        } else {
+        }
+        else
+        {
           STDEXEC::start(*inner_opstate_);
         }
       }
 
-      sender_t sndr_;
-      scheduler_t sched_;
+      sender_t                             sndr_;
+      scheduler_t                          sched_;
       STDEXEC::__optional<inner_opstate_t> inner_opstate_;
-      std::size_t count_{};
+      std::size_t                          count_{};
     };
 
     template <class CvSender>
-    struct sender {
+    struct sender
+    {
       using sender_concept = STDEXEC::sender_t;
 
-      using completion_signatures = STDEXEC::completion_signatures<
-        STDEXEC::set_value_t(),
-        STDEXEC::set_stopped_t(),
-        STDEXEC::set_error_t(std::exception_ptr),
-        STDEXEC::set_error_t(cudaError_t)
-      >;
+      using completion_signatures =
+        STDEXEC::completion_signatures<STDEXEC::set_value_t(),
+                                       STDEXEC::set_stopped_t(),
+                                       STDEXEC::set_error_t(std::exception_ptr),
+                                       STDEXEC::set_error_t(cudaError_t)>;
 
       template <STDEXEC::receiver Receiver>
-      auto connect(Receiver rcvr) && //
-        -> repeat_n::opstate<CvSender, Receiver> {
-        auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
-          STDEXEC::get_env(sndr_), STDEXEC::get_env(rcvr));
-        return repeat_n::opstate<CvSender, Receiver>(
-          static_cast<CvSender&&>(sndr_), static_cast<Receiver&&>(rcvr), count_, std::move(sched));
+      auto connect(Receiver rcvr) &&  //
+        -> repeat_n::opstate<CvSender, Receiver>
+      {
+        auto sched =
+          STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr_),
+                                                                  STDEXEC::get_env(rcvr));
+        return repeat_n::opstate<CvSender, Receiver>(static_cast<CvSender&&>(sndr_),
+                                                     static_cast<Receiver&&>(rcvr),
+                                                     count_,
+                                                     std::move(sched));
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept -> STDEXEC::env_of_t<CvSender> {
+      auto get_env() const noexcept -> STDEXEC::env_of_t<CvSender>
+      {
         return STDEXEC::get_env(sndr_);
       }
 
-      CvSender sndr_; // could be a value or a reference
+      CvSender    sndr_;  // could be a value or a reference
       std::size_t count_;
     };
-  } // namespace repeat_n
+  }  // namespace repeat_n
 
   template <>
-  struct transform_sender_for<exec::repeat_n_t> {
+  struct transform_sender_for<exec::repeat_n_t>
+  {
     template <class Env, class CvSender>
-    auto operator()(const Env&, STDEXEC::__ignore, size_t count, CvSender&& sndr) const {
+    auto operator()(Env const &, STDEXEC::__ignore, size_t count, CvSender&& sndr) const
+    {
       using sender_t = repeat_n::sender<CvSender>;
       return sender_t{static_cast<CvSender&&>(sndr), count};
     }
   };
-} // namespace nv::execution::_strm
+}  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
 

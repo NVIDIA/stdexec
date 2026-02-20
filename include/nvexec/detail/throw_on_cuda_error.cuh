@@ -25,31 +25,34 @@
 
 #include <cuda_runtime_api.h>
 
-namespace nv::execution::detail {
-  struct _msg_storage {
+namespace nv::execution::detail
+{
+  struct _msg_storage
+  {
     char buffer[256];
   };
 
-  inline auto _format_cuda_error(
-    cudaError_t status,
-    const char* file_name,
-    int line,
-    _msg_storage& storage) noexcept -> const char* {
-    std::snprintf(
-      storage.buffer,
-      sizeof(storage.buffer),
-      "CUDA ERROR: %s:%d: %s: %s",
-      file_name,
-      line,
-      ::cudaGetErrorName(status),
-      ::cudaGetErrorString(status));
+  inline auto _format_cuda_error(cudaError_t   status,
+                                 char const *  file_name,
+                                 int           line,
+                                 _msg_storage& storage) noexcept -> char const *
+  {
+    std::snprintf(storage.buffer,
+                  sizeof(storage.buffer),
+                  "CUDA ERROR: %s:%d: %s: %s",
+                  file_name,
+                  line,
+                  ::cudaGetErrorName(status),
+                  ::cudaGetErrorString(status));
     return storage.buffer;
   }
 
-  class cuda_error : public ::std::runtime_error {
+  class cuda_error : public ::std::runtime_error
+  {
    public:
-    cuda_error(cudaError_t status, const char* file_name, int line, _msg_storage storage = {})
-      : ::std::runtime_error(detail::_format_cuda_error(status, file_name, line, storage)) {
+    cuda_error(cudaError_t status, char const * file_name, int line, _msg_storage storage = {})
+      : ::std::runtime_error(detail::_format_cuda_error(status, file_name, line, storage))
+    {
 #if defined(STDEXEC_STDERR)
       std::printf("%s\n", storage.buffer);
 #endif
@@ -57,7 +60,8 @@ namespace nv::execution::detail {
   };
 
   [[noreturn]]
-  inline void throw_on_cuda_error(cudaError_t status, char const * file_name, int line) {
+  inline void throw_on_cuda_error(cudaError_t status, char const * file_name, int line)
+  {
     // Clear the global CUDA error state which may have been set by the last
     // call. Otherwise, errors may "leak" to unrelated calls.
     ::cudaGetLastError();
@@ -65,15 +69,16 @@ namespace nv::execution::detail {
   }
 
   [[nodiscard]]
-  inline auto log_on_cuda_error(
-    cudaError_t status,
-    [[maybe_unused]] char const * const file_name,
-    [[maybe_unused]] const int line) noexcept -> ::cudaError_t {
+  inline auto log_on_cuda_error(cudaError_t                         status,
+                                [[maybe_unused]] char const * const file_name,
+                                [[maybe_unused]] int const          line) noexcept -> ::cudaError_t
+  {
     // Clear the global CUDA error state which may have been set by the last
     // call. Otherwise, errors may "leak" to unrelated calls.
     ::cudaGetLastError();
 #if defined(STDEXEC_STDERR)
-    if (status != ::cudaSuccess) {
+    if (status != ::cudaSuccess)
+    {
       _msg_storage storage{};
       std::printf("%s\n", detail::_format_cuda_error(status, file_name, line, storage));
     }
@@ -99,6 +104,6 @@ namespace nv::execution::detail {
 #define STDEXEC_LOG_CUDA_API(...) \
   ::nvexec::detail::log_on_cuda_error((__VA_ARGS__), __FILE__, __LINE__)
   // clang-format on
-} // namespace nv::execution::detail
+}  // namespace nv::execution::detail
 
 namespace nvexec = nv::execution;

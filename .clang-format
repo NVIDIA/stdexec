@@ -1,11 +1,11 @@
 Language: Cpp
 BasedOnStyle: WebKit
 AccessModifierOffset: -1
-AlignAfterOpenBracket: AlwaysBreak
+AlignAfterOpenBracket: Align
 AlignArrayOfStructures: Right
-AlignConsecutiveAssignments: None
-AlignConsecutiveBitFields: None
-AlignConsecutiveDeclarations: None
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveDeclarations: Consecutive
 AlignConsecutiveMacros:
   Enabled: true
   AcrossEmptyLines: true
@@ -13,22 +13,23 @@ AlignConsecutiveMacros:
 AlignEscapedNewlines: Right
 AlignOperands: AlignAfterOperator
 AlignTrailingComments: true
-AllowAllArgumentsOnNextLine: true
+AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
-AllowBreakBeforeNoexceptSpecifier: OnlyWithParen
+AllowBreakBeforeNoexceptSpecifier: Always
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: None
+AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: Inline
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros: [
   STDEXEC_SYSTEM_CONTEXT_INLINE
+  STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 ]
 BinPackArguments: false
 BinPackParameters: false
@@ -36,40 +37,38 @@ BitFieldColonSpacing: Both
 BreakAfterAttributes: Always
 BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterCaseLabel: false
-  AfterClass: false
-  AfterControlStatement: Never
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterObjCDeclaration: false
-  AfterStruct: false
-  AfterUnion: false
-  AfterExternBlock: false
-  BeforeCatch: false
-  BeforeElse: false
-  BeforeLambdaBody: false
-  BeforeWhile: false
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: true
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
   SplitEmptyNamespace: false
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeConceptDeclarations: true
-BreakBeforeTemplateCloser: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
 BreakStringLiterals: true
 ColumnLimit: 100
-CompactNamespaces: true
+CompactNamespaces: false
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 Cpp11BracedListStyle: true
 DerivePointerAlignment: true
 EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
-ExperimentalAutoDetectBinPacking: true
 FixNamespaceComments: true
 IfMacros: [
   'STDEXEC_CATCH'
@@ -82,11 +81,13 @@ IndentExternBlock: AfterExternBlock
 IndentGotoLabels: false
 IndentPPDirectives: AfterHash
 IndentWidth: 2
-IndentWrappedFunctionNames: true
+IndentWrappedFunctionNames: false
 InsertTrailingCommas: None
-KeepEmptyLinesAtTheStartOfBlocks: true
+KeepEmptyLinesAtTheStartOfBlocks: false
 LambdaBodyIndentation: Signature
 LineEnding: LF
+MacroBlockBegin: "^STDEXEC_NAMESPACE_STD_BEGIN$"
+MacroBlockEnd: "^STDEXEC_NAMESPACE_STD_END$"
 Macros: [
   'STDEXEC_CATCH_FALLTHROUGH= ',
   'STDEXEC_EXPLICIT_THIS_BEGIN(...)=__VA_ARGS__',
@@ -97,33 +98,43 @@ Macros: [
   'STDEXEC_DEFINE_MEMBER(X)=void foo() {}',
   'STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }',
 ]
-MaxEmptyLinesToKeep: 2
+MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PackConstructorInitializers: Never
 PenaltyBreakAssignment: 100
 PenaltyBreakBeforeFirstCallParameter: 100
-PenaltyBreakBeforeMemberAccess: 0
 PenaltyBreakComment: 0
 PenaltyBreakFirstLessLess: 0
 PenaltyBreakOpenParenthesis: 0
-PenaltyBreakScopeResolution: 0x7FFFFFFF
+PenaltyBreakScopeResolution: 1000
 PenaltyBreakString: 0
-PenaltyBreakTemplateDeclaration: 100
+PenaltyBreakTemplateDeclaration: 0
 PenaltyExcessCharacter: 500
 PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 0
 PointerAlignment: Left
-QualifierAlignment: Leave
+PPIndentWidth: 2
+QualifierAlignment: Custom
+QualifierOrder: [
+  "inline",
+  "friend",
+  "static",
+  "constexpr",
+  "type",
+  "const",
+  "volatile",
+]
 ReferenceAlignment: Pointer
 RemoveBracesLLVM: false
+RemoveSemicolon: false
 ReflowComments: false
 RequiresClausePosition: OwnLine
+RequiresExpressionIndentation: OuterScope
 IndentRequiresClause: true
 SeparateDefinitionBlocks: Leave
 ShortNamespaceLines: 0
-SortIncludes:
-  Enabled: true
-  IgnoreCase: false
+SkipMacroDefinitionBody: true
+SortIncludes: CaseSensitive
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
@@ -147,15 +158,15 @@ SpaceBeforeParensOptions:
   BeforeNonEmptyParentheses: false
 SpaceBeforeRangeBasedForLoopColon: false
 SpaceBeforeSquareBrackets: false
-SpaceInEmptyBlock: true
+SpaceInEmptyBlock: false
 SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
+SpacesBeforeTrailingComments: 2
 SpacesInAngles: Never
 SpacesInCStyleCastParentheses: false
 SpacesInConditionalStatement: false
 SpacesInContainerLiterals: true
 SpacesInParentheses: false
-Standard: c++20
+Standard: Latest
 StatementMacros: [
   'STDEXEC_IF_HOST',
   'STDEXEC_IF_DEVICE',

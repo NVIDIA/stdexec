@@ -21,7 +21,8 @@
 
 #include <memory>
 
-namespace STDEXEC::system_context_replaceability {
+namespace STDEXEC::system_context_replaceability
+{
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
   STDEXEC_ATTRIBUTE(weak)
@@ -34,10 +35,11 @@ namespace STDEXEC::system_context_replaceability {
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
   /// NOT TO SPEC
-  [[deprecated(
-    "Replacing the parallel scheduler backend at runtime is not recommended and may lead to "
-    "unexpected behavior. Use weak linking to replace the parallel scheduler at compile time "
-    "instead.")]]
+  [[deprecated("Replacing the parallel scheduler backend at runtime is not recommended and may "
+               "lead to "
+               "unexpected behavior. Use weak linking to replace the parallel scheduler at compile "
+               "time "
+               "instead.")]]
   auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
     -> __parallel_scheduler_backend_factory_t;
-} // namespace STDEXEC::system_context_replaceability
+}  // namespace STDEXEC::system_context_replaceability

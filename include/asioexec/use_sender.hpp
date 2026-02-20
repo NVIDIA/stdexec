@@ -26,14 +26,16 @@
     "The header <exec/asio/use_sender.hpp> is deprecated. Please include <exec/asio/use_sender.hpp> instead."
 #endif
 
-#include "../exec/asio/use_sender.hpp" // IWYU pragma: export
+#include "../exec/asio/use_sender.hpp"  // IWYU pragma: export
 
-namespace asioexec {
-  using use_sender_t [[deprecated(
-    "asioexec::use_sender_t is deprecated. Please use exec::asio::use_sender_t "
-    "instead.")]] = exec::asio::use_sender_t;
+namespace asioexec
+{
+  using use_sender_t [[deprecated("asioexec::use_sender_t is deprecated. Please use "
+                                  "exec::asio::use_sender_t "
+                                  "instead.")]] = exec::asio::use_sender_t;
 
-  inline constexpr const auto& use_sender
-    [[deprecated("asioexec::use_sender is deprecated. Please use exec::asio::use_sender instead.")]]
-    = exec::asio::use_sender;
-} // namespace asioexec
+  inline constexpr auto const & use_sender [[deprecated("asioexec::use_sender is deprecated. "
+                                                        "Please use exec::asio::use_sender "
+                                                        "instead.")]]
+  = exec::asio::use_sender;
+}  // namespace asioexec

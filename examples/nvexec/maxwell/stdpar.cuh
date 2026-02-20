@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "common.cuh" // IWYU pragma: keep
+#include "common.cuh"  // IWYU pragma: keep
 
 #if STDEXEC_HAS_PARALLEL_ALGORITHMS()
 
@@ -32,7 +32,8 @@
 #  include <algorithm>
 
 template <class Policy>
-auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool {
+auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool
+{
 #  if STDEXEC_CUDA_COMPILATION()
   bool* flag{};
   STDEXEC_TRY_CUDA_API(cudaMallocHost(&flag, sizeof(bool)));
@@ -48,31 +49,36 @@ auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool {
 }
 
 template <class Policy>
-void run_stdpar(
-  float dt,
-  bool write_vtk,
-  std::size_t n_iterations,
-  grid_t& grid,
-  Policy&& policy,
-  std::string_view method) {
+void run_stdpar(float            dt,
+                bool             write_vtk,
+                std::size_t      n_iterations,
+                grid_t&          grid,
+                Policy&&         policy,
+                std::string_view method)
+{
   fields_accessor accessor = grid.accessor();
-  time_storage_t time{is_gpu_policy(policy)};
+  time_storage_t  time{is_gpu_policy(policy)};
 
   auto begin = thrust::make_counting_iterator(std::size_t{0});
-  auto end = thrust::make_counting_iterator(accessor.cells);
+  auto end   = thrust::make_counting_iterator(accessor.cells);
 
   std::for_each(policy, begin, end, grid_initializer(dt, accessor));
 
-  report_performance(grid.cells, n_iterations, method, [&]() {
-    auto writer = dump_vtk(write_vtk, accessor);
-    for (std::size_t compute_step = 0; compute_step < n_iterations; compute_step++) {
+  report_performance(grid.cells,
+                     n_iterations,
+                     method,
+                     [&]()
+                     {
+                       auto writer = dump_vtk(write_vtk, accessor);
+                       for (std::size_t compute_step = 0; compute_step < n_iterations;
+                            compute_step++)
+                       {
+                         std::for_each(policy, begin, end, update_h(accessor));
+                         std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
+                       }
 
-      std::for_each(policy, begin, end, update_h(accessor));
-      std::for_each(policy, begin, end, update_e(time.get(), dt, accessor));
-    }
-
-    writer();
-  });
+                       writer();
+                     });
 }
 
 #endif

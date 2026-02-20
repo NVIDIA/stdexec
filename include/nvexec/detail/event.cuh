@@ -24,38 +24,46 @@
 
 #include <utility>
 
-namespace nv::execution::detail {
-  struct cuda_event {
-    cuda_event() {
+namespace nv::execution::detail
+{
+  struct cuda_event
+  {
+    cuda_event()
+    {
       STDEXEC_TRY_CUDA_API(::cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
     }
 
     cuda_event(cuda_event&& other) noexcept
-      : event_(std::exchange(other.event_, nullptr)) {
-    }
+      : event_(std::exchange(other.event_, nullptr))
+    {}
 
-    ~cuda_event() {
-      if (event_ != nullptr) {
+    ~cuda_event()
+    {
+      if (event_ != nullptr)
+      {
         STDEXEC_ASSERT_CUDA_API(::cudaEventDestroy(event_));
       }
     }
 
-    auto operator=(cuda_event&& other) noexcept -> cuda_event& {
+    auto operator=(cuda_event&& other) noexcept -> cuda_event&
+    {
       event_ = std::exchange(other.event_, nullptr);
       return *this;
     }
 
-    auto try_record(cudaStream_t stream) noexcept -> cudaError_t {
+    auto try_record(cudaStream_t stream) noexcept -> cudaError_t
+    {
       return STDEXEC_LOG_CUDA_API(::cudaEventRecord(event_, stream));
     }
 
-    auto try_wait(cudaStream_t stream) noexcept -> cudaError_t {
+    auto try_wait(cudaStream_t stream) noexcept -> cudaError_t
+    {
       return STDEXEC_LOG_CUDA_API(::cudaStreamWaitEvent(stream, event_, 0));
     }
 
    private:
     cudaEvent_t event_{};
   };
-} // namespace nv::execution::detail
+}  // namespace nv::execution::detail
 
 namespace nvexec = nv::execution;

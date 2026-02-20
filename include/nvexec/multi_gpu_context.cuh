@@ -25,20 +25,25 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
-namespace nv::execution {
-  namespace _strm {
-    struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler> {
+namespace nv::execution
+{
+  namespace _strm
+  {
+    struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler>
+    {
       multi_gpu_stream_scheduler(int num_devices, context ctx)
         : num_devices_(num_devices)
-        , ctx_(ctx) {
-      }
+        , ctx_(ctx)
+      {}
 
-      auto operator==(const multi_gpu_stream_scheduler& other) const noexcept -> bool {
+      auto operator==(multi_gpu_stream_scheduler const & other) const noexcept -> bool
+      {
         return ctx_.hub_ == other.ctx_.hub_;
       }
 
       [[nodiscard]]
-      STDEXEC_ATTRIBUTE(host, device) auto schedule() const noexcept {
+      STDEXEC_ATTRIBUTE(host, device) auto schedule() const noexcept
+      {
         return sender{num_devices_, ctx_};
       }
 
@@ -46,34 +51,49 @@ namespace nv::execution {
 
      private:
       template <class Receiver>
-      struct opstate : stream_opstate_base {
+      struct opstate : stream_opstate_base
+      {
         explicit opstate(Receiver rcvr)
-          : rcvr_(static_cast<Receiver&&>(rcvr)) {
+          : rcvr_(static_cast<Receiver&&>(rcvr))
+        {
           status_ = STDEXEC_LOG_CUDA_API(cudaStreamCreate(&stream_));
         }
 
-        ~opstate() {
+        ~opstate()
+        {
           STDEXEC_ASSERT_CUDA_API(cudaStreamDestroy(stream_));
         }
 
         [[nodiscard]]
-        auto get_stream() -> cudaStream_t {
+        auto get_stream() -> cudaStream_t
+        {
           return stream_;
         }
 
-        void start() & noexcept {
-          if constexpr (stream_receiver<Receiver>) {
-            if (status_ == cudaSuccess) {
+        void start() & noexcept
+        {
+          if constexpr (stream_receiver<Receiver>)
+          {
+            if (status_ == cudaSuccess)
+            {
               STDEXEC::set_value(static_cast<Receiver&&>(rcvr_));
-            } else {
+            }
+            else
+            {
               STDEXEC::set_error(static_cast<Receiver&&>(rcvr_), std::move(status_));
             }
-          } else {
-            if (status_ == cudaSuccess) {
+          }
+          else
+          {
+            if (status_ == cudaSuccess)
+            {
               continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rcvr_), STDEXEC::set_value);
-            } else {
-              continuation_kernel<<<1, 1, 0, stream_>>>(
-                std::move(rcvr_), STDEXEC::set_error, std::move(status_));
+            }
+            else
+            {
+              continuation_kernel<<<1, 1, 0, stream_>>>(std::move(rcvr_),
+                                                        STDEXEC::set_error,
+                                                        std::move(status_));
             }
           }
         }
@@ -81,42 +101,47 @@ namespace nv::execution {
        private:
         friend stream_context;
 
-        Receiver rcvr_;
+        Receiver     rcvr_;
         cudaStream_t stream_{};
-        cudaError_t status_{cudaSuccess};
+        cudaError_t  status_{cudaSuccess};
       };
 
-      struct sender : stream_sender_base {
+      struct sender : stream_sender_base
+      {
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(), set_error_t(cudaError_t)>;
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender(int num_devices, context ctx) noexcept
-          : env_{.num_devices_ = num_devices, .ctx_ = ctx} {
-        }
+          : env_{.num_devices_ = num_devices, .ctx_ = ctx}
+        {}
 
         template <class Receiver>
         [[nodiscard]]
         auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> opstate<Receiver> {
+          -> opstate<Receiver>
+        {
           return opstate<Receiver>(static_cast<Receiver&&>(rcvr));
         }
 
         [[nodiscard]]
-        auto get_env() const noexcept -> decltype(auto) {
+        auto get_env() const noexcept -> decltype(auto)
+        {
           return (env_);
         }
 
        private:
-        struct attrs {
+        struct attrs
+        {
           template <class CPO>
           [[nodiscard]]
           auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
-            -> multi_gpu_stream_scheduler {
+            -> multi_gpu_stream_scheduler
+          {
             return multi_gpu_stream_scheduler{num_devices_, ctx_};
           }
 
-          int num_devices_;
+          int     num_devices_;
           context ctx_;
         };
 
@@ -125,35 +150,42 @@ namespace nv::execution {
 
      public:
       // private: TODO
-      int num_devices_{};
+      int     num_devices_{};
       context ctx_;
     };
 
     template <>
     STDEXEC_ATTRIBUTE(nodiscard)
     inline auto stream_scheduler_env<multi_gpu_stream_scheduler>::query(
-      get_completion_scheduler_t<set_value_t>) const noexcept -> multi_gpu_stream_scheduler {
+      get_completion_scheduler_t<set_value_t>) const noexcept -> multi_gpu_stream_scheduler
+    {
       return STDEXEC::__c_downcast<multi_gpu_stream_scheduler>(*this);
     }
-  } // namespace _strm
+  }  // namespace _strm
 
   using _strm::multi_gpu_stream_scheduler;
 
-  struct multi_gpu_stream_context {
+  struct multi_gpu_stream_context
+  {
     multi_gpu_stream_context()
       : dev_id_(_get_device())
-      , hub_(dev_id_, pinned_resource_.get()) {
+      , hub_(dev_id_, pinned_resource_.get())
+    {
       // TODO Manage errors
       cudaGetDeviceCount(&num_devices_);
 
-      for (int dev_id = 0; dev_id < num_devices_; dev_id++) {
+      for (int dev_id = 0; dev_id < num_devices_; dev_id++)
+      {
         cudaSetDevice(dev_id);
-        for (int peer_id = 0; peer_id < num_devices_; peer_id++) {
-          if (peer_id != dev_id) {
+        for (int peer_id = 0; peer_id < num_devices_; peer_id++)
+        {
+          if (peer_id != dev_id)
+          {
             int can_access{};
             cudaDeviceCanAccessPeer(&can_access, dev_id, peer_id);
 
-            if (can_access) {
+            if (can_access)
+            {
               cudaDeviceEnablePeerAccess(peer_id, 0);
             }
           }
@@ -163,16 +195,20 @@ namespace nv::execution {
     }
 
     [[nodiscard]]
-    auto get_scheduler(stream_priority priority = stream_priority::normal)
-      -> multi_gpu_stream_scheduler {
-      return {
-        num_devices_,
-        _strm::context(
-          pinned_resource_.get(), managed_resource_.get(), &stream_pools_, &hub_, priority)};
+    auto
+    get_scheduler(stream_priority priority = stream_priority::normal) -> multi_gpu_stream_scheduler
+    {
+      return {num_devices_,
+              _strm::context(pinned_resource_.get(),
+                             managed_resource_.get(),
+                             &stream_pools_,
+                             &hub_,
+                             priority)};
     }
 
    private:
-    static auto _get_device() -> int {
+    static auto _get_device() -> int
+    {
       int dev_id{};
       cudaGetDevice(&dev_id);
       return dev_id;
@@ -180,14 +216,14 @@ namespace nv::execution {
 
     int num_devices_{};
 
-    _strm::resource_storage<_strm::pinned_resource> pinned_resource_{};
+    _strm::resource_storage<_strm::pinned_resource>  pinned_resource_{};
     _strm::resource_storage<_strm::managed_resource> managed_resource_{};
-    _strm::stream_pools_t stream_pools_{};
+    _strm::stream_pools_t                            stream_pools_{};
 
-    int dev_id_{};
+    int                    dev_id_{};
     _strm::queue::task_hub hub_;
   };
-} // namespace nv::execution
+}  // namespace nv::execution
 
 namespace nvexec = nv::execution;
 

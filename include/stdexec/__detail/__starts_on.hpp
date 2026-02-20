@@ -28,43 +28,50 @@
 #include "__schedulers.hpp"
 #include "__utility.hpp"
 
-namespace STDEXEC {
-  namespace __detail {
+namespace STDEXEC
+{
+  namespace __detail
+  {
     //! Constant function object always returning `__val_`.
     template <class _Ty, class = __demangle_t<__decay_t<_Ty>>>
-    struct __always {
+    struct __always
+    {
       _Ty __val_;
 
       STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Ty>) -> _Ty {
+      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Ty>) -> _Ty
+      {
         return static_cast<_Ty&&>(__val_);
       }
     };
 
     template <class _Ty>
     __always(_Ty) -> __always<_Ty>;
-  } // namespace __detail
+  }  // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.starts_on]
-  struct starts_on_t {
+  struct starts_on_t
+  {
     template <scheduler _Scheduler, sender _Sender>
     constexpr auto
-      operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto {
-      return __make_sexpr<starts_on_t>(
-        static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+    operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
+    {
+      return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched),
+                                       static_cast<_Sender&&>(__sndr));
     }
 
     template <__decay_copyable _Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore) {
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
+    {
       auto& [__tag, __sched, __child] = __sndr;
-      return let_value(
-        continues_on(just(), __sched),
-        __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
+      return let_value(continues_on(just(), __sched),
+                       __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
     }
 
     template <class _Sender>
-    static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore) {
+    static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore)
+    {
       return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>{};
     }
   };
@@ -72,11 +79,14 @@ namespace STDEXEC {
   inline constexpr starts_on_t starts_on{};
 
   template <>
-  struct __sexpr_impl<starts_on_t> : __sexpr_defaults {
+  struct __sexpr_impl<starts_on_t> : __sexpr_defaults
+  {
     template <class _Scheduler, class _Child>
-    struct __attrs {
+    struct __attrs
+    {
       template <class... _Env>
-      static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env) {
+      static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env)
+      {
         return env(__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
       }
 
@@ -97,8 +107,8 @@ namespace STDEXEC {
       // Query for completion scheduler - delegates to child's env with augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_scheduler_t<_SetTag> __query, _Env&&... __env)
-        const noexcept
+      constexpr auto query(get_completion_scheduler_t<_SetTag> __query,
+                           _Env&&... __env) const noexcept
         -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
         requires(!__completes_inline<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>)
       {
@@ -110,25 +120,29 @@ namespace STDEXEC {
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
-        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...> {
+        -> __call_result_t<get_completion_domain_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
+      {
         return {};
       }
 
-      _Scheduler __sched_;
+      _Scheduler       __sched_;
       env_of_t<_Child> __attr_;
     };
 
     static constexpr auto __get_attrs =
-      []<class _Data, class _Child>(__ignore, const _Data& __data, const _Child& __child) noexcept
-      -> __attrs<_Data, _Child> {
+      []<class _Data, class _Child>(__ignore,
+                                    _Data const &  __data,
+                                    _Child const & __child) noexcept -> __attrs<_Data, _Child>
+    {
       return __attrs<_Data, _Child>{__data, STDEXEC::get_env(__child)};
     };
 
     template <class _Sender, class... _Env>
-    static consteval auto __get_completion_signatures() {
+    static consteval auto __get_completion_signatures()
+    {
       using __sndr_t =
         __detail::__transform_sender_result_t<starts_on_t, set_value_t, _Sender, env<>>;
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
     };
   };
-} // namespace STDEXEC
+}  // namespace STDEXEC

@@ -16,16 +16,18 @@
  */
 #pragma once
 
-namespace experimental::execution {
-  class safe_file_descriptor {
+namespace experimental::execution
+{
+  class safe_file_descriptor
+  {
     int __fd_{-1};
    public:
     safe_file_descriptor() = default;
 
     explicit safe_file_descriptor(int __fd) noexcept;
 
-    safe_file_descriptor(const safe_file_descriptor&) = delete;
-    auto operator=(const safe_file_descriptor&) -> safe_file_descriptor& = delete;
+    safe_file_descriptor(safe_file_descriptor const &)                    = delete;
+    auto operator=(safe_file_descriptor const &) -> safe_file_descriptor& = delete;
 
     safe_file_descriptor(safe_file_descriptor&& __other) noexcept;
 
@@ -42,7 +44,7 @@ namespace experimental::execution {
     [[nodiscard]]
     auto native_handle() const noexcept -> int;
   };
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 

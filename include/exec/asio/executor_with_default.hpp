@@ -20,16 +20,18 @@
 
 #include <exec/asio/asio_config.hpp>
 
-namespace experimental::execution::asio {
+namespace experimental::execution::asio
+{
 
   template <typename Executor, typename CompletionToken>
-  struct executor_with_default : Executor {
+  struct executor_with_default : Executor
+  {
     using default_completion_token_type = CompletionToken;
-    executor_with_default(const Executor& ex) noexcept
-      : Executor(ex) {
-    }
+    executor_with_default(Executor const & ex) noexcept
+      : Executor(ex)
+    {}
   };
 
-} // namespace experimental::execution::asio
+}  // namespace experimental::execution::asio
 
 namespace exec = experimental::execution;

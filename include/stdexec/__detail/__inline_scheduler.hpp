@@ -22,41 +22,50 @@
 #include "__receivers.hpp"
 #include "__schedulers.hpp"
 
-namespace STDEXEC {
-  struct __inline_attrs {
+namespace STDEXEC
+{
+  struct __inline_attrs
+  {
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept {
+    constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+    {
       return completion_behavior::inline_completion;
     }
-    constexpr auto operator==(const __inline_attrs&) const noexcept -> bool = default;
+    constexpr auto operator==(__inline_attrs const &) const noexcept -> bool = default;
   };
 
-  struct inline_scheduler : __inline_attrs {
+  struct inline_scheduler : __inline_attrs
+  {
    private:
     template <class _Receiver>
-    struct __opstate {
+    struct __opstate
+    {
       using operation_state_concept = operation_state_t;
 
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr void start() noexcept {
+      constexpr void start() noexcept
+      {
         STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
       }
 
       _Receiver __rcvr_;
     };
 
-    struct __sender {
-      using sender_concept = sender_t;
+    struct __sender
+    {
+      using sender_concept        = sender_t;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
       template <class _Receiver>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto connect(_Receiver __rcvr) noexcept -> __opstate<_Receiver> {
+      static constexpr auto connect(_Receiver __rcvr) noexcept -> __opstate<_Receiver>
+      {
         return {static_cast<_Receiver&&>(__rcvr)};
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      static constexpr auto get_env() noexcept -> __inline_attrs {
+      static constexpr auto get_env() noexcept -> __inline_attrs
+      {
         return {};
       }
     };
@@ -67,12 +76,13 @@ namespace STDEXEC {
     constexpr inline_scheduler() = default;
 
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    static constexpr auto schedule() noexcept -> __sender {
+    static constexpr auto schedule() noexcept -> __sender
+    {
       return {};
     }
 
-    constexpr auto operator==(const inline_scheduler&) const noexcept -> bool = default;
+    constexpr auto operator==(inline_scheduler const &) const noexcept -> bool = default;
   };
 
   static_assert(__is_scheduler_affine<schedule_result_t<inline_scheduler>>);
-} // namespace STDEXEC
+}  // namespace STDEXEC

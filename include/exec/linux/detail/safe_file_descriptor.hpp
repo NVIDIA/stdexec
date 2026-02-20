@@ -21,19 +21,23 @@
 #include <unistd.h>
 #include <utility>
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   inline safe_file_descriptor::safe_file_descriptor(int __fd) noexcept
-    : __fd_(__fd) {
-  }
+    : __fd_(__fd)
+  {}
 
   inline safe_file_descriptor::safe_file_descriptor(safe_file_descriptor&& __other) noexcept
-    : __fd_(std::exchange(__other.__fd_, -1)) {
-  }
+    : __fd_(std::exchange(__other.__fd_, -1))
+  {}
 
-  inline auto safe_file_descriptor::operator=(safe_file_descriptor&& __other) noexcept
-    -> safe_file_descriptor& {
-    if (this != &__other) {
-      if (__fd_ != -1) {
+  inline auto
+  safe_file_descriptor::operator=(safe_file_descriptor&& __other) noexcept -> safe_file_descriptor&
+  {
+    if (this != &__other)
+    {
+      if (__fd_ != -1)
+      {
         ::close(__fd_);
       }
       __fd_ = std::exchange(__other.__fd_, -1);
@@ -41,28 +45,34 @@ namespace experimental::execution {
     return *this;
   }
 
-  inline safe_file_descriptor::~safe_file_descriptor() {
+  inline safe_file_descriptor::~safe_file_descriptor()
+  {
     reset();
   }
 
-  inline void safe_file_descriptor::reset(int __fd) noexcept {
-    if (__fd_ != -1) {
+  inline void safe_file_descriptor::reset(int __fd) noexcept
+  {
+    if (__fd_ != -1)
+    {
       ::close(__fd_);
     }
     __fd_ = __fd;
   }
 
-  inline safe_file_descriptor::operator bool() const noexcept {
+  inline safe_file_descriptor::operator bool() const noexcept
+  {
     return __fd_ != -1;
   }
 
-  inline safe_file_descriptor::operator int() const noexcept {
+  inline safe_file_descriptor::operator int() const noexcept
+  {
     return __fd_;
   }
 
-  inline auto safe_file_descriptor::native_handle() const noexcept -> int {
+  inline auto safe_file_descriptor::native_handle() const noexcept -> int
+  {
     return __fd_;
   }
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;

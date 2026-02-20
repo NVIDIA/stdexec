@@ -15,11 +15,12 @@
  */
 #pragma once
 
-#include "__detail/__awaitable.hpp" // IWYU pragma: export
+#include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #include "__detail/__config.hpp"
 
 #if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
-namespace STDEXEC {
+namespace STDEXEC
+{
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates the return
@@ -34,27 +35,35 @@ namespace STDEXEC {
   // The wrapping coroutine is thread-local and is reused within the thread for each
   // destroy-and-continue sequence. The wrapping coroutine itself is destroyed at thread exit.
 
-  namespace __destroy_and_continue_msvc {
-    struct __task {
-      struct promise_type {
-        __task get_return_object() noexcept {
+  namespace __destroy_and_continue_msvc
+  {
+    struct __task
+    {
+      struct promise_type
+      {
+        __task get_return_object() noexcept
+        {
           return {__std::coroutine_handle<promise_type>::from_promise(*this)};
         }
 
-        static std::suspend_never initial_suspend() noexcept {
+        static std::suspend_never initial_suspend() noexcept
+        {
           return {};
         }
 
-        static std::suspend_never final_suspend() noexcept {
+        static std::suspend_never final_suspend() noexcept
+        {
           STDEXEC_ASSERT(!"Should never get here");
           return {};
         }
 
-        static void return_void() noexcept {
+        static void return_void() noexcept
+        {
           STDEXEC_ASSERT(!"Should never get here");
         }
 
-        static void unhandled_exception() noexcept {
+        static void unhandled_exception() noexcept
+        {
           STDEXEC_ASSERT(!"Should never get here");
         }
       };
@@ -62,56 +71,65 @@ namespace STDEXEC {
       __std::coroutine_handle<> __coro_;
     };
 
-    struct __continue_t {
-      static constexpr bool await_ready() noexcept {
+    struct __continue_t
+    {
+      static constexpr bool await_ready() noexcept
+      {
         return false;
       }
 
-      __std::coroutine_handle<> await_suspend(__std::coroutine_handle<>) noexcept {
+      __std::coroutine_handle<> await_suspend(__std::coroutine_handle<>) noexcept
+      {
         return __continue_;
       }
 
-      static void await_resume() noexcept {
-      }
+      static void await_resume() noexcept {}
 
       __std::coroutine_handle<> __continue_;
     };
 
-    struct __context {
+    struct __context
+    {
       __std::coroutine_handle<> __destroy_;
       __std::coroutine_handle<> __continue_;
     };
 
-    inline __task __co_impl(__context& __c) {
-      while (true) {
+    inline __task __co_impl(__context& __c)
+    {
+      while (true)
+      {
         co_await __continue_t{__c.__continue_};
         __c.__destroy_.destroy();
       }
     }
 
-    struct __context_and_coro {
-      __context_and_coro() {
+    struct __context_and_coro
+    {
+      __context_and_coro()
+      {
         __context_.__continue_ = __std::noop_coroutine();
-        __coro_ = __co_impl(__context_).__coro_;
+        __coro_                = __co_impl(__context_).__coro_;
       }
 
-      ~__context_and_coro() {
+      ~__context_and_coro()
+      {
         __coro_.destroy();
       }
 
-      __context __context_;
+      __context                 __context_;
       __std::coroutine_handle<> __coro_;
     };
 
     inline __std::coroutine_handle<>
-      __impl(__std::coroutine_handle<> __destroy, __std::coroutine_handle<> __continue) {
+    __impl(__std::coroutine_handle<> __destroy, __std::coroutine_handle<> __continue)
+    {
       static thread_local __context_and_coro __c;
-      __c.__context_.__destroy_ = __destroy;
+      __c.__context_.__destroy_  = __destroy;
       __c.__context_.__continue_ = __continue;
       return __c.__coro_;
     }
-  } // namespace __destroy_and_continue_msvc
-} // namespace STDEXEC
+  }  // namespace __destroy_and_continue_msvc
+}  // namespace STDEXEC
 
 #  define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue)                                      \
     (::STDEXEC::__destroy_and_continue_msvc::__impl(__destroy, __continue))
