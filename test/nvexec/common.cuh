@@ -20,6 +20,7 @@
 
 #include "../../include/nvexec/detail/throw_on_cuda_error.cuh"
 #include "../../include/stdexec/execution.hpp"
+#include "../../include/exec/receiver_adaptor.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -104,8 +105,8 @@ namespace {
     };
 
     template <class Receiver, class Fun>
-    class receiver : public STDEXEC::receiver_adaptor<receiver<Receiver, Fun>, Receiver> {
-      friend STDEXEC::receiver_adaptor<receiver<Receiver, Fun>, Receiver>;
+    class receiver : public exec::receiver_adaptor<receiver<Receiver, Fun>, Receiver> {
+      friend exec::receiver_adaptor<receiver<Receiver, Fun>, Receiver>;
 
       static_assert(std::is_trivially_copyable_v<Receiver>);
       static_assert(std::is_trivially_copyable_v<Fun>);
@@ -115,7 +116,7 @@ namespace {
       using receiver_concept = STDEXEC::receiver_t;
 
       explicit receiver(Receiver rcvr, Fun fun)
-        : STDEXEC::receiver_adaptor<receiver, Receiver>(static_cast<Receiver&&>(rcvr))
+        : exec::receiver_adaptor<receiver, Receiver>(static_cast<Receiver&&>(rcvr))
         , fun_(static_cast<Fun&&>(fun)) {
       }
 

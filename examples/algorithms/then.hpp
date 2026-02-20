@@ -18,11 +18,12 @@
 
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
+#include <exec/receiver_adaptor.hpp>
 
 ///////////////////////////////////////////////////////////////////////////////
 // then algorithm:
 template <class R, class F>
-class _then_receiver : public stdexec::receiver_adaptor<_then_receiver<R, F>, R> {
+class _then_receiver : public exec::receiver_adaptor<_then_receiver<R, F>, R> {
   template <class... As>
   using _completions = stdexec::completion_signatures<
     stdexec::set_value_t(std::invoke_result_t<F, As...>),
@@ -31,7 +32,7 @@ class _then_receiver : public stdexec::receiver_adaptor<_then_receiver<R, F>, R>
 
  public:
   _then_receiver(R r, F f)
-    : stdexec::receiver_adaptor<_then_receiver, R>{std::move(r)}
+    : exec::receiver_adaptor<_then_receiver, R>{std::move(r)}
     , f_(std::move(f)) {
   }
 

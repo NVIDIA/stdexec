@@ -18,6 +18,7 @@
 
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
+#include <exec/receiver_adaptor.hpp>
 
 template <class From, class To>
 using _copy_cvref_t = stdexec::__copy_cvref_t<From, To>;
@@ -49,7 +50,7 @@ struct _op;
 
 // pass through all customizations except set_error, which retries the operation.
 template <class S, class R>
-struct _retry_receiver : stdexec::receiver_adaptor<_retry_receiver<S, R>> {
+struct _retry_receiver : exec::receiver_adaptor<_retry_receiver<S, R>> {
   _op<S, R>* o_;
 
   auto base() && noexcept -> R&& {
