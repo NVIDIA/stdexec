@@ -84,7 +84,7 @@ namespace STDEXEC {
     STDEXEC_PRAGMA_POP()
 #else
     template <std::size_t _Arity>
-    extern __undefined<__msize_t<_Arity>> __get_desc_impl_v;
+    extern __undefined<__msize_t<_Arity>>& __get_desc_impl_v;
 
 #  define STDEXEC_GET_DESC_IMPL_CHILD(_NY)      , __child##_NY
 #  define STDEXEC_GET_DESC_IMPL_CHILD_TYPE(_NY) , decltype(__child##_NY)
@@ -124,7 +124,7 @@ namespace STDEXEC {
     using __desc_of_t = decltype(__detail::__get_desc_impl(__declval<_Sender>()));
 
     template <class _Sender>
-    extern __undefined<_Sender> __desc_of_v;
+    extern __undefined<_Sender>& __desc_of_v;
 
     template <class _Sender>
       requires(__structured_binding_size_v<_Sender> >= 2)
