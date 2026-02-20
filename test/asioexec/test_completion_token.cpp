@@ -162,7 +162,7 @@ namespace {
     asio_impl::io_context ctx;
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::years(1));
-    auto sender = t.async_wait(completion_token);
+    auto sender = t.async_wait(thread_unsafe_completion_token);
     static_assert(set_equivalent<
                   completion_signatures_of_t<decltype(sender), env<>>,
                   completion_signatures<
