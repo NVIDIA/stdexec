@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set(asioexec_test_sources
-    ../test_main.cpp
+    ../../test_main.cpp
     test_completion_token.cpp
     test_use_sender.cpp
     )

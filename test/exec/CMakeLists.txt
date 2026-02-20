@@ -82,6 +82,10 @@ target_link_libraries(test.exec
 # Discover the Catch2 test built by the application
 catch_discover_tests(test.exec)
 
+if(STDEXEC_ENABLE_ASIO)
+    add_subdirectory(asio)
+endif()
+
 # Test which parses a source file for an expected error message
 icm_add_build_failure_test(
     NAME test_repeat_until_fail
