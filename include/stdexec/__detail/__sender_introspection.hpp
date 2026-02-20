@@ -131,7 +131,7 @@ namespace STDEXEC {
     extern __desc_of_t<_Sender> __desc_of_v<_Sender>;
 
     template <auto _Descriptor>
-    extern __result_of<_Descriptor> __desc_of_v<__sexpr<_Descriptor>>;
+    extern decltype(_Descriptor()) __desc_of_v<__sexpr<_Descriptor>>;
   } // namespace __detail
 
   template <class _Sender>
