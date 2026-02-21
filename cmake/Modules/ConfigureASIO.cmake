@@ -14,19 +14,11 @@ if(STDEXEC_ENABLE_ASIO)
     message(FATAL_ERROR "Unknown configuration for ASIO implementation: " ${STDEXEC_ASIO_IMPLEMENTATION})
   endif()
 
-  set(ASIOEXEC_USES_BOOST ${STDEXEC_ASIO_USES_BOOST})
-  set(ASIOEXEC_USES_STANDALONE ${STDEXEC_ASIO_USES_STANDALONE})
+  set(STDEXEC_ASIO_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/exec/asio/asio_config.hpp)
 
-  set(STDEXEC_ASIO_POOL_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/execpools/asio/asio_config.hpp)
-  set(ASIOEXEC_CONFIG_HPP ${CMAKE_CURRENT_BINARY_DIR}/include/exec/asio/asio_config.hpp)
-
-  configure_file(
-    include/execpools/asio/asio_config.hpp.in
-    ${STDEXEC_ASIO_POOL_CONFIG_HPP}
-  )
   configure_file(
     include/exec/asio/asio_config.hpp.in
-    ${ASIOEXEC_CONFIG_HPP}
+    ${STDEXEC_ASIO_CONFIG_HPP}
   )
 
   file(GLOB_RECURSE boost_pool_sources CONFIGURE_DEPENDS include/execpools/asio/*.hpp)
@@ -51,7 +43,7 @@ if(STDEXEC_ENABLE_ASIO)
       BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
       FILES ${boost_pool_sources}
       BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-      FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
+      FILES ${STDEXEC_ASIO_CONFIG_HPP}
     )
 
     target_compile_definitions(stdexec_boost_pool INTERFACE STDEXEC_ASIO_USES_BOOST)
@@ -75,7 +67,7 @@ if(STDEXEC_ENABLE_ASIO)
       BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
       FILES ${asioexec_sources}
       BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-      FILES ${ASIOEXEC_CONFIG_HPP}
+      FILES ${STDEXEC_ASIO_CONFIG_HPP}
     )
 
     target_compile_definitions(asioexec_boost INTERFACE STDEXEC_ASIO_USES_BOOST)
@@ -102,7 +94,7 @@ if(STDEXEC_ENABLE_ASIO)
       BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
       FILES ${boost_pool_sources}
       BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-      FILES ${STDEXEC_ASIO_POOL_CONFIG_HPP}
+      FILES ${STDEXEC_ASIO_CONFIG_HPP}
     )
 
     target_compile_definitions(stdexec_asio_pool INTERFACE STDEXEC_ASIO_USES_STANDALONE)
@@ -123,7 +115,7 @@ if(STDEXEC_ENABLE_ASIO)
       BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
       FILES ${asioexec_sources}
       BASE_DIRS ${CMAKE_CURRENT_BINARY_DIR}/include
-      FILES ${ASIOEXEC_CONFIG_HPP}
+      FILES ${STDEXEC_ASIO_CONFIG_HPP}
     )
 
     target_compile_definitions(asioexec_asio INTERFACE STDEXEC_ASIO_USES_STANDALONE)

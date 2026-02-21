@@ -16,17 +16,19 @@
  * limitations under the License.
  */
 
+#include <exec/asio/asio_config.hpp>
 #include <exec/asio/use_sender.hpp>
 
+#include <test_common/receivers.hpp>
+#include <test_common/type_helpers.hpp>
+
 #include <catch2/catch.hpp>
+
 #include <chrono>
 #include <exception>
-#include <exec/asio/asio_config.hpp>
 #include <functional>
 #include <stdexec/execution.hpp>
 #include <system_error>
-#include <test_common/receivers.hpp>
-#include <test_common/type_helpers.hpp>
 #include <type_traits>
 #include <utility>
 

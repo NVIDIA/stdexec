@@ -7,12 +7,14 @@
  */
 #pragma once
 
-#include <execpools/asio/asio_config.hpp>
+#include <exec/asio/asio_config.hpp>
 
 #include "../../exec/thread_pool_base.hpp"
 
 namespace execpools
 {
+  namespace asio_impl = exec::asio::asio_impl;
+
   class asio_thread_pool : public exec::thread_pool_base<asio_thread_pool>
   {
    public:

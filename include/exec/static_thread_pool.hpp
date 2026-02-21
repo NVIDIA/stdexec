@@ -1205,13 +1205,15 @@ namespace experimental::execution
         , thread_index_{tid}
         , constraints_{constraints}
       {
-        this->execute_ = [](task_base* t, std::uint32_t const /* tid */) noexcept
+        this->execute_ = [](task_base* t,
+                            [[maybe_unused]]
+                            std::uint32_t const tid) noexcept
         {
           auto& op     = *static_cast<_opstate*>(t);
           auto  stoken = get_stop_token(get_env(op.rcvr_));
-          // NOLINTNEXTLINE(bugprone-branch-clone)
+
           if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>)
-          {
+          {  // NOLINT(bugprone-branch-clone)
             STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
           }
           else if (stoken.stop_requested())

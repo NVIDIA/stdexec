@@ -16,25 +16,23 @@
  * limitations under the License.
  */
 
+#include <exec/asio/asio_config.hpp>
 #include <exec/asio/completion_token.hpp>
 
-#include <barrier>
 #include <catch2/catch.hpp>
-#include <chrono>
+
+#include <barrier>
 #include <concepts>
 #include <cstddef>
 #include <exception>
-#include <exec/asio/asio_config.hpp>
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <stdexcept>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 #include <thread>
-#include <type_traits>
 #include <utility>
 
 using namespace STDEXEC;
@@ -535,9 +533,11 @@ namespace {
     "[asioexec][completion_token]") {
     std::exception_ptr ex;
     asio_impl::io_context ctx;
-    const auto initiating_function = [&](auto&& token) {
+    auto const            initiating_function = [&](auto&& token)
+    {
       return asio_impl::async_initiate<decltype(token), void()>(
-        [&](auto&& h) {
+        [&](auto h)
+        {
           asio_impl::post(ctx.get_executor(), [h = std::move(h)]() noexcept { });
           throw std::logic_error("Test");
         },
