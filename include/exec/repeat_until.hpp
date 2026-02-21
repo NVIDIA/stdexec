@@ -255,13 +255,28 @@ namespace experimental::execution
         __delete_set_value_t>,
       __mbind_front_q<__values_t, _Child>::template __f>;
 
+    struct _FAILED_TO_FORM_COMPLETION_SIGNATURES
+    {};
+
     struct __repeat_until_impl : __sexpr_defaults
     {
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Sender>, _Env...>{};
+        using __child_t = __child_of<_Sender>;
+        if constexpr (::STDEXEC::__minvocable_q<__completions_t, __child_t, _Env...>)
+        {
+          return __completions_t<__child_t, _Env...>{};
+        }
+        else if constexpr (sizeof...(_Env) == 0)
+        {
+          return STDEXEC::__dependent_sender<_Sender>();
+        }
+        else
+        {
+          return ::STDEXEC::__throw_compile_time_error<_FAILED_TO_FORM_COMPLETION_SIGNATURES,
+                                                       ::STDEXEC::_WITH_PRETTY_SENDER_<_Sender>>();
+        }
       };
 
       static constexpr auto __connect =
