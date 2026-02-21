@@ -18,7 +18,7 @@
 #include "__config.hpp"
 #include "__type_traits.hpp"
 
-#if 0  //STDEXEC_HAS_STD_RANGES()
+#if STDEXEC_HAS_STD_RANGES()
 
 #  include <ranges>
 
