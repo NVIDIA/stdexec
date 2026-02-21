@@ -19,13 +19,12 @@
 
 #include <tbb/task_arena.h>
 
-#include <exec/static_thread_pool.hpp>
-#include <execpools/thread_pool_base.hpp>
+#include "../../exec/static_thread_pool.hpp"
+#include "../../exec/thread_pool_base.hpp"
 
 namespace execpools
 {
-
-  class tbb_thread_pool : public thread_pool_base<tbb_thread_pool>
+  class tbb_thread_pool : public exec::thread_pool_base<tbb_thread_pool>
   {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
@@ -42,19 +41,20 @@ namespace execpools
     {
       return static_cast<std::uint32_t>(arena_.max_concurrency());
     }
+
    private:
+    friend exec::thread_pool_base<tbb_thread_pool>;
+
+    template <class PoolType, class Receiver>
+    friend struct exec::_pool_::opstate;
+
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
     {
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    friend thread_pool_base<tbb_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct operation;
-
-    void enqueue(task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
     {
       arena_.enqueue([task, tid] { task->execute_(task, /*tid=*/tid); });
     }

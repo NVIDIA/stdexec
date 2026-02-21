@@ -8,11 +8,12 @@
 #pragma once
 
 #include <execpools/asio/asio_config.hpp>
-#include <execpools/thread_pool_base.hpp>
+
+#include "../../exec/thread_pool_base.hpp"
 
 namespace execpools
 {
-  class asio_thread_pool : public execpools::thread_pool_base<asio_thread_pool>
+  class asio_thread_pool : public exec::thread_pool_base<asio_thread_pool>
   {
    public:
     asio_thread_pool()
@@ -41,18 +42,18 @@ namespace execpools
     }
 
    private:
+    friend exec::thread_pool_base<asio_thread_pool>;
+
+    template <class PoolType, class Receiver>
+    friend struct exec::_pool_::opstate;
+
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
     {
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    friend execpools::thread_pool_base<asio_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct execpools::operation;
-
-    void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
     {
       asio_impl::post(pool_, [task, tid] { task->execute_(task, /*tid=*/tid); });
     }

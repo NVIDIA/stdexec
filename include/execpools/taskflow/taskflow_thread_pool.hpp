@@ -9,12 +9,11 @@
 
 #include <taskflow/taskflow.hpp>
 
-#include <execpools/thread_pool_base.hpp>
+#include "../../exec/thread_pool_base.hpp"
 
 namespace execpools
 {
-
-  class taskflow_thread_pool : public execpools::thread_pool_base<taskflow_thread_pool>
+  class taskflow_thread_pool : public exec::thread_pool_base<taskflow_thread_pool>
   {
    public:
     //! Constructor forwards to tbb::task_arena constructor:
@@ -36,12 +35,12 @@ namespace execpools
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    friend execpools::thread_pool_base<taskflow_thread_pool>;
+    friend exec::thread_pool_base<taskflow_thread_pool>;
 
     template <class PoolType, class Receiver>
-    friend struct execpools::operation;
+    friend struct exec::_pool_::opstate;
 
-    void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
     {
       executor_.silent_async([task, tid] { task->execute_(task, /*tid=*/tid); });
     }
