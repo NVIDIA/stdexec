@@ -1,0 +1,24 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    container:
+      image: silkeh/clang:21@sha256:1901d77a39a463f27463f0b0c69441ed5c8ad18cbcf33ccf37283c27e807739f
+    permissions:
+      contents: read
+    steps:
+      - run: apt update && apt --yes --no-install-recommends install git
+      - uses: actions/checkout@v6
+      - run: |
+          git ls-files *.hpp *.h *.cpp *.c | xargs clang-format-21 --dry-run --Werror
