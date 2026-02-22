@@ -62,7 +62,6 @@ set(exec_test_sources
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each_threaded.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TBB}>:../execpools/test_tbb_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_TASKFLOW}>:../execpools/test_taskflow_thread_pool.cpp>
-    $<$<BOOL:${STDEXEC_ENABLE_ASIO}>:../execpools/test_asio_thread_pool.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     test_unless_stop_requested.cpp
     )
@@ -73,7 +72,6 @@ target_link_libraries(test.exec
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
     $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflow_pool>
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::asio_pool>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE

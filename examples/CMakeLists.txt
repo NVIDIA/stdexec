@@ -88,5 +88,5 @@ endif()
 
 if(STDEXEC_ENABLE_ASIO)
 add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
-target_link_libraries(example.benchmark.asio_thread_pool PRIVATE STDEXEC::asio_pool)
+target_link_libraries(example.benchmark.asio_thread_pool PRIVATE STDEXEC::asioexec)
 endif()

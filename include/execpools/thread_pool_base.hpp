@@ -17,6 +17,8 @@
  */
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
     "WARNING: The header <execpools/thread_pool_base.hpp> is deprecated. Please include <exec/thread_pool_base.hpp> instead.")
@@ -30,7 +32,7 @@
 namespace execpools
 {
   template <class DerivedPoolType>
-  using thread_pool_base [[deprecated("exec::thread_pool_base is deprecated. Please use "
-                                      "exec::thread_pool_base "
-                                      "instead.")]] = exec::thread_pool_base<DerivedPoolType>;
+  using thread_pool_base
+    [[deprecated("execpools::thread_pool_base has been renamed to "
+                 "exec::thread_pool_base")]] = exec::thread_pool_base<DerivedPoolType>;
 }  // namespace execpools

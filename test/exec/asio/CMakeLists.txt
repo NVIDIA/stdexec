@@ -16,6 +16,7 @@
 
 set(asioexec_test_sources
     ../../test_main.cpp
+    test_asio_thread_pool.cpp
     test_completion_token.cpp
     test_use_sender.cpp
     )
@@ -24,8 +25,7 @@ add_executable(test.asioexec ${asioexec_test_sources})
 target_link_libraries(test.asioexec
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec_boost>
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec_asio>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE

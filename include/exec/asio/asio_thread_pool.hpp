@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2023 Ben FrantzDale
  * Copyright (c) 2021-2023 Facebook, Inc. and its affiliates.
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -17,32 +17,42 @@
  */
 #pragma once
 
-#include <tbb/task_arena.h>
+#include <exec/asio/asio_config.hpp>
 
-#include "../../exec/thread_pool_base.hpp"
+#include "../thread_pool_base.hpp"
 
-namespace execpools
+namespace experimental::execution::asio
 {
-  class tbb_thread_pool : public exec::thread_pool_base<tbb_thread_pool>
+  class asio_thread_pool : public exec::thread_pool_base<asio_thread_pool>
   {
    public:
-    //! Constructor forwards to tbb::task_arena constructor:
-    template <class... Args>
-      requires STDEXEC::__std::constructible_from<tbb::task_arena, Args...>
-    explicit tbb_thread_pool(Args&&... args)
-      : arena_{std::forward<Args>(args)...}
-    {
-      arena_.initialize();
-    }
+    asio_thread_pool()
+      : pool_()
+      , executor_(pool_.executor())
+    {}
+
+    explicit asio_thread_pool(uint32_t num_threads)
+      : pool_(num_threads)
+      , executor_(pool_.executor())
+    {}
+
+    ~asio_thread_pool() = default;
 
     [[nodiscard]]
     auto available_parallelism() const -> std::uint32_t
     {
-      return static_cast<std::uint32_t>(arena_.max_concurrency());
+      return static_cast<std::uint32_t>(
+        asio_impl::query(executor_, asio_impl::execution::occupancy));
+    }
+
+    [[nodiscard]]
+    auto get_executor() const
+    {
+      return executor_;
     }
 
    private:
-    friend exec::thread_pool_base<tbb_thread_pool>;
+    friend exec::thread_pool_base<asio_thread_pool>;
 
     template <class PoolType, class Receiver>
     friend struct exec::_pool_::opstate;
@@ -55,9 +65,13 @@ namespace execpools
 
     void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
     {
-      arena_.enqueue([task, tid] { task->execute_(task, /*tid=*/tid); });
+      asio_impl::post(pool_, [task, tid] { task->execute_(task, /*tid=*/tid); });
     }
 
-    tbb::task_arena arena_{tbb::task_arena::attach{}};
+    asio_impl::thread_pool pool_;
+    // Need to store implicitly the executor, thread_pool::executor() is not const
+    asio_impl::thread_pool::executor_type executor_;
   };
-}  // namespace execpools
+}  // namespace experimental::execution::asio
+
+namespace exec = experimental::execution;
