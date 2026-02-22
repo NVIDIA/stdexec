@@ -19,7 +19,7 @@
 
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <execpools/tbb/tbb_thread_pool.hpp>
+#include <exec/tbb/tbb_thread_pool.hpp>
 
 #include <exec/any_sender_of.hpp>
 #include <stdexec/execution.hpp>
@@ -102,10 +102,10 @@ auto main(int argc, char** argv) -> int {
     return -1;
   }
 
-  std::variant<execpools::tbb_thread_pool, exec::static_thread_pool> pool;
+  std::variant<exec::tbb::tbb_thread_pool, exec::static_thread_pool> pool;
 
   if (argv[4] == std::string_view("tbb")) {
-    pool.emplace<execpools::tbb_thread_pool>(static_cast<int>(std::thread::hardware_concurrency()));
+    pool.emplace<exec::tbb::tbb_thread_pool>(static_cast<int>(std::thread::hardware_concurrency()));
   } else {
     pool.emplace<exec::static_thread_pool>(
       std::thread::hardware_concurrency(), exec::bwos_params{}, exec::get_numa_policy());

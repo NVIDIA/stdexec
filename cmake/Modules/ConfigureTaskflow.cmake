@@ -7,15 +7,29 @@ if(STDEXEC_ENABLE_TASKFLOW)
     GIT_TAG v3.7.0
     OPTIONS "TF_BUILD_TESTS OFF"
   )
-  file(GLOB_RECURSE taskflow_pool include/execpools/taskflow/*.hpp)
-  add_library(taskflow_pool INTERFACE ${taskflowexec_sources})
-  target_compile_definitions(taskflow_pool INTERFACE STDEXEC_ENABLE_TASKFLOW)
-  list(APPEND stdexec_export_targets taskflow_pool)
-  add_library(STDEXEC::taskflow_pool ALIAS taskflow_pool)
+  file(GLOB_RECURSE taskflowexec_headers CONFIGURE_DEPENDS include/exec/taskflow/*.hpp)
+  add_library(taskflowexec INTERFACE ${taskflowexec_headers})
+  list(APPEND stdexec_export_targets taskflowexec)
+  add_library(STDEXEC::taskflowexec ALIAS taskflowexec)
 
-  target_link_libraries(taskflow_pool
-    INTERFACE
-    STDEXEC::stdexec
+  # These aliases are provided for backwards compatibility with the old target names
+  add_library(taskflow_pool ALIAS taskflowexec)
+  add_library(STDEXEC::taskflow_pool ALIAS taskflowexec)
+
+  target_sources(taskflowexec
+  PUBLIC
+    FILE_SET headers
+    TYPE HEADERS
+    BASE_DIRS include
+    FILES ${taskflowexec_headers}
+  )
+  target_compile_definitions(taskflowexec INTERFACE STDEXEC_ENABLE_TASKFLOW)
+
+  target_link_libraries(stdexec INTERFACE
     Taskflow
+  )
+
+  target_link_libraries(taskflowexec INTERFACE
+    STDEXEC::stdexec
   )
 endif()

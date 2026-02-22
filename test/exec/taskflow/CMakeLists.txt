@@ -14,21 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(asioexec_test_sources
+set(taskflowexec_test_sources
     ../../test_main.cpp
-    test_asio_thread_pool.cpp
-    test_completion_token.cpp
-    test_use_sender.cpp
+    test_taskflow_thread_pool.cpp
     )
 
-add_executable(test.asioexec ${asioexec_test_sources})
-target_link_libraries(test.asioexec
+add_executable(test.taskflowexec ${taskflowexec_test_sources})
+target_link_libraries(test.taskflowexec
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE
     common_test_settings)
 
-catch_discover_tests(test.asioexec)
+catch_discover_tests(test.taskflowexec)

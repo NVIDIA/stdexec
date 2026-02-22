@@ -16,20 +16,19 @@
  */
 #include "./common.hpp"
 
-#include <execpools/tbb/tbb_thread_pool.hpp>
+#include <exec/tbb/tbb_thread_pool.hpp>
 #include <tbb/task_group.h>
 
 struct RunThread {
-  void operator()(
-    execpools::tbb_thread_pool& pool,
-    std::size_t total_scheds,
-    std::size_t tid,
-    std::barrier<>& barrier,
+  void operator()(exec::tbb::tbb_thread_pool& pool,
+                  std::size_t                 total_scheds,
+                  std::size_t                 tid,
+                  std::barrier<>&             barrier,
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-    [[maybe_unused]] std::span<char> buffer,
+                  [[maybe_unused]] std::span<char> buffer,
 #endif
-    std::atomic<bool>& stop,
-    exec::numa_policy numa) {
+                  std::atomic<bool>& stop,
+                  exec::numa_policy  numa) {
     int numa_node = numa.thread_index_to_node(tid);
     numa.bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
@@ -55,5 +54,5 @@ struct RunThread {
 };
 
 auto main(int argc, char** argv) -> int {
-  my_main<execpools::tbb_thread_pool, RunThread>(argc, argv);
+  my_main<exec::tbb::tbb_thread_pool, RunThread>(argc, argv);
 }
