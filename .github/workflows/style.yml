@@ -20,5 +20,7 @@ jobs:
     steps:
       - run: apt update && apt --yes --no-install-recommends install git
       - uses: actions/checkout@v6
-      - run: |
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - shell: bash
+        run: |
           git ls-files *.hpp *.h *.cpp *.c | xargs clang-format-21 --dry-run --Werror
