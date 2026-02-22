@@ -63,6 +63,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
+    stdexec/detail/test_demangle.cpp
     stdexec/detail/test_utility.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
