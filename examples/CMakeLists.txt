@@ -72,13 +72,13 @@ endif()
 
 if (STDEXEC_ENABLE_TBB)
  add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
 
  add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
 
  add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
- target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
 endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)

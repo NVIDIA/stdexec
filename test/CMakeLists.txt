@@ -111,7 +111,7 @@ add_executable(test.scratch test_main.cpp test_scratch.cpp)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE

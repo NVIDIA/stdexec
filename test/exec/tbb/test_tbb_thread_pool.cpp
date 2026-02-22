@@ -24,7 +24,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <test_common/schedulers.hpp>
 
-#include <execpools/tbb/tbb_thread_pool.hpp>
+#include <exec/tbb/tbb_thread_pool.hpp>
 
 namespace ex = STDEXEC;
 
@@ -75,19 +75,19 @@ namespace {
          | then([=](std::vector<double>&&) { return output; });
   }
 
-  TEST_CASE(
-    "execpools::tbb_thread_pool offers the parallel forward progress guarantee",
-    "[tbb_thread_pool]") {
-    execpools::tbb_thread_pool pool;
+  TEST_CASE("exec::tbb::tbb_thread_pool offers the parallel forward progress guarantee",
+            "[tbb_thread_pool]")
+  {
+    exec::tbb::tbb_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
       ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
   }
 
-  TEST_CASE(
-    "ex::on works when changing threads with execpools::tbb_thread_pool",
-    "[tbb_thread_pool]") {
-    execpools::tbb_thread_pool pool;
+  TEST_CASE("ex::on works when changing threads with exec::tbb::tbb_thread_pool",
+            "[tbb_thread_pool]")
+  {
+    exec::tbb::tbb_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     bool called{false};
     // launch some work on the thread pool
@@ -100,7 +100,7 @@ namespace {
   TEST_CASE("more tbb_thread_pool", "[tbb_thread_pool]") {
     using namespace STDEXEC;
 
-    execpools::tbb_thread_pool pool(1);
+    exec::tbb::tbb_thread_pool pool(1);
     exec::static_thread_pool other_pool(1);
     STDEXEC::inline_scheduler inline_sched;
 
@@ -135,7 +135,7 @@ namespace {
     // state. We'd better have it act normally here.
     using namespace STDEXEC;
 
-    execpools::tbb_thread_pool tbb_pool;
+    exec::tbb::tbb_thread_pool tbb_pool;
     exec::static_thread_pool other_pool(1);
     {
       CHECK_THROWS(ex::sync_wait(starts_on(tbb_pool.get_scheduler(), just(0)) | then([](auto) {
@@ -160,7 +160,7 @@ namespace {
   TEST_CASE("tbb_thread_pool async_inclusive_scan", "[tbb_thread_pool]") {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
-    execpools::tbb_thread_pool pool{2};
+    exec::tbb::tbb_thread_pool           pool{2};
     auto [value] = ex::sync_wait(async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4))
                      .value();
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);
