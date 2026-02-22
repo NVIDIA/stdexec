@@ -19,6 +19,8 @@
 #include "../stdexec/__detail/__variant.hpp"
 #include "../stdexec/execution.hpp"
 
+#include <type_traits>
+
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -54,18 +56,11 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void _start_next() noexcept
       {
-        STDEXEC_TRY
-        {
-          (*_start_next_)(this);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          STDEXEC::set_error(static_cast<Rcvr&&>(_rcvr), std::current_exception());
-        }
+        (*_start_next_)(this);
       }
 
       Rcvr _rcvr;
-      void (*_start_next_)(_opstate_base*) = nullptr;
+      void (*_start_next_)(_opstate_base*) noexcept = nullptr;
     };
 
     template <class Rcvr>
@@ -120,8 +115,11 @@ namespace experimental::execution
     {
       template <class... _Ts>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto
-      operator()(_Ts&&... __ts) const STDEXEC_AUTO_RETURN(_Tuple{static_cast<_Ts&&>(__ts)...});
+      constexpr _Tuple
+      operator()(_Ts&&... __ts) const noexcept(std::is_nothrow_constructible_v<_Tuple, _Ts...>)
+      {
+        return _Tuple{(_Ts&&) __ts...};
+      }
     };
 
     template <class Rcvr, class... Senders>
@@ -156,6 +154,12 @@ namespace experimental::execution
       template <class CvSndrs>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate(Rcvr&& rcvr, CvSndrs&& sndrs)
+        noexcept(::STDEXEC::__nothrow_connectable<
+                   decltype(::STDEXEC::__get<0>(::STDEXEC::__declval<CvSndrs>())),
+                   _rcvr_t<sizeof...(Senders) == 0>>
+                 && ::STDEXEC::__nothrow_invocable<decltype(::STDEXEC::__apply),
+                                                   __convert_tuple_fn<_senders_tuple_t>,
+                                                   CvSndrs>)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
         , _sndrs{STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{},
                                   static_cast<CvSndrs&&>(sndrs))}
@@ -170,19 +174,39 @@ namespace experimental::execution
       }
 
       template <std::size_t Remaining>
-      static constexpr void _start_next(_opstate_base<Rcvr>* _self)
+      static constexpr void _start_next(_opstate_base<Rcvr>* _self) noexcept
       {
-        constexpr auto __nth = sizeof...(Senders) - Remaining;
-        auto*          self  = static_cast<_opstate*>(_self);
-        auto&          sndr  = STDEXEC::__get<__nth + 1>(self->_sndrs);
-        auto&          op    = self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
-                                                                 std::move(sndr),
-                                                                 _rcvr_t<Remaining == 1>{self});
-        if constexpr (Remaining > 1)
+        constexpr auto __nth   = sizeof...(Senders) - Remaining;
+        auto*          self    = static_cast<_opstate*>(_self);
+        auto&          sndr    = STDEXEC::__get<__nth + 1>(self->_sndrs);
+        constexpr auto nothrow = noexcept(
+          self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
+                                                        std::move(sndr),
+                                                        _rcvr_t < Remaining == 1 > {self}));
+        STDEXEC_TRY
         {
-          self->_start_next_ = &_start_next<Remaining - 1>;
+          auto& op = self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
+                                                                   std::move(sndr),
+                                                                   _rcvr_t < Remaining
+                                                                     == 1 > {self});
+          if constexpr (Remaining > 1)
+          {
+            self->_start_next_ = &_start_next<Remaining - 1>;
+          }
+          STDEXEC::start(op);
         }
-        STDEXEC::start(op);
+        STDEXEC_CATCH_ALL
+        {
+          if constexpr (nothrow)
+          {
+            STDEXEC_UNREACHABLE();
+          }
+          else
+          {
+            STDEXEC::set_error(static_cast<Rcvr&&>(static_cast<_opstate*>(_self)->_rcvr),
+                               std::current_exception());
+          }
+        }
       }
 
       STDEXEC_ATTRIBUTE(host, device)
@@ -202,36 +226,48 @@ namespace experimental::execution
     // The completions of the sequence sender are the error and stopped completions of all the
     // child senders plus the value completions of the last child sender.
     template <class... Env>
-    struct _completions_fn
+    struct _completions_fn;
+
+    template <class Env>
+    struct _completions_fn<Env>
     {
-      // When folding left, the first sender folded will be the last sender in the list. That is
-      // also when the "state" of the fold is void. For this case we want to include the value
-      // completions; otherwise, we want to exclude them.
-      template <class State, class... Args>
+      template <bool First, bool AddExceptionPtr, class Sender>
+      static constexpr bool _add_exception_ptr =
+        AddExceptionPtr
+        || !(First || STDEXEC::__nothrow_connectable<Sender, STDEXEC::__receiver_archetype<Env>>);
+
+      // When folding left, the first sender folded will be the last sender in the list.
+      // For this case we want to include the value completions; otherwise, we want to
+      // exclude them.
+      template <bool First, bool AddExceptionPtr, class... Args>
       struct _fold_left;
 
-      template <class State, class Head, class... Tail>
-      struct _fold_left<State, Head, Tail...>
+      template <bool First, bool AddExceptionPtr, class Head, class... Tail>
+      struct _fold_left<First, AddExceptionPtr, Head, Tail...>
       {
         using __t = STDEXEC::__gather_completion_signatures_t<
-          STDEXEC::__completion_signatures_of_t<Head, Env...>,
+          STDEXEC::__completion_signatures_of_t<Head, Env>,
           STDEXEC::set_value_t,
           STDEXEC::__mconst<STDEXEC::completion_signatures<>>::__f,
           STDEXEC::__cmplsigs::__default_completion,
           STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f,
-          STDEXEC::__t<_fold_left<State, Tail...>>>;
+          STDEXEC::__t<
+            _fold_left<false, _add_exception_ptr<First, AddExceptionPtr, Head>, Tail...>>>;
       };
 
-      template <class Head>
-      struct _fold_left<void, Head>
+      template <bool First, bool AddExceptionPtr, class Head>
+      struct _fold_left<First, AddExceptionPtr, Head>
       {
         using __t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
-          STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
-          STDEXEC::__completion_signatures_of_t<Head, Env...>>;
+          std::conditional_t<
+            _add_exception_ptr<First, AddExceptionPtr, Head>,
+            STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
+            STDEXEC::completion_signatures<>>,
+          STDEXEC::__completion_signatures_of_t<Head, Env>>;
       };
 
       template <class... Sender>
-      using __f = STDEXEC::__t<_fold_left<void, Sender...>>;
+      using __f = STDEXEC::__t<_fold_left<true, false, Sender...>>;
     };
 
     template <class Sender0, class... Senders>
@@ -248,7 +284,11 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       static consteval auto get_completion_signatures()
       {
-        if constexpr (STDEXEC::__decay_copyable<Self>)
+        if constexpr (sizeof...(Env) == 0)
+        {
+          return STDEXEC::__dependent_sender<Self>();
+        }
+        else if constexpr (STDEXEC::__decay_copyable<Self>)
         {
           return _completions_t<Self, Env...>{};
         }
@@ -263,6 +303,10 @@ namespace experimental::execution
       template <STDEXEC::__decay_copyable Self, class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr)
+        noexcept(std::is_nothrow_constructible_v<
+                 _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>,
+                 Rcvr,
+                 decltype(((Self&&) self)._sndrs)>)
       {
         return _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>{
           static_cast<Rcvr&&>(rcvr),
