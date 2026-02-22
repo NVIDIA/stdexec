@@ -28,9 +28,11 @@
 #include <catch2/catch.hpp>
 
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace ex = STDEXEC;
@@ -406,5 +408,22 @@ namespace {
         std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
         "Missing added set_error_t(std::exception_ptr)");
     }
+  }
+
+  TEST_CASE("repeat_until works with a dependent sender", "[adaptors][repeat_until]")
+  {
+    std::size_t invoked = 0;
+    auto        snd     = exec::repeat_until(ex::read_env(ex::get_stop_token)
+                                  | ex::then(
+                                    [&](auto token) noexcept
+                                    {
+                                      ++invoked;
+                                      return std::is_same_v<ex::never_stop_token, decltype(token)>;
+                                    }));
+    static_assert(ex::dependent_sender<decltype(snd)>);
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    CHECK(!invoked);
+    ex::start(op);
+    CHECK(invoked == 1);
   }
 } // namespace
