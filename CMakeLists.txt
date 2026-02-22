@@ -272,13 +272,6 @@ target_compile_options(stdexec_executable_flags INTERFACE
                        -include stdexec/__detail/__force_include.hpp>
                        )
 
-if (STDEXEC_IS_TOP_LEVEL)
-  # Integrate with LLVM/clang tooling
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
-  add_executable(_clangd_helper_file include/._clangd_helper_file.cpp)
-  target_link_libraries(_clangd_helper_file PRIVATE STDEXEC::stdexec)
-endif()
-
 # Set up nvexec library
 option(STDEXEC_ENABLE_CUDA "Enable CUDA targets for non-nvc++ compilers" OFF)
 
@@ -462,6 +455,19 @@ endif()
 # Configure example executables
 if(STDEXEC_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+if (STDEXEC_IS_TOP_LEVEL)
+  # Integrate with LLVM/clang tooling
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
+  add_executable(_clangd_helper_file include/._clangd_helper_file.cpp)
+  target_link_libraries(_clangd_helper_file PRIVATE
+    STDEXEC::stdexec
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::nvexec>
+  )
 endif()
 
 ##############################################################################

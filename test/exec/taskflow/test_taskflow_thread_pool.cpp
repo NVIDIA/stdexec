@@ -22,7 +22,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <test_common/schedulers.hpp>
 
-#include <execpools/taskflow/taskflow_thread_pool.hpp>
+#include <exec/taskflow/taskflow_thread_pool.hpp>
 
 namespace ex = STDEXEC;
 
@@ -73,19 +73,19 @@ namespace {
          | then([=](std::vector<double>&&) { return output; });
   }
 
-  TEST_CASE(
-    "execpools::taskflow_thread_pool offers the parallel forward progress guarantee",
-    "[taskflow_thread_pool]") {
-    execpools::taskflow_thread_pool pool;
+  TEST_CASE("exec::taskflow::taskflow_thread_pool offers the parallel forward progress guarantee",
+            "[taskflow_thread_pool]")
+  {
+    exec::taskflow::taskflow_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     CHECK(
       ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
   }
 
-  TEST_CASE(
-    "STDEXEC::on works when changing threads with execpools::taskflow_thread_pool",
-    "[taskflow_thread_pool]") {
-    execpools::taskflow_thread_pool pool;
+  TEST_CASE("STDEXEC::on works when changing threads with exec::taskflow::taskflow_thread_pool",
+            "[taskflow_thread_pool]")
+  {
+    exec::taskflow::taskflow_thread_pool pool;
     auto pool_sched = pool.get_scheduler();
     bool called{false};
     // launch some work on the thread pool
@@ -98,7 +98,7 @@ namespace {
   TEST_CASE("more taskflow_thread_pool", "[taskflow_thread_pool]") {
     using namespace STDEXEC;
 
-    execpools::taskflow_thread_pool pool(1ul);
+    exec::taskflow::taskflow_thread_pool pool(1ul);
     exec::static_thread_pool other_pool(1);
     STDEXEC::inline_scheduler inline_sched;
 
@@ -130,7 +130,7 @@ namespace {
   TEST_CASE("taskflow_thread_pool exceptions", "[taskflow_thread_pool]") {
     using namespace STDEXEC;
 
-    execpools::taskflow_thread_pool taskflow_pool;
+    exec::taskflow::taskflow_thread_pool taskflow_pool;
     exec::static_thread_pool other_pool(1ul);
     {
       CHECK_THROWS(
@@ -156,7 +156,7 @@ namespace {
   TEST_CASE("taskflow_thread_pool async_inclusive_scan", "[taskflow_thread_pool]") {
     const auto input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
-    execpools::taskflow_thread_pool pool{2ul};
+    exec::taskflow::taskflow_thread_pool pool{2ul};
     auto [value] = STDEXEC::sync_wait(
                      async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4))
                      .value();

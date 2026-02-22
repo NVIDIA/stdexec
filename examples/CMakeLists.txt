@@ -83,7 +83,7 @@ endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)
  add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
- target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflow_pool)
+ target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflowexec)
 endif()
 
 if(STDEXEC_ENABLE_ASIO)

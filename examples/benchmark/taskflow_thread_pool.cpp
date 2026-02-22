@@ -16,11 +16,11 @@
  */
 #include "./common.hpp"
 #include <exec/start_detached.hpp>
-#include <execpools/taskflow/taskflow_thread_pool.hpp>
+#include <exec/taskflow/taskflow_thread_pool.hpp>
 
 struct RunThread {
   void operator()(
-    execpools::taskflow_thread_pool& pool,
+    exec::taskflow::taskflow_thread_pool& pool,
     std::size_t total_scheds,
     std::size_t tid,
     std::barrier<>& barrier,
@@ -83,5 +83,5 @@ struct RunThread {
 };
 
 auto main(int argc, char** argv) -> int {
-  my_main<execpools::taskflow_thread_pool, RunThread>(argc, argv);
+  my_main<exec::taskflow::taskflow_thread_pool, RunThread>(argc, argv);
 }
