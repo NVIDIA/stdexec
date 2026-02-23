@@ -35,6 +35,8 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 
+// NOLINTBEGIN(moderize-use-override)
+
 namespace STDEXEC::__any
 {
 
@@ -646,8 +648,10 @@ namespace STDEXEC::__any
     using _Base::__slice_to_;
     using _Base::_Base;
 
-    static constexpr size_t __buffer_size = _BufferSize > _Base::__buffer_size
-                                            ? _BufferSize
+    // The actual buffer size is the user-specified buffer size plus the size of a pointer,
+    // because space is needed for the virtual table pointer.
+    static constexpr size_t __buffer_size = _BufferSize + sizeof(void *) > _Base::__buffer_size
+                                            ? _BufferSize + sizeof(void *)
                                             : _Base::__buffer_size;
 
     static constexpr size_t __buffer_alignment = _BufferAlignment > _Base::__buffer_alignment
@@ -1599,7 +1603,7 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // any
   template <template <class> class _Interface>
-  struct __any final : __value_proxy_model<_Interface>
+  struct __any : __value_proxy_model<_Interface>
   {
    private:
     template <class _Other>
@@ -2014,5 +2018,7 @@ namespace STDEXEC::__any
   };
 
 }  // namespace STDEXEC::__any
+
+// NOLINTEND(moderize-use-override)
 
 STDEXEC_PRAGMA_POP()

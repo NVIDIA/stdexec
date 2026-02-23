@@ -107,7 +107,10 @@ namespace STDEXEC
     constexpr auto operator==(__any_allocator const &) const noexcept -> bool = default;
 
    private:
-    __any::__any<__detail::__byte_allocator> __alloc_{};
+    struct __alloc_impl final : __any::__any<__detail::__byte_allocator>
+    {
+      using __alloc_impl::__any::__any;
+    } __alloc_{};
   };
 
   template <class _Alloc>
