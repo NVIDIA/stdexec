@@ -26,16 +26,11 @@
 
 namespace STDEXEC
 {
-#if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
-  template <auto _Descriptor>
-  struct __sexpr;
-#else
   namespace
   {
     template <auto _Descriptor>
     struct __sexpr;
   }  // namespace
-#endif
 
   // A type that describes a sender's metadata
   template <class _Tag, class _Data, class... _Child>

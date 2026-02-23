@@ -312,10 +312,8 @@ namespace STDEXEC
     };
   };
 
-#if !defined(STDEXEC_DEMANGLE_SENDER_NAMES)
   namespace
   {
-#endif
     //! A struct template to aid in creating senders. This struct resembles P2300's
     //! [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24), but is not an exact
     //! implementation. Note: The struct named `__basic_sender` is just a dummy type and
@@ -407,9 +405,7 @@ namespace STDEXEC
     template <class _Tag, class _Data, class... _Child>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-#if !defined(STDEXEC_DEMANGLE_SENDER_NAMES)
   }  // anonymous namespace
-#endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
