@@ -103,7 +103,8 @@ namespace STDEXEC
         // promise object. We now use that allocator to deallocate the entire block of
         // memory:
         size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
-        void* const  __alloc_loc      = static_cast<__memblock*>(__ptr) + __promise_blocks;
+        [[maybe_unused]]
+        void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
         // the number of blocks needed to store an object of type __palloc_t:
         static constexpr size_t __alloc_blocks =
           __task::__divmod(sizeof(__task::__any_alloc<_PAlloc>), sizeof(__task::__memblock));
