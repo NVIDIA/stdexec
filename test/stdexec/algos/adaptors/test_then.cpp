@@ -85,14 +85,14 @@ namespace
     wait_for_value(std::move(snd), 3.1415);  // NOLINT(modernize-use-std-numbers)
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("then can throw, and set_error will be called", "[adaptors][then]")
   {
     auto snd = ex::just(13) | ex::then([](int) -> int { throw std::logic_error{"err"}; });
     auto op  = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("then can be used with just_error", "[adaptors][then]")
   {

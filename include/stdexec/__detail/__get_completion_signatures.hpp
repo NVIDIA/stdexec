@@ -317,7 +317,7 @@ namespace STDEXEC
                                               __fwd_env_t<_Env>...>();
   }
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
   concept __is_dependent_sender =
     __std::derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;

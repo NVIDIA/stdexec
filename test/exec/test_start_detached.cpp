@@ -25,7 +25,7 @@
 
 #include <chrono>  // IWYU pragma: keep for std::chrono_literals
 
-#if STDEXEC_HAS_STD_MEMORY_RESOURCE()
+#if !STDEXEC_NO_STDCPP_MEMORY_RESOURCE()
 #  include <memory_resource>
 #endif
 
@@ -219,7 +219,7 @@ namespace
     CHECK(called);
   }
 
-#if STDEXEC_HAS_STD_MEMORY_RESOURCE()                                                              \
+#if !STDEXEC_NO_STDCPP_MEMORY_RESOURCE()                                                           \
   && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 2019'02L)
 
   struct counting_resource : std::pmr::memory_resource

@@ -35,7 +35,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
@@ -596,7 +596,7 @@ namespace STDEXEC
     __variant<stop_source_type, stop_token_type> __stop_{__no_init};
     __opstate_base*                              __state_ = nullptr;
   };
-#endif  // !STDEXEC_NO_STD_COROUTINES()
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

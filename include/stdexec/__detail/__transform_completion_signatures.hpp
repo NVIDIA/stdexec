@@ -32,7 +32,7 @@ namespace STDEXEC
 {
   namespace __cmplsigs
   {
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
     // Without constexpr exceptions, we cannot always produce a valid
     // completion_signatures type. We must permit get_completion_signatures to return an
     // error type because we can't throw it.

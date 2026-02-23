@@ -170,7 +170,7 @@ namespace STDEXEC
 
   using __cmplsigs::get_completion_signatures_t;
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;

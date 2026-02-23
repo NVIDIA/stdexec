@@ -22,7 +22,7 @@
 
 #include <test_common/type_helpers.hpp>
 
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 
 namespace ex = STDEXEC;
 
@@ -282,4 +282,4 @@ namespace
   }
 }  // namespace
 
-#endif  // STDEXEC_NO_STD_COROUTINES()
+#endif  // STDEXEC_NO_STDCPP_COROUTINES()

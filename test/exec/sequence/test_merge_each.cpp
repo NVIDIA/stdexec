@@ -197,7 +197,7 @@ namespace
              });
   };
 
-#if STDEXEC_HAS_STD_RANGES()
+#if !STDEXEC_NO_STDCPP_RANGES()
 
   // a sequence of numbers from itoa()
   [[maybe_unused]]
@@ -385,6 +385,6 @@ namespace
   }
 #  endif  // 0
 
-#endif  // STDEXEC_HAS_STD_RANGES()
+#endif  // !STDEXEC_NO_STDCPP_RANGES()
 
 }  // namespace

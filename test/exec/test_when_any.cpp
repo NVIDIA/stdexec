@@ -214,10 +214,10 @@ namespace
     }
   };
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]")
   {
     REQUIRE_THROWS(STDEXEC::sync_wait(exec::when_any(dup_sender{})));
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace

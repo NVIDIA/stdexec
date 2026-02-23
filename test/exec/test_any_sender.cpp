@@ -152,7 +152,7 @@ namespace
     ref = error;
     ex::set_error(static_cast<receiver_ref &&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     // MSVC issues a warning about unreachable code in this block, hence the warning
     // suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
@@ -314,7 +314,7 @@ namespace
   template <class... Vals>
   using my_sender_of = any_sender_of<ex::set_value_t(Vals)..., ex::set_error_t(std::exception_ptr)>;
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("ex::sync_wait returns value and exception", "[types][any_sender]")
   {
     my_sender_of<int> sender = ex::just(21) | ex::then([&](int v) { return 2 * v; });
@@ -324,7 +324,7 @@ namespace
     sender = ex::just(21) | ex::then([&](int) -> int { throw 420; });
     CHECK_THROWS_AS(ex::sync_wait(std::move(sender)), int);
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("any_sender is connectable with exec::any_receiver_ref", "[types][any_sender]")
   {
@@ -366,7 +366,7 @@ namespace
                                                ex::set_error_t(std::exception_ptr),
                                                ex::set_stopped_t()>;
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]")
   {
     auto split_sender = exec::split(ex::just(42));
@@ -381,7 +381,7 @@ namespace
     sender = ex::just(21) | ex::then([&](int) -> int { throw 420; });
     CHECK_THROWS_AS(ex::sync_wait(std::move(sender)), int);
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   class stopped_token
   {
