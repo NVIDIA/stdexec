@@ -317,7 +317,7 @@ namespace experimental::execution
   template <class T>
   struct numa_allocator : std::allocator<T>
   {
-    numa_allocator() = default;
+    constexpr numa_allocator(int) noexcept {}
 
     template <STDEXEC::__not_same_as<T> U>
     numa_allocator(numa_allocator<U> const &) noexcept
