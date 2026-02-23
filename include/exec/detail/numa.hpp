@@ -24,13 +24,6 @@
 #include <thread>
 #include <vector>  // IWYU pragma: keep
 
-// Work around a bug in the NVHPC compilers prior to version 24.3
-#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 24'03
-#  define STDEXEC_NUMA_VTABLE_INLINE
-#else
-#  define STDEXEC_NUMA_VTABLE_INLINE inline
-#endif
-
 namespace experimental::execution
 {
   namespace _numa
