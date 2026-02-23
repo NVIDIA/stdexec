@@ -33,7 +33,8 @@ namespace experimental::execution
     struct _ipolicy
       : STDEXEC::__any::__interface_base<_ipolicy,
                                          Base,
-                                         STDEXEC::__any::__extends<STDEXEC::__any::__icopyable>>
+                                         STDEXEC::__any::__extends<STDEXEC::__any::__icopyable>,
+                                         sizeof(void *)>
     {
       using _ipolicy::__interface_base::__interface_base;
 

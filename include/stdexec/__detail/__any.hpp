@@ -710,10 +710,6 @@ namespace STDEXEC::__any
       else if constexpr (_Base::__box_kind == __box_kind::__object)
         __result.__object_bind_(*this);
     }
-
-    //  private:
-    //   friend _Interface<_Base>;
-    //   __interface_base() = default;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
