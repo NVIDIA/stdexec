@@ -184,7 +184,7 @@ namespace STDEXEC::__any
             class _BaseInterfaces   = __extends<>,
             size_t _BufferSize      = __default_buffer_size,
             size_t _BufferAlignment = alignof(std::max_align_t)>
-  struct interface;
+  struct __interface_base;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __interface_cast
@@ -396,7 +396,7 @@ namespace STDEXEC::__any
 
    private:
     template <template <class> class, class, class, size_t, size_t>
-    friend struct interface;
+    friend struct __interface_base;
     friend struct __access;
 
     template <class _Self>
@@ -633,13 +633,13 @@ namespace STDEXEC::__any
   {};
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  //! interface
+  //! __interface_base
   template <template <class> class _Interface,
             class _Base,
             class _BaseInterfaces,
             size_t _BufferSize,
             size_t _BufferAlignment>
-  struct interface : _Base
+  struct __interface_base : _Base
   {
     static_assert(std::popcount(_BufferAlignment) == 1, "BufferAlignment must be a power of two");
     using __bases_type          = _BaseInterfaces;
@@ -710,6 +710,10 @@ namespace STDEXEC::__any
       else if constexpr (_Base::__box_kind == __box_kind::__object)
         __result.__object_bind_(*this);
     }
+
+    //  private:
+    //   friend _Interface<_Base>;
+    //   __interface_base() = default;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -1572,9 +1576,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __imovable
   template <class _Base>
-  struct __imovable : interface<__imovable, _Base>
+  struct __imovable : __interface_base<__imovable, _Base>
   {
-    using __imovable::interface::interface;
+    using __imovable::__interface_base::__interface_base;
 
     constexpr virtual void __move_to(__iroot *&, std::span<std::byte>) noexcept
     {
@@ -1585,9 +1589,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __icopyable
   template <class _Base>
-  struct __icopyable : interface<__icopyable, _Base, __extends<__imovable>>
+  struct __icopyable : __interface_base<__icopyable, _Base, __extends<__imovable>>
   {
-    using __icopyable::interface::interface;
+    using __icopyable::__interface_base::__interface_base;
 
     constexpr virtual void __copy_to(__iroot *&, std::span<std::byte>) const
     {
@@ -1979,9 +1983,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __iequality_comparable
   template <class _Base>
-  struct __iequality_comparable : interface<__iequality_comparable, _Base>
+  struct __iequality_comparable : __interface_base<__iequality_comparable, _Base>
   {
-    using __iequality_comparable::interface::interface;
+    using __iequality_comparable::__interface_base::__interface_base;
 
     template <class _Other>
     [[nodiscard]]
@@ -2012,9 +2016,9 @@ namespace STDEXEC::__any
   // __isemiregular
   template <class _Base>
   struct __isemiregular
-    : interface<__isemiregular, _Base, __extends<__icopyable, __iequality_comparable>>
+    : __interface_base<__isemiregular, _Base, __extends<__icopyable, __iequality_comparable>>
   {
-    using __isemiregular::interface::interface;
+    using __isemiregular::__interface_base::__interface_base;
   };
 
 }  // namespace STDEXEC::__any

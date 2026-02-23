@@ -22,7 +22,7 @@
 
 #include <cstddef>
 #include <thread>
-#include <vector>
+#include <vector>  // IWYU pragma: keep
 
 // Work around a bug in the NVHPC compilers prior to version 24.3
 #if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 24'03
@@ -38,11 +38,11 @@ namespace experimental::execution
     // NOLINTBEGIN(modernize-use-override)
     template <class Base>
     struct _ipolicy
-      : STDEXEC::__any::interface<_ipolicy,
-                                  Base,
-                                  STDEXEC::__any::__extends<STDEXEC::__any::__icopyable>>
+      : STDEXEC::__any::__interface_base<_ipolicy,
+                                         Base,
+                                         STDEXEC::__any::__extends<STDEXEC::__any::__icopyable>>
     {
-      using _ipolicy::interface::interface;
+      using _ipolicy::__interface_base::__interface_base;
 
       [[nodiscard]]
       constexpr virtual auto num_nodes() const noexcept -> std::size_t
