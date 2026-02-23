@@ -25,6 +25,7 @@
 #include <new>  // IWYU pragma: keep
 #include <thread>
 #include <utility>
+#include <vector>
 
 // Work around a bug in the NVHPC compilers prior to version 24.3
 #if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 24'03
