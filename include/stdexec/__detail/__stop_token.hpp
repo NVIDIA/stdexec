@@ -24,6 +24,14 @@
 #  include <stop_token>  // IWYU pragma: export
 #endif
 
+// This shouldn't be necessary, but some standard library implementations claim support
+// for jthread but don't actually provide std::stop_token.
+STDEXEC_NAMESPACE_STD_BEGIN
+  class stop_token;
+  template <class _Callback>
+  class stop_callback;
+STDEXEC_NAMESPACE_STD_END
+
 STDEXEC_P2300_NAMESPACE_BEGIN()
 
 template <template <class> class _Callback>
