@@ -21,6 +21,7 @@
 #include "__completion_signatures_of.hpp"
 #include "__connect_awaitable.hpp"
 #include "__tag_invoke.hpp"
+#include "__transform_sender.hpp"
 #include "__type_traits.hpp"
 
 namespace STDEXEC
