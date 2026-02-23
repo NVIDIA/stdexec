@@ -27,44 +27,51 @@
 #include "__transform_completion_signatures.hpp"
 
 // include these after __execution_fwd.hpp
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.then]
-  namespace __then {
+  namespace __then
+  {
     using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
     using __completions_t = transform_completion_signatures<
       __completion_signatures_of_t<_CvSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvSender, _Env...>,
-      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f
-    >;
+      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f>;
 
-    struct __then_impl : __sexpr_defaults {
+    struct __then_impl : __sexpr_defaults
+    {
       static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, const _Child& __child) noexcept {
-          return __sync_attrs{__child};
-        };
+        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+      {
+        return __sync_attrs{__child};
+      };
 
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures() //
-        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...> {
+      static consteval auto __get_completion_signatures()  //
+        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
+      {
         static_assert(sender_expr_for<_Sender, then_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };
 
-      struct __complete_fn {
+      struct __complete_fn
+      {
         template <class _Tag, class _State, class... _Args>
         STDEXEC_ATTRIBUTE(host, device)
-        constexpr void
-          operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept {
-          if constexpr (__same_as<_Tag, set_value_t>) {
-            STDEXEC::__set_value_from(
-              static_cast<_State&&>(__state).__rcvr_,
-              static_cast<_State&&>(__state).__data_,
-              static_cast<_Args&&>(__args)...);
-          } else {
+        constexpr void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept
+        {
+          if constexpr (__same_as<_Tag, set_value_t>)
+          {
+            STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
+                                      static_cast<_State&&>(__state).__data_,
+                                      static_cast<_Args&&>(__args)...);
+          }
+          else
+          {
             _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
           }
         }
@@ -72,18 +79,21 @@ namespace STDEXEC {
 
       static constexpr auto __complete = __complete_fn{};
     };
-  } // namespace __then
+  }  // namespace __then
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  struct then_t {
+  struct then_t
+  {
     template <sender _Sender, __movable_value _Fun>
-    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto {
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
+    {
       return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
     }
 
     template <__movable_value _Fun>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto operator()(_Fun __fun) const {
+    constexpr auto operator()(_Fun __fun) const
+    {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
@@ -94,5 +104,6 @@ namespace STDEXEC {
   inline constexpr then_t then{};
 
   template <>
-  struct __sexpr_impl<then_t> : __then::__then_impl { };
-} // namespace STDEXEC
+  struct __sexpr_impl<then_t> : __then::__then_impl
+  {};
+}  // namespace STDEXEC

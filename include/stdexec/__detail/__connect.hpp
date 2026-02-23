@@ -23,18 +23,20 @@
 #include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.connect]
-  namespace __connect {
+  namespace __connect
+  {
     template <class _Sender, class _Receiver>
-    concept __with_static_member =
-      requires(__declfn_t<_Sender&&> __sndr, __declfn_t<_Receiver&&> __rcvr) {
-        STDEXEC_REMOVE_REFERENCE(_Sender)::static_connect(__sndr(), __rcvr());
-      };
+    concept __with_static_member = requires(__declfn_t<_Sender&&>   __sndr,
+                                            __declfn_t<_Receiver&&> __rcvr) {
+      STDEXEC_REMOVE_REFERENCE(_Sender)::static_connect(__sndr(), __rcvr());
+    };
 
     template <class _Sender, class _Receiver>
-    concept __with_member = //
+    concept __with_member =  //
       requires(__declfn_t<_Sender&&> __sndr, __declfn_t<_Receiver&&> __rcvr) {
         __sndr().connect(__rcvr());
       };
@@ -63,59 +65,58 @@ namespace STDEXEC {
 
     template <class _Sender, class _Receiver>
       requires __with_static_member<_Sender, _Receiver>
-    extern STDEXEC_CONNECT_DECLFN_FOR(
-      STDEXEC_REMOVE_REFERENCE(_Sender) //
-      ::static_connect(__declval<_Sender>(), __declval<_Receiver>()))
+    extern STDEXEC_CONNECT_DECLFN_FOR(STDEXEC_REMOVE_REFERENCE(_Sender)  //
+                                      ::static_connect(__declval<_Sender>(),
+                                                       __declval<_Receiver>()))
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
+      requires __with_static_member<_Sender, _Receiver>  //
             || __with_member<_Sender, _Receiver>
     extern STDEXEC_CONNECT_DECLFN_FOR(__declval<_Sender>().connect(__declval<_Receiver>()))
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
-            || __with_member<_Sender, _Receiver>        //
+      requires __with_static_member<_Sender, _Receiver>  //
+            || __with_member<_Sender, _Receiver>         //
             || __with_co_await<_Sender, _Receiver>
     extern __declfn_t<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
-            || __with_member<_Sender, _Receiver>        //
-            || __with_co_await<_Sender, _Receiver>      //
+      requires __with_static_member<_Sender, _Receiver>  //
+            || __with_member<_Sender, _Receiver>         //
+            || __with_co_await<_Sender, _Receiver>       //
             || __with_legacy_tag_invoke<_Sender, _Receiver>
-    extern STDEXEC_CONNECT_DECLFN_FOR(
-      __tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()))
+    extern STDEXEC_CONNECT_DECLFN_FOR(__tag_invoke(connect,
+                                                   __declval<_Sender>(),
+                                                   __declval<_Receiver>()))
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
       requires __with_static_member<_Sender, _Receiver>
-    extern __declfn_t<
-      decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
-               ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
-      false
-    >
+    extern __declfn_t<decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
+                               ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
+                      false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
+      requires __with_static_member<_Sender, _Receiver>  //
             || __with_member<_Sender, _Receiver>
     extern __declfn_t<decltype(__declval<_Sender>().connect(__declval<_Receiver>())), false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
-            || __with_member<_Sender, _Receiver>        //
+      requires __with_static_member<_Sender, _Receiver>  //
+            || __with_member<_Sender, _Receiver>         //
             || __with_co_await<_Sender, _Receiver>
     extern __declfn_t<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver> //
-            || __with_member<_Sender, _Receiver>        //
-            || __with_co_await<_Sender, _Receiver>      //
+      requires __with_static_member<_Sender, _Receiver>  //
+            || __with_member<_Sender, _Receiver>         //
+            || __with_co_await<_Sender, _Receiver>       //
             || __with_legacy_tag_invoke<_Sender, _Receiver>
     extern __declfn_t<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>
       __connect_declfn_v<_Sender, _Receiver, false>;
@@ -125,12 +126,11 @@ namespace STDEXEC {
       decltype(__connect_declfn_v<
                transform_sender_result_t<_Sender, env_of_t<_Receiver>>,
                _Receiver,
-               __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>
-      >);
+               __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>>);
 
 #  undef STDEXEC_CONNECT_DECLFN_FOR
 
-#else // ^^^ !STDEXEC_MSVC() ^^^ / vvv STDEXEC_MSVC() vvv
+#else  // ^^^ !STDEXEC_MSVC() ^^^ / vvv STDEXEC_MSVC() vvv
 
 #  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn<decltype(_EXPR), noexcept(_EXPR)>()
 
@@ -139,43 +139,63 @@ namespace STDEXEC {
 
     // This version is used for MSVC
     template <>
-    struct __connect_declfn<true> {
+    struct __connect_declfn<true>
+    {
       template <class _Sender, class _Receiver>
-      static consteval auto __get() noexcept {
-        if constexpr (__with_static_member<_Sender, _Receiver>) {
+      static consteval auto __get() noexcept
+      {
+        if constexpr (__with_static_member<_Sender, _Receiver>)
+        {
           return STDEXEC_CONNECT_DECLFN_FOR(
-            STDEXEC_REMOVE_REFERENCE(_Sender) //
+            STDEXEC_REMOVE_REFERENCE(_Sender)  //
             ::static_connect(__declval<_Sender>(), __declval<_Receiver>()));
-        } else if constexpr (__with_member<_Sender, _Receiver>) {
+        }
+        else if constexpr (__with_member<_Sender, _Receiver>)
+        {
           return STDEXEC_CONNECT_DECLFN_FOR(__declval<_Sender>().connect(__declval<_Receiver>()));
-        } else if constexpr (__with_co_await<_Sender, _Receiver>) {
+        }
+        else if constexpr (__with_co_await<_Sender, _Receiver>)
+        {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
-        } else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>) {
+        }
+        else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>)
+        {
           return STDEXEC_CONNECT_DECLFN_FOR(
             __tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()));
-        } else {
+        }
+        else
+        {
           return __declfn<void, false>();
         }
       }
     };
 
     template <>
-    struct __connect_declfn<false> {
+    struct __connect_declfn<false>
+    {
       template <class _Sender, class _Receiver>
-      static consteval auto __get() noexcept {
-        if constexpr (__with_static_member<_Sender, _Receiver>) {
-          return __declfn<
-            decltype(STDEXEC_REMOVE_REFERENCE(_Sender) //
-                     ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
-            false
-          >();
-        } else if constexpr (__with_member<_Sender, _Receiver>) {
+      static consteval auto __get() noexcept
+      {
+        if constexpr (__with_static_member<_Sender, _Receiver>)
+        {
+          return __declfn<decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
+                                   ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
+                          false>();
+        }
+        else if constexpr (__with_member<_Sender, _Receiver>)
+        {
           return __declfn<decltype(__declval<_Sender>().connect(__declval<_Receiver>())), false>();
-        } else if constexpr (__with_co_await<_Sender, _Receiver>) {
+        }
+        else if constexpr (__with_co_await<_Sender, _Receiver>)
+        {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
-        } else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>) {
+        }
+        else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>)
+        {
           return __declfn<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>();
-        } else {
+        }
+        else
+        {
           return __declfn<void, false>();
         }
       }
@@ -184,13 +204,14 @@ namespace STDEXEC {
     template <class _Sender, class _Receiver>
     using __connect_declfn_t =
       decltype(__connect_declfn<
-               __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>
-      >::template __get<transform_sender_result_t<_Sender, env_of_t<_Receiver>>, _Receiver>());
+               __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>>::
+                 template __get<transform_sender_result_t<_Sender, env_of_t<_Receiver>>,
+                                _Receiver>());
 
 #  undef STDEXEC_CONNECT_DECLFN_FOR
 
-#endif // STDEXEC_MSVC()
-  } // namespace __connect
+#endif  // STDEXEC_MSVC()
+  }  // namespace __connect
 
   template <class _Sender, class _Receiver>
   concept __connectable_to = requires(__declfn_t<_Sender&&> __sndr, __declfn_t<_Receiver&> __rcvr) {
@@ -199,34 +220,44 @@ namespace STDEXEC {
 
   /////////////////////////////////////////////////////////////////////////////
   // connect_t
-  struct connect_t {
-    template <
-      class _Sender,
-      class _Receiver,
-      class _DeclFn = __connect::__connect_declfn_t<_Sender, _Receiver>
-    >
+  struct connect_t
+  {
+    template <class _Sender,
+              class _Receiver,
+              class _DeclFn = __connect::__connect_declfn_t<_Sender, _Receiver>>
       requires __connectable_to<_Sender, _Receiver>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
-      noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn> {
-      auto&& __new_sndr = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
+      noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn>
+    {
+      auto&& __new_sndr  = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
       using __new_sndr_t = decltype(__new_sndr);
 
-      if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>) {
-        return STDEXEC_REMOVE_REFERENCE(__new_sndr_t)::static_connect(
-          static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
-      } else if constexpr (__connect::__with_member<__new_sndr_t, _Receiver>) {
+      if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>)
+      {
+        return STDEXEC_REMOVE_REFERENCE(
+          __new_sndr_t)::static_connect(static_cast<__new_sndr_t&&>(__new_sndr),
+                                        static_cast<_Receiver&&>(__rcvr));
+      }
+      else if constexpr (__connect::__with_member<__new_sndr_t, _Receiver>)
+      {
         return static_cast<__new_sndr_t&&>(__new_sndr).connect(static_cast<_Receiver&&>(__rcvr));
-      } else if constexpr (__connect::__with_co_await<__new_sndr_t, _Receiver>) {
-        return __connect_awaitable(
-          static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
-      } else {
-        return __tag_invoke(
-          *this, static_cast<__new_sndr_t&&>(__new_sndr), static_cast<_Receiver&&>(__rcvr));
+      }
+      else if constexpr (__connect::__with_co_await<__new_sndr_t, _Receiver>)
+      {
+        return __connect_awaitable(static_cast<__new_sndr_t&&>(__new_sndr),
+                                   static_cast<_Receiver&&>(__rcvr));
+      }
+      else
+      {
+        return __tag_invoke(*this,
+                            static_cast<__new_sndr_t&&>(__new_sndr),
+                            static_cast<_Receiver&&>(__rcvr));
       }
     }
 
-    static constexpr auto query(forwarding_query_t) noexcept -> bool {
+    static constexpr auto query(forwarding_query_t) noexcept -> bool
+    {
       return false;
     }
   };
@@ -237,4 +268,4 @@ namespace STDEXEC {
   concept __nothrow_connectable = sender_to<_Sender, _Receiver>
                                && __nothrow_callable<connect_t, _Sender, _Receiver>;
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

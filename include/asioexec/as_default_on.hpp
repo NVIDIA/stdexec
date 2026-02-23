@@ -18,34 +18,30 @@
 
 #pragma once
 
-#include <asioexec/asio_config.hpp>
-#include <asioexec/executor_with_default.hpp>
-#include <type_traits>
-#include <utility>
+#include "../stdexec/__detail/__config.hpp"
 
-namespace asioexec {
+#if STDEXEC_MSVC()
+#  pragma message(                                                                                 \
+    "WARNING: The header <exec/asio/as_default_on.hpp> is deprecated. Please include <exec/asio/as_default_on.hpp> instead.")
+#else
+#  warning                                                                                         \
+    "The header <exec/asio/as_default_on.hpp> is deprecated. Please include <exec/asio/as_default_on.hpp> instead."
+#endif
+
+#include "../exec/asio/as_default_on.hpp"  // IWYU pragma: export
+
+namespace asioexec
+{
 
   template <typename CompletionToken, typename IoObject>
-  using as_default_on_t =
-    std::remove_cvref_t<IoObject>::template rebind_executor<executor_with_default<
-      std::remove_cvref_t<decltype(std::declval<IoObject&>().get_executor())>,
-      CompletionToken
-    >>::other;
-
-  namespace detail::as_default_on {
-
-    template <typename CompletionToken>
-    struct t {
-      template <typename IoObject>
-      constexpr asioexec::as_default_on_t<CompletionToken, IoObject>
-        operator()(IoObject&& io) const {
-        return asioexec::as_default_on_t<CompletionToken, IoObject>((IoObject&&) io);
-      }
-    };
-
-  } // namespace detail::as_default_on
+  using as_default_on_t
+    [[deprecated("asioexec::as_default_on_t is deprecated. Please use exec::asio::as_default_on_t "
+                 "instead.")]] = exec::asio::as_default_on_t<CompletionToken, IoObject>;
 
   template <typename CompletionToken>
-  inline constexpr detail::as_default_on::t<CompletionToken> as_default_on;
+  [[deprecated("asioexec::as_default_on is deprecated. Please use exec::asio::as_default_on "
+               "instead.")]]
+  inline constexpr exec::asio::detail::as_default_on::t<CompletionToken>
+    as_default_on{};
 
-} // namespace asioexec
+}  // namespace asioexec

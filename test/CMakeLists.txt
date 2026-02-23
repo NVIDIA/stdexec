@@ -63,6 +63,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
+    stdexec/detail/test_demangle.cpp
     stdexec/detail/test_utility.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/schedulers/test_task_scheduler.cpp
@@ -112,7 +113,7 @@ add_executable(test.scratch test_main.cpp test_scratch.cpp)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE
@@ -134,10 +135,6 @@ add_subdirectory(exec)
 
 if(STDEXEC_ENABLE_CUDA)
     add_subdirectory(nvexec)
-endif()
-
-if(STDEXEC_ENABLE_ASIO)
-    add_subdirectory(asioexec)
 endif()
 
 # build failure tests: tests which parse a source file for an expected error

@@ -30,21 +30,29 @@
 //
 // spawn and spawn_future both have to choose an allocator and an injected environment, and they
 // do it in the same way; this namespace provides a couple of functions for making those choices
-namespace STDEXEC::__spawn_common {
-  struct __choose_alloc_fn {
+namespace STDEXEC::__spawn_common
+{
+  struct __choose_alloc_fn
+  {
     template <class _Env, class _Attrs>
-    auto operator()(const _Env& __env, const _Attrs& __attrs) const {
+    auto operator()(_Env const & __env, _Attrs const & __attrs) const
+    {
       // [exec.spawn] paragraph 9
       // [exec.spawn.future] paragraph 15
-      if constexpr (__callable<get_allocator_t, _Env>) {
+      if constexpr (__callable<get_allocator_t, _Env>)
+      {
         //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then alloc is
         //               the result of get_allocator(env)
         return get_allocator(__env);
-      } else if constexpr (__callable<get_allocator_t, _Attrs>) {
+      }
+      else if constexpr (__callable<get_allocator_t, _Attrs>)
+      {
         //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
         //               well-formed, then alloc is the result of get_allocator(get_env(new_sender))
         return get_allocator(__attrs);
-      } else {
+      }
+      else
+      {
         //   (9/15.3) -- otherwise, alloc is allocator<void>()
         return std::allocator<void>{};
       }
@@ -53,22 +61,29 @@ namespace STDEXEC::__spawn_common {
 
   inline constexpr __choose_alloc_fn __choose_alloc{};
 
-  struct __choose_senv_fn {
+  struct __choose_senv_fn
+  {
     template <class _Env, class _Attrs>
-    auto operator()(_Env&& __env, _Attrs&& __attrs) const {
+    auto operator()(_Env&& __env, _Attrs&& __attrs) const
+    {
       // [exec.spawn] paragraph 9
       // [exec.spawn.future] paragraph 15
-      if constexpr (__callable<get_allocator_t, _Env&>) {
+      if constexpr (__callable<get_allocator_t, _Env&>)
+      {
         //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then ...
         //               senv is the expression env;
         return static_cast<_Env&&>(__env);
-      } else if constexpr (__callable<get_allocator_t, _Attrs&>) {
+      }
+      else if constexpr (__callable<get_allocator_t, _Attrs&>)
+      {
         //   (9/15.2) -- otherwise, if the expression get_allocator(get_env(new_sender)) is
         //               well-formed, then ... senv is the expression
         //               JOIN-ENV(prop(get_allocator, alloc), env);
-        return __env::__join(
-          prop(get_allocator, get_allocator(__attrs)), static_cast<_Env&&>(__env));
-      } else {
+        return __env::__join(prop(get_allocator, get_allocator(__attrs)),
+                             static_cast<_Env&&>(__env));
+      }
+      else
+      {
         //   (9/15.3) -- otherwise, ... senv is the expression env.
         return static_cast<_Env&&>(__env);
       }
@@ -76,4 +91,4 @@ namespace STDEXEC::__spawn_common {
   };
 
   inline constexpr __choose_senv_fn __choose_senv{};
-} // namespace STDEXEC::__spawn_common
+}  // namespace STDEXEC::__spawn_common

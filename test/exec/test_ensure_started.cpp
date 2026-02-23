@@ -28,23 +28,27 @@
 namespace ex = STDEXEC;
 using exec::async_scope;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started returns a sender", "[adaptors][ensure_started]")
+  {
     auto snd = exec::ensure_started(ex::just(19));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  static const auto env = ex::prop{ex::get_scheduler, inline_scheduler{}};
+  static auto const env = ex::prop{ex::get_scheduler, inline_scheduler{}};
 
-  TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started with environment returns a sender", "[adaptors][ensure_started]")
+  {
     auto snd = exec::ensure_started(ex::just(19), env);
     static_assert(ex::sender_in<decltype(snd), decltype(env)>);
     (void) snd;
   }
 
-  TEST_CASE("ensure_started void value early", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started void value early", "[adaptors][ensure_started]")
+  {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
     CHECK_FALSE(called);
@@ -54,10 +58,11 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started void value late", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started void value late", "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called{false};
-    auto snd1 = ex::starts_on(sch, ex::just()) | ex::then([&] { called = true; });
+    bool              called{false};
+    auto              snd1 = ex::starts_on(sch, ex::just()) | ex::then([&] { called = true; });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
@@ -68,12 +73,16 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started single value early", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started single value early", "[adaptors][ensure_started]")
+  {
     bool called{false};
-    auto snd1 = ex::just() | ex::then([&] {
-                  called = true;
-                  return 42;
-                });
+    auto snd1 = ex::just()
+              | ex::then(
+                  [&]
+                  {
+                    called = true;
+                    return 42;
+                  });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
@@ -81,13 +90,17 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started single value late", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started single value late", "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called{false};
-    auto snd1 = ex::starts_on(sch, ex::just()) | ex::then([&] {
-                  called = true;
-                  return 42;
-                });
+    bool              called{false};
+    auto              snd1 = ex::starts_on(sch, ex::just())
+              | ex::then(
+                  [&]
+                  {
+                    called = true;
+                    return 42;
+                  });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
@@ -98,12 +111,15 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started multiple values early", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started multiple values early", "[adaptors][ensure_started]")
+  {
     bool called{false};
-    auto snd1 = ex::let_value(ex::just(), [&] {
-      called = true;
-      return ex::just(42, movable{56});
-    });
+    auto snd1 = ex::let_value(ex::just(),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just(42, movable{56});
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
@@ -111,13 +127,16 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started multiple values late", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started multiple values late", "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called{false};
-    auto snd1 = ex::let_value(ex::starts_on(sch, ex::just()), [&] {
-      called = true;
-      return ex::just(42, movable{56});
-    });
+    bool              called{false};
+    auto              snd1 = ex::let_value(ex::starts_on(sch, ex::just()),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just(42, movable{56});
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
@@ -128,12 +147,15 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started error early", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started error early", "[adaptors][ensure_started]")
+  {
     bool called{false};
-    auto snd1 = ex::let_value(ex::just(), [&] {
-      called = true;
-      return ex::just_error(42);
-    });
+    auto snd1 = ex::let_value(ex::just(),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just_error(42);
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
@@ -141,13 +163,16 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started error late", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started error late", "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called{false};
-    auto snd1 = ex::let_value(ex::starts_on(sch, ex::just()), [&] {
-      called = true;
-      return ex::just_error(42);
-    });
+    bool              called{false};
+    auto              snd1 = ex::let_value(ex::starts_on(sch, ex::just()),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just_error(42);
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
@@ -158,12 +183,15 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started stopped early", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started stopped early", "[adaptors][ensure_started]")
+  {
     bool called{false};
-    auto snd1 = ex::let_value(ex::just(), [&] {
-      called = true;
-      return ex::just_stopped();
-    });
+    auto snd1 = ex::let_value(ex::just(),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just_stopped();
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK(called);
@@ -171,13 +199,16 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started stopped late", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started stopped late", "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called{false};
-    auto snd1 = ex::let_value(ex::starts_on(sch, ex::just()), [&] {
-      called = true;
-      return ex::just_stopped();
-    });
+    bool              called{false};
+    auto              snd1 = ex::let_value(ex::starts_on(sch, ex::just()),
+                              [&]
+                              {
+                                called = true;
+                                return ex::just_stopped();
+                              });
     CHECK_FALSE(called);
     auto snd = exec::ensure_started(std::move(snd1));
     CHECK_FALSE(called);
@@ -188,13 +219,13 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE(
-    "stopping ensure_started before the source completes calls set_stopped",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("stopping ensure_started before the source completes calls set_stopped",
+            "[adaptors][ensure_started]")
+  {
     ex::inplace_stop_source stop_source;
-    impulse_scheduler sch;
-    bool called{false};
-    auto snd = ex::starts_on(sch, ex::just(19))
+    impulse_scheduler       sch;
+    bool                    called{false};
+    auto                    snd = ex::starts_on(sch, ex::just(19))
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | exec::ensure_started();
     auto op = ex::connect(std::move(snd), expect_stopped_receiver_ex{called});
@@ -206,16 +237,15 @@ namespace {
     CHECK(called);
   }
 
-  TEST_CASE(
-    "stopping ensure_started before the lazy opstate is started calls set_stopped",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("stopping ensure_started before the lazy opstate is started calls set_stopped",
+            "[adaptors][ensure_started]")
+  {
     ex::inplace_stop_source stop_source;
-    impulse_scheduler sch;
-    int count = 0;
-    bool called{false};
-    auto snd = ex::let_value(
-                 ex::just() | ex::then([&] { ++count; }),
-                 [=] { return ex::starts_on(sch, ex::just(19)); })
+    impulse_scheduler       sch;
+    int                     count = 0;
+    bool                    called{false};
+    auto                    snd = ex::let_value(ex::just() | ex::then([&] { ++count; }),
+                             [=] { return ex::starts_on(sch, ex::just(19)); })
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | exec::ensure_started();
     CHECK(count == 1);
@@ -228,15 +258,19 @@ namespace {
     CHECK(called);
   }
 
-  TEST_CASE(
-    "stopping ensure_started after the task has already completed doesn't change the result",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("stopping ensure_started after the task has already completed doesn't change the "
+            "result",
+            "[adaptors][ensure_started]")
+  {
     ex::inplace_stop_source stop_source;
-    int count = 0;
-    auto snd = ex::just() | ex::then([&] {
-                 ++count;
-                 return 42;
-               })
+    int                     count = 0;
+    auto                    snd   = ex::just()
+             | ex::then(
+                 [&]
+                 {
+                   ++count;
+                   return 42;
+                 })
              | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
              | exec::ensure_started();
     CHECK(count == 1);
@@ -246,11 +280,11 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE(
-    "Dropping the sender without connecting it calls set_stopped",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("Dropping the sender without connecting it calls set_stopped",
+            "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    bool called = false;
+    bool              called = false;
     {
       auto snd = ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { called = true; })
                | exec::ensure_started();
@@ -260,12 +294,12 @@ namespace {
     CHECK(called);
   }
 
-  TEST_CASE(
-    "Dropping the opstate without starting it calls set_stopped",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("Dropping the opstate without starting it calls set_stopped",
+            "[adaptors][ensure_started]")
+  {
     impulse_scheduler sch;
-    int state = -1;
-    bool called = false;
+    int               state  = -1;
+    bool              called = false;
     {
       auto snd = ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { called = true; })
                | exec::ensure_started();
@@ -278,19 +312,21 @@ namespace {
     CHECK(state == -1);
   }
 
-  TEST_CASE("Repeated ensure_started compiles", "[adaptors][ensure_started]") {
+  TEST_CASE("Repeated ensure_started compiles", "[adaptors][ensure_started]")
+  {
     bool called{false};
     auto snd1 = ex::just() | ex::then([&] { called = true; });
     CHECK_FALSE(called);
     auto snd2 = exec::ensure_started(std::move(snd1));
-    auto snd = exec::ensure_started(std::move(snd2));
+    auto snd  = exec::ensure_started(std::move(snd2));
     STATIC_REQUIRE(std::same_as<decltype(snd2), decltype(snd)>);
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
   }
 
-  TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started with move only input sender", "[adaptors][ensure_started]")
+  {
     bool called{false};
     auto snd1 = ex::just(movable(42)) | ex::then([&](movable&&) { called = true; });
     CHECK_FALSE(called);
@@ -300,27 +336,30 @@ namespace {
     ex::start(op);
   }
 
-  TEST_CASE(
-    "Repeated ensure_started with operator| does not return reference to temporary",
-    "[adaptors][ensure_started]") {
+  TEST_CASE("Repeated ensure_started with operator| does not return reference to temporary",
+            "[adaptors][ensure_started]")
+  {
     auto snd = exec::ensure_started(ex::just()) | exec::ensure_started();
-    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    auto op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
   }
 
-  struct my_sender {
+  struct my_sender
+  {
     using sender_concept = ex::sender_t;
-    using is_sender = void;
+    using is_sender      = void;
 
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;
 
     template <class Recv>
-    auto connect(Recv&& recv) const {
+    auto connect(Recv&& recv) const
+    {
       return ex::connect(ex::just(), std::forward<Recv>(recv));
     }
   };
 
-  TEST_CASE("ensure_started accepts a custom sender", "[adaptors][ensure_started]") {
+  TEST_CASE("ensure_started accepts a custom sender", "[adaptors][ensure_started]")
+  {
     auto snd1 = my_sender();
     auto snd2 = exec::ensure_started(std::move(snd1));
     static_assert(ex::__well_formed_sender<decltype(snd1)>);
@@ -333,4 +372,4 @@ namespace {
     (void) snd2;
   }
 
-} // namespace
+}  // namespace

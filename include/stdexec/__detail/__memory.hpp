@@ -19,15 +19,19 @@
 #include "__scope.hpp"
 
 // include these after __execution_fwd.hpp
-#include <memory> // IWYU pragma: export
+#include <memory>  // IWYU pragma: export
 
-namespace STDEXEC {
-  namespace __detail {
+namespace STDEXEC
+{
+  namespace __detail
+  {
     template <class _Alloc>
-    struct __alloc_deleter {
+    struct __alloc_deleter
+    {
       using __pointer = std::allocator_traits<_Alloc>::pointer;
 
-      void operator()(__pointer __ptr) const {
+      void operator()(__pointer __ptr) const
+      {
         _Alloc __alloc(__alloc_);
         std::allocator_traits<_Alloc>::destroy(__alloc, std::addressof(*__ptr));
         std::allocator_traits<_Alloc>::deallocate(__alloc, __ptr, 1);
@@ -35,22 +39,26 @@ namespace STDEXEC {
 
       _Alloc __alloc_;
     };
-  } // namespace __detail
+  }  // namespace __detail
 
   template <class _Ty, class _Alloc, class... _Args>
   [[nodiscard]]
-  constexpr auto __allocate_unique(const _Alloc& __alloc, _Args&&... __args)
-    -> std::unique_ptr<_Ty, __detail::__alloc_deleter<_Alloc>> {
-    using __value_t = std::allocator_traits<_Alloc>::value_type;
+  constexpr auto __allocate_unique(_Alloc const &__alloc, _Args &&...__args)
+    -> std::unique_ptr<_Ty, __detail::__alloc_deleter<_Alloc>>
+  {
+    using __value_t   = std::allocator_traits<_Alloc>::value_type;
     using __deleter_t = __detail::__alloc_deleter<_Alloc>;
     static_assert(__same_as<__value_t const, _Ty const>, "Allocator has the wrong value_type");
 
-    _Alloc __alloc2(__alloc);
-    auto __ptr = std::allocator_traits<_Alloc>::allocate(__alloc2, 1);
-    __scope_guard __guard{
-      &std::allocator_traits<_Alloc>::deallocate, std::ref(__alloc2), __ptr, 1ul};
-    std::allocator_traits<_Alloc>::construct(
-      __alloc2, std::addressof(*__ptr), static_cast<_Args&&>(__args)...);
+    _Alloc        __alloc2(__alloc);
+    auto          __ptr = std::allocator_traits<_Alloc>::allocate(__alloc2, 1);
+    __scope_guard __guard{&std::allocator_traits<_Alloc>::deallocate,
+                          std::ref(__alloc2),
+                          __ptr,
+                          1ul};
+    std::allocator_traits<_Alloc>::construct(__alloc2,
+                                             std::addressof(*__ptr),
+                                             static_cast<_Args &&>(__args)...);
     __guard.__dismiss();
     return std::unique_ptr<_Ty, __deleter_t>(__ptr, __deleter_t{__alloc2});
   }
@@ -60,7 +68,8 @@ namespace STDEXEC {
   // already bound to the correct type, in which case it is returned as-is.
   template <class _Ty, class _Alloc>
   [[nodiscard]]
-  constexpr auto __rebind_allocator(const _Alloc& __alloc) noexcept {
+  constexpr auto __rebind_allocator(_Alloc const &__alloc) noexcept
+  {
     using __rebound_alloc_t = std::allocator_traits<_Alloc>::template rebind_alloc<_Ty>;
     static_assert(noexcept(__rebound_alloc_t(__alloc)));
     return __rebound_alloc_t(__alloc);
@@ -69,12 +78,13 @@ namespace STDEXEC {
   template <class _Ty, class _Alloc>
     requires __same_as<_Ty, typename _Alloc::value_type>
   [[nodiscard]]
-  constexpr auto __rebind_allocator(const _Alloc& __alloc) noexcept -> const _Alloc& {
-    return __alloc; // NOLINT(bugprone-return-const-ref-from-parameter)
+  constexpr auto __rebind_allocator(_Alloc const &__alloc) noexcept -> _Alloc const &
+  {
+    return __alloc;  // NOLINT(bugprone-return-const-ref-from-parameter)
   }
 
   template <class _Ty, class _Alloc>
     requires __same_as<_Ty, typename _Alloc::value_type>
   [[nodiscard]]
-  constexpr auto __rebind_allocator(const _Alloc&&) noexcept = delete;
-} // namespace STDEXEC
+  constexpr auto __rebind_allocator(_Alloc const &&) noexcept = delete;
+}  // namespace STDEXEC

@@ -35,17 +35,20 @@
 #include <type_traits>
 #include <utility>
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.spawn.future]
-  namespace __spawn_future {
+  namespace __spawn_future
+  {
 
     template <class _Sig>
     struct __future_sig_fns;
 
     template <class _Tag, class... _Args>
-    struct __future_sig_fns<_Tag(_Args...)> {
+    struct __future_sig_fns<_Tag(_Args...)>
+    {
       static constexpr bool __is_nothrow_storable = __nothrow_decay_copyable<_Args...>;
 
       using __decayed_sig = _Tag(__decay_t<_Args>...);
@@ -63,18 +66,18 @@ namespace STDEXEC {
       (__future_sig_fns<_Sigs>::__is_nothrow_storable && ...);
 
     template <bool _NothrowStorable, class... _Sigs>
-    struct __future_variant {
+    struct __future_variant
+    {
       // this case handles _NothrowStorable == true
       using type = __uniqued_variant<__decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
     };
 
     template <class... _Sigs>
-    struct __future_variant<false, _Sigs...> {
-      using type = __uniqued_variant<
-        __decayed_tuple<set_stopped_t>,
-        __decayed_tuple<set_error_t, std::exception_ptr>,
-        __as_tuple<_Sigs>...
-      >;
+    struct __future_variant<false, _Sigs...>
+    {
+      using type = __uniqued_variant<__decayed_tuple<set_stopped_t>,
+                                     __decayed_tuple<set_error_t, std::exception_ptr>,
+                                     __as_tuple<_Sigs>...>;
     };
 
     template <class... _Sigs>
@@ -82,14 +85,16 @@ namespace STDEXEC {
       // [exec.spawn.future] paragraphs 4.1 and 4.2
       __future_variant<__sigs_are_nothrow_storable<_Sigs...>, _Sigs...>::type;
 
-    struct __try_cancelable {
+    struct __try_cancelable
+    {
       explicit __try_cancelable(void (*__try_cancel)(__try_cancelable*) noexcept) noexcept
-        : __try_cancel_(__try_cancel) {
-      }
+        : __try_cancel_(__try_cancel)
+      {}
 
       __try_cancelable(__try_cancelable&&) = delete;
 
-      void __try_cancel() noexcept {
+      void __try_cancel() noexcept
+      {
         __try_cancel_(this);
       }
 
@@ -103,16 +108,19 @@ namespace STDEXEC {
     // this is the stop callback registered by a future (i.e. the result of spawn_future) when it is
     // connected and started; once registered, it ensures that stop requests delivered to the started
     // future are forwarded into the spawned work
-    struct __future_stop_callback {
+    struct __future_stop_callback
+    {
       __try_cancelable* __self_;
 
-      void operator()() noexcept {
+      void operator()() noexcept
+      {
         __self_->__try_cancel();
       }
     };
 
     template <bool _NothrowSyncWork, class... _Sigs>
-    struct __future_completions {
+    struct __future_completions
+    {
       // this case handles _NothrowSyncWork == true
       // this case is applicable when both conditions are true:
       //  - the results of all possible completions can be decay-copied into the decayed-tuple that
@@ -124,34 +132,32 @@ namespace STDEXEC {
     };
 
     template <class... _Sigs>
-    struct __future_completions<false, _Sigs...> {
-      using type = __mcall<
-        __munique<__qq<completion_signatures>>,
-        set_stopped_t(),
-        set_error_t(std::exception_ptr),
-        __decayed_sig<_Sigs>...
-      >;
+    struct __future_completions<false, _Sigs...>
+    {
+      using type = __mcall<__munique<__qq<completion_signatures>>,
+                           set_stopped_t(),
+                           set_error_t(std::exception_ptr),
+                           __decayed_sig<_Sigs>...>;
     };
 
     template <class _Env>
     inline constexpr bool __stop_callback_is_nothrow_constructible = __nothrow_constructible_from<
       stop_callback_for_t<stop_token_of_t<_Env>, __future_stop_callback>,
       stop_token_of_t<_Env>,
-      __future_stop_callback
-    >;
+      __future_stop_callback>;
 
     template <class _Env, class... _Sigs>
     using __future_completions_t = __future_completions<
       __stop_callback_is_nothrow_constructible<_Env> && __sigs_are_nothrow_storable<_Sigs...>,
-      _Sigs...
-    >::type;
+      _Sigs...>::type;
 
     // [exec.spawn.future] paragraph 3
     template <class _Completions>
     struct __spawn_future_state_base;
 
     template <class... _Sigs>
-    struct __spawn_future_state_base<completion_signatures<_Sigs...>> : __try_cancelable {
+    struct __spawn_future_state_base<completion_signatures<_Sigs...>> : __try_cancelable
+    {
       using __variant_t = __future_variant_t<_Sigs...>;
       template <class _Env>
       using __completions_t = __future_completions_t<_Env, _Sigs...>;
@@ -162,12 +168,13 @@ namespace STDEXEC {
         void (*__try_cancel)(__try_cancelable*) noexcept,
         void (*__complete)(__spawn_future_state_base*) noexcept) noexcept
         : __try_cancelable(__try_cancel)
-        , __complete_(__complete) {
-      }
+        , __complete_(__complete)
+      {}
 
       __spawn_future_state_base(__spawn_future_state_base&&) = delete;
 
-      void __complete() noexcept {
+      void __complete() noexcept
+      {
         __complete_(this);
       }
 
@@ -180,35 +187,45 @@ namespace STDEXEC {
 
     // [exec.spawn.future] paragraph 5
     template <class _Completions>
-    struct __spawn_future_receiver {
+    struct __spawn_future_receiver
+    {
       using receiver_concept = receiver_t;
 
       __spawn_future_state_base<_Completions>* __state_;
 
       template <class... _T>
-      void set_value(_T&&... __t) && noexcept {
+      void set_value(_T&&... __t) && noexcept
+      {
         __set_complete<set_value_t>(static_cast<_T&&>(__t)...);
       }
 
       template <class _E>
-      void set_error(_E&& __e) && noexcept {
+      void set_error(_E&& __e) && noexcept
+      {
         __set_complete<set_error_t>(static_cast<_E&&>(__e));
       }
 
-      void set_stopped() && noexcept {
+      void set_stopped() && noexcept
+      {
         __set_complete<set_stopped_t>();
       }
 
      private:
       template <class _CPO, class... _T>
-      void __set_complete(_T&&... __t) noexcept {
+      void __set_complete(_T&&... __t) noexcept
+      {
         constexpr bool __non_throwing = (__nothrow_constructible_from<__decay_t<_T>, _T> && ...);
 
-        try {
-          __state_->__result_
-            .template emplace<__decayed_tuple<_CPO, _T...>>(_CPO{}, static_cast<_T&&>(__t)...);
-        } catch (...) {
-          if constexpr (!__non_throwing) {
+        try
+        {
+          __state_->__result_.template emplace<__decayed_tuple<_CPO, _T...>>(_CPO{},
+                                                                             static_cast<_T&&>(
+                                                                               __t)...);
+        }
+        catch (...)
+        {
+          if constexpr (!__non_throwing)
+          {
             using tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state_->__result_.template emplace<tuple_t>(set_error_t{}, std::current_exception());
           }
@@ -221,9 +238,9 @@ namespace STDEXEC {
     // [exec.spawn.future] paragraph 6
     // ssource-t is inplace_stop_token
     template <class _Sender, class _Env>
-    using __future_spawned_sender = decltype(write_env(
-      __stop_when(__declval<_Sender>(), inplace_stop_token{}),
-      __declval<_Env>()));
+    using __future_spawned_sender = decltype(write_env(__stop_when(__declval<_Sender>(),
+                                                                   inplace_stop_token{}),
+                                                       __declval<_Env>()));
 
     // [exec.spawn.future] paragraph 7
     template <class _Alloc, scope_token _Token, sender _Sender, class _Env>
@@ -240,8 +257,8 @@ namespace STDEXEC {
           // with an empty environment after all. This code works; I don't understand why the extra
           // env type changes the result, but this is a reasonably small change we can make to the
           // spec to bring things into alignment.
-          completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>
-        > {
+          completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>>
+    {
       using __sigs_t =
         // this is "wrong" in the same way as the above
         completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>;
@@ -255,29 +272,36 @@ namespace STDEXEC {
       __spawn_future_state(_Alloc __alloc, _Sender&& __sndr, _Token __token, _Env __env)
         : __base(__do_try_cancel, __do_complete)
         , __alloc_(std::move(__alloc))
-        , __op_(
-            STDEXEC::connect(
-              write_env(
-                __stop_when(static_cast<_Sender&&>(__sndr), __stop_source_.get_token()),
-                std::move(__env)),
-              __receiver_t(this)))
-        , __assoc_(__token.try_associate()) {
-        if (__assoc_) {
+        , __op_(STDEXEC::connect(write_env(__stop_when(static_cast<_Sender&&>(__sndr),
+                                                       __stop_source_.get_token()),
+                                           std::move(__env)),
+                                 __receiver_t(this)))
+        , __assoc_(__token.try_associate())
+      {
+        if (__assoc_)
+        {
           STDEXEC::start(__op_);
-        } else {
+        }
+        else
+        {
           STDEXEC::set_stopped(__receiver_t(this));
         }
       }
 
       // NOTE: _Rcvr is unconstrained because the thing we pass doesn't satisfy receiver
       template <class _Rcvr>
-      void __consume(_Rcvr& __rcvr) noexcept {
+      void __consume(_Rcvr& __rcvr) noexcept
+      {
         // Write this before synchronizing with the producer, below.
-        __callback_ = [](__spawn_future_state* __self, void* __ptr) noexcept {
+        __callback_ = [](__spawn_future_state* __self, void* __ptr) noexcept
+        {
           auto& __rcvr = *static_cast<_Rcvr*>(__ptr);
-          if (__self != nullptr) {
+          if (__self != nullptr)
+          {
             __self->__do_consume(__rcvr);
-          } else {
+          }
+          else
+          {
             STDEXEC::set_stopped(std::move(__rcvr));
           }
         };
@@ -292,7 +316,8 @@ namespace STDEXEC {
               // so we can see the result it produced. The success order must be stronger than the
               // failure order so success has to be acquire-release.
               __std::memory_order_acq_rel,
-              __std::memory_order_acquire)) {
+              __std::memory_order_acquire))
+        {
           // Since our CAS succeeded, we can conclude that we observed a null __registered_receiver_
           // and successfully updated it to point to the receiver. That means the consumer has
           // successfully registered a receiver and it's up to the producer to complete it when the
@@ -302,7 +327,8 @@ namespace STDEXEC {
           return;
         }
 
-        if (__sentinel == (this + 1)) { // NOTE: we didn't update __registered_receiver_
+        if (__sentinel == (this + 1))
+        {  // NOTE: we didn't update __registered_receiver_
           // __try_cancel ran before both __complete and __consume; now we need to negotiate with
           // __complete to decide whether it finished in time to consume its output.
           //
@@ -314,12 +340,15 @@ namespace STDEXEC {
           __sentinel = __registered_receiver_.exchange(this, __std::memory_order_acq_rel);
         }
 
-        if (__sentinel == this) {
+        if (__sentinel == this)
+        {
           // Either the producer completed before we CAS'd, or it snuck in and completed between
           // our CAS and our exchange; in either case, we ought to consume its result.
           __do_consume(__rcvr);
           __destroy();
-        } else {
+        }
+        else
+        {
           STDEXEC_ASSERT(__sentinel == (this + 1));
           // Our exchange observed the same (this + 1) that the CAS did, which means that the producer
           // didn't finish in time; also, by setting __registered_receiver_ to (this), we've marked the
@@ -329,7 +358,8 @@ namespace STDEXEC {
         }
       }
 
-      void __abandon() noexcept {
+      void __abandon() noexcept
+      {
         // We're about to mark the consuming side as complete, at which point the producing side is
         // free to destroy this object so we can't "optimize" by deferring this stop request
         __stop_source_.request_stop();
@@ -342,11 +372,14 @@ namespace STDEXEC {
         // combination, we need acquire-release semantics here.
         void* __sentinel = __registered_receiver_.exchange(this, __std::memory_order_acq_rel);
 
-        if (__sentinel == nullptr) {
+        if (__sentinel == nullptr)
+        {
           // The producer hadn't finished by the time we marked the consumer as done so we've handed
           // over clean-up responsibility and have nothing else to do.
           return;
-        } else {
+        }
+        else
+        {
           STDEXEC_ASSERT(__sentinel == this);
           // The producer side completed before we did so we're responsible for clean-up.
           __destroy();
@@ -356,10 +389,10 @@ namespace STDEXEC {
      private:
       using __assoc_t = std::remove_cvref_t<decltype(__declval<_Token&>().try_associate())>;
 
-      _Alloc __alloc_;
+      _Alloc              __alloc_;
       inplace_stop_source __stop_source_;
-      __op_t __op_;
-      __assoc_t __assoc_;
+      __op_t              __op_;
+      __assoc_t           __assoc_;
       // Type-erased receiver. Several possible values:
       //   1. `nullptr` means "unset"
       //   2. `this` means either the producer or consumer is done with the operation and the
@@ -379,7 +412,8 @@ namespace STDEXEC {
       // before the producer could finish.
       void (*__callback_)(__spawn_future_state*, void*) noexcept;
 
-      void __destroy() noexcept {
+      void __destroy() noexcept
+      {
         [[maybe_unused]]
         auto __assoc = std::move(__assoc_);
 
@@ -393,19 +427,20 @@ namespace STDEXEC {
       }
 
       // NOTE: __rcvr's type is unconstrained because the thing we pass doesn't satisfy receiver
-      void __do_consume(auto& __rcvr) noexcept {
+      void __do_consume(auto& __rcvr) noexcept
+      {
         __visit(
-          [&__rcvr](auto&& __tuple) noexcept {
-            __apply(
-              [&__rcvr](auto cpo, auto&&... __vals) {
-                cpo(std::move(__rcvr), std::move(__vals)...);
-              },
-              std::move(__tuple)); // NOLINT(bugprone-move-forwarding-reference)
+          [&__rcvr](auto&& __tuple) noexcept
+          {
+            __apply([&__rcvr](auto cpo, auto&&... __vals)
+                    { cpo(std::move(__rcvr), std::move(__vals)...); },
+                    std::move(__tuple));  // NOLINT(bugprone-move-forwarding-reference)
           },
           std::move(this->__result_));
       }
 
-      static void __do_complete(__base* __base_ptr) noexcept {
+      static void __do_complete(__base* __base_ptr) noexcept
+      {
         auto* __self = static_cast<__spawn_future_state*>(__base_ptr);
 
         // Consider: it'd be nice to eagerly destruct __op_ here; to do that, we'd need to store
@@ -418,15 +453,18 @@ namespace STDEXEC {
         // arrived before or after the consumer. In the case we finish first, we need to store-release
         // so the consumer can see what we've written; in the case we finish second, we need to
         // load-acquire so we can see what the consumer has written.
-        void* __sentinel = __self->__registered_receiver_
-                             .exchange(__self, __std::memory_order_acq_rel);
+        void* __sentinel = __self->__registered_receiver_.exchange(__self,
+                                                                   __std::memory_order_acq_rel);
 
-        if (__sentinel == nullptr) { // NOLINT(bugprone-branch-clone)
+        if (__sentinel == nullptr)
+        {  // NOLINT(bugprone-branch-clone)
           // The producer side has completed first and we've updated __registered_receiver_ with
           // (__self) to mark things as such; the consumer side is responsible for all further
           // actions.
           return;
-        } else if (__sentinel == __self) {
+        }
+        else if (__sentinel == __self)
+        {
           // There are two possible histories here; the consumer side either
           //  1. abandoned the operation without ever starting, or
           //  2. was started but received a stop request and successfully cancelled before we
@@ -434,7 +472,9 @@ namespace STDEXEC {
           //
           // In either case, the producer is "too late" and there's nothing to do but clean up.
           __self->__destroy();
-        } else if (__sentinel == (__self + 1)) {
+        }
+        else if (__sentinel == (__self + 1))
+        {
           // The consumer side has been started and a stop request was received before __consume
           // could be invoked; the producer has also completed before __consume could be invoked
           // and we've left (__self) in place of (__self + 1) so, when __consume gets around to
@@ -443,7 +483,9 @@ namespace STDEXEC {
           // finished first; by overwriting __registered_receiver_ with (__self), we've erased the
           // fact that the stop request happened to come in before we did.
           return;
-        } else {
+        }
+        else
+        {
           // The producer finished after the consumer register a receiver for us to complete. There
           // may be an incoming or outstanding stop request that causes __try_start to race with us
           // but, if so, we don't need to worry about it--invoking __callback_ like __self will
@@ -457,7 +499,8 @@ namespace STDEXEC {
         }
       }
 
-      static void __do_try_cancel(__try_cancelable* __base_ptr) noexcept {
+      static void __do_try_cancel(__try_cancelable* __base_ptr) noexcept
+      {
         auto* __self = static_cast<__spawn_future_state*>(__base_ptr);
 
         // Consider: there's a sense in which we only need to invoke request_stop if we've arrived
@@ -526,7 +569,8 @@ namespace STDEXEC {
               // load-acquire on failure so we can safely read the value of __callback_ that may have
               // been written by the consumer.
               __std::memory_order_acq_rel,
-              __std::memory_order_acquire)) {
+              __std::memory_order_acquire))
+        {
           // We succeeded, meaning that __registered_receiver_ was nullptr on entry, which signals
           // that __try_cancel ran before either of __consume or __complete. Leaving (__self + 1)
           // as the sentinel will allow the two forthcoming functions to negotiate how to
@@ -534,7 +578,8 @@ namespace STDEXEC {
           return;
         }
 
-        if (__sentinel == __self) {
+        if (__sentinel == __self)
+        {
           // __complete has already finished and left a value behind; we should let __consume
           // consume it.
           //
@@ -556,8 +601,8 @@ namespace STDEXEC {
         //  2. try to mark the operation as abandoned so that the producer can take clean-up
         //     responsibility.
 
-        const auto __rcvr = __sentinel;
-        auto __cb = __self->__callback_;
+        auto const __rcvr = __sentinel;
+        auto       __cb   = __self->__callback_;
 
         // We have already synchronized with the consumer by performing a load-acquire above (and
         // we know it was the *consumer* we synchronized with because __sentinel contains the address
@@ -578,7 +623,8 @@ namespace STDEXEC {
         // So, we store-release here in case we're in case 1.
         __sentinel = __self->__registered_receiver_.exchange(__self, __std::memory_order_release);
 
-        if (__sentinel == __rcvr) {
+        if (__sentinel == __rcvr)
+        {
           // __registered_receiver_ still contained the value we observed during the CAS, which means
           // the producer still hadn't updated it to contain (__self). This means we succeeded in
           // marking the operation as abandoned and the producer will destroy it when it completes
@@ -587,7 +633,9 @@ namespace STDEXEC {
           // to signal that it ought to invoke set_stopped(std::move(*__rcvr)) without touching the
           // operation.
           __cb(nullptr, __rcvr);
-        } else {
+        }
+        else
+        {
           STDEXEC_ASSERT(__sentinel == __self);
           // The producer beat us to the punch; it's busy trying to complete and is about to
           // destroy the operation. Bail out.
@@ -595,26 +643,29 @@ namespace STDEXEC {
       }
     };
 
-    struct spawn_future_t {
+    struct spawn_future_t
+    {
       template <sender _Sender, scope_token _Token>
-      auto operator()(_Sender&& __sndr, _Token&& __tkn) const -> __well_formed_sender auto {
+      auto operator()(_Sender&& __sndr, _Token&& __tkn) const -> __well_formed_sender auto
+      {
         return (*this)(static_cast<_Sender&&>(__sndr), static_cast<_Token&&>(__tkn), env<>{});
       }
 
       template <sender _Sender, scope_token _Token, class _Env>
-      auto operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const -> __well_formed_sender
-        auto {
-        return __impl(
-          __tkn.wrap(static_cast<_Sender&&>(__sndr)),
-          static_cast<_Token&&>(__tkn),
-          static_cast<_Env&&>(__env));
+      auto
+      operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const -> __well_formed_sender auto
+      {
+        return __impl(__tkn.wrap(static_cast<_Sender&&>(__sndr)),
+                      static_cast<_Token&&>(__tkn),
+                      static_cast<_Env&&>(__env));
       }
 
      private:
       template <sender _Sender, scope_token _Token, class _Env>
-      auto __impl(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const {
+      auto __impl(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const
+      {
         using __alloc_t = decltype(__spawn_common::__choose_alloc(__env, get_env(__sndr)));
-        using __senv_t = decltype(__spawn_common::__choose_senv(__env, get_env(__sndr)));
+        using __senv_t  = decltype(__spawn_common::__choose_senv(__env, get_env(__sndr)));
 
         using __spawn_future_state_t =
           __spawn_future_state<__alloc_t, std::remove_cvref_t<_Token>, _Sender, __senv_t>;
@@ -628,18 +679,19 @@ namespace STDEXEC {
 
         __scope_guard __guard{[&]() noexcept { __traits::deallocate(__alloc, __op, 1); }};
 
-        __traits::construct(
-          __alloc,
-          __op,
-          __alloc,
-          static_cast<_Sender&&>(__sndr),
-          static_cast<_Token&&>(__tkn),
-          __spawn_common::__choose_senv(__env, get_env(__sndr)));
+        __traits::construct(__alloc,
+                            __op,
+                            __alloc,
+                            static_cast<_Sender&&>(__sndr),
+                            static_cast<_Token&&>(__tkn),
+                            __spawn_common::__choose_senv(__env, get_env(__sndr)));
 
         __guard.__dismiss();
 
-        struct __abandoner {
-          void operator()(__spawn_future_state_t* __p) const noexcept {
+        struct __abandoner
+        {
+          void operator()(__spawn_future_state_t* __p) const noexcept
+          {
             __p->__abandon();
           }
         };
@@ -650,36 +702,37 @@ namespace STDEXEC {
     };
 
     template <class _Sender>
-    struct __future_operation_base {
+    struct __future_operation_base
+    {
       // __data_of<_Sender> is a unique_ptr specialization
       using __unique_ptr_t = __data_of<std::remove_cvref_t<_Sender>>;
 
       explicit __future_operation_base(__unique_ptr_t&& __future) noexcept
-        : __future_(std::move(__future)) {
-      }
+        : __future_(std::move(__future))
+      {}
 
      protected:
       __unique_ptr_t __future_;
     };
 
     template <class _Sender, class _Receiver>
-    struct __future_operation : __future_operation_base<_Sender> {
+    struct __future_operation : __future_operation_base<_Sender>
+    {
       using __base = __future_operation_base<_Sender>;
 
       __future_operation(__base::__unique_ptr_t&& __future, _Receiver __rcvr) noexcept
         : __future_operation_base<_Sender>(std::move(__future))
-        , __rcvr_(std::move(__rcvr)) {
-      }
+        , __rcvr_(std::move(__rcvr))
+      {}
 
-      ~__future_operation() {
-      }
+      ~__future_operation() {}
 
-      void __run() noexcept(__stop_callback_is_nothrow_constructible<env_of_t<_Receiver>>) {
+      void __run() noexcept(__stop_callback_is_nothrow_constructible<env_of_t<_Receiver>>)
+      {
         // this might throw
-        std::construct_at(
-          &__callback_,
-          STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)),
-          __future_stop_callback{this->__future_.get()});
+        std::construct_at(&__callback_,
+                          STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)),
+                          __future_stop_callback{this->__future_.get()});
 
         // this is no-throw
         this->__future_.release()->__consume(__inner_rcvr_);
@@ -688,20 +741,24 @@ namespace STDEXEC {
       _Receiver __rcvr_;
 
      private:
-      struct __receiver {
+      struct __receiver
+      {
         using receiver_concept = STDEXEC::receiver_t;
 
         template <class... _Ts>
-        void set_value(_Ts&&... __ts) && noexcept {
+        void set_value(_Ts&&... __ts) && noexcept
+        {
           __op_->__complete<STDEXEC::set_value_t>(static_cast<_Ts&&>(__ts)...);
         }
 
         template <class _E>
-        void set_error(_E&& __e) && noexcept {
+        void set_error(_E&& __e) && noexcept
+        {
           __op_->__complete<STDEXEC::set_error_t>(static_cast<_E&&>(__e));
         }
 
-        void set_stopped() && noexcept {
+        void set_stopped() && noexcept
+        {
           __op_->__complete<STDEXEC::set_stopped_t>();
         }
 
@@ -712,19 +769,22 @@ namespace STDEXEC {
       // __callback_ is left unconstructed until __run() is called; if the constructor invocation
       // throws then __callback_ is never constructed or destructed at all, otherwise, its destructor
       // is invoked when the receiver contract is completed in __complete, below.
-      union {
+      union
+      {
         stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __future_stop_callback>
           __callback_;
       };
 
       template <class _CPO, class... _Ts>
-      void __complete(_Ts&&... __ts) noexcept {
+      void __complete(_Ts&&... __ts) noexcept
+      {
         std::destroy_at(std::addressof(__callback_));
         _CPO{}(std::move(__rcvr_), static_cast<_Ts&&>(__ts)...);
       }
     };
 
-    struct __spawn_future_impl : __sexpr_defaults {
+    struct __spawn_future_impl : __sexpr_defaults
+    {
       // __data_of<_Sender> is a unique_ptr specialization
       template <class _Sender>
       using __unique_ptr_t = __data_of<std::remove_cvref_t<_Sender>>;
@@ -736,31 +796,38 @@ namespace STDEXEC {
       using __completions_t = __spawn_future_state_t<_Sender>::template __completions_t<_Env>;
 
       template <class _Sender, class _Env>
-      static consteval auto __get_completion_signatures() //
-        -> __completions_t<_Sender, _Env> {
+      static consteval auto __get_completion_signatures()  //
+        -> __completions_t<_Sender, _Env>
+      {
         return {};
       };
 
       static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */
-        -> __future_operation<std::remove_cvref_t<_Sender>, _Receiver> {
+        -> __future_operation<std::remove_cvref_t<_Sender>, _Receiver>
+      {
         auto& [_, __future] = __sndr;
         return {std::move(__future), std::move(__rcvr)};
       };
 
-      static constexpr auto __start = [](auto& __state) noexcept {
+      static constexpr auto __start = [](auto& __state) noexcept
+      {
         constexpr bool __non_throwing = noexcept(__state.__run());
 
-        try {
+        try
+        {
           __state.__run();
-        } catch (...) {
-          if constexpr (!__non_throwing) {
+        }
+        catch (...)
+        {
+          if constexpr (!__non_throwing)
+          {
             STDEXEC::set_error(std::move(__state.__rcvr_), std::current_exception());
           }
         }
       };
     };
-  } // namespace __spawn_future
+  }  // namespace __spawn_future
 
   using __spawn_future::spawn_future_t;
 
@@ -769,5 +836,6 @@ namespace STDEXEC {
   inline constexpr spawn_future_t spawn_future{};
 
   template <>
-  struct __sexpr_impl<spawn_future_t> : __spawn_future::__spawn_future_impl { };
-} // namespace STDEXEC
+  struct __sexpr_impl<spawn_future_t> : __spawn_future::__spawn_future_impl
+  {};
+}  // namespace STDEXEC

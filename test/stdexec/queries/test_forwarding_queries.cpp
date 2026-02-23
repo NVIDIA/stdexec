@@ -17,37 +17,42 @@
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
-STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
+STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  struct my_forwarding_query_t {
+  struct my_forwarding_query_t
+  {
     [[nodiscard]]
-    constexpr auto query(ex::forwarding_query_t) const noexcept -> bool {
+    constexpr auto query(ex::forwarding_query_t) const noexcept -> bool
+    {
       return true;
     }
   };
 
   inline constexpr my_forwarding_query_t my_forwarding_query{};
 
-  struct my_derived_forwarding_query_t : ex::forwarding_query_t { };
+  struct my_derived_forwarding_query_t : ex::forwarding_query_t
+  {};
 
   inline constexpr my_derived_forwarding_query_t my_derived_forwarding_query{};
 
-  struct my_non_forwarding_query_t { };
+  struct my_non_forwarding_query_t
+  {};
 
   inline constexpr my_non_forwarding_query_t my_non_forwarding_query{};
 
-  TEST_CASE("exec.queries are forwarding queries", "[exec.queries][forwarding_queries]") {
+  TEST_CASE("exec.queries are forwarding queries", "[exec.queries][forwarding_queries]")
+  {
     static_assert(ex::forwarding_query(ex::get_allocator));
     static_assert(ex::forwarding_query(ex::get_stop_token));
     static_assert(ex::forwarding_query(ex::get_scheduler));
     static_assert(ex::forwarding_query(ex::get_delegation_scheduler));
-    static_assert(
-      std::is_same_v<ex::get_delegatee_scheduler_t, ex::get_delegation_scheduler_t>,
-      "Deprecated type is the same type.");
+    static_assert(std::is_same_v<ex::get_delegatee_scheduler_t, ex::get_delegation_scheduler_t>,
+                  "Deprecated type is the same type.");
     static_assert(&ex::get_delegatee_scheduler == &ex::get_delegation_scheduler);
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_value_t>));
     static_assert(ex::forwarding_query(ex::get_completion_scheduler<ex::set_error_t>));
@@ -57,4 +62,4 @@ namespace {
     static_assert(ex::forwarding_query(my_derived_forwarding_query));
     static_assert(!ex::forwarding_query(my_non_forwarding_query));
   }
-} // namespace
+}  // namespace

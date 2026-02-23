@@ -23,28 +23,32 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
   template <class T>
-  struct test_allocator {
+  struct test_allocator
+  {
     using value_type = T;
 
     explicit test_allocator(size_t* bytes) noexcept
-      : bytes_(bytes) {
-    }
+      : bytes_(bytes)
+    {}
 
     template <class Other>
-    test_allocator(const test_allocator<Other>& other) noexcept
-      : bytes_(other.bytes_) {
-    }
+    test_allocator(test_allocator<Other> const & other) noexcept
+      : bytes_(other.bytes_)
+    {}
 
-    T* allocate(std::size_t n) {
+    T* allocate(std::size_t n)
+    {
       if (bytes_ != nullptr)
         *bytes_ += n * sizeof(T);
       return static_cast<T*>(::operator new(n * sizeof(T)));
     }
 
-    void deallocate(T* p, std::size_t n) {
+    void deallocate(T* p, std::size_t n)
+    {
       if (bytes_ != nullptr)
         *bytes_ -= n * sizeof(T);
 #if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 2013'09L
@@ -54,7 +58,7 @@ namespace {
 #endif
     }
 
-    bool operator==(const test_allocator&) const = default;
+    bool operator==(test_allocator const &) const = default;
 
    private:
     template <class>
@@ -63,4 +67,4 @@ namespace {
     size_t* bytes_ = nullptr;
   };
 
-} // namespace
+}  // namespace

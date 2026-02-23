@@ -27,28 +27,30 @@
 #include "__receivers.hpp"
 #include "__type_traits.hpp"
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
-  struct sender_t {
+  struct sender_t
+  {
     // NOT TO SPEC:
     using sender_concept = sender_t;
   };
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _Sender>
     concept __enable_sender = __std::derived_from<typename _Sender::sender_concept, sender_t>
-                           || requires { typename _Sender::is_sender; } // NOT TO SPEC back compat
                            || __awaitable<_Sender, __detail::__promise<env<>>>;
-  } // namespace __detail
+  }  // namespace __detail
 
   template <class _Sender>
   inline constexpr bool enable_sender = __detail::__enable_sender<_Sender>;
 
   // [exec.snd.concepts]
   template <class _Sender>
-  concept sender = enable_sender<__decay_t<_Sender>>         //
-                && __environment_provider<__cref_t<_Sender>> //
+  concept sender = enable_sender<__decay_t<_Sender>>          //
+                && __environment_provider<__cref_t<_Sender>>  //
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
@@ -57,8 +59,8 @@ namespace STDEXEC {
 
   template <class _Sender, class... _Env>
   concept sender_in =
-    (sizeof...(_Env) <= 1) //
-    && sender<_Sender>     //
+    (sizeof...(_Env) <= 1)  //
+    && sender<_Sender>      //
     && __constant_completion_signatures<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
   template <class _Receiver, class _Sender>
@@ -68,12 +70,12 @@ namespace STDEXEC {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
-  concept __sender_to = receiver<_Receiver>                     //
-                     && sender_in<_Sender, env_of_t<_Receiver>> //
+  concept __sender_to = receiver<_Receiver>                      //
+                     && sender_in<_Sender, env_of_t<_Receiver>>  //
                      && __receiver_from<_Receiver, _Sender>;
 
   template <class _Sender, class _Receiver>
-  concept sender_to = __sender_to<_Sender, _Receiver> //
+  concept sender_to = __sender_to<_Sender, _Receiver>  //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
                       };
@@ -82,57 +84,66 @@ namespace STDEXEC {
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
 
   template <class _Sender, class... _Env>
-  using __single_sender_value_t = __value_types_t<
-    __completion_signatures_of_t<_Sender, _Env...>,
-    __qq<__msingle>,
-    __qq<__msingle>
-  >;
+  using __single_sender_value_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
+                                                  __qq<__msingle>,
+                                                  __qq<__msingle>>;
 
   template <class _Sender, class... _Env>
   using __single_value_variant_sender_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__mlist>, __qq<__msingle>>;
 
   template <class _Tag, class _Sender, class... _Env>
-  concept __sends = sender_in<_Sender, _Env...> //
+  concept __sends = sender_in<_Sender, _Env...>  //
                  && __count_of<_Tag, _Sender, _Env...>::value != 0;
 
   template <class _Tag, class _Sender, class... _Env>
-  concept __never_sends = sender_in<_Sender, _Env...> //
+  concept __never_sends = sender_in<_Sender, _Env...>  //
                        && __count_of<_Tag, _Sender, _Env...>::value == 0;
 
   template <class _Sender, class... _Env>
-  concept __single_value_sender = sender_in<_Sender, _Env...> //
+  concept __single_value_sender = sender_in<_Sender, _Env...>  //
                                && requires { typename __single_sender_value_t<_Sender, _Env...>; };
 
   template <class _Sender, class... _Env>
   concept __single_value_variant_sender =
-    sender_in<_Sender, _Env...> //
+    sender_in<_Sender, _Env...>  //
     && requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
 
-  namespace __detail {
+  namespace __detail
+  {
     template <class _SenderName, class _Sender, class... _Env>
-    constexpr auto __diagnose_sender_concept_failure() noexcept {
-      if constexpr (!enable_sender<__decay_t<_Sender>>) {
+    constexpr auto __diagnose_sender_concept_failure() noexcept
+    {
+      if constexpr (!enable_sender<__decay_t<_Sender>>)
+      {
         static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-      } else if constexpr (!__std::move_constructible<__decay_t<_Sender>>) {
-        static_assert(
-          __std::move_constructible<__decay_t<_Sender>>,
-          "The sender type is not move-constructible.");
-      } else if constexpr (!__std::constructible_from<__decay_t<_Sender>, _Sender>) {
-        static_assert(
-          __decay_copyable<_Sender>,
-          "The sender cannot be decay-copied. Did you forget a std::move?");
-      } else {
+      }
+      else if constexpr (!__std::move_constructible<__decay_t<_Sender>>)
+      {
+        static_assert(__std::move_constructible<__decay_t<_Sender>>,
+                      "The sender type is not move-constructible.");
+      }
+      else if constexpr (!__std::constructible_from<__decay_t<_Sender>, _Sender>)
+      {
+        static_assert(__decay_copyable<_Sender>,
+                      "The sender cannot be decay-copied. Did you forget a std::move?");
+      }
+      else
+      {
         using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
-        if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_Sender, _Env...>>) {
+        if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_Sender, _Env...>>)
+        {
           static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
-        } else if constexpr (__merror<_Completions>) {
-          static_assert(
-            !__merror<_Completions>, STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
-        } else {
-          static_assert(
-            __valid_completion_signatures<_Completions>,
-            STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
+        }
+        else if constexpr (__merror<_Completions>)
+        {
+          static_assert(!__merror<_Completions>,
+                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
+        }
+        else
+        {
+          static_assert(__valid_completion_signatures<_Completions>,
+                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
         }
 #if STDEXEC_MSVC() || STDEXEC_NVHPC()
         // MSVC and NVHPC need more encouragement to print the type of the
@@ -141,16 +152,15 @@ namespace STDEXEC {
 #endif
       }
     }
-  } // namespace __detail
+  }  // namespace __detail
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   template <class _Sender, class... _Env>
-  constexpr auto __diagnose_sender_concept_failure() noexcept {
-    return __detail::__diagnose_sender_concept_failure<
-      _WITH_PRETTY_SENDER_<_Sender>,
-      _Sender,
-      _Env...
-    >();
+  constexpr auto __diagnose_sender_concept_failure() noexcept
+  {
+    return __detail::__diagnose_sender_concept_failure<_WITH_PRETTY_SENDER_<_Sender>,
+                                                       _Sender,
+                                                       _Env...>();
   }
-} // namespace STDEXEC
+}  // namespace STDEXEC

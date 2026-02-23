@@ -30,20 +30,24 @@ namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("sync_wait simple test", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait simple test", "[consumers][sync_wait]")
+  {
     std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(49));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 49);
   }
 
-  TEST_CASE("sync_wait can wait on void values", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait can wait on void values", "[consumers][sync_wait]")
+  {
     std::optional<std::tuple<>> res = ex::sync_wait(ex::just());
     CHECK(res.has_value());
   }
 
-  TEST_CASE("sync_wait can wait on senders sending value packs", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait can wait on senders sending value packs", "[consumers][sync_wait]")
+  {
     std::optional<std::tuple<int, double>> res = ex::sync_wait(ex::just(3, 0.1415));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 3);
@@ -51,79 +55,104 @@ namespace {
   }
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
-  TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]")
+  {
     // Generate an exception pointer object
     std::exception_ptr eptr;
-    try {
+    try
+    {
       throw std::logic_error("err");
-    } catch (...) {
+    }
+    catch (...)
+    {
       eptr = std::current_exception();
     }
 
     // Ensure that ex::sync_wait will rethrow the error
-    try {
+    try
+    {
       error_scheduler<std::exception_ptr> sched{eptr};
       ex::sync_wait(ex::just(19) | ex::continues_on(sched));
       FAIL("exception not thrown?");
-    } catch (const std::logic_error& e) {
+    }
+    catch (std::logic_error const & e)
+    {
       CHECK(std::string{e.what()} == "err");
-    } catch (...) {
+    }
+    catch (...)
+    {
       FAIL("invalid exception received");
     }
   }
 
-  TEST_CASE("sync_wait handling error_code errors", "[consumers][sync_wait]") {
-    try {
+  TEST_CASE("sync_wait handling error_code errors", "[consumers][sync_wait]")
+  {
+    try
+    {
       error_scheduler<std::error_code> sched{
         std::make_error_code(std::errc::argument_out_of_domain)};
       ex::sender auto snd = ex::just(19) | ex::continues_on(sched);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
-      ex::sync_wait(std::move(snd)); // doesn't work
+      ex::sync_wait(std::move(snd));  // doesn't work
       FAIL("expecting exception to be thrown");
-    } catch (const std::system_error& e) {
+    }
+    catch (std::system_error const & e)
+    {
       CHECK(e.code() == std::errc::argument_out_of_domain);
-    } catch (...) {
+    }
+    catch (...)
+    {
       FAIL("expecting std::system_error exception to be thrown");
     }
   }
 
-  TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]") {
-    try {
+  TEST_CASE("sync_wait handling non-exception errors", "[consumers][sync_wait]")
+  {
+    try
+    {
       error_scheduler<std::string> sched{std::string{"err"}};
-      ex::sender auto snd = ex::just(19) | ex::continues_on(sched);
+      ex::sender auto              snd = ex::just(19) | ex::continues_on(sched);
       static_assert(std::invocable<ex::sync_wait_t, decltype(snd)>);
-      ex::sync_wait(std::move(snd)); // doesn't work
+      ex::sync_wait(std::move(snd));  // doesn't work
       FAIL("expecting exception to be thrown");
-    } catch (const std::string& e) {
+    }
+    catch (std::string const & e)
+    {
       CHECK(e == "err");
-    } catch (...) {
+    }
+    catch (...)
+    {
       FAIL("expecting std::string exception to be thrown");
     }
   }
-#endif // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
 
-  TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]") {
-    stopped_scheduler sched;
+  TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]")
+  {
+    stopped_scheduler              sched;
     std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(19) | ex::continues_on(sched));
     CHECK_FALSE(res.has_value());
   }
 
   template <class T>
-  auto always(T t) {
-    return [t](auto&&...) mutable {
+  auto always(T t)
+  {
+    return [t](auto&&...) mutable
+    {
       return std::move(t);
     };
   }
 
-  TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait doesn't accept multi-variant senders", "[consumers][sync_wait]")
+  {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     // static_assert(!std::invocable<ex::sync_wait_t, decltype(snd)>);
   }
 
-  TEST_CASE(
-    "sync_wait_with_variant accepts multi-variant senders",
-    "[consumers][sync_wait_with_variant]") {
+  TEST_CASE("sync_wait_with_variant accepts multi-variant senders",
+            "[consumers][sync_wait_with_variant]")
+  {
     ex::sender auto snd = fallible_just{13} | ex::let_error(always(ex::just(std::string{"err"})));
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
@@ -135,9 +164,9 @@ namespace {
     CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
   }
 
-  TEST_CASE(
-    "sync_wait_with_variant accepts single-value senders",
-    "[consumers][sync_wait_with_variant]") {
+  TEST_CASE("sync_wait_with_variant accepts single-value senders",
+            "[consumers][sync_wait_with_variant]")
+  {
     ex::sender auto snd = ex::just(13);
     check_val_types<ex::__mset<pack<int>>>(snd);
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
@@ -148,22 +177,25 @@ namespace {
     CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
   }
 
-  TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]")
+  {
     std::atomic<bool> thread_started{false};
     std::atomic<bool> thread_stopped{false};
     impulse_scheduler sched;
 
     // Thread that calls `ex::sync_wait`
-    auto waiting_thread = std::thread{[&] {
-      thread_started.store(true);
+    auto waiting_thread = std::thread{
+      [&]
+      {
+        thread_started.store(true);
 
-      // Wait for a result that is triggered by the impulse scheduler
-      std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(49) | ex::continues_on(sched));
-      CHECK(res.has_value());
-      CHECK(std::get<0>(res.value()) == 49);
+        // Wait for a result that is triggered by the impulse scheduler
+        std::optional<std::tuple<int>> res = ex::sync_wait(ex::just(49) | ex::continues_on(sched));
+        CHECK(res.has_value());
+        CHECK(std::get<0>(res.value()) == 49);
 
-      thread_stopped.store(true);
-    }};
+        thread_stopped.store(true);
+      }};
     // Wait for the thread to start (poor-man's sync)
     for (int i = 0; i < 10'000 && !thread_started.load(); i++)
       std::this_thread::sleep_for(100us);
@@ -177,19 +209,19 @@ namespace {
     CHECK(thread_stopped.load());
   }
 
-  TEST_CASE(
-    "sync_wait can wait on operations happening on different threads",
-    "[consumers][sync_wait]") {
-    auto square = [](int x) {
+  TEST_CASE("sync_wait can wait on operations happening on different threads",
+            "[consumers][sync_wait]")
+  {
+    auto square = [](int x)
+    {
       return x * x;
     };
 
     exec::static_thread_pool pool{3};
-    ex::scheduler auto sched = pool.get_scheduler();
-    ex::sender auto snd = ex::when_all(
-      ex::just(2) | ex::continues_on(sched) | ex::then(square),
-      ex::just(3) | ex::continues_on(sched) | ex::then(square),
-      ex::just(5) | ex::continues_on(sched) | ex::then(square));
+    ex::scheduler auto       sched = pool.get_scheduler();
+    ex::sender auto snd = ex::when_all(ex::just(2) | ex::continues_on(sched) | ex::then(square),
+                                       ex::just(3) | ex::continues_on(sched) | ex::then(square),
+                                       ex::just(5) | ex::continues_on(sched) | ex::then(square));
     std::optional<std::tuple<int, int, int>> res = ex::sync_wait(std::move(snd));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 4);
@@ -199,30 +231,32 @@ namespace {
 
   // This domain is used to customize the behavior of sync_wait and sync_wait_with_variant
   // for senders with particular completion signatures.
-  struct sync_wait_test_domain {
+  struct sync_wait_test_domain
+  {
     using single_result_t = std::optional<std::tuple<std::string>>;
-    using multi_result_t = std::optional<std::variant<std::tuple<int>, std::tuple<std::string>>>;
+    using multi_result_t  = std::optional<std::variant<std::tuple<int>, std::tuple<std::string>>>;
 
     template <class Sender>
       requires std::same_as<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, std::type_identity_t>,
-        std::string
-      >
-    static auto apply_sender(ex::sync_wait_t, Sender&&) -> single_result_t {
+        std::string>
+    static auto apply_sender(ex::sync_wait_t, Sender&&) -> single_result_t
+    {
       return {std::string{"ciao"}};
     }
 
     template <class Sender>
       requires ex::__mset_eq<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, ex::__mmake_set>,
-        ex::__mset<std::string, int>
-      >
-    static auto apply_sender(ex::sync_wait_with_variant_t, Sender&&) -> multi_result_t {
+        ex::__mset<std::string, int>>
+    static auto apply_sender(ex::sync_wait_with_variant_t, Sender&&) -> multi_result_t
+    {
       return {std::string{"ciao_multi"}};
     }
   };
 
-  TEST_CASE("sync_wait can be customized", "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait can be customized", "[consumers][sync_wait]")
+  {
     basic_inline_scheduler<sync_wait_test_domain> sched;
 
     // The customization will return a different value
@@ -252,24 +286,23 @@ namespace {
   template <class... Ts>
   using decayed_tuple = std::tuple<std::decay_t<Ts>...>;
 
-  TEST_CASE(
-    "sync_wait spec's return type defined in terms of value_types_of_t",
-    "[consumers][sync_wait]") {
+  TEST_CASE("sync_wait spec's return type defined in terms of value_types_of_t",
+            "[consumers][sync_wait]")
+  {
     static_assert(
       std::is_same_v<
         std::tuple<>,
-        ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>
-      >);
+        ex::value_types_of_t<decltype(ex::just()), ex::env<>, decayed_tuple, std::type_identity_t>>);
   }
 
 #if STDEXEC_NAMESPACE_IS_WITHIN_STD()
-  TEST_CASE(
-    "std::this_thread::sync_wait is available when STDEXEC is std::execution",
-    "[consumers][sync_wait]") {
+  TEST_CASE("std::this_thread::sync_wait is available when STDEXEC is std::execution",
+            "[consumers][sync_wait]")
+  {
     std::optional<std::tuple<int>> res = std::this_thread::sync_wait(ex::just(49));
     CHECK(res.has_value());
     CHECK(std::get<0>(res.value()) == 49);
   }
 #endif
 
-} // namespace
+}  // namespace

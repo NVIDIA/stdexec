@@ -20,32 +20,36 @@
 
 #include <thread>
 
-namespace experimental::execution {
-  class single_thread_context {
+namespace experimental::execution
+{
+  class single_thread_context
+  {
     STDEXEC::run_loop loop_;
-    std::thread thread_;
+    std::thread       thread_;
 
    public:
     single_thread_context()
       : loop_()
-      , thread_([this] { loop_.run(); }) {
-    }
+      , thread_([this] { loop_.run(); })
+    {}
 
-    ~single_thread_context() {
+    ~single_thread_context()
+    {
       loop_.finish();
       thread_.join();
     }
 
-    auto get_scheduler() noexcept {
+    auto get_scheduler() noexcept
+    {
       return loop_.get_scheduler();
     }
 
     [[nodiscard]]
-    auto get_thread_id() const noexcept -> std::thread::id {
+    auto get_thread_id() const noexcept -> std::thread::id
+    {
       return thread_.get_id();
     }
   };
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

@@ -4,9 +4,11 @@
 #include "nvexec/detail/memory.cuh"
 #include "tracer_resource.h"
 
-namespace {
+namespace
+{
 
-  TEST_CASE("monotonic buffer releases storage", "[cuda][stream][memory][monotonic buffer]") {
+  TEST_CASE("monotonic buffer releases storage", "[cuda][stream][memory][monotonic buffer]")
+  {
     tracer_resource resource{};
 
     {
@@ -27,9 +29,9 @@ namespace {
     REQUIRE(0 == resource.allocations.size());
   }
 
-  TEST_CASE(
-    "monotonic buffer keeps track of new allocations",
-    "[cuda][stream][memory][monotonic buffer]") {
+  TEST_CASE("monotonic buffer keeps track of new allocations",
+            "[cuda][stream][memory][monotonic buffer]")
+  {
     tracer_resource resource{};
 
     {
@@ -58,10 +60,10 @@ namespace {
     REQUIRE(0 == resource.allocations.size());
   }
 
-  TEST_CASE(
-    "monotonic buffer provides required allocations",
-    "[cuda][stream][memory][monotonic buffer]") {
-    tracer_resource resource{};
+  TEST_CASE("monotonic buffer provides required allocations",
+            "[cuda][stream][memory][monotonic buffer]")
+  {
+    tracer_resource                     resource{};
     nvdetail::monotonic_buffer_resource buffer{1024, &resource};
 
     char* ptr_1 = reinterpret_cast<char*>(buffer.allocate(32, 8));
@@ -74,16 +76,17 @@ namespace {
     buffer.deallocate(ptr_2, 32, 16);
   }
 
-  TEST_CASE(
-    "monotonic buffer provides required alignment",
-    "[cuda][stream][memory][monotonic buffer]") {
-    tracer_resource resource{};
+  TEST_CASE("monotonic buffer provides required alignment",
+            "[cuda][stream][memory][monotonic buffer]")
+  {
+    tracer_resource                     resource{};
     nvdetail::monotonic_buffer_resource buffer{2048, &resource};
 
-    for (int alignment = 1; alignment < 512; alignment *= 2) {
+    for (int alignment = 1; alignment < 512; alignment *= 2)
+    {
       void* ptr = buffer.allocate(32, alignment);
       REQUIRE(reinterpret_cast<uintptr_t>(ptr) % alignment == 0);
       buffer.deallocate(ptr, 32, alignment);
     }
   }
-} // namespace
+}  // namespace

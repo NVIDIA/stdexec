@@ -24,39 +24,42 @@
 
 using namespace std::chrono_literals;
 
-TEST_CASE("windows_thread_pool: construct_destruct", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: construct_destruct", "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp;
 }
 
-TEST_CASE("windows_thread_pool: custom_thread_pool", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: custom_thread_pool", "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp{2, 4};
-  auto s = tp.get_scheduler();
+  auto                      s = tp.get_scheduler();
 
   std::atomic<int> count = 0;
 
   auto incrementCountOnTp = STDEXEC::then(STDEXEC::schedule(s), [&] { ++count; });
 
-  STDEXEC::sync_wait(
-    STDEXEC::when_all(
-      incrementCountOnTp, incrementCountOnTp, incrementCountOnTp, incrementCountOnTp));
+  STDEXEC::sync_wait(STDEXEC::when_all(incrementCountOnTp,
+                                       incrementCountOnTp,
+                                       incrementCountOnTp,
+                                       incrementCountOnTp));
 
   REQUIRE(count.load() == 4);
 }
 
-TEST_CASE("windows_thread_pool: schedule", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: schedule", "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp;
   STDEXEC::sync_wait(STDEXEC::schedule(tp.get_scheduler()));
 }
 
-TEST_CASE(
-  "windows_thread_pool: schedule_completes_on_a_different_thread",
-  "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: schedule_completes_on_a_different_thread",
+          "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp;
-  const auto mainThreadId = std::this_thread::get_id();
-  auto [workThreadId] = STDEXEC::sync_wait(
-                          STDEXEC::then(
-                            STDEXEC::schedule(tp.get_scheduler()),
-                            [&]() noexcept { return std::this_thread::get_id(); }))
+  auto const                mainThreadId = std::this_thread::get_id();
+  auto [workThreadId] = STDEXEC::sync_wait(STDEXEC::then(STDEXEC::schedule(tp.get_scheduler()),
+                                                         [&]() noexcept
+                                                         { return std::this_thread::get_id(); }))
                           .value();
   REQUIRE_FALSE(workThreadId == mainThreadId);
 }
@@ -84,9 +87,10 @@ TEST_CASE(
 //       [n = 0]() mutable noexcept { return n++ == 1000; }));
 // }
 
-TEST_CASE("windows_thread_pool: schedule_after", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: schedule_after", "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp;
-  auto s = tp.get_scheduler();
+  auto                      s = tp.get_scheduler();
 
   auto startTime = exec::now(s);
 
@@ -119,9 +123,10 @@ TEST_CASE("windows_thread_pool: schedule_after", "[types][windows_thread_pool][s
 //   REQUIRE(duration < 1s);
 // }
 
-TEST_CASE("windows_thread_pool: schedule_at", "[types][windows_thread_pool][schedulers]") {
+TEST_CASE("windows_thread_pool: schedule_at", "[types][windows_thread_pool][schedulers]")
+{
   exec::windows_thread_pool tp;
-  auto s = tp.get_scheduler();
+  auto                      s = tp.get_scheduler();
 
   auto startTime = exec::now(s);
 

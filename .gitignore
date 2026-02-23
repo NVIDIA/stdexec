@@ -15,5 +15,4 @@ callgrind.*
 *.o
 a.out
 *.code-workspace
-/include/asioexec/asio_config.hpp
 .venv-codex

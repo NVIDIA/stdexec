@@ -18,33 +18,35 @@
 
 #pragma once
 
-#cmakedefine01 ASIOEXEC_USES_STANDALONE
-#cmakedefine01 ASIOEXEC_USES_BOOST
+#cmakedefine01 STDEXEC_ASIO_USES_STANDALONE
+#cmakedefine01 STDEXEC_ASIO_USES_BOOST
 
-#if ASIOEXEC_USES_BOOST
+#if STDEXEC_ASIO_USES_BOOST
 #  include <boost/asio.hpp>
 #  include <boost/system/errc.hpp>
 #  include <boost/system/error_code.hpp>
 #  include <boost/system/system_error.hpp>
 #  define ASIOEXEC_ASIO_NAMESPACE boost::asio
-#elif ASIOEXEC_USES_STANDALONE
+#elif STDEXEC_ASIO_USES_STANDALONE
 #  include <system_error>
 #  include <asio.hpp>
 #  define ASIOEXEC_ASIO_NAMESPACE asio
 #endif
 
-namespace asioexec {
-#if ASIOEXEC_USES_BOOST
+namespace experimental::execution::asio {
+#if STDEXEC_ASIO_USES_BOOST
   namespace asio_impl = ::boost::asio;
   using error_code = ::boost::system::error_code;
   using error_condition = ::boost::system::error_condition;
   namespace errc = ::boost::system::errc;
   using system_error = ::boost::system::system_error;
-#elif ASIOEXEC_USES_STANDALONE
+#elif STDEXEC_ASIO_USES_STANDALONE
   namespace asio_impl = ::asio;
   using error_code = std::error_code;
   using error_condition = std::error_condition;
   using errc = std::errc;
   using system_error = std::system_error;
 #endif
-}
+} // namespace experimental::execution::asio
+
+namespace exec = experimental::execution;

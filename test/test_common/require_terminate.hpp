@@ -27,18 +27,20 @@
 #include <catch2/catch.hpp>
 
 #ifdef REQUIRE_TERMINATE
-namespace {
+namespace
+{
   template <class F, class... Args>
-  void __require_terminate(F&& f, Args&&... args) {
+  void __require_terminate(F&& f, Args&&... args)
+  {
     // spawn a new process
     auto child_pid = ::fork();
 
     // if the fork succeed
-    if (child_pid >= 0) {
-
+    if (child_pid >= 0)
+    {
       // if we are in the child process
-      if (child_pid == 0) {
-
+      if (child_pid == 0)
+      {
         // call the function that we expect to abort
         std::set_terminate([] { std::exit(EXIT_FAILURE); });
 
@@ -56,10 +58,11 @@ namespace {
     // we check the exit status instead of a signal interrupt, because
     // Catch is going to catch the signal and exit with an error
     bool aborted = WEXITSTATUS(exit_status);
-    if (!aborted) {
+    if (!aborted)
+    {
       INFO("He didn't fall? Inconceivable!");
     }
     REQUIRE(aborted);
   }
-} // namespace
+}  // namespace
 #endif

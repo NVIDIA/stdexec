@@ -18,16 +18,23 @@
 
 #pragma once
 
-#include <asioexec/asio_config.hpp>
+#include "../stdexec/__detail/__config.hpp"
 
-namespace asioexec {
+#if STDEXEC_MSVC()
+#  pragma message(                                                                                 \
+    "WARNING: The header <exec/asio/executor_with_default.hpp> is deprecated. Please include <exec/asio/executor_with_default.hpp> instead.")
+#else
+#  warning                                                                                         \
+    "The header <exec/asio/executor_with_default.hpp> is deprecated. Please include <exec/asio/executor_with_default.hpp> instead."
+#endif
 
+#include "../exec/asio/executor_with_default.hpp"  // IWYU pragma: export
+
+namespace asioexec
+{
   template <typename Executor, typename CompletionToken>
-  struct executor_with_default : Executor {
-    using default_completion_token_type = CompletionToken;
-    executor_with_default(const Executor& ex) noexcept
-      : Executor(ex) {
-    }
-  };
-
-} // namespace asioexec
+  using executor_with_default
+    [[deprecated("asioexec::executor_with_default is deprecated. Please use "
+                 "exec::asio::executor_with_default "
+                 "instead.")]] = exec::asio::executor_with_default<Executor, CompletionToken>;
+}  // namespace asioexec

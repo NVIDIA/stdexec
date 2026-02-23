@@ -25,76 +25,88 @@
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
-#include <chrono> // IWYU pragma: keep for chrono_literals
+#include <chrono>  // IWYU pragma: keep for chrono_literals
 
 namespace ex = STDEXEC;
 
 using namespace std::chrono_literals;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("let_error returns a sender", "[adaptors][let_error]") {
+  TEST_CASE("let_error returns a sender", "[adaptors][let_error]")
+  {
     auto snd = ex::let_error(ex::just(), [](std::exception_ptr) { return ex::just(); });
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  TEST_CASE("let_error with environment returns a sender", "[adaptors][let_error]") {
+  TEST_CASE("let_error with environment returns a sender", "[adaptors][let_error]")
+  {
     auto snd = ex::let_error(ex::just(), [](std::exception_ptr) { return ex::just(); });
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
-  TEST_CASE("let_error simple example", "[adaptors][let_error]") {
+  TEST_CASE("let_error simple example", "[adaptors][let_error]")
+  {
     bool called{false};
-    auto snd = ex::let_error(ex::just_error(std::exception_ptr{}), [&](std::exception_ptr) {
-      called = true;
-      return ex::just();
-    });
-    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    auto snd = ex::let_error(ex::just_error(std::exception_ptr{}),
+                             [&](std::exception_ptr)
+                             {
+                               called = true;
+                               return ex::just();
+                             });
+    auto op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
     // The receiver checks that it's called
     // we also check that the function was invoked
     CHECK(called);
   }
 
-  TEST_CASE("let_error simple example reference", "[adaptors][let_error]") {
+  TEST_CASE("let_error simple example reference", "[adaptors][let_error]")
+  {
     bool called{false};
-    auto snd =
-      ex::let_error(exec::split(ex::just_error(std::exception_ptr{})), [&](std::exception_ptr) {
-        called = true;
-        return ex::just();
-      });
-    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    auto snd = ex::let_error(exec::split(ex::just_error(std::exception_ptr{})),
+                             [&](std::exception_ptr)
+                             {
+                               called = true;
+                               return ex::just();
+                             });
+    auto op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
     // The receiver checks that it's called
     // we also check that the function was invoked
     CHECK(called);
   }
 
-  TEST_CASE("let_error can be piped", "[adaptors][let_error]") {
+  TEST_CASE("let_error can be piped", "[adaptors][let_error]")
+  {
     ex::sender auto snd = ex::just() | ex::let_error([](std::exception_ptr) { return ex::just(); });
     (void) snd;
   }
 
-  TEST_CASE(
-    "let_error returning void can be waited on (error annihilation)",
-    "[adaptors][let_error]") {
+  TEST_CASE("let_error returning void can be waited on (error annihilation)",
+            "[adaptors][let_error]")
+  {
     ex::sender auto snd = ex::just_error(std::exception_ptr{})
                         | ex::let_error([](std::exception_ptr) { return ex::just(); });
     STDEXEC::sync_wait(std::move(snd));
   }
 
 #if !STDEXEC_NO_STD_EXCEPTIONS()
-  TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]") {
+  TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]")
+  {
     ex::sender auto snd = ex::just() | ex::then([]() -> std::string {
       throw std::logic_error{"error description"};
                           })
                         | ex::let_error([](std::exception_ptr eptr) {
-      STDEXEC_TRY {
+      STDEXEC_TRY
+      {
         std::rethrow_exception(eptr);
       }
-      STDEXEC_CATCH(const std::exception& e) {
+      STDEXEC_CATCH(std::exception const & e)
+      {
         return ex::just(std::string{e.what()});
       }
     STDEXEC_CATCH_FALLTHROUGH

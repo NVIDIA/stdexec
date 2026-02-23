@@ -19,10 +19,12 @@
 
 #  include "maxwell/snr.cuh"
 
-auto main(int argc, char *argv[]) -> int {
+auto main(int argc, char *argv[]) -> int
+{
   auto params = parse_cmd(argc, argv);
 
-  if (value(params, "help") || value(params, "h")) {
+  if (value(params, "help") || value(params, "h"))
+  {
     std::cout << "Usage: " << argv[0] << " [OPTION]...\n"
               << "\t--write-vtk\n"
               << "\t--iterations\n"
@@ -31,23 +33,23 @@ auto main(int argc, char *argv[]) -> int {
     return 0;
   }
 
-  const bool write_vtk = value(params, "write-vtk");
-  const std::size_t n_iterations = value(params, "iterations", 100);
-  const std::size_t N = value(params, "N", 512);
+  bool const        write_vtk    = value(params, "write-vtk");
+  std::size_t const n_iterations = value(params, "iterations", 100);
+  std::size_t const N            = value(params, "N", 512);
 
-  auto run_snr_on = [&](std::string_view scheduler_name, stdexec::scheduler auto &&scheduler) {
+  auto run_snr_on = [&](std::string_view scheduler_name, stdexec::scheduler auto &&scheduler)
+  {
     grid_t grid{N, is_gpu_scheduler(scheduler)};
 
     auto accessor = grid.accessor();
-    auto dt = calculate_dt(accessor.dx, accessor.dy);
+    auto dt       = calculate_dt(accessor.dx, accessor.dy);
 
-    run_snr(
-      dt,
-      write_vtk,
-      n_iterations,
-      grid,
-      scheduler_name,
-      std::forward<decltype(scheduler)>(scheduler));
+    run_snr(dt,
+            write_vtk,
+            n_iterations,
+            grid,
+            scheduler_name,
+            std::forward<decltype(scheduler)>(scheduler));
   };
 
   report_header();
@@ -56,4 +58,4 @@ auto main(int argc, char *argv[]) -> int {
   run_snr_on("GPU (multi-GPU)", stream_context.get_scheduler());
 }
 
-#endif // !defined(STDEXEC_CLANGD_INVOKED)
+#endif  // !defined(STDEXEC_CLANGD_INVOKED)

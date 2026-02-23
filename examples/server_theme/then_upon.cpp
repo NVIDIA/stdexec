@@ -51,18 +51,21 @@
 
 namespace ex = stdexec;
 
-struct http_request {
-  std::string url_;
+struct http_request
+{
+  std::string                                      url_;
   std::vector<std::pair<std::string, std::string>> headers_;
+  std::string                                      body_;
+};
+
+struct http_response
+{
+  int         status_code_;
   std::string body_;
 };
 
-struct http_response {
-  int status_code_;
-  std::string body_;
-};
-
-enum class obj_type {
+enum class obj_type
+{
   human,
   dog,
   cat,
@@ -72,8 +75,10 @@ enum class obj_type {
   cancelled,
 };
 
-auto as_string(obj_type t) -> const char* {
-  switch (t) {
+auto as_string(obj_type t) -> char const *
+{
+  switch (t)
+  {
   case obj_type::human:
     return "human";
   case obj_type::dog:
@@ -92,18 +97,21 @@ auto as_string(obj_type t) -> const char* {
   return "general error";
 }
 
-struct classification_result {
-  obj_type type_;
-  int accuracy_;
+struct classification_result
+{
+  obj_type    type_;
+  int         accuracy_;
   std::string details_{};
 };
 
-struct image {
+struct image
+{
   std::string image_data_;
 };
 
 // Extract the image from the HTTP request
-auto extract_image(http_request req) -> image {
+auto extract_image(http_request req) -> image
+{
   // TODO: make upon_error work before enabling this
   // if (req.body_.empty())
   //   throw std::invalid_argument("no image found");
@@ -111,7 +119,8 @@ auto extract_image(http_request req) -> image {
 }
 
 // Classify the image received
-auto do_classify(image img) -> classification_result {
+auto do_classify(image img) -> classification_result
+{
   if (img.image_data_ == "human")
     return {.type_ = obj_type::human, .accuracy_ = 93};
   else if (img.image_data_ == "cat")
@@ -124,24 +133,30 @@ auto do_classify(image img) -> classification_result {
 }
 
 // Check for errors and transform them into classification result
-auto on_classification_error(std::exception_ptr) -> classification_result {
+auto on_classification_error(std::exception_ptr) -> classification_result
+{
   return {.type_ = obj_type::general_error, .accuracy_ = 100, .details_ = {}};
 }
 
 // Check for cancellation and transform it into classification result
-auto on_classification_cancelled() -> classification_result {
+auto on_classification_cancelled() -> classification_result
+{
   return {.type_ = obj_type::cancelled, .accuracy_ = 100};
 }
 
 // Convert the classification result into an HTTP response
-auto to_response(classification_result res) -> http_response {
+auto to_response(classification_result res) -> http_response
+{
   if (res.type_ == obj_type::general_error)
     // Send a 500 response back if we have a general error
     return {.status_code_ = 500, .body_ = res.details_};
-  else if (res.type_ == obj_type::cancelled) {
+  else if (res.type_ == obj_type::cancelled)
+  {
     // Send a 503 response back if the computation is cancelled
     return {.status_code_ = 503, .body_ = "cancelled"};
-  } else {
+  }
+  else
+  {
     // Send a success response back, with the object type, accuracy and details
     std::ostringstream oss;
     oss << as_string(res.type_) << " (" << res.accuracy_ << ")\n" << res.details_;
@@ -150,7 +165,8 @@ auto to_response(classification_result res) -> http_response {
 }
 
 // Handler for the "classify" request type
-auto handle_classify_request(const http_request& req) -> ex::sender auto {
+auto handle_classify_request(http_request const & req) -> ex::sender auto
+{
   return
     // start with the input buffer
     ex::just(req)
@@ -169,16 +185,18 @@ auto handle_classify_request(const http_request& req) -> ex::sender auto {
     ;
 }
 
-auto main() -> int {
+auto main() -> int
+{
   // Create a thread pool and get a scheduler from it
-  exec::async_scope scope;
+  exec::async_scope        scope;
   exec::static_thread_pool pool{8};
-  ex::scheduler auto sched = pool.get_scheduler();
+  ex::scheduler auto       sched = pool.get_scheduler();
 
   // Fake a couple of requests
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 12; i++)
+  {
     // Create a test request
-    const char* body = "";
+    char const * body = "";
     if (i % 2 == 0)
       body = "human";
     else if (i % 3 == 0)
@@ -193,12 +211,15 @@ auto main() -> int {
     ex::sender auto snd = handle_classify_request(req);
 
     // Pack this into a simplified flow and execute it asynchronously
-    ex::sender auto action = std::move(snd) | ex::then([](http_response resp) {
-                               std::ostringstream oss;
-                               oss << "Sending response: " << resp.status_code_ << " / "
-                                   << resp.body_ << "\n";
-                               std::cout << oss.str();
-                             });
+    ex::sender auto action = std::move(snd)
+                           | ex::then(
+                               [](http_response resp)
+                               {
+                                 std::ostringstream oss;
+                                 oss << "Sending response: " << resp.status_code_ << " / "
+                                     << resp.body_ << "\n";
+                                 std::cout << oss.str();
+                               });
     scope.spawn(ex::starts_on(sched, std::move(action)));
   }
 

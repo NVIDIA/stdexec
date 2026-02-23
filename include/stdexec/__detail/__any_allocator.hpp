@@ -23,81 +23,94 @@
 #include "__memory.hpp"
 #include "__typeinfo.hpp"
 
-namespace STDEXEC {
-  namespace __detail {
+namespace STDEXEC
+{
+  namespace __detail
+  {
     template <class _Base>
     struct __byte_allocator;
 
     template <class _Base>
-    using __byte_allocator_interface_t = __any::interface<
-      __byte_allocator,
-      _Base,
-      __any::__extends<__any::__icopyable, __any::__iequality_comparable>
-    >;
+    using __byte_allocator_interface_t =
+      __any::__interface_base<__byte_allocator,
+                              _Base,
+                              __any::__extends<__any::__icopyable, __any::__iequality_comparable>>;
 
     // NOLINTBEGIN(modernize-use-override)
     template <class _Base>
-    struct __byte_allocator : __byte_allocator_interface_t<_Base> {
-      using __byte_allocator_interface_t<_Base>::interface::interface;
+    struct __byte_allocator : __byte_allocator_interface_t<_Base>
+    {
+      using __byte_allocator_interface_t<_Base>::__interface_base::__interface_base;
 
       [[nodiscard]]
-      constexpr virtual auto allocate(size_t __n) -> std::byte* {
+      constexpr virtual auto allocate(size_t __n) -> std::byte*
+      {
         return __any::__value(*this).allocate(__n);
       }
 
-      constexpr virtual void deallocate(std::byte* __byte, size_t __n) noexcept {
+      constexpr virtual void deallocate(std::byte* __byte, size_t __n) noexcept
+      {
         __any::__value(*this).deallocate(__byte, __n);
       }
     };
     // NOLINTEND(modernize-use-override)
-  } // namespace __detail
+  }  // namespace __detail
 
   template <class _Ty>
-  struct __any_allocator {
+  struct __any_allocator
+  {
     using value_type = _Ty;
 
     __any_allocator() = default;
 
     template <__not_same_as<__any_allocator> _Alloc>
       requires __is_not_instance_of<_Alloc, __any_allocator> && __simple_allocator<_Alloc>
-    __any_allocator(_Alloc __alloc) noexcept {
+    __any_allocator(_Alloc __alloc) noexcept
+    {
       using __value_t = std::allocator_traits<_Alloc>::value_type;
-      static_assert(
-        __same_as<_Ty, __value_t>,
-        "__any_allocator<T> must be constructed with an allocator of the same value type");
+      static_assert(__same_as<_Ty, __value_t>,
+                    "__any_allocator<T> must be constructed with an allocator of the same value "
+                    "type");
       __alloc_.emplace(STDEXEC::__rebind_allocator<std::byte>(__alloc));
     }
 
     template <__not_same_as<_Ty> _Uy>
     __any_allocator(__any_allocator<_Uy> __other) noexcept
-      : __alloc_(std::move(__other.__alloc_)) {
-    }
+      : __alloc_(std::move(__other.__alloc_))
+    {}
 
     [[nodiscard]]
-    constexpr bool has_value() const noexcept {
+    constexpr bool has_value() const noexcept
+    {
       return !__any::__empty(__alloc_);
     }
 
     [[nodiscard]]
-    constexpr auto type() const noexcept -> __type_index const & {
+    constexpr auto type() const noexcept -> __type_index const &
+    {
       return __any::__type(__alloc_);
     }
 
     [[nodiscard]]
-    constexpr auto allocate(size_t __n) -> _Ty* {
+    constexpr auto allocate(size_t __n) -> _Ty*
+    {
       void* __void_ptr = __alloc_.allocate(__n * sizeof(_Ty));
       return static_cast<_Ty*>(__void_ptr);
     }
 
-    constexpr void deallocate(_Ty* __ptr, size_t __n) noexcept {
+    constexpr void deallocate(_Ty* __ptr, size_t __n) noexcept
+    {
       void* __void_ptr = static_cast<void*>(__ptr);
       __alloc_.deallocate(static_cast<std::byte*>(__void_ptr), __n * sizeof(_Ty));
     }
 
-    constexpr auto operator==(const __any_allocator&) const noexcept -> bool = default;
+    constexpr auto operator==(__any_allocator const &) const noexcept -> bool = default;
 
    private:
-    __any::__any<__detail::__byte_allocator> __alloc_{};
+    struct __alloc_impl final : __any::__any<__detail::__byte_allocator>
+    {
+      using __alloc_impl::__any::__any;
+    } __alloc_{};
   };
 
   template <class _Alloc>
@@ -106,4 +119,4 @@ namespace STDEXEC {
 
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __any_allocator(std::allocator<void>) -> __any_allocator<std::byte>;
-} // namespace STDEXEC
+}  // namespace STDEXEC

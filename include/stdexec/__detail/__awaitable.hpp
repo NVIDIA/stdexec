@@ -19,7 +19,8 @@
 #include "__config.hpp"
 #include "__meta.hpp"
 
-namespace STDEXEC {
+namespace STDEXEC
+{
 #if !STDEXEC_NO_STD_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
@@ -38,45 +39,56 @@ namespace STDEXEC {
 
   template <class _Awaitable>
   void __co_await_constraint(_Awaitable&& __awaitable)
-    requires requires { operator co_await(static_cast<_Awaitable&&>(__awaitable)); };
+    requires requires { operator co_await(static_cast<_Awaitable &&>(__awaitable)); };
 #  endif
 
   template <class _Awaitable>
-  auto __get_awaiter(_Awaitable&& __awaitable, __ignore = {}) -> decltype(auto) {
-    if constexpr (requires { static_cast<_Awaitable&&>(__awaitable).operator co_await(); }) {
+  auto __get_awaiter(_Awaitable&& __awaitable, __ignore = {}) -> decltype(auto)
+  {
+    if constexpr (requires { static_cast<_Awaitable &&>(__awaitable).operator co_await(); })
+    {
       return static_cast<_Awaitable&&>(__awaitable).operator co_await();
-    } else if constexpr (requires {
+    }
+    else if constexpr (requires {
 #  if STDEXEC_MSVC()
-                           __co_await_constraint(static_cast<_Awaitable&&>(__awaitable));
+                         __co_await_constraint(static_cast<_Awaitable &&>(__awaitable));
 #  else
         operator co_await(static_cast<_Awaitable&&>(__awaitable));
 #  endif
-                         }) {
+                       })
+    {
       return operator co_await(static_cast<_Awaitable&&>(__awaitable));
-    } else {
+    }
+    else
+    {
       return static_cast<_Awaitable&&>(__awaitable);
     }
   }
 
   template <class _Awaitable, class _Promise>
   auto __get_awaiter(_Awaitable&& __awaitable, _Promise* __promise) -> decltype(auto)
-    requires requires { __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)); }
+    requires requires { __promise->await_transform(static_cast<_Awaitable &&>(__awaitable)); }
   {
     if constexpr (requires {
-                    __promise->await_transform(static_cast<_Awaitable&&>(__awaitable))
+                    __promise->await_transform(static_cast<_Awaitable &&>(__awaitable))
                       .operator co_await();
-                  }) {
+                  })
+    {
       return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)).operator co_await();
-    } else if constexpr (requires {
+    }
+    else if constexpr (requires {
 #  if STDEXEC_MSVC()
-                           __co_await_constraint(
-                             __promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
+                         __co_await_constraint(
+                           __promise->await_transform(static_cast<_Awaitable &&>(__awaitable)));
 #  else
         operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
 #  endif
-                         }) {
+                       })
+    {
       return operator co_await(__promise->await_transform(static_cast<_Awaitable&&>(__awaitable)));
-    } else {
+    }
+    else
+    {
       return __promise->await_transform(static_cast<_Awaitable&&>(__awaitable));
     }
   }
@@ -84,7 +96,7 @@ namespace STDEXEC {
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable&& __awaitable, _Promise*... __promise) {
     {
-      STDEXEC::__get_awaiter(static_cast<_Awaitable&&>(__awaitable), __promise...)
+      STDEXEC::__get_awaiter(static_cast<_Awaitable &&>(__awaitable), __promise...)
     } -> __awaiter<_Promise...>;
   };
 
@@ -93,10 +105,10 @@ namespace STDEXEC {
 
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
-  using __await_result_t =
-    decltype(STDEXEC::__as_lvalue(
-               STDEXEC::__get_awaiter(__declval<_Awaitable>(), static_cast<_Promise*>(nullptr)...))
-               .await_resume());
+  using __await_result_t = decltype(STDEXEC::__as_lvalue(
+                                      STDEXEC::__get_awaiter(__declval<_Awaitable>(),
+                                                             static_cast<_Promise*>(nullptr)...))
+                                      .await_resume());
 
 #else
 
@@ -108,4 +120,4 @@ namespace STDEXEC {
   using __await_result_t = void;
 
 #endif
-} // namespace STDEXEC
+}  // namespace STDEXEC

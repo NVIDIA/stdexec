@@ -22,44 +22,50 @@
 #include "../stdexec/__detail/__sender_adaptor_closure.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__transform_sender.hpp"
-#include "__detail/__shared.hpp"
+#include "detail/shared.hpp"
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.split]
-  struct split_t {
+  struct split_t
+  {
     template <class _Env = STDEXEC::env<>, STDEXEC::sender_in<_Env> _CvSender>
     [[nodiscard]]
-    auto operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender
-      auto {
-      return STDEXEC::transform_sender(
-        STDEXEC::__make_sexpr<split_t>(
-          static_cast<_Env&&>(__env), static_cast<_CvSender&&>(__sndr)),
-        __env);
+    auto
+    operator()(_CvSender&& __sndr, _Env&& __env = {}) const -> STDEXEC::__well_formed_sender auto
+    {
+      return STDEXEC::transform_sender(STDEXEC::__make_sexpr<split_t>(static_cast<_Env&&>(__env),
+                                                                      static_cast<_CvSender&&>(
+                                                                        __sndr)),
+                                       __env);
     }
 
     [[nodiscard]]
-    constexpr auto operator()() const noexcept {
+    constexpr auto operator()() const noexcept
+    {
       return STDEXEC::__closure(*this);
     }
 
     template <class _CvSender>
     static constexpr auto
-      transform_sender(STDEXEC::set_value_t, _CvSender&& __sndr, STDEXEC::__ignore) {
+    transform_sender(STDEXEC::set_value_t, _CvSender&& __sndr, STDEXEC::__ignore)
+    {
       static_assert(STDEXEC::sender_expr_for<_CvSender, split_t>);
-      return __shared::__sndr{
-        split_t(),
-        STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
-        STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
+      return __shared::__sndr{split_t(),
+                              STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
+                              STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};
     }
   };
 
   inline constexpr split_t split{};
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 
-namespace STDEXEC {
+namespace STDEXEC
+{
   template <>
-  struct __sexpr_impl<exec::split_t> : exec::__shared::__impls<exec::split_t> { };
-} // namespace STDEXEC
+  struct __sexpr_impl<exec::split_t> : exec::__shared::__impls<exec::split_t>
+  {};
+}  // namespace STDEXEC

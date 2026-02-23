@@ -15,16 +15,16 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp" // IWYU pragma: keep
+#include "../stdexec/execution.hpp"  // IWYU pragma: keep
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   /////////////////////////////////////////////////////////////////////////////
   // A scoped version of [execution.senders.adaptors.on]
   using on_t [[deprecated("on_t has been moved to the STDEXEC:: namespace")]] = STDEXEC::on_t;
 
   [[deprecated("on has been moved to the STDEXEC:: namespace")]]
   inline constexpr STDEXEC::on_t const & on = STDEXEC::on;
-} // namespace experimental::execution
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

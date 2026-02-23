@@ -22,7 +22,7 @@
 #include <test_common/schedulers.hpp>
 
 #include <atomic>
-#include <chrono> // IWYU pragma: keep for std::chrono_literals
+#include <chrono>  // IWYU pragma: keep for std::chrono_literals
 
 namespace ex = STDEXEC;
 
@@ -30,26 +30,27 @@ using namespace std::chrono_literals;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
-STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
+STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
 // Trying to test `execute` with error flows will result in calling `std::terminate()`.
 // We don't want that
 
-namespace {
+namespace
+{
 
-  TEST_CASE("execute works with inline scheduler", "[other][execute]") {
+  TEST_CASE("execute works with inline scheduler", "[other][execute]")
+  {
     inline_scheduler sched;
-    bool called{false};
+    bool             called{false};
     exec::execute(sched, [&] { called = true; });
     // The function should already have been called
     CHECK(called);
   }
 
-  TEST_CASE(
-    "execute works with schedulers that need to be triggered manually",
-    "[other][execute]") {
+  TEST_CASE("execute works with schedulers that need to be triggered manually", "[other][execute]")
+  {
     impulse_scheduler sched;
-    bool called{false};
+    bool              called{false};
     exec::execute(sched, [&] { called = true; });
     // The function has not yet been called
     CHECK_FALSE(called);
@@ -58,9 +59,10 @@ namespace {
     CHECK(called);
   }
 
-  TEST_CASE("execute works on a thread pool", "[other][execute]") {
+  TEST_CASE("execute works on a thread pool", "[other][execute]")
+  {
     exec::static_thread_pool pool{2};
-    std::atomic<bool> called{false};
+    std::atomic<bool>        called{false};
     {
       // launch some work on the thread pool
       exec::execute(pool.get_scheduler(), [&] { called.store(true, std::memory_order_relaxed); });
@@ -68,10 +70,11 @@ namespace {
     // wait for the work to be executed, with timeout
     // perform a poor-man's sync
     // NOTE: it's a shame that the `join` method in static_thread_pool is not public
-    for (int i = 0; i < 1000 && !called.load(std::memory_order_relaxed); i++) {
+    for (int i = 0; i < 1000 && !called.load(std::memory_order_relaxed); i++)
+    {
       std::this_thread::sleep_for(1ms);
     }
     // the work should be executed
     REQUIRE(called);
   }
-} // namespace
+}  // namespace

@@ -22,10 +22,12 @@
 
 namespace ex = STDEXEC;
 
-struct split_bug : rl::test_suite<split_bug, 1> {
+struct split_bug : rl::test_suite<split_bug, 1>
+{
   static size_t const dynamic_thread_count = 2;
 
-  void thread(unsigned) {
+  void thread(unsigned)
+  {
     exec::static_thread_pool pool{1};
     auto split = ex::schedule(pool.get_scheduler()) | ex::then([] { return 42; }) | exec::split();
 
@@ -34,9 +36,10 @@ struct split_bug : rl::test_suite<split_bug, 1> {
   }
 };
 
-auto main() -> int {
+auto main() -> int
+{
   rl::test_params p;
-  p.iteration_count = 50000;
+  p.iteration_count       = 50000;
   p.execution_depth_limit = 10000;
   rl::simulate<split_bug>(p);
   return 0;

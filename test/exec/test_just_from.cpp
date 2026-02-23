@@ -20,9 +20,11 @@
 
 #include <catch2/catch.hpp>
 
-TEST_CASE("just_from is a sender", "[just_from]") {
-  SECTION("potentially throwing") {
-    auto s = exec::just_from([](auto sink) { return sink(42); });
+TEST_CASE("just_from is a sender", "[just_from]")
+{
+  SECTION("potentially throwing")
+  {
+    auto s  = exec::just_from([](auto sink) { return sink(42); });
     using S = decltype(s);
     STATIC_REQUIRE(ex::sender<S>);
     STATIC_REQUIRE(ex::sender_in<S>);
@@ -31,8 +33,9 @@ TEST_CASE("just_from is a sender", "[just_from]") {
     ::check_sends_stopped<false>(s);
   }
 
-  SECTION("not potentially throwing") {
-    auto s = exec::just_from([](auto sink) noexcept { return sink(42); });
+  SECTION("not potentially throwing")
+  {
+    auto s  = exec::just_from([](auto sink) noexcept { return sink(42); });
     using S = decltype(s);
     STATIC_REQUIRE(ex::sender<S>);
     STATIC_REQUIRE(ex::sender_in<S>);
@@ -42,7 +45,8 @@ TEST_CASE("just_from is a sender", "[just_from]") {
   }
 }
 
-TEST_CASE("just_from basically works", "[just_from]") {
+TEST_CASE("just_from basically works", "[just_from]")
+{
   auto s = exec::just_from([](auto sink) noexcept { return sink(42, 43, 44); });
   ::check_val_types<ex::__mset<pack<int, int, int>>>(s);
   ::check_err_types<ex::__mset<>>(s);
@@ -54,12 +58,17 @@ TEST_CASE("just_from basically works", "[just_from]") {
   CHECK(c == 44);
 }
 
-TEST_CASE("just_from with multiple completions", "[just_from]") {
-  auto fn = [](auto sink) noexcept {
-    if (sizeof(sink) == ~0ul) {
+TEST_CASE("just_from with multiple completions", "[just_from]")
+{
+  auto fn = [](auto sink) noexcept
+  {
+    if (sizeof(sink) == ~0ul)
+    {
       std::puts("sink(42)");
       sink(42);
-    } else {
+    }
+    else
+    {
       std::puts("sink(43, 44)");
       sink(43, 44);
     }
@@ -72,10 +81,12 @@ TEST_CASE("just_from with multiple completions", "[just_from]") {
 
   auto var = ex::sync_wait_with_variant(s).value();
   std::visit(
-    []<class Tupl>(Tupl tupl) {
+    []<class Tupl>(Tupl tupl)
+    {
       constexpr auto N = std::tuple_size_v<Tupl>;
       CHECK(N == 2);
-      if constexpr (N == 2) {
+      if constexpr (N == 2)
+      {
         CHECK_TUPLE(tupl == std::tuple{43, 44});
       }
     },

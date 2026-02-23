@@ -22,66 +22,80 @@
 #include <iterator>
 #include <utility>
 
-namespace STDEXEC {
-  namespace __slist {
+namespace STDEXEC
+{
+  namespace __slist
+  {
     template <auto _Next>
     class __intrusive_slist;
 
     template <class _Item, _Item* _Item::* _Next>
-    class __intrusive_slist<_Next> {
+    class __intrusive_slist<_Next>
+    {
      public:
       constexpr __intrusive_slist() noexcept = default;
 
       constexpr __intrusive_slist(__intrusive_slist&& __other) noexcept
-        : __head_(std::exchange(__other.__head_, nullptr)) {
-      }
+        : __head_(std::exchange(__other.__head_, nullptr))
+      {}
 
       constexpr __intrusive_slist(_Item* __head) noexcept
-        : __head_(__head) {
-      }
+        : __head_(__head)
+      {}
 
-      constexpr auto swap(__intrusive_slist& __other) noexcept -> void {
+      constexpr auto swap(__intrusive_slist& __other) noexcept -> void
+      {
         std::swap(__head_, __other.__head_);
       }
 
-      constexpr auto operator=(__intrusive_slist __other) noexcept -> __intrusive_slist& {
+      constexpr auto operator=(__intrusive_slist __other) noexcept -> __intrusive_slist&
+      {
         swap(__other);
         return *this;
       }
 
       [[nodiscard]]
-      constexpr auto empty() const noexcept -> bool {
+      constexpr auto empty() const noexcept -> bool
+      {
         return __head_ == nullptr;
       }
 
-      constexpr auto front() const noexcept -> _Item* {
+      constexpr auto front() const noexcept -> _Item*
+      {
         return __head_;
       }
 
-      constexpr void clear() noexcept {
+      constexpr void clear() noexcept
+      {
         __head_ = nullptr;
       }
 
       [[nodiscard]]
-      constexpr auto pop_front() noexcept -> _Item* {
+      constexpr auto pop_front() noexcept -> _Item*
+      {
         STDEXEC_ASSERT(!empty());
         return std::exchange(__head_, __head_->*_Next);
       }
 
-      constexpr void push_front(_Item* __item) noexcept {
+      constexpr void push_front(_Item* __item) noexcept
+      {
         STDEXEC_ASSERT(__item != nullptr);
         __item->*_Next = std::exchange(__head_, __item);
       }
 
       [[nodiscard]]
-      constexpr auto remove(_Item* __item) noexcept -> _Item* {
+      constexpr auto remove(_Item* __item) noexcept -> _Item*
+      {
         STDEXEC_ASSERT(__item != nullptr);
-        if (__head_ == __item) {
+        if (__head_ == __item)
+        {
           return pop_front();
         }
 
-        for (_Item* __current: *this) {
-          if (__current->*_Next == __item) {
+        for (_Item* __current: *this)
+        {
+          if (__current->*_Next == __item)
+          {
             __current->*_Next = __item->*_Next;
             return __item;
           }
@@ -90,63 +104,70 @@ namespace STDEXEC {
         return nullptr;
       }
 
-      struct iterator {
+      struct iterator
+      {
         using iterator_category = std::forward_iterator_tag;
-        using difference_type = std::ptrdiff_t;
-        using value_type = _Item*;
-        using reference = _Item*;
-        using pointer = _Item**;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = _Item*;
+        using reference         = _Item*;
+        using pointer           = _Item**;
 
         _Item* __item_ = nullptr;
 
         constexpr iterator() noexcept = default;
 
         constexpr explicit iterator(_Item* __item) noexcept
-          : __item_(__item) {
-        }
+          : __item_(__item)
+        {}
 
         [[nodiscard]]
-        constexpr auto operator*() const noexcept -> _Item* {
+        constexpr auto operator*() const noexcept -> _Item*
+        {
           STDEXEC_ASSERT(__item_ != nullptr);
           return __item_;
         }
 
         [[nodiscard]]
-        constexpr auto operator->() const noexcept -> _Item** {
+        constexpr auto operator->() const noexcept -> _Item**
+        {
           STDEXEC_ASSERT(__item_ != nullptr);
           return &__item_;
         }
 
-        constexpr auto operator++() noexcept -> iterator& {
+        constexpr auto operator++() noexcept -> iterator&
+        {
           STDEXEC_ASSERT(__item_ != nullptr);
           __item_ = __item_->*_Next;
           return *this;
         }
 
-        constexpr auto operator++(int) noexcept -> iterator {
+        constexpr auto operator++(int) noexcept -> iterator
+        {
           iterator __result = *this;
           ++*this;
           return __result;
         }
 
-        constexpr auto operator==(const iterator&) const noexcept -> bool = default;
+        constexpr auto operator==(iterator const &) const noexcept -> bool = default;
       };
 
       [[nodiscard]]
-      constexpr auto begin() const noexcept -> iterator {
+      constexpr auto begin() const noexcept -> iterator
+      {
         return iterator(__head_);
       }
 
       [[nodiscard]]
-      constexpr auto end() const noexcept -> iterator {
+      constexpr auto end() const noexcept -> iterator
+      {
         return iterator(nullptr);
       }
 
      private:
       _Item* __head_ = nullptr;
     };
-  } // namespace __slist
+  }  // namespace __slist
 
   using __slist::__intrusive_slist;
 
-} // namespace STDEXEC
+}  // namespace STDEXEC

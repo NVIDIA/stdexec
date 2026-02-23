@@ -33,18 +33,23 @@ endif()
 if (STDEXEC_ENABLE_TBB)
   # CONFIGURE_DEPENDS ensures that CMake reconfigures when a relevant hpp file is
   # added or removed.
-  file(GLOB_RECURSE tbbpool_headers CONFIGURE_DEPENDS include/execpools/tbb/*.hpp)
-  add_library(tbbpool INTERFACE)
-  list(APPEND stdexec_export_targets tbbpool)
-  add_library(STDEXEC::tbbpool ALIAS tbbpool)
-  target_sources(tbbpool
+  file(GLOB_RECURSE tbbexec_headers CONFIGURE_DEPENDS include/exec/tbb/*.hpp)
+  add_library(tbbexec INTERFACE)
+  list(APPEND stdexec_export_targets tbbexec)
+  add_library(STDEXEC::tbbexec ALIAS tbbexec)
+
+  # These aliases are provided for backwards compatibility with the old target names
+  add_library(tbbpool ALIAS tbbexec)
+  add_library(STDEXEC::tbbpool ALIAS tbbexec)
+
+  target_sources(tbbexec
   PUBLIC
     FILE_SET headers
     TYPE HEADERS
     BASE_DIRS include
-    FILES ${tbbpool_headers}
+    FILES ${tbbexec_headers}
   )
-  target_compile_definitions(tbbpool INTERFACE
+  target_compile_definitions(tbbexec INTERFACE
     STDEXEC_ENABLE_TBB
   )
 
@@ -52,11 +57,11 @@ if (STDEXEC_ENABLE_TBB)
     TBB::tbb
   )
 
-  target_link_libraries(tbbpool INTERFACE
+  target_link_libraries(tbbexec INTERFACE
     STDEXEC::stdexec
   )
 
-  install(TARGETS tbbpool
+  install(TARGETS tbbexec
     EXPORT stdexec-exports
     FILE_SET headers
   )

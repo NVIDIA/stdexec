@@ -18,8 +18,9 @@
 
 namespace ex = STDEXEC;
 
-auto main() -> int {
-  ex::sender auto snd = ex::just(42) | ex::let_value([](int) { });
+auto main() -> int
+{
+  ex::sender auto snd = ex::just(42) | ex::let_value([](int) {});
   // build error: _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_
   STDEXEC::sync_wait(std::move(snd));
 }

@@ -19,7 +19,7 @@
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
-#include "__debug.hpp" // IWYU pragma: keep
+#include "__debug.hpp"  // IWYU pragma: keep
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
@@ -37,37 +37,40 @@
 #include <tuple>
 #include <variant>
 
-namespace STDEXEC::__sync_wait {
+namespace STDEXEC::__sync_wait
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
   // [execution.senders.consumers.sync_wait_with_variant]
-  struct __env {
+  struct __env
+  {
     run_loop* __loop_ = nullptr;
 
     [[nodiscard]]
-    constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler {
+    constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler
+    {
       return __loop_->get_scheduler();
     }
 
     [[nodiscard]]
-    constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler {
+    constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler
+    {
       return __loop_->get_scheduler();
     }
 
     [[nodiscard]]
-    constexpr auto query(__root_t) const noexcept -> bool {
+    constexpr auto query(__root_t) const noexcept -> bool
+    {
       return true;
     }
   };
 
   // What should sync_wait(just_stopped()) return?
   template <class _CvSender, class _Continuation>
-  using __result_t = __value_types_of_t<
-    _CvSender,
-    __env,
-    __mtransform<__q<__decay_t>, _Continuation>,
-    __q<__msingle>
-  >;
+  using __result_t = __value_types_of_t<_CvSender,
+                                        __env,
+                                        __mtransform<__q<__decay_t>, _Continuation>,
+                                        __q<__msingle>>;
 
   template <class _CvSender>
   using __sync_wait_result_t = __result_t<_CvSender, __qq<std::tuple>>;
@@ -76,49 +79,62 @@ namespace STDEXEC::__sync_wait {
   using __sync_wait_with_variant_result_t =
     __result_t<__result_of<into_variant, _CvSender>, __q<__midentity>>;
 
-  struct __state {
+  struct __state
+  {
     std::exception_ptr __eptr_;
-    run_loop __loop_;
+    run_loop           __loop_;
   };
 
   template <class... _Values>
-  struct __receiver {
+  struct __receiver
+  {
     using receiver_concept = receiver_t;
 
     template <class... _As>
-    constexpr void set_value(_As&&... __as) noexcept {
+    constexpr void set_value(_As&&... __as) noexcept
+    {
       static_assert(__std::constructible_from<std::tuple<_Values...>, _As...>);
-      STDEXEC_TRY {
+      STDEXEC_TRY
+      {
         __values_->emplace(static_cast<_As&&>(__as)...);
       }
-      STDEXEC_CATCH_ALL {
+      STDEXEC_CATCH_ALL
+      {
         __state_->__eptr_ = std::current_exception();
       }
       __state_->__loop_.finish();
     }
 
     template <class _Error>
-    constexpr void set_error(_Error __err) noexcept {
-      if constexpr (__same_as<_Error, std::exception_ptr>) {
-        STDEXEC_ASSERT(__err != nullptr); // std::exception_ptr must not be null.
+    constexpr void set_error(_Error __err) noexcept
+    {
+      if constexpr (__same_as<_Error, std::exception_ptr>)
+      {
+        STDEXEC_ASSERT(__err != nullptr);  // std::exception_ptr must not be null.
         __state_->__eptr_ = static_cast<_Error&&>(__err);
-      } else if constexpr (__same_as<_Error, std::error_code>) {
+      }
+      else if constexpr (__same_as<_Error, std::error_code>)
+      {
         __state_->__eptr_ = std::make_exception_ptr(std::system_error(__err));
-      } else {
+      }
+      else
+      {
         __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
       }
       __state_->__loop_.finish();
     }
 
-    constexpr void set_stopped() noexcept {
+    constexpr void set_stopped() noexcept
+    {
       __state_->__loop_.finish();
     }
 
     [[nodiscard]]
-    constexpr auto get_env() const noexcept -> __env {
+    constexpr auto get_env() const noexcept -> __env
+    {
       return __env{&__state_->__loop_};
     }
-    __state* __state_;
+    __state*                               __state_;
     std::optional<std::tuple<_Values...>>* __values_;
   };
 
@@ -127,38 +143,42 @@ namespace STDEXEC::__sync_wait {
 
   // These are for hiding the metaprogramming in diagnostics
   template <class _CvSender>
-  struct __sync_receiver_for {
+  struct __sync_receiver_for
+  {
     using __t = __receiver_t<_CvSender>;
   };
   template <class _CvSender>
   using __sync_receiver_for_t = __t<__sync_receiver_for<_CvSender>>;
 
   template <class _CvSender>
-  struct __value_tuple_for {
+  struct __value_tuple_for
+  {
     using __t = __sync_wait_result_t<_CvSender>;
   };
   template <class _CvSender>
   using __value_tuple_for_t = __t<__value_tuple_for<_CvSender>>;
 
   template <class _CvSender>
-  struct __variant {
+  struct __variant
+  {
     using __t = __sync_wait_with_variant_result_t<_CvSender>;
   };
   template <class _CvSender>
   using __variant_for_t = __t<__variant<_CvSender>>;
 
-  struct _SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_ { };
-  struct _USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_ { };
+  struct _SENDER_HAS_TOO_MANY_SUCCESSFUL_COMPLETIONS_
+  {};
+  struct _USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_
+  {};
 
   template <class _Reason, class _CvSender, class _Env = __env>
-  using __sync_wait_error_t = __mexception<
-    _WHAT_(_INVALID_ARGUMENT_),
-    _WHERE_(_IN_ALGORITHM_, sync_wait_t),
-    _WHY_(_Reason),
-    _WITH_PRETTY_SENDER_<_CvSender>,
-    _WITH_ENVIRONMENT_(_Env),
-    _TO_FIX_THIS_ERROR_(_USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_)
-  >;
+  using __sync_wait_error_t =
+    __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                 _WHERE_(_IN_ALGORITHM_, sync_wait_t),
+                 _WHY_(_Reason),
+                 _WITH_PRETTY_SENDER_<_CvSender>,
+                 _WITH_ENVIRONMENT_(_Env),
+                 _TO_FIX_THIS_ERROR_(_USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_)>;
 
   template <class _CvSender, class>
   using __too_many_successful_completions_error_t =
@@ -168,66 +188,79 @@ namespace STDEXEC::__sync_wait {
   concept __valid_sync_wait_argument = __ok<__minvoke<
     __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error_t>>,
     _CvSender,
-    __env
-  >>;
-} // namespace STDEXEC::__sync_wait
+    __env>>;
+}  // namespace STDEXEC::__sync_wait
 
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
 ////////////////////////////////////////////////////////////////////////////
 // [execution.senders.consumers.sync_wait]
-struct sync_wait_t {
+struct sync_wait_t
+{
   template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
-  auto operator()(_CvSender&& __sndr) const {
-    using __domain_t = STDEXEC::__completion_domain_of_t<
-      STDEXEC::set_value_t,
-      _CvSender,
-      STDEXEC::__sync_wait::__env
-    >;
+  auto operator()(_CvSender&& __sndr) const
+  {
+    using __domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
+                                                         _CvSender,
+                                                         STDEXEC::__sync_wait::__env>;
     constexpr auto __success_completion_count =
       STDEXEC::__count_of<STDEXEC::set_value_t, _CvSender, STDEXEC::__sync_wait::__env>::value;
 
-    static_assert(
-      __success_completion_count != 0,
-      "The argument to STDEXEC::sync_wait() is a sender that cannot complete successfully. "
-      "STDEXEC::sync_wait() requires a sender that can complete successfully in exactly one "
-      "way. In other words, the sender's completion signatures must include exactly one "
-      "signature of the form `set_value_t(value-types...)`.");
+    static_assert(__success_completion_count != 0,
+                  "The argument to STDEXEC::sync_wait() is a sender that cannot complete "
+                  "successfully. "
+                  "STDEXEC::sync_wait() requires a sender that can complete successfully in "
+                  "exactly one "
+                  "way. In other words, the sender's completion signatures must include exactly "
+                  "one "
+                  "signature of the form `set_value_t(value-types...)`.");
 
-    static_assert(
-      __success_completion_count <= 1,
-      "The sender passed to STDEXEC::sync_wait() can complete successfully in "
-      "more than one way. Use STDEXEC::sync_wait_with_variant() instead.");
+    static_assert(__success_completion_count <= 1,
+                  "The sender passed to STDEXEC::sync_wait() can complete successfully in "
+                  "more than one way. Use STDEXEC::sync_wait_with_variant() instead.");
 
-    if constexpr (1 == __success_completion_count) {
-      if constexpr (STDEXEC::__same_as<__domain_t, STDEXEC::default_domain>) {
-        if constexpr (STDEXEC::sender_to<_CvSender, STDEXEC::__sync_wait::__receiver_t<_CvSender>>) {
+    if constexpr (1 == __success_completion_count)
+    {
+      if constexpr (STDEXEC::__same_as<__domain_t, STDEXEC::default_domain>)
+      {
+        if constexpr (STDEXEC::sender_to<_CvSender, STDEXEC::__sync_wait::__receiver_t<_CvSender>>)
+        {
           using __opstate_t =
             STDEXEC::connect_result_t<_CvSender, STDEXEC::__sync_wait::__receiver_t<_CvSender>>;
-          if constexpr (STDEXEC::operation_state<__opstate_t>) {
+          if constexpr (STDEXEC::operation_state<__opstate_t>)
+          {
             // success path, dispatch to the default domain's sync_wait
             return STDEXEC::default_domain().apply_sender(*this, static_cast<_CvSender&&>(__sndr));
-          } else {
-            static_assert(
-              STDEXEC::operation_state<__opstate_t>,
-              "The `connect` member function of the sender passed to STDEXEC::sync_wait() "
-              "does not return an operation state. An operation state is required to have a "
-              "no-throw .start() member function.");
           }
-        } else {
+          else
+          {
+            static_assert(STDEXEC::operation_state<__opstate_t>,
+                          "The `connect` member function of the sender passed to "
+                          "STDEXEC::sync_wait() "
+                          "does not return an operation state. An operation state is required to "
+                          "have a "
+                          "no-throw .start() member function.");
+          }
+        }
+        else
+        {
           // This shoud generate a useful error message about why the sender cannot
           // be connected to the receiver:
-          STDEXEC::connect(
-            static_cast<_CvSender&&>(__sndr), STDEXEC::__sync_wait::__receiver_t<_CvSender>{});
+          STDEXEC::connect(static_cast<_CvSender&&>(__sndr),
+                           STDEXEC::__sync_wait::__receiver_t<_CvSender>{});
           static_assert(
             STDEXEC::sender_to<_CvSender, STDEXEC::__sync_wait::__receiver_t<_CvSender>>,
             STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER);
         }
-      } else if constexpr (!STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>) {
-        static_assert(
-          STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>,
-          "The sender passed to STDEXEC::sync_wait() has a domain that does not provide a "
-          "usable implementation for sync_wait().");
-      } else {
+      }
+      else if constexpr (!STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>)
+      {
+        static_assert(STDEXEC::__has_implementation_for<sync_wait_t, __domain_t, _CvSender>,
+                      "The sender passed to STDEXEC::sync_wait() has a domain that does not "
+                      "provide a "
+                      "usable implementation for sync_wait().");
+      }
+      else
+      {
         // success path, dispatch to the custom domain's sync_wait
         return STDEXEC::apply_sender(__domain_t(), *this, static_cast<_CvSender&&>(__sndr));
       }
@@ -235,7 +268,8 @@ struct sync_wait_t {
   }
 
   template <class _CvSender>
-  constexpr auto operator()(_CvSender&&) const {
+  constexpr auto operator()(_CvSender&&) const
+  {
     STDEXEC::__diagnose_sender_concept_failure<_CvSender, STDEXEC::__sync_wait::__env>();
     // dummy return type to silence follow-on errors
     return std::optional<std::tuple<int>>{};
@@ -266,23 +300,25 @@ struct sync_wait_t {
   /// @throws error otherwise
 
   template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
-  STDEXEC_CONSTEXPR_CXX23 auto apply_sender(_CvSender&& __sndr) const //
-    -> std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>> {
-    STDEXEC::__sync_wait::__state __local_state{};
+  STDEXEC_CONSTEXPR_CXX23 auto apply_sender(_CvSender&& __sndr) const  //
+    -> std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>>
+  {
+    STDEXEC::__sync_wait::__state                                       __local_state{};
     std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>> __result{};
 
     // Launch the sender with a continuation that will fill in the __result optional or set the
     // exception_ptr in __local_state.
     [[maybe_unused]]
-    auto __op = STDEXEC::connect(
-      static_cast<_CvSender&&>(__sndr),
-      STDEXEC::__sync_wait::__receiver_t<_CvSender>{&__local_state, &__result});
+    auto __op = STDEXEC::connect(static_cast<_CvSender&&>(__sndr),
+                                 STDEXEC::__sync_wait::__receiver_t<_CvSender>{&__local_state,
+                                                                               &__result});
     STDEXEC::start(__op);
 
     // Wait for the variant to be filled in.
     __local_state.__loop_.run();
 
-    if (__local_state.__eptr_) {
+    if (__local_state.__eptr_)
+    {
       std::rethrow_exception(static_cast<std::exception_ptr&&>(__local_state.__eptr_));
     }
 
@@ -292,45 +328,49 @@ struct sync_wait_t {
 
 ////////////////////////////////////////////////////////////////////////////
 // [execution.senders.consumers.sync_wait_with_variant]
-struct sync_wait_with_variant_t {
+struct sync_wait_with_variant_t
+{
   template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
-    requires STDEXEC::__callable<
-      STDEXEC::apply_sender_t,
-      STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, _CvSender, STDEXEC::__sync_wait::__env>,
-      sync_wait_with_variant_t,
-      _CvSender
-    >
-  auto operator()(_CvSender&& __sndr) const -> decltype(auto) {
-    using __result_t = STDEXEC::__call_result_t<
-      STDEXEC::apply_sender_t,
-      STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, _CvSender, STDEXEC::__sync_wait::__env>,
-      sync_wait_with_variant_t,
-      _CvSender
-    >;
+    requires STDEXEC::__callable<STDEXEC::apply_sender_t,
+                                 STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
+                                                                   _CvSender,
+                                                                   STDEXEC::__sync_wait::__env>,
+                                 sync_wait_with_variant_t,
+                                 _CvSender>
+  auto operator()(_CvSender&& __sndr) const -> decltype(auto)
+  {
+    using __result_t =
+      STDEXEC::__call_result_t<STDEXEC::apply_sender_t,
+                               STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
+                                                                 _CvSender,
+                                                                 STDEXEC::__sync_wait::__env>,
+                               sync_wait_with_variant_t,
+                               _CvSender>;
     static_assert(STDEXEC::__is_instance_of<__result_t, std::optional>);
     using __variant_t = __result_t::value_type;
     static_assert(STDEXEC::__is_instance_of<__variant_t, std::variant>);
 
-    using _Domain = STDEXEC::__completion_domain_of_t<
-      STDEXEC::set_value_t,
-      _CvSender,
-      STDEXEC::__sync_wait::__env
-    >;
+    using _Domain = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
+                                                      _CvSender,
+                                                      STDEXEC::__sync_wait::__env>;
     return STDEXEC::apply_sender(_Domain(), *this, static_cast<_CvSender&&>(__sndr));
   }
 
   template <class _CvSender>
-    requires STDEXEC::__callable<sync_wait_t, STDEXEC::__result_of<STDEXEC::into_variant, _CvSender>>
+    requires STDEXEC::__callable<sync_wait_t,
+                                 STDEXEC::__result_of<STDEXEC::into_variant, _CvSender>>
   auto apply_sender(_CvSender&& __sndr) const
-    -> std::optional<STDEXEC::__sync_wait::__variant_for_t<_CvSender>> {
-    if (auto __opt_values = sync_wait_t()(STDEXEC::into_variant(static_cast<_CvSender&&>(__sndr)))) {
+    -> std::optional<STDEXEC::__sync_wait::__variant_for_t<_CvSender>>
+  {
+    if (auto __opt_values = sync_wait_t()(STDEXEC::into_variant(static_cast<_CvSender&&>(__sndr))))
+    {
       return std::move(std::get<0>(*__opt_values));
     }
     return std::nullopt;
   }
 };
 
-inline constexpr sync_wait_t sync_wait{};
+inline constexpr sync_wait_t              sync_wait{};
 inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
 STDEXEC_P2300_NAMESPACE_END(this_thread)

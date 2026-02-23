@@ -26,28 +26,29 @@
 
 #include "start_detached.hpp"
 
-namespace experimental::execution {
+namespace experimental::execution
+{
   /////////////////////////////////////////////////////////////////////////////
   // [execution.execute]
-  struct __execute_t {
+  struct __execute_t
+  {
     template <STDEXEC::scheduler _Scheduler, STDEXEC::__std::move_constructible _Fun>
       requires STDEXEC::__callable<_Fun&>
-    void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false) {
+    void operator()(_Scheduler&& __sched, _Fun __fun) const noexcept(false)
+    {
       auto __domain = STDEXEC::get_domain(__sched);
-      STDEXEC::apply_sender(
-        __domain,
-        *this,
-        STDEXEC::schedule(static_cast<_Scheduler&&>(__sched)),
-        static_cast<_Fun&&>(__fun));
+      STDEXEC::apply_sender(__domain,
+                            *this,
+                            STDEXEC::schedule(static_cast<_Scheduler&&>(__sched)),
+                            static_cast<_Fun&&>(__fun));
     }
 
     template <STDEXEC::sender _Sender, STDEXEC::__std::move_constructible _Fun>
       requires STDEXEC::__callable<_Fun&>
-            && STDEXEC::__callable<
-                 start_detached_t,
-                 STDEXEC::__result_of<STDEXEC::then, _Sender, _Fun>
-            >
-    void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false) {
+            && STDEXEC::__callable<start_detached_t,
+                                   STDEXEC::__result_of<STDEXEC::then, _Sender, _Fun>>
+    void apply_sender(_Sender&& __sndr, _Fun __fun) const noexcept(false)
+    {
       exec::start_detached(
         STDEXEC::then(static_cast<_Sender&&>(__sndr), static_cast<_Fun&&>(__fun)));
     }
@@ -57,8 +58,7 @@ namespace experimental::execution {
 
   using execute_t [[deprecated]] = __execute_t;
   [[deprecated]]
-  inline constexpr const __execute_t& execute = __execute;
-} // namespace experimental::execution
+  inline constexpr __execute_t const & execute = __execute;
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
-

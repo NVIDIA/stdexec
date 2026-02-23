@@ -25,23 +25,26 @@
 #  if STDEXEC_MSVC_HEADERS()
 #    include <intrin.h>
 #  endif
-namespace STDEXEC {
-  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
+namespace STDEXEC
+{
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept
+  {
 #  if STDEXEC_MSVC_HEADERS()
     _mm_pause();
 #  else
     __builtin_ia32_pause();
 #  endif
   }
-} // namespace STDEXEC
+}  // namespace STDEXEC
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
-namespace STDEXEC {
-  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
-#  if (                                                                                            \
-    defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)              \
-    || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)            \
-    || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)            \
-    || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
+namespace STDEXEC
+{
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept
+  {
+#  if (defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)           \
+       || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)         \
+       || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)         \
+       || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
     asm volatile("yield" ::: "memory");
 #  elif defined(_M_ARM64)
     __yield();
@@ -49,10 +52,10 @@ namespace STDEXEC {
     asm volatile("nop" ::: "memory");
 #  endif
   }
-} // namespace STDEXEC
+}  // namespace STDEXEC
 #else
-namespace STDEXEC {
-  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {
-  }
-} // namespace STDEXEC
+namespace STDEXEC
+{
+  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {}
+}  // namespace STDEXEC
 #endif

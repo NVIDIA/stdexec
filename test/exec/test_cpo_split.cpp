@@ -21,24 +21,27 @@
 
 #include <catch2/catch.hpp>
 
-namespace {
+namespace
+{
 
-  TEST_CASE("split is customizable", "[cpo][cpo_split]") {
-    SECTION("by completion scheduler domain") {
+  TEST_CASE("split is customizable", "[cpo][cpo_split]")
+  {
+    SECTION("by completion scheduler domain")
+    {
       cpo_test_scheduler_t<exec::split_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope =
-          decltype(ex::connect(exec::split(snd), empty_recv::recv0_ec{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(exec::split(snd),
+                                                       empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
         void(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)));
-        constexpr scope_t scope =
-          decltype(ex::connect(snd | exec::split(), empty_recv::recv0_ec{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(snd | exec::split(),
+                                                       empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }
   }
-} // namespace
+}  // namespace
