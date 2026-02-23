@@ -197,10 +197,11 @@ namespace STDEXEC
   }
 
   template <class _Ty>
-  constexpr _Ty const & __clamp(_Ty const & v, _Ty const & lo, _Ty const & hi)
+  constexpr _Ty const & __clamp(_Ty const & __val, _Ty const & __low, _Ty const & __high)
   {
-    STDEXEC_ASSERT(!(hi < lo));
-    return v < lo ? lo : hi < v ? hi : v;  // NOLINT(bugprone-return-const-ref-from-parameter)
+    STDEXEC_ASSERT(!(__high < __low));
+    // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
+    return __val < __low ? __low : __high < __val ? __high : __val;
   }
 
   STDEXEC_PRAGMA_PUSH()

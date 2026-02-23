@@ -185,7 +185,7 @@ namespace STDEXEC
       };
 
       explicit __op_state(std::pair<__assoc_t, __sender_ref_t> __parts, _Receiver&& __rcvr)
-        : __assoc_(std::move(__parts.first))
+        : __assoc_(STDEXEC::__allocator_aware_forward(std::move(__parts.first), __rcvr))
       {
         if (__assoc_)
         {
@@ -264,7 +264,7 @@ namespace STDEXEC
         auto& [__tag, __data] = __self;
 
         using op_state_t = __op_state<std::remove_cvref_t<_Self>, _Receiver>;
-        return op_state_t{__forward_like<_Self>(__data), std::move(__rcvr)};
+        return op_state_t{STDEXEC::__forward_like<_Self>(__data), std::move(__rcvr)};
       };
 
       static constexpr auto __start = [](auto& __state) noexcept -> void

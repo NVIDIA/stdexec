@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 #include "__scope.hpp"
+#include "__tuple.hpp"
 
 // include these after __execution_fwd.hpp
 #include <memory>  // IWYU pragma: export
@@ -87,4 +88,39 @@ namespace STDEXEC
     requires __same_as<_Ty, typename _Alloc::value_type>
   [[nodiscard]]
   constexpr auto __rebind_allocator(_Alloc const &&) noexcept = delete;
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  // __allocator_aware_forward: https://eel.is/c++draft/exec#snd.expos-49
+  template <class _Alloc>
+  [[nodiscard]]
+  constexpr auto __mk_obj_using_alloc_fn(_Alloc const &__alloc) noexcept
+  {
+    return [&__alloc]<class... _Args>(_Args &&...__args)
+    {
+      return __tuple{
+        std::make_obj_using_allocator<__decay_t<_Args>>(__alloc, static_cast<_Args &&>(__args))...};
+    };
+  }
+
+  template <class _Ty, class _Context>
+  [[nodiscard]]
+  constexpr auto __allocator_aware_forward(_Ty &&__obj, _Context const &__ctx) -> decltype(auto)
+  {
+    using __value_t = __decay_t<_Ty>;
+    if constexpr (!__callable<get_allocator_t, env_of_t<_Context>>)
+    {
+      return static_cast<_Ty &&>(__obj);
+    }
+    else if constexpr (__is_instance_of<__value_t, __tuple>)
+    {
+      auto const __alloc = get_allocator(get_env(__ctx));
+      return __apply(STDEXEC::__mk_obj_using_alloc_fn(__alloc), static_cast<_Ty &&>(__obj));
+    }
+    else
+    {
+      auto const __alloc = get_allocator(get_env(__ctx));
+      return std::make_obj_using_allocator<__decay_t<_Ty>>(__alloc, static_cast<_Ty &&>(__obj));
+    }
+  }
+
 }  // namespace STDEXEC
