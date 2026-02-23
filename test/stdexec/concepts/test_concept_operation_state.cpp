@@ -19,26 +19,27 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
   STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
-  struct op_except {
-    op_except() = default;
+  struct op_except
+  {
+    op_except()            = default;
     op_except(op_except&&) = delete;
 
-    void start() & {
-    }
+    void start() & {}
   };
 
-  struct op_noexcept {
-    op_noexcept() = default;
+  struct op_noexcept
+  {
+    op_noexcept()              = default;
     op_noexcept(op_noexcept&&) = delete;
 
-    void start() & noexcept {
-    }
+    void start() & noexcept {}
   };
 
   STDEXEC_PRAGMA_POP()
@@ -49,15 +50,18 @@ namespace {
   //   REQUIRE(!ex::operation_state<op_except>);
   // }
 
-  TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][operation_state]") {
+  TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][operation_state]")
+  {
     REQUIRE(ex::operation_state<op_noexcept>);
   }
 
-  TEST_CASE("reference type is not an operation_state", "[concepts][operation_state]") {
+  TEST_CASE("reference type is not an operation_state", "[concepts][operation_state]")
+  {
     REQUIRE(!ex::operation_state<op_noexcept&>);
   }
 
-  TEST_CASE("pointer type is not an operation_state", "[concepts][operation_state]") {
+  TEST_CASE("pointer type is not an operation_state", "[concepts][operation_state]")
+  {
     REQUIRE(!ex::operation_state<op_noexcept*>);
   }
-} // namespace
+}  // namespace

@@ -33,17 +33,17 @@ namespace STDEXEC
 
   template <class _Env, class _Query, class... _Args>
   concept __member_queryable_with = __queryable<_Env>
-                                 && requires(_Env const &   __env,
-                                             _Query const & __query,
-                                             __declfn_t<_Args&&>... __args) {
+                                 && requires(_Env const   &__env,
+                                             _Query const &__query,
+                                             __declfn_t<_Args &&>... __args) {
                                       { __env.query(__query, __args()...) };
                                     };
 
   template <class _Env, class _Query, class... _Args>
   concept __nothrow_member_queryable_with = __member_queryable_with<_Env, _Query, _Args...>
-                                         && requires(_Env const &   __env,
-                                                     _Query const & __query,
-                                                     __declfn_t<_Args&&>... __args) {
+                                         && requires(_Env const   &__env,
+                                                     _Query const &__query,
+                                                     __declfn_t<_Args &&>... __args) {
                                               { __env.query(__query, __args()...) } noexcept;
                                             };
 
@@ -65,7 +65,7 @@ namespace STDEXEC
 
     template <class... _Args>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(__ignore, _Args&&...) const noexcept  //
+    constexpr auto operator()(__ignore, _Args &&...) const noexcept  //
       -> __mcall1<_Transform, __mtypeof<_Default>>
     {
       return _Default;
@@ -82,7 +82,7 @@ namespace STDEXEC
     template <class _Qy = _Query, class _Env, class... _Args>
       requires __member_queryable_with<_Env const &, _Qy, _Args...>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(_Env const & __env, _Args&&... __args) const
+    constexpr auto operator()(_Env const &__env, _Args &&...__args) const
       noexcept(__nothrow_member_queryable_with<_Env, _Qy, _Args...>)
         -> __mcall1<_Transform, __member_query_result_t<_Env, _Qy, _Args...>>
     {
@@ -90,7 +90,7 @@ namespace STDEXEC
       {
         _Query::template __validate<_Env, _Args...>();
       }
-      return __env.query(_Query(), static_cast<_Args&&>(__args)...);
+      return __env.query(_Query(), static_cast<_Args &&>(__args)...);
     }
 
     // Query with tag_invoke (legacy):
@@ -98,7 +98,7 @@ namespace STDEXEC
       requires __tag_invocable<_Qy, _Env const &, _Args...>
     [[deprecated("the use of tag_invoke for queries is deprecated")]]
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const & __env, _Args&&... __args) const
+      constexpr auto operator()(_Env const &__env, _Args &&...__args) const
       noexcept(__nothrow_tag_invocable<_Qy, _Env const &, _Args...>)
         -> __mcall1<_Transform, __tag_invoke_result_t<_Qy, _Env const &, _Args...>>
     {
@@ -106,21 +106,21 @@ namespace STDEXEC
       {
         _Query::template __validate<_Env, _Args...>();
       }
-      return __tag_invoke(_Query(), __env, static_cast<_Args&&>(__args)...);
+      return __tag_invoke(_Query(), __env, static_cast<_Args &&>(__args)...);
     }
   };
 
   template <class _Env, class _Query, class... _Args>
-  concept __queryable_with = __callable<__query<_Query>, _Env&, _Args...>;
+  concept __queryable_with = __callable<__query<_Query>, _Env &, _Args...>;
 
   template <class _Env, class _Query, class... _Args>
-  concept __nothrow_queryable_with = __nothrow_callable<__query<_Query>, _Env&, _Args...>;
+  concept __nothrow_queryable_with = __nothrow_callable<__query<_Query>, _Env &, _Args...>;
 
   template <class _Env, class _Query, class... _Args>
-  using __query_result_t = __call_result_t<__query<_Query>, _Env&, _Args...>;
+  using __query_result_t = __call_result_t<__query<_Query>, _Env &, _Args...>;
 
   template <class _Env, class _Query, class... _Args>
-  concept __statically_queryable_with_impl = requires(_Query __q, _Args&&... __args) {
+  concept __statically_queryable_with_impl = requires(_Query __q, _Args &&...__args) {
     std::remove_reference_t<_Env>::query(__q, static_cast<_Args &&>(__args)...);
   };
 

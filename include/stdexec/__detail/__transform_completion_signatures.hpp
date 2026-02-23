@@ -64,18 +64,18 @@ namespace STDEXEC
 
     template <class _Sig, template <class...> class _Tuple>
     using __for_each_sig_t = decltype(__cmplsigs::__for_each_sig<_Tuple>(
-      static_cast<_Sig*>(nullptr)));
+      static_cast<_Sig *>(nullptr)));
 
     template <template <class...> class _Tuple,
               template <class...> class _Variant,
               class... _More,
               class... _What>
-    constexpr auto __for_each_completion_signature_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
+    constexpr auto __for_each_completion_signature_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
     template <template <class...> class _Tuple,
               template <class...> class _Variant,
               class... _More,
               class... _Sigs>
-    constexpr auto __for_each_completion_signature_fn(completion_signatures<_Sigs...>**)
+    constexpr auto __for_each_completion_signature_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__for_each_sig_t<_Sigs, _Tuple>..., _More...>;
   }  // namespace __cmplsigs
 
@@ -85,7 +85,7 @@ namespace STDEXEC
             class... _More>
   using __for_each_completion_signature_t =
     decltype(__cmplsigs::__for_each_completion_signature_fn<_Tuple, _Variant, _More...>(
-      static_cast<_Sigs**>(nullptr)));
+      static_cast<_Sigs **>(nullptr)));
 
   namespace __cmplsigs
   {
@@ -110,7 +110,7 @@ namespace STDEXEC
               template <class...> class _SetErr,
               class _SetStp>
     using __transform_sig_t = decltype(__cmplsigs::__transform_sig<_SetVal, _SetErr, _SetStp>(
-      static_cast<_Sig*>(nullptr)));
+      static_cast<_Sig *>(nullptr)));
 
     template <template <class...> class _SetVal,
               template <class...> class _SetErr,
@@ -118,7 +118,7 @@ namespace STDEXEC
               template <class...> class _Variant,
               class... _More,
               class... _What>
-    constexpr auto __transform_sigs_fn(_ERROR_<_What...>**) -> _ERROR_<_What...>;
+    constexpr auto __transform_sigs_fn(_ERROR_<_What...> **) -> _ERROR_<_What...>;
 
     template <template <class...> class _SetVal,
               template <class...> class _SetErr,
@@ -126,7 +126,7 @@ namespace STDEXEC
               template <class...> class _Variant,
               class... _More,
               class... _Sigs>
-    constexpr auto __transform_sigs_fn(completion_signatures<_Sigs...>**)
+    constexpr auto __transform_sigs_fn(completion_signatures<_Sigs...> **)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
   }  // namespace __cmplsigs
 
@@ -138,7 +138,7 @@ namespace STDEXEC
             class... _More>
   using __transform_completion_signatures_t =
     decltype(__cmplsigs::__transform_sigs_fn<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
-      static_cast<_Sigs**>(nullptr)));
+      static_cast<_Sigs **>(nullptr)));
 
   namespace __cmplsigs
   {
@@ -328,14 +328,14 @@ namespace STDEXEC
     template <class _SetTag, class... _Args, class _Fn>
     [[nodiscard]]
     consteval auto
-    __transform_expr(_Fn const & __fn) -> __transform_result_t<_Fn const &, _SetTag, _Args...>
+    __transform_expr(_Fn const &__fn) -> __transform_result_t<_Fn const &, _SetTag, _Args...>
     {
       return __fn.template operator()<_SetTag, _Args...>();
     }
 
     template <class _Fn>
     [[nodiscard]]
-    consteval auto __transform_expr(_Fn const & __fn) -> __call_result_t<_Fn const &>
+    consteval auto __transform_expr(_Fn const &__fn) -> __call_result_t<_Fn const &>
     {
       return __fn();
     }
@@ -347,7 +347,7 @@ namespace STDEXEC
     // transform_completion_signatures:
     template <class... _Args, class _Fn>
     [[nodiscard]]
-    consteval auto __apply_transform(_Fn const & __fn)
+    consteval auto __apply_transform(_Fn const &__fn)
     {
       if constexpr (__minvocable_q<__transform_expr_t, _Fn, _Args...>)
       {
@@ -409,7 +409,7 @@ namespace STDEXEC
 
       template <class... Sigs>
       [[nodiscard]]
-      consteval auto operator()(Sigs*... sigs) const
+      consteval auto operator()(Sigs *...sigs) const
       {
         return __concat_completion_signatures(__tfx1(sigs)...);
       }

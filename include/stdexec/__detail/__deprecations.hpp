@@ -40,9 +40,9 @@ namespace STDEXEC
                                           "inplace_stop_source")]] = inplace_stop_source;
 
   template <class _Fun>
-  using in_place_stop_callback [[deprecated("in_place_stop_callback has been renamed "
-                                            "inplace_stop_callback")]] =
-    inplace_stop_callback<_Fun>;
+  using in_place_stop_callback
+    [[deprecated("in_place_stop_callback has been renamed "
+                 "inplace_stop_callback")]] = inplace_stop_callback<_Fun>;
 
   using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
   [[deprecated("start_on has been renamed starts_on")]]

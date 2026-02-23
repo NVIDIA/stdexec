@@ -34,7 +34,7 @@ namespace STDEXEC
   /////////////////////////////////////////////////////////////////////////////
   // [exec.schedule]
   template <class _Scheduler>
-  concept __has_schedule_member = requires(_Scheduler&& __sched) {
+  concept __has_schedule_member = requires(_Scheduler &&__sched) {
     static_cast<_Scheduler &&>(__sched).schedule();
   };
 
@@ -43,25 +43,25 @@ namespace STDEXEC
     template <class _Scheduler>
       requires __has_schedule_member<_Scheduler>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    auto operator()(_Scheduler&& __sched) const
-      noexcept(noexcept(static_cast<_Scheduler&&>(__sched).schedule()))
-        -> decltype(static_cast<_Scheduler&&>(__sched).schedule())
+    auto operator()(_Scheduler &&__sched) const
+      noexcept(noexcept(static_cast<_Scheduler &&>(__sched).schedule()))
+        -> decltype(static_cast<_Scheduler &&>(__sched).schedule())
     {
-      static_assert(sender<decltype(static_cast<_Scheduler&&>(__sched).schedule())>,
+      static_assert(sender<decltype(static_cast<_Scheduler &&>(__sched).schedule())>,
                     "schedule() member functions must return a sender");
-      return static_cast<_Scheduler&&>(__sched).schedule();
+      return static_cast<_Scheduler &&>(__sched).schedule();
     }
 
     template <class _Scheduler>
       requires __has_schedule_member<_Scheduler> || __tag_invocable<schedule_t, _Scheduler>
     [[deprecated("the use of tag_invoke for schedule is deprecated")]]
     STDEXEC_ATTRIBUTE(host, device, always_inline)  //
-      auto operator()(_Scheduler&& __sched) const
+      auto operator()(_Scheduler &&__sched) const
       noexcept(__nothrow_tag_invocable<schedule_t, _Scheduler>)
         -> __tag_invoke_result_t<schedule_t, _Scheduler>
     {
       static_assert(sender<__tag_invoke_result_t<schedule_t, _Scheduler>>);
-      return __tag_invoke(*this, static_cast<_Scheduler&&>(__sched));
+      return __tag_invoke(*this, static_cast<_Scheduler &&>(__sched));
     }
 
     static constexpr auto query(forwarding_query_t) noexcept -> bool
@@ -84,7 +84,7 @@ namespace STDEXEC
   using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
 
   template <class _SchedulerProvider>
-  concept __scheduler_provider = requires(_SchedulerProvider const & __sp) {
+  concept __scheduler_provider = requires(_SchedulerProvider const &__sp) {
     { get_scheduler(__sp) } -> scheduler;
   };
 
@@ -154,7 +154,7 @@ namespace STDEXEC
     {
       template <class _Attrs, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch>
-      constexpr auto operator()(_Attrs const & __attrs, __ignore = {}) const noexcept
+      constexpr auto operator()(_Attrs const &__attrs, __ignore = {}) const noexcept
         -> __decay_t<__query_result_t<_Attrs, _GetComplSch>>
       {
         static_assert(noexcept(__attrs.query(_GetComplSch{})));
@@ -164,7 +164,7 @@ namespace STDEXEC
 
       template <class _Attrs, class _Env, class _GetComplSch = get_completion_scheduler_t>
         requires __queryable_with<_Attrs, _GetComplSch, _Env const &>
-      constexpr auto operator()(_Attrs const & __attrs, _Env const & __env) const noexcept
+      constexpr auto operator()(_Attrs const &__attrs, _Env const &__env) const noexcept
         -> __decay_t<__query_result_t<_Attrs, _GetComplSch, _Env const &>>
       {
         static_assert(noexcept(__attrs.query(_GetComplSch{}, __env)));
@@ -181,7 +181,7 @@ namespace STDEXEC
     struct __recurse_query_t
     {
       template <class _Self = __recurse_query_t, class _Sch, class... _Env>
-      constexpr auto operator()([[maybe_unused]] _Sch __sch, _Env const &... __env) const noexcept
+      constexpr auto operator()([[maybe_unused]] _Sch __sch, _Env const &...__env) const noexcept
       {
         static_assert(scheduler<_Sch>);
         // When determining where the scheduler's operations will complete, we query
@@ -273,7 +273,7 @@ namespace STDEXEC
     template <class _Attrs,
               class... _Env,
               auto _DeclFn = __get_declfn<_Attrs const &, _Env const &...>()>
-    constexpr auto operator()(_Attrs const & __attrs, _Env const &... __env) const noexcept
+    constexpr auto operator()(_Attrs const &__attrs, _Env const &...__env) const noexcept
       -> __unless_one_of_t<decltype(_DeclFn()), void>
     {
       // If __attrs has a completion scheduler, then return it (after checking the scheduler
@@ -354,7 +354,7 @@ namespace STDEXEC
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_scheduler_of_t =
-    __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, const _Env&...>;
+    __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, const _Env &...>;
 
   // TODO(ericniebler): examine all uses of this struct.
   template <class _Scheduler>
@@ -363,7 +363,7 @@ namespace STDEXEC
     template <class... _Env>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_completion_scheduler_t<set_value_t>,
-                         _Env const &... __env) const noexcept
+                         _Env const &...__env) const noexcept
       -> __call_result_t<get_completion_scheduler_t<set_value_t>, _Scheduler, _Env const &...>
     {
       return get_completion_scheduler<set_value_t>(__sched_, __env...);
@@ -411,7 +411,7 @@ namespace STDEXEC
   struct __mk_sch_env_t
   {
     template <class _Sch, class... _Env>
-    constexpr auto operator()([[maybe_unused]] _Sch __sch, _Env const &... __env) const noexcept
+    constexpr auto operator()([[maybe_unused]] _Sch __sch, _Env const &...__env) const noexcept
     {
       if constexpr (__completes_inline<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env...>
                     && (__callable<get_scheduler_t, _Env const &> || ...))
@@ -443,11 +443,11 @@ namespace STDEXEC
                                 && __infallible_sender<__result_of<schedule, _Scheduler>, _Env...>;
 
   // Deprecated interfaces
-  using get_delegatee_scheduler_t [[deprecated("get_delegatee_scheduler_t has been renamed "
-                                               "get_delegation_scheduler_t")]] =
-    get_delegation_scheduler_t;
+  using get_delegatee_scheduler_t
+    [[deprecated("get_delegatee_scheduler_t has been renamed "
+                 "get_delegation_scheduler_t")]] = get_delegation_scheduler_t;
 
-  inline constexpr auto& get_delegatee_scheduler [[deprecated("get_delegatee_scheduler has been "
+  inline constexpr auto &get_delegatee_scheduler [[deprecated("get_delegatee_scheduler has been "
                                                               "renamed get_delegation_scheduler")]]
   = get_delegation_scheduler;
 }  // namespace STDEXEC

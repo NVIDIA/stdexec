@@ -60,9 +60,9 @@ namespace experimental::execution::system_context_replaceability
 
   /// Interface for completing a sender operation. Backend will call frontend though this interface
   /// for completing the `schedule` and `schedule_bulk` operations.
-  using receiver [[deprecated("Use STDEXEC::system_context_replaceability::receiver_proxy "
-                              "instead.")]] =
-    STDEXEC::system_context_replaceability::receiver_proxy;
+  using receiver
+    [[deprecated("Use STDEXEC::system_context_replaceability::receiver_proxy "
+                 "instead.")]] = STDEXEC::system_context_replaceability::receiver_proxy;
 
   /// Receiver for bulk scheduling operations.
   using bulk_item_receiver

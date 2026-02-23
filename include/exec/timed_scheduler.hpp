@@ -150,13 +150,13 @@ namespace experimental::execution
       // __schedule_after_base_t class.
       template <class _Scheduler>
         requires __callable<__schedule_after_base_t, _Scheduler, duration_of_t<_Scheduler> const &>
-      auto operator()(_Scheduler&& __sched, duration_of_t<_Scheduler> const & __time_point) const
+      auto operator()(_Scheduler &&__sched, duration_of_t<_Scheduler> const &__time_point) const
         noexcept(__nothrow_callable<__schedule_after_base_t,
                                     _Scheduler,
                                     duration_of_t<_Scheduler> const &>)
           -> __call_result_t<__schedule_after_base_t, _Scheduler, duration_of_t<_Scheduler> const &>
       {
-        return __schedule_after_base_t{}(static_cast<_Scheduler&&>(__sched), __time_point);
+        return __schedule_after_base_t{}(static_cast<_Scheduler &&>(__sched), __time_point);
       }
 #endif
 
@@ -230,12 +230,12 @@ namespace experimental::execution
       // __schedule_at_base_t class.
       template <class _Scheduler>
         requires __callable<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>
-      auto operator()(_Scheduler&& __sched, time_point_of_t<_Scheduler> const & __time_point) const
+      auto operator()(_Scheduler &&__sched, time_point_of_t<_Scheduler> const &__time_point) const
         noexcept(
           __nothrow_callable<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>)
           -> __call_result_t<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>
       {
-        return __schedule_at_base_t{}(static_cast<_Scheduler&&>(__sched), __time_point);
+        return __schedule_at_base_t{}(static_cast<_Scheduler &&>(__sched), __time_point);
       }
 #endif
 

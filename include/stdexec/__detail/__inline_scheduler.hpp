@@ -45,7 +45,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void start() noexcept
       {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+        STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
       }
 
       _Receiver __rcvr_;
@@ -60,7 +60,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       static constexpr auto connect(_Receiver __rcvr) noexcept -> __opstate<_Receiver>
       {
-        return {static_cast<_Receiver&&>(__rcvr)};
+        return {static_cast<_Receiver &&>(__rcvr)};
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)

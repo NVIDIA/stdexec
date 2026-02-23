@@ -22,11 +22,14 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-auto main() -> int {
-  auto x = then(stdexec::just(42), [](int i) {
-    std::printf("Got: %d\n", i);
-    return i;
-  });
+auto main() -> int
+{
+  auto x = then(stdexec::just(42),
+                [](int i)
+                {
+                  std::printf("Got: %d\n", i);
+                  return i;
+                });
 
   // prints:
   //   Got: 42

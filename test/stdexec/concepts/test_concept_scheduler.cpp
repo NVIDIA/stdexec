@@ -23,28 +23,32 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
-namespace {
+namespace
+{
 
   template <class Scheduler>
-  struct default_env {
+  struct default_env
+  {
     template <typename CPO>
     [[nodiscard]]
-    auto query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> Scheduler {
+    auto query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> Scheduler
+    {
       return {};
     }
   };
 
-  struct my_scheduler {
-    struct my_sender {
-      using sender_concept = STDEXEC::sender_t;
-      using completion_signatures = ex::completion_signatures<
-        ex::set_value_t(),
-        ex::set_error_t(std::exception_ptr),
-        ex::set_stopped_t()
-      >;
+  struct my_scheduler
+  {
+    struct my_sender
+    {
+      using sender_concept        = STDEXEC::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t(),
+                                                              ex::set_error_t(std::exception_ptr),
+                                                              ex::set_stopped_t()>;
 
       [[nodiscard]]
-      auto get_env() const noexcept -> default_env<my_scheduler> {
+      auto get_env() const noexcept -> default_env<my_scheduler>
+      {
         return {};
       }
     };
@@ -52,93 +56,108 @@ namespace {
     template <typename CPO>
     [[nodiscard]]
     auto
-      query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler {
+    query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler
+    {
       return {};
     }
 
     [[nodiscard]]
-    auto schedule() const -> my_sender {
+    auto schedule() const -> my_sender
+    {
       return {};
     }
 
-    friend auto operator==(my_scheduler, my_scheduler) noexcept -> bool {
+    friend auto operator==(my_scheduler, my_scheduler) noexcept -> bool
+    {
       return true;
     }
 
-    friend auto operator!=(my_scheduler, my_scheduler) noexcept -> bool {
+    friend auto operator!=(my_scheduler, my_scheduler) noexcept -> bool
+    {
       return false;
     }
   };
 
-  TEST_CASE("type with schedule CPO models scheduler", "[concepts][scheduler]") {
+  TEST_CASE("type with schedule CPO models scheduler", "[concepts][scheduler]")
+  {
     REQUIRE(ex::scheduler<my_scheduler>);
     REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
   }
 
-  struct no_schedule_cpo { };
+  struct no_schedule_cpo
+  {};
 
-  TEST_CASE("type without schedule CPO doesn't model scheduler", "[concepts][scheduler]") {
+  TEST_CASE("type without schedule CPO doesn't model scheduler", "[concepts][scheduler]")
+  {
     REQUIRE(!ex::scheduler<no_schedule_cpo>);
   }
 
-  struct my_scheduler_except {
-    struct my_sender {
-      using sender_concept = STDEXEC::sender_t;
-      using completion_signatures = ex::completion_signatures<
-        ex::set_value_t(),
-        ex::set_error_t(std::exception_ptr),
-        ex::set_stopped_t()
-      >;
+  struct my_scheduler_except
+  {
+    struct my_sender
+    {
+      using sender_concept        = STDEXEC::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t(),
+                                                              ex::set_error_t(std::exception_ptr),
+                                                              ex::set_stopped_t()>;
 
       [[nodiscard]]
-      auto get_env() const noexcept -> default_env<my_scheduler_except> {
+      auto get_env() const noexcept -> default_env<my_scheduler_except>
+      {
         return {};
       }
     };
 
     [[nodiscard]]
-    auto schedule() const -> my_sender {
+    auto schedule() const -> my_sender
+    {
       STDEXEC_THROW(std::logic_error("err"));
       return {};
     }
 
-    friend auto operator==(my_scheduler_except, my_scheduler_except) noexcept -> bool {
+    friend auto operator==(my_scheduler_except, my_scheduler_except) noexcept -> bool
+    {
       return true;
     }
 
-    friend auto operator!=(my_scheduler_except, my_scheduler_except) noexcept -> bool {
+    friend auto operator!=(my_scheduler_except, my_scheduler_except) noexcept -> bool
+    {
       return false;
     }
   };
 
-  TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler]") {
+  TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler]")
+  {
     REQUIRE(ex::scheduler<my_scheduler_except>);
   }
 
-  struct noeq_sched {
-    struct my_sender {
-      using sender_concept = STDEXEC::sender_t;
-      using completion_signatures = ex::completion_signatures<
-        ex::set_value_t(),
-        ex::set_error_t(std::exception_ptr),
-        ex::set_stopped_t()
-      >;
+  struct noeq_sched
+  {
+    struct my_sender
+    {
+      using sender_concept        = STDEXEC::sender_t;
+      using completion_signatures = ex::completion_signatures<ex::set_value_t(),
+                                                              ex::set_error_t(std::exception_ptr),
+                                                              ex::set_stopped_t()>;
 
       [[nodiscard]]
-      auto get_env() const noexcept -> default_env<noeq_sched> {
+      auto get_env() const noexcept -> default_env<noeq_sched>
+      {
         return {};
       }
     };
 
     [[nodiscard]]
-    auto schedule() const -> my_sender {
+    auto schedule() const -> my_sender
+    {
       return {};
     }
   };
 
-  TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][scheduler]") {
+  TEST_CASE("type w/o equality operations do not model scheduler", "[concepts][scheduler]")
+  {
     REQUIRE(!ex::scheduler<noeq_sched>);
   }
-} // namespace
+}  // namespace
 
 STDEXEC_PRAGMA_POP()

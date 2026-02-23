@@ -22,27 +22,32 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
   template <ex::scheduler Sched = inline_scheduler>
-  inline auto _with_scheduler(Sched sched = {}) {
+  inline auto _with_scheduler(Sched sched = {})
+  {
     return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
   }
 
-  TEST_CASE(
-    "STDEXEC::on transitions back to the receiver's scheduler when completing with a value",
-    "[adaptors][on]") {
+  TEST_CASE("STDEXEC::on transitions back to the receiver's scheduler when completing with a value",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto snd_base = ex::just() | ex::then([&]() -> int {
-                      called = true;
-                      return 19;
-                    });
+    auto snd_base = ex::just()
+                  | ex::then(
+                      [&]() -> int
+                      {
+                        called = true;
+                        return 19;
+                      });
 
-    int recv_value{0};
+    int               recv_value{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
-    auto snd = ex::on(sched1, std::move(snd_base)) | _with_scheduler(sched2);
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
+    auto              snd = ex::on(sched1, std::move(snd_base)) | _with_scheduler(sched2);
+    auto              op  = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The base sender shouldn't be started
@@ -62,20 +67,24 @@ namespace {
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE(
-    "STDEXEC::on transitions back to the receiver's scheduler when completing with an error",
-    "[adaptors][on]") {
+  TEST_CASE("STDEXEC::on transitions back to the receiver's scheduler when completing with an "
+            "error",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto snd_base = ex::just() | ex::let_value([&]() {
-                      called = true;
-                      return ex::just_error(19);
-                    });
+    auto snd_base = ex::just()
+                  | ex::let_value(
+                      [&]()
+                      {
+                        called = true;
+                        return ex::just_error(19);
+                      });
 
-    int recv_error{0};
+    int               recv_error{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
-    auto snd = ex::on(sched1, std::move(snd_base)) | _with_scheduler(sched2);
-    auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
+    auto              snd = ex::on(sched1, std::move(snd_base)) | _with_scheduler(sched2);
+    auto              op  = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The base sender shouldn't be started
@@ -95,21 +104,25 @@ namespace {
     CHECK(recv_error == 19);
   }
 
-  TEST_CASE(
-    "inner STDEXEC::on transitions back to outer on's scheduler when completing with a value",
-    "[adaptors][on]") {
+  TEST_CASE("inner STDEXEC::on transitions back to outer on's scheduler when completing with a "
+            "value",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto snd_base = ex::just() | ex::then([&]() -> int {
-                      called = true;
-                      return 19;
-                    });
+    auto snd_base = ex::just()
+                  | ex::then(
+                      [&]() -> int
+                      {
+                        called = true;
+                        return 19;
+                      });
 
-    int recv_value{0};
+    int               recv_value{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     impulse_scheduler sched3;
     auto snd = ex::on(sched1, ex::on(sched2, std::move(snd_base))) | _with_scheduler(sched3);
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
+    auto op  = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The base sender shouldn't be started
@@ -146,21 +159,25 @@ namespace {
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE(
-    "inner STDEXEC::on transitions back to outer on's scheduler when completing with an error",
-    "[adaptors][on]") {
+  TEST_CASE("inner STDEXEC::on transitions back to outer on's scheduler when completing with an "
+            "error",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto snd_base = ex::just() | ex::let_value([&]() {
-                      called = true;
-                      return ex::just_error(19);
-                    });
+    auto snd_base = ex::just()
+                  | ex::let_value(
+                      [&]()
+                      {
+                        called = true;
+                        return ex::just_error(19);
+                      });
 
-    int recv_error{0};
+    int               recv_error{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     impulse_scheduler sched3;
     auto snd = ex::on(sched1, ex::on(sched2, std::move(snd_base))) | _with_scheduler(sched3);
-    auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
+    auto op  = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The base sender shouldn't be started
@@ -197,21 +214,24 @@ namespace {
     CHECK(recv_error == 19);
   }
 
-  TEST_CASE(
-    "STDEXEC::on(closure) transitions onto and back off of the scheduler when completing with a "
-    "value",
-    "[adaptors][on]") {
+  TEST_CASE("STDEXEC::on(closure) transitions onto and back off of the scheduler when completing "
+            "with a "
+            "value",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto closure = ex::then([&]() -> int {
-      called = true;
-      return 19;
-    });
+    auto closure = ex::then(
+      [&]() -> int
+      {
+        called = true;
+        return 19;
+      });
 
-    int recv_value{0};
+    int               recv_value{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     auto snd = ex::just() | ex::on(sched1, std::move(closure)) | _with_scheduler(sched2);
-    auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
+    auto op  = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The closure shouldn't be started
@@ -231,21 +251,24 @@ namespace {
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE(
-    "STDEXEC::on(closure) transitions onto and back off of the scheduler when completing with "
-    "an error",
-    "[adaptors][on]") {
+  TEST_CASE("STDEXEC::on(closure) transitions onto and back off of the scheduler when completing "
+            "with "
+            "an error",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto closure = ex::let_value([&]() {
-      called = true;
-      return ex::just_error(19);
-    });
+    auto closure = ex::let_value(
+      [&]()
+      {
+        called = true;
+        return ex::just_error(19);
+      });
 
-    int recv_error{0};
+    int               recv_error{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     auto snd = ex::just() | ex::on(sched1, std::move(closure)) | _with_scheduler(sched2);
-    auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
+    auto op  = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
     ex::start(op);
     // Up until this point, the scheduler didn't start any task
     // The closure shouldn't be started
@@ -265,21 +288,24 @@ namespace {
     CHECK(recv_error == 19);
   }
 
-  TEST_CASE(
-    "inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing with a "
-    "value",
-    "[adaptors][on]") {
+  TEST_CASE("inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing "
+            "with a "
+            "value",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto closure = ex::then([&](int i) -> int {
-      called = true;
-      return i;
-    });
+    auto closure = ex::then(
+      [&](int i) -> int
+      {
+        called = true;
+        return i;
+      });
 
-    int recv_value{0};
+    int               recv_value{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     impulse_scheduler sched3;
-    auto snd = ex::on(sched1, ex::just(19)) | ex::on(sched2, std::move(closure))
+    auto              snd = ex::on(sched1, ex::just(19)) | ex::on(sched2, std::move(closure))
              | _with_scheduler(sched3);
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
@@ -318,21 +344,24 @@ namespace {
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE(
-    "inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing with an "
-    "error",
-    "[adaptors][on]") {
+  TEST_CASE("inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing "
+            "with an "
+            "error",
+            "[adaptors][on]")
+  {
     bool called{false};
-    auto closure = ex::let_value([&](int i) {
-      called = true;
-      return ex::just_error(i);
-    });
+    auto closure = ex::let_value(
+      [&](int i)
+      {
+        called = true;
+        return ex::just_error(i);
+      });
 
-    int recv_error{0};
+    int               recv_error{0};
     impulse_scheduler sched1;
     impulse_scheduler sched2;
     impulse_scheduler sched3;
-    auto snd = ex::on(sched1, ex::just(19)) | ex::on(sched2, std::move(closure))
+    auto              snd = ex::on(sched1, ex::just(19)) | ex::on(sched2, std::move(closure))
              | _with_scheduler(sched3);
     auto op = ex::connect(std::move(snd), expect_error_receiver_ex{recv_error});
     ex::start(op);
@@ -370,4 +399,4 @@ namespace {
     // Now the error is sent to the receiver
     CHECK(recv_error == 19);
   }
-} // namespace
+}  // namespace

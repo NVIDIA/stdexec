@@ -22,23 +22,28 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 // Example code:
-struct fail_some {
+struct fail_some
+{
   using sender_concept = stdexec::sender_t;
-  using completion_signatures = stdexec::completion_signatures<
-    stdexec::set_value_t(int),
-    stdexec::set_error_t(std::exception_ptr)
-  >;
+  using completion_signatures =
+    stdexec::completion_signatures<stdexec::set_value_t(int),
+                                   stdexec::set_error_t(std::exception_ptr)>;
 
   template <class R>
-  struct op {
+  struct op
+  {
     R r_;
 
-    void start() & noexcept {
+    void start() & noexcept
+    {
       static int i = 0;
-      if (++i < 3) {
+      if (++i < 3)
+      {
         std::printf("fail!\n");
         stdexec::set_error(std::move(r_), std::exception_ptr{});
-      } else {
+      }
+      else
+      {
         std::printf("success!\n");
         stdexec::set_value(std::move(r_), 42);
       }
@@ -46,12 +51,14 @@ struct fail_some {
   };
 
   template <class R>
-  auto connect(R r) const -> op<R> {
+  auto connect(R r) const -> op<R>
+  {
     return {std::move(r)};
   }
 };
 
-auto main() -> int {
+auto main() -> int
+{
   auto x = retry(fail_some{});
   // prints:
   //   fail!

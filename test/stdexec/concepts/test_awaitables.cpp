@@ -26,100 +26,120 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
   template <class Sender>
-  concept sender_with_env = ex::sender<Sender> && requires(const Sender& s) { ex::get_env(s); };
+  concept sender_with_env = ex::sender<Sender> && requires(Sender const & s) { ex::get_env(s); };
 
   template <typename Awaiter>
-  struct promise {
-    auto get_return_object() -> ex::__std::coroutine_handle<promise> {
+  struct promise
+  {
+    auto get_return_object() -> ex::__std::coroutine_handle<promise>
+    {
       return {ex::__std::coroutine_handle<promise>::from_promise(*this)};
     }
 
-    auto initial_suspend() noexcept -> ex::__std::suspend_always {
+    auto initial_suspend() noexcept -> ex::__std::suspend_always
+    {
       return {};
     }
 
-    auto final_suspend() noexcept -> ex::__std::suspend_always {
+    auto final_suspend() noexcept -> ex::__std::suspend_always
+    {
       return {};
     }
 
-    void return_void() {
-    }
+    void return_void() {}
 
-    void unhandled_exception() {
-    }
+    void unhandled_exception() {}
 
     template <typename... T>
-    auto await_transform(T&&...) noexcept {
+    auto await_transform(T&&...) noexcept
+    {
       return Awaiter{};
     }
   };
 
-  struct awaiter {
-    auto await_ready() -> bool {
+  struct awaiter
+  {
+    auto await_ready() -> bool
+    {
       return true;
     }
 
-    auto await_suspend(ex::__std::coroutine_handle<>) -> bool {
+    auto await_suspend(ex::__std::coroutine_handle<>) -> bool
+    {
       return false;
     }
 
-    auto await_resume() -> bool {
+    auto await_resume() -> bool
+    {
       return false;
     }
   };
 
-  struct invalid_awaiter {
+  struct invalid_awaiter
+  {
     auto await_ready() -> bool;
     auto await_suspend(ex::__std::coroutine_handle<>) -> bool;
     //void await_resume();
   };
 
   template <typename Awaiter>
-  struct awaitable_sender_1 {
-    auto operator co_await() -> Awaiter {
+  struct awaitable_sender_1
+  {
+    auto operator co_await() -> Awaiter
+    {
       return {};
     }
   };
 
-  struct awaitable_sender_2 {
+  struct awaitable_sender_2
+  {
     using promise_type = promise<ex::__std::suspend_always>;
 
    private:
-    friend auto operator co_await(awaitable_sender_2) -> invalid_awaiter {
+    friend auto operator co_await(awaitable_sender_2) -> invalid_awaiter
+    {
       return {};
     }
   };
 
-  struct awaitable_sender_3 {
+  struct awaitable_sender_3
+  {
     using promise_type = promise<awaiter>;
 
    private:
-    friend auto operator co_await(awaitable_sender_3) -> invalid_awaiter {
+    friend auto operator co_await(awaitable_sender_3) -> invalid_awaiter
+    {
       return {};
     }
   };
 
-  struct awaitable_sender_4 {
+  struct awaitable_sender_4
+  {
     using promise_type = promise<ex::__std::suspend_always>;
 
     template <class Promise>
-    auto as_awaitable(Promise&) const -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter
+    {
       return {};
     }
   };
 
-  struct awaitable_sender_5 {
+  struct awaitable_sender_5
+  {
     template <class Promise>
-    auto as_awaitable(Promise&) const -> awaiter {
+    auto as_awaitable(Promise&) const -> awaiter
+    {
       return {};
     }
   };
 
   template <typename Signatures, typename Awaiter>
-  void test_awaitable_sender1(Signatures*, Awaiter&&) {
+  void test_awaitable_sender1(Signatures*, Awaiter&&)
+  {
     static_assert(ex::sender<awaitable_sender_1<Awaiter>>);
     static_assert(sender_with_env<awaitable_sender_1<Awaiter>>);
     static_assert(ex::__awaitable<awaitable_sender_1<Awaiter>>);
@@ -129,7 +149,8 @@ namespace {
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_1<Awaiter>>, Signatures>);
   }
 
-  void test_awaitable_sender2() {
+  void test_awaitable_sender2()
+  {
     static_assert(!ex::sender<awaitable_sender_2>);
     static_assert(!sender_with_env<awaitable_sender_2>);
     static_assert(!ex::sender_in<awaitable_sender_2, ex::env<>>);
@@ -140,7 +161,8 @@ namespace {
     static_assert(!ex::__cmplsigs::__with_legacy_member_alias<awaitable_sender_2>);
   }
 
-  void test_awaitable_sender3() {
+  void test_awaitable_sender3()
+  {
     static_assert(!ex::sender<awaitable_sender_3>);
     static_assert(!sender_with_env<awaitable_sender_3>);
     static_assert(!ex::sender_in<awaitable_sender_3, ex::env<>>);
@@ -153,7 +175,8 @@ namespace {
   }
 
   template <class Signatures>
-  void test_awaitable_sender4(Signatures*) {
+  void test_awaitable_sender4(Signatures*)
+  {
     static_assert(ex::sender<awaitable_sender_4>);
     static_assert(sender_with_env<awaitable_sender_4>);
     static_assert(ex::sender_in<awaitable_sender_4, ex::env<>>);
@@ -171,10 +194,12 @@ namespace {
       std::is_same_v<ex::completion_signatures_of_t<awaitable_sender_4, ex::env<>>, Signatures>);
   }
 
-  struct connect_awaitable_promise : ex::with_awaitable_senders<connect_awaitable_promise> { };
+  struct connect_awaitable_promise : ex::with_awaitable_senders<connect_awaitable_promise>
+  {};
 
   template <class Signatures>
-  void test_awaitable_sender5(Signatures*) {
+  void test_awaitable_sender5(Signatures*)
+  {
     static_assert(ex::sender<awaitable_sender_5>);
     static_assert(sender_with_env<awaitable_sender_5>);
     static_assert(!ex::sender_in<awaitable_sender_5>);
@@ -192,61 +217,69 @@ namespace {
   }
 
   template <typename Error, typename... Values>
-  auto signature_error_values(Error, Values...) -> ex::completion_signatures<
-    ex::set_value_t(Values...),
-    ex::set_error_t(Error),
-    ex::set_stopped_t()
-  >* {
+  auto
+  signature_error_values(Error, Values...) -> ex::completion_signatures<ex::set_value_t(Values...),
+                                                                        ex::set_error_t(Error),
+                                                                        ex::set_stopped_t()>*
+  {
     return {};
   }
 
-  TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]") {
+  TEST_CASE("get completion_signatures for awaitables", "[sndtraits][awaitables]")
+  {
+    ::test_awaitable_sender1(signature_error_values(std::exception_ptr()),
+                             ex::__std::suspend_always{});
     ::test_awaitable_sender1(
-      signature_error_values(std::exception_ptr()), ex::__std::suspend_always{});
-    ::test_awaitable_sender1(
-      signature_error_values(
-        std::exception_ptr(), ex::__await_result_t<awaitable_sender_1<awaiter>>()),
+      signature_error_values(std::exception_ptr(),
+                             ex::__await_result_t<awaitable_sender_1<awaiter>>()),
       awaiter{});
 
     ::test_awaitable_sender2();
 
     ::test_awaitable_sender3();
 
-    ::test_awaitable_sender4(signature_error_values(
-      std::exception_ptr(), ex::__await_result_t<awaitable_sender_4, promise<awaiter>>()));
+    ::test_awaitable_sender4(
+      signature_error_values(std::exception_ptr(),
+                             ex::__await_result_t<awaitable_sender_4, promise<awaiter>>()));
 
     ::test_awaitable_sender5(signature_error_values(
-      std::exception_ptr(), ex::__await_result_t<awaitable_sender_5, connect_awaitable_promise>()));
+      std::exception_ptr(),
+      ex::__await_result_t<awaitable_sender_5, connect_awaitable_promise>()));
   }
 
-  struct awaitable_env { };
+  struct awaitable_env
+  {};
 
   template <typename Awaiter>
-  struct awaitable_with_get_env {
+  struct awaitable_with_get_env
+  {
     auto operator co_await() -> Awaiter;
 
     [[nodiscard]]
-    auto get_env() const noexcept -> awaitable_env {
+    auto get_env() const noexcept -> awaitable_env
+    {
       return {};
     }
   };
 
-  TEST_CASE("get_env for awaitables", "[sndtraits][awaitables]") {
+  TEST_CASE("get_env for awaitables", "[sndtraits][awaitables]")
+  {
     check_env_type<ex::env<>>(awaitable_sender_1<awaiter>{});
     check_env_type<ex::env<>>(awaitable_sender_2{});
     check_env_type<ex::env<>>(awaitable_sender_3{});
     check_env_type<awaitable_env>(awaitable_with_get_env<awaiter>{});
   }
 
-  TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]") {
+  TEST_CASE("env_promise bug when CWG 2369 is fixed", "[sndtraits][awaitables]")
+  {
     exec::static_thread_pool ctx{1};
-    ex::scheduler auto sch = ctx.get_scheduler();
-    ex::sender auto snd = ex::when_all(ex::then(ex::schedule(sch), []() { }));
+    ex::scheduler auto       sch = ctx.get_scheduler();
+    ex::sender auto          snd = ex::when_all(ex::then(ex::schedule(sch), []() {}));
 
     using _Awaitable = decltype(snd);
-    using _Promise = ex::__detail::__promise<ex::env<>>;
+    using _Promise   = ex::__detail::__promise<ex::env<>>;
     static_assert(!ex::__awaitable<_Awaitable, _Promise>);
   }
-} // namespace
+}  // namespace
 
-#endif // STDEXEC_NO_STD_COROUTINES()
+#endif  // STDEXEC_NO_STD_COROUTINES()

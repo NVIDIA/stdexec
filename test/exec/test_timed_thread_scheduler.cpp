@@ -26,93 +26,102 @@
 #if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 12'00 && defined(__SANITIZE_THREAD__)
 // nothing
 #else
-namespace {
-  TEST_CASE(
-    "timed_thread_scheduler - unused context",
-    "[types][timed_thread_scheduler][schedulers]") {
+namespace
+{
+  TEST_CASE("timed_thread_scheduler - unused context",
+            "[types][timed_thread_scheduler][schedulers]")
+  {
     static_assert(exec::__timed_scheduler<exec::timed_thread_scheduler>);
     exec::timed_thread_context context;
   }
 
-  TEST_CASE("timed_thread_scheduler - now", "[timed_thread_scheduler][now]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - now", "[timed_thread_scheduler][now]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    auto tp = exec::now(scheduler);
+    auto                         tp        = exec::now(scheduler);
     REQUIRE(tp.time_since_epoch().count() > 0);
   }
 
-  TEST_CASE("timed_thread_scheduler - schedule", "[timed_thread_scheduler][schedule]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - schedule", "[timed_thread_scheduler][schedule]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     CHECK(STDEXEC::sync_wait(STDEXEC::schedule(scheduler)));
   }
 
-  TEST_CASE("timed_thread_scheduler - schedule_at", "[timed_thread_scheduler][schedule_at]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - schedule_at", "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    auto now = exec::now(scheduler);
-    auto tp = now + std::chrono::milliseconds(10);
+    auto                         now       = exec::now(scheduler);
+    auto                         tp        = now + std::chrono::milliseconds(10);
     CHECK(STDEXEC::sync_wait(exec::schedule_at(scheduler, tp)));
   }
 
-  TEST_CASE("timed_thread_scheduler - schedule_after", "[timed_thread_scheduler][schedule_at]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - schedule_after", "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    auto duration = std::chrono::milliseconds(10);
+    auto                         duration  = std::chrono::milliseconds(10);
     CHECK(STDEXEC::sync_wait(exec::schedule_after(scheduler, duration)));
   }
 
-  TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    auto duration1 = std::chrono::milliseconds(10);
-    auto duration2 = std::chrono::seconds(5);
-    auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1) | STDEXEC::then([] { return 1; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 2; }));
-    auto t0 = std::chrono::steady_clock::now();
-    auto [n] = STDEXEC::sync_wait(std::move(shorter)).value();
-    auto t1 = std::chrono::steady_clock::now();
+    auto                         duration1 = std::chrono::milliseconds(10);
+    auto                         duration2 = std::chrono::seconds(5);
+    auto                         shorter = exec::when_any(exec::schedule_after(scheduler, duration1)
+                                    | STDEXEC::then([] { return 1; }),
+                                  exec::schedule_after(scheduler, duration2)
+                                    | STDEXEC::then([] { return 2; }));
+    auto                         t0      = std::chrono::steady_clock::now();
+    auto [n]                             = STDEXEC::sync_wait(std::move(shorter)).value();
+    auto t1                              = std::chrono::steady_clock::now();
+    auto duration                        = t1 - t0;
+    CHECK(duration1 <= duration);
+    CHECK(n == 1);
+  }
+
+  TEST_CASE("timed_thread_scheduler - more when_any", "[timed_thread_scheduler][when_any]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    auto                         duration1 = std::chrono::milliseconds(10);
+    auto                         duration2 = std::chrono::seconds(5);
+    auto                         shorter =
+      exec::when_any(exec::schedule_after(scheduler, duration1) | STDEXEC::then([] { return 1; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 2; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 3; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 4; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 5; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 6; }),
+                     exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 7; }));
+    auto t0       = std::chrono::steady_clock::now();
+    auto [n]      = STDEXEC::sync_wait(std::move(shorter)).value();
+    auto t1       = std::chrono::steady_clock::now();
     auto duration = t1 - t0;
     CHECK(duration1 <= duration);
     CHECK(n == 1);
   }
 
-  TEST_CASE("timed_thread_scheduler - more when_any", "[timed_thread_scheduler][when_any]") {
-    exec::timed_thread_context context;
+  TEST_CASE("timed_thread_scheduler - many timers with async scope",
+            "[timed_thread_scheduler][async_scope]")
+  {
+    exec::timed_thread_context   context;
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    auto duration1 = std::chrono::milliseconds(10);
-    auto duration2 = std::chrono::seconds(5);
-    auto shorter = exec::when_any(
-      exec::schedule_after(scheduler, duration1) | STDEXEC::then([] { return 1; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 2; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 3; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 4; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 5; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 6; }),
-      exec::schedule_after(scheduler, duration2) | STDEXEC::then([] { return 7; }));
-    auto t0 = std::chrono::steady_clock::now();
-    auto [n] = STDEXEC::sync_wait(std::move(shorter)).value();
-    auto t1 = std::chrono::steady_clock::now();
-    auto duration = t1 - t0;
-    CHECK(duration1 <= duration);
-    CHECK(n == 1);
-  }
-
-  TEST_CASE(
-    "timed_thread_scheduler - many timers with async scope",
-    "[timed_thread_scheduler][async_scope]") {
-    exec::timed_thread_context context;
-    exec::timed_thread_scheduler scheduler = context.get_scheduler();
-    exec::async_scope scope;
-    int counter = 0;
-    int ntimers = 1'000;
-    auto now = exec::now(scheduler);
-    auto deadline = now + std::chrono::milliseconds(100);
-    auto t0 = std::chrono::steady_clock::now();
-    for (int i = 0; i < ntimers; ++i) {
-      scope
-        .spawn(exec::schedule_at(scheduler, deadline) | STDEXEC::then([&counter] { ++counter; }));
+    exec::async_scope            scope;
+    int                          counter  = 0;
+    int                          ntimers  = 1'000;
+    auto                         now      = exec::now(scheduler);
+    auto                         deadline = now + std::chrono::milliseconds(100);
+    auto                         t0       = std::chrono::steady_clock::now();
+    for (int i = 0; i < ntimers; ++i)
+    {
+      scope.spawn(exec::schedule_at(scheduler, deadline)
+                  | STDEXEC::then([&counter] { ++counter; }));
     }
     CHECK(STDEXEC::sync_wait(scope.on_empty()));
     auto t1 = std::chrono::steady_clock::now();
@@ -120,5 +129,5 @@ namespace {
     auto duration = t1 - t0;
     CHECK(duration > std::chrono::milliseconds(100));
   }
-} // namespace
+}  // namespace
 #endif

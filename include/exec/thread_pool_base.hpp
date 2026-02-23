@@ -341,9 +341,9 @@ namespace experimental::execution
                                        STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
                                        STDEXEC::__q<STDEXEC::__mand>>::value;
 
-        using bulk_rcvr      = bulk_receiver<CvSender, Receiver, Shape, Fun, may_throw>;
-        using shared_state   = bulk_shared_state<CvSender, Receiver, Shape, Fun, may_throw>;
-        using inner_opstate  = STDEXEC::connect_result_t<CvSender, bulk_rcvr>;
+        using bulk_rcvr     = bulk_receiver<CvSender, Receiver, Shape, Fun, may_throw>;
+        using shared_state  = bulk_shared_state<CvSender, Receiver, Shape, Fun, may_throw>;
+        using inner_opstate = STDEXEC::connect_result_t<CvSender, bulk_rcvr>;
 
         void start() & noexcept
         {

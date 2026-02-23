@@ -20,9 +20,11 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("Scope token helpers are correctly defined", "[concepts][scope_token]") {
+  TEST_CASE("Scope token helpers are correctly defined", "[concepts][scope_token]")
+  {
     // check the test-sender and test-env definitions are appropriate
     STATIC_REQUIRE(ex::sender<ex::__scope_concepts::__test_sender>);
     STATIC_REQUIRE(ex::sender_in<ex::__scope_concepts::__test_sender, ex::env<>>);
@@ -30,62 +32,76 @@ namespace {
   }
 
   // a "null" token that can always create new associations
-  struct null_token {
+  struct null_token
+  {
     // the always-truthy association type
-    struct assoc {
+    struct assoc
+    {
       // this need not be explicit, although it should be
-      constexpr operator bool() const noexcept {
+      constexpr operator bool() const noexcept
+      {
         return true;
       }
 
       // this may throw, although it need not
-      constexpr assoc try_associate() const noexcept {
+      constexpr assoc try_associate() const noexcept
+      {
         return {};
       }
     };
 
-    constexpr assoc try_associate() const noexcept {
+    constexpr assoc try_associate() const noexcept
+    {
       return {};
     }
 
     template <ex::sender Sender>
-    Sender&& wrap(Sender&& snd) const noexcept {
+    Sender&& wrap(Sender&& snd) const noexcept
+    {
       return std::forward<Sender>(snd);
     }
   };
 
-  struct throwing_try_associate : null_token {
-    constexpr assoc try_associate() const noexcept(false) {
+  struct throwing_try_associate : null_token
+  {
+    constexpr assoc try_associate() const noexcept(false)
+    {
       return {};
     }
   };
 
-  struct throwing_wrap : null_token {
+  struct throwing_wrap : null_token
+  {
     template <ex::sender Sender>
-    constexpr Sender&& wrap(Sender&& snd) const noexcept(false) {
+    constexpr Sender&& wrap(Sender&& snd) const noexcept(false)
+    {
       return std::forward<Sender>(snd);
     }
   };
 
-  struct wrapping_wrap : null_token {
+  struct wrapping_wrap : null_token
+  {
     template <ex::sender Sender>
-    struct wrapper : Sender {
-      wrapper(const Sender& snd)
-        : Sender(snd) {
-      }
+    struct wrapper : Sender
+    {
+      wrapper(Sender const & snd)
+        : Sender(snd)
+      {}
 
       wrapper(Sender&& snd)
-        : Sender(std::move(snd)) {
-      }
+        : Sender(std::move(snd))
+      {}
     };
 
     template <ex::sender Sender>
-    auto wrap(Sender&& snd) const noexcept {
+    auto wrap(Sender&& snd) const noexcept
+    {
       return wrapper{std::forward<Sender>(snd)};
     }
   };
 
-  TEST_CASE("Scope token concept accepts basic token types", "[concepts][scope_token]") {
+  TEST_CASE("Scope token concept accepts basic token types", "[concepts][scope_token]")
+  {
     // scope_token should accept the basic null_token
     STATIC_REQUIRE(ex::scope_token<null_token>);
 
@@ -99,28 +115,34 @@ namespace {
     STATIC_REQUIRE(ex::scope_token<wrapping_wrap>);
   }
 
-  struct move_only : null_token {
-    move_only() = default;
+  struct move_only : null_token
+  {
+    move_only()            = default;
     move_only(move_only&&) = default;
-    ~move_only() = default;
+    ~move_only()           = default;
 
     move_only& operator=(move_only&&) = default;
   };
 
-  struct non_const_try_associate : null_token {
-    assoc try_associate() noexcept {
+  struct non_const_try_associate : null_token
+  {
+    assoc try_associate() noexcept
+    {
       return {};
     }
   };
 
-  struct non_const_wrap : null_token {
+  struct non_const_wrap : null_token
+  {
     template <ex::sender Sender>
-    Sender&& wrap(Sender&& snd) noexcept {
+    Sender&& wrap(Sender&& snd) noexcept
+    {
       return std::forward<Sender>(snd);
     }
   };
 
-  TEST_CASE("Scope token concept rejects non-token types", "[concepts][scope_token]") {
+  TEST_CASE("Scope token concept rejects non-token types", "[concepts][scope_token]")
+  {
     STATIC_REQUIRE(!ex::scope_token<int>);
 
     // tokens must be copyable
@@ -132,4 +154,4 @@ namespace {
     // wrap must be const-qualified
     STATIC_REQUIRE(!ex::scope_token<non_const_wrap>);
   }
-} // namespace
+}  // namespace

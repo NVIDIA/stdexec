@@ -21,34 +21,37 @@
 #  include <exec/sequence/ignore_all_values.hpp>
 #  include <ranges>
 
-struct RunThread {
-  void operator()(
-    exec::static_thread_pool& pool,
-    std::size_t total_scheds,
-    std::size_t tid,
-    std::barrier<>& barrier,
+struct RunThread
+{
+  void operator()(exec::static_thread_pool& pool,
+                  std::size_t               total_scheds,
+                  std::size_t               tid,
+                  std::barrier<>&           barrier,
 #  ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-    std::span<char> buffer,
+                  std::span<char> buffer,
 #  endif
-    std::atomic<bool>& stop,
-    exec::numa_policy numa) {
+                  std::atomic<bool>& stop,
+                  exec::numa_policy  numa)
+  {
     int numa_node = numa.thread_index_to_node(tid);
     numa.bind_to_node(numa_node);
-    while (true) {
+    while (true)
+    {
       barrier.arrive_and_wait();
-      if (stop.load()) {
+      if (stop.load())
+      {
         break;
       }
 #  ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-      pmr::monotonic_buffer_resource rsrc{buffer.data(), buffer.size()};
+      pmr::monotonic_buffer_resource   rsrc{buffer.data(), buffer.size()};
       pmr::polymorphic_allocator<char> alloc{&rsrc};
-      auto env = stdexec::prop{stdexec::get_allocator, alloc};
+      auto                             env = stdexec::prop{stdexec::get_allocator, alloc};
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::schedule_all(pool, std::views::iota(start, end))
+      auto iterate      = exec::schedule_all(pool, std::views::iota(start, end))
                    | exec::ignore_all_values() | stdexec::write_env(env);
 #  else
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
-      auto iterate = exec::schedule_all(pool, std::views::iota(start, end))
+      auto iterate      = exec::schedule_all(pool, std::views::iota(start, end))
                    | exec::ignore_all_values();
 #  endif
       stdexec::sync_wait(iterate);
@@ -57,18 +60,20 @@ struct RunThread {
   }
 };
 
-struct my_numa_distribution : public exec::default_numa_policy {
+struct my_numa_distribution : public exec::default_numa_policy
+{
   [[nodiscard]]
-  auto thread_index_to_node(std::size_t index) const noexcept -> int {
+  auto thread_index_to_node(std::size_t index) const noexcept -> int
+  {
     return exec::default_numa_policy::thread_index_to_node(2 * index);
   }
 };
 
-auto main(int argc, char** argv) -> int {
+auto main(int argc, char** argv) -> int
+{
   exec::numa_policy numa{my_numa_distribution{}};
   my_main<exec::static_thread_pool, RunThread>(argc, argv, std::move(numa));
 }
 #else
-int main() {
-}
+int main() {}
 #endif

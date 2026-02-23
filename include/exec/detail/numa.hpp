@@ -37,7 +37,7 @@ namespace experimental::execution
 {
   namespace _numa
   {
-    using _small_t = void* [1];
+    using _small_t = void *[1];
 
     template <class T>
     using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(_small_t)>;
@@ -47,27 +47,27 @@ namespace experimental::execution
       _storage() noexcept = default;
 
       template <STDEXEC::__not_decays_to<_storage> Ty>
-      explicit _storage(Ty&& value)
-        : ptr{new STDEXEC::__decay_t<Ty>{static_cast<Ty&&>(value)}}
+      explicit _storage(Ty &&value)
+        : ptr{new STDEXEC::__decay_t<Ty>{static_cast<Ty &&>(value)}}
       {}
 
       template <STDEXEC::__not_decays_to<_storage> Ty>
         requires(_is_small<STDEXEC::__decay_t<Ty>>::value)
-      explicit _storage(Ty&& value) noexcept(STDEXEC::__nothrow_decay_copyable<Ty>)
+      explicit _storage(Ty &&value) noexcept(STDEXEC::__nothrow_decay_copyable<Ty>)
         : buf{}
       {
-        ::new (static_cast<void*>(buf)) STDEXEC::__decay_t<Ty>{static_cast<Ty&&>(value)};
+        ::new (static_cast<void *>(buf)) STDEXEC::__decay_t<Ty>{static_cast<Ty &&>(value)};
       }
 
-      void* ptr{};
+      void *ptr{};
       char  buf[sizeof(_small_t)];
     };
 
     struct _vtable
     {
-      auto (*move)(_storage*, _storage*) noexcept -> void;
-      auto (*copy)(_storage*, _storage const *) -> void;
-      auto (*destroy)(_storage*) noexcept -> void;
+      auto (*move)(_storage *, _storage *) noexcept -> void;
+      auto (*copy)(_storage *, _storage const *) -> void;
+      auto (*destroy)(_storage *) noexcept -> void;
       auto (*num_nodes)(_storage const *) noexcept -> std::size_t;
       auto (*num_cpus)(_storage const *, int) noexcept -> std::size_t;
       auto (*bind_to_node)(_storage const *, int) noexcept -> int;
@@ -78,7 +78,7 @@ namespace experimental::execution
     struct _vtable_for
     {
       // move
-      static auto _move(_storage* self, _storage* other) noexcept -> void
+      static auto _move(_storage *self, _storage *other) noexcept -> void
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -86,13 +86,13 @@ namespace experimental::execution
         }
         else
         {
-          ::new (static_cast<void*>(self->buf))
-            T{static_cast<T&&>(*reinterpret_cast<T*>(other->buf))};
+          ::new (static_cast<void *>(self->buf))
+            T{static_cast<T &&>(*reinterpret_cast<T *>(other->buf))};
         }
       }
 
       // copy
-      static auto _copy(_storage* self, _storage const * other) noexcept -> void
+      static auto _copy(_storage *self, _storage const *other) noexcept -> void
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -100,25 +100,25 @@ namespace experimental::execution
         }
         else
         {
-          ::new (static_cast<void*>(self->buf)) T{*reinterpret_cast<T const *>(other->buf)};
+          ::new (static_cast<void *>(self->buf)) T{*reinterpret_cast<T const *>(other->buf)};
         }
       }
 
       // destroy
-      static auto _destroy(_storage* self) noexcept -> void
+      static auto _destroy(_storage *self) noexcept -> void
       {
         if constexpr (!_is_small<T>::value)
         {
-          delete static_cast<T*>(self->ptr);
+          delete static_cast<T *>(self->ptr);
         }
         else
         {
-          std::destroy_at(reinterpret_cast<T*>(self->buf));
+          std::destroy_at(reinterpret_cast<T *>(self->buf));
         }
       }
 
       // num_nodes
-      static auto _num_nodes(_storage const * self) noexcept -> std::size_t
+      static auto _num_nodes(_storage const *self) noexcept -> std::size_t
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -131,7 +131,7 @@ namespace experimental::execution
       }
 
       // num_cpus
-      static auto _num_cpus(_storage const * self, int node) noexcept -> std::size_t
+      static auto _num_cpus(_storage const *self, int node) noexcept -> std::size_t
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -144,7 +144,7 @@ namespace experimental::execution
       }
 
       // bind_to_node
-      static auto _bind_to_node(_storage const * self, int node) noexcept -> int
+      static auto _bind_to_node(_storage const *self, int node) noexcept -> int
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -157,7 +157,7 @@ namespace experimental::execution
       }
 
       // thread_index_to_node
-      static auto _thread_index_to_node(_storage const * self, std::size_t index) noexcept -> int
+      static auto _thread_index_to_node(_storage const *self, std::size_t index) noexcept -> int
       {
         if constexpr (!_is_small<T>::value)
         {
@@ -184,24 +184,24 @@ namespace experimental::execution
   struct numa_policy
   {
    private:
-    _numa::_vtable const * vtable_;
-    _numa::_storage        storage_;
+    _numa::_vtable const *vtable_;
+    _numa::_storage       storage_;
 
    public:
     template <STDEXEC::__not_decays_to<numa_policy> NumaPolicy>
-    numa_policy(NumaPolicy&& policy)
+    numa_policy(NumaPolicy &&policy)
       : vtable_(&_numa::_vtable_for_v<STDEXEC::__decay_t<NumaPolicy>>)
-      , storage_(static_cast<NumaPolicy&&>(policy))
+      , storage_(static_cast<NumaPolicy &&>(policy))
     {}
 
-    numa_policy(numa_policy&& other) noexcept
+    numa_policy(numa_policy &&other) noexcept
       : vtable_(other.vtable_)
       , storage_{}
     {
       vtable_->move(&storage_, &other.storage_);
     }
 
-    numa_policy(numa_policy const & other)
+    numa_policy(numa_policy const &other)
       : vtable_(other.vtable_)
       , storage_{}
     {
@@ -273,7 +273,7 @@ namespace experimental::execution
 {
   inline std::size_t _get_numa_num_cpus(int node)
   {
-    struct ::bitmask* cpus = ::numa_allocate_cpumask();
+    struct ::bitmask *cpus = ::numa_allocate_cpumask();
     if (!cpus)
     {
       return 0;
@@ -290,7 +290,7 @@ namespace experimental::execution
 
   struct _node_to_thread_index
   {
-    static std::vector<int> const & get() noexcept
+    static std::vector<int> const &get() noexcept
     {
       // This leaks one memory block at shutdown, but it's fine. Clang's and gcc's leak
       // sanitizer do not report it.
@@ -323,7 +323,7 @@ namespace experimental::execution
 
     int bind_to_node(int node) const noexcept
     {
-      struct ::bitmask* nodes = ::numa_allocate_nodemask();
+      struct ::bitmask *nodes = ::numa_allocate_nodemask();
       if (!nodes)
       {
         return -1;
@@ -336,8 +336,8 @@ namespace experimental::execution
 
     int thread_index_to_node(std::size_t idx) const noexcept
     {
-      auto const & node_to_thread_index = _node_to_thread_index::get();
-      int          index                = static_cast<int>(idx) % node_to_thread_index.back();
+      auto const &node_to_thread_index = _node_to_thread_index::get();
+      int         index                = static_cast<int>(idx) % node_to_thread_index.back();
       auto it = std::upper_bound(node_to_thread_index.begin(), node_to_thread_index.end(), index);
       STDEXEC_ASSERT(it != node_to_thread_index.end());
       return static_cast<int>(std::distance(node_to_thread_index.begin(), it));
@@ -356,7 +356,7 @@ namespace experimental::execution
   template <class T>
   struct numa_allocator
   {
-    using pointer       = T*;
+    using pointer       = T *;
     using const_pointer = T const *;
     using value_type    = T;
 
@@ -365,28 +365,28 @@ namespace experimental::execution
     {}
 
     template <class U>
-    explicit numa_allocator(numa_allocator<U> const & other) noexcept
+    explicit numa_allocator(numa_allocator<U> const &other) noexcept
       : node_(other.node_)
     {}
 
     int node_;
 
-    void* do_allocate(std::size_t n)
+    void *do_allocate(std::size_t n)
     {
       return ::numa_alloc_onnode(n, node_);
     }
 
-    void do_deallocate(void* p, std::size_t n)
+    void do_deallocate(void *p, std::size_t n)
     {
       ::numa_free(p, n);
     }
 
-    T* allocate(std::size_t n)
+    T *allocate(std::size_t n)
     {
-      return static_cast<T*>(do_allocate(n * sizeof(T)));
+      return static_cast<T *>(do_allocate(n * sizeof(T)));
     }
 
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T *p, std::size_t n)
     {
       do_deallocate(p, n * sizeof(T));
     }
@@ -410,7 +410,7 @@ namespace experimental::execution
       ::copy_bitmask_to_nodemask(::numa_no_nodes_ptr, &mask_);
     }
 
-    static nodemask const & any() noexcept
+    static nodemask const &any() noexcept
     {
       static STDEXEC::__indestructible<nodemask> const mask{make_any()};
       return mask.get();
@@ -419,7 +419,7 @@ namespace experimental::execution
     bool operator[](std::size_t nodemask) const noexcept
     {
       ::bitmask mask;
-      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.maskp = const_cast<unsigned long *>(mask_.n);
       mask.size  = sizeof(nodemask_t);
       return ::numa_bitmask_isbitset(&mask, static_cast<unsigned int>(nodemask));
     }
@@ -427,7 +427,7 @@ namespace experimental::execution
     void set(std::size_t nodemask) noexcept
     {
       ::bitmask mask;
-      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.maskp = const_cast<unsigned long *>(mask_.n);
       mask.size  = sizeof(nodemask_t);
       ::numa_bitmask_setbit(&mask, static_cast<unsigned int>(nodemask));
     }
@@ -435,18 +435,18 @@ namespace experimental::execution
     bool get(std::size_t nodemask) const noexcept
     {
       ::bitmask mask;
-      mask.maskp = const_cast<unsigned long*>(mask_.n);
+      mask.maskp = const_cast<unsigned long *>(mask_.n);
       mask.size  = sizeof(nodemask_t);
       return ::numa_bitmask_isbitset(&mask, static_cast<unsigned int>(nodemask));
     }
 
-    friend bool operator==(nodemask const & lhs, nodemask const & rhs) noexcept
+    friend bool operator==(nodemask const &lhs, nodemask const &rhs) noexcept
     {
       ::bitmask lhs_mask;
       ::bitmask rhs_mask;
-      lhs_mask.maskp = const_cast<unsigned long*>(lhs.mask_.n);
+      lhs_mask.maskp = const_cast<unsigned long *>(lhs.mask_.n);
       lhs_mask.size  = sizeof(nodemask_t);
-      rhs_mask.maskp = const_cast<unsigned long*>(rhs.mask_.n);
+      rhs_mask.maskp = const_cast<unsigned long *>(rhs.mask_.n);
       rhs_mask.size  = sizeof(nodemask_t);
       return ::numa_bitmask_equal(&lhs_mask, &rhs_mask);
     }
@@ -471,7 +471,7 @@ namespace experimental::execution
   template <class T>
   struct numa_allocator
   {
-    using pointer       = T*;
+    using pointer       = T *;
     using const_pointer = T const *;
     using value_type    = T;
 
@@ -481,13 +481,13 @@ namespace experimental::execution
     explicit numa_allocator(numa_allocator<U> const &) noexcept
     {}
 
-    auto allocate(std::size_t n) -> T*
+    auto allocate(std::size_t n) -> T *
     {
       std::allocator<T> alloc{};
       return alloc.allocate(n);
     }
 
-    void deallocate(T* p, std::size_t n)
+    void deallocate(T *p, std::size_t n)
     {
       std::allocator<T> alloc{};
       alloc.deallocate(p, n);
@@ -525,7 +525,7 @@ namespace experimental::execution
       mask_ |= nodemask == 0;
     }
 
-    friend auto operator==(nodemask const & lhs, nodemask const & rhs) noexcept -> bool
+    friend auto operator==(nodemask const &lhs, nodemask const &rhs) noexcept -> bool
     {
       return lhs.mask_ == rhs.mask_;
     }

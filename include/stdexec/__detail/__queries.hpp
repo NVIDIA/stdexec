@@ -119,14 +119,14 @@ namespace STDEXEC
     template <__forwarding_query _Query, class... _Args>
       requires __queryable_with<env_of_t<_Sender>, _Query, _Args...>
     [[nodiscard]]
-    constexpr auto query(_Query, _Args&&... __args) const
+    constexpr auto query(_Query, _Args &&...__args) const
       noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
         -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
     {
-      return __query<_Query>()(get_env(__sndr_), static_cast<_Args&&>(__args)...);
+      return __query<_Query>()(get_env(__sndr_), static_cast<_Args &&>(__args)...);
     }
 
-    _Sender const & __sndr_;
+    _Sender const &__sndr_;
   };
 
   template <class _Sender>

@@ -22,34 +22,35 @@
 
 using namespace STDEXEC;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("into_tuple is a sender", "[adaptors][into_tuple]") {
+  TEST_CASE("into_tuple is a sender", "[adaptors][into_tuple]")
+  {
     auto s = exec::into_tuple(just(42, 56));
     STATIC_REQUIRE(sender<decltype(s)>);
   }
 
-  TEST_CASE("into_tuple is a sender in empty env", "[adaptors][into_tuple]") {
+  TEST_CASE("into_tuple is a sender in empty env", "[adaptors][into_tuple]")
+  {
     using void_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t()>>;
     STATIC_REQUIRE(sender_in<void_sender, ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<void_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>
-      >);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>>);
 
     using ints_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t(int&, int)>>;
     STATIC_REQUIRE(sender_in<ints_sender, ex::env<>>);
     STATIC_REQUIRE(
       set_equivalent<
         completion_signatures_of_t<ints_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>
-      >);
+        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>>);
   }
 
-  TEST_CASE(
-    "into_tuple rejects senders unless they have a single value completion",
-    "[adaptors][into_tuple]") {
+  TEST_CASE("into_tuple rejects senders unless they have a single value completion",
+            "[adaptors][into_tuple]")
+  {
     using error_sender =
       result_of_t<exec::into_tuple, a_sender_of<set_error_t(std::exception_ptr)>>;
     STATIC_REQUIRE_FALSE(sender_in<error_sender, ex::env<>>);
@@ -62,10 +63,11 @@ namespace {
     STATIC_REQUIRE_FALSE(sender_in<multi_value_sender, ex::env<>>);
   }
 
-  TEST_CASE("trivial into_tuple example works", "[adaptors][into_tuple]") {
-    auto s = exec::into_tuple(just(42, 56));
+  TEST_CASE("trivial into_tuple example works", "[adaptors][into_tuple]")
+  {
+    auto s      = exec::into_tuple(just(42, 56));
     auto [i, j] = get<0>(sync_wait(s).value());
     CHECK(i == 42);
     CHECK(j == 56);
   }
-} // namespace
+}  // namespace

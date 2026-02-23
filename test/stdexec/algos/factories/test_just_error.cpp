@@ -21,63 +21,73 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  constexpr int test_constexpr() noexcept {
-    struct receiver {
+  constexpr int test_constexpr() noexcept
+  {
+    struct receiver
+    {
       using receiver_concept = ex::receiver_t;
-      constexpr void set_error(const int j) && noexcept {
+      constexpr void set_error(int const j) && noexcept
+      {
         i = j;
       }
       int& i;
     };
-    int i = 0;
+    int  i  = 0;
     auto op = ex::connect(ex::just_error(5), receiver{i});
     ex::start(op);
     return i;
   }
   static_assert(test_constexpr() == 5);
 
-  TEST_CASE("Simple test for just_error", "[factories][just_error]") {
+  TEST_CASE("Simple test for just_error", "[factories][just_error]")
+  {
     auto op = ex::connect(ex::just_error(std::exception_ptr{}), expect_error_receiver{});
     ex::start(op);
     // receiver ensures that set_error() is called
   }
 
-  TEST_CASE("just_error returns a sender", "[factories][just_error]") {
+  TEST_CASE("just_error returns a sender", "[factories][just_error]")
+  {
     using t = decltype(ex::just_error(std::exception_ptr{}));
     static_assert(ex::sender<t>, "ex::just_error must return a sender");
   }
 
-  TEST_CASE("just_error returns a typed sender", "[factories][just_error]") {
+  TEST_CASE("just_error returns a typed sender", "[factories][just_error]")
+  {
     using t = decltype(ex::just_error(std::exception_ptr{}));
     static_assert(ex::sender_in<t, ex::env<>>, "ex::just_error must return a sender");
   }
 
-  TEST_CASE("error types are properly set for just_error<int>", "[factories][just_error]") {
+  TEST_CASE("error types are properly set for just_error<int>", "[factories][just_error]")
+  {
     check_err_types<ex::__mset<int>>(ex::just_error(1));
   }
 
-  TEST_CASE(
-    "error types are properly set for just_error<exception_ptr>",
-    "[factories][just_error]") {
+  TEST_CASE("error types are properly set for just_error<exception_ptr>", "[factories][just_error]")
+  {
     // we should not get std::exception_ptr twice
     check_err_types<ex::__mset<std::exception_ptr>>(ex::just_error(std::exception_ptr()));
   }
 
-  TEST_CASE("value types are properly set for just_error", "[factories][just_error]") {
+  TEST_CASE("value types are properly set for just_error", "[factories][just_error]")
+  {
     // there is no variant of calling `set_value(recv)`
     check_val_types<ex::__mset<>>(ex::just_error(1));
   }
 
-  TEST_CASE("just_error cannot call set_stopped", "[factories][just_error]") {
+  TEST_CASE("just_error cannot call set_stopped", "[factories][just_error]")
+  {
     check_sends_stopped<false>(ex::just_error(1));
   }
 
-  TEST_CASE("just_error removes cv qualifier for the given type", "[factories][just_error]") {
-    std::string str{"hello"};
-    const std::string& crefstr = str;
-    auto snd = ex::just_error(crefstr);
+  TEST_CASE("just_error removes cv qualifier for the given type", "[factories][just_error]")
+  {
+    std::string         str{"hello"};
+    std::string const & crefstr = str;
+    auto                snd     = ex::just_error(crefstr);
     check_err_types<ex::__mset<std::string>>(snd);
   }
-} // namespace
+}  // namespace

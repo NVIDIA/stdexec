@@ -35,53 +35,50 @@
 using namespace STDEXEC;
 using namespace exec::asio;
 
-namespace {
+namespace
+{
 
   static_assert(
     set_equivalent<
-      detail::use_sender::completion_signatures<completion_signatures<
-        set_value_t(std::error_code),
-        set_stopped_t(),
-        set_error_t(std::exception_ptr)
-      >>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
-    >);
+      detail::use_sender::completion_signatures<
+        completion_signatures<set_value_t(std::error_code),
+                              set_stopped_t(),
+                              set_error_t(std::exception_ptr)>>,
+      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
   static_assert(
     set_equivalent<
-      detail::use_sender::completion_signatures<completion_signatures<
-        set_value_t(error_code),
-        set_stopped_t(),
-        set_error_t(std::exception_ptr)
-      >>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
-    >);
+      detail::use_sender::completion_signatures<
+        completion_signatures<set_value_t(error_code),
+                              set_stopped_t(),
+                              set_error_t(std::exception_ptr)>>,
+      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
   static_assert(
     set_equivalent<
-      detail::use_sender::completion_signatures<completion_signatures<
-        set_value_t(error_code, int),
-        set_value_t(int),
-        set_stopped_t(),
-        set_error_t(std::exception_ptr)
-      >>,
-      completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>
-    >);
+      detail::use_sender::completion_signatures<
+        completion_signatures<set_value_t(error_code, int),
+                              set_value_t(int),
+                              set_stopped_t(),
+                              set_error_t(std::exception_ptr)>>,
+      completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>>);
 
-  TEST_CASE(
-    "Asio-based asynchronous operation ends with set_stopped when "
-    "cancellation occurs",
-    "[asioexec][use_sender]") {
-    bool stopped = false;
+  TEST_CASE("Asio-based asynchronous operation ends with set_stopped when "
+            "cancellation occurs",
+            "[asioexec][use_sender]")
+  {
+    bool                stopped = false;
     inplace_stop_source source;
 
-    const struct {
-      auto query(const get_stop_token_t&) const noexcept {
+    const struct
+    {
+      auto query(get_stop_token_t const &) const noexcept
+      {
         return source_.get_token();
       }
 
       inplace_stop_source& source_;
     } e{source};
 
-    asio_impl::io_context ctx;
+    asio_impl::io_context   ctx;
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::years(1));
     auto sender = t.async_wait(use_sender);
@@ -90,13 +87,11 @@ namespace {
     static_assert(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
-        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
-      >);
+        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
     static_assert(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<const decltype(sender)&, ::STDEXEC::env<>>,
-        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>
-      >);
+        completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -112,52 +107,54 @@ namespace {
     CHECK(stopped);
   }
 
-  TEST_CASE(
-    "std::errc::operation_canceled causes the operation to end with "
-    "set_stopped",
-    "[asioexec][use_sender]") {
-    const auto initiating_function = [](auto&& token) {
+  TEST_CASE("std::errc::operation_canceled causes the operation to end with "
+            "set_stopped",
+            "[asioexec][use_sender]")
+  {
+    auto const initiating_function = [](auto&& token)
+    {
       return asio_impl::async_initiate<decltype(token), void(std::error_code)>(
-        [](auto&& h) {
+        [](auto&& h)
+        {
           std::invoke(std::forward<decltype(h)>(h), make_error_code(std::errc::operation_canceled));
         },
         token);
     };
     bool stopped = false;
-    auto op =
-      ::STDEXEC::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
+    auto op      = ::STDEXEC::connect(initiating_function(use_sender),
+                                 expect_stopped_receiver_ex(stopped));
     CHECK(!stopped);
     start(op);
     CHECK(stopped);
   }
 
-  TEST_CASE(
-    "errc::operation_canceled (note in the case of Boost.Asio this is "
-    "boost::system::errc::operation_canceled) causes the operation to end with "
-    "set_stopped",
-    "[asioexec][use_sender]") {
-    const auto initiating_function = [](auto&& token) {
+  TEST_CASE("errc::operation_canceled (note in the case of Boost.Asio this is "
+            "boost::system::errc::operation_canceled) causes the operation to end with "
+            "set_stopped",
+            "[asioexec][use_sender]")
+  {
+    auto const initiating_function = [](auto&& token)
+    {
       return asio_impl::async_initiate<decltype(token), void(error_code)>(
-        [](auto&& h) {
-          std::invoke(std::forward<decltype(h)>(h), make_error_code(errc::operation_canceled));
-        },
+        [](auto&& h)
+        { std::invoke(std::forward<decltype(h)>(h), make_error_code(errc::operation_canceled)); },
         token);
     };
     bool stopped = false;
-    auto op =
-      ::STDEXEC::connect(initiating_function(use_sender), expect_stopped_receiver_ex(stopped));
+    auto op      = ::STDEXEC::connect(initiating_function(use_sender),
+                                 expect_stopped_receiver_ex(stopped));
     CHECK(!stopped);
     start(op);
     CHECK(stopped);
   }
 
-  TEST_CASE(
-    "When an Asio-based asynchronous operation which could fail "
-    "completes successfully the success is reported via a value completion "
-    "signal",
-    "[asioexec][use_sender]") {
-    bool invoked = false;
-    asio_impl::io_context ctx;
+  TEST_CASE("When an Asio-based asynchronous operation which could fail "
+            "completes successfully the success is reported via a value completion "
+            "signal",
+            "[asioexec][use_sender]")
+  {
+    bool                    invoked = false;
+    asio_impl::io_context   ctx;
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::milliseconds(1));
     auto sender = t.async_wait(use_sender);
@@ -174,10 +171,11 @@ namespace {
     CHECK(invoked);
   }
 
-  TEST_CASE("Post works with use_sender", "[asioexec][use_sender]") {
-    bool invoked = false;
+  TEST_CASE("Post works with use_sender", "[asioexec][use_sender]")
+  {
+    bool                  invoked = false;
     asio_impl::io_context ctx;
-    auto sender = asio_impl::post(ctx, use_sender);
+    auto                  sender = asio_impl::post(ctx, use_sender);
     CHECK(!ctx.poll());
     CHECK(ctx.stopped());
     ctx.restart();
@@ -193,20 +191,22 @@ namespace {
   }
 
   template <typename CompletionToken>
-  decltype(auto) async_error_code(CompletionToken&& token) {
+  decltype(auto) async_error_code(CompletionToken&& token)
+  {
     using signature_type = void(error_code);
     return asio_impl::async_initiate<CompletionToken, signature_type>(
-      [](auto&& h) {
-        std::invoke(
-          std::forward<decltype(h)>(h), error_code(make_error_code(std::errc::not_enough_memory)));
+      [](auto&& h)
+      {
+        std::invoke(std::forward<decltype(h)>(h),
+                    error_code(make_error_code(std::errc::not_enough_memory)));
       },
       token);
   }
 
-  TEST_CASE(
-    "Error codes native to the version of Asio used are transformed "
-    "into a system_error",
-    "[asioexec][use_sender]") {
+  TEST_CASE("Error codes native to the version of Asio used are transformed "
+            "into a system_error",
+            "[asioexec][use_sender]")
+  {
     std::exception_ptr ex;
     auto op = ::STDEXEC::connect(async_error_code(use_sender), expect_error_receiver_ex(ex));
     CHECK(!ex);
@@ -216,21 +216,21 @@ namespace {
   }
 
   template <typename CompletionToken>
-  decltype(auto) async_std_error_code(CompletionToken&& token) {
+  decltype(auto) async_std_error_code(CompletionToken&& token)
+  {
     using signature_type = void(std::error_code);
     return asio_impl::async_initiate<CompletionToken, signature_type>(
-      [](auto&& h) {
-        std::invoke(std::forward<decltype(h)>(h), make_error_code(std::errc::not_enough_memory));
-      },
+      [](auto&& h)
+      { std::invoke(std::forward<decltype(h)>(h), make_error_code(std::errc::not_enough_memory)); },
       token);
   }
 
-  TEST_CASE(
-    "Standard error codes are transformed into a std::system_error "
-    "(note that in the case of standalone Asio the error code native to that "
-    "version of Asio a std::error_code are the same and therefore this is a "
-    "duplicate of another test)",
-    "[asioexec][use_sender]") {
+  TEST_CASE("Standard error codes are transformed into a std::system_error "
+            "(note that in the case of standalone Asio the error code native to that "
+            "version of Asio a std::error_code are the same and therefore this is a "
+            "duplicate of another test)",
+            "[asioexec][use_sender]")
+  {
     std::exception_ptr ex;
     auto op = ::STDEXEC::connect(async_std_error_code(use_sender), expect_error_receiver_ex(ex));
     CHECK(!ex);
@@ -239,12 +239,12 @@ namespace {
     CHECK_THROWS_AS(std::rethrow_exception(std::move(ex)), std::system_error);
   }
 
-  TEST_CASE(
-    "I/O objects may be transformed to use senders as their default vocabulary",
-    "[asioexec][use_sender]") {
-    bool invoked = false;
+  TEST_CASE("I/O objects may be transformed to use senders as their default vocabulary",
+            "[asioexec][use_sender]")
+  {
+    bool                  invoked = false;
     asio_impl::io_context ctx;
-    auto t = use_sender.as_default_on(asio_impl::system_timer(ctx));
+    auto                  t = use_sender.as_default_on(asio_impl::system_timer(ctx));
     static_assert(
       std::is_same_v<decltype(t), use_sender_t::as_default_on_t<asio_impl::system_timer>>);
     t.expires_after(std::chrono::milliseconds(5));
@@ -254,20 +254,20 @@ namespace {
     CHECK(ctx.stopped());
   }
 
-  TEST_CASE(
-    "Substitution into async_result<use_sender, ...>::initiate is SFINAE-friendly",
-    "[asioexec][completion_token]") {
-    asio_impl::io_context ctx;
+  TEST_CASE("Substitution into async_result<use_sender, ...>::initiate is SFINAE-friendly",
+            "[asioexec][completion_token]")
+  {
+    asio_impl::io_context      ctx;
     asio_impl::ip::tcp::socket socket(ctx);
-    asio_impl::streambuf buf;
+    asio_impl::streambuf       buf;
     //  With a SFINAE-unfriendly async_result<...>::initiate the below line doesn't compile because there's a hard compilation error trying to consider the async_read overload for dynamic buffers
     //
     //  See: https://github.com/NVIDIA/stdexec/issues/1684
     auto sender = asio_impl::async_read(socket, buf, use_sender);
-    auto op = ::STDEXEC::connect(std::move(sender), expect_error_receiver{});
+    auto op     = ::STDEXEC::connect(std::move(sender), expect_error_receiver{});
     ::STDEXEC::start(op);
     CHECK(ctx.run() != 0);
     CHECK(ctx.stopped());
   }
 
-} // namespace
+}  // namespace

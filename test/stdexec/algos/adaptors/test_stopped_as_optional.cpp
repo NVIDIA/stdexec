@@ -24,35 +24,41 @@
 
 namespace ex = STDEXEC;
 
-namespace {
-  struct potentially_throwing_query {
-    constexpr auto operator()(ex::__ignore) const noexcept(false) -> int {
+namespace
+{
+  struct potentially_throwing_query
+  {
+    constexpr auto operator()(ex::__ignore) const noexcept(false) -> int
+    {
       return 42;
     }
   };
 
-  TEST_CASE("stopped_as_optional returns a sender", "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional returns a sender", "[adaptors][stopped_as_optional]")
+  {
     auto snd = ex::stopped_as_optional(ex::just(11));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  TEST_CASE(
-    "stopped_as_optional with environment returns a sender",
-    "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional with environment returns a sender",
+            "[adaptors][stopped_as_optional]")
+  {
     auto snd = ex::stopped_as_optional(ex::just(11));
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
-  TEST_CASE("stopped_as_optional simple example", "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional simple example", "[adaptors][stopped_as_optional]")
+  {
     stopped_scheduler sched;
-    auto snd = ex::stopped_as_optional(ex::just(11) | ex::continues_on(sched));
-    auto op = ex::connect(std::move(snd), expect_value_receiver{std::optional<int>{}});
+    auto              snd = ex::stopped_as_optional(ex::just(11) | ex::continues_on(sched));
+    auto              op = ex::connect(std::move(snd), expect_value_receiver{std::optional<int>{}});
     ex::start(op);
   }
 
-  TEST_CASE("stopped_as_optional can we waited on", "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional can we waited on", "[adaptors][stopped_as_optional]")
+  {
     ex::sender auto snd = ex::just(11) | ex::stopped_as_optional();
     wait_for_value(std::move(snd), std::optional<int>{11});
   }
@@ -64,63 +70,65 @@ namespace {
   //   static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
   // }
 
-  TEST_CASE(
-    "stopped_as_optional shall not work with senders that have multiple alternatives",
-    "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional shall not work with senders that have multiple alternatives",
+            "[adaptors][stopped_as_optional]")
+  {
     ex::sender auto in_snd = ex::read_env(potentially_throwing_query{})
-                           | ex::let_error(
-                               [](std::exception_ptr) { return ex::just(std::string{"err"}); });
+                           | ex::let_error([](std::exception_ptr)
+                                           { return ex::just(std::string{"err"}); });
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(in_snd));
     using snd_t = decltype(std::move(in_snd) | ex::stopped_as_optional());
     static_assert(!ex::sender_to<snd_t, expect_error_receiver<>>);
   }
 
-  TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional forwards errors", "[adaptors][stopped_as_optional]")
+  {
     error_scheduler sched;
     ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::stopped_as_optional();
-    auto op = ex::connect(std::move(snd), expect_error_receiver{});
+    auto            op  = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
 
-  TEST_CASE("stopped_as_optional doesn't forward cancellation", "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional doesn't forward cancellation", "[adaptors][stopped_as_optional]")
+  {
     stopped_scheduler sched;
-    ex::sender auto snd = ex::just(13) | ex::continues_on(sched) | ex::stopped_as_optional();
+    ex::sender auto   snd = ex::just(13) | ex::continues_on(sched) | ex::stopped_as_optional();
     wait_for_value(std::move(snd), std::optional<int>{});
   }
 
-  TEST_CASE(
-    "stopped_as_optional adds std::optional to values_type",
-    "[adaptors][stopped_as_optional]") {
+  TEST_CASE("stopped_as_optional adds std::optional to values_type",
+            "[adaptors][stopped_as_optional]")
+  {
     check_val_types<ex::__mset<pack<std::optional<int>>>>(ex::just(23) | ex::stopped_as_optional());
-    check_val_types<ex::__mset<pack<std::optional<double>>>>(
-      ex::just(std::numbers::pi) | ex::stopped_as_optional());
+    check_val_types<ex::__mset<pack<std::optional<double>>>>(ex::just(std::numbers::pi)
+                                                             | ex::stopped_as_optional());
   }
 
-  TEST_CASE(
-    "stopped_as_optional keeps error_types from input sender",
-    "[adaptors][stopped_as_optional]") {
-    inline_scheduler sched1{};
-    error_scheduler sched2{};
+  TEST_CASE("stopped_as_optional keeps error_types from input sender",
+            "[adaptors][stopped_as_optional]")
+  {
+    inline_scheduler     sched1{};
+    error_scheduler      sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::just(11) | ex::continues_on(sched1) | ex::stopped_as_optional());
-    check_err_types<ex::__mset<std::exception_ptr>>(
-      ex::just(13) | ex::continues_on(sched2) | ex::stopped_as_optional());
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::just(11) | ex::continues_on(sched1)
+                                                    | ex::stopped_as_optional());
+    check_err_types<ex::__mset<std::exception_ptr>>(ex::just(13) | ex::continues_on(sched2)
+                                                    | ex::stopped_as_optional());
 
-    check_err_types<ex::__mset<std::exception_ptr, int>>(
-      ex::just(13) | ex::continues_on(sched3) | ex::stopped_as_optional());
+    check_err_types<ex::__mset<std::exception_ptr, int>>(ex::just(13) | ex::continues_on(sched3)
+                                                         | ex::stopped_as_optional());
   }
 
-  TEST_CASE(
-    "stopped_as_optional overrides sends_stopped to false",
-    "[adaptors][stopped_as_optional]") {
-    inline_scheduler sched1{};
-    error_scheduler sched2{};
+  TEST_CASE("stopped_as_optional overrides sends_stopped to false",
+            "[adaptors][stopped_as_optional]")
+  {
+    inline_scheduler  sched1{};
+    error_scheduler   sched2{};
     stopped_scheduler sched3{};
 
     check_sends_stopped<false>(ex::just(1) | ex::continues_on(sched1) | ex::stopped_as_optional());
     check_sends_stopped<false>(ex::just(2) | ex::continues_on(sched2) | ex::stopped_as_optional());
     check_sends_stopped<false>(ex::just(3) | ex::continues_on(sched3) | ex::stopped_as_optional());
   }
-} // namespace
+}  // namespace
