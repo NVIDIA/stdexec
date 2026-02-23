@@ -325,30 +325,30 @@ namespace experimental::execution
 namespace exec = experimental::execution;
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
-struct forwarding_query_t;
-struct get_allocator_t;
-struct get_stop_token_t;
+  struct forwarding_query_t;
+  struct get_allocator_t;
+  struct get_stop_token_t;
 
-extern forwarding_query_t const forwarding_query;
-extern get_allocator_t const    get_allocator;
-extern get_stop_token_t const   get_stop_token;
+  extern forwarding_query_t const forwarding_query;
+  extern get_allocator_t const    get_allocator;
+  extern get_stop_token_t const   get_stop_token;
 
-template <class _Env>
-using stop_token_of_t = STDEXEC::__decay_t<STDEXEC::__call_result_t<get_stop_token_t, _Env>>;
+  template <class _Env>
+  using stop_token_of_t = STDEXEC::__decay_t<STDEXEC::__call_result_t<get_stop_token_t, _Env>>;
 
-struct never_stop_token;
-class inplace_stop_source;
-class inplace_stop_token;
-template <class _Fn>
-class inplace_stop_callback;
+  struct never_stop_token;
+  class inplace_stop_source;
+  class inplace_stop_token;
+  template <class _Fn>
+  class inplace_stop_callback;
 STDEXEC_P2300_NAMESPACE_END()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
-struct sync_wait_t;
-struct sync_wait_with_variant_t;
-extern sync_wait_t const              sync_wait;
-extern sync_wait_with_variant_t const sync_wait_with_variant;
+  struct sync_wait_t;
+  struct sync_wait_with_variant_t;
+  extern sync_wait_t const              sync_wait;
+  extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 
 // NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly

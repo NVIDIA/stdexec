@@ -149,22 +149,22 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
-struct forwarding_query_t
-{
-  template <class _Query>
-  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  consteval auto operator()(_Query) const noexcept -> bool
+  struct forwarding_query_t
   {
-    if constexpr (STDEXEC::__queryable_with<_Query, forwarding_query_t>)
+    template <class _Query>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    consteval auto operator()(_Query) const noexcept -> bool
     {
-      return STDEXEC::__query<forwarding_query_t>()(_Query());
+      if constexpr (STDEXEC::__queryable_with<_Query, forwarding_query_t>)
+      {
+        return STDEXEC::__query<forwarding_query_t>()(_Query());
+      }
+      else
+      {
+        return STDEXEC::__std::derived_from<_Query, forwarding_query_t>;
+      }
     }
-    else
-    {
-      return STDEXEC::__std::derived_from<_Query, forwarding_query_t>;
-    }
-  }
-};
+  };
 
-inline constexpr forwarding_query_t forwarding_query{};
+  inline constexpr forwarding_query_t forwarding_query{};
 STDEXEC_P2300_NAMESPACE_END()

@@ -134,31 +134,31 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
-//////////////////////////////////////////////////////////////////////////////////
-// [exec.get.allocator]
-struct get_allocator_t : STDEXEC::__query<get_allocator_t>
-{
-  using STDEXEC::__query<get_allocator_t>::operator();
-
-  // defined in __read_env.hpp
-  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto operator()() const noexcept;
-
-  template <class _Env>
-  STDEXEC_ATTRIBUTE(always_inline, host, device)
-  static constexpr void __validate() noexcept
+  //////////////////////////////////////////////////////////////////////////////////
+  // [exec.get.allocator]
+  struct get_allocator_t : STDEXEC::__query<get_allocator_t>
   {
-    static_assert(STDEXEC::__nothrow_callable<get_allocator_t, _Env const &>);
-    using __alloc_t = STDEXEC::__call_result_t<get_allocator_t, _Env const &>;
-    static_assert(STDEXEC::__simple_allocator<STDEXEC::__decay_t<__alloc_t>>);
-  }
+    using STDEXEC::__query<get_allocator_t>::operator();
 
-  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  static consteval auto query(forwarding_query_t) noexcept -> bool
-  {
-    return true;
-  }
-};
+    // defined in __read_env.hpp
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()() const noexcept;
 
-inline constexpr get_allocator_t get_allocator{};
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    static constexpr void __validate() noexcept
+    {
+      static_assert(STDEXEC::__nothrow_callable<get_allocator_t, _Env const &>);
+      using __alloc_t = STDEXEC::__call_result_t<get_allocator_t, _Env const &>;
+      static_assert(STDEXEC::__simple_allocator<STDEXEC::__decay_t<__alloc_t>>);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  inline constexpr get_allocator_t get_allocator{};
 STDEXEC_P2300_NAMESPACE_END()
