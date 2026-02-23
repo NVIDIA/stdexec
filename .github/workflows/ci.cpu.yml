@@ -19,15 +19,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "CPU (clang 16, Debug)",         build: "Debug",   tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
-          - { name: "CPU (gcc 11, Debug)",           build: "Debug",   tag: gcc11-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release)",         build: "Release", tag: gcc11-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 11, Release, ASAN)",   build: "Release", tag: gcc11-cuda12.9,  cxxflags: "-fsanitize=address" }
-          - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxflags: "-fsanitize=thread" }
-          - { name: "CPU (gcc 13, Debug)",           build: "Release", tag: gcc13-cuda12.9,  cxxflags: "", }
-          - { name: "CPU (gcc 14, Release, LEAK)",   build: "Release", tag: gcc14-cuda12.9,  cxxflags: "-fsanitize=leak", }
+          - { name: "CPU (clang 16, Debug)",         build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Debug, c++23)",  build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "23", cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
+          - { name: "CPU (gcc 11, Debug)",           build: "Debug",   tag: gcc11-cuda12.9,  cxxstd: "20", cxxflags: "", }
+          - { name: "CPU (gcc 11, Release)",         build: "Release", tag: gcc11-cuda12.9,  cxxstd: "20", cxxflags: "", }
+          - { name: "CPU (gcc 11, Release, ASAN)",   build: "Release", tag: gcc11-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
+          - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 13, Debug)",           build: "Release", tag: gcc13-cuda12.9,  cxxstd: "20", cxxflags: "", }
+          - { name: "CPU (gcc 14, Release, LEAK)",   build: "Release", tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=leak", }
+          - { name: "CPU (gcc 14, Release, c++23)",  build: "Release", tag: gcc14-cuda12.9,  cxxstd: "23", cxxflags: "", }
     container:
       options: -u root
       image: rapidsai/devcontainers:26.02-cpp-${{ matrix.tag }}
@@ -100,6 +102,8 @@ jobs:
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
             -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
             -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
+            -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} \
+            -DCMAKE_CXX_EXTENSIONS=OFF \
             ;
 
           # Compile

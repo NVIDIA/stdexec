@@ -22,6 +22,7 @@
 #  include <linux/io_uring.h>
 
 #  include "../../stdexec/__detail/__atomic.hpp"
+#  include "../../stdexec/__detail/__utility.hpp"
 #  include "../../stdexec/execution.hpp"
 #  include "../timed_scheduler.hpp"
 
@@ -1109,7 +1110,9 @@ namespace experimental::execution
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(dur);
         dur -= secs;
         secs = (std::max) (secs, std::chrono::seconds{0});
-        dur  = std::clamp(dur, std::chrono::nanoseconds{0}, std::chrono::nanoseconds{999'999'999});
+        dur  = STDEXEC::__clamp(dur,
+                               std::chrono::nanoseconds{0},
+                               std::chrono::nanoseconds{999'999'999});
         return __kernel_timespec{secs.count(), dur.count()};
       }
 #    else
@@ -1125,9 +1128,9 @@ namespace experimental::execution
         __nsec     = std::chrono::nanoseconds{__timerspec.it_value.tv_nsec} + __nsec;
         auto __sec = std::chrono::duration_cast<std::chrono::seconds>(__nsec);
         __nsec -= __sec;
-        __nsec = std::clamp(__nsec,
-                            std::chrono::nanoseconds{0},
-                            std::chrono::nanoseconds{999'999'999});
+        __nsec = STDEXEC::__clamp(__nsec,
+                                  std::chrono::nanoseconds{0},
+                                  std::chrono::nanoseconds{999'999'999});
         __timerspec.it_value.tv_sec += __sec.count();
         __timerspec.it_value.tv_nsec = __nsec.count();
         STDEXEC_ASSERT(0 <= __timerspec.it_value.tv_nsec

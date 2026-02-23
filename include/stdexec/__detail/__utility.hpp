@@ -196,6 +196,13 @@ namespace STDEXEC
     return static_cast<__copy_cvref_t<_Ty&&, STDEXEC_REMOVE_REFERENCE(_Uy)>>(__uy);
   }
 
+  template <class _Ty>
+  constexpr _Ty const & __clamp(_Ty const & v, _Ty const & lo, _Ty const & hi)
+  {
+    STDEXEC_ASSERT(!(hi < lo));
+    return v < lo ? lo : hi < v ? hi : v;  // NOLINT(bugprone-return-const-ref-from-parameter)
+  }
+
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")
 
