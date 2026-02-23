@@ -32,6 +32,9 @@
 #include <type_traits>
 #include <utility>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
+
 namespace STDEXEC::__any
 {
 
@@ -1698,10 +1701,9 @@ namespace STDEXEC::__any
       if (__empty(__other))
       {
         return;
-        // NOLINTNEXTLINE(bugprone-branch-clone)
       }
       else if constexpr (_Other::__root_kind == __root_kind::__reference || !__ptr_convertible)
-      {
+      {  // NOLINT(bugprone-branch-clone)
         return __other.__slice_to_(*this);
       }
       else if (__other.__in_situ_())
@@ -2012,3 +2014,5 @@ namespace STDEXEC::__any
   };
 
 }  // namespace STDEXEC::__any
+
+STDEXEC_PRAGMA_POP()

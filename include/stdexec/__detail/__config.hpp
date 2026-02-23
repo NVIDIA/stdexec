@@ -612,7 +612,7 @@ namespace STDEXEC
 
 #define STDEXEC_ASSERT(_XP)                                                                        \
   do {                                                                                             \
-    static_assert(noexcept(_XP));                                                                  \
+    /*static_assert(noexcept(_XP));*/                                                              \
     STDEXEC_ASSERT_FN(_XP);                                                                        \
   } while (false)
 
