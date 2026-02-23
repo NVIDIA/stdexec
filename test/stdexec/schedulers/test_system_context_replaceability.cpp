@@ -24,40 +24,45 @@
 #  error This should be testing replacement of the system context with weak linking.
 #endif
 
-namespace ex = STDEXEC;
+namespace ex  = STDEXEC;
 namespace scr = ex::system_context_replaceability;
 
-namespace {
+namespace
+{
 
   static int count_schedules = 0;
 
   struct my_parallel_scheduler_backend_impl
-    : ex::__system_context_default_impl::__parallel_scheduler_backend_impl {
+    : ex::__system_context_default_impl::__parallel_scheduler_backend_impl
+  {
     using base_t = ex::__system_context_default_impl::__parallel_scheduler_backend_impl;
 
     my_parallel_scheduler_backend_impl() = default;
 
-    void schedule(scr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override {
+    void schedule(scr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override
+    {
       count_schedules++;
       base_t::schedule(__r, __s);
     }
   };
 
-} // namespace
+}  // namespace
 
-namespace STDEXEC::system_context_replaceability {
+namespace STDEXEC::system_context_replaceability
+{
   // Should replace the function defined in __system_context_default_impl_entry.hpp
   auto query_parallel_scheduler_backend()
-    -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend> {
+    -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend>
+  {
     return std::make_shared<my_parallel_scheduler_backend_impl>();
   }
-} // namespace STDEXEC::system_context_replaceability
+}  // namespace STDEXEC::system_context_replaceability
 
-TEST_CASE(
-  "Check that we are using a replaced system context (with weak linking)",
-  "[scheduler][parallel_scheduler][replaceability]") {
-  std::thread::id this_id = std::this_thread::get_id();
-  std::thread::id pool_id{};
+TEST_CASE("Check that we are using a replaced system context (with weak linking)",
+          "[scheduler][parallel_scheduler][replaceability]")
+{
+  std::thread::id             this_id = std::this_thread::get_id();
+  std::thread::id             pool_id{};
   STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
 
   auto snd = ex::then(ex::schedule(sched), [&] { pool_id = std::this_thread::get_id(); });

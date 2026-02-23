@@ -6,17 +6,20 @@ namespace ex = STDEXEC;
 using exec::async_scope;
 using STDEXEC::sync_wait;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("async_scope can be created and them immediately destructed", "[async_scope][dtor]") {
+  TEST_CASE("async_scope can be created and them immediately destructed", "[async_scope][dtor]")
+  {
     async_scope scope;
     (void) scope;
   }
 
-  TEST_CASE("async_scope destruction after spawning work into it", "[async_scope][dtor]") {
+  TEST_CASE("async_scope destruction after spawning work into it", "[async_scope][dtor]")
+  {
     exec::static_thread_pool pool{4};
-    ex::scheduler auto sch = pool.get_scheduler();
-    std::atomic<int> counter{0};
+    ex::scheduler auto       sch = pool.get_scheduler();
+    std::atomic<int>         counter{0};
     {
       async_scope scope;
 
@@ -30,4 +33,4 @@ namespace {
     // We should have all the work executed
     REQUIRE(counter == 10);
   }
-} // namespace
+}  // namespace

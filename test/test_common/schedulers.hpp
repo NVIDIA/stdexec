@@ -141,12 +141,12 @@ namespace
     template <class Receiver>
     struct opstate
     {
-      opstate(std::shared_ptr<data> shared_data, Receiver&& recv)
+      opstate(std::shared_ptr<data> shared_data, Receiver &&recv)
         : data_(std::move(shared_data))
-        , receiver_(static_cast<Receiver&&>(recv))
+        , receiver_(static_cast<Receiver &&>(recv))
       {}
 
-      opstate(opstate&&) = delete;
+      opstate(opstate &&) = delete;
 
       void start() & noexcept
       {
@@ -158,11 +158,11 @@ namespace
           {
             if (ex::get_stop_token(ex::get_env(receiver_)).stop_requested())
             {
-              ex::set_stopped(static_cast<Receiver&&>(receiver_));
+              ex::set_stopped(static_cast<Receiver &&>(receiver_));
             }
             else
             {
-              ex::set_value(static_cast<Receiver&&>(receiver_));
+              ex::set_value(static_cast<Receiver &&>(receiver_));
             }
           });
         data_->cv_.notify_all();
@@ -181,7 +181,7 @@ namespace
       template <class Receiver>
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
-        return {data_, static_cast<Receiver&&>(rcvr)};
+        return {data_, static_cast<Receiver &&>(rcvr)};
       }
 
       [[nodiscard]]
@@ -227,7 +227,7 @@ namespace
     {
       void start() & noexcept
       {
-        ex::set_value(static_cast<Receiver&&>(rcvr_));
+        ex::set_value(static_cast<Receiver &&>(rcvr_));
       }
 
       Receiver rcvr_;
@@ -241,7 +241,7 @@ namespace
       template <class Receiver>
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
-        return {{}, static_cast<Receiver&&>(rcvr)};
+        return {{}, static_cast<Receiver &&>(rcvr)};
       }
 
       auto get_env() const noexcept
@@ -259,7 +259,7 @@ namespace
     nothrow_copyable_box() noexcept = default;
 
     explicit nothrow_copyable_box(Type value)
-      : value_(std::make_shared<Type>(static_cast<Type&&>(value)))
+      : value_(std::make_shared<Type>(static_cast<Type &&>(value)))
     {}
 
     [[nodiscard]]
@@ -269,7 +269,7 @@ namespace
     }
 
     [[nodiscard]]
-    auto operator==(nothrow_copyable_box const & other) const
+    auto operator==(nothrow_copyable_box const &other) const
       noexcept(noexcept(*value_ == *(other.value_))) -> bool
     {
       if (value_ && other.value_)
@@ -290,7 +290,7 @@ namespace
     nothrow_copyable_box() noexcept = default;
 
     explicit nothrow_copyable_box(Type value) noexcept(ex::__nothrow_copy_constructible<Type>)
-      : value_(static_cast<Type&&>(value))
+      : value_(static_cast<Type &&>(value))
     {}
 
     [[nodiscard]]
@@ -315,7 +315,7 @@ namespace
     error_scheduler() = default;
 
     explicit error_scheduler(Error err)
-      : err_(static_cast<Error&&>(err))
+      : err_(static_cast<Error &&>(err))
     {}
 
     [[nodiscard]]
@@ -339,7 +339,7 @@ namespace
     {
       void start() & noexcept
       {
-        ex::set_error(static_cast<Receiver&&>(rcvr_), Error(err_.value()));
+        ex::set_error(static_cast<Receiver &&>(rcvr_), Error(err_.value()));
       }
 
       Receiver                    rcvr_;
@@ -355,7 +355,7 @@ namespace
       template <class Receiver>
       auto connect(Receiver rcvr) && -> opstate<Receiver>
       {
-        return {{}, static_cast<Receiver&&>(rcvr), std::move(err_)};
+        return {{}, static_cast<Receiver &&>(rcvr), std::move(err_)};
       }
 
       auto get_env() const noexcept
@@ -367,7 +367,7 @@ namespace
     };
 
     error_scheduler(nothrow_copyable_box<Error> err) noexcept
-      : err_(static_cast<nothrow_copyable_box<Error>&&>(err))
+      : err_(static_cast<nothrow_copyable_box<Error> &&>(err))
     {}
 
     nothrow_copyable_box<Error> err_{};
@@ -403,7 +403,7 @@ namespace
     {
       void start() & noexcept
       {
-        ex::set_stopped(static_cast<Receiver&&>(rcvr_));
+        ex::set_stopped(static_cast<Receiver &&>(rcvr_));
       }
 
       Receiver rcvr_;
@@ -418,7 +418,7 @@ namespace
       template <class Receiver>
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
-        return {{}, static_cast<Receiver&&>(rcvr)};
+        return {{}, static_cast<Receiver &&>(rcvr)};
       }
 
       [[nodiscard]]
@@ -448,12 +448,12 @@ namespace
       using operation_state_concept = ex::operation_state_t;
 
       constexpr _opstate_t(Rcvr rcvr) noexcept
-        : _rcvr(static_cast<Rcvr&&>(rcvr))
+        : _rcvr(static_cast<Rcvr &&>(rcvr))
       {}
 
       constexpr void start() noexcept
       {
-        ex::set_value(static_cast<Rcvr&&>(_rcvr));
+        ex::set_value(static_cast<Rcvr &&>(_rcvr));
       }
 
       Rcvr _rcvr;
@@ -473,7 +473,7 @@ namespace
       template <class Rcvr>
       constexpr auto connect(Rcvr rcvr) const noexcept -> _opstate_t<Rcvr>
       {
-        return _opstate_t<Rcvr>(static_cast<Rcvr&&>(rcvr));
+        return _opstate_t<Rcvr>(static_cast<Rcvr &&>(rcvr));
       }
 
       [[nodiscard]]

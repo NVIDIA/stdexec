@@ -25,75 +25,97 @@
 using namespace std;
 namespace ex = STDEXEC;
 
-namespace {
-  struct immovable {
-    immovable() = default;
+namespace
+{
+  struct immovable
+  {
+    immovable()            = default;
     immovable(immovable&&) = delete;
   };
 
-  struct create_test_fixture {
+  struct create_test_fixture
+  {
     exec::static_thread_pool pool_{2};
-    exec::async_scope scope_;
+    exec::async_scope        scope_;
 
-    ~create_test_fixture() {
+    ~create_test_fixture()
+    {
       STDEXEC::sync_wait(scope_.on_empty());
     }
 
-    void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result)) {
+    void anIntAPI(int a, int b, void* context, void (*completed)(void* context, int result))
+    {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(ex::starts_on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
-                                   auto result = a + b;
-                                   completed(context, result);
-                                 })));
+      scope_.spawn(ex::starts_on(pool_.get_scheduler(),
+                                 ex::then(ex::just(),
+                                          [=]() noexcept
+                                          {
+                                            auto result = a + b;
+                                            completed(context, result);
+                                          })));
     }
 
-    void aVoidAPI(void* context, void (*completed)(void* context)) {
+    void aVoidAPI(void* context, void (*completed)(void* context))
+    {
       // Execute some work asynchronously on some other thread. When its
       // work is finished, pass the result to the callback.
-      scope_.spawn(ex::starts_on(pool_.get_scheduler(), ex::then(ex::just(), [=]() noexcept {
-                                   completed(context);
-                                 })));
+      scope_.spawn(ex::starts_on(pool_.get_scheduler(),
+                                 ex::then(ex::just(), [=]() noexcept { completed(context); })));
     }
   };
 
-  TEST_CASE_METHOD(
-    create_test_fixture,
-    "wrap an async API that computes a result",
-    "[detail][create]") {
-    auto snd = [this](int a, int b) {
-      return exec::create<ex::set_value_t(int)>([a, b, this]<class Context>(Context& ctx) noexcept {
-        anIntAPI(a, b, &ctx, [](void* pv, int result) {
-          ex::set_value(std::move(static_cast<Context*>(pv)->receiver), static_cast<int>(result));
+  TEST_CASE_METHOD(create_test_fixture,
+                   "wrap an async API that computes a result",
+                   "[detail][create]")
+  {
+    auto snd = [this](int a, int b)
+    {
+      return exec::create<ex::set_value_t(int)>(
+        [a, b, this]<class Context>(Context& ctx) noexcept
+        {
+          anIntAPI(a,
+                   b,
+                   &ctx,
+                   [](void* pv, int result)
+                   {
+                     ex::set_value(std::move(static_cast<Context*>(pv)->receiver),
+                                   static_cast<int>(result));
+                   });
         });
-      });
     }(1, 2);
 
 #if STDEXEC_NO_STD_EXCEPTIONS()
     auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
     CHECK(res == 3);
 #else
-    REQUIRE_NOTHROW([&] {
-      auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
-      CHECK(res == 3);
-    }());
+    REQUIRE_NOTHROW(
+      [&]
+      {
+        auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
+        CHECK(res == 3);
+      }());
 #endif
   }
 
-  TEST_CASE_METHOD(
-    create_test_fixture,
-    "wrap an async API that doesn't compute a result",
-    "[detail][create]") {
+  TEST_CASE_METHOD(create_test_fixture,
+                   "wrap an async API that doesn't compute a result",
+                   "[detail][create]")
+  {
     bool called = false;
-    auto snd = [&called, this]() {
+    auto snd    = [&called, this]()
+    {
       using completions = ex::completion_signatures<ex::set_value_t()>;
       return exec::create<completions>(
-        [this]<class Context>(Context& ctx) noexcept {
-          aVoidAPI(&ctx, [](void* pv) {
-            Context& ctx = *static_cast<Context*>(pv);
-            *std::get<0>(ctx.args) = true;
-            ex::set_value(std::move(ctx.receiver));
-          });
+        [this]<class Context>(Context& ctx) noexcept
+        {
+          aVoidAPI(&ctx,
+                   [](void* pv)
+                   {
+                     Context& ctx           = *static_cast<Context*>(pv);
+                     *std::get<0>(ctx.args) = true;
+                     ex::set_value(std::move(ctx.receiver));
+                   });
         },
         &called);
     }();
@@ -102,4 +124,4 @@ namespace {
     CHECK(res.has_value());
     CHECK(called);
   }
-} // anonymous namespace
+}  // anonymous namespace

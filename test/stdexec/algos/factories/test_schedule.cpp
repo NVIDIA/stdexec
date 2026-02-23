@@ -23,18 +23,22 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
   template <ex::scheduler Sched = inline_scheduler>
-  inline auto _with_scheduler(Sched sched = {}) {
+  inline auto _with_scheduler(Sched sched = {})
+  {
     return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
   }
 
-  TEST_CASE("schedule returns a sender", "[factories][schedule]") {
+  TEST_CASE("schedule returns a sender", "[factories][schedule]")
+  {
     using sndr = ex::schedule_result_t<inline_scheduler>;
     static_assert(ex::sender<sndr>);
   }
 
-  TEST_CASE("schedule advertices scheduler and domain", "[factories][schedule]") {
+  TEST_CASE("schedule advertices scheduler and domain", "[factories][schedule]")
+  {
     using target_sched = exec::static_thread_pool::scheduler;
     using target_domain =
       ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>, target_sched, ex::env<>>;
@@ -73,4 +77,4 @@ namespace {
     STATIC_REQUIRE(std::is_same_v<scheduler_with_inline_sender, target_sched>);
     STATIC_REQUIRE(std::is_same_v<domain_with_inline_sender, target_domain>);
   }
-} // namespace
+}  // namespace

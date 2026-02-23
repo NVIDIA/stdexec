@@ -35,88 +35,99 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  struct boolean_sender {
+  struct boolean_sender
+  {
     using sender_concept = ex::sender_t;
     using completion_signatures =
-      ex::completion_signatures<ex::set_value_t(bool), ex::set_error_t(const int&)>;
+      ex::completion_signatures<ex::set_value_t(bool), ex::set_error_t(int const &)>;
 
     template <class Receiver>
-    struct operation {
+    struct operation
+    {
       Receiver rcvr_;
-      int counter_;
+      int      counter_;
 
-      void start() & noexcept {
-        if (counter_ == 0) {
+      void start() & noexcept
+      {
+        if (counter_ == 0)
+        {
           ex::set_value(static_cast<Receiver&&>(rcvr_), true);
-        } else {
+        }
+        else
+        {
           ex::set_value(static_cast<Receiver&&>(rcvr_), false);
         }
       }
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
-    auto connect(Receiver rcvr) const -> operation<Receiver> {
+    auto connect(Receiver rcvr) const -> operation<Receiver>
+    {
       return {static_cast<Receiver&&>(rcvr), --*counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
   };
 
-  TEST_CASE("repeat_until returns a sender", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until returns a sender", "[adaptors][repeat_until]")
+  {
     auto snd = exec::repeat_until(ex::just() | ex::then([] { return false; }));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
   }
 
-  TEST_CASE("repeat_until with environment returns a sender", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until with environment returns a sender", "[adaptors][repeat_until]")
+  {
     auto snd = exec::repeat_until(ex::just() | ex::then([] { return true; }));
     static_assert(ex::sender_in<decltype(snd), ex::env<>>);
     (void) snd;
   }
 
-  TEST_CASE("repeat_until produces void value to downstream receiver", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until produces void value to downstream receiver", "[adaptors][repeat_until]")
+  {
     ex::sender auto source = ex::just(1) | ex::then([](int) { return true; });
-    ex::sender auto snd = exec::repeat_until(std::move(source));
+    ex::sender auto snd    = exec::repeat_until(std::move(source));
     // The receiver checks if we receive the void value
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
   }
 
-  TEST_CASE("simple example for repeat_until", "[adaptors][repeat_until]") {
+  TEST_CASE("simple example for repeat_until", "[adaptors][repeat_until]")
+  {
     ex::sender auto snd = exec::repeat_until(boolean_sender{});
-    static_assert(all_contained_in<
-                  ex::completion_signatures<ex::set_error_t(const int&)>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
-    >);
-    static_assert(!all_contained_in<
-                  ex::completion_signatures<ex::set_error_t(int)>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
-    >);
+    static_assert(all_contained_in<ex::completion_signatures<ex::set_error_t(int const &)>,
+                                   ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+    static_assert(!all_contained_in<ex::completion_signatures<ex::set_error_t(int)>,
+                                    ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
     ex::sync_wait(std::move(snd));
   }
 
-  TEST_CASE("repeat_until works with pipeline operator", "[adaptors][repeat_until]") {
-    bool should_stopped = true;
-    ex::sender auto snd = ex::just(should_stopped) | exec::repeat_until()
+  TEST_CASE("repeat_until works with pipeline operator", "[adaptors][repeat_until]")
+  {
+    bool            should_stopped = true;
+    ex::sender auto snd            = ex::just(should_stopped) | exec::repeat_until()
                         | ex::then([] { return 1; });
     wait_for_value(std::move(snd), 1);
   }
 
-  TEST_CASE(
-    "repeat_until works when input sender produces an int value",
-    "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until works when input sender produces an int value",
+            "[adaptors][repeat_until]")
+  {
     ex::sender auto snd = exec::repeat_until(ex::just(1));
-    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    auto            op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
   }
 
-  TEST_CASE(
-    "repeat_until works when input sender produces an object that can be converted to bool"
-    "[adaptors][repeat_until]") {
-    struct pred {
-      operator bool() {
+  TEST_CASE("repeat_until works when input sender produces an object that can be converted to bool"
+            "[adaptors][repeat_until]")
+  {
+    struct pred
+    {
+      operator bool()
+      {
         return --n <= 100;
       }
 
@@ -128,141 +139,175 @@ namespace {
     ex::sync_wait(exec::repeat_until(std::move(input_snd)));
   }
 
-  TEST_CASE("repeat_until forwards set_error calls of other types", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until forwards set_error calls of other types", "[adaptors][repeat_until]")
+  {
     auto snd = ex::just_error(std::string("error")) | exec::repeat_until();
-    auto op = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
+    auto op  = ex::connect(std::move(snd), expect_error_receiver{std::string("error")});
     ex::start(op);
   }
 
-  TEST_CASE("repeat_until forwards set_stopped calls", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until forwards set_stopped calls", "[adaptors][repeat_until]")
+  {
     auto snd = ex::just_stopped() | exec::repeat_until();
-    auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+    auto op  = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
   }
 
-  TEST_CASE(
-    "running deeply recursing algo on repeat_until doesn't blow the stack",
-    "[adaptors][repeat_until]") {
-    int n = 1;
-    ex::sender auto snd = exec::repeat_until(ex::just() | ex::then([&n] {
-                                               ++n;
-                                               return n == 1'000'000;
-                                             }));
+  TEST_CASE("running deeply recursing algo on repeat_until doesn't blow the stack",
+            "[adaptors][repeat_until]")
+  {
+    int             n   = 1;
+    ex::sender auto snd = exec::repeat_until(ex::just()
+                                             | ex::then(
+                                               [&n]
+                                               {
+                                                 ++n;
+                                                 return n == 1'000'000;
+                                               }));
     ex::sync_wait(std::move(snd));
     CHECK(n == 1'000'000);
   }
 
-  TEST_CASE("repeat_until works when changing threads", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until works when changing threads", "[adaptors][repeat_until]")
+  {
     exec::static_thread_pool pool{2};
-    bool called{false};
-    ex::sender auto snd = ex::on(pool.get_scheduler(), ex::just() | ex::then([&] {
-                                                         called = true;
-                                                         return called;
-                                                       }) | exec::repeat_until());
+    bool                     called{false};
+    ex::sender auto          snd = ex::on(pool.get_scheduler(),
+                                 ex::just()
+                                   | ex::then(
+                                     [&]
+                                     {
+                                       called = true;
+                                       return called;
+                                     })
+                                   | exec::repeat_until());
     ex::sync_wait(std::move(snd));
 
     REQUIRE(called);
   }
 
-  TEST_CASE("repeat_until works with bulk on a static_thread_pool", "[adaptors][repeat_until]") {
+  TEST_CASE("repeat_until works with bulk on a static_thread_pool", "[adaptors][repeat_until]")
+  {
     exec::static_thread_pool pool{2};
-    std::atomic<bool> failed{false};
-    const auto tid = std::this_thread::get_id();
-    bool called{false};
-    ex::sender auto snd = STDEXEC::on(
-      pool.get_scheduler(), ex::just() | ex::bulk(ex::par_unseq, 1024, [&](int) noexcept {
-                              if (tid == std::this_thread::get_id()) {
-                                failed = true;
-                              }
-                            }) | ex::then([&] {
-                              called = true;
-                              return called;
-                            }) | exec::repeat_until());
+    std::atomic<bool>        failed{false};
+    auto const               tid = std::this_thread::get_id();
+    bool                     called{false};
+    ex::sender auto          snd = STDEXEC::on(pool.get_scheduler(),
+                                      ex::just()
+                                        | ex::bulk(ex::par_unseq,
+                                                   1024,
+                                                   [&](int) noexcept
+                                                   {
+                                                     if (tid == std::this_thread::get_id())
+                                                     {
+                                                       failed = true;
+                                                     }
+                                                   })
+                                        | ex::then(
+                                          [&]
+                                          {
+                                            called = true;
+                                            return called;
+                                          })
+                                        | exec::repeat_until());
     STDEXEC::sync_wait(std::move(snd));
     REQUIRE(called);
   }
 
   template <typename Receiver>
-  struct no_set_value_receiver : Receiver {
+  struct no_set_value_receiver : Receiver
+  {
     explicit no_set_value_receiver(Receiver r) noexcept
-      : Receiver(std::move(r)) {
-    }
+      : Receiver(std::move(r))
+    {}
     void set_value() && noexcept = delete;
   };
 
-  TEST_CASE("repeat repeats until an error is encountered", "[adaptors][repeat]") {
-    int counter = 0;
-    ex::sender auto snd = succeed_n_sender(10, ex::set_error, std::string("error")) //
-                        | ex::then([&] { ++counter; })                              //
+  TEST_CASE("repeat repeats until an error is encountered", "[adaptors][repeat]")
+  {
+    int             counter = 0;
+    ex::sender auto snd     = succeed_n_sender(10, ex::set_error, std::string("error"))  //
+                        | ex::then([&] { ++counter; })                                   //
                         | exec::repeat();
-    static_assert(!all_contained_in<
-                  ex::completion_signatures<ex::set_value_t()>,
-                  ex::completion_signatures_of_t<decltype(snd), ex::env<>>
-    >);
-    auto op = ex::connect(
-      std::move(snd), no_set_value_receiver(expect_error_receiver{std::string("error")}));
+    static_assert(!all_contained_in<ex::completion_signatures<ex::set_value_t()>,
+                                    ex::completion_signatures_of_t<decltype(snd), ex::env<>>>);
+    auto op = ex::connect(std::move(snd),
+                          no_set_value_receiver(expect_error_receiver{std::string("error")}));
     ex::start(op);
     REQUIRE(counter == 10);
   }
 
-  TEST_CASE("repeat repeats until stopped is encountered", "[adaptors][repeat]") {
-    int counter = 0;
-    ex::sender auto snd = exec::repeat(
-      succeed_n_sender(10, ex::set_stopped) | ex::then([&] { ++counter; }));
+  TEST_CASE("repeat repeats until stopped is encountered", "[adaptors][repeat]")
+  {
+    int             counter = 0;
+    ex::sender auto snd     = exec::repeat(succeed_n_sender(10, ex::set_stopped)
+                                       | ex::then([&] { ++counter; }));
     auto op = ex::connect(std::move(snd), no_set_value_receiver(expect_stopped_receiver{}));
     ex::start(op);
     REQUIRE(counter == 10);
   }
 
-  TEST_CASE(
-    "repeat works correctly when the child operation sends an error type which throws when "
-    "decay-copied",
-    "[adaptors][repeat]") {
-    struct error_type {
+  TEST_CASE("repeat works correctly when the child operation sends an error type which throws when "
+            "decay-copied",
+            "[adaptors][repeat]")
+  {
+    struct error_type
+    {
       explicit error_type(unsigned& throw_after) noexcept
-        : throw_after_(throw_after) {
-      }
-      error_type(const error_type& other)
-        : throw_after_(other.throw_after_) {
-        if (!throw_after_) {
+        : throw_after_(throw_after)
+      {}
+      error_type(error_type const & other)
+        : throw_after_(other.throw_after_)
+      {
+        if (!throw_after_)
+        {
           throw std::logic_error("TEST");
         }
         --throw_after_;
       }
       unsigned& throw_after_;
     };
-    struct receiver {
+    struct receiver
+    {
       using receiver_concept = ::STDEXEC::receiver_t;
-      void set_value() && noexcept {
+      void set_value() && noexcept
+      {
         FAIL_CHECK("Unexpected value completion signal");
       }
-      void set_stopped() && noexcept {
+      void set_stopped() && noexcept
+      {
         FAIL_CHECK("Unexpected stopped completion signal");
       }
-      void set_error(std::exception_ptr) && noexcept {
+      void set_error(std::exception_ptr) && noexcept
+      {
         CHECK(!done_);
       }
-      void set_error(const error_type&) && noexcept {
+      void set_error(error_type const &) && noexcept
+      {
         CHECK(!done_);
         done_ = true;
       }
       bool& done_;
     };
     unsigned throw_after = 0;
-    bool done = false;
-    do { // NOLINT(bugprone-infinite-loop)
-      const auto tmp = throw_after;
-      throw_after = std::numeric_limits<unsigned>::max();
+    bool     done        = false;
+    do
+    {  // NOLINT(bugprone-infinite-loop)
+      auto const tmp = throw_after;
+      throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
       throw_after = tmp;
       ++throw_after;
-    } while (!done);
+    }
+    while (!done);
   }
 
-  TEST_CASE("repeat composes with completion signatures", "[adaptors][repeat]") {
-    SECTION("repeat composes with stopped upstream") {
+  TEST_CASE("repeat composes with completion signatures", "[adaptors][repeat]")
+  {
+    SECTION("repeat composes with stopped upstream")
+    {
       ex::sender auto only_stopped = ex::just_stopped() | exec::repeat();
       static_assert(
         std::same_as<ex::value_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
@@ -270,88 +315,100 @@ namespace {
       static_assert(
         std::same_as<ex::error_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
         "Expect no value completions");
-      static_assert(
-        ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
-        "Missing set_stopped_t() from upstream");
+      static_assert(ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
+                    "Missing set_stopped_t() from upstream");
 
       // operator| and sync_wait require valid completion signatures
       ex::sync_wait(only_stopped | ex::upon_stopped([]() noexcept { return -1; }));
     }
 
-    SECTION("repeat composes with errors upstream") {
+    SECTION("repeat composes with errors upstream")
+    {
       ex::sender auto only_error = ex::just_error(-1) | exec::repeat();
       static_assert(
         std::same_as<ex::value_types_of_t<decltype(only_error)>, ex::__detail::__not_a_variant>,
         "Expect no value completions");
-      static_assert(
-        std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
-        "Unexpected added set_error_t(std::exception_ptr)");
+      static_assert(std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
+                    "Unexpected added set_error_t(std::exception_ptr)");
 
       // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
       using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
-      static_assert(
-        !ex::sender_of<SC, ex::set_stopped_t()>
-          || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
-        "Missing added set_stopped_t()");
+      static_assert(!ex::sender_of<SC, ex::set_stopped_t()>
+                      || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
+                    "Missing added set_stopped_t()");
 
       // operator| and sync_wait require valid completion signatures
-      ex::sync_wait(only_error | ex::upon_error([](const auto) { return -1; }));
+      ex::sync_wait(only_error | ex::upon_error([](auto const) { return -1; }));
     }
   }
 
-  TEST_CASE(
-    "repeat_until works correctly when the child operation sends type which throws when "
-    "decay-copied, and when converted to bool, and which is only rvalue convertible to bool",
-    "[adaptors][repeat_until]") {
-    class value_type {
-      void maybe_throw_() const {
-        if (!throw_after_) {
+  TEST_CASE("repeat_until works correctly when the child operation sends type which throws when "
+            "decay-copied, and when converted to bool, and which is only rvalue convertible to "
+            "bool",
+            "[adaptors][repeat_until]")
+  {
+    class value_type
+    {
+      void maybe_throw_() const
+      {
+        if (!throw_after_)
+        {
           throw std::logic_error("TEST");
         }
         --throw_after_;
       }
      public:
       explicit value_type(unsigned& throw_after) noexcept
-        : throw_after_(throw_after) {
-      }
-      value_type(const value_type& other)
-        : throw_after_(other.throw_after_) {
+        : throw_after_(throw_after)
+      {}
+      value_type(value_type const & other)
+        : throw_after_(other.throw_after_)
+      {
         maybe_throw_();
       }
       unsigned& throw_after_;
-      operator bool() && {
+                operator bool() &&
+      {
         maybe_throw_();
         return true;
       }
     };
-    struct receiver {
+    struct receiver
+    {
       using receiver_concept = ::STDEXEC::receiver_t;
-      void set_value() && noexcept {
+      void set_value() && noexcept
+      {
         done_ = true;
       }
-      void set_stopped() && noexcept {
+      void set_stopped() && noexcept
+      {
         FAIL_CHECK("Unexpected stopped completion signal");
       }
-      void set_error(std::exception_ptr) && noexcept {
+      void set_error(std::exception_ptr) && noexcept
+      {
         CHECK(!done_);
       }
       bool& done_;
     };
     unsigned throw_after = 0;
-    bool done = false;
-    do { // NOLINT(bugprone-infinite-loop)
-      const auto tmp = throw_after;
-      throw_after = std::numeric_limits<unsigned>::max();
+    bool     done        = false;
+    do
+    {  // NOLINT(bugprone-infinite-loop)
+      auto const tmp = throw_after;
+      throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
       throw_after = tmp;
       ex::start(op);
       throw_after = tmp;
       ++throw_after;
-    } while (!done);
+    }
+    while (!done);
   }
 
-  TEST_CASE("repeat_until conditionally adds set_error_t(exception)", "[adaptors][repeat_until]") {
-    SECTION("ensure exception isn't always added") {
+  TEST_CASE("repeat_until conditionally adds set_error_t(exception)", "[adaptors][repeat_until]")
+  {
+    SECTION("ensure exception isn't always added")
+    {
       ex::sender auto snd = ex::just(false) | exec::repeat_until();
       static_assert(
         std::same_as<ex::error_types_of_t<decltype(snd)>, ex::__detail::__not_a_variant>,
@@ -362,11 +419,14 @@ namespace {
     // 1. value's conversion to bool could throw
     // 2. error's copy constructor could throw
     // 3. connect() could throw
-    SECTION("error completion is added when an error's copy ctor can throw") {
+    SECTION("error completion is added when an error's copy ctor can throw")
+    {
       // 1.
-      struct To_bool_can_throw {
+      struct To_bool_can_throw
+      {
         [[nodiscard]]
-        operator bool() const noexcept(false) {
+        operator bool() const noexcept(false)
+        {
           return true;
         }
       };
@@ -376,29 +436,27 @@ namespace {
         "Missing added set_error_t(std::exception_ptr)");
     }
 
-    SECTION("error completion is added when error->bool can throw") {
+    SECTION("error completion is added when error->bool can throw")
+    {
       // 2.
-      struct Error_with_throw_copy {
+      struct Error_with_throw_copy
+      {
         Error_with_throw_copy() noexcept = default;
-        Error_with_throw_copy(const Error_with_throw_copy&) noexcept(false) {};
+        Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {};
       };
       ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
-      static_assert(
-        std::same_as<
-          ex::error_types_of_t<decltype(snd)>,
-          std::variant<Error_with_throw_copy, std::exception_ptr>
-        >,
-        "Missing added set_error_t(std::exception_ptr)");
+      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>,
+                                 std::variant<Error_with_throw_copy, std::exception_ptr>>,
+                    "Missing added set_error_t(std::exception_ptr)");
     }
 
-    SECTION("error completion is added when connect can throw") {
+    SECTION("error completion is added when connect can throw")
+    {
       // 3.
       using Sender_connect_throws = just_with_env<ex::env<>, bool>;
       static_assert(
-        !ex::__error_types_t<
-          ex::completion_signatures_of_t<Sender_connect_throws>,
-          ex::__mcontains<ex::set_error_t(std::exception_ptr)>
-        >::value,
+        !ex::__error_types_t<ex::completion_signatures_of_t<Sender_connect_throws>,
+                             ex::__mcontains<ex::set_error_t(std::exception_ptr)>>::value,
         "Sender can't already emit exception to test if repeat_until() adds it");
 
       ex::sender auto snd = Sender_connect_throws{{}, true} | exec::repeat_until();
@@ -407,4 +465,4 @@ namespace {
         "Missing added set_error_t(std::exception_ptr)");
     }
   }
-} // namespace
+}  // namespace

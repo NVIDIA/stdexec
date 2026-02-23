@@ -22,7 +22,8 @@
 
 #  include <ranges>
 
-namespace STDEXEC::ranges {
+namespace STDEXEC::ranges
+{
   using std::ranges::begin;
   using std::ranges::end;
 
@@ -30,7 +31,7 @@ namespace STDEXEC::ranges {
   using std::ranges::range_reference_t;
   using std::ranges::iterator_t;
   using std::ranges::sentinel_t;
-}
+}  // namespace STDEXEC::ranges
 
 #else
 

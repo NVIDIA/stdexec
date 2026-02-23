@@ -55,24 +55,27 @@
 #if !STDEXEC_NO_STD_EXCEPTIONS()
 namespace ex = stdexec;
 
-struct http_request {
-  std::string url_;
+struct http_request
+{
+  std::string                                      url_;
   std::vector<std::pair<std::string, std::string>> headers_;
-  std::string body_;
+  std::string                                      body_;
 };
 
-struct http_response {
-  int status_code_;
+struct http_response
+{
+  int         status_code_;
   std::string body_;
 };
 
 // Returns a sender that yields an http_request object for an incoming request
 template <ex::scheduler S>
-auto schedule_request_start(S sched, int idx) -> ex::sender auto {
+auto schedule_request_start(S sched, int idx) -> ex::sender auto
+{
   // app-specific-details: building of the http_request object
   auto url = std::string("/query?image_idx=") + std::to_string(idx);
   if (idx == 7)
-    url.clear(); // fake invalid request
+    url.clear();  // fake invalid request
   http_request req{.url_ = std::move(url), .headers_ = {}, .body_ = {}};
   std::cout << "HTTP request " << idx << " arrived\n";
 
@@ -81,14 +84,16 @@ auto schedule_request_start(S sched, int idx) -> ex::sender auto {
 }
 
 // Sends a response back to the client; yields a void signal on success
-auto send_response(const http_response& resp) -> ex::sender auto {
+auto send_response(http_response const & resp) -> ex::sender auto
+{
   std::cout << "Sending back response: " << resp.status_code_ << "\n";
   // Signal that we are done successfully
   return ex::just();
 }
 
 // Validate that the HTTP request is well-formed
-auto validate_request(const http_request& req) -> ex::sender auto {
+auto validate_request(http_request const & req) -> ex::sender auto
+{
   std::cout << "validating request " << req.url_ << "\n";
   if (req.url_.empty())
     throw std::invalid_argument("No URL");
@@ -96,37 +101,49 @@ auto validate_request(const http_request& req) -> ex::sender auto {
 }
 
 // Handle the request; main application logic
-auto handle_request(const http_request& req) -> ex::sender auto {
+auto handle_request(http_request const & req) -> ex::sender auto
+{
   std::cout << "handling request " << req.url_ << "\n";
   //...
   return ex::just(http_response{.status_code_ = 200, .body_ = "image details"});
 }
 
 // Transforms server errors into responses to be sent to the client
-auto error_to_response(std::exception_ptr err) -> ex::sender auto {
-  try {
+auto error_to_response(std::exception_ptr err) -> ex::sender auto
+{
+  try
+  {
     std::rethrow_exception(err);
-  } catch (const std::invalid_argument& e) {
+  }
+  catch (std::invalid_argument const & e)
+  {
     return ex::just(http_response{.status_code_ = 404, .body_ = e.what()});
-  } catch (const std::exception& e) {
+  }
+  catch (std::exception const & e)
+  {
     return ex::just(http_response{.status_code_ = 500, .body_ = e.what()});
-  } catch (...) {
+  }
+  catch (...)
+  {
     return ex::just(http_response{.status_code_ = 500, .body_ = "Unknown server error"});
   }
 }
 
 // Transforms cancellation of the server into responses to be sent to the client
-auto stopped_to_response() -> ex::sender auto {
+auto stopped_to_response() -> ex::sender auto
+{
   return ex::just(http_response{.status_code_ = 503, .body_ = "Service temporarily unavailable"});
 }
 
-auto main() -> int {
+auto main() -> int
+{
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool pool{8};
-  ex::scheduler auto sched = pool.get_scheduler();
+  ex::scheduler auto       sched = pool.get_scheduler();
 
   // Fake a couple of requests
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     // The whole flow for transforming incoming requests into responses
     ex::sender auto snd =
       // get a sender when a new request comes
@@ -155,8 +172,9 @@ auto main() -> int {
 
 #else
 
-int main() {
+int main()
+{
   std::cout << "This example requires C++ exceptions to be enabled.\n";
   return 0;
 }
-#endif // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STD_EXCEPTIONS()

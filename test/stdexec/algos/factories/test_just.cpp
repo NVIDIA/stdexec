@@ -25,24 +25,29 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  constexpr int test_constexpr() noexcept {
-    struct receiver {
+  constexpr int test_constexpr() noexcept
+  {
+    struct receiver
+    {
       using receiver_concept = ex::receiver_t;
-      constexpr void set_value(const int j) && noexcept {
+      constexpr void set_value(int const j) && noexcept
+      {
         i = j;
       }
       int& i;
     };
-    int i = 0;
+    int  i  = 0;
     auto op = ex::connect(ex::just(5), receiver{i});
     ex::start(op);
     return i;
   }
   static_assert(test_constexpr() == 5);
 
-  TEST_CASE("Simple test for just", "[factories][just]") {
+  TEST_CASE("Simple test for just", "[factories][just]")
+  {
     auto o1 = ex::connect(ex::just(1), expect_value_receiver(1));
     ex::start(o1);
     auto o2 = ex::connect(ex::just(2), expect_value_receiver(2));
@@ -50,24 +55,27 @@ namespace {
     auto o3 = ex::connect(ex::just(3), expect_value_receiver(3));
     ex::start(o3);
 
-    auto o4 =
-      ex::connect(ex::just(std::string("this")), expect_value_receiver(std::string("this")));
+    auto o4 = ex::connect(ex::just(std::string("this")),
+                          expect_value_receiver(std::string("this")));
     ex::start(o4);
-    auto o5 =
-      ex::connect(ex::just(std::string("that")), expect_value_receiver(std::string("that")));
+    auto o5 = ex::connect(ex::just(std::string("that")),
+                          expect_value_receiver(std::string("that")));
     ex::start(o5);
   }
 
-  TEST_CASE("just returns a sender", "[factories][just]") {
+  TEST_CASE("just returns a sender", "[factories][just]")
+  {
     using t = decltype(ex::just(1));
     static_assert(ex::sender<t>, "ex::just must return a sender");
     REQUIRE(ex::sender<t>);
     REQUIRE(ex::enable_sender<t>);
   }
 
-  TEST_CASE("just can handle multiple values", "[factories][just]") {
+  TEST_CASE("just can handle multiple values", "[factories][just]")
+  {
     bool executed{false};
-    auto f = [&](int x, double d) {
+    auto f = [&](int x, double d)
+    {
       CHECK(x == 3);
       CHECK(d == 0.14);
       executed = true;
@@ -77,7 +85,8 @@ namespace {
     CHECK(executed);
   }
 
-  TEST_CASE("value types are properly set for just", "[factories][just]") {
+  TEST_CASE("value types are properly set for just", "[factories][just]")
+  {
     check_val_types<ex::__mset<pack<int>>>(ex::just(1));
     check_val_types<ex::__mset<pack<double>>>(ex::just(3.14));
     check_val_types<ex::__mset<pack<std::string>>>(ex::just(std::string{}));
@@ -86,15 +95,18 @@ namespace {
     check_val_types<ex::__mset<pack<int, double, std::string>>>(ex::just(1, 3.14, std::string{}));
   }
 
-  TEST_CASE("error types are properly set for just", "[factories][just]") {
+  TEST_CASE("error types are properly set for just", "[factories][just]")
+  {
     check_err_types<ex::__mset<>>(ex::just(1));
   }
 
-  TEST_CASE("just cannot call set_stopped", "[factories][just]") {
+  TEST_CASE("just cannot call set_stopped", "[factories][just]")
+  {
     check_sends_stopped<false>(ex::just(1));
   }
 
-  TEST_CASE("just works with value type", "[factories][just]") {
+  TEST_CASE("just works with value type", "[factories][just]")
+  {
     auto snd = ex::just(std::string{"hello"});
 
     // Check reported type
@@ -102,59 +114,67 @@ namespace {
 
     // Check received value
     std::string res;
-    typecat cat{typecat::undefined};
-    auto op =
-      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
+    typecat     cat{typecat::undefined};
+    auto        op = ex::connect(std::move(snd),
+                          typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == "hello");
     CHECK(cat == typecat::rvalref);
   }
 
-  TEST_CASE("just works with ref type", "[factories][just]") {
+  TEST_CASE("just works with ref type", "[factories][just]")
+  {
     std::string original{"hello"};
-    auto snd = ex::just(original);
+    auto        snd = ex::just(original);
 
     // Check reported type
     check_val_types<ex::__mset<pack<std::string>>>(snd);
 
     // Check received value
     std::string res;
-    typecat cat{typecat::undefined};
-    auto op =
-      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
+    typecat     cat{typecat::undefined};
+    auto        op = ex::connect(std::move(snd),
+                          typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);
   }
 
-  TEST_CASE("just works with const-ref type", "[factories][just]") {
-    const std::string original{"hello"};
-    auto snd = ex::just(original);
+  TEST_CASE("just works with const-ref type", "[factories][just]")
+  {
+    std::string const original{"hello"};
+    auto              snd = ex::just(original);
 
     // Check reported type
     check_val_types<ex::__mset<pack<std::string>>>(snd);
 
     // Check received value
     std::string res;
-    typecat cat{typecat::undefined};
-    auto op =
-      ex::connect(std::move(snd), typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
+    typecat     cat{typecat::undefined};
+    auto        op = ex::connect(std::move(snd),
+                          typecat_receiver<std::string>{.value_ = &res, .cat_ = &cat});
     ex::start(op);
     CHECK(res == original);
     CHECK(cat == typecat::rvalref);
   }
 
-  TEST_CASE("just works with types with throwing move", "[factories][just]") {
-    struct throwing_move {
+  TEST_CASE("just works with types with throwing move", "[factories][just]")
+  {
+    struct throwing_move
+    {
       explicit throwing_move(std::size_t& throws_after) noexcept
-        : throws_after_(throws_after) {
-      }
+        : throws_after_(throws_after)
+      {}
 
-      throwing_move(throwing_move&& other) // NOLINT(bugprone-exception-escape)
-        : throws_after_(other.throws_after_) {
-        if (throws_after_) {
+      throwing_move(throwing_move&& other)  // NOLINT(bugprone-exception-escape)
+        : throws_after_(other.throws_after_)
+      {
+        if (throws_after_)
+        {
           --throws_after_;
-        } else {
+        }
+        else
+        {
           throw std::runtime_error("Throwing as requested");
         }
       }
@@ -162,38 +182,46 @@ namespace {
       std::size_t& throws_after_;
     };
 
-    std::size_t throws_after = 0;
-    const auto repeat_until_succeeds = [&](auto f) noexcept -> decltype(auto) {
-      struct guard {
-        ~guard() noexcept {
+    std::size_t throws_after          = 0;
+    auto const  repeat_until_succeeds = [&](auto f) noexcept -> decltype(auto)
+    {
+      struct guard
+      {
+        ~guard() noexcept
+        {
           CHECK(threw);
         }
         bool threw{false};
       };
       guard g;
-      for (;;) {
+      for (;;)
+      {
         auto orig = throws_after;
-        try {
+        try
+        {
           return f();
-        } catch (...) {
+        }
+        catch (...)
+        {
           g.threw = true;
           ++orig;
           throws_after = orig;
         }
       }
     };
-    auto sender = repeat_until_succeeds(
-      [&]() { return ::STDEXEC::just(throwing_move(throws_after)); });
+    auto sender = repeat_until_succeeds([&]()
+                                        { return ::STDEXEC::just(throwing_move(throws_after)); });
     CHECK(throws_after == 0);
     std::size_t invoked = 0;
-    auto op = repeat_until_succeeds([&]() {
-      return ::STDEXEC::connect(std::move(sender), make_fun_receiver([&](throwing_move&&) noexcept {
-                                  ++invoked;
-                                }));
-    });
+    auto        op      = repeat_until_succeeds(
+      [&]()
+      {
+        return ::STDEXEC::connect(std::move(sender),
+                                  make_fun_receiver([&](throwing_move&&) noexcept { ++invoked; }));
+      });
     CHECK(throws_after == 0);
     CHECK(invoked == 0);
     ::STDEXEC::start(op);
     CHECK(invoked == 1);
   }
-} // namespace
+}  // namespace

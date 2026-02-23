@@ -24,45 +24,48 @@
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 
-namespace {
+namespace
+{
 
   template <typename T>
-  struct receiver : expect_void_receiver<> {
+  struct receiver : expect_void_receiver<>
+  {
     [[nodiscard]]
-    constexpr ::STDEXEC::env<> get_env() const noexcept {
+    constexpr ::STDEXEC::env<> get_env() const noexcept
+    {
       return state_->get_env();
     }
     T* state_;
   };
 
-  struct state {
+  struct state
+  {
     [[nodiscard]]
-    constexpr ::STDEXEC::env<> get_env() const noexcept {
+    constexpr ::STDEXEC::env<> get_env() const noexcept
+    {
       return {};
     }
   };
 
-  static_assert(!std::is_same_v<
-                void,
-                decltype(::STDEXEC::connect(
-                  ::STDEXEC::just()
-                    | ::STDEXEC::write_env(
-                      ::STDEXEC::prop{
-                        ::STDEXEC::get_stop_token,
-                        std::declval<::STDEXEC::inplace_stop_source&>().get_token()}),
-                  receiver<state>{{}, nullptr}))
-  >);
+  static_assert(!std::is_same_v<void,
+                                decltype(::STDEXEC::connect(
+                                  ::STDEXEC::just()
+                                    | ::STDEXEC::write_env(::STDEXEC::prop{
+                                      ::STDEXEC::get_stop_token,
+                                      std::declval<::STDEXEC::inplace_stop_source&>().get_token()}),
+                                  receiver<state>{{}, nullptr}))>);
 
-  TEST_CASE(
-    "write_env works when the actual environment is sourced from a type which was initially "
-    "incomplete but has since been completed",
-    "[adaptors][write_env]") {
+  TEST_CASE("write_env works when the actual environment is sourced from a type which was "
+            "initially "
+            "incomplete but has since been completed",
+            "[adaptors][write_env]")
+  {
     ::STDEXEC::inplace_stop_source source;
-    state s;
-    auto op = ::STDEXEC::connect(
-      ::STDEXEC::just()
-        | ::STDEXEC::write_env(::STDEXEC::prop{::STDEXEC::get_stop_token, source.get_token()}),
-      receiver<state>{{}, &s});
+    state                          s;
+    auto                           op = ::STDEXEC::connect(::STDEXEC::just()
+                                   | ::STDEXEC::write_env(::STDEXEC::prop{::STDEXEC::get_stop_token,
+                                                                          source.get_token()}),
+                                 receiver<state>{{}, &s});
     ::STDEXEC::start(op);
   }
-} // namespace
+}  // namespace

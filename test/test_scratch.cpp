@@ -22,8 +22,10 @@
 
 namespace ex = STDEXEC;
 
-namespace {
-  TEST_CASE("a scratch test case for minimal repro of a bug", "[scratch]") {
+namespace
+{
+  TEST_CASE("a scratch test case for minimal repro of a bug", "[scratch]")
+  {
     CHECK(true);
   }
-} // namespace
+}  // namespace

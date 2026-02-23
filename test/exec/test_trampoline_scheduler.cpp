@@ -24,31 +24,40 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  struct try_again { };
+  struct try_again
+  {};
 
-  struct fails_alot {
+  struct fails_alot
+  {
     using sender_concept = ex::sender_t;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(), ex::set_error_t(try_again)>;
 
     template <class Receiver>
-    struct operation {
+    struct operation
+    {
       Receiver rcvr_;
-      int counter_;
+      int      counter_;
 
-      void start() & noexcept {
-        if (counter_ == 0) {
+      void start() & noexcept
+      {
+        if (counter_ == 0)
+        {
           ex::set_value(static_cast<Receiver&&>(rcvr_));
-        } else {
+        }
+        else
+        {
           ex::set_error(static_cast<Receiver&&>(rcvr_), try_again{});
         }
       }
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
-    auto connect(Receiver rcvr) const -> operation<Receiver> {
+    auto connect(Receiver rcvr) const -> operation<Receiver>
+    {
       return {static_cast<Receiver&&>(rcvr), --*counter_};
     }
 
@@ -65,15 +74,14 @@ namespace {
   // }
   // #endif
 
-  TEST_CASE(
-    "running deeply recursing algo on trampoline_scheduler doesn't blow the stack",
-    "[schedulers][trampoline_scheduler]") {
-
+  TEST_CASE("running deeply recursing algo on trampoline_scheduler doesn't blow the stack",
+            "[schedulers][trampoline_scheduler]")
+  {
     exec::trampoline_scheduler sched;
-    ex::run_loop loop;
+    ex::run_loop               loop;
 
     auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
     ex::sync_wait(std::move(recurse_deeply));
   }
 
-} // namespace
+}  // namespace

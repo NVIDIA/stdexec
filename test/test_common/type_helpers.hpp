@@ -38,7 +38,7 @@ namespace
     std::same_as<ex::__mapply<ex::__msize, Needles>, ex::__mapply<ex::__msize, Haystack>>
     && all_contained_in<Needles, Haystack>;
 
-  template <auto const & Tag, class... Args>
+  template <auto const &Tag, class... Args>
   using result_of_t = ex::__result_of<Tag, Args...>;
 
   //! Used for to make a class non-movable without giving up aggregate initialization
@@ -57,7 +57,7 @@ namespace
       : value_(value)
     {}
 
-    movable(movable&&)                                      = default;
+    movable(movable &&)                                     = default;
     auto operator==(movable const &) const noexcept -> bool = default;
 
     auto value() -> int
@@ -73,16 +73,17 @@ namespace
   {
     potentially_throwing() = default;
 
-    potentially_throwing(potentially_throwing&&) noexcept(false) {}
+    potentially_throwing(potentially_throwing &&) noexcept(false) {}
 
     potentially_throwing(potentially_throwing const &) noexcept(false) = default;
 
-    auto operator=(potentially_throwing&&) noexcept(false) -> potentially_throwing&
+    auto operator=(potentially_throwing &&) noexcept(false) -> potentially_throwing &
     {
       return *this;
     }
 
-    auto operator=(potentially_throwing const &) noexcept(false) -> potentially_throwing& = default;
+    auto
+    operator=(potentially_throwing const &) noexcept(false) -> potentially_throwing & = default;
   };
 
   //! Used for debugging, to generate errors to the console
@@ -96,7 +97,7 @@ namespace
 
   //! Check that the value_types of a sender matches the expected type
   template <class ExpectedValType, class Env = ex::env<>, class S>
-  inline void check_val_types(S&&)
+  inline void check_val_types(S &&)
   {
     using actual_t = ex::value_types_of_t<S, Env, pack, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
@@ -104,7 +105,7 @@ namespace
 
   //! Check that the env of a sender matches the expected type
   template <class ExpectedEnvType, class S>
-  inline void check_env_type(S&& snd)
+  inline void check_env_type(S &&snd)
   {
     using actual_t = decltype(ex::get_env(snd));
     static_assert(std::same_as<actual_t, ExpectedEnvType>);
@@ -112,7 +113,7 @@ namespace
 
   //! Check that the error_types of a sender matches the expected type
   template <class ExpectedValType, class Env = ex::env<>, class S>
-  inline void check_err_types(S&&)
+  inline void check_err_types(S &&)
   {
     using actual_t = ex::error_types_of_t<S, Env, ex::__mset>;
     static_assert(ex::__mset_eq<actual_t, ExpectedValType>);
@@ -120,7 +121,7 @@ namespace
 
   //! Check that the sends_stopped of a sender matches the expected value
   template <bool Expected, class Env = ex::env<>, class S>
-  inline void check_sends_stopped(S&&)
+  inline void check_sends_stopped(S &&)
   {
     constexpr bool actual = ex::sends_stopped<S, Env>;
     static_assert(actual == Expected);

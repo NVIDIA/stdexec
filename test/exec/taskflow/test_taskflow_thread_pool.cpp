@@ -26,16 +26,16 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
   // Example adapted from
   // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2300r5.html#example-async-inclusive-scan
   [[nodiscard]]
-  auto async_inclusive_scan(
-    STDEXEC::scheduler auto sch,                    // 2
-    std::span<const double> input,                  // 1
-    std::span<double> output,                       // 1
-    double init,                                    // 1
-    std::size_t tile_count) -> STDEXEC::sender auto // 3
+  auto async_inclusive_scan(STDEXEC::scheduler auto sch,                     // 2
+                            std::span<double const> input,                   // 1
+                            std::span<double>       output,                  // 1
+                            double                  init,                    // 1
+                            std::size_t             tile_count) -> STDEXEC::sender auto  // 3
   {
     using namespace STDEXEC;
     std::size_t const tile_size = (input.size() + tile_count - 1) / tile_count;
@@ -44,32 +44,33 @@ namespace {
     partials[0] = init;
 
     return just(std::move(partials)) | continues_on(sch)
-         | bulk(
-             ex::par,
-             tile_count,
-             [=](std::size_t i, std::span<double> partials) {
-               auto start = i * tile_size;
-               auto end = (std::min) (input.size(), (i + 1) * tile_size);
-               partials[i + 1] = *--std::inclusive_scan(
-                 begin(input) + static_cast<long>(start),
-                 begin(input) + static_cast<long>(end),
-                 begin(output) + static_cast<long>(start));
-             }) //
-         | then([](std::vector<double>&& partials) {
-             std::inclusive_scan(begin(partials), end(partials), begin(partials));
-             return std::move(partials);
-           }) //
-         | bulk(
-             ex::par,
-             tile_count,
-             [=](std::size_t i, std::span<const double> partials) {
-               auto start = i * tile_size;
-               auto end = (std::min) (input.size(), (i + 1) * tile_size);
-               std::for_each(
-                 begin(output) + static_cast<long>(start),
-                 begin(output) + static_cast<long>(end),
-                 [&](double& e) { e = partials[i] + e; });
-             }) //
+         | bulk(ex::par,
+                tile_count,
+                [=](std::size_t i, std::span<double> partials)
+                {
+                  auto start      = i * tile_size;
+                  auto end        = (std::min) (input.size(), (i + 1) * tile_size);
+                  partials[i + 1] = *--std::inclusive_scan(begin(input) + static_cast<long>(start),
+                                                           begin(input) + static_cast<long>(end),
+                                                           begin(output)
+                                                             + static_cast<long>(start));
+                })  //
+         | then(
+             [](std::vector<double>&& partials)
+             {
+               std::inclusive_scan(begin(partials), end(partials), begin(partials));
+               return std::move(partials);
+             })  //
+         | bulk(ex::par,
+                tile_count,
+                [=](std::size_t i, std::span<double const> partials)
+                {
+                  auto start = i * tile_size;
+                  auto end   = (std::min) (input.size(), (i + 1) * tile_size);
+                  std::for_each(begin(output) + static_cast<long>(start),
+                                begin(output) + static_cast<long>(end),
+                                [&](double& e) { e = partials[i] + e; });
+                })  //
          | then([=](std::vector<double>&&) { return output; });
   }
 
@@ -77,17 +78,17 @@ namespace {
             "[taskflow_thread_pool]")
   {
     exec::taskflow::taskflow_thread_pool pool;
-    auto pool_sched = pool.get_scheduler();
-    CHECK(
-      ex::get_forward_progress_guarantee(pool_sched) == ex::forward_progress_guarantee::parallel);
+    auto                                 pool_sched = pool.get_scheduler();
+    CHECK(ex::get_forward_progress_guarantee(pool_sched)
+          == ex::forward_progress_guarantee::parallel);
   }
 
   TEST_CASE("STDEXEC::on works when changing threads with exec::taskflow::taskflow_thread_pool",
             "[taskflow_thread_pool]")
   {
     exec::taskflow::taskflow_thread_pool pool;
-    auto pool_sched = pool.get_scheduler();
-    bool called{false};
+    auto                                 pool_sched = pool.get_scheduler();
+    bool                                 called{false};
     // launch some work on the thread pool
     ex::sender auto snd = ex::starts_on(pool_sched, ex::just()) | ex::then([&] { called = true; });
     STDEXEC::sync_wait(std::move(snd));
@@ -95,12 +96,13 @@ namespace {
     REQUIRE(called);
   }
 
-  TEST_CASE("more taskflow_thread_pool", "[taskflow_thread_pool]") {
+  TEST_CASE("more taskflow_thread_pool", "[taskflow_thread_pool]")
+  {
     using namespace STDEXEC;
 
     exec::taskflow::taskflow_thread_pool pool(1ul);
-    exec::static_thread_pool other_pool(1);
-    STDEXEC::inline_scheduler inline_sched;
+    exec::static_thread_pool             other_pool(1);
+    STDEXEC::inline_scheduler            inline_sched;
 
     // Get a handle to the thread pool:
     auto other_sched = other_pool.get_scheduler();
@@ -108,7 +110,8 @@ namespace {
     // Get a handle to the thread pool:
     auto taskflow_sched = pool.get_scheduler();
 
-    auto compute = [](int x) -> int {
+    auto compute = [](int x) -> int
+    {
       return x + 1;
     };
 
@@ -127,41 +130,38 @@ namespace {
     CHECK(k == 5);
   }
 
-  TEST_CASE("taskflow_thread_pool exceptions", "[taskflow_thread_pool]") {
+  TEST_CASE("taskflow_thread_pool exceptions", "[taskflow_thread_pool]")
+  {
     using namespace STDEXEC;
 
     exec::taskflow::taskflow_thread_pool taskflow_pool;
-    exec::static_thread_pool other_pool(1ul);
+    exec::static_thread_pool             other_pool(1ul);
     {
-      CHECK_THROWS(
-        STDEXEC::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto) {
-                             throw std::exception();
-                           })));
-      CHECK_THROWS(
-        STDEXEC::sync_wait(starts_on(other_pool.get_scheduler(), just(0)) | then([](auto) {
-                             throw std::exception();
-                           })));
+      CHECK_THROWS(STDEXEC::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0))
+                                      | then([](auto) { throw std::exception(); })));
+      CHECK_THROWS(STDEXEC::sync_wait(starts_on(other_pool.get_scheduler(), just(0))
+                                      | then([](auto) { throw std::exception(); })));
     }
     // Ensure it still works normally after exceptions:
     {
-      auto tbb_result = STDEXEC::sync_wait(
-        starts_on(taskflow_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+      auto tbb_result = STDEXEC::sync_wait(starts_on(taskflow_pool.get_scheduler(), just(0))
+                                           | then([](auto i) { return i + 1; }));
       CHECK(tbb_result.has_value());
-      auto other_result = STDEXEC::sync_wait(
-        starts_on(other_pool.get_scheduler(), just(0)) | then([](auto i) { return i + 1; }));
+      auto other_result = STDEXEC::sync_wait(starts_on(other_pool.get_scheduler(), just(0))
+                                             | then([](auto i) { return i + 1; }));
       CHECK(tbb_result == other_result);
     }
   }
 
-  TEST_CASE("taskflow_thread_pool async_inclusive_scan", "[taskflow_thread_pool]") {
-    const auto input = std::array{1.0, 2.0, -1.0, -2.0};
+  TEST_CASE("taskflow_thread_pool async_inclusive_scan", "[taskflow_thread_pool]")
+  {
+    auto const                           input = std::array{1.0, 2.0, -1.0, -2.0};
     std::remove_const_t<decltype(input)> output;
     exec::taskflow::taskflow_thread_pool pool{2ul};
-    auto [value] = STDEXEC::sync_wait(
-                     async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4))
-                     .value();
+    auto [value] =
+      STDEXEC::sync_wait(async_inclusive_scan(pool.get_scheduler(), input, output, 0.0, 4)).value();
     STATIC_REQUIRE(std::is_same_v<decltype(value), std::span<double>>);
     REQUIRE(value.data() == output.data());
     CHECK(output == std::array{1.0, 3.0, 2.0, 0.0});
   }
-} // namespace
+}  // namespace

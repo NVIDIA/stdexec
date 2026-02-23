@@ -43,7 +43,7 @@ namespace STDEXEC
 
   template <class _Ty, class _Alloc, class... _Args>
   [[nodiscard]]
-  constexpr auto __allocate_unique(_Alloc const & __alloc, _Args&&... __args)
+  constexpr auto __allocate_unique(_Alloc const &__alloc, _Args &&...__args)
     -> std::unique_ptr<_Ty, __detail::__alloc_deleter<_Alloc>>
   {
     using __value_t   = std::allocator_traits<_Alloc>::value_type;
@@ -58,7 +58,7 @@ namespace STDEXEC
                           1ul};
     std::allocator_traits<_Alloc>::construct(__alloc2,
                                              std::addressof(*__ptr),
-                                             static_cast<_Args&&>(__args)...);
+                                             static_cast<_Args &&>(__args)...);
     __guard.__dismiss();
     return std::unique_ptr<_Ty, __deleter_t>(__ptr, __deleter_t{__alloc2});
   }
@@ -68,7 +68,7 @@ namespace STDEXEC
   // already bound to the correct type, in which case it is returned as-is.
   template <class _Ty, class _Alloc>
   [[nodiscard]]
-  constexpr auto __rebind_allocator(_Alloc const & __alloc) noexcept
+  constexpr auto __rebind_allocator(_Alloc const &__alloc) noexcept
   {
     using __rebound_alloc_t = std::allocator_traits<_Alloc>::template rebind_alloc<_Ty>;
     static_assert(noexcept(__rebound_alloc_t(__alloc)));
@@ -78,7 +78,7 @@ namespace STDEXEC
   template <class _Ty, class _Alloc>
     requires __same_as<_Ty, typename _Alloc::value_type>
   [[nodiscard]]
-  constexpr auto __rebind_allocator(_Alloc const & __alloc) noexcept -> _Alloc const &
+  constexpr auto __rebind_allocator(_Alloc const &__alloc) noexcept -> _Alloc const &
   {
     return __alloc;  // NOLINT(bugprone-return-const-ref-from-parameter)
   }

@@ -26,11 +26,12 @@
 #include "../test_common/receivers.hpp"
 #include "../test_common/type_helpers.hpp"
 
-namespace {
+namespace
+{
 
-  TEST_CASE(
-    "When stop has not been requested the child operation runs normally",
-    "[unless_stop_requested]") {
+  TEST_CASE("When stop has not been requested the child operation runs normally",
+            "[unless_stop_requested]")
+  {
     ::STDEXEC::inplace_stop_source source;
     auto env = ::STDEXEC::prop(::STDEXEC::get_stop_token, source.get_token());
     static_assert(!::exec::__unless_stop_requested::__unstoppable_env<decltype(env)>);
@@ -39,26 +40,24 @@ namespace {
       static_assert(
         set_equivalent<
           ::STDEXEC::completion_signatures_of_t<decltype(sender), decltype(env)>,
-          ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(), ::STDEXEC::set_stopped_t()>
-        >);
+          ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(), ::STDEXEC::set_stopped_t()>>);
       auto op = ::STDEXEC::connect(sender, expect_void_receiver(env));
       ::STDEXEC::start(op);
     }
     {
       auto sender = ::STDEXEC::just(5) | ::exec::unless_stop_requested();
       static_assert(
-        set_equivalent<
-          ::STDEXEC::completion_signatures_of_t<decltype(sender), decltype(env)>,
-          ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(int), ::STDEXEC::set_stopped_t()>
-        >);
+        set_equivalent<::STDEXEC::completion_signatures_of_t<decltype(sender), decltype(env)>,
+                       ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(int),
+                                                        ::STDEXEC::set_stopped_t()>>);
       auto op = ::STDEXEC::connect(sender, expect_value_receiver(env_tag{}, env, 5));
       ::STDEXEC::start(op);
     }
   }
 
-  TEST_CASE(
-    "When stop has been requested the child operation is not started",
-    "[unless_stop_requested]") {
+  TEST_CASE("When stop has been requested the child operation is not started",
+            "[unless_stop_requested]")
+  {
     ::STDEXEC::inplace_stop_source source;
     source.request_stop();
     auto env = ::STDEXEC::prop(::STDEXEC::get_stop_token, source.get_token());
@@ -66,27 +65,24 @@ namespace {
     auto sender = ::STDEXEC::just()
                 | ::STDEXEC::then([&]() { FAIL_CHECK("Operation should not have been started"); })
                 | ::exec::unless_stop_requested();
-    static_assert(set_equivalent<
-                  ::STDEXEC::completion_signatures_of_t<decltype(sender), decltype(env)>,
-                  ::STDEXEC::completion_signatures<
-                    ::STDEXEC::set_value_t(),
-                    ::STDEXEC::set_error_t(std::exception_ptr),
-                    ::STDEXEC::set_stopped_t()
-                  >
-    >);
+    static_assert(
+      set_equivalent<::STDEXEC::completion_signatures_of_t<decltype(sender), decltype(env)>,
+                     ::STDEXEC::completion_signatures<::STDEXEC::set_value_t(),
+                                                      ::STDEXEC::set_error_t(std::exception_ptr),
+                                                      ::STDEXEC::set_stopped_t()>>);
     auto op = ::STDEXEC::connect(sender, expect_stopped_receiver(env));
     ::STDEXEC::start(op);
   }
 
-  TEST_CASE("No op when the associated stop token is unstoppable", "[unless_stop_requested]") {
+  TEST_CASE("No op when the associated stop token is unstoppable", "[unless_stop_requested]")
+  {
     static_assert(::exec::__unless_stop_requested::__unstoppable_env<::STDEXEC::env<>>);
     auto sender = ::STDEXEC::just() | ::exec::unless_stop_requested;
-    static_assert(set_equivalent<
-                  ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
-                  ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>
-    >);
+    static_assert(
+      set_equivalent<::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
+                     ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>>);
     auto op = ::STDEXEC::connect(sender, expect_void_receiver{});
     ::STDEXEC::start(op);
   }
 
-} // unnamed namespace
+}  // unnamed namespace

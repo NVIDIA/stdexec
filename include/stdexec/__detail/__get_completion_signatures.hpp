@@ -69,14 +69,14 @@ namespace STDEXEC
     concept __non_sender = !enable_sender<__decay_t<_Ty>>;
 
     template <__valid_completion_signatures _Completions>
-    consteval auto __checked_complsigs(_Completions, void*)
+    consteval auto __checked_complsigs(_Completions, void *)
     {
       return _Completions();
     }
 
     template <class _Completions, class _Sender, class... _Env>
       requires(!__valid_completion_signatures<_Completions>)
-    consteval auto __checked_complsigs(_Completions, __mlist<_Sender, _Env...>*)
+    consteval auto __checked_complsigs(_Completions, __mlist<_Sender, _Env...> *)
     {
       if constexpr (__merror<_Completions>)
       {
@@ -116,14 +116,14 @@ namespace STDEXEC
     using __legacy_member_alias_t = STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
 
     template <class _Sender, class... _Env>
-    concept __with_legacy_member = requires(__declfn_t<_Sender&&> __sndr,
-                                            __declfn_t<_Env&&>... __env) {
+    concept __with_legacy_member = requires(__declfn_t<_Sender &&> __sndr,
+                                            __declfn_t<_Env &&>... __env) {
       __sndr().get_completion_signatures(__env()...);
     };
 
     template <class _Sender, class... _Env>
-    concept __with_legacy_static_member = requires(__declfn_t<_Sender&&> __sndr,
-                                                   __declfn_t<_Env&&>... __env) {
+    concept __with_legacy_static_member = requires(__declfn_t<_Sender &&> __sndr,
+                                                   __declfn_t<_Env &&>... __env) {
       STDEXEC_REMOVE_REFERENCE(_Sender)
       ::static_get_completion_signatures(__sndr(), __env()...);
     };
@@ -166,8 +166,8 @@ namespace STDEXEC
   }  // namespace __cmplsigs
 
   template <class _Sender, class _Env>
-  concept __has_get_completion_signatures = requires(__declfn_t<_Sender&&> __sndr,
-                                                     __declfn_t<_Env&&>    __env) {
+  concept __has_get_completion_signatures = requires(__declfn_t<_Sender &&> __sndr,
+                                                     __declfn_t<_Env &&>    __env) {
     { transform_sender(__sndr(), __env()) } -> __cmplsigs::__with<_Env>;
   };
 
@@ -260,13 +260,13 @@ namespace STDEXEC
     struct get_completion_signatures_t
     {
       template <class _Sender>
-      constexpr auto operator()(_Sender&&) const noexcept
+      constexpr auto operator()(_Sender &&) const noexcept
       {
         return __cmplsigs::__get_completion_signatures_helper<_Sender>();
       }
 
       template <class _Sender, class _Env>
-      constexpr auto operator()(_Sender&&, _Env const &) const noexcept
+      constexpr auto operator()(_Sender &&, _Env const &) const noexcept
       {
         using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
         static_assert(!__merror<__new_sndr_t>);
@@ -295,7 +295,7 @@ namespace STDEXEC
   // Legacy interface:
   template <class _Sender, class... _Env>
     requires(sizeof...(_Env) <= 1)
-  constexpr auto get_completion_signatures(_Sender&&, _Env const &...) noexcept
+  constexpr auto get_completion_signatures(_Sender &&, _Env const &...) noexcept
   {
     return STDEXEC::get_completion_signatures<_Sender, _Env...>();
   }
@@ -332,7 +332,7 @@ namespace STDEXEC
     (void) STDEXEC::get_completion_signatures<_Sender>();
     return false;  // didn't throw, not a dependent sender
   }
-  catch (dependent_sender_error&)
+  catch (dependent_sender_error &)
   {
     return true;
   }

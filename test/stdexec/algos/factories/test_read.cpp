@@ -20,15 +20,17 @@
 
 namespace ex = STDEXEC;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("read returns empty env", "[factories][read]") {
-    auto sndr = ex::read_env(ex::get_allocator);
+  TEST_CASE("read returns empty env", "[factories][read]")
+  {
+    auto sndr  = ex::read_env(ex::get_allocator);
     using Sndr = decltype(sndr);
-    using Env = ex::prop<ex::get_allocator_t, std::allocator<int>>;
+    using Env  = ex::prop<ex::get_allocator_t, std::allocator<int>>;
     static_assert(ex::sender<Sndr>);
     static_assert(!ex::sender_in<Sndr>);
     static_assert(ex::sender_in<Sndr, Env>);
     static_assert(ex::__is_scheduler_affine<Sndr, Env>);
   }
-} // namespace
+}  // namespace

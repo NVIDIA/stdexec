@@ -4,9 +4,11 @@
 #include "nvexec/detail/memory.cuh"
 #include "tracer_resource.h"
 
-namespace {
+namespace
+{
 
-  TEST_CASE("synchronized pool releases storage", "[cuda][stream][memory][synchronized pool]") {
+  TEST_CASE("synchronized pool releases storage", "[cuda][stream][memory][synchronized pool]")
+  {
     tracer_resource resource{};
 
     {
@@ -27,13 +29,15 @@ namespace {
     REQUIRE(0 == resource.allocations.size());
   }
 
-  TEST_CASE("synchronized pool caches allocations", "[cuda][stream][memory][synchronized pool]") {
+  TEST_CASE("synchronized pool caches allocations", "[cuda][stream][memory][synchronized pool]")
+  {
     tracer_resource resource{};
 
     {
       nvdetail::synchronized_pool_resource pool{&resource};
 
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 10; i++)
+      {
         void* ptr_1 = pool.allocate(128, 8);
         void* ptr_2 = pool.allocate(256, 16);
         REQUIRE(ptr_1 != nullptr);
@@ -52,14 +56,15 @@ namespace {
     REQUIRE(0 == resource.allocations.size());
   }
 
-  TEST_CASE(
-    "synchronized pool doesn't touch allocated memory",
-    "[cuda][stream][memory][synchronized pool]") {
-    tracer_resource resource{};
+  TEST_CASE("synchronized pool doesn't touch allocated memory",
+            "[cuda][stream][memory][synchronized pool]")
+  {
+    tracer_resource                      resource{};
     nvdetail::synchronized_pool_resource pool{&resource};
 
-    for (int n = 32; n < 512; n *= 2) {
-      int bytes = n * sizeof(int);
+    for (int n = 32; n < 512; n *= 2)
+    {
+      int bytes     = n * sizeof(int);
       int alignment = alignof(int);
 
       int* ptr = reinterpret_cast<int*>(pool.allocate(bytes, alignment));
@@ -67,24 +72,26 @@ namespace {
       pool.deallocate(ptr, 128, 8);
 
       ptr = reinterpret_cast<int*>(pool.allocate(bytes, alignment));
-      for (int i = 0; i < n; i++) {
+      for (int i = 0; i < n; i++)
+      {
         REQUIRE(ptr[i] == i + n);
       }
       pool.deallocate(ptr, 128, 8);
     }
   }
 
-  TEST_CASE(
-    "synchronized pool provides required alignment",
-    "[cuda][stream][memory][synchronized pool]") {
-    tracer_resource resource{};
+  TEST_CASE("synchronized pool provides required alignment",
+            "[cuda][stream][memory][synchronized pool]")
+  {
+    tracer_resource                      resource{};
     nvdetail::synchronized_pool_resource pool{&resource};
 
-    for (int alignment = 1; alignment < 512; alignment *= 2) {
+    for (int alignment = 1; alignment < 512; alignment *= 2)
+    {
       void* ptr = pool.allocate(32, alignment);
       INFO("Alignment: " << alignment);
       REQUIRE(reinterpret_cast<uintptr_t>(ptr) % alignment == 0);
       pool.deallocate(ptr, 32, alignment);
     }
   }
-} // namespace
+}  // namespace

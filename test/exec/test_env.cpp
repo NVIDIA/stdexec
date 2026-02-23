@@ -18,21 +18,26 @@
 #include <exec/env.hpp>
 #include <stdexec/execution.hpp>
 
-namespace {
+namespace
+{
   // Two dummy properties:
   constexpr struct Foo
     : STDEXEC::__query<Foo>
-    , STDEXEC::forwarding_query_t {
+    , STDEXEC::forwarding_query_t
+  {
     using STDEXEC::__query<Foo>::operator();
   } foo{};
 
-  constexpr struct Bar : STDEXEC::__query<Bar> {
-    static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool {
+  constexpr struct Bar : STDEXEC::__query<Bar>
+  {
+    static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool
+    {
       return true;
     }
   } bar{};
 
-  TEST_CASE("Test make_env works", "[env]") {
+  TEST_CASE("Test make_env works", "[env]")
+  {
     auto e = STDEXEC::prop{foo, 42};
     CHECK(foo(e) == 42);
 
@@ -48,4 +53,4 @@ namespace {
     STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
     CHECK(bar(e4) == 43);
   }
-} // namespace
+}  // namespace

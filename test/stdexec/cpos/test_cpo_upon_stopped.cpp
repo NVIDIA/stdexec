@@ -18,27 +18,30 @@
 #include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
-namespace {
+namespace
+{
 
-  TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]") {
-    const auto f = []() {
+  TEST_CASE("upon_stopped is customizable", "[cpo][cpo_upon_stopped]")
+  {
+    auto const f = []() {
     };
 
-    SECTION("by completion scheduler domain") {
+    SECTION("by completion scheduler domain")
+    {
       cpo_test_scheduler_t<ex::upon_stopped_t, ex::set_stopped_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope =
-          decltype(ex::connect(snd | ex::upon_stopped(f), empty_recv::recv0{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(snd | ex::upon_stopped(f),
+                                                       empty_recv::recv0{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
         void(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)));
-        constexpr scope_t scope =
-          decltype(ex::connect(ex::upon_stopped(snd, f), empty_recv::recv0{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(ex::upon_stopped(snd, f),
+                                                       empty_recv::recv0{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }
   }
-} // namespace
+}  // namespace
