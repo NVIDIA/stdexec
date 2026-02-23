@@ -22,6 +22,7 @@
 #include "__connect.hpp"
 #include "__diagnostics.hpp"
 #include "__env.hpp"
+#include "__memory.hpp"
 #include "__meta.hpp"
 #include "__operation_states.hpp"
 #include "__receivers.hpp"
@@ -104,6 +105,14 @@ namespace STDEXEC
       using __receiver_t = _Receiver;
       using __data_t     = _Data;
 
+      template <class _CvData>
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr __state(_Receiver __rcvr, _CvData&& __data)
+        noexcept(__nothrow_decay_copyable<_CvData>)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __data_(STDEXEC::__allocator_aware_forward(static_cast<_CvData&&>(__data), __rcvr_))
+      { }
+
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -160,17 +169,17 @@ namespace STDEXEC
                        STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr))};
       };
 
-      static constexpr auto __get_env =  //
-        []<class _State>(__ignore,
-                         _State const & __state) noexcept -> env_of_t<decltype(_State::__rcvr_)>
+      static constexpr auto __get_env =                              //
+        []<class _State>(__ignore, _State const & __state) noexcept  //
+        -> env_of_t<decltype(_State::__rcvr_)>
       {
         return STDEXEC::get_env(__state.__rcvr_);
       };
 
       static constexpr auto __connect =  //
         []<class _Receiver, __connectable_to<_Receiver> _Sender>(_Sender&&   __sndr,
-                                                                 _Receiver&& __rcvr)  //
-        noexcept(__nothrow_constructible_from<__opstate<_Sender, _Receiver>, _Sender, _Receiver>)
+                                                                 _Receiver&& __rcvr) noexcept(  //
+          __nothrow_constructible_from<__opstate<_Sender, _Receiver>, _Sender, _Receiver>)
         -> __opstate<_Sender, _Receiver>
       {
         return __opstate<_Sender, _Receiver>(static_cast<_Sender&&>(__sndr),
