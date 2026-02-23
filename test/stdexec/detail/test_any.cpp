@@ -23,9 +23,9 @@
 namespace any = STDEXEC::__any;
 
 template <class Base>
-struct ifoo : any::interface<ifoo, Base>
+struct ifoo : any::__interface_base<ifoo, Base>
 {
-  using ifoo::interface::interface;
+  using ifoo::__interface_base::__interface_base;
 
   constexpr virtual void foo()
   {
@@ -39,9 +39,9 @@ struct ifoo : any::interface<ifoo, Base>
 };
 
 template <class Base>
-struct ibar : any::interface<ibar, Base, any::__extends<ifoo, any::__icopyable>>
+struct ibar : any::__interface_base<ibar, Base, any::__extends<ifoo, any::__icopyable>>
 {
-  using ibar::interface::interface;
+  using ibar::__interface_base::__interface_base;
 
   constexpr virtual void bar()
   {
@@ -50,9 +50,9 @@ struct ibar : any::interface<ibar, Base, any::__extends<ifoo, any::__icopyable>>
 };
 
 template <class Base>
-struct ibaz : any::interface<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)>
+struct ibaz : any::__interface_base<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)>
 {
-  using ibaz::interface::interface;
+  using ibaz::__interface_base::__interface_base;
 
   constexpr ~ibaz() = default;
 
@@ -114,9 +114,9 @@ static_assert(any::__extension_of<any::__iabstract<ibar>, any::__icopyable>);
 
 // Test the Diamond of Death inheritance problem:
 template <class Base>
-struct IFoo : any::interface<IFoo, Base, any::__extends<any::__icopyable>>
+struct IFoo : any::__interface_base<IFoo, Base, any::__extends<any::__icopyable>>
 {
-  using IFoo::interface::interface;
+  using IFoo::__interface_base::__interface_base;
 
   constexpr virtual void foo()
   {
@@ -125,9 +125,9 @@ struct IFoo : any::interface<IFoo, Base, any::__extends<any::__icopyable>>
 };
 
 template <class Base>
-struct IBar : any::interface<IBar, Base, any::__extends<any::__icopyable>>
+struct IBar : any::__interface_base<IBar, Base, any::__extends<any::__icopyable>>
 {
-  using IBar::interface::interface;
+  using IBar::__interface_base::__interface_base;
 
   constexpr virtual void bar()
   {
@@ -136,10 +136,10 @@ struct IBar : any::interface<IBar, Base, any::__extends<any::__icopyable>>
 };
 
 template <class Base>
-struct IBaz : any::interface<IBaz, Base, any::__extends<IFoo, IBar>>  // inherits twice
-                                                                      // from __icopyable
+struct IBaz : any::__interface_base<IBaz, Base, any::__extends<IFoo, IBar>>  // inherits twice
+                                                                             // from __icopyable
 {
-  using IBaz::interface::interface;
+  using IBaz::__interface_base::__interface_base;
 
   constexpr virtual void baz()
   {

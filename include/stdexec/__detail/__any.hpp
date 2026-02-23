@@ -35,6 +35,8 @@
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 
+// NOLINTBEGIN(moderize-use-override)
+
 namespace STDEXEC::__any
 {
 
@@ -182,7 +184,7 @@ namespace STDEXEC::__any
             class _BaseInterfaces   = __extends<>,
             size_t _BufferSize      = __default_buffer_size,
             size_t _BufferAlignment = alignof(std::max_align_t)>
-  struct interface;
+  struct __interface_base;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __interface_cast
@@ -394,7 +396,7 @@ namespace STDEXEC::__any
 
    private:
     template <template <class> class, class, class, size_t, size_t>
-    friend struct interface;
+    friend struct __interface_base;
     friend struct __access;
 
     template <class _Self>
@@ -631,13 +633,13 @@ namespace STDEXEC::__any
   {};
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  //! interface
+  //! __interface_base
   template <template <class> class _Interface,
             class _Base,
             class _BaseInterfaces,
             size_t _BufferSize,
             size_t _BufferAlignment>
-  struct interface : _Base
+  struct __interface_base : _Base
   {
     static_assert(std::popcount(_BufferAlignment) == 1, "BufferAlignment must be a power of two");
     using __bases_type          = _BaseInterfaces;
@@ -646,8 +648,10 @@ namespace STDEXEC::__any
     using _Base::__slice_to_;
     using _Base::_Base;
 
-    static constexpr size_t __buffer_size = _BufferSize > _Base::__buffer_size
-                                            ? _BufferSize
+    // The actual buffer size is the user-specified buffer size plus the size of a pointer,
+    // because space is needed for the virtual table pointer.
+    static constexpr size_t __buffer_size = _BufferSize + sizeof(void *) > _Base::__buffer_size
+                                            ? _BufferSize + sizeof(void *)
                                             : _Base::__buffer_size;
 
     static constexpr size_t __buffer_alignment = _BufferAlignment > _Base::__buffer_alignment
@@ -1568,9 +1572,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __imovable
   template <class _Base>
-  struct __imovable : interface<__imovable, _Base>
+  struct __imovable : __interface_base<__imovable, _Base>
   {
-    using __imovable::interface::interface;
+    using __imovable::__interface_base::__interface_base;
 
     constexpr virtual void __move_to(__iroot *&, std::span<std::byte>) noexcept
     {
@@ -1581,9 +1585,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __icopyable
   template <class _Base>
-  struct __icopyable : interface<__icopyable, _Base, __extends<__imovable>>
+  struct __icopyable : __interface_base<__icopyable, _Base, __extends<__imovable>>
   {
-    using __icopyable::interface::interface;
+    using __icopyable::__interface_base::__interface_base;
 
     constexpr virtual void __copy_to(__iroot *&, std::span<std::byte>) const
     {
@@ -1599,7 +1603,7 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // any
   template <template <class> class _Interface>
-  struct __any final : __value_proxy_model<_Interface>
+  struct __any : __value_proxy_model<_Interface>
   {
    private:
     template <class _Other>
@@ -1975,9 +1979,9 @@ namespace STDEXEC::__any
   //////////////////////////////////////////////////////////////////////////////////////////
   // __iequality_comparable
   template <class _Base>
-  struct __iequality_comparable : interface<__iequality_comparable, _Base>
+  struct __iequality_comparable : __interface_base<__iequality_comparable, _Base>
   {
-    using __iequality_comparable::interface::interface;
+    using __iequality_comparable::__interface_base::__interface_base;
 
     template <class _Other>
     [[nodiscard]]
@@ -2008,11 +2012,13 @@ namespace STDEXEC::__any
   // __isemiregular
   template <class _Base>
   struct __isemiregular
-    : interface<__isemiregular, _Base, __extends<__icopyable, __iequality_comparable>>
+    : __interface_base<__isemiregular, _Base, __extends<__icopyable, __iequality_comparable>>
   {
-    using __isemiregular::interface::interface;
+    using __isemiregular::__interface_base::__interface_base;
   };
 
 }  // namespace STDEXEC::__any
+
+// NOLINTEND(moderize-use-override)
 
 STDEXEC_PRAGMA_POP()

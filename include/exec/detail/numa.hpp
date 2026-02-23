@@ -16,232 +16,64 @@
  */
 #pragma once
 
+#include "../../stdexec/__detail/__any.hpp"
 #include "../../stdexec/__detail/__config.hpp"
 #include "../scope.hpp"  // IWYU pragma: keep
 
-#include <algorithm>  // IWYU pragma: keep
 #include <cstddef>
-#include <memory>
-#include <new>  // IWYU pragma: keep
 #include <thread>
-#include <utility>
-#include <vector>
-
-// Work around a bug in the NVHPC compilers prior to version 24.3
-#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 24'03
-#  define STDEXEC_NUMA_VTABLE_INLINE
-#else
-#  define STDEXEC_NUMA_VTABLE_INLINE inline
-#endif
+#include <vector>  // IWYU pragma: keep
 
 namespace experimental::execution
 {
   namespace _numa
   {
-    using _small_t = void *[1];
-
-    template <class T>
-    using _is_small = STDEXEC::__mbool<sizeof(T) <= sizeof(_small_t)>;
-
-    union _storage
+    // NOLINTBEGIN(modernize-use-override)
+    template <class Base>
+    struct _ipolicy
+      : STDEXEC::__any::__interface_base<_ipolicy,
+                                         Base,
+                                         STDEXEC::__any::__extends<STDEXEC::__any::__icopyable>,
+                                         sizeof(void *)>
     {
-      _storage() noexcept = default;
+      using _ipolicy::__interface_base::__interface_base;
 
-      template <STDEXEC::__not_decays_to<_storage> Ty>
-      explicit _storage(Ty &&value)
-        : ptr{new STDEXEC::__decay_t<Ty>{static_cast<Ty &&>(value)}}
-      {}
-
-      template <STDEXEC::__not_decays_to<_storage> Ty>
-        requires(_is_small<STDEXEC::__decay_t<Ty>>::value)
-      explicit _storage(Ty &&value) noexcept(STDEXEC::__nothrow_decay_copyable<Ty>)
-        : buf{}
+      [[nodiscard]]
+      constexpr virtual auto num_nodes() const noexcept -> std::size_t
       {
-        ::new (static_cast<void *>(buf)) STDEXEC::__decay_t<Ty>{static_cast<Ty &&>(value)};
+        return STDEXEC::__any::__value(*this).num_nodes();
       }
 
-      void *ptr{};
-      char  buf[sizeof(_small_t)];
-    };
-
-    struct _vtable
-    {
-      auto (*move)(_storage *, _storage *) noexcept -> void;
-      auto (*copy)(_storage *, _storage const *) -> void;
-      auto (*destroy)(_storage *) noexcept -> void;
-      auto (*num_nodes)(_storage const *) noexcept -> std::size_t;
-      auto (*num_cpus)(_storage const *, int) noexcept -> std::size_t;
-      auto (*bind_to_node)(_storage const *, int) noexcept -> int;
-      auto (*thread_index_to_node)(_storage const *, std::size_t) noexcept -> int;
-    };
-
-    template <class T>
-    struct _vtable_for
-    {
-      // move
-      static auto _move(_storage *self, _storage *other) noexcept -> void
+      [[nodiscard]]
+      constexpr virtual auto num_cpus(int node) const noexcept -> std::size_t
       {
-        if constexpr (!_is_small<T>::value)
-        {
-          self->ptr = std::exchange(other->ptr, nullptr);
-        }
-        else
-        {
-          ::new (static_cast<void *>(self->buf))
-            T{static_cast<T &&>(*reinterpret_cast<T *>(other->buf))};
-        }
+        return STDEXEC::__any::__value(*this).num_cpus(node);
       }
 
-      // copy
-      static auto _copy(_storage *self, _storage const *other) noexcept -> void
+      // NOLINTNEXTLINE(modernize-use-nodiscard)
+      constexpr virtual auto bind_to_node(int node) const noexcept -> int
       {
-        if constexpr (!_is_small<T>::value)
-        {
-          self->ptr = new T{*static_cast<T const *>(other->ptr)};
-        }
-        else
-        {
-          ::new (static_cast<void *>(self->buf)) T{*reinterpret_cast<T const *>(other->buf)};
-        }
+        return STDEXEC::__any::__value(*this).bind_to_node(node);
       }
 
-      // destroy
-      static auto _destroy(_storage *self) noexcept -> void
+      [[nodiscard]]
+      constexpr virtual auto thread_index_to_node(std::size_t index) const noexcept -> int
       {
-        if constexpr (!_is_small<T>::value)
-        {
-          delete static_cast<T *>(self->ptr);
-        }
-        else
-        {
-          std::destroy_at(reinterpret_cast<T *>(self->buf));
-        }
-      }
-
-      // num_nodes
-      static auto _num_nodes(_storage const *self) noexcept -> std::size_t
-      {
-        if constexpr (!_is_small<T>::value)
-        {
-          return static_cast<T const *>(self->ptr)->num_nodes();
-        }
-        else
-        {
-          return reinterpret_cast<T const *>(self->buf)->num_nodes();
-        }
-      }
-
-      // num_cpus
-      static auto _num_cpus(_storage const *self, int node) noexcept -> std::size_t
-      {
-        if constexpr (!_is_small<T>::value)
-        {
-          return static_cast<T const *>(self->ptr)->num_cpus(node);
-        }
-        else
-        {
-          return reinterpret_cast<T const *>(self->buf)->num_cpus(node);
-        }
-      }
-
-      // bind_to_node
-      static auto _bind_to_node(_storage const *self, int node) noexcept -> int
-      {
-        if constexpr (!_is_small<T>::value)
-        {
-          return static_cast<T const *>(self->ptr)->bind_to_node(node);
-        }
-        else
-        {
-          return reinterpret_cast<T const *>(self->buf)->bind_to_node(node);
-        }
-      }
-
-      // thread_index_to_node
-      static auto _thread_index_to_node(_storage const *self, std::size_t index) noexcept -> int
-      {
-        if constexpr (!_is_small<T>::value)
-        {
-          return static_cast<T const *>(self->ptr)->thread_index_to_node(index);
-        }
-        else
-        {
-          return reinterpret_cast<T const *>(self->buf)->thread_index_to_node(index);
-        }
+        return STDEXEC::__any::__value(*this).thread_index_to_node(index);
       }
     };
-
-    template <class NumaPolicy>
-    STDEXEC_NUMA_VTABLE_INLINE constexpr _vtable _vtable_for_v = {
-      .move                 = _vtable_for<NumaPolicy>::_move,
-      .copy                 = _vtable_for<NumaPolicy>::_copy,
-      .destroy              = _vtable_for<NumaPolicy>::_destroy,
-      .num_nodes            = _vtable_for<NumaPolicy>::_num_nodes,
-      .num_cpus             = _vtable_for<NumaPolicy>::_num_cpus,
-      .bind_to_node         = _vtable_for<NumaPolicy>::_bind_to_node,
-      .thread_index_to_node = _vtable_for<NumaPolicy>::_thread_index_to_node};
+    // NOLINTEND(modernize-use-override)
   }  // namespace _numa
 
-  struct numa_policy
+  struct numa_policy final : STDEXEC::__any::__any<exec::_numa::_ipolicy>
   {
-   private:
-    _numa::_vtable const *vtable_;
-    _numa::_storage       storage_;
-
-   public:
-    template <STDEXEC::__not_decays_to<numa_policy> NumaPolicy>
-    numa_policy(NumaPolicy &&policy)
-      : vtable_(&_numa::_vtable_for_v<STDEXEC::__decay_t<NumaPolicy>>)
-      , storage_(static_cast<NumaPolicy &&>(policy))
-    {}
-
-    numa_policy(numa_policy &&other) noexcept
-      : vtable_(other.vtable_)
-      , storage_{}
-    {
-      vtable_->move(&storage_, &other.storage_);
-    }
-
-    numa_policy(numa_policy const &other)
-      : vtable_(other.vtable_)
-      , storage_{}
-    {
-      vtable_->copy(&storage_, &other.storage_);
-    }
-
-    ~numa_policy()
-    {
-      vtable_->destroy(&storage_);
-    }
-
-    [[nodiscard]]
-    auto num_nodes() const noexcept -> std::size_t
-    {
-      return vtable_->num_nodes(&storage_);
-    }
-
-    [[nodiscard]]
-    auto num_cpus(int node) const noexcept -> std::size_t
-    {
-      return vtable_->num_cpus(&storage_, node);
-    }
-
-    auto bind_to_node(int node) const noexcept -> int
-    {  // NOLINT(modernize-use-nodiscard)
-      return vtable_->bind_to_node(&storage_, node);
-    }
-
-    [[nodiscard]]
-    auto thread_index_to_node(std::size_t index) const noexcept -> int
-    {
-      return vtable_->thread_index_to_node(&storage_, index);
-    }
+    using numa_policy::__any::__any;
   };
 
   struct no_numa_policy
   {
     [[nodiscard]]
-    auto num_nodes() const noexcept -> std::size_t
+    constexpr auto num_nodes() const noexcept -> std::size_t
     {
       return 1;
     }
@@ -252,13 +84,13 @@ namespace experimental::execution
       return std::thread::hardware_concurrency();
     }
 
-    auto bind_to_node(int) const noexcept -> int
-    {  // NOLINT(modernize-use-nodiscard)
+    constexpr auto bind_to_node(int) const noexcept -> int  // NOLINT(modernize-use-nodiscard)
+    {
       return 0;
     }
 
     [[nodiscard]]
-    auto thread_index_to_node(std::size_t) const noexcept -> int
+    constexpr auto thread_index_to_node(std::size_t) const noexcept -> int
     {
       return 0;
     }
@@ -312,17 +144,19 @@ namespace experimental::execution
 
   struct default_numa_policy
   {
+    [[nodiscard]]
     std::size_t num_nodes() const noexcept
     {
       return _node_to_thread_index::get().size();
     }
 
+    [[nodiscard]]
     std::size_t num_cpus(int node) const noexcept
     {
       return exec::_get_numa_num_cpus(node);
     }
 
-    int bind_to_node(int node) const noexcept
+    int bind_to_node(int node) const noexcept  // NOLINT(modernize-use-nodiscard)
     {
       struct ::bitmask *nodes = ::numa_allocate_nodemask();
       if (!nodes)
@@ -335,6 +169,7 @@ namespace experimental::execution
       return 0;
     }
 
+    [[nodiscard]]
     int thread_index_to_node(std::size_t idx) const noexcept
     {
       auto const &node_to_thread_index = _node_to_thread_index::get();
@@ -370,8 +205,6 @@ namespace experimental::execution
       : node_(other.node_)
     {}
 
-    int node_;
-
     void *do_allocate(std::size_t n)
     {
       return ::numa_alloc_onnode(n, node_);
@@ -393,6 +226,12 @@ namespace experimental::execution
     }
 
     friend bool operator==(numa_allocator const &, numa_allocator const &) noexcept = default;
+
+   private:
+    template <class>
+    friend struct numa_allocator;
+
+    int node_;
   };
 
   class nodemask
@@ -406,7 +245,6 @@ namespace experimental::execution
 
    public:
     nodemask() noexcept
-      : mask_{}
     {
       ::copy_bitmask_to_nodemask(::numa_no_nodes_ptr, &mask_);
     }
@@ -453,13 +291,14 @@ namespace experimental::execution
     }
 
    private:
-    ::nodemask_t mask_;
+    ::nodemask_t mask_{};
   };
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 
 #else
+
 namespace experimental::execution
 {
   using default_numa_policy = no_numa_policy;
@@ -470,32 +309,13 @@ namespace experimental::execution
   }
 
   template <class T>
-  struct numa_allocator
+  struct numa_allocator : std::allocator<T>
   {
-    using pointer       = T *;
-    using const_pointer = T const *;
-    using value_type    = T;
+    constexpr numa_allocator(int) noexcept {}
 
-    explicit numa_allocator(int) noexcept {}
-
-    template <class U>
-    explicit numa_allocator(numa_allocator<U> const &) noexcept
+    template <STDEXEC::__not_same_as<T> U>
+    numa_allocator(numa_allocator<U> const &) noexcept
     {}
-
-    auto allocate(std::size_t n) -> T *
-    {
-      std::allocator<T> alloc{};
-      return alloc.allocate(n);
-    }
-
-    void deallocate(T *p, std::size_t n)
-    {
-      std::allocator<T> alloc{};
-      alloc.deallocate(p, n);
-    }
-
-    friend auto
-    operator==(numa_allocator const &, numa_allocator const &) noexcept -> bool = default;
   };
 
   class nodemask
