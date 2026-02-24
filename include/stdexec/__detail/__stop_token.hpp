@@ -90,7 +90,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
    private:
     struct __callback_type
     {
-      constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept { }
+      constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept {}
     };
    public:
     template <class>
