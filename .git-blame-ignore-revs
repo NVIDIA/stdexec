@@ -34,3 +34,6 @@ aee392a046a26ae2340849fe98e38332d9537397
 # new formatting style for improved readability
 0cccd586b8d75c64b289e38f334e95846dfb4f33
 72666721b5787c1adcc100dd86c26fbbe8bda82f
+
+# inform clang-format that `STDEXEC_P2300_NAMESPACE_BEGIN()` opens a scope
+9207f741ec54cb8d5e437385a083459da69ccaa6
