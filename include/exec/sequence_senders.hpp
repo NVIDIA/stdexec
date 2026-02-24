@@ -245,7 +245,7 @@ namespace experimental::execution
   struct _FAILED_TO_COMPUTE_SEQUENCE_ITEM_TYPES_
   {};
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
   [[nodiscard]]

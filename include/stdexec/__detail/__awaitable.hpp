@@ -21,7 +21,7 @@
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
   concept __await_suspend_result = __one_of<_Tp, void, bool>

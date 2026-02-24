@@ -54,7 +54,7 @@ namespace
     CHECK(std::get<1>(res.value()) == 0.1415);
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("sync_wait rethrows received exception", "[consumers][sync_wait]")
   {
     // Generate an exception pointer object
@@ -125,7 +125,7 @@ namespace
       FAIL("expecting std::string exception to be thrown");
     }
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("sync_wait returns empty optional on cancellation", "[consumers][sync_wait]")
   {

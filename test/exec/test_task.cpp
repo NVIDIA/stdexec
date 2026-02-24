@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 #  include <exec/async_scope.hpp>
 #  include <exec/single_thread_context.hpp>
 #  include <exec/task.hpp>
@@ -321,7 +321,7 @@ namespace
     CHECK(msg == "goodbye"s);
   }
 
-#  if !STDEXEC_NO_STD_EXCEPTIONS()
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("task - can error early", "[types][task]")
   {
     int  count = 0;
@@ -348,7 +348,7 @@ namespace
     }
     CHECK(count == 3);
   }
-#  endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#  endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace
 
 #endif

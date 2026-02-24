@@ -132,7 +132,7 @@ namespace
     CHECK(k == 5);
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("tbb_thread_pool exceptions", "[tbb_thread_pool]")
   {
     // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
@@ -157,7 +157,7 @@ namespace
       CHECK(tbb_result == other_result);
     }
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("tbb_thread_pool async_inclusive_scan", "[tbb_thread_pool]")
   {

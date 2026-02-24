@@ -31,7 +31,7 @@
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   namespace __detail
   {
     template <std::size_t _Count>

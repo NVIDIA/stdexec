@@ -18,7 +18,7 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_HAS_STD_RANGES()
+#if !STDEXEC_NO_STDCPP_RANGES()
 
 #  include "../../stdexec/__detail/__optional.hpp"
 #  include "../../stdexec/execution.hpp"
@@ -241,4 +241,4 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
-#endif  // STDEXEC_HAS_STD_RANGES()
+#endif  // !STDEXEC_NO_STDCPP_RANGES()

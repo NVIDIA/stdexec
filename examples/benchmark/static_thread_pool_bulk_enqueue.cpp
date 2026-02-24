@@ -17,7 +17,7 @@
 #include "./common.hpp"
 #include <exec/static_thread_pool.hpp>
 
-#if STDEXEC_HAS_STD_RANGES()
+#if !STDEXEC_NO_STDCPP_RANGES()
 #  include <exec/sequence/ignore_all_values.hpp>
 #  include <ranges>
 

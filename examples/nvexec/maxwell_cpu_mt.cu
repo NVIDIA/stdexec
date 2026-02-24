@@ -35,7 +35,7 @@ auto main(int argc, char *argv[]) -> int
               << "\t--write-vtk\n"
               << "\t--iterations\n"
               << "\t--run-std\n"
-              << (STDEXEC_HAS_PARALLEL_ALGORITHMS() ? "\t--run-stdpar\n" : "")
+              << (STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS() ? "" : "\t--run-stdpar\n")
               << "\t--run-thread-pool-scheduler\n"
               << "\t--N\n"
               << std::endl;
@@ -79,7 +79,7 @@ auto main(int argc, char *argv[]) -> int
     run_std(dt, write_vtk, n_iterations, grid, "CPU (std)");
   }
 
-#  if STDEXEC_HAS_PARALLEL_ALGORITHMS()
+#  if !STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS()
   if (value(params, "run-stdpar"))
   {
     bool const       gpu    = is_gpu_policy(stdexec::par_unseq);

@@ -32,7 +32,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_await
   namespace __connect_await

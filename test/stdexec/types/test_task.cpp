@@ -17,7 +17,7 @@
 
 #include <stdexec/coroutine.hpp>
 
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 
 #  include <stdexec/execution.hpp>
 
@@ -262,4 +262,4 @@ namespace
 
 }  // anonymous namespace
 
-#endif  // !STDEXEC_NO_STD_COROUTINES()
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
