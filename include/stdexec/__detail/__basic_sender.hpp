@@ -111,7 +111,7 @@ namespace STDEXEC
         noexcept(__nothrow_decay_copyable<_CvData>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __data_(STDEXEC::__allocator_aware_forward(static_cast<_CvData&&>(__data), __rcvr_))
-      { }
+      {}
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
