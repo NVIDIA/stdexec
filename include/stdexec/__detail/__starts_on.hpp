@@ -18,6 +18,7 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#include "../functional.hpp"
 #include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
@@ -30,25 +31,6 @@
 
 namespace STDEXEC
 {
-  namespace __detail
-  {
-    //! Constant function object always returning `__val_`.
-    template <class _Ty, class = __demangle_t<__decay_t<_Ty>>>
-    struct __always
-    {
-      _Ty __val_;
-
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Ty>) -> _Ty
-      {
-        return static_cast<_Ty&&>(__val_);
-      }
-    };
-
-    template <class _Ty>
-    __always(_Ty) -> __always<_Ty>;
-  }  // namespace __detail
-
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders.adaptors.starts_on]
   struct starts_on_t
@@ -66,7 +48,7 @@ namespace STDEXEC
     {
       auto& [__tag, __sched, __child] = __sndr;
       return let_value(continues_on(just(), __sched),
-                       __detail::__always{STDEXEC::__forward_like<_Sender>(__child)});
+                       __always{STDEXEC::__forward_like<_Sender>(__child)});
     }
 
     template <class _Sender>

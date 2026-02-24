@@ -33,7 +33,7 @@ namespace STDEXEC
     template <class _Sender, class _Receiver>
     concept __with_static_member = requires(__declfn_t<_Sender&&>   __sndr,
                                             __declfn_t<_Receiver&&> __rcvr) {
-      STDEXEC_REMOVE_REFERENCE(_Sender)::static_connect(__sndr(), __rcvr());
+      STDEXEC_REMOVE_REFERENCE(_Sender)::__static_connect(__sndr(), __rcvr());
     };
 
     template <class _Sender, class _Receiver>
@@ -67,8 +67,8 @@ namespace STDEXEC
     template <class _Sender, class _Receiver>
       requires __with_static_member<_Sender, _Receiver>
     extern STDEXEC_CONNECT_DECLFN_FOR(STDEXEC_REMOVE_REFERENCE(_Sender)  //
-                                      ::static_connect(__declval<_Sender>(),
-                                                       __declval<_Receiver>()))
+                                      ::__static_connect(__declval<_Sender>(),
+                                                         __declval<_Receiver>()))
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
@@ -97,7 +97,7 @@ namespace STDEXEC
     template <class _Sender, class _Receiver>
       requires __with_static_member<_Sender, _Receiver>
     extern __declfn_t<decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
-                               ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
+                               ::__static_connect(__declval<_Sender>(), __declval<_Receiver>())),
                       false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
@@ -149,7 +149,7 @@ namespace STDEXEC
         {
           return STDEXEC_CONNECT_DECLFN_FOR(
             STDEXEC_REMOVE_REFERENCE(_Sender)  //
-            ::static_connect(__declval<_Sender>(), __declval<_Receiver>()));
+            ::__static_connect(__declval<_Sender>(), __declval<_Receiver>()));
         }
         else if constexpr (__with_member<_Sender, _Receiver>)
         {
@@ -180,7 +180,8 @@ namespace STDEXEC
         if constexpr (__with_static_member<_Sender, _Receiver>)
         {
           return __declfn<decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
-                                   ::static_connect(__declval<_Sender>(), __declval<_Receiver>())),
+                                   ::__static_connect(__declval<_Sender>(),
+                                                      __declval<_Receiver>())),
                           false>();
         }
         else if constexpr (__with_member<_Sender, _Receiver>)
@@ -237,8 +238,8 @@ namespace STDEXEC
       if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>)
       {
         return STDEXEC_REMOVE_REFERENCE(
-          __new_sndr_t)::static_connect(static_cast<__new_sndr_t&&>(__new_sndr),
-                                        static_cast<_Receiver&&>(__rcvr));
+          __new_sndr_t)::__static_connect(static_cast<__new_sndr_t&&>(__new_sndr),
+                                          static_cast<_Receiver&&>(__rcvr));
       }
       else if constexpr (__connect::__with_member<__new_sndr_t, _Receiver>)
       {

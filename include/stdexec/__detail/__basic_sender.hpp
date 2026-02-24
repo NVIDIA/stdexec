@@ -368,7 +368,7 @@ namespace STDEXEC
       // Non-standard extension:
       template <class _Self, receiver _Receiver>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      static constexpr auto static_connect(_Self&& __self, _Receiver __rcvr) noexcept(
+      static constexpr auto __static_connect(_Self&& __self, _Receiver __rcvr) noexcept(
         __noexcept_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>)
         -> __result_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>
       {

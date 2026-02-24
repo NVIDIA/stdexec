@@ -776,50 +776,50 @@ namespace STDEXEC
 
 #else
 
-#  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
-    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
-                               STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+#  define STDEXEC_EXPLICIT_THIS_CALL_OPERATOR_PROBE_operator() STDEXEC_PP_PROBE(~, 1)
+
+#  define STDEXEC_EXPLICIT_THIS_CALL_OPERATOR_PROBE(_NAME)                                      \
+    STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_CALL_OPERATOR_PROBE_, _NAME))
+
+#  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)                                                   \
+    STDEXEC_PP_CAT(__static_,                                                                   \
+                   STDEXEC_PP_IIF(STDEXEC_EXPLICIT_THIS_CALL_OPERATOR_PROBE(_NAME),             \
+                                  _call,                                                        \
+                                  _NAME))
+
+#  define STDEXEC_EXPLICIT_THIS_EAT_this
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
     STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
 
-#  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                        \
+#  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
+    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
+                             STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+
+#  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \
     STDEXEC_ATTRIBUTE(always_inline)                                                            \
-    auto _FN(_Ts&&... __args) && STDEXEC_AUTO_RETURN                                            \
+    auto _NAME(_Ts&&... __args) && STDEXEC_AUTO_RETURN                                          \
     (                                                                                           \
-      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
-        ::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<_Ts&&>(__args)...)         \
+      STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(std::move(*this), static_cast<_Ts&&>(__args)...)      \
     )                                                                                           \
                                                                                                 \
     template <class... _Ts>                                                                     \
     STDEXEC_ATTRIBUTE(always_inline)                                                            \
-    auto _FN(_Ts&&... __args) & STDEXEC_AUTO_RETURN                                             \
+    auto _NAME(_Ts&&... __args) & STDEXEC_AUTO_RETURN                                           \
     (                                                                                           \
-      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
-        ::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...)                    \
+      STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(*this, static_cast<_Ts&&>(__args)...)                 \
     )                                                                                           \
                                                                                                 \
     template <class... _Ts>                                                                     \
     STDEXEC_ATTRIBUTE(always_inline)                                                            \
-    auto _FN(_Ts&&... __args) const & STDEXEC_AUTO_RETURN                                       \
+    auto _NAME(_Ts&&... __args) const & STDEXEC_AUTO_RETURN                                     \
     (                                                                                           \
-      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
-        ::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...)                    \
+      STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(*this, static_cast<_Ts&&>(__args)...)                 \
     )
-
-#  define STDEXEC_EXPLICIT_THIS_EAT_this
-#  define STDEXEC_EXPLICIT_THIS_EAT_auto
-#  define STDEXEC_EXPLICIT_THIS_EAT_void
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto   auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void   void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE(_NAME) STDEXEC_PP_CAT(static_, _NAME)
-
-namespace STDEXEC
-{
-  template <class... _Ts, class _Self>
-  constexpr auto __get_self(_Self const &) -> _Self;
-}  // namespace STDEXEC
 
 #endif  // STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER()
 
