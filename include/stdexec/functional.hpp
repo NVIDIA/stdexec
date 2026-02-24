@@ -255,6 +255,25 @@ namespace STDEXEC
   template <class _Fn>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __for_each(_Fn) -> __for_each<_Fn>;
 
+  //! Constant function object always returning `__value_`.
+  template <class _Ty>
+  struct __always
+  {
+    template <class _Self, class... _Ts>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self&& __self, _Ts&&...) noexcept
+      -> auto&&
+    {
+      return (static_cast<_Self&&>(__self).__value_);
+    }
+    STDEXEC_EXPLICIT_THIS_END(operator())
+
+    _Ty __value_;
+  };
+
+  template <class _Ty>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __always(_Ty) -> __always<std::unwrap_reference_t<_Ty>>;
+
   template <class _Ty>
   struct __construct
   {
