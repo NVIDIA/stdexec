@@ -85,7 +85,7 @@ namespace
         });
     }(1, 2);
 
-#if STDEXEC_NO_STD_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_EXCEPTIONS()
     auto [res] = STDEXEC::sync_wait(std::move(snd)).value();
     CHECK(res == 3);
 #else

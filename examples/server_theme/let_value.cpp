@@ -52,7 +52,7 @@
 #include "exec/start_detached.hpp"
 #include "exec/static_thread_pool.hpp"
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 namespace ex = stdexec;
 
 struct http_request
@@ -177,4 +177,4 @@ int main()
   std::cout << "This example requires C++ exceptions to be enabled.\n";
   return 0;
 }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()

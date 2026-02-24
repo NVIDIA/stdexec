@@ -65,7 +65,7 @@ namespace
     CHECK(i == 42);
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("finally does not execute the final action and throws integer", "[adaptors][finally]")
   {
     bool called = false;
@@ -78,7 +78,7 @@ namespace
     CHECK_THROWS_AS(sync_wait(s), int);
     CHECK(called);
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("finally includes the error types of the final action", "[adaptors][finally]")
   {

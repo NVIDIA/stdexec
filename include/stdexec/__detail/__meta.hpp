@@ -957,7 +957,7 @@ namespace STDEXEC
     using __f = __minvoke_q<__mor, __mcall1<_Fn, _Args>...>;
   };
 
-#if !STDEXEC_NO_STD_PACK_INDEXING()
+#if !STDEXEC_NO_STDCPP_PACK_INDEXING()
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 

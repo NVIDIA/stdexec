@@ -295,7 +295,7 @@ namespace STDEXEC
                                         _Fun           __fn,
                                         _Receiver&&    __rcvr) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __fn_(static_cast<_Fun&&>(__fn))
+        , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
         , __env2_(__let::__mk_env2<_SetTag>(__attrs, STDEXEC::get_env(__rcvr_)))
       {}
@@ -641,7 +641,7 @@ namespace STDEXEC
     //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
     template <class _LetTag>
     struct __let_t
-    {  // NOLINT(bugprone-crtp-constructor-accessibility)
+    {
       using __t = decltype(__set_tag_from_let_v<_LetTag>());
 
       template <sender _Sender, __movable_value _Fun>
@@ -656,6 +656,10 @@ namespace STDEXEC
       {
         return __closure(*this, static_cast<_Fun&&>(__fn));
       }
+
+     private:
+      friend _LetTag;
+      __let_t() = default;
     };
 
     template <class _LetTag>
@@ -722,11 +726,17 @@ namespace STDEXEC
   }  // namespace __let
 
   struct let_value_t : __let::__let_t<let_value_t>
-  {};
+  {
+    let_value_t() = default;
+  };
   struct let_error_t : __let::__let_t<let_error_t>
-  {};
+  {
+    let_error_t() = default;
+  };
   struct let_stopped_t : __let::__let_t<let_stopped_t>
-  {};
+  {
+    let_stopped_t() = default;
+  };
 
   inline constexpr let_value_t   let_value{};
   inline constexpr let_error_t   let_error{};

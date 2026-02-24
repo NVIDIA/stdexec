@@ -65,7 +65,7 @@ namespace
     CHECK_FALSE(STDEXEC::sync_wait(sndr));
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("ignore_all_values - ignore just_error()", "[sequence_senders][ignore_all_values]")
   {
     auto sndr = exec::ignore_all_values(
@@ -78,7 +78,7 @@ namespace
         STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>>);
     CHECK_THROWS(STDEXEC::sync_wait(sndr));
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   struct sequence_op
   {

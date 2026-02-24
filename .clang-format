@@ -86,8 +86,8 @@ InsertTrailingCommas: None
 KeepEmptyLinesAtTheStartOfBlocks: false
 LambdaBodyIndentation: Signature
 LineEnding: LF
-MacroBlockBegin: "^STDEXEC_NAMESPACE_STD_BEGIN$"
-MacroBlockEnd: "^STDEXEC_NAMESPACE_STD_END$"
+MacroBlockBegin: "^STDEXEC_NAMESPACE_STD_BEGIN|STDEXEC_P2300_NAMESPACE_BEGIN$"
+MacroBlockEnd: "^STDEXEC_NAMESPACE_STD_END|STDEXEC_P2300_NAMESPACE_END$"
 Macros: [
   'STDEXEC_CATCH_FALLTHROUGH= ',
   'STDEXEC_EXPLICIT_THIS_BEGIN(...)=__VA_ARGS__',

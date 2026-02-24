@@ -150,7 +150,7 @@ TEST_CASE("sequence with two arguments works", "[sequence]")
   }
 }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 TEST_CASE("sequence with sender with throwing connect", "[sequence]")
 {
   auto err  = std::make_exception_ptr(connect_exception{});
@@ -158,4 +158,4 @@ TEST_CASE("sequence with sender with throwing connect", "[sequence]")
   auto op   = ex::connect(std::move(sndr), expect_error_receiver{err});
   ex::start(op);
 }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()

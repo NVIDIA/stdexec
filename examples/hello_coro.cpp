@@ -18,7 +18,7 @@
 // Pull in the reference implementation of P2300:
 #include <stdexec/execution.hpp>
 
-#if !STDEXEC_NO_STD_COROUTINES() && !STDEXEC_NVHPC()
+#if !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_NVHPC()
 #  include <exec/task.hpp>
 
 using namespace stdexec;

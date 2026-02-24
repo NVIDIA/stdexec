@@ -17,14 +17,14 @@
 
 #include "__config.hpp"
 
-#if STDEXEC_HAS_EXECUTION_POLICY()
+#if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
 #  include <execution>
 #endif
 
 namespace STDEXEC
 {
 
-#if STDEXEC_HAS_EXECUTION_POLICY()
+#if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
 
   // Import the execution policies from std::execution. The __policy namespace is used to
   // avoid name clashes if the macro STDEXEC expands to std::execution.
@@ -75,7 +75,7 @@ namespace STDEXEC
 
 #endif
 
-#if STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY()
+#if !STDEXEC_NO_STDCPP_UNSEQUENCED_EXECUTION_POLICY()
 
   namespace __policy
   {

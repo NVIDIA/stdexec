@@ -77,7 +77,7 @@ namespace STDEXEC
   using __completion_signature_ptrs_t = decltype(__cmplsigs::__repack_completions(
     static_cast<_SigPtrs>(nullptr)...));
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class, class... _What, class... _Values>
   [[nodiscard]]
@@ -561,7 +561,7 @@ namespace STDEXEC
   //   }
   //   else
 
-#if STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
 #  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
     if constexpr ([[maybe_unused]]                                                                 \

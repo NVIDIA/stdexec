@@ -224,23 +224,23 @@ STDEXEC_NAMESPACE_STD_END
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
 #  include <coroutine>  // IWYU pragma: keep
-#  define STDEXEC_NO_STD_COROUTINES() 0
+#  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
 {
   namespace __coro = std;  // NOLINT(misc-unused-alias-decls)
 }  // namespace STDEXEC::__std
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
 #  include <experimental/coroutine>
-#  define STDEXEC_NO_STD_COROUTINES() 0
+#  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
 {
   namespace __coro = std::experimental;  // NOLINT(misc-unused-alias-decls)
 }  // namespace STDEXEC::__std
 #else
-#  define STDEXEC_NO_STD_COROUTINES() 1
+#  define STDEXEC_NO_STDCPP_COROUTINES() 1
 #endif
 
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 namespace STDEXEC::__std
 {
   using __coro::coroutine_handle;
@@ -551,9 +551,9 @@ namespace STDEXEC
 // https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
   && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
-#  define STDEXEC_NO_STD_PACK_INDEXING() 0
+#  define STDEXEC_NO_STDCPP_PACK_INDEXING() 0
 #else  // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
-#  define STDEXEC_NO_STD_PACK_INDEXING() 1
+#  define STDEXEC_NO_STDCPP_PACK_INDEXING() 1
 #endif  // no pack indexing
 
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
@@ -566,34 +566,47 @@ namespace STDEXEC
 #if __has_include(<ranges>) && \
   (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 2019'11L) && \
   (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00 || defined(_LIBCPP_VERSION))
-#  define STDEXEC_HAS_STD_RANGES() 1
+#  define STDEXEC_NO_STDCPP_RANGES() 0
 #else
-#  define STDEXEC_HAS_STD_RANGES() 0
+#  define STDEXEC_NO_STDCPP_RANGES() 1
 #endif
 
 #if __has_include(<memory_resource>) && \
   (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 2016'03L)
-#  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 1
+#  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 0
 #else
-#  define STDEXEC_HAS_STD_MEMORY_RESOURCE() 0
+#  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 1
 #endif
 
 #if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2016'03L
-#  define STDEXEC_HAS_EXECUTION_POLICY() 1
+#  define STDEXEC_NO_STDCPP_EXECUTION_POLICY() 0
 #else
-#  define STDEXEC_HAS_EXECUTION_POLICY() 0
+#  define STDEXEC_NO_STDCPP_EXECUTION_POLICY() 1
 #endif
 
 #if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2019'02L
-#  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 1
+#  define STDEXEC_NO_STDCPP_UNSEQUENCED_EXECUTION_POLICY() 0
 #else
-#  define STDEXEC_HAS_UNSEQUENCED_EXECUTION_POLICY() 0
+#  define STDEXEC_NO_STDCPP_UNSEQUENCED_EXECUTION_POLICY() 1
 #endif
 
 #if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 2016'03L
-#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 1
+#  define STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS() 0
 #else
-#  define STDEXEC_HAS_PARALLEL_ALGORITHMS() 0
+#  define STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS() 1
+#endif
+
+#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
+#  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 0
+#else
+#  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
+#endif
+
+// Perhaps the stdlib lacks support for concepts
+#if __has_include(<concepts>) && __cpp_lib_concepts >= 2020'02L
+#  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 0
+#else
+#  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 1
 #endif
 
 #if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
@@ -632,12 +645,6 @@ namespace STDEXEC
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
 #endif
 
-#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
-#  define STDEXEC_HAS_STD_EXPLICIT_THIS() 1
-#else
-#  define STDEXEC_HAS_STD_EXPLICIT_THIS() 0
-#endif
-
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING == 0
 #  undef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
 #  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
@@ -647,22 +654,22 @@ namespace STDEXEC
 #endif
 
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__)
-#  define STDEXEC_NO_STD_EXCEPTIONS() 1
+#  define STDEXEC_NO_STDCPP_EXCEPTIONS() 1
 #elif STDEXEC_MSVC() || STDEXEC_CLANG_CL()
-#  define STDEXEC_NO_STD_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
+#  define STDEXEC_NO_STDCPP_EXCEPTIONS() (_HAS_EXCEPTIONS == 0) || (_CPPUNWIND == 0)
 #else
-#  define STDEXEC_NO_STD_EXCEPTIONS() (__EXCEPTIONS == 0)
+#  define STDEXEC_NO_STDCPP_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
 #if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 2024'11L
-#  if !STDEXEC_NO_STD_EXCEPTIONS()
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 // https://wg21.link/p3068
-#    define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 0
+#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
 #  else
-#    define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 1
+#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
 #  endif
 #else
-#  define STDEXEC_NO_STD_CONSTEXPR_EXCEPTIONS() 1
+#  define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
 #endif
 
 // We need to treat host and device separately
@@ -715,7 +722,7 @@ namespace STDEXEC
 //   {
 //     printf("unknown error\n");
 //   }
-#if STDEXEC_NO_STD_EXCEPTIONS()
+#if STDEXEC_NO_STDCPP_EXCEPTIONS()
 #  define STDEXEC_TRY               if constexpr (true) {
 #  define STDEXEC_CATCH(...)        } else if constexpr (__VA_ARGS__ = ::STDEXEC::__catch_any_lvalue; false) {
 #  define STDEXEC_CATCH_ALL         } else if constexpr (true) {} else
@@ -762,40 +769,44 @@ namespace STDEXEC
 /// STDEXEC_EXPLICIT_THIS_END(connect)
 /// @endcode
 
-#if STDEXEC_HAS_STD_EXPLICIT_THIS()
+#if !STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER()
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...) __VA_ARGS__
 #  define STDEXEC_EXPLICIT_THIS_END(...)
 
 #else
 
-#  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                         \
-    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)            \
+#  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
+    static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
                                STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
 
-#  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                          \
+#  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
     STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
 
-#  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                           \
-    template <class... _Ts>                                                                        \
-      STDEXEC_ATTRIBUTE(always_inline)                                                             \
-      auto _FN(_Ts&&... __args)                                                                    \
-      && STDEXEC_AUTO_RETURN(                                                                      \
-           decltype(STDEXEC::__get_self<_Ts...>(*this))::STDEXEC_PP_CAT(static_, _FN)(             \
-             std::move(*this), static_cast<_Ts&&>(__args)...))                                     \
-                                                                                                   \
-             template <class... _Ts>                                                               \
-             STDEXEC_ATTRIBUTE(always_inline)                                                      \
-             auto _FN(_Ts&&... __args)                                                             \
-           & STDEXEC_AUTO_RETURN(                                                                  \
-             decltype(STDEXEC::__get_self<_Ts...>(                                                 \
-               *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...))        \
-                                                                                                   \
-             template <class... _Ts>                                                               \
-             STDEXEC_ATTRIBUTE(always_inline)                                                      \
-             auto _FN(_Ts&&... __args) const & STDEXEC_AUTO_RETURN(                                \
-               decltype(STDEXEC::__get_self<_Ts...>(                                               \
-                 *this))::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...))
+#  define STDEXEC_EXPLICIT_THIS_END(_FN)                                                        \
+    template <class... _Ts>                                                                     \
+    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    auto _FN(_Ts&&... __args) && STDEXEC_AUTO_RETURN                                            \
+    (                                                                                           \
+      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
+        ::STDEXEC_PP_CAT(static_, _FN)(std::move(*this), static_cast<_Ts&&>(__args)...)         \
+    )                                                                                           \
+                                                                                                \
+    template <class... _Ts>                                                                     \
+    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    auto _FN(_Ts&&... __args) & STDEXEC_AUTO_RETURN                                             \
+    (                                                                                           \
+      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
+        ::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...)                    \
+    )                                                                                           \
+                                                                                                \
+    template <class... _Ts>                                                                     \
+    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    auto _FN(_Ts&&... __args) const & STDEXEC_AUTO_RETURN                                       \
+    (                                                                                           \
+      decltype(STDEXEC::__get_self<_Ts...>(*this))                                              \
+        ::STDEXEC_PP_CAT(static_, _FN)(*this, static_cast<_Ts&&>(__args)...)                    \
+    )
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
 #  define STDEXEC_EXPLICIT_THIS_EAT_auto
@@ -810,7 +821,7 @@ namespace STDEXEC
   constexpr auto __get_self(_Self const &) -> _Self;
 }  // namespace STDEXEC
 
-#endif  // !STDEXEC_HAS_STD_EXPLICIT_THIS()
+#endif  // STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && !defined(STDEXEC_CLANG_TIDY_INVOKED)

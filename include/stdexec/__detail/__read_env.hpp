@@ -178,15 +178,15 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
-STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-constexpr auto get_allocator_t::operator()() const noexcept
-{
-  return STDEXEC::read_env(get_allocator);
-}
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_allocator_t::operator()() const noexcept
+  {
+    return STDEXEC::read_env(get_allocator);
+  }
 
-STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-constexpr auto get_stop_token_t::operator()() const noexcept
-{
-  return STDEXEC::read_env(get_stop_token);
-}
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_stop_token_t::operator()() const noexcept
+  {
+    return STDEXEC::read_env(get_stop_token);
+  }
 STDEXEC_P2300_NAMESPACE_END()

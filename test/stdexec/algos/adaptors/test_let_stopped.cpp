@@ -82,7 +82,7 @@ namespace
     wait_for_value(std::move(snd), std::string{"cancelled"});
   }
 
-#if !STDEXEC_NO_STD_EXCEPTIONS()
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("let_stopped can throw, calling set_error", "[adaptors][let_stopped]")
   {
     auto snd = ex::just_stopped()
@@ -90,7 +90,7 @@ namespace
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
-#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("let_stopped can be used with just_error", "[adaptors][let_stopped]")
   {

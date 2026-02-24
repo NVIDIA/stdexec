@@ -34,80 +34,80 @@ STDEXEC_NAMESPACE_STD_END
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
 
-template <template <class> class _Callback>
-struct __check_type_alias_exists;
+  template <template <class> class _Callback>
+  struct __check_type_alias_exists;
 
-template <class _StopToken>
-inline constexpr bool __has_stop_callback_v = requires {
-  typename __check_type_alias_exists<_StopToken::template callback_type>;
-};
-
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
-template <>
-inline constexpr bool __has_stop_callback_v<std::stop_token> = true;
-#endif
-
-template <class _Token>
-struct __stop_callback_for
-{
-  template <class _Callback>
-  using __f = _Token::template callback_type<_Callback>;
-};
-
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
-template <>
-struct __stop_callback_for<std::stop_token>
-{
-  template <class _Callback>
-  using __f = std::stop_callback<_Callback>;
-};
-#endif
-
-template <class _Token, class _Callback>
-using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Callback>;
-
-template <class _Token>
-concept stoppable_token =
-  requires(_Token const __token) {
-    requires __has_stop_callback_v<_Token>;
-    { __token.stop_requested() } noexcept -> STDEXEC::__boolean_testable_;
-    { __token.stop_possible() } noexcept -> STDEXEC::__boolean_testable_;
-    { _Token(__token) } noexcept;
-  } && STDEXEC::__std::copyable<_Token>  //
-  && STDEXEC::__std::equality_comparable<_Token>;
-
-template <class _Token>
-concept unstoppable_token =
-  stoppable_token<_Token> //
-  && requires {
-    { _Token::stop_possible() } -> STDEXEC::__boolean_testable_;
-  } //
-  && (!_Token::stop_possible());
-
-// [stoptoken.never], class never_stop_token
-struct never_stop_token
-{
- private:
-  struct __callback_type
-  {
-    constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept {}
+  template <class _StopToken>
+  inline constexpr bool __has_stop_callback_v = requires {
+    typename __check_type_alias_exists<_StopToken::template callback_type>;
   };
- public:
-  template <class>
-  using callback_type = __callback_type;
 
-  static constexpr auto stop_requested() noexcept -> bool
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+  template <>
+  inline constexpr bool __has_stop_callback_v<std::stop_token> = true;
+#endif
+
+  template <class _Token>
+  struct __stop_callback_for
   {
-    return false;
-  }
+    template <class _Callback>
+    using __f = _Token::template callback_type<_Callback>;
+  };
 
-  static constexpr auto stop_possible() noexcept -> bool
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+  template <>
+  struct __stop_callback_for<std::stop_token>
   {
-    return false;
-  }
+    template <class _Callback>
+    using __f = std::stop_callback<_Callback>;
+  };
+#endif
 
-  constexpr auto operator==(never_stop_token const &) const noexcept -> bool = default;
-};
+  template <class _Token, class _Callback>
+  using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Callback>;
+
+  template <class _Token>
+  concept stoppable_token =
+    requires(_Token const __token) {
+      requires __has_stop_callback_v<_Token>;
+      { __token.stop_requested() } noexcept -> STDEXEC::__boolean_testable_;
+      { __token.stop_possible() } noexcept -> STDEXEC::__boolean_testable_;
+      { _Token(__token) } noexcept;
+    } && STDEXEC::__std::copyable<_Token>  //
+    && STDEXEC::__std::equality_comparable<_Token>;
+
+  template <class _Token>
+  concept unstoppable_token =
+    stoppable_token<_Token> //
+    && requires {
+      { _Token::stop_possible() } -> STDEXEC::__boolean_testable_;
+    } //
+    && (!_Token::stop_possible());
+
+  // [stoptoken.never], class never_stop_token
+  struct never_stop_token
+  {
+   private:
+    struct __callback_type
+    {
+      constexpr explicit __callback_type(never_stop_token, STDEXEC::__ignore) noexcept { }
+    };
+   public:
+    template <class>
+    using callback_type = __callback_type;
+
+    static constexpr auto stop_requested() noexcept -> bool
+    {
+      return false;
+    }
+
+    static constexpr auto stop_possible() noexcept -> bool
+    {
+      return false;
+    }
+
+    constexpr auto operator==(never_stop_token const &) const noexcept -> bool = default;
+  };
 STDEXEC_P2300_NAMESPACE_END()
 
 namespace STDEXEC

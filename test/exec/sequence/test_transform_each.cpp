@@ -74,7 +74,7 @@ namespace
     CHECK(value == 42);
   }
 
-#if STDEXEC_HAS_STD_RANGES()
+#if !STDEXEC_NO_STDCPP_RANGES()
   TEST_CASE("transform_each - transform sender applies adaptor to each item",
             "[sequence_senders][transform_each][iterate]")
   {

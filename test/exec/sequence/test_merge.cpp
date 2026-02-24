@@ -140,7 +140,7 @@ namespace
     CHECK(count == 2);
   }
 
-#if STDEXEC_HAS_STD_RANGES()
+#if !STDEXEC_NO_STDCPP_RANGES()
   TEST_CASE("merge - merge sender merges all items", "[sequence_senders][merge][iterate]")
   {
     auto range = [](auto from, auto to)
