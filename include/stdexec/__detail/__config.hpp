@@ -801,21 +801,21 @@ namespace STDEXEC
 
 #  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \
-    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    STDEXEC_ATTRIBUTE(always_inline, host, device)                                              \
     auto _NAME(_Ts&&... __args) && STDEXEC_AUTO_RETURN                                          \
     (                                                                                           \
       STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(std::move(*this), static_cast<_Ts&&>(__args)...)      \
     )                                                                                           \
                                                                                                 \
     template <class... _Ts>                                                                     \
-    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    STDEXEC_ATTRIBUTE(always_inline, host, device)                                              \
     auto _NAME(_Ts&&... __args) & STDEXEC_AUTO_RETURN                                           \
     (                                                                                           \
       STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(*this, static_cast<_Ts&&>(__args)...)                 \
     )                                                                                           \
                                                                                                 \
     template <class... _Ts>                                                                     \
-    STDEXEC_ATTRIBUTE(always_inline)                                                            \
+    STDEXEC_ATTRIBUTE(always_inline, host, device)                                              \
     auto _NAME(_Ts&&... __args) const & STDEXEC_AUTO_RETURN                                     \
     (                                                                                           \
       STDEXEC_EXPLICIT_THIS_MANGLE(_NAME)(*this, static_cast<_Ts&&>(__args)...)                 \
