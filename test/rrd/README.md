@@ -15,13 +15,20 @@ STDEXEC library could needs to use `x.fetch_add(1)` to be compatible with Relacy
 
 ## Instructions
 
-Run the following commands from within this directory (`./tests/rrd`).
+Configure and build stdexec following the build instructions in the top level
+[README.md](../../README.md). There are a couple relacy specific build and ctest
+targets, though they are part of the standard build and ctest and will be run
+automatically if cmake is configured with `-DSTDEXEC_BUILD_RELACY_TESTS=1`.
+`STDEXEC_BUILD_RELACY_TESTS` is set by default for GCC today.
+
+Run the following on a Linux machine with GCC as the toolchain.
 
 ```
-git clone -b STDEXEC https://github.com/dvyukov/relacy
-CXX=g++-11 make -j 4
-./build/split
-./build/async_scope
+mkdir build && cd build
+cmake ..
+make relacy-tests -j 4
+ctest -R relacy # Run all relacy tests
+./test/rrd/sync_wait # Run a specific relacy test directly
 ```
 
 ## Recommended use
@@ -35,8 +42,16 @@ out a more stable build on all environments/compilers, we should revisit this.
 ## Supported platforms
 
 The STDEXEC Relacy tests have been verified to build and run on
- * Linux based GCC+11 with libstdc++ (`x86_64`)
- * Mac with Apple Clang 15 with libc++ (`x86_64`)
+ * Linux based GCC+12-14 with libstdc++ (`x86_64`)
+ * Mac with Apple Clang 15 and 17 with libc++ (`x86_64`)
 
-G++12 and newer are known to have issues that could be addressed with patches
-to Relacy.
+## Caveat
+
+Relacy relies on a less than robust approach to implement its runtime: it replaces
+std:: names with its own versions, for example, std::atomic and std::mutex, as well
+as pthread_* APIs. As libstdc++/libc++ evolve, newer versions may not be compatible with
+Relacy. In these cases, changes to Relacy are needed to correctly intercept and replace
+std:: names.
+
+When the compilers and standard libraries release new versions, we will need to test the
+new versions can compile the stdexec Relacy tests before enabling the new compiler.
