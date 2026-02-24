@@ -117,6 +117,7 @@ namespace STDEXEC
   template <__completion_tag _CPO>
   struct get_completion_behavior_t;
   struct get_domain_t;
+  struct get_await_completion_adaptor_t;
 
   struct __debug_env_t;
 
@@ -127,8 +128,9 @@ namespace STDEXEC
   template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
   template <class _CPO = void>
-  extern get_completion_domain_t<_CPO> const get_completion_domain;
-  extern get_domain_t const                  get_domain;
+  extern get_completion_domain_t<_CPO> const  get_completion_domain;
+  extern get_domain_t const                   get_domain;
+  extern get_await_completion_adaptor_t const get_await_completion_adaptor;
 
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;

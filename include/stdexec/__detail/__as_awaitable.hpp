@@ -22,10 +22,12 @@
 #include "__concepts.hpp"
 #include "__connect.hpp"
 #include "__meta.hpp"
+#include "__queries.hpp"
 #include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
 
 #include <exception>
+#include <functional>  // for std::identity
 #include <system_error>
 #include <variant>
 
@@ -49,6 +51,23 @@ namespace STDEXEC
     template <class _Sender, class _Promise>
     using __value_t = __decay_t<
       __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value>, __msingle_or<void>>>;
+
+    inline constexpr auto __get_await_completion_adaptor =
+      __with_default{get_await_completion_adaptor, std::identity{}};
+
+    template <class _Sender>
+    using __adapt_completion_t = __result_of<__get_await_completion_adaptor, env_of_t<_Sender>>;
+
+    template <class _Sender>
+    constexpr auto __adapt_sender_for_await(_Sender&& __sndr)
+      noexcept(__nothrow_callable<__adapt_completion_t<_Sender>, _Sender>) -> decltype(auto)
+    {
+      return __get_await_completion_adaptor(get_env(__sndr))(static_cast<_Sender&&>(__sndr));
+    }
+
+    template <class _Sender>
+    using __adapted_sender_t =
+      __remove_rvalue_reference_t<__call_result_t<__adapt_completion_t<_Sender>, _Sender>>;
   }  // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
@@ -185,14 +204,23 @@ namespace STDEXEC
     };
 
     template <class _Sender, class _Promise>
-    concept __awaitable_sender = sender_in<_Sender, env_of_t<_Promise&>>
-                              && __minvocable_q<__detail::__value_t, _Sender, _Promise>
-                              && sender_to<_Sender, __receiver_t<_Sender, _Promise>>
-                              && requires(_Promise& __promise) {
-                                   {
-                                     __promise.unhandled_stopped()
-                                   } -> __std::convertible_to<__std::coroutine_handle<>>;
-                                 };
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    __sender_awaitable(_Sender&&, __std::coroutine_handle<_Promise>)
+      -> __sender_awaitable<_Promise, _Sender>;
+
+    template <class _Sender, class _Promise>
+    concept __awaitable_adapted_sender = sender_in<_Sender, env_of_t<_Promise&>>
+                                      && __minvocable_q<__detail::__value_t, _Sender, _Promise>
+                                      && sender_to<_Sender, __receiver_t<_Sender, _Promise>>
+                                      && requires(_Promise& __promise) {
+                                           {
+                                             __promise.unhandled_stopped()
+                                           } -> __std::convertible_to<__std::coroutine_handle<>>;
+                                         };
+
+    template <class _Sender, class _Promise>
+    concept __awaitable_sender =
+      __awaitable_adapted_sender<__detail::__adapted_sender_t<_Sender>, _Promise>;
 
     struct __unspecified
     {
@@ -214,32 +242,33 @@ namespace STDEXEC
     template <class _Tp, class _Promise>
     static consteval auto __get_declfn() noexcept
     {
-      using __as_awaitable::__unspecified;
+      using namespace __as_awaitable;
       if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>)
       {
         using __result_t = decltype(__declval<_Tp>().as_awaitable(__declval<_Promise&>()));
         constexpr bool __is_nothrow = noexcept(
           __declval<_Tp>().as_awaitable(__declval<_Promise&>()));
         return __declfn<__result_t, __is_nothrow>();
-        // NOLINTNEXTLINE(bugprone-branch-clone)
       }
-      else if constexpr (__awaitable<_Tp, __unspecified>)
-      {  // NOT __awaitable<_Tp, _Promise> !!
+      else if constexpr (__awaitable<_Tp, __unspecified>)  // NOT __awaitable<_Tp, _Promise> !!
+      {                                                    // NOLINT(bugprone-branch-clone)
         return __declfn<_Tp&&>();
       }
-      else if constexpr (__as_awaitable::__awaitable_sender<_Tp, _Promise>)
+      else if constexpr (__awaitable_sender<_Tp, _Promise>)
       {
-        using __result_t = __as_awaitable::__sender_awaitable<_Promise, _Tp>;
-        constexpr bool __is_nothrow =
-          __nothrow_constructible_from<__result_t, _Tp, __std::coroutine_handle<_Promise>>;
+        using __result_t            = decltype(  //
+          __sender_awaitable{__detail::__adapt_sender_for_await(__declval<_Tp>()),
+                             __std::coroutine_handle<_Promise>()});
+        constexpr bool __is_nothrow = noexcept(
+          __sender_awaitable{__detail::__adapt_sender_for_await(__declval<_Tp>()),
+                             __std::coroutine_handle<_Promise>()});
         return __declfn<__result_t, __is_nothrow>();
-        // NOT TO SPEC
       }
-      else if constexpr (__as_awaitable::__incompatible_sender<_Tp, _Promise>)
+      else if constexpr (__incompatible_sender<_Tp, _Promise>)
       {
-        // It's a sender, but it isn't a sender in the current promise's environment, so
-        // we can return the error type that results from trying to compute the sender's
-        // value type:
+        // NOT TO SPEC: It's a sender, but it isn't a sender in the current promise's
+        // environment, so we can return the error type that results from trying to
+        // compute the sender's value type:
         return __declfn<__detail::__value_t<_Tp, _Promise>>();
       }
       else
@@ -253,24 +282,24 @@ namespace STDEXEC
     auto operator()(_Tp&& __t, _Promise& __promise) const noexcept(noexcept(_DeclFn()))
       -> decltype(_DeclFn())
     {
-      using __as_awaitable::__unspecified;
+      using namespace __as_awaitable;
       if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>)
       {
         using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
         static_assert(__awaitable<__result_t, _Promise>);
         return static_cast<_Tp&&>(__t).as_awaitable(__promise);
-        // NOLINTNEXTLINE(bugprone-branch-clone)
       }
-      else if constexpr (__awaitable<_Tp, __unspecified>)
-      {  // NOT __awaitable<_Tp, _Promise> !!
+      else if constexpr (__awaitable<_Tp, __unspecified>)  // NOT __awaitable<_Tp, _Promise> !!
+      {                                                    // NOLINT(bugprone-branch-clone)
         return static_cast<_Tp&&>(__t);
       }
-      else if constexpr (__as_awaitable::__awaitable_sender<_Tp, _Promise>)
+      else if constexpr (__awaitable_sender<_Tp, _Promise>)
       {
         auto __hcoro = __std::coroutine_handle<_Promise>::from_promise(__promise);
-        return __as_awaitable::__sender_awaitable<_Promise, _Tp>{static_cast<_Tp&&>(__t), __hcoro};
+        return __sender_awaitable{__detail::__adapt_sender_for_await(static_cast<_Tp&&>(__t)),
+                                  __hcoro};
       }
-      else if constexpr (__as_awaitable::__incompatible_sender<_Tp, _Promise>)
+      else if constexpr (__incompatible_sender<_Tp, _Promise>)
       {
         return __detail::__value_t<_Tp, _Promise>();
       }
