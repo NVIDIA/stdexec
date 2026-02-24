@@ -602,6 +602,13 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
 #endif
 
+// Perhaps the stdlib lacks support for concepts
+#if __has_include(<concepts>) && __cpp_lib_concepts >= 2020'02L
+#  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 0
+#else
+#  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 1
+#endif
+
 #if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
 #  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
