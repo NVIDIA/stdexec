@@ -115,7 +115,7 @@ namespace STDEXEC
   template <class _CPO = void>
   struct get_completion_domain_t;
   template <__completion_tag _CPO>
-  struct get_completion_behavior_t;
+  struct __get_completion_behavior_t;
   struct get_domain_t;
   struct get_await_completion_adaptor_t;
 
@@ -150,7 +150,7 @@ namespace STDEXEC
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto get_completion_behavior() noexcept;
+  constexpr auto __get_completion_behavior() noexcept;
 
   template <class _Env>
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;

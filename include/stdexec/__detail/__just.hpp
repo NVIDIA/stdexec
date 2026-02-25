@@ -37,9 +37,9 @@ namespace STDEXEC
     template <class _SetTag>
     struct __attrs
     {
-      static constexpr auto query(get_completion_behavior_t<_SetTag>) noexcept
+      static constexpr auto query(__get_completion_behavior_t<_SetTag>) noexcept
       {
-        return completion_behavior::inline_completion;
+        return __completion_behavior::__inline_completion;
       }
     };
 

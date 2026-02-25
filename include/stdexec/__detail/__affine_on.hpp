@@ -33,11 +33,11 @@ namespace STDEXEC
   {
     // For a given completion tag, a sender is "already affine" if either it doesn't send
     // that tag, or if its completion behavior for that tag is already "inline" or
-    // "asynchronous_affine".
+    // "__asynchronous_affine".
     template <class _Tag, class _Sender, class _Env>
     concept __already_affine = (!__sends<_Tag, _Sender, _Env>)
-                            || (get_completion_behavior<_Tag, _Sender, _Env>()
-                                >= completion_behavior::asynchronous_affine);
+                            || (__get_completion_behavior<_Tag, _Sender, _Env>()
+                                >= __completion_behavior::__asynchronous_affine);
 
     // For the purpose of the affine_on algorithm, a sender that is "already affine" for
     // all three of the standard completion tags does not need to be adapted to become
@@ -119,11 +119,11 @@ namespace STDEXEC
     struct __attrs
     {
       template <class _Tag>
-      constexpr auto query(get_completion_behavior_t<_Tag>) const noexcept
+      constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
       {
         // FUTURE: when the child sender completes inline *and* the current scheduler also
-        // completes inline, we can return "inline" here instead of "asynchronous_affine".
-        return completion_behavior::asynchronous_affine;
+        // completes inline, we can return "inline" here instead of "__asynchronous_affine".
+        return __completion_behavior::__asynchronous_affine;
       }
     };
   }  // namespace __affine_on

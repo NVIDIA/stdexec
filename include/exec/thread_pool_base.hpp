@@ -475,9 +475,9 @@ namespace experimental::execution
 
       template <STDEXEC::__one_of<STDEXEC::set_value_t, STDEXEC::set_stopped_t> Tag>
       [[nodiscard]]
-      constexpr auto query(STDEXEC::get_completion_behavior_t<Tag>) const noexcept
+      constexpr auto query(STDEXEC::__get_completion_behavior_t<Tag>) const noexcept
       {
-        return STDEXEC::completion_behavior::asynchronous;
+        return STDEXEC::__completion_behavior::__asynchronous;
       }
 
       [[nodiscard]]

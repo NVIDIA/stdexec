@@ -27,9 +27,9 @@ namespace STDEXEC
   struct __inline_attrs
   {
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+    constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
     {
-      return completion_behavior::inline_completion;
+      return __completion_behavior::__inline_completion;
     }
     constexpr auto operator==(__inline_attrs const &) const noexcept -> bool = default;
   };

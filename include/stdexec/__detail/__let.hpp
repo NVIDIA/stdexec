@@ -500,11 +500,11 @@ namespace STDEXEC
         if constexpr (__minvocable<__result_sender_fn, _Ts...>)
         {
           using __sndr2_t = __mcall<__result_sender_fn, _Ts...>;
-          return STDEXEC::get_completion_behavior<_SetTag, __sndr2_t, _JoinEnv2...>();
+          return STDEXEC::__get_completion_behavior<_SetTag, __sndr2_t, _JoinEnv2...>();
         }
         else
         {
-          return completion_behavior::unknown;
+          return __completion_behavior::__unknown;
         }
       }
 
@@ -596,7 +596,7 @@ namespace STDEXEC
 
       template <class... _Env>
       [[nodiscard]]
-      constexpr auto query(get_completion_behavior_t<__set_tag_t>, _Env const &...) const noexcept
+      constexpr auto query(__get_completion_behavior_t<__set_tag_t>, _Env const &...) const noexcept
       {
         if constexpr (sender_in<_Sndr, __fwd_env_t<_Env>...>)
         {
@@ -610,18 +610,18 @@ namespace STDEXEC
           using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
 
           constexpr auto __pred_behavior =
-            STDEXEC::get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
+            STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
           constexpr auto __result_behavior =
             __gather_completions_t<__set_tag_t,
                                    __completions_t,
                                    __transform_fn,
                                    __qq<__common_completion_behavior_t>>();
 
-          return completion_behavior::weakest(__pred_behavior, __result_behavior);
+          return __completion_behavior::__weakest(__pred_behavior, __result_behavior);
         }
         else
         {
-          return completion_behavior::unknown;
+          return __completion_behavior::__unknown;
         }
       }
     };
