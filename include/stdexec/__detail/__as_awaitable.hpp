@@ -285,8 +285,6 @@ namespace STDEXEC
       using namespace __as_awaitable;
       if constexpr (__connect_await::__has_as_awaitable_member<_Tp, _Promise>)
       {
-        using __result_t = decltype(static_cast<_Tp&&>(__t).as_awaitable(__promise));
-        static_assert(__awaitable<__result_t, _Promise>);
         return static_cast<_Tp&&>(__t).as_awaitable(__promise);
       }
       else if constexpr (__awaitable<_Tp, __unspecified>)  // NOT __awaitable<_Tp, _Promise> !!
