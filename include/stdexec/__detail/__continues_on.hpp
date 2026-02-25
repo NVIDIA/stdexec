@@ -284,14 +284,14 @@ namespace STDEXEC
       //! the original sender.
       template <class _Tag, class... _Env>
       [[nodiscard]]
-      constexpr auto query(get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
+      constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
         using _SchSender = schedule_result_t<_Scheduler>;
         constexpr auto cb_sched =
-          STDEXEC::get_completion_behavior<_Tag, _SchSender, __fwd_env_t<_Env>...>();
+          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __fwd_env_t<_Env>...>();
         constexpr auto cb_sndr =
-          STDEXEC::get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
-        return completion_behavior::weakest(cb_sched, cb_sndr);
+          STDEXEC::__get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
+        return __completion_behavior::__weakest(cb_sched, cb_sndr);
       }
 
       //! @brief Forwards other queries to the underlying sender's environment.

@@ -365,10 +365,10 @@ namespace STDEXEC
 
       template <class _Tag, class... _Env>
       [[nodiscard]]
-      constexpr auto query(get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
+      constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        return completion_behavior::weakest(
-          STDEXEC::get_completion_behavior<_Tag, _Senders, _Env...>()...);
+        return __completion_behavior::__weakest(
+          STDEXEC::__get_completion_behavior<_Tag, _Senders, _Env...>()...);
       }
     };
 
@@ -377,15 +377,15 @@ namespace STDEXEC
     struct __attrs<>
     {
       [[nodiscard]]
-      constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+      constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
       {
-        return completion_behavior::inline_completion;
+        return __completion_behavior::__inline_completion;
       }
 
       [[nodiscard]]
-      constexpr auto query(get_completion_behavior_t<set_stopped_t>) const noexcept
+      constexpr auto query(__get_completion_behavior_t<set_stopped_t>) const noexcept
       {
-        return completion_behavior::inline_completion;
+        return __completion_behavior::__inline_completion;
       }
     };
 

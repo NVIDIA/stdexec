@@ -29,123 +29,119 @@
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////////////////
-  // get_completion_behavior
-  struct completion_behavior
+  // __get_completion_behavior
+  struct __completion_behavior
   {
-    enum class behavior : int
+    enum class __behavior : int
     {
-      unknown,  ///< The completion behavior is unknown.
-      asynchronous,  ///< The operation's completion will not always happen on the calling thread before `start()`
-                     ///< returns.
-      asynchronous_affine,  ///< Like asynchronous, but completes where it starts.
-      inline_completion  ///< The operation completes synchronously within `start()` on the same thread that called
-                         ///< `start()`.
+      __unknown,              ///< The completion behavior is unknown.
+      __asynchronous,         ///< The operation's completion will not always happen on
+                              ///< the calling thread before `start()` returns.
+      __asynchronous_affine,  ///< Like asynchronous, but completes where it starts.
+      __inline_completion     ///< The operation completes synchronously within `start()`
+                              ///< on the same thread that called `start()`.
     };
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    friend constexpr auto operator<=>(behavior __a, behavior __b) noexcept -> std::strong_ordering
+    friend constexpr auto
+    operator<=>(__behavior __a, __behavior __b) noexcept -> std::strong_ordering
     {
       return static_cast<int>(__a) <=> static_cast<int>(__b);
     }
 
    private:
-    template <behavior _CB>
-    using __constant_t = std::integral_constant<behavior, _CB>;
-
-    using __unknown_t             = __constant_t<behavior::unknown>;
-    using __asynchronous_t        = __constant_t<behavior::asynchronous>;
-    using __asynchronous_affine_t = __constant_t<behavior::asynchronous_affine>;
-    using __inline_completion_t   = __constant_t<behavior::inline_completion>;
+    template <__behavior _CB>
+    using __constant_t = std::integral_constant<__behavior, _CB>;
 
    public:
-    struct unknown_t : __unknown_t
-    {};
-    struct asynchronous_t : __asynchronous_t
-    {};
-    struct asynchronous_affine_t : __asynchronous_affine_t
-    {};
-    struct inline_completion_t : __inline_completion_t
-    {};
+    struct __unknown_t : __constant_t<__behavior::__unknown>
+    { };
+    struct __asynchronous_t : __constant_t<__behavior::__asynchronous>
+    { };
+    struct __asynchronous_affine_t : __constant_t<__behavior::__asynchronous_affine>
+    { };
+    struct __inline_completion_t : __constant_t<__behavior::__inline_completion>
+    { };
 
-    static constexpr unknown_t             unknown{};
-    static constexpr asynchronous_t        asynchronous{};
-    static constexpr asynchronous_affine_t asynchronous_affine{};
-    static constexpr inline_completion_t   inline_completion{};
+    static constexpr __unknown_t             __unknown{};
+    static constexpr __asynchronous_t        __asynchronous{};
+    static constexpr __asynchronous_affine_t __asynchronous_affine{};
+    static constexpr __inline_completion_t   __inline_completion{};
 
-    struct weakest_t
+    struct __weakest_t
     {
-      template <behavior... _CBs>
+      template <__behavior... _CBs>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(completion_behavior::__constant_t<_CBs>...) const noexcept
+      constexpr auto operator()(__completion_behavior::__constant_t<_CBs>...) const noexcept
       {
-        constexpr auto __behavior = static_cast<behavior>(
+        constexpr auto __behavior = static_cast<__completion_behavior::__behavior>(
           STDEXEC::__umin({static_cast<std::size_t>(_CBs)...}));
 
-        if constexpr (__behavior == completion_behavior::unknown)
+        if constexpr (__behavior == __completion_behavior::__unknown)
         {
-          return completion_behavior::unknown;
+          return __completion_behavior::__unknown;
         }
-        else if constexpr (__behavior == completion_behavior::asynchronous)
+        else if constexpr (__behavior == __completion_behavior::__asynchronous)
         {
-          return completion_behavior::asynchronous;
+          return __completion_behavior::__asynchronous;
         }
-        else if constexpr (__behavior == completion_behavior::asynchronous_affine)
+        else if constexpr (__behavior == __completion_behavior::__asynchronous_affine)
         {
-          return completion_behavior::asynchronous_affine;
+          return __completion_behavior::__asynchronous_affine;
         }
-        else if constexpr (__behavior == completion_behavior::inline_completion)
+        else if constexpr (__behavior == __completion_behavior::__inline_completion)
         {
-          return completion_behavior::inline_completion;
+          return __completion_behavior::__inline_completion;
         }
         STDEXEC_UNREACHABLE();
       }
     };
 
-    static constexpr weakest_t weakest{};
+    static constexpr __weakest_t __weakest{};
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  // get_completion_behavior: A sender can define this attribute to describe the sender's
+  // __get_completion_behavior: A sender can define this attribute to describe the sender's
   // completion behavior
   template <__completion_tag _Tag>
-  struct get_completion_behavior_t
+  struct __get_completion_behavior_t
   {
    private:
     template <class _Attrs, class... _Env>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     static constexpr auto __validate() noexcept
     {
-      using __result_t = __member_query_result_t<_Attrs, get_completion_behavior_t, _Env...>;
-      static_assert(__nothrow_member_queryable_with<_Attrs, get_completion_behavior_t, _Env...>,
-                    "The get_completion_behavior query must be noexcept.");
-      static_assert(__std::convertible_to<__result_t, completion_behavior::behavior>,
-                    "The get_completion_behavior query must return one of the static member "
+      using __result_t = __member_query_result_t<_Attrs, __get_completion_behavior_t, _Env...>;
+      static_assert(__nothrow_member_queryable_with<_Attrs, __get_completion_behavior_t, _Env...>,
+                    "The __get_completion_behavior query must be noexcept.");
+      static_assert(__std::convertible_to<__result_t, __completion_behavior::__behavior>,
+                    "The __get_completion_behavior query must return one of the static member "
                     "variables in "
-                    "execution::completion_behavior.");
+                    "execution::__completion_behavior.");
       return __result_t{};
     }
 
    public:
     template <class _Sig>
-    inline static constexpr get_completion_behavior_t (*signature)(_Sig) = nullptr;
+    inline static constexpr __get_completion_behavior_t (*signature)(_Sig) = nullptr;
 
     template <class _Attrs, class... _Env>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Attrs const &, _Env const &...) const noexcept
     {
       if constexpr (__member_queryable_with<_Attrs const &,
-                                            get_completion_behavior_t<_Tag>,
+                                            __get_completion_behavior_t<_Tag>,
                                             _Env...>)
       {
         return __validate<_Attrs, _Env...>();
       }
-      else if constexpr (__member_queryable_with<_Attrs const &, get_completion_behavior_t<_Tag>>)
+      else if constexpr (__member_queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
       {
         return __validate<_Attrs>();
       }
       else
       {
-        return completion_behavior::unknown;
+        return __completion_behavior::__unknown;
       }
     }
 
@@ -157,24 +153,61 @@ namespace STDEXEC
   };
 
   template <class... _CBs>
-  using __common_completion_behavior_t = __result_of<completion_behavior::weakest, _CBs...>;
+  using __common_completion_behavior_t = __result_of<__completion_behavior::__weakest, _CBs...>;
 
   template <class _Tag, class _Attrs, class... _Env>
   concept __completes_inline =
-    (__call_result_t<get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{}
-     == completion_behavior::inline_completion);
+    (__call_result_t<__get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{}
+     == __completion_behavior::__inline_completion);
 
   template <class _Tag, class _Attrs, class... _Env>
   concept __completes_where_it_starts =
-    (__call_result_t<get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{}
-     >= completion_behavior::asynchronous_affine);
+    (__call_result_t<__get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{}
+     >= __completion_behavior::__asynchronous_affine);
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-  constexpr auto get_completion_behavior() noexcept
+  constexpr auto __get_completion_behavior() noexcept
   {
     using __behavior_t =
-      __call_result_t<get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, _Env const &...>;
+      __call_result_t<__get_completion_behavior_t<_Tag>, env_of_t<_Sndr>, _Env const &...>;
     return __behavior_t{};
   }
+
+#if !defined(STDEXEC_DOXYGEN_INVOKED)
+
+  struct [[deprecated("Use exec::completion_behavior from "
+                      "<exec/completion_behavior.hpp> instead")]] completion_behavior
+  {
+    using unknown_t             = __completion_behavior::__unknown_t;
+    using asynchronous_t        = __completion_behavior::__asynchronous_t;
+    using asynchronous_affine_t = __completion_behavior::__asynchronous_affine_t;
+    using inline_completion_t   = __completion_behavior::__inline_completion_t;
+    using weakest_t             = __completion_behavior::__weakest_t;
+
+    static constexpr auto const &unknown             = __completion_behavior::__unknown;
+    static constexpr auto const &asynchronous        = __completion_behavior::__asynchronous;
+    static constexpr auto const &asynchronous_affine = __completion_behavior::__asynchronous_affine;
+    static constexpr auto const &inline_completion   = __completion_behavior::__inline_completion;
+    static constexpr auto const &weakest             = __completion_behavior::__weakest;
+  };
+
+  template <__completion_tag _Tag>
+  using get_completion_behavior_t [[deprecated("Use exec::get_completion_behavior from "
+                                               "<exec/completion_behavior.hpp> instead")]]
+  = __get_completion_behavior_t<_Tag>;
+
+  // clang-format off
+  template <class _Tag, class _Sndr, class... _Env>
+  [[deprecated("Use exec::get_completion_behavior from <exec/completion_behavior.hpp> "
+               "instead")]]
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_completion_behavior() noexcept
+  {
+    return __get_completion_behavior<_Tag, _Sndr, _Env...>();
+  }
+  // clang-format on
+
+#endif  // !defined(STDEXEC_DOXYGEN_INVOKED)
+
 }  // namespace STDEXEC

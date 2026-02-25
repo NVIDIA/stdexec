@@ -145,7 +145,7 @@ namespace STDEXEC
   template <class _Tag>
   inline constexpr bool __is_completion_query<get_completion_scheduler_t<_Tag>> = true;
   template <class _Tag>
-  inline constexpr bool __is_completion_query<get_completion_behavior_t<_Tag>> = true;
+  inline constexpr bool __is_completion_query<__get_completion_behavior_t<_Tag>> = true;
 }  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()

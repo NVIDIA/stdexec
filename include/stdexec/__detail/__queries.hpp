@@ -130,9 +130,9 @@ namespace STDEXEC
 
     template <class _Tag, class... _Env>
     [[nodiscard]]
-    constexpr auto query(get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
+    constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
     {
-      return get_completion_behavior<_Tag, _Sender, _Env...>();
+      return __get_completion_behavior<_Tag, _Sender, _Env...>();
     }
 
     template <__forwarding_query _Query, class... _Args>

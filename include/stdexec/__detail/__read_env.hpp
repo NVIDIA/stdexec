@@ -81,17 +81,17 @@ namespace STDEXEC
       template <class _Env>
         requires __callable<_Query, _Env>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_completion_behavior_t<set_value_t>, _Env const &) const noexcept
+      constexpr auto query(__get_completion_behavior_t<set_value_t>, _Env const &) const noexcept
       {
-        return completion_behavior::inline_completion;
+        return __completion_behavior::__inline_completion;
       }
 
       template <class _Env>
         requires __callable<_Query, _Env> && (!__nothrow_callable<_Query, _Env>)
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
+      constexpr auto query(__get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
       {
-        return completion_behavior::inline_completion;
+        return __completion_behavior::__inline_completion;
       }
     };
 

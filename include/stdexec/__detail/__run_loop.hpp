@@ -207,14 +207,14 @@ namespace STDEXEC
         constexpr auto query(get_completion_domain_t<set_stopped_t>) const noexcept;
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+        constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
         {
-          return completion_behavior::asynchronous;
+          return __completion_behavior::__asynchronous;
         }
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        constexpr auto query(get_completion_behavior_t<set_stopped_t>) const noexcept
+        constexpr auto query(__get_completion_behavior_t<set_stopped_t>) const noexcept
         {
-          return completion_behavior::asynchronous;
+          return __completion_behavior::__asynchronous;
         }
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
