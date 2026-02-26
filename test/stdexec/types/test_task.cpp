@@ -244,6 +244,31 @@ namespace
     CHECK(i == 42);
   }
 
+  auto nested() -> ex::task<int>
+  {
+    auto sched = co_await ex::read_env(ex::get_scheduler);
+    static_assert(std::same_as<decltype(sched), ex::task_scheduler>);
+    co_await ex::schedule(sched);
+    co_return 42;
+  }
+
+  auto test_task_awaits_inline_sndr_without_stack_overflow() -> ex::task<int>
+  {
+    int result = co_await nested();
+    for (int i = 0; i < 1'000'000; ++i)
+    {
+      result += co_await ex::just(42);
+    }
+    co_return result;
+  }
+
+  TEST_CASE("test task can await a just_int sender without stack overflow", "[types][task]")
+  {
+    auto t   = test_task_awaits_inline_sndr_without_stack_overflow();
+    auto [i] = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42'000'042);
+  }
+
   // FUTURE TODO: add support so that `co_await sndr` can return a reference.
   // auto test_task_awaits_just_ref_sender() -> ex::task<void> {
   //   int value = 42;

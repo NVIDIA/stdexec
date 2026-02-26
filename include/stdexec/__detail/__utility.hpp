@@ -351,14 +351,7 @@ namespace STDEXEC
     [[noreturn]]
     inline void unreachable()
     {
-      // Uses compiler specific extensions if possible.
-      // Even if no extension is used, undefined behavior is still raised by
-      // an empty function body and the noreturn attribute.
-#  if STDEXEC_MSVC()
-      __assume(false);  // MSVC
-#  else
-      __builtin_unreachable();  // everybody else
-#  endif
+      STDEXEC_UNREACHABLE();
     }
 #endif
   }  // namespace __std
