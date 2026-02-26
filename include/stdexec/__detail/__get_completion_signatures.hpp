@@ -298,10 +298,48 @@ namespace STDEXEC
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
+#if STDEXEC_GCC()
+  template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
+            && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
+  using __completion_signatures_of_t =
+    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
+#elif STDEXEC_EDG()
+
+  namespace __detail
+  {
+    template <class _Sender, class... _Env>
+    using __cmplsigs_of_t =
+      std::integral_constant<decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>()),
+                             STDEXEC::get_completion_signatures<_Sender, _Env...>()>::value_type;
+  }  // namespace __detail
+
+  template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
+            && __minvocable_q<__detail::__cmplsigs_of_t, _Sender, _Env...>
+  using __completion_signatures_of_t =
+    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
+#elif STDEXEC_MSVC()
+
+  // MSVC cannot handle a __completion_signatures_of_t alias template that requires
+  // get_completion_signatures to be a constant expression, even if we wrap the call to
+  // get_completion_signatures in an integral_constant like we do for EDG. So we skip
+  // checking the requirement.
+
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
+#else
+
+  template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
+  using __completion_signatures_of_t =
+    __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
+#endif
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures
