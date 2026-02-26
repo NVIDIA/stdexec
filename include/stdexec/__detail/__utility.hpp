@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <initializer_list>
 #include <memory>   // IWYU pragma: keep for std::start_lifetime_as
+#include <new>      // IWYU pragma: keep for std::launder
 #include <utility>  // IWYU pragma: keep for std::unreachable
 
 STDEXEC_PRAGMA_PUSH()
