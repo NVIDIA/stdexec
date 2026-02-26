@@ -204,6 +204,12 @@ namespace STDEXEC
       return __completions_t{};
     }
 
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept
+    {
+      return __env{};
+    }
+
    private:
     using __on_stopped_t = __task::__on_stopped<stop_source_type>;
 
@@ -220,6 +226,16 @@ namespace STDEXEC
     template <class _Rcvr>
     static constexpr bool __needs_stop_callback =
       __not_same_as<stop_token_type, stop_token_of_t<env_of_t<_Rcvr>>>;
+
+    struct __env
+    {
+      template <class _Tag>
+      [[nodiscard]]
+      constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
+      {
+        return __completion_behavior::__asynchronous_affine;
+      }
+    };
 
     struct __opstate_base
     {
@@ -291,7 +307,7 @@ namespace STDEXEC
         // If the receiver's stop token is different from the task's stop token, then we need
         // to set up a callback to request a stop on the task's stop source when the receiver's
         // stop token is triggered:
-        __stop_callback().__construct(get_stop_token(get_env(__rcvr_)),
+        __stop_callback().__construct(get_stop_token(STDEXEC::get_env(__rcvr_)),
                                       __on_stopped_t{__var::__get<0>(__coro_.promise().__stop_)});
       }
       __coro_.resume();
@@ -304,7 +320,7 @@ namespace STDEXEC
     {
       if constexpr (__std::constructible_from<__own_env_t, env_of_t<_Rcvr>>)
       {
-        return __own_env_t(get_env(__rcvr));
+        return __own_env_t(STDEXEC::get_env(__rcvr));
       }
       else
       {
@@ -320,7 +336,7 @@ namespace STDEXEC
       }
       else if constexpr (__std::constructible_from<_Env, env_of_t<_Rcvr>>)
       {
-        return _Env(get_env(__rcvr));
+        return _Env(STDEXEC::get_env(__rcvr));
       }
       else
       {
@@ -330,9 +346,9 @@ namespace STDEXEC
 
     static auto __mk_sched(_Rcvr const & __rcvr) noexcept -> scheduler_type
     {
-      if constexpr (requires { scheduler_type(get_scheduler(get_env(__rcvr))); })
+      if constexpr (requires { scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr))); })
       {
-        return scheduler_type(get_scheduler(get_env(__rcvr)));
+        return scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr)));
       }
       else
       {
@@ -398,11 +414,12 @@ namespace STDEXEC
       STDEXEC::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
     }
 
+    [[nodiscard]]
     auto __get_allocator() noexcept -> allocator_type final
     {
-      if constexpr (requires { allocator_type(get_allocator(get_env(__rcvr_))); })
+      if constexpr (requires { allocator_type(get_allocator(STDEXEC::get_env(__rcvr_))); })
       {
-        return allocator_type(get_allocator(get_env(__rcvr_)));
+        return allocator_type(get_allocator(STDEXEC::get_env(__rcvr_)));
       }
       else
       {
@@ -457,6 +474,7 @@ namespace STDEXEC
       }
     }
 
+    [[nodiscard]]
     auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
     {
       __state_->__canceled();
