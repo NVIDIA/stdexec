@@ -302,10 +302,18 @@ namespace STDEXEC
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
+#if STDEXEC_GCC()
+  template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
+            && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
+  using __completion_signatures_of_t =
+    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+#else
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
-    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+    __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
+#endif
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures

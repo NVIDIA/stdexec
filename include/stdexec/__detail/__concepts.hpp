@@ -97,6 +97,22 @@ namespace STDEXEC
   template <class _Ay, template <class...> class _Ty>
   concept __is_not_instance_of = !__is_instance_of<_Ay, _Ty>;
 
+  template <auto>
+  concept __constant = true;
+
+  namespace __detail
+  {
+    template <auto>
+    using __is_nttp = void;
+    template <class _Ty, template <_Ty> class>
+    using __nttp_test = void;
+  }  // namespace __detail
+
+  template <class _Ty>
+  concept __structural = requires { typename __detail::__nttp_test<_Ty, __detail::__is_nttp>; };
+
+  static_assert(__structural<int>);
+
   namespace __std
   {
 
