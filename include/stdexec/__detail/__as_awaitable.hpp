@@ -268,7 +268,7 @@ namespace STDEXEC
           STDEXEC::start(__opstate);
         }
 
-        if (this->__result_.index() == 0)
+        if (this->__result_.__is_valueless())
         {
           // The operation completed with set_stopped, so we need to call
           // unhandled_stopped() on the promise to propagate the stop signal. That will
