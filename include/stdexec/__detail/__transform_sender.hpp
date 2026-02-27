@@ -72,7 +72,7 @@ namespace STDEXEC
       }
 
       template <class _Sndr>
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
       constexpr auto
       operator()(_Sndr&& __sndr) const noexcept(__nothrow_move_constructible<_Sndr>) -> _Sndr
       {
@@ -118,7 +118,7 @@ namespace STDEXEC
     struct __compose
     {
       template <class _Sndr, class _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
       constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const
         noexcept(noexcept(_Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env)))
           -> decltype(_Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env))
@@ -139,7 +139,7 @@ namespace STDEXEC
    public:
     // NOT TO SPEC:
     template <class _Sndr>
-    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
     constexpr auto
     operator()(_Sndr&& __sndr) const noexcept(__nothrow_move_constructible<_Sndr>)  //
       -> _Sndr
@@ -148,7 +148,7 @@ namespace STDEXEC
     }
 
     template <class _Sndr, class _Env, auto _ImplFn = __impl_fn_t<_Sndr, _Env>{}>
-    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
     constexpr auto operator()(_Sndr && __sndr, _Env const & __env) const
       noexcept(noexcept(_ImplFn(static_cast<_Sndr&&>(__sndr), __env)))
         -> decltype(_ImplFn(static_cast<_Sndr&&>(__sndr), __env))

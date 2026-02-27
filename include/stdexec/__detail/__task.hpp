@@ -145,7 +145,7 @@ namespace STDEXEC
 
     template <class _Rcvr, class _Alloc>
     concept __has_allocator_compatible_with = requires(_Rcvr& __rcvr) {
-      _Alloc(get_allocator(get_env(__rcvr)));
+      _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__rcvr)));
     } || std::default_initializable<_Alloc>;
   }  // namespace __task
 
@@ -213,8 +213,7 @@ namespace STDEXEC
    private:
     using __on_stopped_t = __task::__on_stopped<stop_source_type>;
 
-    using __error_variant_t =
-      __error_types_t<error_types, __mbind_front_q<__variant, __monostate>, __q1<__decay_t>>;
+    using __error_variant_t = __error_types_t<error_types, __q<__variant>, __q1<__decay_t>>;
 
     using __completions_t = __concat_completion_signatures_t<
       completion_signatures<__detail::__single_value_sig_t<_Ty>, set_stopped_t()>,
@@ -241,10 +240,7 @@ namespace STDEXEC
     {
       constexpr explicit __opstate_base(scheduler_type __sched) noexcept
         : __sch_(std::move(__sched))
-      {
-        // Initialize the errors variant to monostate, the "no error" state:
-        __errors_.template emplace<0>();
-      }
+      {}
 
       virtual void __completed() noexcept                       = 0;
       virtual void __canceled() noexcept                        = 0;
@@ -265,7 +261,7 @@ namespace STDEXEC
   // task<T,E>::__opstate
   template <class _Ty, class _Env>
   template <class _Rcvr>
-  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate
+  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate final
     : __opstate_base
     , __if_c<__needs_stop_callback<_Rcvr>, __manual_lifetime<__stop_callback_t<_Rcvr>>, __empty>
   {
@@ -290,7 +286,7 @@ namespace STDEXEC
       }
       else
       {
-        __coro_.promise().__stop_.template emplace<1>(get_stop_token(get_env(__rcvr_)));
+        __coro_.promise().__stop_.template emplace<1>(get_stop_token(STDEXEC::get_env(__rcvr_)));
       }
     }
 
@@ -371,9 +367,7 @@ namespace STDEXEC
         __stop_callback().__destroy();
       }
 
-      std::printf("opstate completed, &__errors_ = %p\n", static_cast<void*>(&this->__errors_));
-
-      if (this->__errors_.index() != 0)
+      if (this->__errors_.index() != __variant_npos)
       {
         std::exchange(__coro_, {}).destroy();
         __visit(STDEXEC::set_error, std::move(this->__errors_), static_cast<_Rcvr&&>(__rcvr_));
