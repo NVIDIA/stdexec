@@ -123,7 +123,7 @@ namespace STDEXEC
         requires __queryable_with<_Attrs, __get_completion_behavior_t<_Tag>, _Env const &...>
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        constexpr auto __behavior = __get_completion_behavior<_Tag, _Attrs, _Env...>();
+        constexpr auto __behavior = __completion_behavior_of_v<_Tag, _Attrs, _Env...>;
 
         // When the child sender completes inline, we can return "inline" here instead of
         // "__asynchronous_affine".

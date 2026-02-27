@@ -24,7 +24,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {})
   {
