@@ -134,6 +134,12 @@ namespace STDEXEC
         , __continuation_{__continuation}
       {}
 
+      void set_stopped() noexcept
+      {
+        // no-op: the __result_ variant will remain engaged with the monostate
+        // alternative, which signals that the operation was stopped.
+      }
+
       // Forward get_env query to the coroutine promise
       constexpr auto get_env() const noexcept -> env_of_t<_Promise&>
       {
@@ -192,73 +198,62 @@ namespace STDEXEC
     using __async_receiver_t = __async_receiver<_Promise, __detail::__value_t<_Sender, _Promise>>;
 
     template <class _Value>
-    struct __resume_visitor
+    struct __sender_awaitable_base
     {
-      [[noreturn]]
-      auto operator()(std::monostate) const noexcept -> _Value
+      static constexpr auto await_ready() noexcept -> bool
       {
-        __std::unreachable();
+        return false;
       }
 
-      [[noreturn]]
-      auto operator()(std::exception_ptr&& __eptr) const -> _Value
+      constexpr auto await_resume() -> _Value
       {
-        std::rethrow_exception(static_cast<std::exception_ptr&&>(__eptr));
+        // If the operation completed with set_stopped (as denoted by the monostate
+        // alternative being active), we should not be resuming this coroutine at all.
+        STDEXEC_ASSERT(__result_.index() != 0);
+        if (__result_.index() == 2)
+        {
+          // The operation completed with set_error, so we need to rethrow the exception.
+          std::rethrow_exception(std::move(std::get<2>(__result_)));
+        }
+        // The operation completed with set_value, so we can just return the value, which
+        // may be void.
+        return static_cast<std::add_rvalue_reference_t<_Value>>(std::get<1>(__result_));
       }
 
-      constexpr auto operator()([[maybe_unused]] __value_or_void_t<_Value>&& __value) const
-        noexcept(__nothrow_move_constructible<__value_or_void_t<_Value>>) -> _Value
-      {
-        return static_cast<std::add_rvalue_reference_t<_Value>>(__value);
-      }
+     protected:
+      __expected_t<_Value> __result_{};
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __sender_awaitable: awaitable type returned by as_awaitable when given a sender
     // that does not have an as_awaitable member function
     template <class _Promise, class _Sender>
-    struct __sender_awaitable
+    struct __sender_awaitable : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>>
     {
-      using __value_t = __detail::__value_t<_Sender, _Promise>;
-
       constexpr explicit __sender_awaitable(_Sender&&                         __sndr,
                                             __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_connectable<_Sender, __receiver_t>)
-        : __opstate_(
-            STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(__result_, __hcoro)))
+        : __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr),
+                                      __receiver_t(this->__result_, __hcoro)))
       {}
-
-      [[nodiscard]]
-      static constexpr auto await_ready() noexcept -> bool
-      {
-        return false;
-      }
 
       constexpr void await_suspend(__std::coroutine_handle<_Promise>) noexcept
       {
         STDEXEC::start(__opstate_);
       }
 
-      constexpr auto await_resume() -> __value_t
-      {
-        return std::visit(__resume_visitor<__value_t>{}, std::move(__result_));
-      }
-
      private:
       using __receiver_t = __async_receiver_t<_Sender, _Promise>;
       connect_result_t<_Sender, __receiver_t> __opstate_;
-      __expected_t<__value_t>                 __result_{};
     };
 
-    // When the sender is known to complete inline (but can never complete with
-    // set_stopped), we can connect and start the operation in await_resume.
+    // When the sender is known to complete inline, we can connect and start the operation
+    // in await_suspend.
     template <class _Promise, class _Sender>
       requires __completes_inline<_Sender, env_of_t<_Promise&>>
-            && __never_sends<set_stopped_t, _Sender, env_of_t<_Promise&>>
     struct __sender_awaitable<_Promise, _Sender>
+      : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>>
     {
-      using __value_t = __detail::__value_t<_Sender, _Promise>;
-
       constexpr explicit __sender_awaitable(_Sender&&                         sndr,
                                             __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_move_constructible<_Sender>)
@@ -266,31 +261,40 @@ namespace STDEXEC
         , __hcoro_(__hcoro)
       {}
 
-      static constexpr bool await_ready() noexcept
+      bool await_suspend(__std::coroutine_handle<>)
       {
-        return true;
-      }
+        {
+          auto __opstate = STDEXEC::connect(static_cast<_Sender&&>(__sndr_),
+                                            __receiver_t(this->__result_, __hcoro_));
+          // The following call to start will complete synchronously, writing its result
+          // into the __result_ variant.
+          STDEXEC::start(__opstate);
+        }
 
-      [[noreturn]]
-      void await_suspend(__std::coroutine_handle<>) noexcept
-      {
-        __std::unreachable();
-      }
+        if (this->__result_.index() == 0)
+        {
+          // The operation completed with set_stopped, so we need to call
+          // unhandled_stopped() on the promise to propagate the stop signal. That will
+          // result in the coroutine being torn down, so beware. We then resume the
+          // returned coroutine handle (which may be a noop_coroutine).
+          __std::coroutine_handle<> __on_stopped = __hcoro_.promise().unhandled_stopped();
+          __on_stopped.resume();
 
-      constexpr auto await_resume() -> __value_t
-      {
-        auto __opstate = STDEXEC::connect(static_cast<_Sender&&>(__sndr_),
-                                          __receiver_t(__result_, __hcoro_));
-        // The following call to start will complete synchronously.
-        STDEXEC::start(__opstate);
-        return std::visit(__resume_visitor<__value_t>{}, std::move(__result_));
+          // By returning true, we indicate that the coroutine should not be resumed
+          // (because it no longer exists).
+          return true;
+        }
+
+        // The operation completed with set_value or set_error, so we can just resume the
+        // current coroutine. await_resume with either return the value or throw as
+        // appropriate.
+        return false;
       }
 
      private:
       using __receiver_t = __sync_receiver_t<_Sender, _Promise>;
       _Sender                           __sndr_;
       __std::coroutine_handle<_Promise> __hcoro_;
-      __expected_t<__value_t>           __result_{};
     };
 
     template <class _Sender, class _Promise>
