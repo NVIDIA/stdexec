@@ -24,19 +24,39 @@ namespace experimental::execution
 {
   struct completion_behavior
   {
-    using unknown_t             = STDEXEC::__completion_behavior::__unknown_t;
-    using asynchronous_t        = STDEXEC::__completion_behavior::__asynchronous_t;
-    using asynchronous_affine_t = STDEXEC::__completion_behavior::__asynchronous_affine_t;
-    using inline_completion_t   = STDEXEC::__completion_behavior::__inline_completion_t;
-    using weakest_t             = STDEXEC::__completion_behavior::__weakest_t;
+   private:
+    using __cb_t = STDEXEC::__completion_behavior;
 
-    static constexpr auto const &unknown      = STDEXEC::__completion_behavior::__unknown;
-    static constexpr auto const &asynchronous = STDEXEC::__completion_behavior::__asynchronous;
-    static constexpr auto const &asynchronous_affine =
-      STDEXEC::__completion_behavior::__asynchronous_affine;
-    static constexpr auto const &inline_completion =
-      STDEXEC::__completion_behavior::__inline_completion;
-    static constexpr auto const &weakest = STDEXEC::__completion_behavior::__weakest;
+   public:
+    using unknown_t             = __cb_t::__unknown_t;
+    using asynchronous_t        = __cb_t::__asynchronous_t;
+    using asynchronous_affine_t = __cb_t::__asynchronous_affine_t;
+    using inline_completion_t   = __cb_t::__inline_completion_t;
+    using common_t              = __cb_t::__common_t;
+
+    static constexpr auto const &unknown             = __cb_t::__unknown;
+    static constexpr auto const &asynchronous        = __cb_t::__asynchronous;
+    static constexpr auto const &asynchronous_affine = __cb_t::__asynchronous_affine;
+    static constexpr auto const &inline_completion   = __cb_t::__inline_completion;
+    static constexpr auto const &common              = __cb_t::__common;
+
+    template <class _CB>
+    static constexpr bool is_affine(_CB cb) noexcept
+    {
+      return __cb_t::__is_affine(cb);
+    }
+
+    template <class _CB>
+    static constexpr bool is_always_asynchronous(_CB cb) noexcept
+    {
+      return __cb_t::__is_always_asynchronous(cb);
+    }
+
+    template <class _CB>
+    static constexpr bool may_be_asynchronous(_CB cb) noexcept
+    {
+      return __cb_t::__may_be_asynchronous(cb);
+    }
   };
 
   template <STDEXEC::__completion_tag _Tag>
@@ -46,7 +66,7 @@ namespace experimental::execution
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto get_completion_behavior() noexcept
   {
-    return STDEXEC::__get_completion_behavior<_Tag, _Sndr, _Env...>();
+    return STDEXEC::__completion_behavior_of_v<_Tag, STDEXEC::env_of_t<_Sndr>, _Env...>();
   }
 }  // namespace experimental::execution
 

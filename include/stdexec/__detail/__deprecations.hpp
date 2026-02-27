@@ -25,9 +25,6 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t const & execute_may_block_caller =
     __execute_may_block_caller;
 
-  [[deprecated("use STDEXEC::__completion_behavior::__weakest instead")]]
-  inline constexpr auto const & min = __completion_behavior::__weakest;
-
   using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
 
   using dependent_completions [[deprecated("use dependent_sender_error instead of "
