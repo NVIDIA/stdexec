@@ -35,9 +35,9 @@ namespace STDEXEC
     // that tag, or if its completion behavior for that tag is already "inline" or
     // "__asynchronous_affine".
     template <class _Tag, class _Sender, class _Env>
-    concept __already_affine = (!__sends<_Tag, _Sender, _Env>)
-                            || (__get_completion_behavior<_Tag, _Sender, _Env>()
-                                >= __completion_behavior::__asynchronous_affine);
+    concept __already_affine = __never_sends<_Tag, _Sender, _Env>
+                            || __completion_behavior::__is_affine(
+                                 __get_completion_behavior<_Tag, _Sender, _Env>());
 
     // For the purpose of the affine_on algorithm, a sender that is "already affine" for
     // all three of the standard completion tags does not need to be adapted to become
@@ -123,12 +123,11 @@ namespace STDEXEC
         requires __queryable_with<_Attrs, __get_completion_behavior_t<_Tag>, _Env const &...>
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        using __behavior_t =
-          __query_result_t<_Attrs, __get_completion_behavior_t<_Tag>, _Env const &...>;
+        constexpr auto __behavior = __get_completion_behavior<_Tag, _Attrs, _Env...>();
 
         // When the child sender completes inline, we can return "inline" here instead of
         // "__asynchronous_affine".
-        if constexpr (__behavior_t::value == __completion_behavior::__inline_completion)
+        if constexpr (__behavior == __completion_behavior::__inline_completion)
         {
           return __completion_behavior::__inline_completion;
         }

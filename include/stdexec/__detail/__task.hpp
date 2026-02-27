@@ -232,7 +232,8 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
       {
-        return __completion_behavior::__asynchronous_affine;
+        return __completion_behavior::__asynchronous_affine
+             | __completion_behavior::__inline_completion;
       }
     };
 
