@@ -145,7 +145,7 @@ namespace STDEXEC
 
     template <class _Rcvr, class _Alloc>
     concept __has_allocator_compatible_with = requires(_Rcvr& __rcvr) {
-      _Alloc(get_allocator(get_env(__rcvr)));
+      _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__rcvr)));
     } || std::default_initializable<_Alloc>;
   }  // namespace __task
 
@@ -286,7 +286,7 @@ namespace STDEXEC
       }
       else
       {
-        __coro_.promise().__stop_.template emplace<1>(get_stop_token(get_env(__rcvr_)));
+        __coro_.promise().__stop_.template emplace<1>(get_stop_token(STDEXEC::get_env(__rcvr_)));
       }
     }
 
