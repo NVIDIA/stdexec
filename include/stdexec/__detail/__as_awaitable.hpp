@@ -254,18 +254,16 @@ namespace STDEXEC
     struct __sender_awaitable<_Promise, _Sender>
       : __sender_awaitable_base<__detail::__value_t<_Sender, _Promise>>
     {
-      constexpr explicit __sender_awaitable(_Sender&&                         sndr,
-                                            __std::coroutine_handle<_Promise> __hcoro)
+      constexpr explicit __sender_awaitable(_Sender&& sndr, __ignore)
         noexcept(__nothrow_move_constructible<_Sender>)
         : __sndr_(static_cast<_Sender&&>(sndr))
-        , __hcoro_(__hcoro)
       {}
 
-      bool await_suspend(__std::coroutine_handle<>)
+      bool await_suspend(__std::coroutine_handle<_Promise> __hcoro)
       {
         {
           auto __opstate = STDEXEC::connect(static_cast<_Sender&&>(__sndr_),
-                                            __receiver_t(this->__result_, __hcoro_));
+                                            __receiver_t(this->__result_, __hcoro));
           // The following call to start will complete synchronously, writing its result
           // into the __result_ variant.
           STDEXEC::start(__opstate);
@@ -277,7 +275,7 @@ namespace STDEXEC
           // unhandled_stopped() on the promise to propagate the stop signal. That will
           // result in the coroutine being torn down, so beware. We then resume the
           // returned coroutine handle (which may be a noop_coroutine).
-          __std::coroutine_handle<> __on_stopped = __hcoro_.promise().unhandled_stopped();
+          __std::coroutine_handle<> __on_stopped = __hcoro.promise().unhandled_stopped();
           __on_stopped.resume();
 
           // By returning true, we indicate that the coroutine should not be resumed
@@ -293,8 +291,7 @@ namespace STDEXEC
 
      private:
       using __receiver_t = __sync_receiver_t<_Sender, _Promise>;
-      _Sender                           __sndr_;
-      __std::coroutine_handle<_Promise> __hcoro_;
+      _Sender __sndr_;
     };
 
     template <class _Sender, class _Promise>
