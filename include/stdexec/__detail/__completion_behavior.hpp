@@ -86,7 +86,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     friend constexpr auto operator|(__constant_t<_Left>, __constant_t<_Right>) noexcept
     {
-      return __constant_t<__behavior(std::uint8_t(_Left) | std::uint8_t(_Right))>();
+      return __constant_t<static_cast<__behavior>(static_cast<std::uint8_t>(_Left)
+                                                  | static_cast<std::uint8_t>(_Right))>();
     }
 
     template <__behavior _Left, __behavior _Right>
@@ -100,21 +101,21 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     static constexpr bool __is_affine(__constant_t<_CB>) noexcept
     {
-      return !(std::uint8_t(_CB) & __not_affine_);
+      return !(static_cast<std::uint8_t>(_CB) & __not_affine_);
     }
 
     template <__behavior _CB>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     static constexpr bool __is_always_asynchronous(__constant_t<_CB>) noexcept
     {
-      return !(std::uint8_t(_CB) & __inline_);
+      return !(static_cast<std::uint8_t>(_CB) & __inline_);
     }
 
     template <__behavior _CB>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     static constexpr bool __may_be_asynchronous(__constant_t<_CB>) noexcept
     {
-      return bool(std::uint8_t(_CB) & __async_);
+      return bool(static_cast<std::uint8_t>(_CB) & __async_);
     }
 
     struct __common_t
