@@ -308,7 +308,25 @@ namespace STDEXEC
             && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
+#elif STDEXEC_EDG() || STDEXEC_MSVC()
+
+  namespace __detail
+  {
+    template <class _Sender, class... _Env>
+    using __cmplsigs_of_t =
+      std::integral_constant<decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>()),
+                             STDEXEC::get_completion_signatures<_Sender, _Env...>()>::value_type;
+  }  // namespace __detail
+
+  template <class _Sender, class... _Env>
+    requires enable_sender<__decay_t<_Sender>>
+            && __minvocable_q<__detail::__cmplsigs_of_t, _Sender, _Env...>
+  using __completion_signatures_of_t =
+    decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
+
 #else
+
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
