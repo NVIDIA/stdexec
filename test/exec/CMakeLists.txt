@@ -44,7 +44,7 @@ set(exec_test_sources
     test_sequence.cpp
     test_static_thread_pool.cpp
     test_just_from.cpp
-    test_fork.cpp
+    test_fork_join.cpp
     test_cpo_split.cpp
     test_cpo_ensure_started.cpp
     test_execute.cpp
