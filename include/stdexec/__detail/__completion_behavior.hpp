@@ -66,13 +66,13 @@ namespace STDEXEC
 
    public:
     struct __unknown_t : __constant_t<__behavior::__unknown>
-    { };
+    {};
     struct __asynchronous_t : __constant_t<__behavior::__asynchronous>
-    { };
+    {};
     struct __asynchronous_affine_t : __constant_t<__behavior::__asynchronous_affine>
-    { };
+    {};
     struct __inline_completion_t : __constant_t<__behavior::__inline_completion>
-    { };
+    {};
 
     static constexpr __unknown_t             __unknown{};
     static constexpr __asynchronous_t        __asynchronous{};
