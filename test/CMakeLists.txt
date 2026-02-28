@@ -70,6 +70,7 @@ set(stdexec_test_sources
     stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
     stdexec/types/test_counting_scopes.cpp

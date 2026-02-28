@@ -600,7 +600,7 @@ namespace STDEXEC
       {
         if constexpr (sender_in<_Sndr, __fwd_env_t<_Env>...>)
         {
-          // The completion behavior of let_value(sndr, fn) is the weakest completion
+          // The completion behavior of let_value(sndr, fn) is the union of the completion
           // behavior of sndr and all the senders that fn can potentially produce. (MSVC
           // needs the constexpr computation broken up, hence the local variables.)
           using __transform_fn =
@@ -611,13 +611,13 @@ namespace STDEXEC
 
           constexpr auto __pred_behavior =
             STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
-          constexpr auto __result_behavior =
-            __gather_completions_t<__set_tag_t,
-                                   __completions_t,
-                                   __transform_fn,
-                                   __qq<__common_completion_behavior_t>>();
+          constexpr auto __result_behaviors = __gather_completions_t<
+            __set_tag_t,
+            __completions_t,
+            __transform_fn,
+            __mbind_front_q<__call_result_t, __completion_behavior::__common_t>>();
 
-          return __completion_behavior::__weakest(__pred_behavior, __result_behavior);
+          return __pred_behavior | __result_behaviors;
         }
         else
         {

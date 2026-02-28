@@ -367,7 +367,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        return __completion_behavior::__weakest(
+        return __completion_behavior::__common(
           STDEXEC::__get_completion_behavior<_Tag, _Senders, _Env...>()...);
       }
     };
