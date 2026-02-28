@@ -144,13 +144,14 @@ namespace STDEXEC
                  _WITH_PRETTY_SENDER_<_Sender>,
                  _WITH_ENVIRONMENT_(_Env)...>;
 
-#if __cpp_lib_constexpr_exceptions                                                                 \
-  >= 2025'02L  // constexpr exception types, https://wg21.link/p3378
+#if __cpp_lib_constexpr_exceptions >= 2025'02L
 
+  // constexpr stdlib exception types, https://wg21.link/p3378
   using __exception = ::std::exception;
 
-#elif __cpp_constexpr >= 2024'11L  // constexpr virtual functions
+#elif __cpp_constexpr >= 2019'07L
 
+  // constexpr virtual functions
   struct __exception
   {
     constexpr __exception() noexcept = default;
@@ -163,8 +164,9 @@ namespace STDEXEC
     }
   };
 
-#else  // no constexpr virtual functions:
+#else
 
+  // no constexpr virtual functions
   struct __exception
   {
     constexpr __exception() noexcept = default;
@@ -176,23 +178,13 @@ namespace STDEXEC
     }
   };
 
-#endif  // __cpp_lib_constexpr_exceptions >= 2025'02L
+#endif
 
-  template <class _Derived>
   struct __compile_time_error : __exception
-  {
-    constexpr __compile_time_error() = default;  // NOLINT (bugprone-crtp-constructor-accessibility)
-
-    [[nodiscard]]
-    constexpr auto what() const noexcept -> char const *
-    {
-      return static_cast<_Derived const *>(this)->what();
-    }
-  };
+  { };
 
   template <class _Data, class... _What>
-  struct __sender_type_check_failure  //
-    : __compile_time_error<__sender_type_check_failure<_Data, _What...>>
+  struct __sender_type_check_failure : __compile_time_error
   {
     static_assert(std::is_nothrow_move_constructible_v<_Data>,
                   "The data member of sender_type_check_failure must be nothrow move "
@@ -204,34 +196,24 @@ namespace STDEXEC
       : __data_(static_cast<_Data &&>(data))
     {}
 
-   private:
-    friend struct __compile_time_error<__sender_type_check_failure>;
-
     [[nodiscard]]
-    constexpr auto what() const noexcept -> char const *
+    constexpr auto what() const noexcept -> char const *  // NOLINT(modernize-use-override)
     {
       return "This sender is not well-formed. It does not meet the requirements of a sender type.";
     }
 
+    // public so that __sender_type_check_failure is a structural type
     _Data __data_{};
   };
 
-  struct dependent_sender_error : __compile_time_error<dependent_sender_error>
+  struct dependent_sender_error : __compile_time_error
   {
-    constexpr explicit dependent_sender_error(char const *what) noexcept
-      : what_(what)
-    {}
-
-   private:
-    friend struct __compile_time_error<dependent_sender_error>;
-
     [[nodiscard]]
-    constexpr auto what() const noexcept -> char const *
+    constexpr auto what() const noexcept -> char const *  // NOLINT(modernize-use-override)
     {
-      return what_;
+      return "This sender needs to know its execution environment before it can "
+             "know how it will complete.";
     }
-
-    char const *what_;
   };
 
   // A specialization of _ERROR_ to be used to report dependent sender. It inherits
@@ -257,11 +239,8 @@ namespace STDEXEC
     using __errors                 = _ERROR_;
     using __all                    = _ERROR_;
 
-    constexpr _ERROR_() noexcept
-      : dependent_sender_error{"This sender needs to know its execution environment before it can "
-                               "know how it will "
-                               "complete."}
-    {}
+    constexpr _ERROR_()  = default;
+    constexpr ~_ERROR_() = default;
 
     STDEXEC_ATTRIBUTE(host, device) constexpr auto operator+() const -> _ERROR_;
 
@@ -273,6 +252,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator,(const _ERROR_<Other...> &) const -> _ERROR_<Other...>;
   };
+
+  static_assert(__structural<_ERROR_<dependent_sender_error>>);
 
   // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that
   // it will get propagated correctly through various metafunctions.
