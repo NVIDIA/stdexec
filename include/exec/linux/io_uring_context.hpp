@@ -760,7 +760,7 @@ namespace experimental::execution
     template <class _Op>
     concept __stoppable_task = __io_task<_Op> && requires(_Op& __op) {
       {
-        static_cast<_Op &&>(__op).receiver()
+        static_cast<_Op&&>(__op).receiver()
       } noexcept -> STDEXEC::receiver_of<STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>>;
     };
 
