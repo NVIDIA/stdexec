@@ -102,7 +102,7 @@ namespace STDEXEC
     template <class _ResultType, class _Receiver, class _Env2>
     struct __opstate_base
     {
-      _Receiver   __rcvr_{};
+      _Receiver __rcvr_{};
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Env2 const __env2_{};
       _ResultType __result_{__no_init};  // __variant<__tuple<set_tag, args...>, ...>
@@ -234,10 +234,8 @@ namespace STDEXEC
                           _Receiver,
                           __env2_t<_CvInitialSender, _Receiver>>
     {
-      using __base_t            = __final_opstate_t<_CvInitialSender,
-                                                    _CvFinalSender,
-                                                    _Receiver,
-                                                    __env2_t<_CvInitialSender, _Receiver>>;
+      using __env2_t = __final::__env2_t<_CvInitialSender, _Receiver>;
+      using __base_t = __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver, __env2_t>;
       using __initial_results_t = __base_t::__results_t;
 
       constexpr explicit __opstate(_CvInitialSender&& __initial,
@@ -259,7 +257,6 @@ namespace STDEXEC
       }
 
      private:
-      using __env2_t = __final::__env2_t<_CvInitialSender, _Receiver>;
       using __initial_receiver_t =
         __initial_receiver<_CvFinalSender, __initial_results_t, _Receiver, __env2_t>;
       using __initial_opstate_t = connect_result_t<_CvInitialSender, __initial_receiver_t>;

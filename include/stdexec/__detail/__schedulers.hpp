@@ -390,7 +390,7 @@ namespace STDEXEC
 
     constexpr explicit __sched_env(_Scheduler __sch, _Env const &...) noexcept
       : __sched_{std::move(__sch)}
-    { }
+    {}
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto query(get_scheduler_t) const noexcept
