@@ -396,7 +396,7 @@ namespace STDEXEC
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_domain_t) const noexcept -> __call_result_t<get_domain_t, _Scheduler>
+    constexpr auto query(get_domain_t) const noexcept -> __detail::__scheduler_domain_t<_Scheduler>
     {
       return {};
     }
