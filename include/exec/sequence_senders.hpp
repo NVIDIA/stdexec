@@ -124,7 +124,7 @@ namespace experimental::execution
   {
     template <class _Receiver, class _Item>
     concept __has_set_next_member = requires(_Receiver& __rcvr, _Item&& __item) {
-      __rcvr.set_next(static_cast<_Item &&>(__item));
+      __rcvr.set_next(static_cast<_Item&&>(__item));
     };
 
     // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
@@ -426,8 +426,8 @@ namespace experimental::execution
   template <class _Sequence, class... _Env>
   concept has_sequence_item_types = STDEXEC::sender_in<_Sequence, _Env...>  //
                                  && requires(_Sequence&& __sequence, _Env&&... __env) {
-                                      get_item_types(static_cast<_Sequence &&>(__sequence),
-                                                     static_cast<_Env &&>(__env)...);
+                                      get_item_types(static_cast<_Sequence&&>(__sequence),
+                                                     static_cast<_Env&&>(__env)...);
                                     };
 
   template <class _Sequence, class... _Env>
@@ -518,8 +518,8 @@ namespace experimental::execution
   concept sequence_sender_in = sequence_sender<_Sequence, _Env...>
                             && requires(_Sequence&& __sequence, _Env&&... __env) {
                                  {
-                                   get_item_types(static_cast<_Sequence &&>(__sequence),
-                                                  static_cast<_Env &&>(__env)...)
+                                   get_item_types(static_cast<_Sequence&&>(__sequence),
+                                                  static_cast<_Env&&>(__env)...)
                                  } -> __well_formed_item_types<_Sequence>;
                                };
 
@@ -929,8 +929,8 @@ namespace experimental::execution
   template <class _Sequence, class _Receiver>
   concept sequence_sender_to = sequence_receiver_from<_Receiver, _Sequence>
                             && requires(_Sequence&& __sequence, _Receiver&& __rcvr) {
-                                 subscribe(static_cast<_Sequence &&>(__sequence),
-                                           static_cast<_Receiver &&>(__rcvr));
+                                 subscribe(static_cast<_Sequence&&>(__sequence),
+                                           static_cast<_Receiver&&>(__rcvr));
                                };
 
   template <class _Receiver>

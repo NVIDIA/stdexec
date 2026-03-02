@@ -35,23 +35,24 @@ namespace STDEXEC
       requires __callable<_Fun1, _Ts...> && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr auto
-    operator()(_Ts&&... __ts) && noexcept(__callable<_Fun1, _Ts...>
+    operator()(_Ts &&...__ts) && noexcept(__callable<_Fun1, _Ts...>
                                           && __callable<_Fun0, __call_result_t<_Fun1, _Ts...>>)
       -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>>
     {
-      return static_cast<_Fun0&&>(__t0_)(static_cast<_Fun1&&>(__t1_)(static_cast<_Ts&&>(__ts)...));
+      return static_cast<_Fun0 &&>(__t0_)(
+        static_cast<_Fun1 &&>(__t1_)(static_cast<_Ts &&>(__ts)...));
     }
 
     template <class... _Ts>
       requires __callable<_Fun1 const &, _Ts...>
             && __callable<_Fun0 const &, __call_result_t<_Fun1 const &, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_Ts&&... __ts) const & noexcept(
+    constexpr auto operator()(_Ts &&...__ts) const & noexcept(
       __callable<_Fun1 const &, _Ts...>
       && __callable<_Fun0 const &, __call_result_t<_Fun1 const &, _Ts...>>)
       -> __call_result_t<_Fun0, __call_result_t<_Fun1, _Ts...>>
     {
-      return __t0_(__t1_(static_cast<_Ts&&>(__ts)...));
+      return __t0_(__t1_(static_cast<_Ts &&>(__ts)...));
     }
   };
 
@@ -62,7 +63,7 @@ namespace STDEXEC
     constexpr auto operator()(_Fun0 __fun0, _Fun1 __fun1) const
       noexcept(__nothrow_move_constructible<_Fun0, _Fun1>) -> __composed<_Fun0, _Fun1>
     {
-      return {static_cast<_Fun0&&>(__fun0), static_cast<_Fun1&&>(__fun1)};
+      return {static_cast<_Fun0 &&>(__fun0), static_cast<_Fun1 &&>(__fun1)};
     }
   } __compose{};
 
@@ -83,10 +84,10 @@ namespace STDEXEC
     {
       template <class _MbrPtr, class _Ty>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty&& __ty) const noexcept
-        -> decltype(((static_cast<_Ty&&>(__ty)).*__mem_ptr))
+      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty &&__ty) const noexcept
+        -> decltype(((static_cast<_Ty &&>(__ty)).*__mem_ptr))
       {
-        return ((static_cast<_Ty&&>(__ty)).*__mem_ptr);
+        return ((static_cast<_Ty &&>(__ty)).*__mem_ptr);
       }
     };
 
@@ -107,10 +108,10 @@ namespace STDEXEC
     {
       template <class _MbrPtr, class _Ty>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty&& __ty) const noexcept
-        -> decltype(((*static_cast<_Ty&&>(__ty)).*__mem_ptr))
+      constexpr auto operator()(_MbrPtr __mem_ptr, _Ty &&__ty) const noexcept
+        -> decltype(((*static_cast<_Ty &&>(__ty)).*__mem_ptr))
       {
-        return ((*static_cast<_Ty&&>(__ty)).*__mem_ptr);
+        return ((*static_cast<_Ty &&>(__ty)).*__mem_ptr);
       }
     };
 
@@ -119,11 +120,12 @@ namespace STDEXEC
     {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const
-        noexcept(noexcept(((static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...)))
-          -> decltype(((static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...))
+      constexpr auto operator()(_Memptr __mem_ptr, _Ty &&__ty, _Args &&...__args) const
+        noexcept(noexcept(((static_cast<_Ty &&>(__ty))
+                           .*__mem_ptr)(static_cast<_Args &&>(__args)...)))
+          -> decltype(((static_cast<_Ty &&>(__ty)).*__mem_ptr)(static_cast<_Args &&>(__args)...))
       {
-        return ((static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...);
+        return ((static_cast<_Ty &&>(__ty)).*__mem_ptr)(static_cast<_Args &&>(__args)...);
       }
     };
 
@@ -132,11 +134,11 @@ namespace STDEXEC
     {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Memptr __mem_ptr, _Ty __ty, _Args&&... __args) const
-        noexcept(noexcept((__ty.get().*__mem_ptr)(static_cast<_Args&&>(__args)...)))
-          -> decltype((__ty.get().*__mem_ptr)(static_cast<_Args&&>(__args)...))
+      constexpr auto operator()(_Memptr __mem_ptr, _Ty __ty, _Args &&...__args) const
+        noexcept(noexcept((__ty.get().*__mem_ptr)(static_cast<_Args &&>(__args)...)))
+          -> decltype((__ty.get().*__mem_ptr)(static_cast<_Args &&>(__args)...))
       {
-        return (__ty.get().*__mem_ptr)(static_cast<_Args&&>(__args)...);
+        return (__ty.get().*__mem_ptr)(static_cast<_Args &&>(__args)...);
       }
     };
 
@@ -145,12 +147,12 @@ namespace STDEXEC
     {
       template <class _Memptr, class _Ty, class... _Args>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Memptr __mem_ptr, _Ty&& __ty, _Args&&... __args) const
-        noexcept(noexcept(((*static_cast<_Ty&&>(__ty))
-                           .*__mem_ptr)(static_cast<_Args&&>(__args)...)))
-          -> decltype(((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...))
+      constexpr auto operator()(_Memptr __mem_ptr, _Ty &&__ty, _Args &&...__args) const
+        noexcept(noexcept(((*static_cast<_Ty &&>(__ty))
+                           .*__mem_ptr)(static_cast<_Args &&>(__args)...)))
+          -> decltype(((*static_cast<_Ty &&>(__ty)).*__mem_ptr)(static_cast<_Args &&>(__args)...))
       {
-        return ((*static_cast<_Ty&&>(__ty)).*__mem_ptr)(static_cast<_Args&&>(__args)...);
+        return ((*static_cast<_Ty &&>(__ty)).*__mem_ptr)(static_cast<_Args &&>(__args)...);
       }
     };
 
@@ -164,16 +166,16 @@ namespace STDEXEC
       template <class _Fun, class... _Args>
         requires __callable<_Fun, _Args...>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr auto operator()(_Fun&& __fun, _Args&&... __args) const
+      constexpr auto operator()(_Fun &&__fun, _Args &&...__args) const
         noexcept(__nothrow_callable<_Fun, _Args...>) -> __call_result_t<_Fun, _Args...>
       {
-        return static_cast<_Fun&&>(__fun)(static_cast<_Args&&>(__args)...);
+        return static_cast<_Fun &&>(__fun)(static_cast<_Args &&>(__args)...);
       }
 
       template <class _Mbr, class _Class, class _Ty, class... _Args>
         requires __callable<__invoke_fn_t<_Mbr, _Class, _Ty>, _Mbr _Class::*, _Ty, _Args...>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr auto operator()(_Mbr _Class::* __fun, _Ty&& __ty, _Args&&... __args) const noexcept(
+      constexpr auto operator()(_Mbr _Class::*__fun, _Ty &&__ty, _Args &&...__args) const noexcept(
         __nothrow_callable<__invoke_fn_t<_Mbr, _Class, _Ty>, _Mbr _Class::*, _Ty, _Args...>)
         -> __call_result_t<
           __mmangle_t<__invoke_fn_t, _Mbr, _Class, _Ty>,  // to avoid GCC builtin mangling issues
@@ -182,8 +184,8 @@ namespace STDEXEC
           _Args...>
       {
         return __invoke_fn_t<_Mbr, _Class, _Ty>()(__fun,
-                                                  static_cast<_Ty&&>(__ty),
-                                                  static_cast<_Args&&>(__args)...);
+                                                  static_cast<_Ty &&>(__ty),
+                                                  static_cast<_Args &&>(__args)...);
       }
     };
   }  // namespace __invoke_
@@ -191,12 +193,12 @@ namespace STDEXEC
   inline constexpr __invoke_::__invoke_t __invoke{};
 
   template <class _Fun, class... _As>
-  concept __invocable = requires(_Fun&& __f, _As&&... __as) {
+  concept __invocable = requires(_Fun &&__f, _As &&...__as) {
     __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
   };
 
   template <class _Fun, class... _As>
-  concept __nothrow_invocable = __invocable<_Fun, _As...> && requires(_Fun&& __f, _As&&... __as) {
+  concept __nothrow_invocable = __invocable<_Fun, _As...> && requires(_Fun &&__f, _As &&...__as) {
     { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
   };
 
@@ -209,8 +211,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr __with_default(_Fn __fn, _Default __default)
       noexcept(__nothrow_move_constructible<_Fn>)
-      : _Fn(static_cast<_Fn&&>(__fn))
-      , __default_(static_cast<_Default&&>(__default))
+      : _Fn(static_cast<_Fn &&>(__fn))
+      , __default_(static_cast<_Default &&>(__default))
     {}
 
     using _Fn::operator();
@@ -219,7 +221,7 @@ namespace STDEXEC
       requires(!__callable<_Fn const &, _As...>)
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr auto
-    operator()(_As&&...) const noexcept(__nothrow_copy_constructible<_Default>) -> _Default
+    operator()(_As &&...) const noexcept(__nothrow_copy_constructible<_Default>) -> _Default
     {
       return __default_;
     }
@@ -236,17 +238,17 @@ namespace STDEXEC
   {
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr void operator()(_Ts&&... __ts) noexcept((__nothrow_callable<_Fn&, _Ts> && ...))
+    constexpr void operator()(_Ts &&...__ts) noexcept((__nothrow_callable<_Fn &, _Ts> && ...))
     {
-      (static_cast<void>(__fn_(static_cast<_Ts&&>(__ts))), ...);
+      (static_cast<void>(__fn_(static_cast<_Ts &&>(__ts))), ...);
     }
 
     template <class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr void
-    operator()(_Ts&&... __ts) const noexcept((__nothrow_callable<_Fn const &, _Ts> && ...))
+    operator()(_Ts &&...__ts) const noexcept((__nothrow_callable<_Fn const &, _Ts> && ...))
     {
-      (static_cast<void>(__fn_(static_cast<_Ts&&>(__ts))), ...);
+      (static_cast<void>(__fn_(static_cast<_Ts &&>(__ts))), ...);
     }
 
     _Fn __fn_;
@@ -261,10 +263,10 @@ namespace STDEXEC
   {
     template <class _Self, class... _Ts>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self&& __self, _Ts&&...) noexcept
-      -> auto&&
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...) noexcept
+      -> auto &&
     {
-      return (static_cast<_Self&&>(__self).__value_);
+      return (static_cast<_Self &&>(__self).__value_);
     }
     STDEXEC_EXPLICIT_THIS_END(operator())
 
@@ -280,10 +282,10 @@ namespace STDEXEC
     template <class... _As>
       requires __std::constructible_from<_Ty, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_As&&... __as) const noexcept(  //
+    constexpr auto operator()(_As &&...__as) const noexcept(  //
       __nothrow_constructible_from<_Ty, _As...>) -> _Ty
     {
-      return _Ty(static_cast<_As&&>(__as)...);
+      return _Ty(static_cast<_As &&>(__as)...);
     }
   };
 }  // namespace STDEXEC

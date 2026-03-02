@@ -35,12 +35,12 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////////////////////////
   template <class _Fun, class... _As>
-  concept __callable = requires(_Fun&& __fun, _As&&... __as) {
+  concept __callable = requires(_Fun &&__fun, _As &&...__as) {
     static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...);
   };
 
   template <class _Fun, class... _As>
-  concept __nothrow_callable = __callable<_Fun, _As...> && requires(_Fun&& __fun, _As&&... __as) {
+  concept __nothrow_callable = __callable<_Fun, _As...> && requires(_Fun &&__fun, _As &&...__as) {
     { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
   };
 
@@ -140,15 +140,15 @@ namespace STDEXEC
   namespace __detail
   {
     template <class _Ty>
-    inline constexpr bool __destructible_ = requires(__declfn_t<_Ty&&> __fn) {
+    inline constexpr bool __destructible_ = requires(__declfn_t<_Ty &&> __fn) {
       { __fn().~_Ty() } noexcept;
     };
 
     template <class _Ty>
-    inline constexpr bool __destructible_<_Ty&> = true;
+    inline constexpr bool __destructible_<_Ty &> = true;
 
     template <class _Ty>
-    inline constexpr bool __destructible_<_Ty&&> = true;
+    inline constexpr bool __destructible_<_Ty &&> = true;
 
     template <class _Ty, std::size_t _Np>
     inline constexpr bool __destructible_<_Ty[_Np]> = __destructible_<_Ty>;
@@ -182,11 +182,11 @@ namespace STDEXEC
     concept copy_constructible = move_constructible<_Ty> && constructible_from<_Ty, _Ty const &>;
 
     template <class _LHS, class _RHS>
-    concept assignable_from = __std::same_as<_LHS, _LHS&> &&
+    concept assignable_from = __std::same_as<_LHS, _LHS &> &&
                               // std::common_reference_with<
                               //   const std::remove_reference_t<_LHS>&,
                               //   const std::remove_reference_t<_RHS>&> &&
-                              requires(_LHS __lhs, _RHS&& __rhs) {
+                              requires(_LHS __lhs, _RHS &&__rhs) {
                                 { __lhs = static_cast<_RHS &&>(__rhs) } -> __std::same_as<_LHS>;
                               };
 
@@ -195,37 +195,37 @@ namespace STDEXEC
       using std::swap;
 
       template <class _Ty, class _Uy>
-      concept swappable_with = requires(_Ty&& __t, _Uy&& __u) {
+      concept swappable_with = requires(_Ty &&__t, _Uy &&__u) {
         swap(static_cast<_Ty &&>(__t), static_cast<_Uy &&>(__u));
       };
 
       inline constexpr auto const __fn =
-        []<class _Ty, swappable_with<_Ty> _Uy>(_Ty&& __t, _Uy&& __u) noexcept(
-          noexcept(swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u))))
+        []<class _Ty, swappable_with<_Ty> _Uy>(_Ty &&__t, _Uy &&__u) noexcept(
+          noexcept(swap(static_cast<_Ty &&>(__t), static_cast<_Uy &&>(__u))))
       {
-        swap(static_cast<_Ty&&>(__t), static_cast<_Uy&&>(__u));
+        swap(static_cast<_Ty &&>(__t), static_cast<_Uy &&>(__u));
       };
     }  // namespace __swap
 
     using __swap::swappable_with;
 
-    inline constexpr auto const & swap = __swap::__fn;
+    inline constexpr auto const &swap = __swap::__fn;
 
     template <class _Ty>
-    concept swappable = requires(_Ty& a, _Ty& b) { swap(a, b); };
+    concept swappable = requires(_Ty &a, _Ty &b) { swap(a, b); };
 
     template <class _Ty>
-    concept movable = std::is_object_v<_Ty>       //
-                   && move_constructible<_Ty>     //
-                   && assignable_from<_Ty&, _Ty>  //
+    concept movable = std::is_object_v<_Ty>        //
+                   && move_constructible<_Ty>      //
+                   && assignable_from<_Ty &, _Ty>  //
                    && swappable<_Ty>;
 
     template <class _Ty>
-    concept copyable = copy_constructible<_Ty>             //
-                    && movable<_Ty>                        //
-                    && assignable_from<_Ty&, _Ty&>         //
-                    && assignable_from<_Ty&, _Ty const &>  //
-                    && assignable_from<_Ty&, _Ty const>;
+    concept copyable = copy_constructible<_Ty>              //
+                    && movable<_Ty>                         //
+                    && assignable_from<_Ty &, _Ty &>        //
+                    && assignable_from<_Ty &, _Ty const &>  //
+                    && assignable_from<_Ty &, _Ty const>;
 
     template <class _Ty>
     concept semiregular = copyable<_Ty>  //
@@ -258,7 +258,7 @@ namespace STDEXEC
 
   template <class _Ty>
   concept __nothrow_movable_value = __movable_value<_Ty>  //
-                                 && requires(__declfn_t<_Ty&&> __t) {
+                                 && requires(__declfn_t<_Ty &&> __t) {
                                       { __decay_t<_Ty>(__decay_t<_Ty>(__t())) } noexcept;
                                     };
 
@@ -297,7 +297,7 @@ namespace STDEXEC
   template <class _Alloc>
   concept __simple_allocator =  //
     requires(_Alloc __alloc, std::size_t __count) {
-      { *__alloc.allocate(__count) } -> __std::same_as<typename _Alloc::value_type&>;
+      { *__alloc.allocate(__count) } -> __std::same_as<typename _Alloc::value_type &>;
       __alloc.deallocate(__alloc.allocate(__count), __count);
     }  //
     && __std::copy_constructible<_Alloc>  //
