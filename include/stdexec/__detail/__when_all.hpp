@@ -583,7 +583,7 @@ namespace STDEXEC
                                               _Child const &...) noexcept
       {
         // TODO(ericniebler): check this use of __sched_attrs
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>
@@ -602,7 +602,7 @@ namespace STDEXEC
                                               _Scheduler const & __sched,
                                               _Child const &...) noexcept
       {
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>

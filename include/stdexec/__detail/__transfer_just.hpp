@@ -82,7 +82,7 @@ namespace STDEXEC
       constexpr auto operator()(_Scheduler const & __sched, auto const &...) const noexcept
       {
         static_assert(scheduler<_Scheduler>, "transfer_just requires a scheduler");
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       }
     };
 

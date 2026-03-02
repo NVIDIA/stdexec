@@ -69,7 +69,7 @@ namespace STDEXEC
       template <class... _Env>
       static constexpr auto __mk_env2(_Scheduler __sch, _Env&&... __env)
       {
-        return env(__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
+        return env(STDEXEC::__mk_sch_env(__sch, __env...), static_cast<_Env&&>(__env)...);
       }
 
       template <class... _Env>
