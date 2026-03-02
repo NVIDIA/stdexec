@@ -19,6 +19,7 @@
 #include "../../stdexec/execution.hpp"
 
 #include "../detail/basic_sequence.hpp"
+#include "../sender_for.hpp"
 #include "../sequence_senders.hpp"
 #include "ignore_all_values.hpp"
 #include "transform_each.hpp"
@@ -175,7 +176,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() noexcept
       {
-        static_assert(STDEXEC::sender_expr_for<_Self, merge_t>);
+        static_assert(sender_for<_Self, merge_t>);
         auto __items = STDEXEC::__children_of<_Self, STDEXEC::__qq<item_types>>();
         return exec::concat_completion_signatures(
           completion_signatures<set_stopped_t()>(),
@@ -185,7 +186,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_item_types()
       {
-        static_assert(sender_expr_for<_Self, merge_t>);
+        static_assert(sender_for<_Self, merge_t>);
         auto __items = STDEXEC::__children_of<_Self, STDEXEC::__qq<item_types>>();
         return __items.__transform(__mk_get_item_types<_Env...>(), __mk_unique_concat_items());
       }
@@ -195,7 +196,7 @@ namespace experimental::execution
         noexcept(__nothrow_applicable<__subscribe_fn, _Self, _Receiver&>)
           -> __apply_result_t<__subscribe_fn, _Self, _Receiver&>
       {
-        static_assert(sender_expr_for<_Self, merge_t>);
+        static_assert(sender_for<_Self, merge_t>);
         return STDEXEC::__apply(__subscribe_fn{}, static_cast<_Self&&>(__self), __rcvr);
       }
     };

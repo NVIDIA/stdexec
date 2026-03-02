@@ -141,7 +141,7 @@ namespace
 
   struct customize_fork_join_domain : public STDEXEC::default_domain
   {
-    template <STDEXEC::sender_expr_for<exec::fork_join_t> Sndr, class Env>
+    template <STDEXEC::__sender_for<exec::fork_join_t> Sndr, class Env>
     constexpr auto transform_sender(STDEXEC::set_value_t, Sndr &&, Env const &) const noexcept
     {
       return STDEXEC::just(std::string("congrats on customizing fork_join_t"));

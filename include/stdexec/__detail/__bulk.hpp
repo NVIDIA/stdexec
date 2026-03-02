@@ -260,7 +260,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, _AlgoTag>);
+        static_assert(__sender_for<_Sender, _AlgoTag>);
         // TODO: port this to use constant evaluation
         return __completion_signatures<_AlgoTag,
                                        __fun_t<_Sender>,

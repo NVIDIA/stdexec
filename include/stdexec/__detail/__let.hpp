@@ -659,7 +659,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, _LetTag>);
+        static_assert(__sender_for<_Sender, _LetTag>);
         if constexpr (__decay_copyable<_Sender>)
         {
           // TODO: update this to use constant evaluation
@@ -688,7 +688,7 @@ namespace STDEXEC
                                        __data_of<_CvSender>,
                                        _Receiver>) -> __opstate_t<_CvSender, _Receiver>
       {
-        static_assert(sender_expr_for<_CvSender, _LetTag>);
+        static_assert(__sender_for<_CvSender, _LetTag>);
         auto& [__tag, __fn, __child] = __sndr;
         return __opstate_t<_CvSender, _Receiver>(STDEXEC::__forward_like<_CvSender>(__child),
                                                  STDEXEC::__forward_like<_CvSender>(__fn),

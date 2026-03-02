@@ -64,7 +64,7 @@ namespace STDEXEC
     template <class _Sender, class _Env>
     static constexpr auto transform_sender(set_value_t, _Sender &&__sndr, _Env const &__env)
     {
-      static_assert(sender_expr_for<_Sender, affine_on_t>);
+      static_assert(__sender_for<_Sender, affine_on_t>);
       auto &[__tag, __ign, __child] = __sndr;
       using __child_t               = decltype(__child);
       using __cv_child_t            = __copy_cvref_t<_Sender, __child_t>;

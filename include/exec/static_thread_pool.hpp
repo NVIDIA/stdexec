@@ -28,6 +28,7 @@
 #include "detail/numa.hpp"
 #include "detail/xorshift.hpp"
 
+#include "sender_for.hpp"
 #include "sequence/iterate.hpp"
 #include "sequence_senders.hpp"
 
@@ -275,7 +276,7 @@ namespace experimental::execution
       struct domain : STDEXEC::default_domain
       {
         // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
-        template <sender_expr Sender, class Env>
+        template <sender_for Sender, class Env>
           requires __one_of<tag_of_t<Sender>, bulk_chunked_t, bulk_unchunked_t>
         constexpr auto
         transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env) const noexcept
@@ -301,9 +302,9 @@ namespace experimental::execution
         }
 
 #if !STDEXEC_NO_STDCPP_RANGES()
-        template <sender_expr_for<exec::iterate_t> Sender, class Env>
+        template <sender_for<exec::iterate_t> Sender, class Env>
         constexpr auto
-        transform_sender(STDEXEC::set_value_t, Sender&& sndr, const Env& env) const noexcept
+        transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env) const noexcept
         {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>)
           {

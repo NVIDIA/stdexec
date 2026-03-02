@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/sender_for.hpp>
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
@@ -208,7 +209,7 @@ namespace
   // Return a different sender when we invoke this custom defined starts_on implementation
   struct starts_on_test_domain
   {
-    template <ex::sender_expr_for<ex::starts_on_t> Sender>
+    template <exec::sender_for<ex::starts_on_t> Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto const &...)
     {
       return ex::just(std::string{"Hello, world!"});
