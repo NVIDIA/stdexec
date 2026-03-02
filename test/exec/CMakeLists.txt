@@ -51,6 +51,8 @@ set(exec_test_sources
     test_split.cpp
     test_ensure_started.cpp
     test_start_detached.cpp
+    test_object.cpp
+    test_storage_for_completion_signatures.cpp
     sequence/test_any_sequence_of.cpp
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp
@@ -62,6 +64,14 @@ set(exec_test_sources
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each_threaded.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     test_unless_stop_requested.cpp
+    test_invoke.cpp
+    test_exit_scope_sender.cpp
+    test_enter_scope_sender.cpp
+    test_enter_scopes.cpp
+    test_within.cpp
+    test_lifetime.cpp
+    test_sync_object.cpp
+    test_nest_scopes.cpp
     )
 
 add_executable(test.exec ${exec_test_sources})
