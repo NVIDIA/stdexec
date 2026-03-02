@@ -18,13 +18,16 @@
 #include "exec/libdispatch_queue.hpp"
 #include "stdexec/execution.hpp"
 
-namespace {
-  TEST_CASE("libdispatch queue should be able to process tasks") {
+namespace
+{
+  TEST_CASE("libdispatch queue should be able to process tasks")
+  {
     exec::libdispatch_queue queue;
-    auto sch = queue.get_scheduler();
+    auto                    sch = queue.get_scheduler();
 
     std::vector<int> data{1, 2, 3, 4, 5};
-    auto add = [](auto const & data) {
+    auto             add = [](auto const & data)
+    {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
     auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch) | STDEXEC::then(add);
@@ -37,17 +40,20 @@ namespace {
     CHECK(res == 15);
   }
 
-  TEST_CASE(
-    "libdispatch queue bulk algorithm should call callback function with all allowed shapes") {
+  TEST_CASE("libdispatch queue bulk algorithm should call callback function with all allowed "
+            "shapes")
+  {
     exec::libdispatch_queue queue;
-    auto sch = queue.get_scheduler();
+    auto                    sch = queue.get_scheduler();
 
     std::vector<int> data{1, 2, 3, 4, 5};
-    auto size = data.size();
-    auto expensive_computation = [](auto i, auto& data) {
+    auto             size                  = data.size();
+    auto             expensive_computation = [](auto i, auto& data)
+    {
       data[i] = 2 * data[i];
     };
-    auto add = [](auto const & data) {
+    auto add = [](auto const & data)
+    {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
     auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch)
@@ -61,33 +67,38 @@ namespace {
     CHECK(res == 30);
   }
 
-  TEST_CASE("libdispatch bulk should handle exceptions gracefully") {
+  TEST_CASE("libdispatch bulk should handle exceptions gracefully")
+  {
     exec::libdispatch_queue queue;
-    auto sch = queue.get_scheduler();
+    auto                    sch = queue.get_scheduler();
 
     std::vector<int> data{1, 2, 3, 4, 5};
-    auto size = data.size();
-    auto expensive_computation = [](auto i, auto data) {
+    auto             size                  = data.size();
+    auto             expensive_computation = [](auto i, auto data)
+    {
       if (i == 0)
         throw 999;
       return 2 * data[i];
     };
-    auto add = [](auto const & data) {
+    auto add = [](auto const & data)
+    {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
     auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch)
                 | STDEXEC::bulk(STDEXEC::par, size, expensive_computation) | STDEXEC::then(add);
 
-
-    STDEXEC_TRY {
+    STDEXEC_TRY
+    {
       STDEXEC::sync_wait(sender);
       CHECK(false);
     }
-    STDEXEC_CATCH(int e) {
+    STDEXEC_CATCH(int e)
+    {
       CHECK(e == 999);
     }
-    STDEXEC_CATCH_ALL {
+    STDEXEC_CATCH_ALL
+    {
       FAIL("invalid exception caught");
     }
   }
-} // namespace
+}  // namespace

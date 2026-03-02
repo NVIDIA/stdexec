@@ -20,7 +20,7 @@
 
 #include "common.cuh"  // IWYU pragma: keep
 
-#if STDEXEC_HAS_PARALLEL_ALGORITHMS()
+#if !STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS()
 
 #  if STDEXEC_CUDA_COMPILATION()
 #    include "../include/nvexec/detail/throw_on_cuda_error.cuh"
@@ -81,4 +81,4 @@ void run_stdpar(float            dt,
                      });
 }
 
-#endif
+#endif  // !STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS()

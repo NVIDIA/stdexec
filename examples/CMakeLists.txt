@@ -72,21 +72,21 @@ endif()
 
 if (STDEXEC_ENABLE_TBB)
  add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
 
  add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
 
  add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
- target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbpool)
+ target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
 endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)
  add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
- target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflow_pool)
+ target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflowexec)
 endif()
 
 if(STDEXEC_ENABLE_ASIO)
 add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
-target_link_libraries(example.benchmark.asio_thread_pool PRIVATE STDEXEC::asio_pool)
+target_link_libraries(example.benchmark.asio_thread_pool PRIVATE STDEXEC::asioexec)
 endif()

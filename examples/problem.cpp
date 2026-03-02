@@ -22,42 +22,43 @@
 
 namespace ex = stdexec;
 
-struct receiver_t {
+struct receiver_t
+{
   using receiver_concept = ex::receiver_t;
 
-  void set_value() && noexcept {
-  }
+  void set_value() && noexcept {}
 
   template <class... As>
-  void set_value(As...) && noexcept {
-  }
+  void set_value(As...) && noexcept
+  {}
 
   template <class Error>
-  void set_error(Error) && noexcept {
-  }
+  void set_error(Error) && noexcept
+  {}
 
-  void set_stopped() && noexcept {
-  }
+  void set_stopped() && noexcept {}
 };
 
 template <class Domain>
-void check_if_pool_domain() {
+void check_if_pool_domain()
+{
   using pool_domain = exec::_pool_::_static_thread_pool::domain;
   static_assert(std::is_same_v<Domain, pool_domain>);
 }
 
 template <class Domain>
-void check_if_inline_domain() {
+void check_if_inline_domain()
+{
   static_assert(std::is_same_v<Domain, ex::default_domain>);
 }
 
 template <class Sender, class Receiver>
-void check_if_starts_inline_and_completes_on_pool(Sender, Receiver) {
+void check_if_starts_inline_and_completes_on_pool(Sender, Receiver)
+{
   using receiver_env_t = ex::env_of_t<Receiver>;
 
   check_if_pool_domain<
-    ex::__detail::__completing_domain_t<ex::set_value_t, Sender, receiver_env_t>
-  >();
+    ex::__detail::__completing_domain_t<ex::set_value_t, Sender, receiver_env_t>>();
   check_if_inline_domain<ex::__detail::__starting_domain_t<receiver_env_t>>();
 
   // auto op_state = ex::connect(std::move(sender), std::move(receiver));
@@ -72,51 +73,59 @@ void print(T) {
 #endif
 
 template <class T, class Env = ex::env<>>
-struct expect_value_receiver_ex {
-  T dest_;
+struct expect_value_receiver_ex
+{
+  T   dest_;
   Env env_{};
 
   using receiver_concept = stdexec::receiver_t;
 
   explicit expect_value_receiver_ex(T dest)
-    : dest_(dest) {
-  }
+    : dest_(dest)
+  {}
 
   expect_value_receiver_ex(Env env, T dest)
     : dest_(dest)
-    , env_(std::move(env)) {
-  }
+    , env_(std::move(env))
+  {}
 
-  void set_value(T val) noexcept {
+  void set_value(T val) noexcept
+  {
     dest_ = val;
   }
 
   template <class... Ts>
-  void set_value(Ts...) noexcept {
+  void set_value(Ts...) noexcept
+  {
     std::cerr << "set_value called with wrong value types on expect_value_receiver_ex\n";
   }
 
-  void set_stopped() noexcept {
+  void set_stopped() noexcept
+  {
     std::cerr << "set_stopped called on expect_value_receiver_ex\n";
   }
 
-  void set_error(std::exception_ptr) noexcept {
+  void set_error(std::exception_ptr) noexcept
+  {
     std::cerr << "set_error called on expect_value_receiver_ex\n";
   }
 
-  auto get_env() const noexcept -> Env {
+  auto get_env() const noexcept -> Env
+  {
     return env_;
   }
 };
 
 template <ex::scheduler Sched = ex::inline_scheduler>
-inline auto _with_scheduler(Sched sched = {}) {
+inline auto _with_scheduler(Sched sched = {})
+{
   return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
 }
 
-int main() {
+int main()
+{
   exec::static_thread_pool pool(3);
-  auto sched = pool.get_scheduler();
+  auto                     sched = pool.get_scheduler();
 
   // check_if_starts_inline_and_completes_on_pool(ex::schedule(sched), receiver_t{});
   // check_if_starts_inline_and_completes_on_pool(ex::continues_on(ex::just(), sched), receiver_t{});

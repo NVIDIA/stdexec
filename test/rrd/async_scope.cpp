@@ -1,30 +1,41 @@
-#include "../../relacy/relacy_cli.hpp"
-#include "../../relacy/relacy_std.hpp"
+/*
+ * Copyright (c) 2025 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <stdexec_relacy.hpp>
 
 #include <exec/async_scope.hpp>
 #include <exec/single_thread_context.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 
-#include <stdexcept>
-
-using rl::nvar;
-using rl::nvolatile;
-using rl::mutex;
-
 namespace ex = STDEXEC;
 using exec::async_scope;
 
-struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1> {
+struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1>
+{
   static size_t const dynamic_thread_count = 1;
 
-  void thread(unsigned) {
+  void thread(unsigned)
+  {
     exec::single_thread_context ctx;
-    ex::scheduler auto sch = ctx.get_scheduler();
+    ex::scheduler auto          sch = ctx.get_scheduler();
 
     exec::async_scope scope;
-    std::atomic_bool produced{false};
-    ex::sender auto begin = ex::schedule(sch);
+    std::atomic_bool  produced{false};
+    ex::sender auto   begin = ex::schedule(sch);
     {
       ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced.store(true); }));
       (void) ftr;
@@ -33,49 +44,58 @@ struct drop_async_scope_future : rl::test_suite<drop_async_scope_future, 1> {
   }
 };
 
-struct attach_async_scope_future : rl::test_suite<attach_async_scope_future, 1> {
+struct attach_async_scope_future : rl::test_suite<attach_async_scope_future, 1>
+{
   static size_t const dynamic_thread_count = 1;
 
-  void thread(unsigned) {
+  void thread(unsigned)
+  {
     exec::single_thread_context ctx;
-    ex::scheduler auto sch = ctx.get_scheduler();
+    ex::scheduler auto          sch = ctx.get_scheduler();
 
     exec::async_scope scope;
-    std::atomic_bool produced{false};
-    ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced.store(true); }));
-    ex::sender auto ftr_then = std::move(ftr) | ex::then([&] { RL_ASSERT(produced.load()); });
+    std::atomic_bool  produced{false};
+    ex::sender auto   begin = ex::schedule(sch);
+    ex::sender auto   ftr   = scope.spawn_future(begin | ex::then([&]() { produced.store(true); }));
+    ex::sender auto   ftr_then = std::move(ftr) | ex::then([&] { RL_ASSERT(produced.load()); });
     ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr_then)));
   }
 };
 
-struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_result, 1> {
+struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_result, 1>
+{
   static size_t const dynamic_thread_count = 1;
 
-  void thread(unsigned) {
-    struct throwing_copy {
+  void thread(unsigned)
+  {
+    struct throwing_copy
+    {
       throwing_copy() = default;
 
-      throwing_copy(const throwing_copy&) {
+      throwing_copy(throwing_copy const &)
+      {
         throw std::logic_error("");
       }
     };
 
     exec::single_thread_context ctx;
-    ex::scheduler auto sch = ctx.get_scheduler();
+    ex::scheduler auto          sch = ctx.get_scheduler();
 
     exec::async_scope scope;
-    ex::sender auto begin = ex::schedule(sch);
-    ex::sender auto ftr = scope.spawn_future(begin | ex::then([] { return throwing_copy(); }));
-    bool threw = false;
-    STDEXEC_TRY {
+    ex::sender auto   begin = ex::schedule(sch);
+    ex::sender auto   ftr   = scope.spawn_future(begin | ex::then([] { return throwing_copy(); }));
+    bool              threw = false;
+    STDEXEC_TRY
+    {
       ex::sync_wait(std::move(ftr));
       RL_ASSERT(false);
     }
-    STDEXEC_CATCH(const std::logic_error&) {
+    STDEXEC_CATCH(std::logic_error const &)
+    {
       threw = true;
     }
-    STDEXEC_CATCH_ALL {
+    STDEXEC_CATCH_ALL
+    {
       RL_ASSERT(false);
     }
     RL_ASSERT(threw);
@@ -84,22 +104,27 @@ struct async_scope_future_set_result : rl::test_suite<async_scope_future_set_res
 };
 
 template <int test_case>
-struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_case>, 1> {
+struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_case>, 1>
+{
   static size_t const dynamic_thread_count = 1;
 
-  void thread(unsigned) {
+  void thread(unsigned)
+  {
     exec::single_thread_context ctx;
-    ex::scheduler auto sch = ctx.get_scheduler();
+    ex::scheduler auto          sch = ctx.get_scheduler();
 
-    if constexpr (test_case == 0) {
+    if constexpr (test_case == 0)
+    {
       exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
-      ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
+      ex::sender auto   begin = ex::schedule(sch);
+      ex::sender auto   ftr   = scope.spawn_future(scope.spawn_future(begin));
       scope.request_stop();
       ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
-    } else {
+    }
+    else
+    {
       exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
+      ex::sender auto   begin = ex::schedule(sch);
       {
         // Drop the future on the floor
         ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
@@ -110,9 +135,10 @@ struct async_scope_request_stop : rl::test_suite<async_scope_request_stop<test_c
   }
 };
 
-auto main() -> int {
+auto main() -> int
+{
   rl::test_params p;
-  p.iteration_count = 100000;
+  p.iteration_count       = 100000;
   p.execution_depth_limit = 10000;
   rl::simulate<drop_async_scope_future>(p);
   rl::simulate<attach_async_scope_future>(p);

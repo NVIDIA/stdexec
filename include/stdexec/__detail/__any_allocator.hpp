@@ -32,15 +32,15 @@ namespace STDEXEC
 
     template <class _Base>
     using __byte_allocator_interface_t =
-      __any::interface<__byte_allocator,
-                       _Base,
-                       __any::__extends<__any::__icopyable, __any::__iequality_comparable>>;
+      __any::__interface_base<__byte_allocator,
+                              _Base,
+                              __any::__extends<__any::__icopyable, __any::__iequality_comparable>>;
 
     // NOLINTBEGIN(modernize-use-override)
     template <class _Base>
     struct __byte_allocator : __byte_allocator_interface_t<_Base>
     {
-      using __byte_allocator_interface_t<_Base>::interface::interface;
+      using __byte_allocator_interface_t<_Base>::__interface_base::__interface_base;
 
       [[nodiscard]]
       constexpr virtual auto allocate(size_t __n) -> std::byte*
@@ -107,7 +107,10 @@ namespace STDEXEC
     constexpr auto operator==(__any_allocator const &) const noexcept -> bool = default;
 
    private:
-    __any::__any<__detail::__byte_allocator> __alloc_{};
+    struct __alloc_impl final : __any::__any<__detail::__byte_allocator>
+    {
+      using __alloc_impl::__any::__any;
+    } __alloc_{};
   };
 
   template <class _Alloc>

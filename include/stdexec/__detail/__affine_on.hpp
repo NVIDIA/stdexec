@@ -33,11 +33,11 @@ namespace STDEXEC
   {
     // For a given completion tag, a sender is "already affine" if either it doesn't send
     // that tag, or if its completion behavior for that tag is already "inline" or
-    // "asynchronous_affine".
+    // "__asynchronous_affine".
     template <class _Tag, class _Sender, class _Env>
-    concept __already_affine = (!__sends<_Tag, _Sender, _Env>)
-                            || (get_completion_behavior<_Tag, _Sender, _Env>()
-                                >= completion_behavior::asynchronous_affine);
+    concept __already_affine = __never_sends<_Tag, _Sender, _Env>
+                            || __completion_behavior::__is_affine(
+                                 __get_completion_behavior<_Tag, _Sender, _Env>());
 
     // For the purpose of the affine_on algorithm, a sender that is "already affine" for
     // all three of the standard completion tags does not need to be adapted to become
@@ -51,9 +51,9 @@ namespace STDEXEC
   struct affine_on_t
   {
     template <sender _Sender>
-    constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
+    constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<affine_on_t>({}, static_cast<_Sender&&>(__sndr));
+      return __make_sexpr<affine_on_t>({}, static_cast<_Sender &&>(__sndr));
     }
 
     constexpr auto operator()() const noexcept
@@ -62,10 +62,10 @@ namespace STDEXEC
     }
 
     template <class _Sender, class _Env>
-    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, _Env const & __env)
+    static constexpr auto transform_sender(set_value_t, _Sender &&__sndr, _Env const &__env)
     {
       static_assert(sender_expr_for<_Sender, affine_on_t>);
-      auto& [__tag, __ign, __child] = __sndr;
+      auto &[__tag, __ign, __child] = __sndr;
       using __child_t               = decltype(__child);
       using __cv_child_t            = __copy_cvref_t<_Sender, __child_t>;
       using __sched_t = __call_result_or_t<get_scheduler_t, __not_a_scheduler<>, _Env const &>;
@@ -116,14 +116,25 @@ namespace STDEXEC
 
   namespace __affine_on
   {
+    template <class _Attrs>
     struct __attrs
     {
-      template <class _Tag>
-      constexpr auto query(get_completion_behavior_t<_Tag>) const noexcept
+      template <class _Tag, class... _Env>
+        requires __queryable_with<_Attrs, __get_completion_behavior_t<_Tag>, _Env const &...>
+      constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        // FUTURE: when the child sender completes inline *and* the current scheduler also
-        // completes inline, we can return "inline" here instead of "asynchronous_affine".
-        return completion_behavior::asynchronous_affine;
+        constexpr auto __behavior = __completion_behavior_of_v<_Tag, _Attrs, _Env...>;
+
+        // When the child sender completes inline, we can return "inline" here instead of
+        // "__asynchronous_affine".
+        if constexpr (__behavior == __completion_behavior::__inline_completion)
+        {
+          return __completion_behavior::__inline_completion;
+        }
+        else
+        {
+          return __completion_behavior::__asynchronous_affine;
+        }
       }
     };
   }  // namespace __affine_on
@@ -132,9 +143,9 @@ namespace STDEXEC
   struct __sexpr_impl<affine_on_t> : __sexpr_defaults
   {
     static constexpr auto __get_attrs =  //
-      [](__ignore, __ignore, __ignore) noexcept
+      []<class _Child>(__ignore, __ignore, _Child const &) noexcept
     {
-      return __affine_on::__attrs{};
+      return __affine_on::__attrs<env_of_t<_Child>>{};
     };
   };
 }  // namespace STDEXEC

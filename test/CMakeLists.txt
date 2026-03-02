@@ -63,11 +63,14 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_completion_signatures.cpp
+    stdexec/detail/test_demangle.cpp
     stdexec/detail/test_utility.cpp
+    stdexec/detail/test_intrusive_mpsc_queue.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
     stdexec/types/test_counting_scopes.cpp
@@ -111,7 +114,7 @@ add_executable(test.scratch test_main.cpp test_scratch.cpp)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbpool>
+    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
     Catch2::Catch2
     PRIVATE
@@ -152,6 +155,10 @@ icm_add_build_failure_test(
     LIBRARIES stdexec
     FOLDER test
 )
+
+if(STDEXEC_BUILD_RELACY_TESTS)
+    add_subdirectory(rrd)
+endif()
 
 # # Adding multiple tests with a glob
 # icm_glob_build_failure_tests(

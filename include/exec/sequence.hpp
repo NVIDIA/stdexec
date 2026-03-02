@@ -161,9 +161,9 @@ namespace experimental::execution
                                                    __convert_tuple_fn<_senders_tuple_t>,
                                                    CvSndrs>)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
-        , _sndrs{STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{},
-                                  static_cast<CvSndrs&&>(sndrs))}
-        // move all but the first sender into the opstate.
+        , _sndrs{
+            STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{}, static_cast<CvSndrs&&>(sndrs))}
+      // move all but the first sender into the opstate.
       {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
@@ -182,13 +182,12 @@ namespace experimental::execution
         constexpr auto nothrow = noexcept(
           self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
                                                         std::move(sndr),
-                                                        _rcvr_t < Remaining == 1 > {self}));
+                                                        _rcvr_t<Remaining == 1>{self}));
         STDEXEC_TRY
         {
           auto& op = self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
                                                                    std::move(sndr),
-                                                                   _rcvr_t < Remaining
-                                                                     == 1 > {self});
+                                                                   _rcvr_t<Remaining == 1>{self});
           if constexpr (Remaining > 1)
           {
             self->_start_next_ = &_start_next<Remaining - 1>;

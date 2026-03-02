@@ -116,9 +116,8 @@ namespace STDEXEC
           static_assert(noexcept(get_stop_token(__declval<env_of_t<_Rcvr>>()).stop_requested()));
           auto& __rcvr = static_cast<__opstate_t*>(__p)->__rcvr_;
 
-          // NOLINTNEXTLINE(bugprone-branch-clone)
           if constexpr (unstoppable_token<stop_token_of_t<env_of_t<_Rcvr>>>)
-          {
+          {  // NOLINT(bugprone-branch-clone)
             set_value(static_cast<_Rcvr&&>(__rcvr));
           }
           else if (get_stop_token(get_env(__rcvr)).stop_requested())
@@ -207,14 +206,14 @@ namespace STDEXEC
         constexpr auto query(get_completion_domain_t<set_stopped_t>) const noexcept;
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+        constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
         {
-          return completion_behavior::asynchronous;
+          return __completion_behavior::__asynchronous;
         }
         STDEXEC_ATTRIBUTE(nodiscard, host, device)
-        constexpr auto query(get_completion_behavior_t<set_stopped_t>) const noexcept
+        constexpr auto query(__get_completion_behavior_t<set_stopped_t>) const noexcept
         {
-          return completion_behavior::asynchronous;
+          return __completion_behavior::__asynchronous;
         }
 
         STDEXEC_ATTRIBUTE(nodiscard, host, device)

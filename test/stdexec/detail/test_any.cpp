@@ -18,75 +18,91 @@
 
 #include <cstdio>
 
-#include <catch2/catch.hpp> // IWYU pragma: keep
+#include <catch2/catch.hpp>  // IWYU pragma: keep
 
 namespace any = STDEXEC::__any;
 
 template <class Base>
-struct ifoo : any::interface<ifoo, Base> {
-  using ifoo::interface::interface;
+struct ifoo : any::__interface_base<ifoo, Base>
+{
+  using ifoo::__interface_base::__interface_base;
 
-  constexpr virtual void foo() {
+  constexpr virtual void foo()
+  {
     any::__value(*this).foo();
   }
 
-  constexpr virtual void cfoo() const {
+  constexpr virtual void cfoo() const
+  {
     any::__value(*this).cfoo();
   }
 };
 
 template <class Base>
-struct ibar : any::interface<ibar, Base, any::__extends<ifoo, any::__icopyable>> {
-  using ibar::interface::interface;
+struct ibar : any::__interface_base<ibar, Base, any::__extends<ifoo, any::__icopyable>>
+{
+  using ibar::__interface_base::__interface_base;
 
-  constexpr virtual void bar() {
+  constexpr virtual void bar()
+  {
     any::__value(*this).bar();
   }
 };
 
 template <class Base>
-struct ibaz : any::interface<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)> {
-  using ibaz::interface::interface;
+struct ibaz : any::__interface_base<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)>
+{
+  using ibaz::__interface_base::__interface_base;
 
   constexpr ~ibaz() = default;
 
-  constexpr virtual void baz() {
+  constexpr virtual void baz()
+  {
     any::__value(*this).baz();
   }
 };
 
 using Small = char;
-using Big = char[sizeof(any::__any<ibaz>) + 1];
+using Big   = char[sizeof(any::__any<ibaz>) + 1];
 
 template <class State>
-struct foobar {
-  constexpr void foo() {
-    STDEXEC_IF_NOT_CONSTEVAL {
+struct foobar
+{
+  constexpr void foo()
+  {
+    STDEXEC_IF_NOT_CONSTEVAL
+    {
       std::printf("foo override, __value = %d\n", __value);
     }
   }
 
-  constexpr void cfoo() const {
-    STDEXEC_IF_NOT_CONSTEVAL {
+  constexpr void cfoo() const
+  {
+    STDEXEC_IF_NOT_CONSTEVAL
+    {
       std::printf("cfoo override, __value = %d\n", __value);
     }
   }
 
-  constexpr void bar() {
-    STDEXEC_IF_NOT_CONSTEVAL {
+  constexpr void bar()
+  {
+    STDEXEC_IF_NOT_CONSTEVAL
+    {
       std::printf("bar override, __value = %d\n", __value);
     }
   }
 
-  constexpr void baz() {
-    STDEXEC_IF_NOT_CONSTEVAL {
+  constexpr void baz()
+  {
+    STDEXEC_IF_NOT_CONSTEVAL
+    {
       std::printf("baz override, __value = %d\n", __value);
     }
   }
 
   bool operator==(foobar const &other) const noexcept = default;
 
-  int __value = 42;
+  int   __value = 42;
   State state;
 };
 
@@ -98,31 +114,35 @@ static_assert(any::__extension_of<any::__iabstract<ibar>, any::__icopyable>);
 
 // Test the Diamond of Death inheritance problem:
 template <class Base>
-struct IFoo : any::interface<IFoo, Base, any::__extends<any::__icopyable>> {
-  using IFoo::interface::interface;
+struct IFoo : any::__interface_base<IFoo, Base, any::__extends<any::__icopyable>>
+{
+  using IFoo::__interface_base::__interface_base;
 
-  constexpr virtual void foo() {
+  constexpr virtual void foo()
+  {
     any::__value(*this).foo();
   }
 };
 
 template <class Base>
-struct IBar : any::interface<IBar, Base, any::__extends<any::__icopyable>> {
-  using IBar::interface::interface;
+struct IBar : any::__interface_base<IBar, Base, any::__extends<any::__icopyable>>
+{
+  using IBar::__interface_base::__interface_base;
 
-  constexpr virtual void bar() {
+  constexpr virtual void bar()
+  {
     any::__value(*this).bar();
   }
 };
 
 template <class Base>
-struct IBaz
-  : any::interface<IBaz, Base, any::__extends<IFoo, IBar>> // inherits twice
-                                                           // from __icopyable
+struct IBaz : any::__interface_base<IBaz, Base, any::__extends<IFoo, IBar>>  // inherits twice
+                                                                             // from __icopyable
 {
-  using IBaz::interface::interface;
+  using IBaz::__interface_base::__interface_base;
 
-  constexpr virtual void baz() {
+  constexpr virtual void baz()
+  {
     any::__value(*this).baz();
   }
 };
@@ -131,7 +151,8 @@ static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<IFoo>>)
 static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<any::__icopyable>>);
 
 template <class T>
-void test_deadly_diamond_of_death() {
+void test_deadly_diamond_of_death()
+{
   any::__any<IBaz> m(foobar<T>{});
 
   m.foo();
@@ -143,11 +164,12 @@ static_assert(any::__iabstract<ifoo>::__buffer_size < any::__iabstract<ibaz>::__
 
 // test constant evaluation works
 template <class T>
-consteval void test_consteval() {
+consteval void test_consteval()
+{
   any::__any<ibaz> m(foobar<T>{});
   [[maybe_unused]]
   auto x = any::__any_static_cast<foobar<T>>(m);
-  x = any::__any_cast<foobar<T>>(m);
+  x      = any::__any_cast<foobar<T>>(m);
   m.foo();
   [[maybe_unused]]
   auto n = m;
@@ -163,9 +185,10 @@ consteval void test_consteval() {
   auto y = any::__any_cast<foobar<T>>(pifoo);
 }
 
-TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>) {
+TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>)
+{
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
-  test_consteval<TestType>(); // NOLINT(invalid_consteval_call)
+  test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #endif
 
   any::__any<ibaz> m(foobar<TestType>{});
@@ -188,7 +211,7 @@ TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, 
   auto const ptr2 = any::__addressof(m);
   ptr2->foo();
   any::__any_ptr<ifoo> pifoo = ptr2;
-  m = *ptr; // assignment from type-erased references is supported
+  m                          = *ptr;  // assignment from type-erased references is supported
 
   any::__any<any::__isemiregular> a = 42;
   any::__any<any::__isemiregular> b = 42;
@@ -227,7 +250,7 @@ TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, 
   int *r = any::__any_cast<int>(std::move(y));
   REQUIRE(r == &any::__any_cast<int>(c));
 
-  z = y; // assign non-const ptr to const ptr
+  z = y;  // assign non-const ptr to const ptr
   z = &*y;
 
   REQUIRE(y == z);

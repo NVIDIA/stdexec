@@ -27,6 +27,7 @@
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"
+#include "completion_behavior.hpp"
 #include "scope.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -130,7 +131,7 @@ namespace experimental::execution
       {
         if constexpr (__with_scheduler)
         {
-          return completion_behavior::asynchronous_affine;
+          return completion_behavior::asynchronous_affine | completion_behavior::inline_completion;
         }
         else
         {

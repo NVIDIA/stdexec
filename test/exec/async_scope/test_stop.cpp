@@ -9,31 +9,34 @@ namespace ex = STDEXEC;
 using exec::async_scope;
 using STDEXEC::sync_wait;
 
-namespace {
+namespace
+{
 
-  TEST_CASE("calling request_stop will be visible in stop_source", "[async_scope][stop]") {
+  TEST_CASE("calling request_stop will be visible in stop_source", "[async_scope][stop]")
+  {
     async_scope scope;
 
     scope.request_stop();
     REQUIRE(scope.get_stop_source().stop_requested());
   }
 
-  TEST_CASE("calling request_stop will be visible in stop_token", "[async_scope][stop]") {
+  TEST_CASE("calling request_stop will be visible in stop_token", "[async_scope][stop]")
+  {
     async_scope scope;
 
     scope.request_stop();
     REQUIRE(scope.get_stop_token().stop_requested());
   }
 
-  TEST_CASE(
-    "cancelling the associated stop_source will cancel the async_scope object",
-    "[async_scope][stop]") {
+  TEST_CASE("cancelling the associated stop_source will cancel the async_scope object",
+            "[async_scope][stop]")
+  {
     bool empty = false;
 
     {
       impulse_scheduler sch;
-      async_scope scope;
-      bool called = false;
+      async_scope       scope;
+      bool              called = false;
 
       // put work in the scope
       scope.spawn(ex::starts_on(sch, ex::just()) | ex::upon_stopped([&] { called = true; }));
@@ -41,9 +44,9 @@ namespace {
 
       // start a thread waiting on when the scope is empty:
       exec::single_thread_context thread;
-      auto thread_sch = thread.get_scheduler();
-      exec::start_detached(
-        ex::starts_on(thread_sch, scope.on_empty()) | ex::then([&] { empty = true; }));
+      auto                        thread_sch = thread.get_scheduler();
+      exec::start_detached(ex::starts_on(thread_sch, scope.on_empty())
+                           | ex::then([&] { empty = true; }));
       REQUIRE_FALSE(empty);
 
       // request the scope stop
@@ -54,17 +57,17 @@ namespace {
 
       // Should have completed with a stopped signal
       REQUIRE(called);
-    } // blocks until the separate thread is joined
+    }  // blocks until the separate thread is joined
 
     REQUIRE(empty);
   }
 
-  TEST_CASE(
-    "cancelling the associated stop_source will be visible in stop_token",
-    "[async_scope][stop]") {
+  TEST_CASE("cancelling the associated stop_source will be visible in stop_token",
+            "[async_scope][stop]")
+  {
     async_scope scope;
 
     scope.get_stop_source().request_stop();
     REQUIRE(scope.get_stop_token().stop_requested());
   }
-} // namespace
+}  // namespace

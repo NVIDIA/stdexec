@@ -29,12 +29,12 @@ namespace experimental::execution
 {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    __var.template emplace<_Type>(static_cast<_Args &&>(__args)...);
+    __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
   };
 
   template <class _Variant, class _Type, class... _Args>
   concept __nothrow_variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    { __var.template emplace<_Type>(static_cast<_Args &&>(__args)...) } noexcept;
+    { __var.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
   };
 
   namespace __ignore_all_values

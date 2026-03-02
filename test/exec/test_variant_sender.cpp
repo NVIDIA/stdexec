@@ -22,52 +22,56 @@
 using namespace STDEXEC;
 using namespace exec;
 
-namespace {
+namespace
+{
 
   template <class... Ts>
-  struct overloaded : Ts... {
+  struct overloaded : Ts...
+  {
     using Ts::operator()...;
   };
   template <class... Ts>
   overloaded(Ts...) -> overloaded<Ts...>;
 
-  using just_int_t = decltype(just(0));
-  using just_void_t = decltype(just());
-  using just_then_void_t = decltype(then(just(), [] { }));
+  using just_int_t       = decltype(just(0));
+  using just_void_t      = decltype(just());
+  using just_then_void_t = decltype(then(just(), [] {}));
 
-  TEST_CASE("variant_sender - default constructible", "[types][variant_sender]") {
+  TEST_CASE("variant_sender - default constructible", "[types][variant_sender]")
+  {
     variant_sender<just_void_t, just_int_t> variant{just()};
     STATIC_REQUIRE(sender_in<decltype(variant)>);
     CHECK(variant.index() == 0);
   }
 
-  TEST_CASE("variant_sender - sender_of concept", "[types][variant_sender]") {
+  TEST_CASE("variant_sender - sender_of concept", "[types][variant_sender]")
+  {
     variant_sender<just_void_t, just_then_void_t> variant{just()};
     STATIC_REQUIRE(sender_of<decltype(variant), set_value_t()>);
   }
 
-  TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]") {
+  TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]")
+  {
     variant_sender<just_void_t, just_int_t> variant = just();
-    int index = -1;
+    int                                     index   = -1;
     STATIC_REQUIRE(sender<variant_sender<just_void_t, just_int_t>>);
     sync_wait(variant | then([&index](auto... xs) { index = sizeof...(xs); }));
     CHECK(index == 0);
 
     variant.emplace<1>(just(42));
-    auto [value] = sync_wait(
-                     variant
-                     | then(
-                       overloaded{
-                         [&index] {
-                           index = 0;
-                           return 0;
-                         },
-                         [&index](int xs) {
-                           index = 1;
-                           return xs;
-                         }}))
+    auto [value] = sync_wait(variant
+                             | then(overloaded{[&index]
+                                               {
+                                                 index = 0;
+                                                 return 0;
+                                               },
+                                               [&index](int xs)
+                                               {
+                                                 index = 1;
+                                                 return xs;
+                                               }}))
                      .value();
     CHECK(index == 1);
     CHECK(value == 42);
   }
-} // namespace
+}  // namespace

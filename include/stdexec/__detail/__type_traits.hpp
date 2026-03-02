@@ -18,7 +18,7 @@
 #include "__config.hpp"
 
 #include <exception>    // IWYU pragma: keep for std::terminate
-#include <type_traits>  // IWYU pragma: keep
+#include <type_traits>  // IWYU pragma: export
 #include <utility>      // IWYU pragma: keep
 
 namespace STDEXEC

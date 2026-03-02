@@ -47,9 +47,9 @@ namespace STDEXEC
      public:
       virtual constexpr ~receiver_proxy() = 0;
 
-      virtual constexpr void               set_value() noexcept                   = 0;
-      virtual STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr) noexcept = 0;
-      virtual constexpr void               set_stopped() noexcept                 = 0;
+      virtual constexpr void set_value() noexcept                   = 0;
+      virtual void           set_error(std::exception_ptr) noexcept = 0;
+      virtual constexpr void set_stopped() noexcept                 = 0;
 
       /// Query the receiver for a property of type `_Query`.
       template <class _Value, __class _Query>
@@ -186,7 +186,7 @@ namespace STDEXEC
         return false;
       }
 
-      STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr eptr) noexcept final
+      void set_error(std::exception_ptr eptr) noexcept final
       {
         if constexpr (_Infallible)
         {
@@ -345,7 +345,7 @@ namespace STDEXEC
         __proxy.set_value();
       }
 
-      STDEXEC_CONSTEXPR_CXX23 void set_error(std::exception_ptr __eptr) noexcept
+      void set_error(std::exception_ptr __eptr) noexcept
       {
         auto& __proxy = __rcvr_proxy_;
         __delete_fn_(__opstate_storage_);  // NB: destroys *this

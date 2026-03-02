@@ -306,31 +306,31 @@ namespace distributed
   };
 
   template <class AccessorT>
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   grid_initializer(float dt, AccessorT accessor) -> grid_initializer_t<AccessorT>
   {
     return {dt, accessor};
   }
 
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   right_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t
   {
     return col == N - 1 ? cell_id - (N - 1) : cell_id + 1;
   }
 
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   left_nid(std::size_t cell_id, std::size_t col, std::size_t N) -> std::size_t
   {
     return col == 0 ? cell_id + N - 1 : cell_id - 1;
   }
 
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   bottom_nid(std::size_t cell_id, std::size_t, std::size_t N) -> std::size_t
   {
     return cell_id - N;
   }
 
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   top_nid(std::size_t cell_id, std::size_t, std::size_t N) -> std::size_t
   {
     return cell_id + N;
@@ -359,7 +359,7 @@ namespace distributed
   };
 
   template <class AccessorT>
-  __host__ inline __device__ auto update_h(AccessorT accessor) -> h_field_calculator_t<AccessorT>
+  inline __host__ __device__ auto update_h(AccessorT accessor) -> h_field_calculator_t<AccessorT>
   {
     return {accessor};
   }
@@ -417,7 +417,7 @@ namespace distributed
   };
 
   template <class AccessorT>
-  __host__ inline __device__ auto
+  inline __host__ __device__ auto
   update_e(float *time, float dt, AccessorT accessor) -> e_field_calculator_t<AccessorT>
   {
     std::size_t source_position = accessor.n / 2 + (accessor.n * (accessor.n / 2));

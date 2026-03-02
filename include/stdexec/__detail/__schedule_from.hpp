@@ -20,6 +20,7 @@
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
 #include "__completion_signatures_of.hpp"
+#include "__queries.hpp"
 #include "__sender_introspection.hpp"
 
 namespace STDEXEC
@@ -40,6 +41,12 @@ namespace STDEXEC
   template <>
   struct __sexpr_impl<schedule_from_t> : __sexpr_defaults
   {
+    static constexpr auto __get_attrs =
+      []<class _Child>(schedule_from_t, __ignore, _Child const & __child) noexcept
+    {
+      return __sync_attrs{__child};
+    };
+
     template <class _Sender, class... _Env>
     static consteval auto __get_completion_signatures()
     {

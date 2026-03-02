@@ -184,7 +184,7 @@ namespace STDEXEC
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept
       {
         auto& [__tag, __token, __child] = __self;
-        auto __new_token                = __make_token_fn{}(__forward_like<_Self>(__token),
+        auto __new_token                = __make_token_fn{}(STDEXEC::__forward_like<_Self>(__token),
                                              get_stop_token(STDEXEC::get_env(__rcvr)));
         return __state{std::move(__new_token), std::move(__rcvr)};
       };
