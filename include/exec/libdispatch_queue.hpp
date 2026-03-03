@@ -28,9 +28,6 @@
 #  endif
 
 #  include "../stdexec/execution.hpp"
-
-#  include "sender_for.hpp"
-
 #  include <dispatch/dispatch.h>
 
 namespace experimental::execution
@@ -94,10 +91,9 @@ namespace experimental::execution
     struct domain
     {
       // transform the generic bulk sender into a parallel libdispatch bulk sender
-      template <class Sender, class Env>
+      template <STDEXEC::sender_expr_for<STDEXEC::bulk_t> Sender, class Env>
       auto transform_sender(STDEXEC::set_value_t, Sender &&sndr, Env const &env) const noexcept
       {
-        static_assert(sender_for<Sender, STDEXEC::bulk_t>);
         if constexpr (STDEXEC::__completes_on<Sender, libdispatch_scheduler, Env>)
         {
           auto sched =
