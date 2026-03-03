@@ -239,7 +239,7 @@ namespace experimental::execution
       template <class Self, class... Env>
         requires(sizeof...(Env) > 0)
              || __has_eptr_completion<STDEXEC::__copy_cvref_t<Self, Sender0>>
-             || (__has_eptr_completion<Senders> && ...)
+             || (__has_eptr_completion<Senders> || ...)
       STDEXEC_ATTRIBUTE(host, device)
       static consteval auto get_completion_signatures()
       {
