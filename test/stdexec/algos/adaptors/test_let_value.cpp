@@ -17,6 +17,7 @@
 #include "stdexec/__detail/__let.hpp"
 #include <catch2/catch.hpp>
 #include <exec/env.hpp>
+#include <exec/sender_for.hpp>
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
@@ -361,7 +362,7 @@ namespace
   // Return a different sender when we invoke this custom defined let_value implementation
   struct let_value_test_domain
   {
-    template <ex::sender_expr_for<ex::let_value_t> Sender>
+    template <exec::sender_for<ex::let_value_t> Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...)
     {
       return ex::just(std::string{"hallo"});

@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/sender_for.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -205,7 +206,7 @@ namespace
   // Return a different sender when we invoke this custom defined then implementation
   struct then_test_domain
   {
-    template <ex::sender_expr_for<ex::then_t> Sender, class... Env>
+    template <exec::sender_for<ex::then_t> Sender, class... Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender &&, Env &&...)
     {
       return ex::just(std::string{"ciao"});

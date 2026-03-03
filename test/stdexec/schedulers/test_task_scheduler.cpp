@@ -16,6 +16,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/sender_for.hpp>
 #include <exec/single_thread_context.hpp>
 #include <stdexec/execution.hpp>
 
@@ -64,7 +65,7 @@ namespace
 
   struct test_domain
   {
-    template <ex::sender_expr_for<ex::bulk_chunked_t> Sndr, class Env>
+    template <exec::sender_for<ex::bulk_chunked_t> Sndr, class Env>
     auto transform_sender(ex::set_value_t, Sndr sndr, Env const &) const
     {
       return ex::then(opaque_sender{std::move(sndr)}, []() noexcept { g_called = true; });

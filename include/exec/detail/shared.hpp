@@ -496,7 +496,7 @@ namespace experimental::execution::__shared
     template <class _CvSender>
     static consteval auto __get_completion_signatures()
     {
-      static_assert(sender_expr_for<_CvSender, _Tag>);
+      static_assert(STDEXEC::__sender_for<_CvSender, _Tag>);
       return __get_completion_signatures_impl<__child_of<_CvSender>,
                                               __decay_t<__data_of<_CvSender>>>();
     };

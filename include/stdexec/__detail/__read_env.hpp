@@ -140,7 +140,7 @@ namespace STDEXEC
         []<class _Sender, class _Receiver>(_Sender const &, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, __read_env_t>);
+        static_assert(__sender_for<_Sender, __read_env_t>);
         using __query_t = __data_of<_Sender>;
         STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr),
                                   __query_t(),

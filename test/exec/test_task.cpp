@@ -19,6 +19,7 @@
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 #  include <exec/async_scope.hpp>
+#  include <exec/sender_for.hpp>
 #  include <exec/single_thread_context.hpp>
 #  include <exec/task.hpp>
 
@@ -285,7 +286,7 @@ namespace
 
   struct test_domain
   {
-    template <ex::sender_expr_for<ex::then_t> _Sender>
+    template <exec::sender_for<ex::then_t> _Sender>
     static constexpr auto transform_sender(STDEXEC::set_value_t, _Sender&&, auto&&...) noexcept
     {
       return ex::just("goodbye"s);

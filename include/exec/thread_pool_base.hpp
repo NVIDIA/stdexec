@@ -17,7 +17,8 @@
  */
 #pragma once
 
-#include <exec/static_thread_pool.hpp>
+#include "sender_for.hpp"
+#include "static_thread_pool.hpp"
 
 namespace experimental::execution
 {
@@ -54,7 +55,7 @@ namespace experimental::execution
 
     struct domain : STDEXEC::default_domain
     {
-      template <STDEXEC::sender_expr_for<STDEXEC::bulk_chunked_t> Sender, class Env>
+      template <sender_for<STDEXEC::bulk_chunked_t> Sender, class Env>
       static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
       {
         auto& [tag, data, child] = sndr;
@@ -84,7 +85,7 @@ namespace experimental::execution
         }
       }
 
-      template <STDEXEC::sender_expr_for<STDEXEC::bulk_unchunked_t> Sender, class Env>
+      template <sender_for<STDEXEC::bulk_unchunked_t> Sender, class Env>
       static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env);
     };
 

@@ -33,6 +33,7 @@
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
 #include "../detail/basic_sequence.hpp"
+#include "../sender_for.hpp"
 
 #include <atomic>
 
@@ -1277,9 +1278,10 @@ namespace experimental::execution
         return make_sequence_expr<merge_each_t>(__(), static_cast<_Sequence&&>(__sequence));
       }
 
-      template <sender_expr_for<merge_each_t> _Self, class... _Env>
+      template <class _Self, class... _Env>
       static consteval auto get_item_types()
       {
+        static_assert(sender_for<_Self, merge_each_t>);
         using __result_t =
           __compute::__nested_values_t<__child_of<_Self>,
                                        __env_with_inplace_stop_token_result_t<_Env>...>;
@@ -1310,7 +1312,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, merge_each_t>);
+        static_assert(sender_for<_Self, merge_each_t>);
         // TODO: update this to use constant evaluation:
         using __result_t = __minvoke<__mtry_q<__completions_t>,
                                      _Self,
@@ -1331,7 +1333,7 @@ namespace experimental::execution
           __nothrow_applicable<__subscribe_fn<_Receiver>, _Sequence>)
         -> __apply_result_t<__subscribe_fn<_Receiver>, _Sequence>
       {
-        static_assert(sender_expr_for<_Sequence, merge_each_t>);
+        static_assert(sender_for<_Sequence, merge_each_t>);
         return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Sequence&&>(__sndr));
       };
     };

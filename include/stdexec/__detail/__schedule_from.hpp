@@ -50,7 +50,7 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     static consteval auto __get_completion_signatures()
     {
-      static_assert(sender_expr_for<_Sender, schedule_from_t>);
+      static_assert(__sender_for<_Sender, schedule_from_t>);
       return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
     }
   };

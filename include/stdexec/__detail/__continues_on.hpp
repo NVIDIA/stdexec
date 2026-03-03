@@ -355,7 +355,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, continues_on_t>);
+        static_assert(__sender_for<_Sender, continues_on_t>);
         using __scheduler_t      = __decay_t<__data_of<_Sender>>;
         using __child_t          = __child_of<_Sender>;
         auto __child_completions = __get_child_completions<__child_t, _Env...>();
@@ -371,7 +371,7 @@ namespace STDEXEC
                                            _Receiver&& __rcvr) -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, continues_on_t>);
+        static_assert(__sender_for<_Sender, continues_on_t>);
         auto& [__tag, __sched, __child] = __sndr;
         return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
       };

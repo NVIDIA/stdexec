@@ -68,7 +68,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, _JustTag>);
+        static_assert(__sender_for<_Sender, _JustTag>);
         return completion_signatures<__mapply<__qf<__set_tag_t>, __decay_t<__data_of<_Sender>>>>{};
       }
 
