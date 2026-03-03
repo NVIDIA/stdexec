@@ -36,6 +36,9 @@ namespace STDEXEC
   template <class _Ret, class... _Args>
   using __fn_t = _Ret(_Args...);
 
+  template <class _Ret, class... _Args>
+  using __fn_ptr_t = _Ret (*)(_Args...);
+
   template <class _Ty>
   struct __mtype
   {
@@ -49,7 +52,7 @@ namespace STDEXEC
   {
     // NB: This variable template is partially specialized for __type_index in __typeinfo.hpp:
     template <auto _Value>
-    extern __fn_t<decltype(_Value)> *__mtypeof_v;
+    extern __fn_ptr_t<decltype(_Value)> __mtypeof_v;
   }  // namespace __detail
 
   template <auto _Value>
@@ -765,11 +768,74 @@ namespace STDEXEC
     using __f = _Return(_Args...);
   };
 
-  template <class _Ty, class...>
-  using __mfront_ = _Ty;
+#if !STDEXEC_NO_STDCPP_PACK_INDEXING()
+  STDEXEC_PRAGMA_PUSH()
+  STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
+
+  template <bool>
+  struct __m_at_
+  {
+    template <class _Np, class... _Ts>
+    using __f = _Ts...[_Np::value];
+  };
+
+  template <class _Np, class... _Ts>
+  using __m_at = __minvoke<__m_at_<_Np::value == ~0ul>, _Np, _Ts...>;
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
+
+  STDEXEC_PRAGMA_POP()
+#elif STDEXEC_HAS_BUILTIN(__type_pack_element)
+  template <bool>
+  struct __m_at_
+  {
+    template <class _Np, class... _Ts>
+    using __f = __type_pack_element<_Np::value, _Ts...>;
+  };
+
+  template <class _Np, class... _Ts>
+  using __m_at = __minvoke<__m_at_<_Np::value == ~0ul>, _Np, _Ts...>;
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
+#else
+  template <std::size_t>
+  using __void_ptr = void *;
+
+  template <class _Ty>
+  using __mtype_ptr = __mtype<_Ty> *;
+
+  template <class _Ty>
+  struct __m_at_;
+
+  template <std::size_t... _Is>
+  struct __m_at_<__indices<_Is...>>
+  {
+    template <class _Up, class... _Us>
+    static _Up __f_(__void_ptr<_Is>..., _Up *, _Us *...);
+    template <class... _Ts>
+    using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
+  };
+
+  template <std::size_t _Np, class... _Ts>
+  using __m_at_c = __minvoke<__m_at_<__make_indices<_Np>>, _Ts...>;
+
+  template <class _Np, class... _Ts>
+  using __m_at = __m_at_c<_Np::value, _Ts...>;
+#endif
+
+  namespace __detail
+  {
+    template <class _Ty, class...>
+    using __mfront_ = _Ty;
+  }  // namespace __detail
 
   template <class... _As>
-  using __mfront = __minvoke_q<__mfront_, _As...>;
+  using __mfront = __minvoke_q<__detail::__mfront_, _As...>;
+
+  template <class... _As>
+  using __mback = __m_at_c<sizeof...(_As) - 1, _As...>;
 
   template <class... _As>
     requires(sizeof...(_As) == 1)
@@ -956,63 +1022,6 @@ namespace STDEXEC
     template <class... _Args>
     using __f = __minvoke_q<__mor, __mcall1<_Fn, _Args>...>;
   };
-
-#if !STDEXEC_NO_STDCPP_PACK_INDEXING()
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
-
-  template <bool>
-  struct __m_at_
-  {
-    template <class _Np, class... _Ts>
-    using __f = _Ts...[_Np::value];
-  };
-
-  template <class _Np, class... _Ts>
-  using __m_at = __minvoke<__m_at_<_Np::value == ~0ul>, _Np, _Ts...>;
-
-  template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
-
-  STDEXEC_PRAGMA_POP()
-#elif STDEXEC_HAS_BUILTIN(__type_pack_element)
-  template <bool>
-  struct __m_at_
-  {
-    template <class _Np, class... _Ts>
-    using __f = __type_pack_element<_Np::value, _Ts...>;
-  };
-
-  template <class _Np, class... _Ts>
-  using __m_at = __minvoke<__m_at_<_Np::value == ~0ul>, _Np, _Ts...>;
-
-  template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
-#else
-  template <std::size_t>
-  using __void_ptr = void *;
-
-  template <class _Ty>
-  using __mtype_ptr = __mtype<_Ty> *;
-
-  template <class _Ty>
-  struct __m_at_;
-
-  template <std::size_t... _Is>
-  struct __m_at_<__indices<_Is...>>
-  {
-    template <class _Up, class... _Us>
-    static _Up __f_(__void_ptr<_Is>..., _Up *, _Us *...);
-    template <class... _Ts>
-    using __f = __t<decltype(__m_at_::__f_(__mtype_ptr<_Ts>()...))>;
-  };
-
-  template <std::size_t _Np, class... _Ts>
-  using __m_at_c = __minvoke<__m_at_<__make_indices<_Np>>, _Ts...>;
-
-  template <class _Np, class... _Ts>
-  using __m_at = __m_at_c<_Np::value, _Ts...>;
-#endif
 
   template <class _Set, class... _Ty>
   concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);

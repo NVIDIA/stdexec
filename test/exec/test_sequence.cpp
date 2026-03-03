@@ -74,6 +74,7 @@ TEST_CASE("sequence produces a sender", "[sequence]")
   STATIC_REQUIRE(!ex::__callable<exec::sequence_t>);
 
   auto s0 = exec::sequence(ex::just(42));
+  static_assert(ex::__nothrow_connectable<decltype(s0), ex::__receiver_archetype<ex::env<>>>);
   STATIC_REQUIRE(ex::sender<decltype(s0)>);
   STATIC_REQUIRE(ex::sender_in<decltype(s0)>);
   check_val_types<ex::__mset<pack<int>>>(s0);
@@ -88,8 +89,24 @@ TEST_CASE("sequence produces a sender", "[sequence]")
   STATIC_REQUIRE(!ex::sender_in<decltype(s1)>);
   STATIC_REQUIRE(ex::sender_in<decltype(s1), env_t>);
   check_val_types<ex::__mset<pack<std::allocator<void> const &>>, env_t>(s1);
-  check_err_types<ex::__mset<std::exception_ptr, int>, env_t>(s1);
+  check_err_types<ex::__mset<int>, env_t>(s1);
   check_sends_stopped<false, env_t>(s1);
+
+  auto s2 = exec::sequence(ex::just(), ex::just(42));
+  STATIC_REQUIRE(ex::sender<decltype(s2)>);
+  STATIC_REQUIRE(!ex::sender_in<decltype(s2)>);
+  STATIC_REQUIRE(ex::sender_in<decltype(s2), ex::env<>>);
+  check_val_types<ex::__mset<pack<int>>>(s2);
+  check_err_types<ex::__mset<>>(s2);
+  check_sends_stopped<false>(s2);
+
+  auto s3 = exec::sequence(ex::just(true), ex::just(42));
+  STATIC_REQUIRE(ex::sender<decltype(s3)>);
+  STATIC_REQUIRE(!ex::sender_in<decltype(s3)>);
+  STATIC_REQUIRE(ex::sender_in<decltype(s3), ex::env<>>);
+  check_val_types<ex::__mset<pack<int>>>(s3);
+  check_err_types<ex::__mset<>>(s3);
+  check_sends_stopped<false>(s3);
 }
 
 TEST_CASE("sequence with one argument works", "[sequence]")
@@ -155,7 +172,16 @@ TEST_CASE("sequence with sender with throwing connect", "[sequence]")
 {
   auto err  = std::make_exception_ptr(connect_exception{});
   auto sndr = exec::sequence(ex::just(big{}), throwing_connect{}, ex::just(big{}, 42));
-  auto op   = ex::connect(std::move(sndr), expect_error_receiver{err});
+  check_err_types<ex::__mset<std::exception_ptr>, ex::env<>>(std::move(sndr));
+  auto op = ex::connect(std::move(sndr), expect_error_receiver{err});
   ex::start(op);
 }
-#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+TEST_CASE("sequence with sender with only first sender with throwing connect", "[sequence]")
+{
+  auto err  = std::make_exception_ptr(connect_exception{});
+  auto sndr = exec::sequence(throwing_connect{}, ex::just());
+  check_err_types<ex::__mset<>, ex::env<>>(sndr);
+  CHECK_THROWS(ex::connect(std::move(sndr), empty_recv::recv0{}));
+}
+#endif  // !STDEXEC_NO_STD_EXCEPTIONS()
