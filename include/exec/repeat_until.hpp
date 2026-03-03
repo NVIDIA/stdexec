@@ -253,7 +253,7 @@ namespace experimental::execution
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        using __child_t = __child_of<_Sender>;
+        using __child_t   = __child_of<_Sender>;
         using __bouncer_t = schedule_result_t<trampoline_scheduler>;
 
         STDEXEC_COMPLSIGS_LET(__completions, get_completion_signatures<__child_t, _Env...>())
