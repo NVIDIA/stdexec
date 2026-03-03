@@ -28,6 +28,9 @@
 #include <exception>
 #include <type_traits>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
+
 namespace experimental::execution
 {
   struct _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_;
@@ -253,17 +256,17 @@ namespace experimental::execution
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        using __child_t   = __child_of<_Sender>;
-        using __bouncer_t = schedule_result_t<trampoline_scheduler>;
+        using __child_t                  = __child_of<_Sender>;
+        using __bouncer_t                = schedule_result_t<trampoline_scheduler>;
+        using __eptr_completion_t        = set_error_t(std::exception_ptr);
+        constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
 
-        STDEXEC_COMPLSIGS_LET(__completions, get_completion_signatures<__child_t, _Env...>())
+        STDEXEC_COMPLSIGS_LET(
+          __sigs,
+          exec::transform_completion_signatures(get_completion_signatures<__child_t, _Env...>(),
+                                                __transform_values<__child_t>,
+                                                __transform_errors))
         {
-          using __eptr_completion_t        = set_error_t(std::exception_ptr);
-          constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
-          constexpr auto __sigs =
-            exec::transform_completion_signatures(__completions,
-                                                  __transform_values<__child_t>,
-                                                  __transform_errors);
           // The repeat_until sender is a dependent sender if one of the following is
           // true:
           //   - the child sender is a dependent sender, or
@@ -393,3 +396,5 @@ namespace STDEXEC
   struct __sexpr_impl<exec::repeat_until_t> : exec::__repeat::__repeat_until_impl
   {};
 }  // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

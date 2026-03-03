@@ -325,24 +325,24 @@ namespace STDEXEC
     template <class _Fn, class... _Args>
     using __transform_result_t = decltype(__declval<_Fn>().template operator()<_Args...>());
 
-    template <class _SetTag, class... _Args, class _Fn>
+    template <class... _Args, class _Fn>
     [[nodiscard]]
     consteval auto
-    __transform_expr(_Fn const &__fn) -> __transform_result_t<_Fn const &, _SetTag, _Args...>
+    __transform_expr(_Fn const &__fn, int) -> __transform_result_t<_Fn const &, _Args...>
     {
-      return __fn.template operator()<_SetTag, _Args...>();
+      return __fn.template operator()<_Args...>();
     }
 
     template <class _Fn>
     [[nodiscard]]
-    consteval auto __transform_expr(_Fn const &__fn) -> __call_result_t<_Fn const &>
+    consteval auto __transform_expr(_Fn const &__fn, long) -> __call_result_t<_Fn const &>
     {
       return __fn();
     }
 
     template <class _Fn, class... _Args>
-    using __transform_expr_t = decltype(__cmplsigs::__transform_expr<_Args...>(
-      __declval<_Fn const &>()));
+    using __transform_expr_t =
+      decltype(__cmplsigs::__transform_expr<_Args...>(__declval<_Fn const &>(), 0));
 
     // transform_completion_signatures:
     template <class... _Args, class _Fn>
@@ -354,11 +354,11 @@ namespace STDEXEC
         using __completions_t = __transform_expr_t<_Fn, _Args...>;
         if constexpr (__well_formed_completions<__completions_t>)
         {
-          return __cmplsigs::__transform_expr<_Args...>(__fn);
+          return __cmplsigs::__transform_expr<_Args...>(__fn, 0);
         }
         else
         {
-          (void) __cmplsigs::__transform_expr<_Args...>(__fn);  // potentially throwing
+          (void) __cmplsigs::__transform_expr<_Args...>(__fn, 0);  // potentially throwing
           return STDEXEC::__throw_compile_time_error<
             _IN_TRANSFORM_COMPLETION_SIGNATURES_,
             _A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION_,
