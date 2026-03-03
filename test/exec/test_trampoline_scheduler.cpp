@@ -77,7 +77,7 @@ namespace
             "[schedulers][trampoline_scheduler]")
   {
     exec::trampoline_scheduler sched;
-    auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
+    auto                       recurse_deeply = retry(ex::on(sched, fails_alot{}));
     ex::sync_wait(std::move(recurse_deeply));
   }
 
