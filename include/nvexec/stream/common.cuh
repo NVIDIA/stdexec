@@ -97,7 +97,7 @@ namespace nv::execution
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : STDEXEC::default_domain
   {
-    template <sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
+    template <::exec::sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
       requires STDEXEC::__applicable<_strm::transform_sender_for<Tag>, Sender, Env const &>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
     {
