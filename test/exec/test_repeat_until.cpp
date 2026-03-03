@@ -333,11 +333,16 @@ namespace
       static_assert(std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
                     "Unexpected added set_error_t(std::exception_ptr)");
 
-      // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
-      using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
-      static_assert(!ex::sender_of<SC, ex::set_stopped_t()>
-                      || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
+      // set_stopped_t is added when the receiver's stop token is stoppable, as a
+      // consequence of the internal trampoline_scheduler
+      using stoppable_env_t = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
+      static_assert(ex::sender_of<decltype(only_error), ex::set_stopped_t(), stoppable_env_t>,
                     "Missing added set_stopped_t()");
+
+      // set_stopped_t is *not* added when the receiver's stop token is unstoppable.
+      static_assert(!ex::sender_of<decltype(only_error), ex::set_stopped_t(), ex::env<>>,
+                    "set_stopped_t() should not be added when the receiver's stop token is "
+                    "unstoppable");
 
       // operator| and sync_wait require valid completion signatures
       ex::sync_wait(only_error | ex::upon_error([](auto const) { return -1; }));
