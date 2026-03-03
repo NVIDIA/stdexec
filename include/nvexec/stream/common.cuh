@@ -28,7 +28,7 @@
 #include <stack>
 #include <type_traits>
 
-#include "../../exec/sender_for.hpp" // IWYU pragma: keep for sender_for
+#include "../../exec/sender_for.hpp"  // IWYU pragma: keep for sender_for
 #include "../detail/config.cuh"
 #include "../detail/cuda_atomic.cuh"  // IWYU pragma: keep
 #include "../detail/queue.cuh"
