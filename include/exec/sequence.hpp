@@ -115,10 +115,10 @@ namespace experimental::execution
     {
       template <class... _Ts>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
-      constexpr _Tuple
-      operator()(_Ts&&... __ts) const noexcept(std::is_nothrow_constructible_v<_Tuple, _Ts...>)
+      constexpr _Tuple operator()(_Ts&&... __ts) const
+        noexcept(STDEXEC::__nothrow_constructible_from<_Tuple, _Ts...>)
       {
-        return _Tuple{(_Ts&&) __ts...};
+        return _Tuple{static_cast<_Ts&&>(__ts)...};
       }
     };
 
@@ -144,26 +144,25 @@ namespace experimental::execution
       using _mk_child_ops_variant_fn =
         STDEXEC::__mzip_with2<STDEXEC::__q2<_child_opstate_t>, STDEXEC::__qq<STDEXEC::__variant>>;
 
-      using _ops_variant_t = STDEXEC::__minvoke<
-        _mk_child_ops_variant_fn,
-        STDEXEC::__tuple<Sender0, Senders...>,
+      using __mask_t =
         STDEXEC::__mfill_c<sizeof...(Senders),
                            STDEXEC::__mfalse,
-                           STDEXEC::__mbind_back_q<STDEXEC::__mlist, STDEXEC::__mtrue>>>;
+                           STDEXEC::__mbind_back_q<STDEXEC::__mlist, STDEXEC::__mtrue>>;
+
+      using _ops_variant_t = STDEXEC::__minvoke<_mk_child_ops_variant_fn,
+                                                STDEXEC::__tuple<Sender0, Senders...>,
+                                                __mask_t>;
 
       template <class CvSndrs>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate(Rcvr&& rcvr, CvSndrs&& sndrs)
-        noexcept(::STDEXEC::__nothrow_connectable<
-                   decltype(::STDEXEC::__get<0>(::STDEXEC::__declval<CvSndrs>())),
-                   _rcvr_t<sizeof...(Senders) == 0>>
-                 && ::STDEXEC::__nothrow_invocable<decltype(::STDEXEC::__apply),
-                                                   __convert_tuple_fn<_senders_tuple_t>,
-                                                   CvSndrs>)
+        noexcept(::STDEXEC::__nothrow_applicable<__convert_tuple_fn<_senders_tuple_t>, CvSndrs>
+                 && ::STDEXEC::__nothrow_connectable<::STDEXEC::__tuple_element_t<0, CvSndrs>,
+                                                     _rcvr_t<sizeof...(Senders) == 0>>)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
+        // move all but the first sender into the opstate:
         , _sndrs{
             STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{}, static_cast<CvSndrs&&>(sndrs))}
-      // move all but the first sender into the opstate.
       {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The
@@ -179,10 +178,9 @@ namespace experimental::execution
         constexpr auto __nth   = sizeof...(Senders) - Remaining;
         auto*          self    = static_cast<_opstate*>(_self);
         auto&          sndr    = STDEXEC::__get<__nth + 1>(self->_sndrs);
-        constexpr auto nothrow = noexcept(
-          self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
-                                                        std::move(sndr),
-                                                        _rcvr_t<Remaining == 1>{self}));
+        constexpr bool nothrow =
+          STDEXEC::__nothrow_connectable<STDEXEC::__m_at_c<__nth + 1, Senders...>,
+                                         _rcvr_t<Remaining == 1>>;
         STDEXEC_TRY
         {
           auto& op = self->_ops.template __emplace_from<__nth + 1>(STDEXEC::connect,
@@ -198,7 +196,7 @@ namespace experimental::execution
         {
           if constexpr (nothrow)
           {
-            STDEXEC_UNREACHABLE();
+            STDEXEC::__std::unreachable();
           }
           else
           {
