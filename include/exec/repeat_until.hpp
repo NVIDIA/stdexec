@@ -21,6 +21,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 
+#include "completion_signatures.hpp"
 #include "sequence.hpp"
 #include "trampoline_scheduler.hpp"
 
@@ -29,6 +30,9 @@
 
 namespace experimental::execution
 {
+  struct _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_;
+  struct _EXPECTING_A_SENDER_OF_VOID_;
+
   namespace __repeat
   {
     using namespace STDEXEC;
@@ -81,8 +85,7 @@ namespace experimental::execution
         else
         {
           // Mixed results:
-          constexpr bool __is_nothrow = noexcept(
-            (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...));
+          constexpr bool __is_nothrow = (std::is_nothrow_convertible_v<_Booleans, bool> && ...);
           STDEXEC_TRY
           {
             // If the child sender completed with true, we're done
@@ -110,11 +113,11 @@ namespace experimental::execution
 
       template <class _Error>
       constexpr void set_error(_Error &&__err) noexcept
-      {  // intentionally pass-by-value
+      {
         STDEXEC_TRY
         {
           auto __err_copy = static_cast<_Error &&>(__err);  // make a local copy of the error...
-          __state_->__cleanup();  // because this could potentially invalidate it.
+          __state_->__cleanup();  // ... because this could potentially invalidate it.
           STDEXEC::set_error(std::move(__state_->__rcvr_), static_cast<_Error &&>(__err_copy));
         }
         STDEXEC_CATCH_ALL
@@ -134,9 +137,9 @@ namespace experimental::execution
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
+      constexpr auto get_env() const noexcept -> __fwd_env_t<env_of_t<_Receiver>>
       {
-        return STDEXEC::get_env(__state_->__rcvr_);
+        return __fwd_env(STDEXEC::get_env(__state_->__rcvr_));
       }
 
       __opstate_base<_Receiver> *__state_;
@@ -207,84 +210,97 @@ namespace experimental::execution
 
     STDEXEC_PRAGMA_POP()
 
-    struct _EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_
-    {};
-    struct _EXPECTING_A_SENDER_OF_VOID_
-    {};
-
-    template <class _Child, class... _Args>
-    using __values_t =
-      // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
-      std::conditional_t<
-        ((sizeof...(_Args) == 1) && (__std::convertible_to<_Args, bool> && ...)),
-        std::conditional_t<(__bool_constant<_Args, false> && ...),
-                           completion_signatures<>,
-                           completion_signatures<set_value_t()>>,
-        __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                     _WHERE_(_IN_ALGORITHM_, repeat_until_t),
-                     _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
-                     _WITH_PRETTY_SENDER_<_Child>>>;
-
-    template <class... _Booleans>
-    using __values_overload_nothrow_bool_convertible_t =
-      __mand<std::is_nothrow_convertible<_Booleans, bool>...>;
-
-    template <class _Sender, class... _Env>
-    using __values_nothrow_bool_convertible_t =
-      __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,      // sigs
-                      __qq<__values_overload_nothrow_bool_convertible_t>,  // tuple
-                      __qq<__mand>                                         // variant
-                      >;
-
-    template <typename _Sender, typename... _Env>
-    using __with_eptr_completion_t = __eptr_completion_unless<
-      __values_nothrow_bool_convertible_t<_Sender, _Env...>::value
-      && __cmplsigs::__partitions_of_t<
-        __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__errors::value
-      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>;
-
-    template <class...>
-    using __delete_set_value_t = completion_signatures<>;
-
-    template <class _Child, class... _Env>
-    using __completions_t = STDEXEC::transform_completion_signatures<
-      __completion_signatures_of_t<__decay_t<_Child> &, _Env...>,
-      STDEXEC::transform_completion_signatures<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
-        __with_eptr_completion_t<_Child, _Env...>,
-        __delete_set_value_t>,
-      __mbind_front_q<__values_t, _Child>::template __f>;
-
-    struct _FAILED_TO_FORM_COMPLETION_SIGNATURES
-    {};
-
     struct __repeat_until_impl : __sexpr_defaults
     {
+      template <class _Child>
+      static constexpr auto __transform_values = []<class... _Args>()
+      {
+        if constexpr (sizeof...(_Args) != 1 || (!__std::convertible_to<_Args, bool> || ...))
+        {
+          return exec::throw_compile_time_error<
+            _WHAT_(_INVALID_ARGUMENT_),
+            _WHERE_(_IN_ALGORITHM_, repeat_until_t),
+            _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
+            _WITH_PRETTY_SENDER_<_Child>>();
+        }
+        else if constexpr ((__bool_constant<_Args, false> && ...))
+        {
+          return STDEXEC::completion_signatures{};
+        }
+        else if constexpr ((std::is_nothrow_convertible_v<_Args, bool> && ...))
+        {
+          return STDEXEC::completion_signatures<set_value_t()>();
+        }
+        else
+        {
+          return STDEXEC::completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>();
+        }
+      };
+
+      static constexpr auto __transform_errors = []<class _Error>() noexcept
+      {
+        if constexpr (__nothrow_decay_copyable<_Error> || __decays_to<_Error, std::exception_ptr>)
+        {
+          return STDEXEC::completion_signatures<set_error_t(_Error)>();
+        }
+        else
+        {
+          return STDEXEC::completion_signatures<set_error_t(_Error),
+                                                set_error_t(std::exception_ptr)>();
+        }
+      };
+
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
         using __child_t = __child_of<_Sender>;
-        if constexpr (::STDEXEC::__minvocable_q<__completions_t, __child_t, _Env...>)
+        using __bouncer_t = schedule_result_t<trampoline_scheduler>;
+
+        STDEXEC_COMPLSIGS_LET(__completions, get_completion_signatures<__child_t, _Env...>())
         {
-          return __completions_t<__child_t, _Env...>{};
-        }
-        else if constexpr (sizeof...(_Env) == 0)
-        {
-          return STDEXEC::__dependent_sender<_Sender>();
-        }
-        else
-        {
-          return ::STDEXEC::__throw_compile_time_error<_FAILED_TO_FORM_COMPLETION_SIGNATURES,
-                                                       ::STDEXEC::_WITH_PRETTY_SENDER_<_Sender>>();
+          using __eptr_completion_t        = set_error_t(std::exception_ptr);
+          constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
+          constexpr auto __sigs =
+            exec::transform_completion_signatures(__completions,
+                                                  __transform_values<__child_t>,
+                                                  __transform_errors);
+          // The repeat_until sender is a dependent sender if one of the following is
+          // true:
+          //   - the child sender is a dependent sender, or
+          //   - the trampoline scheduler's sender is a dependent sender, or
+          //   - sizeof...(_Env) == 0 and the child sender does not have a
+          //     set_error(exception_ptr) completion.
+          constexpr bool __is_dependent = (sizeof...(_Env) == 0)
+                                       && (dependent_sender<__bouncer_t>
+                                           || !__sigs.__contains(__eptr_completion));
+          if constexpr (__is_dependent)
+          {
+            return exec::throw_compile_time_error<dependent_sender_error,
+                                                  _WITH_PRETTY_SENDER_<__child_t>>();
+          }
+          else
+          {
+            constexpr bool __has_nothrow_connect =
+              (__nothrow_connectable<__child_t, __receiver_archetype<_Env>> || ...);
+            constexpr auto __eptr_sigs    = __eptr_completion_unless<__has_nothrow_connect>();
+            constexpr auto __bouncer_sigs = exec::transform_completion_signatures(
+              get_completion_signatures<__bouncer_t, _Env...>(),
+              exec::ignore_completion());  // drop the set_value_t() completion from the
+                                           // trampoline scheduler.
+
+            return exec::concat_completion_signatures(__sigs, __eptr_sigs, __bouncer_sigs);
+          }
         }
       };
 
       static constexpr auto __connect =
         []<class _Sender, class _Receiver>(_Sender &&__sndr, _Receiver __rcvr) noexcept(
-          noexcept(__opstate(STDEXEC::__get<2>(__declval<_Sender>()), __declval<_Receiver>())))
+          __nothrow_constructible_from<__opstate<__child_of<_Sender>, _Receiver>,
+                                       __child_of<_Sender>,
+                                       _Receiver>)
       {
-        return __opstate(STDEXEC::__get<2>(static_cast<_Sender &&>(__sndr)),
-                         static_cast<_Receiver &&>(__rcvr));
+        auto &[__tag, __ign, __child] = __sndr;
+        return __opstate(STDEXEC::__forward_like<_Sender>(__child), std::move(__rcvr));
       };
     };
 

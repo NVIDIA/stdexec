@@ -317,7 +317,7 @@ namespace
       static_assert(
         std::same_as<ex::error_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
         "Expect no value completions");
-      static_assert(ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
+      static_assert(ex::sender_of<decltype(only_stopped), ex::set_stopped_t(), ex::env<>>,
                     "Missing set_stopped_t() from upstream");
 
       // operator| and sync_wait require valid completion signatures
