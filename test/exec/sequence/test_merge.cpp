@@ -17,6 +17,7 @@
 
 #include "exec/sequence/merge.hpp"
 
+#include "exec/sender_for.hpp"
 #include "exec/sequence.hpp"
 #include "exec/sequence/empty_sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
@@ -234,7 +235,7 @@ namespace
 
   struct my_domain
   {
-    template <ex::sender_expr_for<ex::then_t> Sender, class Env>
+    template <exec::sender_for<ex::then_t> Sender, class Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender&&, Env const &)
     {
       return ex::just(int{21});

@@ -24,6 +24,7 @@
 #  include "../../stdexec/execution.hpp"
 
 #  include "../detail/basic_sequence.hpp"
+#  include "../sender_for.hpp"
 #  include "../sequence.hpp"
 #  include "../sequence_senders.hpp"
 #  include "../trampoline_scheduler.hpp"
@@ -203,13 +204,14 @@ namespace experimental::execution
       template <class _Sequence, class _Receiver>
       using _NextSender = next_sender_of_t<_Receiver, __item_sender_t<_Sequence>>;
 
-      template <sender_expr_for<iterate_t>                                  _SeqExpr,
+      template <class _SeqExpr,
                 sequence_receiver_of<item_types<__item_sender_t<_SeqExpr>>> _Receiver>
         requires sender_to<_NextSender<_SeqExpr, _Receiver>, _NextReceiver<_SeqExpr, _Receiver>>
       static constexpr auto subscribe(_SeqExpr&& __seq, _Receiver __rcvr)
         noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _SeqExpr>)
           -> __apply_result_t<__subscribe_fn<_Receiver>, _SeqExpr>
       {
+        static_assert(sender_for<_SeqExpr, iterate_t>);
         return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_SeqExpr&&>(__seq));
       }
 
@@ -221,9 +223,10 @@ namespace experimental::execution
                                      set_stopped_t()>();
       }
 
-      template <sender_expr_for<iterate_t> _Sequence, class... _Env>
+      template <class _Sequence, class... _Env>
       static consteval auto get_item_types() noexcept
       {
+        static_assert(sender_for<_Sequence, iterate_t>);
         return item_types<__item_sender_t<_Sequence>>();
       }
 

@@ -47,7 +47,7 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()  //
         -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
       {
-        static_assert(sender_expr_for<_Sender, upon_error_t>);
+        static_assert(__sender_for<_Sender, upon_error_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };

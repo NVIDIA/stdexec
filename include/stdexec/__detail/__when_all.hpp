@@ -424,7 +424,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, when_all_t>);
+        static_assert(__sender_for<_Self, when_all_t>);
         if constexpr (__minvocable_q<__completions_t, _Self, _Env...>)
         {
           // TODO: update this to use constant evaluation:

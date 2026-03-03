@@ -30,7 +30,7 @@ namespace
     STATIC_REQUIRE(STDEXEC::sender_in<Sender, STDEXEC::env<>>);
     STATIC_REQUIRE(std::same_as<STDEXEC::completion_signatures<STDEXEC::set_value_t()>,
                                 STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>>);
-    STATIC_REQUIRE(STDEXEC::sender_expr_for<Sender, exec::ignore_all_values_t>);
+    STATIC_REQUIRE(STDEXEC::__sender_for<Sender, exec::ignore_all_values_t>);
     CHECK(STDEXEC::sync_wait(sndr));
   }
 

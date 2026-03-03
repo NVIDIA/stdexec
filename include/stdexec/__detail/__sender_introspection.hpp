@@ -172,9 +172,16 @@ namespace STDEXEC
   template <auto _Descriptor>
   struct __mfor<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
+  template <class _Sender, class... _Tag>
+  concept __sender_for = sender<_Sender> && __minvocable_q<tag_of_t, _Sender>
+                      && (__std::same_as<tag_of_t<_Sender>, _Tag> && ...);
+
   template <class _Sender>
-  concept sender_expr = __minvocable_q<tag_of_t, _Sender>;
+  concept sender_expr STDEXEC_DEPRECATE_CONCEPT("Please use sender_for from <exec/sender_for.hpp> "
+                                                "instead") = __sender_for<_Sender>;
 
   template <class _Sender, class _Tag>
-  concept sender_expr_for = sender_expr<_Sender> && __std::same_as<tag_of_t<_Sender>, _Tag>;
+  concept sender_expr_for
+    STDEXEC_DEPRECATE_CONCEPT("Please use sender_for from "
+                              "<exec/sender_for.hpp> instead") = __sender_for<_Sender, _Tag>;
 }  // namespace STDEXEC

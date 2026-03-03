@@ -100,7 +100,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, into_variant_t>);
+        static_assert(__sender_for<_Self, into_variant_t>);
         return __completions<__child_of<_Self>, _Env...>{};
       };
     };
