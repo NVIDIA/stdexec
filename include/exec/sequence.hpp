@@ -236,6 +236,11 @@ namespace experimental::execution
     {
       using sender_concept = STDEXEC::sender_t;
 
+      // Even without an Env, we can sometimes still determine the completion signatures
+      // of the sequence sender. If any of the child senders has a
+      // set_error(exception_ptr) completion, then the sequence sender has a
+      // set_error(exception_ptr) completion. We don't have to ask if any connect call
+      // throws.
       template <class Self, class... Env>
         requires(sizeof...(Env) > 0)
              || __has_eptr_completion<STDEXEC::__copy_cvref_t<Self, Sender0>>
@@ -272,10 +277,10 @@ namespace experimental::execution
       template <STDEXEC::__decay_copyable Self, class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Rcvr rcvr)
-        noexcept(std::is_nothrow_constructible_v<
+        noexcept(STDEXEC::__nothrow_constructible_from<
                  _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>,
                  Rcvr,
-                 decltype(((Self&&) self)._sndrs)>)
+                 decltype((static_cast<Self&&>(self)._sndrs))>)
       {
         return _opstate<Rcvr, STDEXEC::__copy_cvref_t<Self, Sender0>, Senders...>{
           static_cast<Rcvr&&>(rcvr),
