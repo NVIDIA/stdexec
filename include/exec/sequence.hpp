@@ -37,12 +37,14 @@ namespace experimental::execution
     {
       template <class Sender>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      constexpr auto operator()(Sender sndr) const -> Sender;
+      constexpr auto operator()(Sender sndr) const
+        noexcept(STDEXEC::__nothrow_move_constructible<Sender>) -> Sender;
 
       template <class... Senders>
         requires(sizeof...(Senders) > 1)
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      constexpr auto operator()(Senders... sndrs) const -> _sndr<Senders...>;
+      constexpr auto operator()(Senders... sndrs) const
+        noexcept(STDEXEC::__nothrow_move_constructible<Senders...>) -> _sndr<Senders...>;
     };
 
     template <class Rcvr>
@@ -334,7 +336,8 @@ namespace experimental::execution
 
     template <class Sender>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto sequence_t::operator()(Sender sndr) const -> Sender
+    constexpr auto sequence_t::operator()(Sender sndr) const
+      noexcept(STDEXEC::__nothrow_move_constructible<Sender>) -> Sender
     {
       return sndr;
     }
@@ -342,7 +345,8 @@ namespace experimental::execution
     template <class... Senders>
       requires(sizeof...(Senders) > 1)
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto sequence_t::operator()(Senders... sndrs) const -> _sndr<Senders...>
+    constexpr auto sequence_t::operator()(Senders... sndrs) const
+      noexcept(STDEXEC::__nothrow_move_constructible<Senders...>) -> _sndr<Senders...>
     {
       return _sndr<Senders...>{{}, {}, {static_cast<Senders&&>(sndrs)...}};
     }
