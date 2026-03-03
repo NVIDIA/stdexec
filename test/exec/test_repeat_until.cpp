@@ -484,4 +484,4 @@ namespace
     ex::start(op);
     CHECK(invoked == 1);
   }
-} // namespace
+}  // namespace
