@@ -17,6 +17,7 @@
 #pragma once
 
 // Pull in the reference implementation of P2300:
+#include <exec/completion_signatures.hpp>
 #include <stdexec/execution.hpp>
 
 #include <concepts>
@@ -26,7 +27,6 @@
 
 namespace
 {
-
   template <class From, class To>
   using _copy_cvref_t = STDEXEC::__copy_cvref_t<From, To>;
 
@@ -165,13 +165,14 @@ namespace
     using _keep_values = STDEXEC::completion_signatures<STDEXEC::set_value_t(Ts...)>;
 
     template <std::same_as<_retry_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> STDEXEC::transform_completion_signatures<
-      STDEXEC::completion_signatures_of_t<S&, Env...>,
-      STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>,
-      _keep_values,
-      _swallow_errors>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<S&, Env...>(),
+        exec::keep_completion<STDEXEC::set_value_t>(),
+        exec::ignore_completion(),
+        {},
+        STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr)>());
     }
 
     template <STDEXEC::receiver R>
@@ -186,9 +187,14 @@ namespace
     }
   };
 
-  template <STDEXEC::sender S>
-  auto retry(S s) -> STDEXEC::sender auto
+  struct retry_t
   {
-    return _retry_sender{static_cast<S&&>(s)};
-  }
+    template <STDEXEC::sender S>
+    auto operator()(S s) const -> _retry_sender<S>
+    {
+      return _retry_sender<S>{static_cast<S&&>(s)};
+    }
+  };
+
+  inline constexpr retry_t retry{};
 }  // namespace
