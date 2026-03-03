@@ -44,29 +44,28 @@ namespace STDEXEC
 
   struct __finally_t
   {
-    template <STDEXEC::sender _Initial, STDEXEC::sender _Final>
+    template <sender _Initial, sender _Final>
     constexpr auto operator()(_Initial&& __initial, _Final&& __final) const  //
-      -> STDEXEC::__well_formed_sender auto
+      -> __well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<__finally_t>({},
-                                                static_cast<_Initial&&>(__initial),
-                                                static_cast<_Final&&>(__final));
+      return __make_sexpr<__finally_t>({},
+                                       static_cast<_Initial&&>(__initial),
+                                       static_cast<_Final&&>(__final));
     }
 
-    template <STDEXEC::sender _Final>
+    template <sender _Final>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Final&& __final) const
     {
-      return STDEXEC::__closure(*this, static_cast<_Final&&>(__final));
+      return __closure(*this, static_cast<_Final&&>(__final));
     }
 
     template <class _Sender>
-    static constexpr auto
-    transform_sender(STDEXEC::set_value_t, _Sender&& __sndr, STDEXEC::__ignore)
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
       auto& [__tag, __ign, __initial, __final] = __sndr;
-      return STDEXEC::__final::__sender{STDEXEC::__forward_like<_Sender>(__initial),  //
-                                        STDEXEC::__forward_like<_Sender>(__final)};
+      return __final::__sender{STDEXEC::__forward_like<_Sender>(__initial),  //
+                               STDEXEC::__forward_like<_Sender>(__final)};
     }
   };
 
@@ -122,19 +121,27 @@ namespace STDEXEC
       template <class _Receiver, class _Tuple>
       constexpr void operator()(_Receiver& __rcvr, _Tuple&& __tuple) noexcept
       {
-        STDEXEC::__apply(__applier{}, static_cast<_Tuple&&>(__tuple), __rcvr);
+        __apply(__applier{}, static_cast<_Tuple&&>(__tuple), __rcvr);
       }
     };
+
+    using __mk_secondary_env_t = __mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
+
+    template <class _CvInitialSender, class _ReceiverEnv>
+    using __env2_t = __call_result_t<__mk_secondary_env_t, _CvInitialSender, _ReceiverEnv>;
+
+    template <class _Env2, class _ReceiverEnv>
+    using __final_env_t = __join_env_t<_Env2 const &, __fwd_env_t<_ReceiverEnv>>;
 
     template <class _ResultType, class _Receiver, class _Env2>
     struct __final_receiver
     {
       using receiver_concept = receiver_t;
-      using __env2_t         = __join_env_t<_Env2 const &, __fwd_env_t<env_of_t<_Receiver>>>;
+      using __env_t          = __final_env_t<_Env2, env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
       {
-        STDEXEC::__visit(__visitor{}, std::move(__opstate_->__result_), __opstate_->__rcvr_);
+        __visit(__visitor{}, std::move(__opstate_->__result_), __opstate_->__rcvr_);
       }
 
       template <class _Error>
@@ -150,7 +157,7 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> __env2_t
+      constexpr auto get_env() const noexcept -> __env_t
       {
         return __env::__join(__opstate_->__env2_, __fwd_env(STDEXEC::get_env(__opstate_->__rcvr_)));
       }
@@ -214,28 +221,18 @@ namespace STDEXEC
     template <class _CvFinalSender, class _ResultType, class _Receiver, class _Env2>
     struct __initial_receiver;
 
-    template <class _CvInitialSender, class _CvFinalSender, class _Receiver, class _Env2>
+    template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
     using __final_opstate_t =
       __final_opstate<_CvFinalSender,
                       __result_variant_t<_CvInitialSender, _CvFinalSender, _Receiver>,
                       _Receiver,
-                      _Env2>;
-
-    using __mk_secondary_env_t =
-      STDEXEC::__mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
-
-    template <class _CvInitialSender, class _Receiver>
-    using __env2_t = __call_result_t<__mk_secondary_env_t, _CvInitialSender, env_of_t<_Receiver>>;
+                      __env2_t<_CvInitialSender, env_of_t<_Receiver>>>;
 
     template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
-    struct __opstate
-      : __final_opstate_t<_CvInitialSender,
-                          _CvFinalSender,
-                          _Receiver,
-                          __env2_t<_CvInitialSender, _Receiver>>
+    struct __opstate : __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver>
     {
-      using __env2_t = __final::__env2_t<_CvInitialSender, _Receiver>;
-      using __base_t = __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver, __env2_t>;
+      using __env2_t            = __final::__env2_t<_CvInitialSender, env_of_t<_Receiver>>;
+      using __base_t            = __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver>;
       using __initial_results_t = __base_t::__results_t;
 
       constexpr explicit __opstate(_CvInitialSender&& __initial,
@@ -303,17 +300,22 @@ namespace STDEXEC
       __final_opstate<_CvFinalSender, _ResultType, _Receiver, _Env2>* __opstate_;
     };
 
+    template <class _CvInitialSender, class _Env>
+    using __mk_final_env_t = __final_env_t<__env2_t<_CvInitialSender, _Env>, _Env>;
+
     template <class _CvInitialSender, class _CvFinalSender, class... _Env>
     consteval auto __get_completion_signatures()
     {
       STDEXEC_COMPLSIGS_LET(__initial_completions,
-                            STDEXEC::get_completion_signatures<_CvInitialSender, _Env...>())
+                            get_completion_signatures<_CvInitialSender, _Env...>())
       {
         using __initial_completions_t = decltype(__initial_completions);
         auto __final_completions =
-          STDEXEC::get_completion_signatures<_CvFinalSender, __fwd_env_t<_Env>...>();
+          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>();
 
-        if constexpr (!__sends<set_value_t, _CvFinalSender, __fwd_env_t<_Env>...>)
+        if constexpr (__never_sends<set_value_t,
+                                    _CvFinalSender,
+                                    __mk_final_env_t<_CvInitialSender, _Env>...>)
         {
           // If the finally sender doesn't have set_value completions, then we
           // don't need to worry about the initial sender's value types not being
@@ -325,7 +327,9 @@ namespace STDEXEC
                                                             {},
                                                             __final_completions);
         }
-        else if constexpr (!sender_of<_CvFinalSender, set_value_t(), __fwd_env_t<_Env>...>)
+        else if constexpr (!sender_of<_CvFinalSender,
+                                      set_value_t(),
+                                      __mk_final_env_t<_CvInitialSender, _Env>...>)
         {
           // If the finally sender has value completions other than set_value_t(), then
           // throw a compilation error.
