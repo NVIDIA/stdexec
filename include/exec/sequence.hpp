@@ -177,9 +177,9 @@ namespace experimental::execution
       template <std::size_t Remaining>
       static constexpr void _start_next(_opstate_base<Rcvr>* _self) noexcept
       {
-        constexpr auto __nth   = sizeof...(Senders) - Remaining;
-        auto*          self    = static_cast<_opstate*>(_self);
-        auto&          sndr    = STDEXEC::__get<__nth + 1>(self->_sndrs);
+        constexpr auto __nth = sizeof...(Senders) - Remaining;
+        auto*          self  = static_cast<_opstate*>(_self);
+        auto&          sndr  = STDEXEC::__get<__nth + 1>(self->_sndrs);
         constexpr bool nothrow =
           STDEXEC::__nothrow_connectable<STDEXEC::__m_at_c<__nth, Senders...>,
                                          _rcvr_t<Remaining == 1>>;
