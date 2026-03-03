@@ -16,44 +16,54 @@
  */
 #include "./common.hpp"
 
-#include <execpools/tbb/tbb_thread_pool.hpp>
+#include <exec/tbb/tbb_thread_pool.hpp>
 #include <tbb/task_group.h>
 
-struct RunThread {
-  void operator()(
-    execpools::tbb_thread_pool& pool,
-    std::size_t total_scheds,
-    std::size_t tid,
-    std::barrier<>& barrier,
+struct RunThread
+{
+  void operator()(exec::tbb::tbb_thread_pool& pool,
+                  std::size_t                 total_scheds,
+                  std::size_t                 tid,
+                  std::barrier<>&             barrier,
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
-    [[maybe_unused]] std::span<char> buffer,
+                  [[maybe_unused]] std::span<char> buffer,
 #endif
-    std::atomic<bool>& stop,
-    exec::numa_policy numa) {
+                  std::atomic<bool>& stop,
+                  exec::numa_policy  numa)
+  {
     int numa_node = numa.thread_index_to_node(tid);
     numa.bind_to_node(numa_node);
     auto scheduler = pool.get_scheduler();
-    while (true) {
+    while (true)
+    {
       barrier.arrive_and_wait();
-      if (stop.load()) {
+      if (stop.load())
+      {
         break;
       }
       auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
-      std::size_t scheds = end - start;
+      std::size_t     scheds = end - start;
       tbb::task_group tg{};
-      stdexec::sync_wait(stdexec::schedule(scheduler) | stdexec::then([&] {
-                           for (std::size_t i = 0; i < scheds; ++i) {
-                             tg.run([&] {
-                               // empty
-                             });
-                           }
-                         }));
+      stdexec::sync_wait(stdexec::schedule(scheduler)
+                         | stdexec::then(
+                           [&]
+                           {
+                             for (std::size_t i = 0; i < scheds; ++i)
+                             {
+                               tg.run(
+                                 [&]
+                                 {
+                                   // empty
+                                 });
+                             }
+                           }));
       tg.wait();
       barrier.arrive_and_wait();
     }
   }
 };
 
-auto main(int argc, char** argv) -> int {
-  my_main<execpools::tbb_thread_pool, RunThread>(argc, argv);
+auto main(int argc, char** argv) -> int
+{
+  my_main<exec::tbb::tbb_thread_pool, RunThread>(argc, argv);
 }

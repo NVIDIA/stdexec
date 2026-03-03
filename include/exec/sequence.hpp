@@ -157,9 +157,9 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate(Rcvr&& rcvr, CvSndrs&& sndrs)
         : _opstate_base<Rcvr>{static_cast<Rcvr&&>(rcvr)}
-        , _sndrs{STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{},
-                                  static_cast<CvSndrs&&>(sndrs))}
-        // move all but the first sender into the opstate.
+        , _sndrs{
+            STDEXEC::__apply(__convert_tuple_fn<_senders_tuple_t>{}, static_cast<CvSndrs&&>(sndrs))}
+      // move all but the first sender into the opstate.
       {
         // Below, it looks like we are using `sndrs` after it has been moved from. This is not the
         // case. `sndrs` is moved into a tuple type that has `__ignore` for the first element. The

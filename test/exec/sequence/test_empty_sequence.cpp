@@ -22,11 +22,12 @@
 using namespace STDEXEC;
 using namespace exec;
 
-namespace {
+namespace
+{
 
-  TEST_CASE(
-    "sequence_senders - empty_sequence is a sequence sender",
-    "[sequence_senders][empty_sequence]") {
+  TEST_CASE("sequence_senders - empty_sequence is a sequence sender",
+            "[sequence_senders][empty_sequence]")
+  {
     using empty_t = decltype(empty_sequence());
     STATIC_REQUIRE(sequence_sender<empty_t, env<>>);
     [[maybe_unused]]
@@ -37,29 +38,31 @@ namespace {
     STATIC_REQUIRE(std::same_as<item_types_of_t<empty_t, env<>>, item_types<>>);
   }
 
-  struct count_set_next_receiver_t {
+  struct count_set_next_receiver_t
+  {
     using receiver_concept = STDEXEC::receiver_t;
     int& count_invocations_;
 
-    auto set_next(auto /* item */) & noexcept {
+    auto set_next(auto /* item */) & noexcept
+    {
       ++count_invocations_;
       return just();
     }
 
-    void set_value() noexcept {
-    }
+    void set_value() noexcept {}
   };
 
-  TEST_CASE(
-    "sequence_senders - empty_sequence is a sequence sender to a minimal receiver of set_value_t()",
-    "[sequence_senders][empty_sequence]") {
+  TEST_CASE("sequence_senders - empty_sequence is a sequence sender to a minimal receiver of "
+            "set_value_t()",
+            "[sequence_senders][empty_sequence]")
+  {
     using empty_t = decltype(empty_sequence());
     STATIC_REQUIRE(receiver_of<count_set_next_receiver_t, completion_signatures<set_value_t()>>);
     STATIC_REQUIRE(sequence_sender_to<empty_t, count_set_next_receiver_t>);
 
-    int count{0};
+    int  count{0};
     auto op = subscribe(empty_sequence(), count_set_next_receiver_t{count});
     STDEXEC::start(op);
     CHECK(count == 0);
   }
-} // namespace
+}  // namespace

@@ -47,22 +47,25 @@
 
 namespace ex = stdexec;
 
-struct sync_stream {
+struct sync_stream
+{
  private:
   static std::mutex s_mtx_;
 
  public:
-  std::ostream& sout_;
+  std::ostream&                sout_;
   std::unique_lock<std::mutex> lock_{s_mtx_};
 
   template <class T>
-  friend auto operator<<(sync_stream&& self, const T& value) -> sync_stream&& {
+  friend auto operator<<(sync_stream&& self, T const & value) -> sync_stream&&
+  {
     self.sout_ << value;
     return std::move(self);
   }
 
   friend auto
-    operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&) ) -> sync_stream&& {
+  operator<<(sync_stream&& self, std::ostream& (*manip)(std::ostream&) ) -> sync_stream&&
+  {
     self.sout_ << manip;
     return std::move(self);
   }
@@ -70,35 +73,39 @@ struct sync_stream {
 
 std::mutex sync_stream::s_mtx_{};
 
-auto legacy_read_from_socket(int, char* buffer, size_t buffer_len) -> size_t {
-  const char fake_data[] = "Hello, world!";
-  size_t sz = sizeof(fake_data) - 1;
-  size_t count = (std::min) (sz, buffer_len);
+auto legacy_read_from_socket(int, char* buffer, size_t buffer_len) -> size_t
+{
+  char const fake_data[] = "Hello, world!";
+  size_t     sz          = sizeof(fake_data) - 1;
+  size_t     count       = (std::min) (sz, buffer_len);
   std::memcpy(buffer, fake_data, count);
   return count;
 }
 
-void process_read_data(const char* read_data, size_t read_len) {
+void process_read_data(char const * read_data, size_t read_len)
+{
   sync_stream{.sout_ = std::cout} << "Processing '" << std::string_view{read_data, read_len}
                                   << "'\n";
 }
 
-auto main() -> int {
+auto main() -> int
+{
   // Create a thread pool and get a scheduler from it
   exec::static_thread_pool work_pool{8};
-  ex::scheduler auto work_sched = work_pool.get_scheduler();
+  ex::scheduler auto       work_sched = work_pool.get_scheduler();
 
   exec::static_thread_pool io_pool{1};
-  ex::scheduler auto io_sched = io_pool.get_scheduler();
+  ex::scheduler auto       io_sched = io_pool.get_scheduler();
 
   std::array<std::byte, 16 * 1024> buffer;
 
   exec::async_scope scope;
 
   // Fake a couple of requests
-  for (int i = 0; i < 10; i++) {
-    int sock = i;
-    auto buf = reinterpret_cast<char*>(&buffer[0]);
+  for (int i = 0; i < 10; i++)
+  {
+    int  sock = i;
+    auto buf  = reinterpret_cast<char*>(&buffer[0]);
 
     // A sender that just calls the legacy read function
     auto snd_read = ex::just(sock, buf, buffer.size()) | ex::then(legacy_read_from_socket);

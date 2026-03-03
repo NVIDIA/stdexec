@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Dmitiy V'jukov
+ * Copyright (c) Dmitry V'jukov
  * Copyright (c) 2024 Maikel Nadolski
  * Copyright (c) 2024 NVIDIA Corporation
  *
@@ -23,72 +23,84 @@
 
 #include "__atomic.hpp"
 
-#include "./__spin_loop_pause.hpp"
+#include "stdexec/__detail/__config.hpp"
 
 namespace STDEXEC
 {
   template <auto _Ptr>
   class __intrusive_mpsc_queue;
 
-  template <class _Node, __std::atomic<void*> _Node::* _Next>
+  // _Node must be default_initializable only for the queue to construct an
+  // internal "stub" node - only the _Next data element is accessed internally.
+  template <class _Node, __std::atomic<_Node*> _Node::* _Next>
+    requires __std::default_initializable<_Node>
   class __intrusive_mpsc_queue<_Next>
   {
-    __std::atomic<void*>  __back_{&__nil_};
-    void*                 __front_{&__nil_};
-    __std::atomic<_Node*> __nil_ = nullptr;
-
-    constexpr void push_back_nil()
-    {
-      __nil_.store(nullptr, __std::memory_order_relaxed);
-      auto* __prev = static_cast<_Node*>(__back_.exchange(&__nil_, __std::memory_order_acq_rel));
-      (__prev->*_Next).store(&__nil_, __std::memory_order_release);
-    }
+    __std::atomic<_Node*> __head_{&__stub_};
+    _Node*                __tail_{&__stub_};
+    _Node                 __stub_{};
 
    public:
+    __intrusive_mpsc_queue()
+    {
+      (__stub_.*_Next).store(nullptr, __std::memory_order_release);
+    }
+
     constexpr auto push_back(_Node* __new_node) noexcept -> bool
     {
       (__new_node->*_Next).store(nullptr, __std::memory_order_relaxed);
-      void* __prev_back = __back_.exchange(__new_node, __std::memory_order_acq_rel);
-      bool  __is_nil    = __prev_back == static_cast<void*>(&__nil_);
-      if (__is_nil)
-      {
-        __nil_.store(__new_node, __std::memory_order_release);
-      }
-      else
-      {
-        (static_cast<_Node*>(__prev_back)->*_Next).store(__new_node, __std::memory_order_release);
-      }
-      return __is_nil;
+      _Node* __prev = __head_.exchange(__new_node, __std::memory_order_acq_rel);
+      (__prev->*_Next).store(__new_node, __std::memory_order_release);
+      return __prev == &__stub_;
     }
 
     constexpr auto pop_front() noexcept -> _Node*
     {
-      if (__front_ == static_cast<void*>(&__nil_))
+      _Node* __tail = this->__tail_;
+      STDEXEC_ASSERT(__tail != nullptr);
+      _Node* __next = (__tail->*_Next).load(__std::memory_order_acquire);
+      // If tail is pointing to the stub node we need to advance it once more
+      if (&__stub_ == __tail)
       {
-        _Node* __next = __nil_.load(__std::memory_order_acquire);
-        if (!__next)
+        if (nullptr == __next)
         {
           return nullptr;
         }
-        __front_ = __next;
+        this->__tail_ = __next;
+        __tail        = __next;
+        __next        = (__next->*_Next).load(__std::memory_order_acquire);
       }
-      auto* __front = static_cast<_Node*>(__front_);
-      void* __next  = (__front->*_Next).load(__std::memory_order_acquire);
-      if (__next)
+      // Normal case: there is a next node and we can just advance the tail
+      if (nullptr != __next)
       {
-        __front_ = __next;
-        return __front;
+        this->__tail_ = __next;
+        return __tail;
       }
-      STDEXEC_ASSERT(!__next);
-      push_back_nil();
-      do
+      // Next is nullptr here means that either:
+      // 1) There are no more nodes in the queue
+      // 2) A producer is in the middle of adding a new node
+      _Node const * __head = this->__head_.load(__std::memory_order_acquire);
+      // A producer is in the middle of adding a new node
+      // we cannot return tail as we cannot link the next node yet
+      if (__tail != __head)
       {
-        __spin_loop_pause();
-        __next = (__front->*_Next).load(__std::memory_order_acquire);
+        return nullptr;
       }
-      while (!__next);
-      __front_ = __next;
-      return __front;
+      // No more nodes in the queue - we need to insert a stub node
+      // to be able to link to an eventual empty state (or new nodes)
+      push_back(&__stub_);
+      // Now re-attempt to load next
+      __next = (__tail->*_Next).load(__std::memory_order_acquire);
+      if (nullptr != __next)
+      {
+        // Successfully linked either a new node or the stub node
+        this->__tail_ = __next;
+        return __tail;
+      }
+      // A producer is in the middle of adding a new node since next is still nullptr
+      // and not our stub node, thus we cannot link the next node yet
+      return nullptr;
     }
   };
+
 }  // namespace STDEXEC

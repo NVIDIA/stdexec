@@ -20,27 +20,25 @@
 
 #include <type_traits>
 
-namespace {
+namespace
+{
 
-  struct on_stop_request {
-    void operator()() && noexcept {
-    }
+  struct on_stop_request
+  {
+    void operator()() && noexcept {}
   };
 
   static_assert(::STDEXEC::stoppable_token<::STDEXEC::never_stop_token>);
   static_assert(::STDEXEC::unstoppable_token<::STDEXEC::never_stop_token>);
   static_assert(::STDEXEC::stoppable_token<::STDEXEC::inplace_stop_token>);
   static_assert(!::STDEXEC::unstoppable_token<::STDEXEC::inplace_stop_token>);
-  static_assert(std::is_same_v<
-                ::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
-                ::STDEXEC::never_stop_token::callback_type<on_stop_request>
-  >);
+  static_assert(
+    std::is_same_v<::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
+                   ::STDEXEC::never_stop_token::callback_type<on_stop_request>>);
 
 #if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
   static_assert(::STDEXEC::stoppable_token<std::stop_token>);
-  static_assert(std::is_same_v<
-                ::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
-                std::stop_callback<on_stop_request>
-  >);
+  static_assert(std::is_same_v<::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
+                               std::stop_callback<on_stop_request>>);
 #endif
-} // namespace
+}  // namespace

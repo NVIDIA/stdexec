@@ -498,6 +498,7 @@ namespace experimental::execution
 
       ~__future_state_base()
       {
+        [[maybe_unused]]
         std::unique_lock __guard{__mutex_};
         if (__step_ == __future_step::__created)
         {
@@ -511,11 +512,12 @@ namespace experimental::execution
         }
       }
 
-      constexpr void __step_from_to_(std::unique_lock<std::mutex>& __guard,
-                                     __future_step                 __from,
-                                     __future_step                 __to)
+      constexpr void __step_from_to_([[maybe_unused]] std::unique_lock<std::mutex>& __guard,
+                                     [[maybe_unused]] __future_step                 __from,
+                                     __future_step                                  __to)
       {
         STDEXEC_ASSERT(__guard.owns_lock());
+        [[maybe_unused]]
         auto actual = std::exchange(__step_, __to);
         STDEXEC_ASSERT(actual == __from);
       }

@@ -47,8 +47,11 @@ namespace nv::execution::_strm
     using __decay_ref_t = STDEXEC::__decay_t<Tp>&;
 
     template <class Fun>
-    using _mk_result_sender_t =
-      __mtransform<__q<__decay_ref_t>, __mbind_front_q<__call_result_t, Fun>>;
+    struct _mk_result_sender
+    {
+      template <class... Args>
+      using __f = __remove_rvalue_reference_t<__call_result_t<Fun, __decay_ref_t<Args>...>>;
+    };
 
     template <class Sender, class PropagateReceiver, class Fun, class SetTag>
       requires sender_in<Sender, env_of_t<PropagateReceiver>>
@@ -57,7 +60,7 @@ namespace nv::execution::_strm
       struct _result_sender_size
       {
         template <class... Args>
-        using __f = __msize_t<sizeof(__minvoke<_mk_result_sender_t<Fun>, Args...>)>;
+        using __f = __msize_t<sizeof(__minvoke<_mk_result_sender<Fun>, Args...>)>;
       };
 
       static constexpr std::size_t value = __gather_completions_of_t<SetTag,
@@ -69,7 +72,7 @@ namespace nv::execution::_strm
 
     template <class Receiver, class Fun>
     using opstate_for_t = __mcompose<__mbind_back_q<connect_result_t, propagate_receiver<Receiver>>,
-                                     _mk_result_sender_t<Fun>>;
+                                     _mk_result_sender<Fun>>;
 
     template <class Set, class Sig>
     struct __tfx_signal_fn
@@ -83,7 +86,7 @@ namespace nv::execution::_strm
     {
       template <class Fun, class... StreamEnv>
       using __f = transform_completion_signatures<
-        __completion_signatures_of_t<__minvoke<_mk_result_sender_t<Fun>, Args...>, StreamEnv...>,
+        __completion_signatures_of_t<__minvoke<_mk_result_sender<Fun>, Args...>, StreamEnv...>,
         completion_signatures<set_error_t(cudaError_t)>>;
     };
 
@@ -105,7 +108,7 @@ namespace nv::execution::_strm
       template <__same_as<Set> Tag, class... Args>
       void _complete(Tag, Args&&... args) noexcept
       {
-        using result_sender_t = __minvoke<_mk_result_sender_t<Fun>, Args...>;
+        using result_sender_t = __minvoke<_mk_result_sender<Fun>, Args...>;
         using opstate_t       = __minvoke<opstate_for_t<Receiver, Fun>, Args...>;
 
         cudaStream_t stream        = opstate_->get_stream();

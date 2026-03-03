@@ -141,7 +141,7 @@ namespace STDEXEC
     {}
 
     [[nodiscard]]
-    STDEXEC_CONSTEXPR_CXX23 auto schedule() const noexcept -> __task::__sender;
+    auto schedule() const noexcept -> __task::__sender;
 
     [[nodiscard]]
     bool operator==(task_scheduler const & __rhs) const noexcept = default;
@@ -192,7 +192,7 @@ namespace STDEXEC
      public:
       using operation_state_concept = operation_state_t;
 
-      STDEXEC_CONSTEXPR_CXX23 explicit __any_opstate(__backend_ptr_t __backend, _Rcvr __rcvr)
+      explicit __any_opstate(__backend_ptr_t __backend, _Rcvr __rcvr)
         : __rcvr_proxy_(std::move(__rcvr))
         , __backend_(std::move(__backend))
       {}
@@ -220,7 +220,7 @@ namespace STDEXEC
     {
       using sender_concept = sender_t;
 
-      STDEXEC_CONSTEXPR_CXX23 explicit __sender(task_scheduler __sch)
+      explicit __sender(task_scheduler __sch)
         : __attrs_{std::move(__sch)}
       {}
 
@@ -407,10 +407,7 @@ namespace STDEXEC
                                         system_context_replaceability::bulk_item_receiver_proxy,
                                         true>
     {
-      STDEXEC_CONSTEXPR_CXX23 explicit __bulk_state(_Rcvr           __rcvr,
-                                                    size_t          __shape,
-                                                    _Fn             __fn,
-                                                    __backend_ptr_t __backend)
+      explicit __bulk_state(_Rcvr __rcvr, size_t __shape, _Fn __fn, __backend_ptr_t __backend)
         : __bulk_state::__receiver_proxy_base(std::move(__rcvr))
         , __fn_(std::move(__fn))
         , __shape_(__shape)
@@ -475,11 +472,11 @@ namespace STDEXEC
     {
       using operation_state_concept = operation_state_t;
 
-      STDEXEC_CONSTEXPR_CXX23 explicit __bulk_opstate(_Sndr&&         __sndr,
-                                                      size_t          __shape,
-                                                      _Fn             __fn,
-                                                      _Rcvr           __rcvr,
-                                                      __backend_ptr_t __backend)
+      explicit __bulk_opstate(_Sndr&&         __sndr,
+                              size_t          __shape,
+                              _Fn             __fn,
+                              _Rcvr           __rcvr,
+                              __backend_ptr_t __backend)
         : __state_{std::move(__rcvr), __shape, std::move(__fn), std::move(__backend)}
         , __opstate1_(STDEXEC::connect(static_cast<_Sndr&&>(__sndr), __rcvr_t{&__state_}))
       {}
@@ -506,7 +503,7 @@ namespace STDEXEC
     {
       using sender_concept = sender_t;
 
-      STDEXEC_CONSTEXPR_CXX23 explicit __bulk_sender(_Sndr __sndr, task_scheduler __sch)
+      explicit __bulk_sender(_Sndr __sndr, task_scheduler __sch)
         : __sndr_(std::move(__sndr))
         , __attrs_{std::move(__sch)}
       {}
@@ -650,8 +647,7 @@ namespace STDEXEC
   }  // namespace __task
 
   [[nodiscard]]
-  inline STDEXEC_CONSTEXPR_CXX23 auto task_scheduler::schedule() const noexcept  //
-    -> __task::__sender
+  inline auto task_scheduler::schedule() const noexcept -> __task::__sender
   {
     return __task::__sender{*this};
   }

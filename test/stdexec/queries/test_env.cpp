@@ -19,49 +19,58 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
-namespace {
+namespace
+{
 
   template <typename T>
-  concept can_get_domain = requires(const T& t) { t.query(::STDEXEC::get_domain); };
+  concept can_get_domain = requires(T const & t) { t.query(::STDEXEC::get_domain); };
 
-  namespace zero {
+  namespace zero
+  {
     using env = ::STDEXEC::env<>;
     static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
-  } // namespace zero
+  }  // namespace zero
 
-  namespace one {
+  namespace one
+  {
     using env = ::STDEXEC::env<::STDEXEC::env<>>;
     static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
-  } // namespace one
+  }  // namespace one
 
-  namespace two {
+  namespace two
+  {
     using env = ::STDEXEC::env<::STDEXEC::env<>, ::STDEXEC::env<>>;
     static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
-  } // namespace two
+  }  // namespace two
 
-  namespace three {
+  namespace three
+  {
     using env = ::STDEXEC::env<::STDEXEC::env<>, ::STDEXEC::env<>, ::STDEXEC::env<>>;
     static_assert(std::is_same_v<::STDEXEC::never_stop_token, ::STDEXEC::stop_token_of_t<env>>);
     static_assert(!can_get_domain<env>);
-  } // namespace three
+  }  // namespace three
 
   // https://github.com/NVIDIA/stdexec/issues/1840
   constexpr struct FwdFoo
     : STDEXEC::__query<FwdFoo>
-    , STDEXEC::forwarding_query_t {
+    , STDEXEC::forwarding_query_t
+  {
     using STDEXEC::__query<FwdFoo>::operator();
   } fwd_foo{};
 
-  constexpr struct Foo : STDEXEC::__query<Foo> {
+  constexpr struct Foo : STDEXEC::__query<Foo>
+  {
   } foo{};
 
-  constexpr struct Bar : STDEXEC::__query<Bar> {
+  constexpr struct Bar : STDEXEC::__query<Bar>
+  {
   } bar{};
 
-  constexpr bool test() {
+  constexpr bool test()
+  {
     auto env = STDEXEC::env{
       STDEXEC::env{STDEXEC::prop{fwd_foo, 42.}, STDEXEC::prop{foo, 'F'}},
       STDEXEC::prop{                        bar,                   31415}
@@ -73,10 +82,9 @@ namespace {
   static_assert(test());
 
   struct EnvOfThree
-    : STDEXEC::env<
-        STDEXEC::env<STDEXEC::prop<FwdFoo, int>, STDEXEC::prop<Foo, int>>,
-        STDEXEC::prop<Bar, int>
-      > { };
+    : STDEXEC::env<STDEXEC::env<STDEXEC::prop<FwdFoo, int>, STDEXEC::prop<Foo, int>>,
+                   STDEXEC::prop<Bar, int>>
+  {};
 
   static_assert(STDEXEC::__queryable_with<EnvOfThree, Foo>);
-} // namespace
+}  // namespace

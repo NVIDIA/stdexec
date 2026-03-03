@@ -34,15 +34,15 @@ namespace STDEXEC
   {
     template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_transform_sender = requires(_DomainOrTag __tag,
-                                              _Sender&&    __sender,
-                                              _Env const &... __env) {
+                                              _Sender    &&__sender,
+                                              _Env const &...__env) {
       __tag.transform_sender(_OpTag(), static_cast<_Sender &&>(__sender), __env...);
     };
 
     template <class _DomainOrTag, class _OpTag, class _Sender, class... _Env>
     concept __has_nothrow_transform_sender = requires(_DomainOrTag __tag,
-                                                      _Sender&&    __sender,
-                                                      _Env const &... __env) {
+                                                      _Sender    &&__sender,
+                                                      _Env const &...__env) {
       { __tag.transform_sender(_OpTag(), static_cast<_Sender &&>(__sender), __env...) } noexcept;
     };
 
@@ -53,7 +53,7 @@ namespace STDEXEC
                                                __declval<_Env const &>()...));
 
     template <class _DomainOrTag, class... _Args>
-    concept __has_apply_sender = requires(_DomainOrTag __tag, _Args&&... __args) {
+    concept __has_apply_sender = requires(_DomainOrTag __tag, _Args &&...__args) {
       __tag.apply_sender(static_cast<_Args &&>(__args)...);
     };
 
@@ -67,28 +67,28 @@ namespace STDEXEC
     template <class _OpTag, class _Sender, class _Env>
       requires __detail::__has_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto transform_sender(_OpTag, _Sender&& __sndr, _Env const & __env) const
+    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &__env) const
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     {
-      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender&&>(__sndr), __env);
+      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender &&>(__sndr), __env);
     }
 
     template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto transform_sender(_OpTag, _Sender&& __sndr, _Env const &) const
+    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &) const
       noexcept(__nothrow_move_constructible<_Sender>) -> _Sender
     {
-      return static_cast<_Sender>(static_cast<_Sender&&>(__sndr));
+      return static_cast<_Sender>(static_cast<_Sender &&>(__sndr));
     }
 
     template <class _Tag, class... _Args>
       requires __detail::__has_apply_sender<_Tag, _Args...>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto apply_sender(_Tag, _Args&&... __args) const
+    constexpr auto apply_sender(_Tag, _Args &&...__args) const
       -> __detail::__apply_sender_result_t<_Tag, _Args...>
     {
-      return _Tag().apply_sender(static_cast<_Args&&>(__args)...);
+      return _Tag().apply_sender(static_cast<_Args &&>(__args)...);
     }
   };
 
@@ -129,13 +129,13 @@ namespace STDEXEC
     template <class _OpTag, class _Sndr, class _Env>
       requires __detail::__has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
     [[nodiscard]]
-    static constexpr auto transform_sender(_OpTag, _Sndr&& __sndr, _Env const & __env)
+    static constexpr auto transform_sender(_OpTag, _Sndr &&__sndr, _Env const &__env)
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
     {
       static_assert((__default_domain_like<_Domains, _OpTag, _Sndr, _Env> && ...),
                     "ERROR: indeterminate domains: cannot pick an algorithm customization");
-      return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr&&>(__sndr), __env);
+      return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr &&>(__sndr), __env);
     }
   };
 
@@ -194,10 +194,9 @@ namespace STDEXEC
     using __scheduler_domain_t =
       __call_result_t<get_completion_domain_t<set_value_t>, _Sch, _Env...>;
 
-    constexpr auto
-    __find_pos(bool const * const __begin, bool const * const __end) noexcept -> size_t
+    constexpr auto __find_pos(bool const *const __begin, bool const *const __end) noexcept -> size_t
     {
-      for (bool const * __where = __begin; __where != __end; ++__where)
+      for (bool const *__where = __begin; __where != __end; ++__where)
       {
         if (*__where)
         {
@@ -212,17 +211,17 @@ namespace STDEXEC
   template <class _Env, class... _Queries>
   struct __hide_query
   {
-    constexpr explicit __hide_query(_Env&& __env, _Queries...) noexcept
-      : __env_{static_cast<_Env&&>(__env)}
+    constexpr explicit __hide_query(_Env &&__env, _Queries...) noexcept
+      : __env_{static_cast<_Env &&>(__env)}
     {}
 
     template <__none_of<_Queries...> _Query, class... _As>
       requires __queryable_with<_Env, _Query, _As...>
     constexpr auto
-    operator()(_Query, _As&&... __as) const noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
+    operator()(_Query, _As &&...__as) const noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
       -> __query_result_t<_Env, _Query, _As...>
     {
-      return __query<_Query>()(__env_, static_cast<_As&&>(__as)...);
+      return __query<_Query>()(__env_, static_cast<_As &&>(__as)...);
     }
 
    private:
@@ -231,20 +230,20 @@ namespace STDEXEC
 
   template <class _Env, class... _Queries>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-  __hide_query(_Env&&, _Queries...) -> __hide_query<_Env, _Queries...>;
+  __hide_query(_Env &&, _Queries...) -> __hide_query<_Env, _Queries...>;
 
   //! @brief A wrapper around an environment that hides the get_scheduler and get_domain
   //! queries.
   template <class _Env>
   struct __hide_scheduler : __hide_query<_Env, get_scheduler_t, get_domain_t>
   {
-    constexpr explicit __hide_scheduler(_Env&& __env) noexcept
-      : __hide_query<_Env, get_scheduler_t, get_domain_t>{static_cast<_Env&&>(__env), {}, {}}
+    constexpr explicit __hide_scheduler(_Env &&__env) noexcept
+      : __hide_query<_Env, get_scheduler_t, get_domain_t>{static_cast<_Env &&>(__env), {}, {}}
     {}
   };
 
   template <class _Env>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __hide_scheduler(_Env&&) -> __hide_scheduler<_Env>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __hide_scheduler(_Env &&) -> __hide_scheduler<_Env>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //! @brief A query type for asking a sender's attributes for the domain on which that

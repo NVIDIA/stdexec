@@ -18,28 +18,31 @@
 #include "test_common/receivers.hpp"
 #include <catch2/catch.hpp>
 
-namespace {
+namespace
+{
 
-  TEST_CASE("bulk is customizable", "[cpo][cpo_bulk]") {
-    const auto n = 42;
-    const auto f = [](int) {
+  TEST_CASE("bulk is customizable", "[cpo][cpo_bulk]")
+  {
+    auto const n = 42;
+    auto const f = [](int) {
     };
 
-    SECTION("by completion scheduler domain") {
+    SECTION("by completion scheduler domain")
+    {
       cpo_test_scheduler_t<ex::bulk_t>::sender_t snd{};
 
       {
-        constexpr scope_t scope = decltype(ex::connect(
-          snd | ex::bulk(ex::par, n, f), empty_recv::recv0_ec{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(snd | ex::bulk(ex::par, n, f),
+                                                       empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
 
       {
         void(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)));
-        constexpr scope_t scope = decltype(ex::connect(
-          ex::bulk(snd, ex::par, n, f), empty_recv::recv0_ec{}))::sender_t::scope;
+        constexpr scope_t scope = decltype(ex::connect(ex::bulk(snd, ex::par, n, f),
+                                                       empty_recv::recv0_ec{}))::sender_t::scope;
         STATIC_REQUIRE(scope == scope_t::scheduler);
       }
     }
   }
-} // namespace
+}  // namespace

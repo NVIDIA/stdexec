@@ -36,8 +36,9 @@
 #define STDEXEC_PP_IIF_0(_YP, ...)       __VA_ARGS__
 #define STDEXEC_PP_IIF_1(_YP, ...)       _YP
 #define STDEXEC_PP_IIF_EVAL(_MACRO, ...) _MACRO(__VA_ARGS__)
+#define STDEXEC_PP_IIF_CAT(_XP, ...)     _XP##__VA_ARGS__
 #define STDEXEC_PP_IIF(_XP, _YP, ...)                                                              \
-  STDEXEC_PP_IIF_EVAL(STDEXEC_PP_CAT(STDEXEC_PP_IIF_, _XP), _YP, __VA_ARGS__)
+  STDEXEC_PP_IIF_EVAL(STDEXEC_PP_IIF_CAT(STDEXEC_PP_IIF_, _XP), _YP, __VA_ARGS__)
 
 #define STDEXEC_PP_COMPL_0             1 // NOLINT(modernize-macro-to-enum)
 #define STDEXEC_PP_COMPL_1             0 // NOLINT(modernize-macro-to-enum)
@@ -49,8 +50,9 @@
 #define STDEXEC_PP_COUNT_I(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _NP, ...) _NP
 
 // Used to check various properties of arguments
+#define STDEXEC_PP_CHECK_EXPAND(...)      __VA_ARGS__
 #define STDEXEC_PP_CHECK_I(_XP, _NP, ...) _NP
-#define STDEXEC_PP_CHECK(...)             STDEXEC_PP_EXPAND(STDEXEC_PP_CHECK_I(__VA_ARGS__, 0, ))
+#define STDEXEC_PP_CHECK(...)             STDEXEC_PP_CHECK_EXPAND(STDEXEC_PP_CHECK_I(__VA_ARGS__, 0, ))
 #define STDEXEC_PP_PROBE_I(_XP, _NP, ...) _XP, _NP,
 #define STDEXEC_PP_PROBE(...)             STDEXEC_PP_PROBE_I(__VA_ARGS__, 1)
 

@@ -32,14 +32,14 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_await
   namespace __connect_await
   {
     template <class _Tp, class _Promise>
     concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
-      static_cast<_Tp &&>(__t).as_awaitable(__promise);
+      static_cast<_Tp&&>(__t).as_awaitable(__promise);
     };
 
     // A partial duplicate of with_awaitable_senders to avoid circular type dependencies

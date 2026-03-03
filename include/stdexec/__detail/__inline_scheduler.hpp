@@ -27,9 +27,9 @@ namespace STDEXEC
   struct __inline_attrs
   {
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
-    constexpr auto query(get_completion_behavior_t<set_value_t>) const noexcept
+    constexpr auto query(__get_completion_behavior_t<set_value_t>) const noexcept
     {
-      return completion_behavior::inline_completion;
+      return __completion_behavior::__inline_completion;
     }
     constexpr auto operator==(__inline_attrs const &) const noexcept -> bool = default;
   };
@@ -45,7 +45,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void start() noexcept
       {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+        STDEXEC::set_value(static_cast<_Receiver &&>(__rcvr_));
       }
 
       _Receiver __rcvr_;
@@ -60,7 +60,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       static constexpr auto connect(_Receiver __rcvr) noexcept -> __opstate<_Receiver>
       {
-        return {static_cast<_Receiver&&>(__rcvr)};
+        return {static_cast<_Receiver &&>(__rcvr)};
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device)

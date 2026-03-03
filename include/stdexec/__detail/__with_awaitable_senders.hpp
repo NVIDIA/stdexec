@@ -25,7 +25,7 @@
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   template <class _Promise = void>
   class __coroutine_handle;
 

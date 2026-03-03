@@ -21,7 +21,9 @@
 #if __has_include(<bit>)
 #  include <bit>
 #  if __cpp_lib_bit_cast >= 2018'06L
-#    define STDEXEC_HAS_BIT_CAST
+#    define STDEXEC_NO_STDCPP_BIT_CAST() 0
+#  else
+#    define STDEXEC_NO_STDCPP_BIT_CAST() 1
 #  endif
 #endif
 
@@ -29,11 +31,10 @@
 
 namespace experimental::execution
 {
-
   template <class _Ty>
   concept __trivially_copyable = STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty);
 
-#if defined(STDEXEC_HAS_BIT_CAST)
+#if !STDEXEC_NO_STDCPP_BIT_CAST()
   using std::bit_cast;
 #else
   template <__trivially_copyable _To, __trivially_copyable _From>

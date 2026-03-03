@@ -29,18 +29,20 @@
 
 namespace ex = STDEXEC;
 
-namespace {
-  TEST_CASE("future completion signature calculation works", "[adaptors][spawn_future]") {
+namespace
+{
+  TEST_CASE("future completion signature calculation works", "[adaptors][spawn_future]")
+  {
     {
       using expected = ex::completion_signatures<ex::set_stopped_t()>;
-      using actual = ex::__spawn_future::__future_completions_t<ex::env<>>;
+      using actual   = ex::__spawn_future::__future_completions_t<ex::env<>>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
 
     {
       using expected = ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t()>;
-      using actual = ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t()>;
+      using actual   = ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t()>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
@@ -54,20 +56,20 @@ namespace {
     }
 
     {
-      using expected = ex::completion_signatures<
-        ex::set_stopped_t(),
-        ex::set_error_t(std::exception_ptr),
-        ex::set_value_t(std::string)
-      >;
+      using expected = ex::completion_signatures<ex::set_stopped_t(),
+                                                 ex::set_error_t(std::exception_ptr),
+                                                 ex::set_value_t(std::string)>;
       using actual =
-        ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t(const std::string&)>;
+        ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t(std::string const &)>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
   }
 
-  TEST_CASE("spawn_future(just(...)) is equivalent to just(...)", "[adaptors][spawn_future]") {
-    constexpr auto checkEquivalence = [](const ex::sender auto& sender) {
+  TEST_CASE("spawn_future(just(...)) is equivalent to just(...)", "[adaptors][spawn_future]")
+  {
+    constexpr auto checkEquivalence = [](ex::sender auto const & sender)
+    {
       CHECK(ex::sync_wait(sender) == ex::sync_wait(ex::spawn_future(sender, null_token{})));
     };
 
@@ -76,68 +78,83 @@ namespace {
     checkEquivalence(ex::just(42, std::string{"hello, world!"}));
   }
 
-  TEST_CASE("deferred futures work", "[adaptors][spawn_future]") {
+  TEST_CASE("deferred futures work", "[adaptors][spawn_future]")
+  {
     exec::static_thread_pool pool;
 
     std::atomic<bool> waiting{false};
     std::atomic<bool> go{false};
 
-    auto future = ex::spawn_future(
-      ex::starts_on(pool.get_scheduler(), ex::just() | ex::let_value([&]() noexcept {
-                                            waiting = true; // signal we've started running
-                                            waiting.notify_one();
-                                            go.wait(false);
-                                            return ex::just(42, std::string{"hello, world!"});
-                                          })),
-      null_token{});
+    auto future =
+      ex::spawn_future(ex::starts_on(pool.get_scheduler(),
+                                     ex::just()
+                                       | ex::let_value(
+                                         [&]() noexcept
+                                         {
+                                           waiting = true;  // signal we've started running
+                                           waiting.notify_one();
+                                           go.wait(false);
+                                           return ex::just(42, std::string{"hello, world!"});
+                                         })),
+                       null_token{});
 
     // wait for the signal that the spawned work has started running
     waiting.wait(false);
 
     std::atomic<bool> firstBranchStarted = false;
-    std::atomic<bool> futureCompleted = false;
+    std::atomic<bool> futureCompleted    = false;
 
     auto mainThreadId = std::this_thread::get_id();
 
-    ex::sync_wait(
-      ex::when_all(
-        ex::just(std::move(future)) | ex::let_value([&](auto& future) noexcept {
-          firstBranchStarted = true;
-          return std::move(future);
-        }) | ex::then([&](int i, std::string str) noexcept {
-          futureCompleted = true;
-          CHECK(i == 42);
-          CHECK(str == "hello, world!");
+    ex::sync_wait(ex::when_all(ex::just(std::move(future))
+                                 | ex::let_value(
+                                   [&](auto& future) noexcept
+                                   {
+                                     firstBranchStarted = true;
+                                     return std::move(future);
+                                   })
+                                 | ex::then(
+                                   [&](int i, std::string str) noexcept
+                                   {
+                                     futureCompleted = true;
+                                     CHECK(i == 42);
+                                     CHECK(str == "hello, world!");
 
-          // we should be running on the pool thread
-          CHECK(std::this_thread::get_id() != mainThreadId);
-        }),
-        ex::just() | ex::then([&]() noexcept {
-          CHECK(std::this_thread::get_id() == mainThreadId);
+                                     // we should be running on the pool thread
+                                     CHECK(std::this_thread::get_id() != mainThreadId);
+                                   }),
+                               ex::just()
+                                 | ex::then(
+                                   [&]() noexcept
+                                   {
+                                     CHECK(std::this_thread::get_id() == mainThreadId);
 
-          CHECK(firstBranchStarted);
-          CHECK(!futureCompleted);
-          // release the spawned work
-          go = true;
-          go.notify_one();
-        })));
+                                     CHECK(firstBranchStarted);
+                                     CHECK(!futureCompleted);
+                                     // release the spawned work
+                                     go = true;
+                                     go.notify_one();
+                                   })));
 
     CHECK(futureCompleted);
   }
 
-  TEST_CASE("spawn_future doesn't leak", "[adaptors][spawn_future]") {
-    counting_resource rsc;
+  TEST_CASE("spawn_future doesn't leak", "[adaptors][spawn_future]")
+  {
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
     REQUIRE(rsc.allocated() == 0);
 
-    auto future = ex::spawn_future(
-      ex::read_env(ex::get_allocator) | ex::then([&](auto& envAlloc) noexcept {
-        CHECK(alloc == envAlloc);
-        return rsc.allocated();
-      }),
-      null_token{},
-      ex::prop(ex::get_allocator, alloc));
+    auto future = ex::spawn_future(ex::read_env(ex::get_allocator)
+                                     | ex::then(
+                                       [&](auto& envAlloc) noexcept
+                                       {
+                                         CHECK(alloc == envAlloc);
+                                         return rsc.allocated();
+                                       }),
+                                   null_token{},
+                                   ex::prop(ex::get_allocator, alloc));
 
     auto allocated = rsc.allocated();
 
@@ -148,24 +165,26 @@ namespace {
     CHECK(rsc.allocated() == 0);
   }
 
-  TEST_CASE(
-    "spawn_future reads an allocator from the sender's environment",
-    "[adaptors][spawn_future]") {
-    counting_resource rsc;
+  TEST_CASE("spawn_future reads an allocator from the sender's environment",
+            "[adaptors][spawn_future]")
+  {
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
     scope_with_alloc scope{alloc};
 
     REQUIRE(rsc.allocated() == 0);
 
-    auto future = ex::spawn_future(
-      ex::read_env(ex::get_allocator) | ex::then([&](auto&& envAlloc) noexcept {
-        // we should've pulled the scope's allocator into our environment
-        CHECK(alloc == envAlloc);
+    auto future = ex::spawn_future(ex::read_env(ex::get_allocator)
+                                     | ex::then(
+                                       [&](auto&& envAlloc) noexcept
+                                       {
+                                         // we should've pulled the scope's allocator into our environment
+                                         CHECK(alloc == envAlloc);
 
-        return rsc.allocated();
-      }),
-      scope.get_token());
+                                         return rsc.allocated();
+                                       }),
+                                   scope.get_token());
 
     // we should've allocated some memory for the operation
     auto allocated = rsc.allocated();
@@ -176,14 +195,14 @@ namespace {
     CHECK(rsc.allocated() == 0);
   }
 
-  TEST_CASE(
-    "The allocator provided directly to spawn_future overrides the allocator in the sender's "
-    "environment",
-    "[consumers][spawn_future]") {
-
+  TEST_CASE("The allocator provided directly to spawn_future overrides the allocator in the "
+            "sender's "
+            "environment",
+            "[consumers][spawn_future]")
+  {
     counting_resource rsc1;
 
-    std::array<std::byte, 256> buffer{};
+    std::array<std::byte, 256>          buffer{};
     std::pmr::monotonic_buffer_resource bumpAlloc(buffer.data(), buffer.size());
 
     counting_resource rsc2(bumpAlloc);
@@ -198,17 +217,19 @@ namespace {
     CHECK(rsc1.allocated() == 0);
     CHECK(rsc2.allocated() == 0);
 
-    auto future = ex::spawn_future(
-      ex::read_env(ex::get_allocator) | ex::let_value([&](auto& envAlloc) noexcept {
-        // the allocator in the environment should be the one provided to spawn_future
-        // as an explicit argument and not the one provided by the scope
-        CHECK(alloc1 != envAlloc);
-        CHECK(alloc2 == envAlloc);
+    auto future = ex::spawn_future(ex::read_env(ex::get_allocator)
+                                     | ex::let_value(
+                                       [&](auto& envAlloc) noexcept
+                                       {
+                                         // the allocator in the environment should be the one provided to spawn_future
+                                         // as an explicit argument and not the one provided by the scope
+                                         CHECK(alloc1 != envAlloc);
+                                         CHECK(alloc2 == envAlloc);
 
-        return ex::just(rsc1.allocated(), rsc2.allocated());
-      }),
-      scope.get_token(),
-      ex::prop(ex::get_allocator, alloc2));
+                                         return ex::just(rsc1.allocated(), rsc2.allocated());
+                                       }),
+                                   scope.get_token(),
+                                   ex::prop(ex::get_allocator, alloc2));
 
     // we should have allocated some memory for the op from rsc2 but not from rsc
     auto allocated1 = rsc1.allocated();
@@ -222,14 +243,17 @@ namespace {
     CHECK(rsc2.allocated() == 0);
   }
 
-  TEST_CASE("spawn_future tolerates throwing scope tokens", "[consumers][spawn_future]") {
-    counting_resource rsc;
+  TEST_CASE("spawn_future tolerates throwing scope tokens", "[consumers][spawn_future]")
+  {
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
-    struct throwing_token : null_token {
-      const counting_resource* rsc;
+    struct throwing_token : null_token
+    {
+      counting_resource const * rsc;
 
-      assoc try_associate() const {
+      assoc try_associate() const
+      {
         CHECK(rsc->allocated() > 0);
         throw std::runtime_error("nope");
       }
@@ -238,9 +262,12 @@ namespace {
     REQUIRE(rsc.allocated() == 0);
 
     bool threw = false;
-    try {
+    try
+    {
       ex::spawn_future(ex::just(), throwing_token{{}, &rsc}, ex::prop(ex::get_allocator, alloc));
-    } catch (const std::runtime_error& e) {
+    }
+    catch (std::runtime_error const & e)
+    {
       threw = true;
       CHECK(std::string{"nope"} == e.what());
     }
@@ -250,37 +277,44 @@ namespace {
     CHECK(rsc.allocated() == 0);
   }
 
-  TEST_CASE("spawn_future tolerates expired scope tokens", "[consumers][spawn_future]") {
-    struct expired_token : null_token { // inherit the wrap method template
-      const counting_resource* rsc;
-      bool* tried;
+  TEST_CASE("spawn_future tolerates expired scope tokens", "[consumers][spawn_future]")
+  {
+    struct expired_token : null_token
+    {  // inherit the wrap method template
+      counting_resource const * rsc;
+      bool*                     tried;
 
-      struct assoc {
-        constexpr explicit operator bool() const noexcept {
+      struct assoc
+      {
+        constexpr explicit operator bool() const noexcept
+        {
           return false;
         }
 
-        constexpr assoc try_associate() const noexcept {
+        constexpr assoc try_associate() const noexcept
+        {
           return {};
         }
       };
 
-      assoc try_associate() const {
+      assoc try_associate() const
+      {
         CHECK(rsc->allocated() > 0);
         *tried = true;
         return {};
       }
     };
 
-    counting_resource rsc;
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
     REQUIRE(rsc.allocated() == 0);
 
     bool triedToAssociate = false;
 
-    auto future = ex::spawn_future(
-      ex::just(), expired_token{{}, &rsc, &triedToAssociate}, ex::prop(ex::get_allocator, alloc));
+    auto future = ex::spawn_future(ex::just(),
+                                   expired_token{{}, &rsc, &triedToAssociate},
+                                   ex::prop(ex::get_allocator, alloc));
 
     CHECK(rsc.allocated() > 0);
 
@@ -290,10 +324,10 @@ namespace {
     CHECK(triedToAssociate);
   }
 
-  TEST_CASE(
-    "discarding a future sends a stop request to the spawned operation",
-    "[adaptors][spawn_future]") {
-    counting_resource rsc;
+  TEST_CASE("discarding a future sends a stop request to the spawned operation",
+            "[adaptors][spawn_future]")
+  {
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
     REQUIRE(rsc.allocated() == 0);
@@ -306,24 +340,28 @@ namespace {
     std::atomic<bool> waitingForStopRequest{false};
 
     std::optional future = ex::spawn_future(
-      ex::starts_on(
-        pool.get_scheduler(),
-        ex::read_env(ex::get_stop_token) | ex::then([&](auto stopToken) noexcept {
-          auto callback = [&]() noexcept {
-            waitingForStopRequest = true;
-            waitingForStopRequest.notify_one();
-          };
+      ex::starts_on(pool.get_scheduler(),
+                    ex::read_env(ex::get_stop_token)
+                      | ex::then(
+                        [&](auto stopToken) noexcept
+                        {
+                          auto callback = [&]() noexcept
+                          {
+                            waitingForStopRequest = true;
+                            waitingForStopRequest.notify_one();
+                          };
 
-          using callback_t = ex::stop_callback_for_t<decltype(stopToken), decltype(callback)>;
+                          using callback_t =
+                            ex::stop_callback_for_t<decltype(stopToken), decltype(callback)>;
 
-	  [[maybe_unused]]
-          callback_t registeredCallback(std::move(stopToken), std::move(callback));
+                          [[maybe_unused]]
+                          callback_t registeredCallback(std::move(stopToken), std::move(callback));
 
-          workStarted = true;
-          workStarted.notify_one();
+                          workStarted = true;
+                          workStarted.notify_one();
 
-          waitingForStopRequest.wait(false);
-        })),
+                          waitingForStopRequest.wait(false);
+                        })),
       scope.get_token(),
       ex::prop(ex::get_allocator, alloc));
 
@@ -338,70 +376,79 @@ namespace {
     CHECK(rsc.allocated() == 0);
   }
 
-  struct never {
+  struct never
+  {
     using sender_concept = ex::sender_t;
 
     template <class Sender, class... Env>
     static consteval auto get_completion_signatures(Sender&&, Env&&...) noexcept
-      -> ex::completion_signatures<ex::set_stopped_t()> {
+      -> ex::completion_signatures<ex::set_stopped_t()>
+    {
       return {};
     }
 
     template <class Receiver>
-    struct opstate {
+    struct opstate
+    {
       using operation_state_concept = ex::operation_state_t;
 
       template <ex::receiver Rcvr>
         requires std::constructible_from<Receiver, Rcvr>
       explicit opstate(Rcvr&& r) noexcept
-        : rcvr_(std::forward<Rcvr>(r)) {
-      }
+        : rcvr_(std::forward<Rcvr>(r))
+      {}
 
       opstate(opstate&&) = delete;
 
-      ~opstate() {
-      }
+      ~opstate() {}
 
-      void start() & noexcept {
+      void start() & noexcept
+      {
         std::construct_at(&callback_, ex::get_stop_token(ex::get_env(rcvr_)), callback{this});
       }
 
      private:
-      struct callback {
+      struct callback
+      {
         opstate* self_;
 
-        void operator()() noexcept {
+        void operator()() noexcept
+        {
           std::destroy_at(&self_->callback_);
           ex::set_stopped(std::move(self_->rcvr_));
         }
       };
 
-      using stoken_t = ex::stop_token_of_t<ex::env_of_t<Receiver>>;
+      using stoken_t   = ex::stop_token_of_t<ex::env_of_t<Receiver>>;
       using callback_t = stoken_t::template callback_type<callback>;
 
       Receiver rcvr_;
-      union {
+      union
+      {
         callback_t callback_;
       };
     };
 
     template <ex::receiver_of<ex::completion_signatures<ex::set_stopped_t()>> Receiver>
-    auto connect(Receiver&& receiver) noexcept {
+    auto connect(Receiver&& receiver) noexcept
+    {
       return opstate<std::remove_cvref_t<Receiver>>{std::forward<Receiver>(receiver)};
     }
   };
 
-  TEST_CASE("abandoning a future-wrapped never-sender works properly", "[adaptors][spawn_future]") {
+  TEST_CASE("abandoning a future-wrapped never-sender works properly", "[adaptors][spawn_future]")
+  {
     // this test exercises the part of __abandon that handles the spawned work completing
     // during the call __abandon makes to __stopSource_.request_stop()
 
-    counting_resource rsc;
+    counting_resource                 rsc;
     std::pmr::polymorphic_allocator<> alloc(&rsc);
 
     REQUIRE(rsc.allocated() == 0);
 
-    std::optional future =
-      ex::spawn_future(never{}, null_token{}, ex::prop(ex::get_allocator, alloc));
+    std::optional future = ex::spawn_future(never{},
+                                            null_token{},
+                                            ex::prop(ex::get_allocator, alloc));
 
     CHECK(rsc.allocated() > 0);
 
@@ -409,4 +456,4 @@ namespace {
 
     CHECK(rsc.allocated() == 0);
   }
-} // namespace
+}  // namespace

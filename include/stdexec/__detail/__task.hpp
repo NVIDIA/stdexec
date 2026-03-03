@@ -35,7 +35,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STD_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +103,8 @@ namespace STDEXEC
         // promise object. We now use that allocator to deallocate the entire block of
         // memory:
         size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
-        void* const  __alloc_loc      = static_cast<__memblock*>(__ptr) + __promise_blocks;
+        [[maybe_unused]]
+        void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
         // the number of blocks needed to store an object of type __palloc_t:
         static constexpr size_t __alloc_blocks =
           __task::__divmod(sizeof(__task::__any_alloc<_PAlloc>), sizeof(__task::__memblock));
@@ -144,7 +145,7 @@ namespace STDEXEC
 
     template <class _Rcvr, class _Alloc>
     concept __has_allocator_compatible_with = requires(_Rcvr& __rcvr) {
-      _Alloc(get_allocator(get_env(__rcvr)));
+      _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__rcvr)));
     } || std::default_initializable<_Alloc>;
   }  // namespace __task
 
@@ -203,11 +204,16 @@ namespace STDEXEC
       return __completions_t{};
     }
 
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept
+    {
+      return __env{};
+    }
+
    private:
     using __on_stopped_t = __task::__on_stopped<stop_source_type>;
 
-    using __error_variant_t =
-      __error_types_t<error_types, __mbind_front_q<__variant, __monostate>, __q1<__decay_t>>;
+    using __error_variant_t = __error_types_t<error_types, __q<__variant>, __q1<__decay_t>>;
 
     using __completions_t = __concat_completion_signatures_t<
       completion_signatures<__detail::__single_value_sig_t<_Ty>, set_stopped_t()>,
@@ -220,14 +226,22 @@ namespace STDEXEC
     static constexpr bool __needs_stop_callback =
       __not_same_as<stop_token_type, stop_token_of_t<env_of_t<_Rcvr>>>;
 
+    struct __env
+    {
+      template <class _Tag>
+      [[nodiscard]]
+      constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
+      {
+        return __completion_behavior::__asynchronous_affine
+             | __completion_behavior::__inline_completion;
+      }
+    };
+
     struct __opstate_base
     {
       constexpr explicit __opstate_base(scheduler_type __sched) noexcept
         : __sch_(std::move(__sched))
-      {
-        // Initialize the errors variant to monostate, the "no error" state:
-        __errors_.template emplace<0>();
-      }
+      {}
 
       virtual void __completed() noexcept                       = 0;
       virtual void __canceled() noexcept                        = 0;
@@ -248,7 +262,7 @@ namespace STDEXEC
   // task<T,E>::__opstate
   template <class _Ty, class _Env>
   template <class _Rcvr>
-  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate
+  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate final
     : __opstate_base
     , __if_c<__needs_stop_callback<_Rcvr>, __manual_lifetime<__stop_callback_t<_Rcvr>>, __empty>
   {
@@ -273,7 +287,7 @@ namespace STDEXEC
       }
       else
       {
-        __coro_.promise().__stop_.template emplace<1>(get_stop_token(get_env(__rcvr_)));
+        __coro_.promise().__stop_.template emplace<1>(get_stop_token(STDEXEC::get_env(__rcvr_)));
       }
     }
 
@@ -290,7 +304,7 @@ namespace STDEXEC
         // If the receiver's stop token is different from the task's stop token, then we need
         // to set up a callback to request a stop on the task's stop source when the receiver's
         // stop token is triggered:
-        __stop_callback().__construct(get_stop_token(get_env(__rcvr_)),
+        __stop_callback().__construct(get_stop_token(STDEXEC::get_env(__rcvr_)),
                                       __on_stopped_t{__var::__get<0>(__coro_.promise().__stop_)});
       }
       __coro_.resume();
@@ -303,7 +317,7 @@ namespace STDEXEC
     {
       if constexpr (__std::constructible_from<__own_env_t, env_of_t<_Rcvr>>)
       {
-        return __own_env_t(get_env(__rcvr));
+        return __own_env_t(STDEXEC::get_env(__rcvr));
       }
       else
       {
@@ -319,7 +333,7 @@ namespace STDEXEC
       }
       else if constexpr (__std::constructible_from<_Env, env_of_t<_Rcvr>>)
       {
-        return _Env(get_env(__rcvr));
+        return _Env(STDEXEC::get_env(__rcvr));
       }
       else
       {
@@ -329,9 +343,9 @@ namespace STDEXEC
 
     static auto __mk_sched(_Rcvr const & __rcvr) noexcept -> scheduler_type
     {
-      if constexpr (requires { scheduler_type(get_scheduler(get_env(__rcvr))); })
+      if constexpr (requires { scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr))); })
       {
-        return scheduler_type(get_scheduler(get_env(__rcvr)));
+        return scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr)));
       }
       else
       {
@@ -354,9 +368,7 @@ namespace STDEXEC
         __stop_callback().__destroy();
       }
 
-      std::printf("opstate completed, &__errors_ = %p\n", static_cast<void*>(&this->__errors_));
-
-      if (this->__errors_.index() != 0)
+      if (this->__errors_.index() != __variant_npos)
       {
         std::exchange(__coro_, {}).destroy();
         __visit(STDEXEC::set_error, std::move(this->__errors_), static_cast<_Rcvr&&>(__rcvr_));
@@ -397,11 +409,12 @@ namespace STDEXEC
       STDEXEC::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
     }
 
+    [[nodiscard]]
     auto __get_allocator() noexcept -> allocator_type final
     {
-      if constexpr (requires { allocator_type(get_allocator(get_env(__rcvr_))); })
+      if constexpr (requires { allocator_type(get_allocator(STDEXEC::get_env(__rcvr_))); })
       {
-        return allocator_type(get_allocator(get_env(__rcvr_)));
+        return allocator_type(get_allocator(STDEXEC::get_env(__rcvr_)));
       }
       else
       {
@@ -456,6 +469,7 @@ namespace STDEXEC
       }
     }
 
+    [[nodiscard]]
     auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
     {
       __state_->__canceled();
@@ -595,7 +609,7 @@ namespace STDEXEC
     __variant<stop_source_type, stop_token_type> __stop_{__no_init};
     __opstate_base*                              __state_ = nullptr;
   };
-#endif  // !STDEXEC_NO_STD_COROUTINES()
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

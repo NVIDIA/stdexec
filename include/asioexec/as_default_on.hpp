@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
     "WARNING: The header <exec/asio/as_default_on.hpp> is deprecated. Please include <exec/asio/as_default_on.hpp> instead.")

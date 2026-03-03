@@ -39,14 +39,17 @@ using STDEXEC::set_value;
 using STDEXEC::set_value_t;
 // NOLINTEND(misc-unused-using-decls)
 
-namespace {
-  TEST_CASE("", "[utilities][completion_signatures]") {
+namespace
+{
+  TEST_CASE("", "[utilities][completion_signatures]")
+  {
     STATIC_REQUIRE(completion_signatures{} == completion_signatures{});
     STATIC_REQUIRE_FALSE(completion_signatures{} != completion_signatures{});
   }
 
   // Additional tests for completion_signatures
-  TEST_CASE("completion_signatures_basic", "[utilities][completion_signatures]") {
+  TEST_CASE("completion_signatures_basic", "[utilities][completion_signatures]")
+  {
     constexpr auto cs_empty = completion_signatures<>{};
     constexpr auto cs_value = completion_signatures<set_value_t(int)>{};
     constexpr auto cs_error = completion_signatures<set_error_t(float)>{};
@@ -74,9 +77,8 @@ namespace {
     STATIC_REQUIRE_FALSE(cs_value == cs_error);
     STATIC_REQUIRE(cs_empty == cs_empty);
     STATIC_REQUIRE(cs_all == cs_all);
-    STATIC_REQUIRE(
-      completion_signatures<set_value_t(int), set_error_t(float), set_value_t(int)>{}
-      == completion_signatures<set_error_t(float), set_value_t(int)>{});
+    STATIC_REQUIRE(completion_signatures<set_value_t(int), set_error_t(float), set_value_t(int)>{}
+                   == completion_signatures<set_error_t(float), set_value_t(int)>{});
 
     // Test operator!=
     STATIC_REQUIRE(cs_value != cs_error);
@@ -100,7 +102,8 @@ namespace {
   }
 
   // Test select
-  TEST_CASE("completion_signatures_select", "[utilities][completion_signatures]") {
+  TEST_CASE("completion_signatures_select", "[utilities][completion_signatures]")
+  {
     constexpr auto cs =
       completion_signatures<set_value_t(int), set_error_t(float), set_stopped_t()>{};
 
@@ -121,15 +124,18 @@ namespace {
   }
 
   // Test filter
-  struct filter_value_only {
+  struct filter_value_only
+  {
     template <class Sig>
-    constexpr bool operator()(Sig*) const noexcept {
+    constexpr bool operator()(Sig*) const noexcept
+    {
       return STDEXEC::__detail::__tag_of_sig_t<Sig>::__disposition
           == STDEXEC::__disposition::__value;
     }
   };
 
-  TEST_CASE("completion_signatures_filter", "[utilities][completion_signatures]") {
+  TEST_CASE("completion_signatures_filter", "[utilities][completion_signatures]")
+  {
     constexpr auto cs =
       completion_signatures<set_value_t(int), set_error_t(float), set_stopped_t()>{};
     constexpr auto filtered = cs.__filter(filter_value_only{});
@@ -138,17 +144,20 @@ namespace {
   }
 
   // Test apply
-  struct count_signatures {
+  struct count_signatures
+  {
     template <class... Sigs>
-    constexpr int operator()(Sigs*...) const noexcept {
+    constexpr int operator()(Sigs*...) const noexcept
+    {
       return sizeof...(Sigs);
     }
   };
 
-  TEST_CASE("completion_signatures_apply", "[utilities][completion_signatures]") {
+  TEST_CASE("completion_signatures_apply", "[utilities][completion_signatures]")
+  {
     constexpr auto cs =
       completion_signatures<set_value_t(int), set_error_t(float), set_stopped_t()>{};
     constexpr int count = cs.__apply(count_signatures{});
     STATIC_REQUIRE(count == 3);
   }
-} // namespace
+}  // namespace

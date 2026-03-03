@@ -17,6 +17,7 @@
 #pragma once
 
 #include <catch2/catch.hpp>
+#include <exec/completion_behavior.hpp>
 #include <memory>
 #include <stdexec/execution.hpp>
 #include <test_common/type_helpers.hpp>
@@ -47,7 +48,7 @@ namespace
   template <class... Values>
   struct fallible_just
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = ex::sender_t;
 
     explicit fallible_just(Values... values)
       : values_(std::move(values)...)
@@ -76,14 +77,14 @@ namespace
     struct attrs
     {
       [[nodiscard]]
-      auto query(ex::get_completion_behavior_t<ex::set_value_t>) const noexcept
+      auto query(ex::__get_completion_behavior_t<ex::set_value_t>) const noexcept
       {
-        return ex::completion_behavior::inline_completion;
+        return ex::__completion_behavior::__inline_completion;
       }
       [[nodiscard]]
-      auto query(ex::get_completion_behavior_t<ex::set_error_t>) const noexcept
+      auto query(ex::__get_completion_behavior_t<ex::set_error_t>) const noexcept
       {
-        return ex::completion_behavior::inline_completion;
+        return ex::__completion_behavior::__inline_completion;
       }
     };
 
@@ -132,7 +133,7 @@ namespace
   {
     std::remove_cvref_t<Env> env_;
     std::tuple<Values...>    values_;
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = ex::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(Values...)>;
 
     template <class Receiver>
@@ -162,7 +163,7 @@ namespace
 
   struct completes_if
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = ex::sender_t;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
     bool condition_;
@@ -202,7 +203,7 @@ namespace
       };
 
       using callback_t =
-        ex::stop_token_of_t<ex::env_of_t<Receiver>&>::template callback_type<on_stopped>;
+        ex::stop_callback_for_t<ex::stop_token_of_t<ex::env_of_t<Receiver>&>, on_stopped>;
       std::optional<callback_t> on_stop_{};
 
       void start() & noexcept
@@ -324,9 +325,9 @@ namespace
     struct attrs
     {
       [[nodiscard]]
-      static constexpr auto query(ex::get_completion_behavior_t<ex::set_value_t>) noexcept
+      static constexpr auto query(exec::get_completion_behavior_t<ex::set_value_t>) noexcept
       {
-        return ex::completion_behavior::inline_completion;
+        return exec::completion_behavior::inline_completion;
       }
     };
 

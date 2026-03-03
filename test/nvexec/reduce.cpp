@@ -12,20 +12,22 @@
 
 namespace ex = STDEXEC;
 
-namespace {
-  struct minimum {
+namespace
+{
+  struct minimum
+  {
     template <class T1, class T2>
     constexpr auto
-      operator()(const T1& lhs, const T2& rhs) const -> ::cuda::std::common_type_t<T1, T2> {
+    operator()(const T1& lhs, const T2& rhs) const -> ::cuda::std::common_type_t<T1, T2>
+    {
       return (lhs < rhs) ? lhs : rhs;
     }
   };
 
-  TEST_CASE(
-    "nvexec reduce returns a sender with single input",
-    "[cuda][stream][adaptors][reduce]") {
-    constexpr int N = 2048;
-    int input[N] = {};
+  TEST_CASE("nvexec reduce returns a sender with single input", "[cuda][stream][adaptors][reduce]")
+  {
+    constexpr int N        = 2048;
+    int           input[N] = {};
     std::fill_n(input, N, 1);
 
     nvexec::stream_context stream{};
@@ -37,9 +39,10 @@ namespace {
     (void) snd;
   }
 
-  TEST_CASE("nvexec reduce returns a sender with two inputs", "[cuda][stream][adaptors][reduce]") {
-    constexpr int N = 2048;
-    int input[N] = {};
+  TEST_CASE("nvexec reduce returns a sender with two inputs", "[cuda][stream][adaptors][reduce]")
+  {
+    constexpr int N        = 2048;
+    int           input[N] = {};
     std::fill_n(input, N, 1);
 
     nvexec::stream_context stream{};
@@ -51,13 +54,14 @@ namespace {
     (void) snd;
   }
 
-  TEST_CASE("nvexec reduce uses sum as default", "[cuda][stream][adaptors][reduce]") {
-    constexpr int N = 2048;
+  TEST_CASE("nvexec reduce uses sum as default", "[cuda][stream][adaptors][reduce]")
+  {
+    constexpr int N    = 2048;
     constexpr int init = 42;
 
     thrust::device_vector<int> input(N, 1);
-    int* first = thrust::raw_pointer_cast(input.data());
-    int* last = thrust::raw_pointer_cast(input.data()) + input.size();
+    int*                       first = thrust::raw_pointer_cast(input.data());
+    int*                       last  = thrust::raw_pointer_cast(input.data()) + input.size();
 
     nvexec::stream_context stream{};
     auto snd = ex::just(std::span{first, last}) | ex::continues_on(stream.get_scheduler())
@@ -68,13 +72,14 @@ namespace {
     REQUIRE(result == N + init);
   }
 
-  TEST_CASE("nvexec reduce uses the passed function", "[cuda][stream][adaptors][reduce]") {
-    constexpr int N = 2048;
+  TEST_CASE("nvexec reduce uses the passed function", "[cuda][stream][adaptors][reduce]")
+  {
+    constexpr int N    = 2048;
     constexpr int init = 42;
 
     thrust::device_vector<int> input(N, 1);
-    int* first = thrust::raw_pointer_cast(input.data());
-    int* last = thrust::raw_pointer_cast(input.data()) + input.size();
+    int*                       first = thrust::raw_pointer_cast(input.data());
+    int*                       last  = thrust::raw_pointer_cast(input.data()) + input.size();
 
     nvexec::stream_context stream{};
     auto snd = ex::just(std::span{first, last}) | ex::continues_on(stream.get_scheduler())
@@ -85,15 +90,17 @@ namespace {
     REQUIRE(result == 1);
   }
 
-  TEST_CASE("nvexec reduce executes on GPU", "[cuda][stream][adaptors][reduce]") {
-    constexpr int N = 2048;
+  TEST_CASE("nvexec reduce executes on GPU", "[cuda][stream][adaptors][reduce]")
+  {
+    constexpr int N    = 2048;
     constexpr int init = 42;
 
     thrust::device_vector<int> input(N, 1);
-    int* first = thrust::raw_pointer_cast(input.data());
-    int* last = thrust::raw_pointer_cast(input.data()) + input.size();
+    int*                       first = thrust::raw_pointer_cast(input.data());
+    int*                       last  = thrust::raw_pointer_cast(input.data()) + input.size();
 
-    auto is_on_gpu = [](const int left, const int right) {
+    auto is_on_gpu = [](int const left, int const right)
+    {
       return nvexec::is_on_gpu() ? left + right : 0;
     };
 
@@ -105,4 +112,4 @@ namespace {
 
     REQUIRE(result == N + init);
   }
-} // namespace
+}  // namespace

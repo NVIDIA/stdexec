@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <initializer_list>
 #include <memory>   // IWYU pragma: keep for std::start_lifetime_as
+#include <new>      // IWYU pragma: keep for std::launder
 #include <utility>  // IWYU pragma: keep for std::unreachable
 
 STDEXEC_PRAGMA_PUSH()
@@ -196,6 +197,14 @@ namespace STDEXEC
     return static_cast<__copy_cvref_t<_Ty&&, STDEXEC_REMOVE_REFERENCE(_Uy)>>(__uy);
   }
 
+  template <class _Ty>
+  constexpr _Ty const & __clamp(_Ty const & __val, _Ty const & __low, _Ty const & __high)
+  {
+    STDEXEC_ASSERT(!(__high < __low));
+    // NOLINTNEXTLINE(bugprone-return-const-ref-from-parameter)
+    return __val < __low ? __low : __high < __val ? __high : __val;
+  }
+
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")
 
@@ -342,14 +351,7 @@ namespace STDEXEC
     [[noreturn]]
     inline void unreachable()
     {
-      // Uses compiler specific extensions if possible.
-      // Even if no extension is used, undefined behavior is still raised by
-      // an empty function body and the noreturn attribute.
-#  if STDEXEC_MSVC()
-      __assume(false);  // MSVC
-#  else
-      __builtin_unreachable();  // everybody else
-#  endif
+      STDEXEC_UNREACHABLE();
     }
 #endif
   }  // namespace __std

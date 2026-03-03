@@ -17,6 +17,7 @@
 
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/execution.hpp"
+#include "completion_behavior.hpp"
 
 namespace experimental::execution
 {
@@ -128,9 +129,9 @@ namespace experimental::execution
     {
       template <STDEXEC::__one_of<Tags...> Tag>
       [[nodiscard]]
-      constexpr auto query(STDEXEC::get_completion_behavior_t<Tag>) const noexcept
+      constexpr auto query(get_completion_behavior_t<Tag>) const noexcept
       {
-        return STDEXEC::completion_behavior::inline_completion;
+        return completion_behavior::inline_completion;
       }
     };
 

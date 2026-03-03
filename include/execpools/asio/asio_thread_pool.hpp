@@ -1,64 +1,38 @@
 /*
+ * Copyright (c) 2026 NVIDIA Corporation
+ *
+ * Licensed under the Apache License Version 2.0 with LLVM Exceptions
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *   https://llvm.org/LICENSE.txt
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
 
-#include <execpools/asio/asio_config.hpp>
-#include <execpools/thread_pool_base.hpp>
+#include "../../stdexec/__detail/__config.hpp"
+
+#if STDEXEC_MSVC()
+#  pragma message(                                                                                 \
+    "WARNING: The header <execpools/asio/asio_thread_pool.hpp> is deprecated. Please include <exec/asio/asio_thread_pool.hpp> instead.")
+#else
+#  warning                                                                                         \
+    "The header <execpools/asio/asio_thread_pool.hpp> is deprecated. Please include <exec/asio/asio_thread_pool.hpp> instead."
+#endif
+
+#include "../../exec/asio/asio_thread_pool.hpp"  // IWYU pragma: export
 
 namespace execpools
 {
-  class asio_thread_pool : public execpools::thread_pool_base<asio_thread_pool>
-  {
-   public:
-    asio_thread_pool()
-      : pool_()
-      , executor_(pool_.executor())
-    {}
 
-    explicit asio_thread_pool(uint32_t num_threads)
-      : pool_(num_threads)
-      , executor_(pool_.executor())
-    {}
+  using asio_thread_pool
+    [[deprecated("execpools::asio_thread_pool has been renamed to "
+                 "exec::asio::asio_thread_pool instead.")]] = exec::asio::asio_thread_pool;
 
-    ~asio_thread_pool() = default;
-
-    [[nodiscard]]
-    auto available_parallelism() const -> std::uint32_t
-    {
-      return static_cast<std::uint32_t>(
-        asio_impl::query(executor_, asio_impl::execution::occupancy));
-    }
-
-    [[nodiscard]]
-    auto get_executor() const
-    {
-      return executor_;
-    }
-
-   private:
-    [[nodiscard]]
-    static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
-    {
-      return STDEXEC::forward_progress_guarantee::parallel;
-    }
-
-    friend execpools::thread_pool_base<asio_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct execpools::operation;
-
-    void enqueue(execpools::task_base* task, std::uint32_t tid = 0) noexcept
-    {
-      asio_impl::post(pool_, [task, tid] { task->execute_(task, /*tid=*/tid); });
-    }
-
-    asio_impl::thread_pool pool_;
-    // Need to store implicitly the executor, thread_pool::executor() is not const
-    asio_impl::thread_pool::executor_type executor_;
-  };
 }  // namespace execpools

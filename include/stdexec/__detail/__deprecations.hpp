@@ -25,9 +25,6 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t const & execute_may_block_caller =
     __execute_may_block_caller;
 
-  [[deprecated("use STDEXEC::completion_behavior::weakest instead")]]
-  inline constexpr auto const & min = completion_behavior::weakest;
-
   using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
 
   using dependent_completions [[deprecated("use dependent_sender_error instead of "
@@ -40,9 +37,9 @@ namespace STDEXEC
                                           "inplace_stop_source")]] = inplace_stop_source;
 
   template <class _Fun>
-  using in_place_stop_callback [[deprecated("in_place_stop_callback has been renamed "
-                                            "inplace_stop_callback")]] =
-    inplace_stop_callback<_Fun>;
+  using in_place_stop_callback
+    [[deprecated("in_place_stop_callback has been renamed "
+                 "inplace_stop_callback")]] = inplace_stop_callback<_Fun>;
 
   using start_on_t [[deprecated("start_on_t has been renamed starts_on_t")]] = starts_on_t;
   [[deprecated("start_on has been renamed starts_on")]]

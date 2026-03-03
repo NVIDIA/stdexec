@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "../stdexec/__detail/__config.hpp"
+
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
     "WARNING: The header <exec/asio/executor_with_default.hpp> is deprecated. Please include <exec/asio/executor_with_default.hpp> instead.")

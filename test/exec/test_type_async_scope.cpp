@@ -28,45 +28,50 @@ namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
-STDEXEC_PRAGMA_IGNORE_MSVC(4996) // 'foo': was declared deprecated
+STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
-namespace {
-  void expect_empty(exec::async_scope& scope) {
-    ex::run_loop loop;
+namespace
+{
+  void expect_empty(exec::async_scope& scope)
+  {
+    ex::run_loop       loop;
     ex::scheduler auto sch = loop.get_scheduler();
     CHECK_FALSE(ex::execute_may_block_caller(sch));
-    auto op = ex::connect(
-      ex::then(
-        scope.on_empty(),
-        [&]() {
-          loop.finish();
+    auto op = ex::connect(ex::then(scope.on_empty(),
+                                   [&]()
+                                   {
+                                     loop.finish();
     }),
-      expect_void_receiver{ex::prop{ex::get_scheduler, sch}});
+                          expect_void_receiver{ex::prop{ex::get_scheduler, sch}});
     ex::start(op);
     loop.run();
   }
 
-  TEST_CASE("async_scope will complete", "[types][type_async_scope]") {
+  TEST_CASE("async_scope will complete", "[types][type_async_scope]")
+  {
     exec::static_thread_pool ctx{1};
 
     ex::scheduler auto sch = ctx.get_scheduler();
 
-    SECTION("after construction") {
+    SECTION("after construction")
+    {
       exec::async_scope scope;
       expect_empty(scope);
     }
 
-    SECTION("after spawn") {
+    SECTION("after spawn")
+    {
       exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
+      ex::sender auto   begin = ex::schedule(sch);
       scope.spawn(begin);
       ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
-    SECTION("after nest result discarded") {
+    SECTION("after nest result discarded")
+    {
       exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
+      ex::sender auto   begin = ex::schedule(sch);
       {
         ex::sender auto nst = scope.nest(begin);
         (void) nst;
@@ -75,21 +80,23 @@ namespace {
       expect_empty(scope);
     }
 
-    SECTION("after nest result started") {
+    SECTION("after nest result started")
+    {
       exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
-      ex::sender auto nst = scope.nest(begin);
-      auto op = ex::connect(std::move(nst), expect_void_receiver{});
+      ex::sender auto   begin = ex::schedule(sch);
+      ex::sender auto   nst   = scope.nest(begin);
+      auto              op    = ex::connect(std::move(nst), expect_void_receiver{});
       ex::start(op);
       ex::sync_wait(scope.on_empty());
       expect_empty(scope);
     }
 
-    SECTION("after spawn_future result discarded") {
+    SECTION("after spawn_future result discarded")
+    {
       exec::static_thread_pool ctx{1};
-      exec::async_scope scope;
-      std::atomic_bool produced{false};
-      ex::sender auto begin = ex::schedule(sch);
+      exec::async_scope        scope;
+      std::atomic_bool         produced{false};
+      ex::sender auto          begin = ex::schedule(sch);
       {
         ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
         (void) ftr;
@@ -98,11 +105,12 @@ namespace {
       expect_empty(scope);
     }
 
-    SECTION("after spawn_future result started") {
+    SECTION("after spawn_future result started")
+    {
       exec::static_thread_pool ctx{1};
-      exec::async_scope scope;
-      std::atomic_bool produced{false};
-      ex::sender auto begin = ex::schedule(sch);
+      exec::async_scope        scope;
+      std::atomic_bool         produced{false};
+      ex::sender auto          begin = ex::schedule(sch);
       ex::sender auto ftr = scope.spawn_future(begin | ex::then([&]() { produced = true; }));
       ex::sync_wait(scope.on_empty() | ex::then([&]() { STDEXEC_ASSERT(produced.load()); }));
       auto op = ex::connect(std::move(ftr), expect_void_receiver{});
@@ -111,14 +119,15 @@ namespace {
       expect_empty(scope);
     }
 
-    SECTION("request_stop nested spawn_future") {
+    SECTION("request_stop nested spawn_future")
+    {
       exec::static_thread_pool ctx{1};
-      exec::async_scope scope;
-      ex::sender auto begin = ex::schedule(sch);
-      ex::sender auto ftr = scope.spawn_future(scope.spawn_future(begin));
+      exec::async_scope        scope;
+      ex::sender auto          begin = ex::schedule(sch);
+      ex::sender auto          ftr   = scope.spawn_future(scope.spawn_future(begin));
       scope.request_stop();
       ex::sync_wait(ex::when_all(scope.on_empty(), std::move(ftr)));
       // Verify the program finishes without crashing
     }
   }
-} // namespace
+}  // namespace
