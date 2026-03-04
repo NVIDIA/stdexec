@@ -40,6 +40,9 @@ CompileFlags:
     - "-Wno-unknown-cuda-version"
     - "--cuda-host-only"
     - "--cuda-path=/usr/local/cuda-12"
+  Remove:
+    - "-x"
+    - "c++-header"
 
 ---
 
@@ -54,7 +57,6 @@ CompileFlags:
     - "-ftemplate-backtrace-limit=0"
     - "-std=c++20"
     - "-DSTDEXEC_CLANGD_INVOKED"
-    - "-stdlib=libc++"
     - "-Wno-unused-local-typedef"
   Remove:
     - "-stdpar*"

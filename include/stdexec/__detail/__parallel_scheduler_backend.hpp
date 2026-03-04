@@ -25,6 +25,7 @@
 #include "__any_allocator.hpp"
 #include "__optional.hpp"
 #include "__queries.hpp"
+#include "__schedulers.hpp"
 #include "__typeinfo.hpp"
 
 #include <exception>
