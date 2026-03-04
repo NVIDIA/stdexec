@@ -602,6 +602,19 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
 #endif
 
+#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#  define STDEXEC_NO_STDCPP_RTTI() 0
+#else
+#  define STDEXEC_NO_STDCPP_RTTI() 1
+#endif
+
+// MSVC always has typeid support, even when RTTI is disabled
+#if STDEXEC_NO_STDCPP_RTTI() && !STDEXEC_MSVC()
+#  define STDEXEC_NO_STDCPP_TYPEID() 1
+#else
+#  define STDEXEC_NO_STDCPP_TYPEID() 0
+#endif
+
 // Perhaps the stdlib lacks support for concepts
 #if __has_include(<concepts>) && __cpp_lib_concepts >= 2020'02L
 #  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 0

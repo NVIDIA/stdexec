@@ -23,6 +23,10 @@
 
 #include <compare>
 #include <string_view>
+#include <typeinfo>
+
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // __type_info, __mtypeid, and __mtypeof
@@ -36,12 +40,14 @@ namespace STDEXEC
     constexpr __type_info(__type_info &&)            = delete;
     constexpr __type_info &operator=(__type_info &&) = delete;
 
-    constexpr explicit __type_info(std::string_view __name) noexcept
+    constexpr explicit __type_info(std::string_view      __name,
+                                   std::type_info const *__type = nullptr) noexcept
       : __name_(__name)
+      , __type_(__type)
     {}
 
     [[nodiscard]]
-    constexpr std::string_view name() const noexcept
+    constexpr auto name() const noexcept -> std::string_view
     {
       return __name_;
     }
@@ -52,17 +58,38 @@ namespace STDEXEC
       return this == &__other || __name_ == __other.__name_;
     }
 
-    constexpr auto
-    operator<=>(__type_info const &) const noexcept -> std::strong_ordering = default;
+    constexpr auto operator<=>(__type_info const &__other) const noexcept -> std::strong_ordering
+    {
+      return __name_ <=> __other.__name_;
+    }
+
+#if !STDEXEC_NO_STDCPP_TYPEID()
+    [[nodiscard]]
+    constexpr auto type() const noexcept -> std::type_info const &
+    {
+      return *__type_;
+    }
+
+    [[nodiscard]]
+    constexpr operator std::type_info const &() const noexcept
+    {
+      return *__type_;
+    }
+#endif
 
    private:
-    std::string_view __name_;
+    std::string_view const      __name_;
+    std::type_info const *const __type_     = nullptr;  // used only if !STDEXEC_NO_STDCPP_TYPEID()
+    void const *const           __reserved_ = nullptr;  // reserved for future use
   };
 
   namespace __detail
   {
     template <class _Ty>
-    inline constexpr __type_info __mtypeid_v{__mnameof<_Ty>};
+    inline constexpr __type_info __mtypeid_v{
+      __mnameof<_Ty>                                                                 //
+        STDEXEC_PP_WHEN(STDEXEC_PP_NOT(STDEXEC_NO_STDCPP_TYPEID()), , &typeid(_Ty))  //
+    };
 
     template <class _Ty>
     inline constexpr __type_info const &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
@@ -93,6 +120,20 @@ namespace STDEXEC
     {
       return *__info_ <=> *other.__info_;
     }
+
+#if !STDEXEC_NO_STDCPP_TYPEID()
+    [[nodiscard]]
+    constexpr auto type() const noexcept -> std::type_info const &
+    {
+      return (*__info_).type();
+    }
+
+    [[nodiscard]]
+    constexpr operator std::type_info const &() const noexcept
+    {
+      return (*__info_).type();
+    }
+#endif
 
     __type_info const *__info_;
   };
@@ -139,3 +180,5 @@ namespace STDEXEC
   // Sanity check:
   static_assert(STDEXEC_IS_SAME(void, __mtypeof<__mtypeid<void>>));
 }  // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

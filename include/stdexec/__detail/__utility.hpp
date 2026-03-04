@@ -312,7 +312,7 @@ namespace STDEXEC
     static_assert(std::derived_from<__value_type, _CvInterface>,
                   "__polymorphic_downcast requires From to be a base class of To");
 
-#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#if !STDEXEC_NO_STDCPP_RTTI()
     STDEXEC_IF_NOT_CONSTEVAL
     {
       STDEXEC_ASSERT(dynamic_cast<__value_type*>(__from_ptr) != nullptr);
