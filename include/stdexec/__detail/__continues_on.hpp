@@ -297,8 +297,7 @@ namespace STDEXEC
       //! @brief Forwards other queries to the underlying sender's environment.
       //! @pre @c _Tag is a forwarding query but not a completion query.
       template <__forwarding_query _Tag, class... _Args>
-        requires(!__is_completion_query<_Tag>)
-             && __queryable_with<env_of_t<_Sender>, _Tag, _Args...>
+        requires(!__completion_query<_Tag>) && __queryable_with<env_of_t<_Sender>, _Tag, _Args...>
       [[nodiscard]]
       constexpr auto query(_Tag, _Args&&... __args) const
         noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Tag, _Args...>)

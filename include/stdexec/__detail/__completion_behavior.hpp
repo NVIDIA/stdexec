@@ -156,23 +156,33 @@ namespace STDEXEC
     template <class _Sig>
     inline static constexpr __get_completion_behavior_t (*signature)(_Sig) = nullptr;
 
-    template <class _Attrs, class... _Env>
+    template <class _Attrs>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto operator()(_Attrs const &, _Env const &...) const noexcept
+    constexpr auto operator()(_Attrs const &) const noexcept
     {
-      if constexpr (__member_queryable_with<_Attrs const &,
-                                            __get_completion_behavior_t<_Tag>,
-                                            _Env...>)
-      {
-        return __validate<_Attrs, _Env...>();
-      }
-      else if constexpr (__member_queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
+      if constexpr (__member_queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
       {
         return __validate<_Attrs>();
       }
       else
       {
         return __completion_behavior::__unknown;
+      }
+    }
+
+    template <class _Attrs, class _Env>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()([[maybe_unused]] _Attrs const &__attrs, _Env const &) const noexcept
+    {
+      if constexpr (__member_queryable_with<_Attrs const &,
+                                            __get_completion_behavior_t<_Tag>,
+                                            _Env const &>)
+      {
+        return __validate<_Attrs, _Env>();
+      }
+      else
+      {
+        return (*this)(__attrs);
       }
     }
 

@@ -78,18 +78,9 @@ namespace STDEXEC
     template <class _Query>
     struct __attrs
     {
-      template <class _Env>
-        requires __callable<_Query, _Env>
+      template <class _SetTag>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_value_t>, _Env const &) const noexcept
-      {
-        return __completion_behavior::__inline_completion;
-      }
-
-      template <class _Env>
-        requires __callable<_Query, _Env> && (!__nothrow_callable<_Query, _Env>)
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
+      constexpr auto query(__get_completion_behavior_t<_SetTag>) const noexcept
       {
         return __completion_behavior::__inline_completion;
       }
