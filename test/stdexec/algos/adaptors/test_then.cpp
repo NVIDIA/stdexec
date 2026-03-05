@@ -24,8 +24,8 @@
 
 namespace ex = STDEXEC;
 
-// Check that the `then` algorithm is correctly forwarding the __is_scheduler_affine query
-static_assert(ex::__is_scheduler_affine<decltype(ex::just() | ex::then([] {}))>);
+// Check that the `then` algorithm is correctly forwarding the __get_completion_behavior
+// query:
 static_assert(
   ex::__completes_inline<ex::set_value_t, decltype(ex::get_env(ex::just() | ex::then([] {})))>);
 
