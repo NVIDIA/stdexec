@@ -137,15 +137,21 @@ namespace STDEXEC
   concept __forwarding_query = forwarding_query(_Tag{});
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  // __is_completion_query
+  // __completion_query
+  namespace __detail
+  {
+    template <class _Query>
+    inline constexpr bool __is_completion_query_v = false;
+    template <class _Tag>
+    inline constexpr bool __is_completion_query_v<get_completion_domain_t<_Tag>> = true;
+    template <class _Tag>
+    inline constexpr bool __is_completion_query_v<get_completion_scheduler_t<_Tag>> = true;
+    template <class _Tag>
+    inline constexpr bool __is_completion_query_v<__get_completion_behavior_t<_Tag>> = true;
+  }  // namespace __detail
+
   template <class _Query>
-  inline constexpr bool __is_completion_query = false;
-  template <class _Tag>
-  inline constexpr bool __is_completion_query<get_completion_domain_t<_Tag>> = true;
-  template <class _Tag>
-  inline constexpr bool __is_completion_query<get_completion_scheduler_t<_Tag>> = true;
-  template <class _Tag>
-  inline constexpr bool __is_completion_query<__get_completion_behavior_t<_Tag>> = true;
+  concept __completion_query = __detail::__is_completion_query_v<_Query>;
 }  // namespace STDEXEC
 
 STDEXEC_P2300_NAMESPACE_BEGIN()

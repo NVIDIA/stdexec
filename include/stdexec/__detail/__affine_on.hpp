@@ -118,14 +118,14 @@ namespace STDEXEC
 
   namespace __affine_on
   {
-    template <class _Attrs>
+    template <class _Sender>
     struct __attrs
     {
       template <class _Tag, class... _Env>
-        requires __queryable_with<_Attrs, __get_completion_behavior_t<_Tag>, _Env const &...>
+        requires __callable<__get_completion_behavior_t<_Tag>, env_of_t<_Sender>, _Env const &...>
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        constexpr auto __behavior = __completion_behavior_of_v<_Tag, _Attrs, _Env...>;
+        constexpr auto __behavior = __get_completion_behavior<_Tag, _Sender, _Env...>();
 
         // When the child sender completes inline, we can return "inline" here instead of
         // "__asynchronous_affine".
@@ -138,16 +138,30 @@ namespace STDEXEC
           return __completion_behavior::__asynchronous_affine;
         }
       }
+
+      template <__forwarding_query _Tag, class... _Args>
+        requires(!__completion_query<_Tag>)
+             && __queryable_with<env_of_t<_Sender>, _Tag, _Args const &...>
+      constexpr auto query(_Tag, _Args const &...) const noexcept
+        -> __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>
+      {
+        return __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>{};
+      }
+
+      _Sender const &__sndr_;
     };
+
+    template <class _Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __attrs(_Sender const &) -> __attrs<_Sender>;
   }  // namespace __affine_on
 
   template <>
   struct __sexpr_impl<affine_on_t> : __sexpr_defaults
   {
     static constexpr auto __get_attrs =  //
-      []<class _Child>(__ignore, __ignore, _Child const &) noexcept
+      []<class _Child>(affine_on_t, __ignore, _Child const &__child) noexcept
     {
-      return __affine_on::__attrs<env_of_t<_Child>>{};
+      return __affine_on::__attrs{__child};
     };
   };
 }  // namespace STDEXEC
