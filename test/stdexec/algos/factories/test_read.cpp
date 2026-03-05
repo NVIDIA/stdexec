@@ -31,6 +31,6 @@ namespace
     static_assert(ex::sender<Sndr>);
     static_assert(!ex::sender_in<Sndr>);
     static_assert(ex::sender_in<Sndr, Env>);
-    static_assert(ex::__is_scheduler_affine<Sndr, Env>);
+    static_assert(ex::__completes_inline<ex::set_value_t, ex::env_of_t<Sndr>, Env>);
   }
 }  // namespace

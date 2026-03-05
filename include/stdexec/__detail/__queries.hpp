@@ -47,87 +47,10 @@ namespace STDEXEC
 
   inline constexpr get_await_completion_adaptor_t get_await_completion_adaptor{};
 
-  // NOT TO SPEC:
-  struct __is_scheduler_affine_t
-  {
-    template <class _Result>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static consteval auto __ensure_bool_constant() noexcept
-    {
-      if constexpr (__is_bool_constant<_Result>)
-      {
-        return static_cast<bool>(_Result::value);
-      }
-      else
-      {
-        static_assert(__is_bool_constant<_Result>,
-                      "The __is_scheduler_affine query must be one of the following forms:\n"
-                      "  static constexpr bool query(__is_scheduler_affine_t) noexcept;\n"
-                      "  bool_constant<Bool> query(__is_scheduler_affine_t) const noexcept;\n"
-                      "  bool_constant<Bool> query(__is_scheduler_affine_t, const Env&) const "
-                      "noexcept;\n");
-      }
-    }
-
-    template <class _Attrs, class... _Env>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    consteval auto operator()() const noexcept -> bool
-    {
-      return __completes_where_it_starts<set_value_t, _Attrs, _Env const &...>;
-    }
-
-    template <__queryable_with<__is_scheduler_affine_t> _Attrs, class... _Env>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    consteval auto operator()() const noexcept -> bool
-    {
-      if constexpr (__statically_queryable_with<_Attrs, __is_scheduler_affine_t>)
-      {
-        return _Attrs::query(__is_scheduler_affine_t());
-      }
-      else
-      {
-        return __ensure_bool_constant<__query_result_t<_Attrs, __is_scheduler_affine_t>>();
-      }
-    }
-
-    template <class _Attrs, class _Env>
-      requires __queryable_with<_Attrs, __is_scheduler_affine_t, _Env const &>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    consteval auto operator()() const noexcept -> bool
-    {
-      using __result_t = __query_result_t<_Attrs, __is_scheduler_affine_t, _Env const &>;
-      return __ensure_bool_constant<__result_t>();
-    }
-
-    template <class _Attrs, class... _Env>
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    consteval auto operator()(_Attrs const &, _Env const &...) const noexcept -> bool
-    {
-      return operator()<_Attrs, _Env...>();
-    }
-
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    static consteval auto query(forwarding_query_t) noexcept -> bool
-    {
-      return false;
-    }
-  };
-
-  template <class _Sender, class... _Env>
-  concept __is_scheduler_affine = requires {
-    requires __is_scheduler_affine_t().operator()<env_of_t<_Sender>, _Env...>();
-  };
-
   // The attributes of a sender adaptor that does not introduce asynchrony.
   template <class _Sender>
   struct __sync_attrs
   {
-    [[nodiscard]]
-    constexpr auto query(__is_scheduler_affine_t) const noexcept
-    {
-      return __mbool<__is_scheduler_affine<_Sender>>();
-    }
-
     template <class _Tag, class... _Env>
     [[nodiscard]]
     constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
