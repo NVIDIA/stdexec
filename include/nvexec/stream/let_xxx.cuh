@@ -85,7 +85,7 @@ namespace nv::execution::_strm
     struct __tfx_signal_fn<Set, Set(Args...)>
     {
       template <class Fun, class... StreamEnv>
-      using __f = transform_completion_signatures<
+      using __f = __transform_completion_signatures_t<
         __completion_signatures_of_t<__minvoke<_mk_result_sender<Fun>, Args...>, StreamEnv...>,
         completion_signatures<set_error_t(cudaError_t)>>;
     };

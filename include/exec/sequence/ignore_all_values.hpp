@@ -30,12 +30,12 @@ namespace experimental::execution
 {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
+    __var.template emplace<_Type>(static_cast<_Args &&>(__args)...);
   };
 
   template <class _Variant, class _Type, class... _Args>
   concept __nothrow_variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    { __var.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
+    { __var.template emplace<_Type>(static_cast<_Args &&>(__args)...) } noexcept;
   };
 
   namespace __ignore_all_values
@@ -249,7 +249,7 @@ namespace experimental::execution
     };
 
     template <class _Sigs>
-    using __result_variant_ = __transform_completion_signatures_t<
+    using __result_variant_ = __transform_reduce_completion_signatures_t<
       _Sigs,
       __mconst<__mlist<>>::__f,
       __mcompose_q<__mlist, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,

@@ -35,7 +35,7 @@ namespace STDEXEC
     using __on_not_callable = __mbind_front_q<__callable_error_t, upon_error_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
-    using __completion_signatures_t = transform_completion_signatures<
+    using __completion_signatures_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<_CvSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_error_t, _Fun, _CvSender, _Env...>,
       __cmplsigs::__default_set_value,

@@ -170,8 +170,8 @@ namespace STDEXEC
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results_t = __cmplsigs::__partitions_of_t<
-      __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__all;
+    using __nothrow_decay_copyable_results_t =
+      STDEXEC::__nothrow_decay_copyable_results_t<__completion_signatures_of_t<_Sender, _Env...>>;
 
     template <class... _Env>
     struct __completions
@@ -203,11 +203,11 @@ namespace STDEXEC
         __concat_completion_signatures_t,
         __minvoke_q<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
         __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-        __transform_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
-                                            __mconst<completion_signatures<>>::__f,
-                                            __set_error_t,
-                                            completion_signatures<set_stopped_t()>,
-                                            __concat_completion_signatures_t>...>;
+        __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
+                                                   __mconst<completion_signatures<>>::__f,
+                                                   __set_error_t,
+                                                   completion_signatures<set_stopped_t()>,
+                                                   __concat_completion_signatures_t>...>;
     };
 
     template <class _Receiver, class _ValuesTuple>

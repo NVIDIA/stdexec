@@ -606,7 +606,7 @@ namespace STDEXEC
   {
     /// Meta-function that returns the completion signatures of `this`.
     template <class _Self, class... _Env>
-    using __completions_t = transform_completion_signatures<
+    using __completions_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<_Self, _Previous>, _Env...>,
       completion_signatures<set_error_t(std::exception_ptr)>>;
 

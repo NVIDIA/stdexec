@@ -258,9 +258,9 @@ namespace experimental::execution
         }
         else
         {
-          using __env_t          = STDEXEC::__mfront<Env..., STDEXEC::env<>>;
-          using __rcvr_t         = STDEXEC::__receiver_archetype<__env_t>;
-          constexpr bool nothrow = (STDEXEC::__nothrow_connectable<Senders, __rcvr_t> && ...);
+          using __env_t               = STDEXEC::__mfront<Env..., STDEXEC::env<>>;
+          using __rcvr_t              = STDEXEC::__receiver_archetype<__env_t>;
+          constexpr bool __is_nothrow = (STDEXEC::__nothrow_connectable<Senders, __rcvr_t> && ...);
 
           // The completions of the sequence sender are the error and stopped completions of all the
           // child senders plus the value completions of the last child sender.
@@ -272,7 +272,7 @@ namespace experimental::execution
               STDEXEC::get_completion_signatures<Senders, Env...>(),
               exec::ignore_completion())...,
             STDEXEC::get_completion_signatures<STDEXEC::__mback<Senders...>, Env...>(),
-            STDEXEC::__eptr_completion_unless<nothrow>());
+            STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<__is_nothrow>>());
         }
       }
 

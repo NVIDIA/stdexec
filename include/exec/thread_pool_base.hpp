@@ -377,7 +377,7 @@ namespace experimental::execution
           STDEXEC::completion_signatures<STDEXEC::set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
         template <class Self, class... Env>
-        using _completion_signatures_t = STDEXEC::transform_completion_signatures<
+        using _completion_signatures_t = STDEXEC::__transform_completion_signatures_t<
           STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
           _with_error_invoke_t<Self, Env...>,
           _set_value_t>;

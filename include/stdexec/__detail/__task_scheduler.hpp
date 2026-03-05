@@ -536,7 +536,7 @@ namespace STDEXEC
                                                           __decay_arguments<set_value_t>(),
                                                           {},
                                                           {},
-                                                          __eptr_completion());
+                                                          __eptr_completion_t());
       }
 
       [[nodiscard]]

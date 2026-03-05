@@ -137,7 +137,7 @@ namespace nv::execution::_strm
     using receiver_t = _upon_stopped::receiver<Receiver, Fun>;
 
     template <class Self, class... Env>
-    using completion_signatures = transform_completion_signatures<
+    using completion_signatures = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       __with_error_invoke_t<__mbind_front_q<__callable_error_t, upon_stopped_t>,
                             set_stopped_t,

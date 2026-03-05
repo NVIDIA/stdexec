@@ -659,7 +659,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() noexcept
       {
-        using __result_t = STDEXEC::transform_completion_signatures<
+        using __result_t = STDEXEC::__transform_completion_signatures_t<
           STDEXEC::__completion_signatures_of_t<_NestedValueSender, _Env...>,
           STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>,
           STDEXEC::__cmplsigs::__default_set_value,

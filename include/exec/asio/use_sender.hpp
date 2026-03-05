@@ -166,9 +166,9 @@ namespace experimental::execution::asio
 
     template <typename Signatures>
     using completion_signatures =
-      ::STDEXEC::transform_completion_signatures<Signatures,
-                                                 ::STDEXEC::completion_signatures<>,
-                                                 transform_set_value_t>;
+      ::STDEXEC::__transform_completion_signatures_t<Signatures,
+                                                     ::STDEXEC::completion_signatures<>,
+                                                     transform_set_value_t>;
 
     template <typename Sender>
     struct sender

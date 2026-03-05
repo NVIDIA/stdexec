@@ -37,10 +37,10 @@ namespace experimental::execution
 
     template <class _Sender, class _Env>
     using __completions_t =
-      transform_completion_signatures<__completion_signatures_of_t<_Sender, _Env>,
-                                      __if_c<__unstoppable_env<_Env>,
-                                             completion_signatures<>,
-                                             completion_signatures<set_stopped_t()>>>;
+      __transform_completion_signatures_t<__completion_signatures_of_t<_Sender, _Env>,
+                                          __if_c<__unstoppable_env<_Env>,
+                                                 completion_signatures<>,
+                                                 completion_signatures<set_stopped_t()>>>;
 
     template <class _CvChild, class _Receiver>
     struct __opstate

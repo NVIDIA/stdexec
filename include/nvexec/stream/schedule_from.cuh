@@ -136,7 +136,7 @@ namespace nv::execution
       using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
       template <class Self, class... Env>
-      using _completions_t = transform_completion_signatures<
+      using _completions_t = __transform_completion_signatures_t<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
         _set_value_t,

@@ -389,12 +389,12 @@ namespace nv::execution::_strm
     using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
 
     template <class Self, class... Env>
-    static consteval auto get_completion_signatures() -> __try_make_completion_signatures<
+    static consteval auto get_completion_signatures() -> __transform_completion_signatures_of_t<
       Sender,
       _ensure_started::env_t,
       completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-      __q<_set_value_t>,
-      __q<_set_error_t>>
+      _set_value_t,
+      _set_error_t>
     {
       return {};
     }

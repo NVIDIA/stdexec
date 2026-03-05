@@ -123,7 +123,7 @@ namespace nv::execution::_strm
     using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
     template <class Self, class... Env>
-    using _completion_signatures_t = transform_completion_signatures<
+    using _completion_signatures_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       _set_error_t,
       _set_value_t>;
@@ -359,7 +359,7 @@ namespace nv::execution::_strm
     using _set_value_t = completion_signatures<set_value_t(Tys...)>;
 
     template <class Self, class... Env>
-    using _completion_signatures_t = transform_completion_signatures<
+    using _completion_signatures_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       _set_error_t,
       _set_value_t>;
