@@ -93,7 +93,7 @@ namespace nv::execution
         {
           if (this->status_ == cudaSuccess)
           {
-            this->status_ = task_->status_;
+            this->status_ = task_->status();
           }
         }
 

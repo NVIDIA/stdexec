@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "../../stdexec/__detail/__variant.hpp"
 #include "../../stdexec/execution.hpp"
 
 #include "common.cuh"
@@ -31,117 +32,135 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
-  namespace let_xxx
+  namespace _let
   {
     using namespace STDEXEC;
 
     template <class... Args, class Fun, class ResultSenderT>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _let_xxx_kernel(Fun fn, ResultSenderT* result, Args... args)
+    __global__ void _let_kernel(Fun fn, ResultSenderT* result, Args... args)
     {
       static_assert(trivially_copyable<Fun, Args...>);
       new (result) ResultSenderT(::cuda::std::move(fn)(static_cast<Args&&>(args)...));
     }
 
-    template <class Tp>
-    using __decay_ref_t = STDEXEC::__decay_t<Tp>&;
+    template <class Sender, class Receiver, class Fun, class SetTag>
+    struct _opstate;
 
     template <class Fun>
-    struct _mk_result_sender
+    struct _mk_result_sender_fn
     {
       template <class... Args>
-      using __f = __remove_rvalue_reference_t<__call_result_t<Fun, __decay_ref_t<Args>...>>;
+      using __f = __remove_rvalue_reference_t<__call_result_t<Fun, __decay_t<Args>&...>>;
     };
 
     template <class Sender, class PropagateReceiver, class Fun, class SetTag>
       requires sender_in<Sender, env_of_t<PropagateReceiver>>
-    struct __max_sender_size
+    struct _max_sender_size
     {
-      struct _result_sender_size
-      {
-        template <class... Args>
-        using __f = __msize_t<sizeof(__minvoke<_mk_result_sender<Fun>, Args...>)>;
-      };
+      using _env_t              = env_of_t<PropagateReceiver>;
+      using _result_sender_size = __mcompose<__msizeof, _mk_result_sender_fn<Fun>>;
+      using _value_t =
+        __gather_completions_of_t<SetTag, Sender, _env_t, _result_sender_size, maxsize>;
 
-      static constexpr std::size_t value = __gather_completions_of_t<SetTag,
-                                                                     Sender,
-                                                                     env_of_t<PropagateReceiver>,
-                                                                     _result_sender_size,
-                                                                     maxsize>::value;
+      static constexpr std::size_t value = _value_t::value;
     };
 
-    template <class Receiver, class Fun>
-    using opstate_for_t = __mcompose<__mbind_back_q<connect_result_t, propagate_receiver<Receiver>>,
-                                     _mk_result_sender<Fun>>;
+    // The environment of the receiver used to connect the secondary (result) sender must
+    // correctly report the scheduler and domain on which the sender's operation will be
+    // started.
+    inline constexpr auto _mk_sch_env =
+      []<class CvSender, class Receiver, class SetTag>(CvSender&& sndr, Receiver&& rcvr, SetTag)
+    {
+      using cv_fn = __copy_cvref_fn<CvSender>;
+      return __mk_secondary_env_t<SetTag>()(cv_fn{}, sndr, STDEXEC::get_env(rcvr));
+    };
 
-    template <class Set, class Sig>
-    struct __tfx_signal_fn
+    template <class CvSender, class Receiver, class SetTag>
+    using _sch_env_t = __result_of<_mk_sch_env, CvSender, Receiver, SetTag>;
+
+    inline constexpr auto _mk_env2 =
+      []<class SchEnv, class Receiver>([[maybe_unused]]
+                                       SchEnv const &                        sch_env,
+                                       _strm::opstate_base<Receiver> const & opstate)
+    {
+      //return opstate.make_env();
+      return __env::__join(sch_env, opstate.make_env());
+    };
+
+    template <class CvSender, class Receiver, class SetTag>
+    using _env2_t = __result_of<_mk_env2,
+                                _sch_env_t<CvSender, Receiver, SetTag> const &,
+                                _strm::opstate_base<Receiver> const &>;
+
+    template <class CvSender, class Receiver, class Fun, class SetTag>
+    using _propagate_receiver_t = propagate_receiver<_opstate<CvSender, Receiver, Fun, SetTag>,
+                                                     _env2_t<CvSender, Receiver, SetTag>>;
+
+    template <class Sender, class Receiver, class Fun, class SetTag>
+    using _mk_opstate_fn = __mcompose<
+      __mbind_back_q<connect_result_t, _propagate_receiver_t<Sender, Receiver, Fun, SetTag>>,
+      _mk_result_sender_fn<Fun>>;
+
+    template <class SetTag, class Sig>
+    struct _tfx_signal_fn
     {
       template <class, class...>
       using __f = completion_signatures<Sig>;
     };
 
-    template <class Set, class... Args>
-    struct __tfx_signal_fn<Set, Set(Args...)>
+    template <class SetTag, class... Args>
+    struct _tfx_signal_fn<SetTag, SetTag(Args...)>
     {
       template <class Fun, class... StreamEnv>
       using __f = __transform_completion_signatures_t<
-        __completion_signatures_of_t<__minvoke<_mk_result_sender<Fun>, Args...>, StreamEnv...>,
+        __completion_signatures_of_t<__minvoke<_mk_result_sender_fn<Fun>, Args...>, StreamEnv...>,
         completion_signatures<set_error_t(cudaError_t)>>;
     };
 
-    template <class Sig, class Fun, class Set, class... StreamEnv>
-    using __tfx_signal_t = __minvoke<__tfx_signal_fn<Set, Sig>, Fun, StreamEnv...>;
+    template <class Sig, class Fun, class SetTag, class... StreamEnv>
+    using _tfx_signal_t = __minvoke<_tfx_signal_fn<SetTag, Sig>, Fun, StreamEnv...>;
 
-    template <class Sender, class Receiver, class Fun, class Let>
-    struct opstate;
-
-    template <class Sender, class Receiver, class Fun, class Set, class... Tuples>
-    struct receiver : public stream_receiver_base
+    template <class Sender, class Receiver, class Fun, class SetTag, class... Tuples>
+    struct _receiver : public stream_receiver_base
     {
-      using env_t = _strm::opstate_base<Receiver>::env_t;
+      using _env_t           = _strm::opstate_base<Receiver>::env_t;
+      using _result_tuples_t = __mlist<Tuples...>;
+
       static constexpr std::size_t memory_allocation_size() noexcept
       {
-        return __max_sender_size<Sender, propagate_receiver<Receiver>, Fun, Set>::value;
+        using _propagate_receiver_t = _let::_propagate_receiver_t<Sender, Receiver, Fun, SetTag>;
+        return _max_sender_size<Sender, _propagate_receiver_t, Fun, SetTag>::value;
       }
 
-      template <__same_as<Set> Tag, class... Args>
+      template <__same_as<SetTag> Tag, class... Args>
       void _complete(Tag, Args&&... args) noexcept
       {
-        using result_sender_t = __minvoke<_mk_result_sender<Fun>, Args...>;
-        using opstate_t       = __minvoke<opstate_for_t<Receiver, Fun>, Args...>;
+        using result_sender_t = __minvoke<_mk_result_sender_fn<Fun>, Args...>;
 
         cudaStream_t stream        = opstate_->get_stream();
         auto*        result_sender = static_cast<result_sender_t*>(opstate_->temp_storage_);
-        _let_xxx_kernel<Args&&...><<<1, 1, 0, stream>>>(std::move(opstate_->fun_),
-                                                        result_sender,
-                                                        static_cast<Args&&>(args)...);
+        _let_kernel<Args&&...><<<1, 1, 0, stream>>>(std::move(opstate_->fun_),
+                                                    result_sender,
+                                                    static_cast<Args&&>(args)...);
 
-        if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
-            status == cudaSuccess)
+        cudaError_t status = STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
+        if (status == cudaSuccess)
         {
           opstate_->defer_temp_storage_destruction(result_sender);
-          auto& op = opstate_->opstate3_.template emplace<opstate_t>(__emplace_from{
-            [&]
-            {
-              return connect(std::move(*result_sender),
-                             propagate_receiver<Receiver>{
-                               {},
-                               static_cast<_strm::opstate_base<Receiver>&>(*opstate_)});
-            }});
+          auto& op = opstate_->_connect_result_sender(std::move(*result_sender));
           STDEXEC::start(op);
         }
         else
         {
-          opstate_->propagate_completion_signal(STDEXEC::set_error, std::move(status));
+          opstate_->propagate_completion_signal(STDEXEC::set_error, cudaError_t(status));
         }
       }
 
-      template <class Tag, class... Args>
-      void _complete(Tag, Args&&... args) noexcept
+      template <class SetTag2, class... Args>
+      void _complete(SetTag2, Args&&... args) noexcept
       {
-        static_assert(__nothrow_callable<Tag, Receiver, Args...>);
-        opstate_->propagate_completion_signal(Tag(), static_cast<Args&&>(args)...);
+        opstate_->propagate_completion_signal(SetTag2(), static_cast<Args&&>(args)...);
       }
 
       template <class... Args>
@@ -161,116 +180,151 @@ namespace nv::execution::_strm
         _complete(set_stopped_t());
       }
 
-      auto get_env() const noexcept -> env_t
+      auto get_env() const noexcept -> _env_t
       {
-        return opstate_->make_env();
+        return static_cast<_strm::opstate_base<Receiver>&>(*opstate_).make_env();
       }
 
-      using opstate_variant_t = __minvoke<
-        __mtransform<__muncurry<opstate_for_t<Receiver, Fun>>, __qq<__nullable_std_variant>>,
-        Tuples...>;
-
-      opstate<Sender, Receiver, Fun, Set>* opstate_;
+      _opstate<Sender, Receiver, Fun, SetTag>* opstate_;
     };
 
-    template <class Sender, class Receiver, class Fun, class Set>
-    using receiver_t =
-      __gather_completions_of_t<Set,
-                                Sender,
-                                stream_env_t<env_of_t<Receiver>>,
-                                __q<__decayed_std_tuple>,
-                                __munique<__mbind_front_q<receiver, Sender, Receiver, Fun, Set>>>;
+    template <class Sender, class Receiver, class Fun, class SetTag>
+    using _receiver_t = __gather_completions_of_t<
+      SetTag,
+      Sender,
+      stream_env_t<env_of_t<Receiver>>,
+      __q<__decayed_std_tuple>,
+      __munique<__mbind_front_q<_receiver, Sender, Receiver, Fun, SetTag>>>;
 
-    template <class Sender, class Receiver, class Fun, class Set>
-    using opstate_base_t = _strm::opstate<Sender, receiver_t<Sender, Receiver, Fun, Set>, Receiver>;
+    template <class Sender, class Receiver, class Fun, class SetTag>
+    using _opstate_base_t =
+      _strm::opstate<Sender, _receiver_t<Sender, Receiver, Fun, SetTag>, Receiver>;
 
-    template <class Sender, class Receiver, class Fun, class Set>
-    struct opstate : opstate_base_t<Sender, Receiver, Fun, Set>
+    template <class CvSender, class Receiver, class Fun, class SetTag>
+    struct _opstate : _opstate_base_t<CvSender, Receiver, Fun, SetTag>
     {
-      using receiver_t        = receiver_t<Sender, Receiver, Fun, Set>;
-      using opstate_variant_t = receiver_t::opstate_variant_t;
+      using _env2_t                = _sch_env_t<CvSender, Receiver, SetTag>;
+      using _receiver_t            = _let::_receiver_t<CvSender, Receiver, Fun, SetTag>;
+      using _result_tuples_t       = _receiver_t::_result_tuples_t;
+      using _mk_opstate_fn_t       = _mk_opstate_fn<CvSender, Receiver, Fun, SetTag>;
+      using _mk_opstate_variant_fn = __mtransform<__muncurry<_mk_opstate_fn_t>, __qq<__variant>>;
+      using _opstate_variant_t     = __mapply<_mk_opstate_variant_fn, _result_tuples_t>;
+      using _propagate_receiver_t  = _let::_propagate_receiver_t<CvSender, Receiver, Fun, SetTag>;
 
-      opstate(Sender&& sndr, Receiver rcvr, Fun fun)
-        : opstate_base_t<Sender, Receiver, Fun, Set>(
-            static_cast<Sender&&>(sndr),
-            static_cast<Receiver&&>(rcvr),
-            [this](_strm::opstate_base<Receiver>&) -> receiver_t { return receiver_t{{}, this}; },
-            get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)).ctx_)
-        , fun_(static_cast<Fun&&>(fun))
+      explicit _opstate(CvSender&& sndr, Receiver rcvr, Fun fun)
+        : _opstate(static_cast<CvSender&&>(sndr),
+                   static_cast<Receiver&&>(rcvr),
+                   static_cast<Fun&&>(fun),
+                   _mk_sch_env(sndr, rcvr, SetTag{}))
       {}
 
-      STDEXEC_IMMOVABLE(opstate);
+      explicit _opstate(CvSender&& sndr, Receiver&& rcvr, Fun fun, _env2_t env2)
+        : _opstate_base_t<CvSender, Receiver, Fun, SetTag>(
+            static_cast<CvSender&&>(sndr),
+            static_cast<Receiver&&>(rcvr),
+            [this](__ignore) noexcept { return _receiver_t{{}, this}; },
+            get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)).ctx_)
+        , fun_(static_cast<Fun&&>(fun))
+        , env2_(env2)
+      {}
 
-      Fun               fun_;
-      opstate_variant_t opstate3_;
+      STDEXEC_IMMOVABLE(_opstate);
+
+      [[nodiscard]]
+      auto make_env() const noexcept -> _let::_env2_t<CvSender, Receiver, SetTag>
+      {
+        return _let::_mk_env2(env2_, *this);
+      }
+
+      template <class ResultSender>
+      auto _connect_result_sender(ResultSender&& sndr)
+        -> connect_result_t<ResultSender, _propagate_receiver_t>&
+      {
+        return opstate3_.__emplace_from(STDEXEC::connect,
+                                        static_cast<ResultSender&&>(sndr),
+                                        _propagate_receiver_t(*this));
+      }
+
+      Fun                fun_;
+      _env2_t            env2_;
+      _opstate_variant_t opstate3_{__no_init};
     };
-  }  // namespace let_xxx
+  }  // namespace _let
 
-  template <class Sender, class Fun, class Set>
+  template <class Sender, class Fun, class SetTag>
   struct let_sender : public stream_sender_base
   {
+   private:
     template <class Self, class Receiver>
-    using opstate_t = let_xxx::opstate<__copy_cvref_t<Self, Sender>, Receiver, Fun, Set>;
+    using _opstate_t = _let::_opstate<__copy_cvref_t<Self, Sender>, Receiver, Fun, SetTag>;
 
     template <class Self, class Receiver>
-    using _receiver_t = let_xxx::receiver_t<__copy_cvref_t<Self, Sender>, Receiver, Fun, Set>;
+    using _receiver_t = _let::_receiver_t<__copy_cvref_t<Self, Sender>, Receiver, Fun, SetTag>;
 
     template <class CvSender, class... StreamEnv>
     using _completions_t =
-      __mapply<__mtransform<__mbind_back_q<let_xxx::__tfx_signal_t, Fun, Set, StreamEnv...>,
+      __mapply<__mtransform<__mbind_back_q<_let::_tfx_signal_t, Fun, SetTag, StreamEnv...>,
                             __mtry_q<__concat_completion_signatures_t>>,
                __completion_signatures_of_t<CvSender, StreamEnv...>>;
 
-    template <__decays_to<let_sender> Self, receiver Receiver>
-      requires receiver_of<
-        Receiver,
-        _completions_t<__copy_cvref_t<Self, Sender>, stream_env_t<env_of_t<Receiver>>>>
-    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-      -> opstate_t<Self, Receiver>
-    {
-      return opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,
-                                       static_cast<Receiver&&>(rcvr),
-                                       static_cast<Self&&>(self).fun_};
-    }
-    STDEXEC_EXPLICIT_THIS_END(connect)
+   public:
+    explicit let_sender(Sender sndr, Fun fun, SetTag)
+      noexcept(__nothrow_move_constructible<Sender, Fun>)
+      : sndr_(static_cast<Sender&&>(sndr))
+      , fun_(static_cast<Fun&&>(fun))
+    {}
 
+    [[nodiscard]]
     auto get_env() const noexcept -> stream_sender_attrs<Sender>
     {
       return {&sndr_};
     }
 
-    template <__decays_to<let_sender> Self, class... Env>
+    template <class Self, class... Env>
     static consteval auto get_completion_signatures()
-      -> _completions_t<__copy_cvref_t<Self, Sender>, stream_env_t<Env>...>
     {
-      return {};
+      return _completions_t<__copy_cvref_t<Self, Sender>, stream_env_t<Env>...>{};
     }
 
+    template <class Self, receiver Receiver>
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+      -> _opstate_t<Self, Receiver>
+    {
+      return _opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,
+                                        static_cast<Receiver&&>(rcvr),
+                                        static_cast<Self&&>(self).fun_};
+    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
+
+   private:
     Sender sndr_;
     Fun    fun_;
   };
 
-  template <class Set>
-  struct _transform_let_xxx_sender
+  template <class Sender, class Fun, class SetTag>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    let_sender(Sender, Fun, SetTag) -> let_sender<Sender, Fun, SetTag>;
+
+  template <class SetTag>
+  struct _transform_let_sender
   {
     template <class Env, class Fun, stream_completing_sender<Env> Sender>
     auto operator()(Env const &, __ignore, Fun fn, Sender&& sndr) const
     {
-      using __sender_t = let_sender<__decay_t<Sender>, Fun, Set>;
-      return __sender_t{{}, static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn)};
+      return let_sender{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn), SetTag{}};
     }
   };
 
   template <>
-  struct transform_sender_for<STDEXEC::let_value_t> : _transform_let_xxx_sender<set_value_t>
+  struct transform_sender_for<STDEXEC::let_value_t> : _transform_let_sender<set_value_t>
   {};
 
   template <>
-  struct transform_sender_for<STDEXEC::let_error_t> : _transform_let_xxx_sender<set_error_t>
+  struct transform_sender_for<STDEXEC::let_error_t> : _transform_let_sender<set_error_t>
   {};
 
   template <>
-  struct transform_sender_for<STDEXEC::let_stopped_t> : _transform_let_xxx_sender<set_stopped_t>
+  struct transform_sender_for<STDEXEC::let_stopped_t> : _transform_let_sender<set_stopped_t>
   {};
 }  // namespace nv::execution::_strm
 
@@ -278,9 +332,9 @@ namespace nvexec = nv::execution;
 
 namespace STDEXEC::__detail
 {
-  template <class Sender, class Fun, class Set>
-  extern __declfn_t<nvexec::_strm::let_sender<__demangle_t<Sender>, Fun, Set>>
-    __demangle_v<nvexec::_strm::let_sender<Sender, Fun, Set>>;
+  template <class Sender, class Fun, class SetTag>
+  extern __declfn_t<nvexec::_strm::let_sender<__demangle_t<Sender>, Fun, SetTag>>
+    __demangle_v<nvexec::_strm::let_sender<Sender, Fun, SetTag>>;
 }  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()

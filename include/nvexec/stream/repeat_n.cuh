@@ -34,7 +34,7 @@ namespace nv::execution::_strm
     template <class OpState>
     struct receiver : stream_receiver_base
     {
-      receiver(OpState& opstate) noexcept
+      explicit receiver(OpState& opstate) noexcept
         : opstate_(opstate)
       {}
 
@@ -54,6 +54,7 @@ namespace nv::execution::_strm
         opstate_._complete(STDEXEC::set_stopped);
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept -> OpState::env_t
       {
         return opstate_.make_env();
@@ -62,24 +63,23 @@ namespace nv::execution::_strm
       OpState& opstate_;
     };
 
-    template <class CvSender, class Receiver>
+    template <class Sender, class Receiver>
     struct opstate : _strm::opstate_base<Receiver>
     {
       using operation_state_concept = STDEXEC::operation_state_t;
 
-      using sender_t = STDEXEC::__decay_t<CvSender>;
       using scheduler_t =
         STDEXEC::__result_of<STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>,
-                             STDEXEC::env_of_t<sender_t>,
+                             STDEXEC::env_of_t<Sender>,
                              STDEXEC::env_of_t<Receiver>>;
 
       using inner_sender_t =
-        STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<scheduler_t&>, sender_t&>;
+        STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<scheduler_t&>, Sender&>;
       using inner_opstate_t = STDEXEC::connect_result_t<inner_sender_t, receiver<opstate>>;
 
-      explicit opstate(CvSender&& sndr, Receiver rcvr, std::size_t count, scheduler_t sched)
+      explicit opstate(Sender&& sndr, Receiver rcvr, std::size_t count, scheduler_t sched)
         : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), sched.ctx_)
-        , sndr_(static_cast<CvSender&&>(sndr))
+        , sndr_(static_cast<Sender&&>(sndr))
         , sched_(std::move(sched))
         , count_(count)
       {
@@ -90,6 +90,7 @@ namespace nv::execution::_strm
       {
         inner_opstate_.__emplace_from(STDEXEC::connect,
                                       exec::sequence(STDEXEC::schedule(sched_), sndr_),
+                                      //STDEXEC::on(sched_, sndr_),
                                       receiver{*this});
       }
 
@@ -146,7 +147,7 @@ namespace nv::execution::_strm
         }
       }
 
-      sender_t                             sndr_;
+      Sender                               sndr_;
       scheduler_t                          sched_;
       STDEXEC::__optional<inner_opstate_t> inner_opstate_;
       std::size_t                          count_{};
@@ -157,19 +158,22 @@ namespace nv::execution::_strm
     {
       using sender_concept = STDEXEC::sender_t;
 
-      using completion_signatures =
-        STDEXEC::completion_signatures<STDEXEC::set_value_t(),
-                                       STDEXEC::set_stopped_t(),
-                                       STDEXEC::set_error_t(std::exception_ptr),
-                                       STDEXEC::set_error_t(cudaError_t)>;
+      template <class>
+      static consteval auto get_completion_signatures()
+      {
+        return STDEXEC::completion_signatures<STDEXEC::set_value_t(),
+                                              STDEXEC::set_stopped_t(),
+                                              STDEXEC::set_error_t(std::exception_ptr),
+                                              STDEXEC::set_error_t(cudaError_t)>();
+      }
 
       template <STDEXEC::receiver Receiver>
-      auto connect(Receiver rcvr) &&  //
-        -> repeat_n::opstate<CvSender, Receiver>
+      auto connect(Receiver rcvr) && -> repeat_n::opstate<CvSender, Receiver>
       {
         auto sched =
           STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr_),
                                                                   STDEXEC::get_env(rcvr));
+
         return repeat_n::opstate<CvSender, Receiver>(static_cast<CvSender&&>(sndr_),
                                                      static_cast<Receiver&&>(rcvr),
                                                      count_,
@@ -190,11 +194,10 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<exec::repeat_n_t>
   {
-    template <class Env, class CvSender>
-    auto operator()(Env const &, STDEXEC::__ignore, size_t count, CvSender&& sndr) const
+    template <class Env, class Sender>
+    auto operator()(Env const &, STDEXEC::__ignore, size_t count, Sender sndr) const
     {
-      using sender_t = repeat_n::sender<CvSender>;
-      return sender_t{static_cast<CvSender&&>(sndr), count};
+      return repeat_n::sender<Sender>{static_cast<Sender&&>(sndr), count};
     }
   };
 }  // namespace nv::execution::_strm

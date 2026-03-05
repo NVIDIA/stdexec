@@ -681,6 +681,12 @@ namespace STDEXEC
     using __f = __msize_t<sizeof...(_Ts)>;
   };
 
+  struct __msizeof
+  {
+    template <class _Ty>
+    using __f = __msize_t<sizeof(_Ty)>;
+  };
+
   template <class _Ty>
   struct __mcount
   {
