@@ -304,9 +304,8 @@ namespace nv::execution::_strm
         : opstate_base_t<CvSender, Receiver, Shape, Fun>(
             static_cast<CvSender&&>(__sndr),
             static_cast<Receiver&&>(__rcvr),
-            [&](_strm::opstate_base<Receiver>&)
-              -> STDEXEC::__t<receiver<CvSender, Receiver, Shape, Fun>>
-            { return STDEXEC::__t<receiver<CvSender, Receiver, Shape, Fun>>(shape, fun, *this); },
+            [&](_strm::opstate_base<Receiver>&) -> receiver<CvSender, Receiver, Shape, Fun>
+            { return receiver<CvSender, Receiver, Shape, Fun>(shape, fun, *this); },
             ctx)
         , num_devices_(num_devices)
         , streams_(new cudaStream_t[num_devices_])
