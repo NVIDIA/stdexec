@@ -124,7 +124,7 @@ namespace nv::execution::_strm
         }
         STDEXEC_CATCH_ALL
         {
-          this->propagate_completion_signal(Tag{}, std::current_exception());
+          this->propagate_completion_signal(STDEXEC::set_error, std::current_exception());
         }
       }
 
