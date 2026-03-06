@@ -70,7 +70,7 @@ struct _then_sender
     stdexec::completion_signatures<stdexec::set_value_t(std::invoke_result_t<F, Args...>)>;
 
   template <class... Env>
-  using _completions_t = stdexec::transform_completion_signatures<
+  using _completions_t = stdexec::__transform_completion_signatures_t<
     stdexec::completion_signatures_of_t<S, Env...>,
     stdexec::completion_signatures<stdexec::set_error_t(std::exception_ptr)>,
     _set_value_t>;

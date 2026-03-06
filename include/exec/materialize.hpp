@@ -95,7 +95,7 @@ namespace experimental::execution
       using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
 
       template <class _Self, class... _Env>
-      using __completions_t = __transform_completion_signatures_t<
+      using __completions_t = __transform_reduce_completion_signatures_t<
         __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
         __materialize_value,
         __materialize_error,
@@ -202,7 +202,7 @@ namespace experimental::execution
       using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
 
       template <class _Self, class... _Env>
-      using __completions_t = transform_completion_signatures<
+      using __completions_t = __transform_completion_signatures_t<
         __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
         completion_signatures<>,
         __mtry_q<__dematerialize_value>::template __f>;

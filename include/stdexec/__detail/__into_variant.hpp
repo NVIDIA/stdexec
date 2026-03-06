@@ -50,7 +50,7 @@ namespace STDEXEC
       completion_signatures<set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
     template <class _Sender, class... _Env>
-    using __completions = transform_completion_signatures<
+    using __completions = __transform_completion_signatures_t<
       __completion_signatures_of_t<_Sender, _Env...>,
       __minvoke_q<__variant_completions, __variant_t<_Sender, _Env...>>,
       __mconst<completion_signatures<>>::__f>;

@@ -249,7 +249,7 @@ namespace experimental::execution
     };
 
     template <class _Sigs>
-    using __result_variant_ = __transform_completion_signatures_t<
+    using __result_variant_ = __transform_reduce_completion_signatures_t<
       _Sigs,
       __mconst<__mlist<>>::__f,
       __mcompose_q<__mlist, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,

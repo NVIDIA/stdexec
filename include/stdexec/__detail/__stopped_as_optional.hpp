@@ -72,7 +72,7 @@ namespace STDEXEC
           using _Completions = decltype(__completions);
           if constexpr (__single_value_sender<__child_of<_Self>, _Env...>)
           {
-            return transform_completion_signatures<
+            return __transform_completion_signatures_t<
               _Completions,
               completion_signatures<set_error_t(std::exception_ptr)>,
               __set_value_t,

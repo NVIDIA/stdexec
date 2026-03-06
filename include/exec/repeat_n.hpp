@@ -197,15 +197,15 @@ namespace experimental::execution
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <typename _Sender, typename... _Env>
-    using __with_eptr_completion_t = __eptr_completion_unless<
+    using __with_eptr_completion_t = __eptr_completion_unless_t<__mbool<
       __cmplsigs::__partitions_of_t<
         __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__errors::value
-      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>;
+      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>>;
 
     template <class _Child, class... _Env>
-    using __completions_t = STDEXEC::transform_completion_signatures<
+    using __completions_t = STDEXEC::__transform_completion_signatures_t<
       __completion_signatures_of_t<_Child &, _Env...>,
-      STDEXEC::transform_completion_signatures<
+      STDEXEC::__transform_completion_signatures_t<
         __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
         __with_eptr_completion_t<_Child, _Env...>,
         __cmplsigs::__default_set_value,

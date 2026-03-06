@@ -64,12 +64,12 @@ namespace STDEXEC
 
     template <class _Scheduler, class _Completions, class... _Env>
     using __completions_impl_t = __mtry_q<__concat_completion_signatures_t>::__f<
-      __transform_completion_signatures_t<_Completions,
-                                          __decay_value_sig,
-                                          __decay_error_sig,
-                                          set_stopped_t (*)(),
-                                          __completion_signature_ptrs_t>,
-      transform_completion_signatures<
+      __transform_reduce_completion_signatures_t<_Completions,
+                                                 __decay_value_sig,
+                                                 __decay_error_sig,
+                                                 set_stopped_t (*)(),
+                                                 __completion_signature_ptrs_t>,
+      __transform_completion_signatures_t<
         __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
         __eptr_completion_unless_t<__nothrow_decay_copyable_results_t<_Completions>>,
         __mconst<completion_signatures<>>::__f>>;

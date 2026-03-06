@@ -444,7 +444,7 @@ namespace experimental::execution
     using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
 
     template <class _Sender, class _Env>
-    using __future_completions_t = transform_completion_signatures_of<
+    using __future_completions_t = __transform_completion_signatures_of_t<
       _Sender,
       __env_t<_Env>,
       completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,

@@ -353,16 +353,19 @@ namespace nv::execution::_strm
     template <class Ty>
     using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty> const &)>;
 
-    using completion_signatures = __try_make_completion_signatures<
-      Sender,
-      STDEXEC::prop<get_stop_token_t, inplace_stop_token>,
-      STDEXEC::completion_signatures<set_error_t(cudaError_t const &)>,
-      __q<_set_value_t>,
-      __q<_set_error_t>>;
+    template <class>
+    static consteval auto get_completion_signatures()
+    {
+      return STDEXEC::__transform_completion_signatures_of_t<
+        Sender,
+        STDEXEC::prop<get_stop_token_t, inplace_stop_token>,
+        STDEXEC::completion_signatures<set_error_t(cudaError_t const &)>,
+        _set_value_t,
+        _set_error_t>();
+    }
 
-    template <receiver_of<completion_signatures> Receiver>
-    auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-      -> opstate_t<Receiver>
+    template <receiver Receiver>
+    auto connect(Receiver rcvr) const & noexcept -> opstate_t<Receiver>
     {
       return opstate_t<Receiver>{static_cast<Receiver&&>(rcvr), sh_state_};
     }

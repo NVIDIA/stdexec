@@ -53,7 +53,7 @@ namespace experimental::execution
       STDEXEC::completion_signatures<set_error_t(std::exception_ptr), set_value_t(_Tuple)>;
 
     template <class _Sender, class... _Env>
-    using __completions_t = transform_completion_signatures<
+    using __completions_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<_Sender, _Env...>,
       __minvoke_q<__tuple_completions_t, __result_tuple_t<_Sender, _Env...>>,
       __mconst<STDEXEC::completion_signatures<>>::__f>;

@@ -118,9 +118,9 @@ namespace nv::execution
 
       template <class Fun, class CvSender, class... Env>
       using completions_t =
-        transform_completion_signatures<__completion_signatures_of_t<CvSender, Env...>,
-                                        completion_signatures<set_error_t(std::exception_ptr)>,
-                                        __mbind_front_q<_set_value_t, Fun>::template __f>;
+        __transform_completion_signatures_t<__completion_signatures_of_t<CvSender, Env...>,
+                                            completion_signatures<set_error_t(std::exception_ptr)>,
+                                            __mbind_front_q<_set_value_t, Fun>::template __f>;
     }  // namespace _launch
 
     template <class Sender, class Fun>

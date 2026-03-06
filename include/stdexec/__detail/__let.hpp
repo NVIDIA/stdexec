@@ -165,18 +165,18 @@ namespace STDEXEC
     struct __transform_signal_fn
     {
       template <class... _Args>
-      static constexpr bool __nothrow_connect_v =
+      using __nothrow_connect_t = __mbool<
         __nothrow_decay_copyable<_Args...> && __nothrow_callable<_Fun, __decay_t<_Args>&...>
         && (__nothrow_connectable<__mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
                                   __receiver_archetype<_JoinEnv2>>
-            && ...);
+            && ...)>;
 
       template <class... _Args>
       using __f = __mcall<__mtry_q<__concat_completion_signatures_t>,
                           __completion_signatures_of_t<
                             __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2...>, _Args...>,
                             _JoinEnv2...>,
-                          __eptr_completion_unless<__nothrow_connect_v<_Args...>>>;
+                          __eptr_completion_unless_t<__nothrow_connect_t<_Args...>>>;
     };
 
     template <class _LetTag, class _Fun, class _CvSender, class... _Env>

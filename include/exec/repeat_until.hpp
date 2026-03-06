@@ -283,9 +283,9 @@ namespace experimental::execution
           }
           else
           {
-            constexpr bool __has_nothrow_connect =
-              (__nothrow_connectable<__child_t, __receiver_archetype<_Env>> || ...);
-            constexpr auto __eptr_sigs    = __eptr_completion_unless<__has_nothrow_connect>();
+            using __has_nothrow_connect_t =
+              __mbool<(__nothrow_connectable<__child_t, __receiver_archetype<_Env>> || ...)>;
+            constexpr auto __eptr_sigs    = __eptr_completion_unless_t<__has_nothrow_connect_t>();
             constexpr auto __bouncer_sigs = exec::transform_completion_signatures(
               get_completion_signatures<__bouncer_t, _Env...>(),
               exec::ignore_completion());  // drop the set_value_t() completion from the

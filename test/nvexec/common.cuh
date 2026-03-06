@@ -163,7 +163,7 @@ namespace
       using op_t = operation_state<STDEXEC::__copy_cvref_t<Self, Sender>, receiver<Receiver, Fun>>;
 
       template <class Self, class... Env>
-      using __completions_t = STDEXEC::transform_completion_signatures<
+      using __completions_t = STDEXEC::__transform_completion_signatures_t<
         STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
         STDEXEC::completion_signatures<>,
         STDEXEC::__mbind_front_q<STDEXEC::__set_value_from_t, Fun>::template __f>;

@@ -1266,13 +1266,13 @@ namespace experimental::execution
                                _is_nothrow_bulk_fn<Shape, Fun>,
                                __q<__mand>>::value,
                completion_signatures<>,
-               __eptr_completion>;
+               __eptr_completion_t>;
 
       template <class... Tys>
       using _set_value_t = completion_signatures<set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using _completions_t = STDEXEC::transform_completion_signatures<
+      using _completions_t = STDEXEC::__transform_completion_signatures_t<
         __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
         _with_error_invoke_t<__copy_cvref_t<Self, Sender>, Env...>,
         _set_value_t>;

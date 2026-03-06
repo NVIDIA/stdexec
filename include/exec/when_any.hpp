@@ -60,7 +60,7 @@ namespace experimental::execution
       using __f = __mtry_q<__concat_completion_signatures_t>::__f<
         __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvSenders...>>,
         completion_signatures<set_stopped_t()>,
-        __transform_completion_signatures_t<
+        __transform_reduce_completion_signatures_t<
           __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
           __as_rvalues,
           __as_error,
