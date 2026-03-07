@@ -38,8 +38,8 @@ namespace nv::execution
       template <class Sender, class Receiver>
       struct opstate : _strm::opstate_base<Receiver>
       {
-        using env_t = _strm::opstate_base<Receiver>::env_t;
         struct receiver;
+        using env_t              = _strm::opstate_base<Receiver>::env_t;
         using variant_t          = variant_storage_t<Sender, env_t>;
         using task_t             = continuation_task<receiver, variant_t>;
         using enqueue_receiver_t = stream_enqueue_receiver<env_t, variant_t>;
@@ -75,7 +75,7 @@ namespace nv::execution
           opstate& opstate_;
         };
 
-        opstate(Sender&& sender, Receiver&& rcvr, context ctx)
+        opstate(Sender&& sndr, Receiver&& rcvr, context ctx)
           : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), ctx)
           , ctx_(ctx)
           , storage_(host_allocate<variant_t>(this->status_, ctx.pinned_resource_))
@@ -88,7 +88,7 @@ namespace nv::execution
                     .release())
           , env_(host_allocate(this->status_, ctx_.pinned_resource_, this->make_env()))
           , inner_op_{
-              connect(static_cast<Sender&&>(sender),
+              connect(static_cast<Sender&&>(sndr),
                       enqueue_receiver_t{env_.get(), storage_.get(), task_, ctx_.hub_->producer()})}
         {
           if (this->status_ == cudaSuccess)

@@ -447,7 +447,7 @@ namespace STDEXEC
     using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>::type;
 
     template <auto _Descriptor>
-    extern __declfn_t<__minvoke<__result_of<_Descriptor>, __q<__basic_sender_t>>>
+    extern __declfn_t<__minvoke<decltype(_Descriptor()), __q<__basic_sender_t>>>
       __demangle_v<__sexpr<_Descriptor>>;
   }  // namespace __detail
 }  // namespace STDEXEC

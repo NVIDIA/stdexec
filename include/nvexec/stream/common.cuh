@@ -98,10 +98,20 @@ namespace nv::execution
   struct stream_domain : STDEXEC::default_domain
   {
     template <::exec::sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
-      requires STDEXEC::__applicable<_strm::transform_sender_for<Tag>, Sender, Env const &>
+      requires STDEXEC::__callable<STDEXEC::__structured_apply_t,
+                                   _strm::transform_sender_for<Tag>,
+                                   Sender,
+                                   Env const &>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
+      noexcept(STDEXEC::__nothrow_callable<STDEXEC::__structured_apply_t,
+                                           _strm::transform_sender_for<Tag>,
+                                           Sender,
+                                           Env const &>)
+
     {
-      return STDEXEC::__apply(_strm::transform_sender_for<Tag>{}, static_cast<Sender&&>(sndr), env);
+      return STDEXEC::__structured_apply(_strm::transform_sender_for<Tag>{},
+                                         static_cast<Sender&&>(sndr),
+                                         env);
     }
 
     template <class Tag, STDEXEC::sender Sender, class... Args>
@@ -115,7 +125,6 @@ namespace nv::execution
 
   namespace _strm
   {
-
 #if STDEXEC_HAS_BUILTIN(__is_reference)
     template <class... Ts>
     concept trivially_copyable = ((STDEXEC_IS_TRIVIALLY_COPYABLE(Ts) || __is_reference(Ts)) && ...);
@@ -701,8 +710,9 @@ namespace nv::execution
         else
         {
           // pass a cudaError_t by value:
-          continuation_kernel<OuterReceiver, Error>
-            <<<1, 1, 0, get_stream()>>>(static_cast<OuterReceiver&&>(rcvr_), set_error_t(), status);
+          continuation_kernel<<<1, 1, 0, get_stream()>>>(static_cast<OuterReceiver&&>(rcvr_),
+                                                         set_error_t(),
+                                                         cudaError_t(status));
         }
       }
 
