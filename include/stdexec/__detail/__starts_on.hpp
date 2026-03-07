@@ -18,16 +18,17 @@
 #include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../functional.hpp"
 #include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
 #include "__just.hpp"
-#include "__let.hpp"
 #include "__schedulers.hpp"
+#include "__senders.hpp"
+#include "__sequence.hpp"
 #include "__utility.hpp"
+#include "__write_env.hpp"
 
 namespace STDEXEC
 {
@@ -47,8 +48,17 @@ namespace STDEXEC
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
       auto& [__tag, __sched, __child] = __sndr;
-      return let_value(continues_on(just(), __sched),
-                       __always{STDEXEC::__forward_like<_Sender>(__child)});
+      // FUTURE: once __sequence updates the environment of the receiver connected to the
+      // nth+1 sender to contain the completion scheduler of the nth sender, we can remove
+      // the write_env here.
+      auto __sndr2 = write_env(STDEXEC::__forward_like<_Sender>(__child), __sched_env(__sched));
+      // NOT TO SPEC: the specification requires that this be implemented in terms of
+      // let_value(schedule(sch), []{ return child; }), but that implementation
+      // is inefficient on the GPU. We could customize starts_on for the GPU to use this
+      // implementation, but this is a good change to make for all platforms since it
+      // avoids unnecessarily making the child sender dependent on the completion of the
+      // schedule operation.
+      return __sequence(continues_on(just(), __sched), std::move(__sndr2));
     }
 
     template <class _Sender>

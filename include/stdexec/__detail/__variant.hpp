@@ -169,6 +169,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>)
+        requires(std::move_constructible<_Ts> && ...)
       {
         if (!__other.__is_valueless())
         {
@@ -178,6 +179,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant const &__other) noexcept(__nothrow_copy_constructible<_Ts...>)
+        requires(std::copy_constructible<_Ts> && ...)
       {
         if (!__other.__is_valueless())
         {
@@ -193,6 +195,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant &operator=(__variant &&__other) noexcept
+        requires(std::move_constructible<_Ts> && ...)
       {
         if (this != &__other)
         {
@@ -207,6 +210,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant &operator=(__variant const &__other)
+        requires(std::copy_constructible<_Ts> && ...)
       {
         if (this != &__other)
         {
