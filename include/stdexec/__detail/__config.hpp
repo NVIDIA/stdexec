@@ -801,16 +801,16 @@ namespace STDEXEC
                                   _NAME))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
-    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
+    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
     static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
-                             STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+                             STDEXEC_PP_RPAREN()) STDEXEC_PP_LPAREN() STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \

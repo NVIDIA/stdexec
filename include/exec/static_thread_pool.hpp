@@ -1281,6 +1281,14 @@ namespace experimental::execution
       using _bulk_opstate_t =
         _static_thread_pool::_bulk_opstate<Parallelize, Shape, Fun, Sender, Receiver>;
 
+      explicit _bulk_sender(_static_thread_pool& pool, Sender sndr, Shape shape, Fun fun)
+        noexcept(__nothrow_move_constructible<Sender, Fun>)
+        : pool_(pool)
+        , sndr_(static_cast<Sender&&>(sndr))
+        , shape_(shape)
+        , fun_(static_cast<Fun&&>(fun))
+      {}
+
       template <__decays_to<_bulk_sender> Self, receiver Receiver>
         requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
@@ -1310,6 +1318,7 @@ namespace experimental::execution
         return STDEXEC::get_env(sndr_);
       }
 
+     private:
       _static_thread_pool& pool_;
       Sender               sndr_;
       Shape                shape_;

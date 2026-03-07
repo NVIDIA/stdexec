@@ -60,19 +60,19 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace ex = stdexec;
 
-namespace repeat_n_detail
+namespace _repeat_n
 {
   template <class Sender, class Closure>
-  struct repeat_n_sender_t;
-}  // namespace repeat_n_detail
+  struct sender;
+}  // namespace _repeat_n
 
 struct repeat_n_t
 {
   template <ex::sender Sender, ex::__sender_adaptor_closure Closure>
   auto operator()(Sender __sndr, std::size_t n, Closure closure) const noexcept
-    -> repeat_n_detail::repeat_n_sender_t<Sender, Closure>
+    -> _repeat_n::sender<Sender, Closure>
   {
-    return repeat_n_detail::repeat_n_sender_t<Sender, Closure>{
+    return _repeat_n::sender<Sender, Closure>{
       {},
       {closure, n},
       std::move(__sndr)
@@ -88,9 +88,8 @@ struct repeat_n_t
 
 inline constexpr repeat_n_t repeat_n{};
 
-namespace repeat_n_detail
+namespace _repeat_n
 {
-
   template <class OpT>
   class receiver_2_t
   {
@@ -245,11 +244,11 @@ namespace repeat_n_detail
   };
 
   template <class Sender, class Closure>
-  struct repeat_n_sender_t
+  struct sender
   {
     using sender_concept = ex::sender_t;
 
-    template <class>
+    template <class, class Env>
     static consteval auto get_completion_signatures() noexcept
     {
       return ex::completion_signatures<
@@ -260,11 +259,11 @@ namespace repeat_n_detail
         >();
     }
 
-    template <ex::__decays_to<repeat_n_sender_t> Self, ex::receiver Receiver>
+    template <ex::__decays_to<sender> Self, ex::receiver Receiver>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
-      -> repeat_n_detail::operation_state_t<Sender, Closure, Receiver>
+      -> _repeat_n::operation_state_t<Sender, Closure, Receiver>
     {
-      return repeat_n_detail::operation_state_t<Sender, Closure, Receiver>(
+      return _repeat_n::operation_state_t<Sender, Closure, Receiver>(
         static_cast<Self&&>(self).sender_,
         static_cast<Self&&>(self).data_.first,
         static_cast<Receiver&&>(r),
@@ -283,26 +282,25 @@ namespace repeat_n_detail
     std::pair<Closure, std::size_t> data_;
     Sender                          sender_;
   };
-}  // namespace repeat_n_detail
+}  // namespace _repeat_n
 
 namespace STDEXEC
 {
   template <class Sender, class Closure>
-  inline constexpr std::size_t
-    __structured_binding_size_v<repeat_n_detail::repeat_n_sender_t<Sender, Closure>> = 3;
+  inline constexpr std::size_t __structured_binding_size_v<_repeat_n::sender<Sender, Closure>> = 3;
 }  // namespace STDEXEC
 
 #if STDEXEC_CUDA_COMPILATION()
 // A CUDA stream implementation of repeat_n
 namespace nv::execution::_strm
 {
-  namespace repeat_n
+  namespace _repeat_n
   {
     template <class OpT>
     class receiver_2_t : public stream_receiver_base
     {
-      using Sender   = OpT::PredSender;
-      using Receiver = OpT::Receiver;
+      using Sender   = OpT::child_t;
+      using Receiver = OpT::receiver_t;
 
       OpT& op_state_;
 
@@ -353,11 +351,15 @@ namespace nv::execution::_strm
     template <class OpT>
     class receiver_1_t : public stream_receiver_base
     {
-      using Receiver = OpT::Receiver;
+      using Receiver = OpT::receiver_t;
 
       OpT& op_state_;
 
      public:
+      explicit receiver_1_t(OpT& op_state)
+        : op_state_(op_state)
+      {}
+
       void set_value() noexcept
       {
         using inner_op_state_t = OpT::inner_op_state_t;
@@ -394,15 +396,13 @@ namespace nv::execution::_strm
       {
         return op_state_.make_env();
       }
-
-      explicit receiver_1_t(OpT& op_state)
-        : op_state_(op_state)
-      {}
     };
 
     template <class PredSender, class Closure, class Receiver>
     struct operation_state_t : _strm::opstate_base<Receiver>
     {
+      using receiver_t  = Receiver;
+      using child_t     = PredSender;
       using Scheduler   = std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>,
                                                ex::env_of_t<PredSender>,
                                                ex::env_of_t<Receiver>>;
@@ -445,7 +445,7 @@ namespace nv::execution::_strm
             static_cast<Receiver&&>(rcvr),
             ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender),
                                                           ex::get_env(rcvr))
-              .context_state_)
+              .ctx_)
         , scheduler_(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender),
                                                                    ex::get_env(rcvr)))
         , closure_(closure)
@@ -458,7 +458,7 @@ namespace nv::execution::_strm
     };
 
     template <class Sender, class Closure>
-    struct sender_t
+    struct sender
     {
       using sender_concept = ex::sender_t;
 
@@ -467,12 +467,12 @@ namespace nv::execution::_strm
                                                               ex::set_error_t(std::exception_ptr),
                                                               ex::set_error_t(cudaError_t)>;
 
-      template <ex::__decays_to<sender_t> Self, ex::receiver Receiver>
+      template <ex::__decays_to<sender> Self, ex::receiver Receiver>
         requires(ex::sender_to<Sender, Receiver>)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
-        -> nvexec::_strm::repeat_n::operation_state_t<Sender, Closure, Receiver>
+        -> nvexec::_strm::_repeat_n::operation_state_t<Sender, Closure, Receiver>
       {
-        return nvexec::_strm::repeat_n::operation_state_t<Sender, Closure, Receiver>(
+        return nvexec::_strm::_repeat_n::operation_state_t<Sender, Closure, Receiver>(
           static_cast<Self&&>(self).sender_,
           static_cast<Self&&>(self).closure_,
           static_cast<Receiver&&>(r),
@@ -490,21 +490,20 @@ namespace nv::execution::_strm
       Closure     closure_;
       std::size_t n_{};
     };
-  }  // namespace repeat_n
+  }  // namespace _repeat_n
 
   template <>
-  struct transform_sender_for<repeat_n_t>
+  struct transform_sender_for<::repeat_n_t>
   {
     template <class Env, class Data, class Sender>
-    auto operator()(Env const &, ex::__ignore, Data&& data, Sender sndr) const
+    auto operator()(Env const &, ::repeat_n_t, Data&& data, Sender sndr) const
     {
-      static_assert(sizeof(Env) == 0);
-      auto& [closure, n] = data;
-      using closure_t    = decltype(closure);
+      auto& [closure, count] = data;
+      using closure_t        = decltype(closure);
 
-      return repeat_n::sender_t<Sender, closure_t>(static_cast<Sender&&>(sndr),
-                                                   ex::__forward_like<Data>(closure),
-                                                   n);
+      return _strm::_repeat_n::sender<Sender, closure_t>(static_cast<Sender&&>(sndr),
+                                                         ex::__forward_like<Data>(closure),
+                                                         count);
     }
   };
 }  // namespace nv::execution::_strm
@@ -528,8 +527,8 @@ auto maxwell_eqs_snr(float                dt,
                      ex::scheduler auto&& computer)
 {
   return ex::just()
-       | repeat_n(n_iterations,
-                  ex::on(computer,
+       | ex::on(computer,
+                repeat_n(n_iterations,
                          ex::bulk(ex::par, accessor.cells, update_h(accessor))
                            | ex::bulk(ex::par, accessor.cells, update_e(time, dt, accessor))))
        | ex::then(dump_vtk(write_results, accessor));
