@@ -366,7 +366,6 @@ namespace STDEXEC
         // Otherwise, if we are asking "late" (with an environment), return the default_domain
         else if constexpr (sizeof...(_Env) != 0)
         {
-          //static_assert(sizeof...(_Env) == 0);
           return default_domain{};
         }
       }

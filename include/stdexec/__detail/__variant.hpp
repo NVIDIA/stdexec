@@ -77,7 +77,7 @@ namespace STDEXEC
 
     template <std::size_t _Ny, class _Variant>
     using __variant_alternative_t =
-      __copy_cvref_t<_Variant, typename STDEXEC_REMOVE_REFERENCE(_Variant)::template __at_t<_Ny>>;
+      __copy_cvref_t<_Variant, typename std::remove_reference_t<_Variant>::template __at_t<_Ny>>;
 
     template <std::size_t _Ny, class _Variant>
     STDEXEC_ATTRIBUTE(host, device)
