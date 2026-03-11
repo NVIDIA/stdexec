@@ -70,7 +70,7 @@ namespace
 
 TEST_CASE("sequence produces a sender", "[sequence]")
 {
-  // The sequence algorithm requires at least one sender.
+  // The sequence algorithm with no arguments is equivalent to just().
   STATIC_REQUIRE(ex::sender_of<ex::__result_of<exec::sequence>, ex::set_value_t()>);
 
   auto s0 = exec::sequence(ex::just(42));

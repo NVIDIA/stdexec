@@ -216,8 +216,13 @@ namespace STDEXEC
     };
 
     template <class _Tag, class _Self, class... _Env>
-    concept __has_get_completion_signatures_impl = requires {
-      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self, _Env...>();
+    inline constexpr bool __has_get_completion_signatures_v = requires {
+      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self>();
+    };
+
+    template <class _Tag, class _Self, class _Env>
+    inline constexpr bool __has_get_completion_signatures_v<_Tag, _Self, _Env> = requires {
+      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self, _Env>();
     };
   }  // namespace __detail
 
@@ -350,11 +355,11 @@ namespace STDEXEC
         using namespace __detail;
         static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
         using __self_t = __copy_cvref_t<_Self, __sexpr>;
-        if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t, _Env...>)
+        if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
         {
           return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t, _Env...>();
         }
-        else if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t>)
+        else if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t>)
         {
           return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t>();
         }

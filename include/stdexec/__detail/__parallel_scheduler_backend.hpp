@@ -322,9 +322,14 @@ namespace STDEXEC
         return __token ? *__token : inplace_stop_token{};
       }
 
-      // Implemented in __task_scheduler.hpp
+      // A template because task_scheduler is not a complete type yet.
+      template <class _TaskScheduler = task_scheduler>
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> task_scheduler;
+      auto query(get_scheduler_t) const noexcept -> _TaskScheduler
+      {
+        auto __sched = __rcvr_.template try_query<_TaskScheduler>(get_scheduler);
+        return __sched ? *__sched : _TaskScheduler(inline_scheduler{});
+      }
 
       system_context_replaceability::receiver_proxy& __rcvr_;
     };

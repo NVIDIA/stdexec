@@ -28,6 +28,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
+STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
@@ -426,10 +427,9 @@ namespace STDEXEC
 
     struct __impls : __sexpr_defaults
     {
-      static constexpr auto __get_attrs =
-        []<class... _Child>(__ignore,
-                            __ignore,
-                            _Child const &...__child) noexcept -> __attrs<_Child const &...>
+      static constexpr auto __get_attrs =                                   //
+        []<class... _Child>(auto, auto, _Child const &...__child) noexcept  //
+        -> __attrs<_Child const &...>
       {
         return __attrs<_Child const &...>{__child...};
       };
@@ -448,9 +448,7 @@ namespace STDEXEC
     template <class... _Senders>
     [[nodiscard]]
     constexpr auto operator()(_Senders &&...__sndrs) const  //
-      noexcept(__nothrow_decay_copyable<_Senders...>)
-    // BUGBUG
-    //-> __well_formed_sender auto
+      noexcept(__nothrow_decay_copyable<_Senders...>) -> __well_formed_sender auto
     {
       return __make_sexpr<__sequence_t>({}, static_cast<_Senders &&>(__sndrs)...);
     }

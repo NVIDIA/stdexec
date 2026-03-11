@@ -80,18 +80,8 @@ namespace STDEXEC
   template <class... _Fns>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __overload(_Fns...) -> __overload<_Fns...>;
 
-#if STDEXEC_EDG()
-  // nvc++ doesn't cache the results of alias template specializations.
-  // To avoid repeated computation of the same function return type,
-  // cache the result ourselves in a class template specialization.
-  template <class _Fun, class... _As>
-  using __call_result_i = decltype(__declval<_Fun>()(__declval<_As>()...));
-  template <class _Fun, class... _As>
-  using __call_result_t = __mmemoize_q<__call_result_i, _Fun, _As...>;
-#else
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
-#endif
 
   template <class _Fun, class _Default, class... _As>
   using __call_result_or_t =
