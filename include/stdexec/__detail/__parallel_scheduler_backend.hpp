@@ -23,6 +23,7 @@
 #include "../functional.hpp"  // IWYU pragma: keep for __with_default
 #include "../stop_token.hpp"  // IWYU pragma: keep for get_stop_token_t
 #include "__any_allocator.hpp"
+#include "__inline_scheduler.hpp"
 #include "__optional.hpp"
 #include "__queries.hpp"
 #include "__schedulers.hpp"
