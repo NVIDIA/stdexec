@@ -150,24 +150,25 @@ namespace STDEXEC
     // accept an environment.
     struct __read_query_t
     {
-      template <class _Attrs, class _GetComplSch = get_completion_scheduler_t>
-        requires __queryable_with<_Attrs, _GetComplSch>
-      constexpr auto operator()(_Attrs const &__attrs, __ignore = {}) const noexcept
-        -> __decay_t<__query_result_t<_Attrs, _GetComplSch>>
-      {
-        static_assert(noexcept(__attrs.query(_GetComplSch{})));
-        static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch>>);
-        return __attrs.query(_GetComplSch{});
-      }
+      using __self_t = get_completion_scheduler_t;
 
-      template <class _Attrs, class _Env, class _GetComplSch = get_completion_scheduler_t>
-        requires __queryable_with<_Attrs, _GetComplSch, _Env const &>
-      constexpr auto operator()(_Attrs const &__attrs, _Env const &__env) const noexcept
-        -> __decay_t<__query_result_t<_Attrs, _GetComplSch, _Env const &>>
+      template <class _Attrs, class... _Env>
+        requires(__queryable_with<_Attrs, __self_t, _Env const &> || ...)
+             || __queryable_with<_Attrs, __self_t>
+      constexpr auto operator()(_Attrs const &__attrs, _Env const &...__env) const noexcept
       {
-        static_assert(noexcept(__attrs.query(_GetComplSch{}, __env)));
-        static_assert(scheduler<__query_result_t<_Attrs, _GetComplSch, _Env const &>>);
-        return __attrs.query(_GetComplSch{}, __env);
+        if constexpr ((__queryable_with<_Attrs, __self_t, _Env const &> || ...))
+        {
+          static_assert(noexcept(__attrs.query(__self_t{}, __env...)));
+          static_assert(scheduler<__query_result_t<_Attrs, __self_t, _Env const &...>>);
+          return __attrs.query(__self_t{}, __env...);
+        }
+        else
+        {
+          static_assert(noexcept(__attrs.query(__self_t{})));
+          static_assert(scheduler<__query_result_t<_Attrs, __self_t>>);
+          return __attrs.query(__self_t{});
+        }
       }
     };
 
@@ -304,6 +305,11 @@ namespace STDEXEC
     }
   };
 
+  template <class _Tag, class _Sender, class... _Env>
+  concept __has_completion_scheduler_for =
+    __sends<_Tag, _Sender, _Env...>
+    && __callable<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, _Env const &...>;
+
   struct __execute_may_block_caller_t : __query<__execute_may_block_caller_t, true>
   {
     template <class _Attrs>
@@ -352,7 +358,7 @@ namespace STDEXEC
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_scheduler_of_t =
-    __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, const _Env &...>;
+    __call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, _Env const &...>;
 
   // TODO(ericniebler): examine all uses of this struct.
   template <class _Scheduler>
@@ -430,7 +436,7 @@ namespace STDEXEC
     }
     else
     {
-      return __sched_env{std::move(__sch)};
+      return __sched_env{std::move(__sch), __env};
     }
   }
 
@@ -439,17 +445,15 @@ namespace STDEXEC
     template <class... _SetTags>
     struct __mk_secondary_env_impl
     {
-      template <sender _Sender, class _Env>
-      constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
+      template <class _CvFn, sender _Sender, class _Env>
+      constexpr auto operator()(_CvFn, _Sender const &__sndr, _Env const &__env) const noexcept
       {
-        using __env_t    = __fwd_env_t<_Env const &>;
-        using __attrs_t  = env_of_t<_Sender const &>;
         using __domain_t = __make_domain_t<__completion_domain_of_t<_SetTags, _Sender, _Env>...>;
         // We can only know the scheduler that the secondary sender is started on if there
         // is exactly one kind of completion that starts the secondary sender.
-        constexpr bool __has_completion_scheduler =
+        STDEXEC_CONSTEXPR_LOCAL bool __has_completion_scheduler =
           sizeof...(_SetTags) == 1
-          && (__callable<get_completion_scheduler_t<_SetTags>, __attrs_t, __env_t> || ...);
+          && (__has_completion_scheduler_for<_SetTags, __mcall1<_CvFn, _Sender>, _Env> || ...);
 
         if constexpr (__has_completion_scheduler)
         {
@@ -473,12 +477,12 @@ namespace STDEXEC
   //! be used as the scheduler/domain for the second sender.
   //!
   //! This environment is used by the \c let_[value|error|stopped] algorithms as well as
-  //! the \c finally algorithm.
+  //! the \c finally algorithm and \c sequence algorithms.
   //!
   //! \note This env assumes that the results of the first sender are decay-copied into
   //! the operation state of the composite sender.
   //!
-  //! \tparam _PrimarySender The sender whose completion is starting the next sender.
+  //! \tparam _CvSender The sender whose completion is starting the next sender.
   //! \tparam _Env The environment of the receiver connected to the primary sender.
   //! \tparam _SetTags The completions that cause the next sender to start. For example,
   //! for \c let_value, this would be \c set_value_t, and for \c finally, this would be
@@ -486,17 +490,21 @@ namespace STDEXEC
   template <class... _SetTags>
   struct __mk_secondary_env_t
   {
-    template <sender _PrimarySender, class _Env>
-    constexpr auto operator()(_PrimarySender const &__sndr, _Env const &__env) const noexcept
+    template <class _CvFn, class _Sender, class _Env>
+    constexpr auto operator()(_CvFn __cv, _Sender const &__sndr, _Env const &__env) const noexcept
     {
       using namespace __detail;
       using __env_t          = __fwd_env_t<_Env const &>;
-      using __never_sends_fn = __mbind_back_q<__never_sends_t, _PrimarySender, __env_t>;
-      using __remove_if_fn   = __mremove_if<__never_sends_fn, __qq<__mk_secondary_env_impl>>;
-      using __impl_t         = __minvoke<__remove_if_fn, _SetTags...>;
-      return __impl_t{}(__sndr, __env);
+      using __never_sends_fn = __mbind_back_q<__never_sends_t, _Sender, __env_t>;
+      using __make_env_fn    = __mremove_if<__never_sends_fn, __qq<__mk_secondary_env_impl>>;
+      using __impl_t         = __minvoke<__make_env_fn, _SetTags...>;
+      return __impl_t{}(__cv, __sndr, __env);
     }
   };
+
+  template <class _CvSender, class _Env, class... _SetTags>
+  using __secondary_env_t =
+    __call_result_t<__mk_secondary_env_t<_SetTags...>, __copy_cvref_fn<_CvSender>, _CvSender, _Env>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __infallible_scheduler

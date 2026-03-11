@@ -92,6 +92,13 @@ namespace STDEXEC
 
     struct __join_fn
     {
+      template <class _Env>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto operator()(_Env &&__env) const noexcept -> _Env
+      {
+        return static_cast<_Env &&>(__env);
+      }
+
       template <class _Env1, class _Env2>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(_Env1 &&__env1, _Env2 &&__env2) const noexcept -> decltype(auto)
@@ -145,7 +152,6 @@ namespace STDEXEC
         return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env> &&>(__env));
       }
     };
-
   }  // namespace __env
 
   using __env::__join_env_t;
@@ -210,6 +216,22 @@ namespace STDEXEC
   template <class _Env>
   struct env<_Env> : _Env
   {};
+
+  template <class _Env>
+  struct env<_Env &>
+  {
+    template <class _Query, class... _Args>
+      requires __queryable_with<_Env, _Query, _Args...>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto query(_Query, _Args &&...__args) const
+      noexcept(__nothrow_queryable_with<_Env, _Query, _Args...>)
+        -> __query_result_t<_Env, _Query, _Args...>
+    {
+      return __query<_Query>()(__env_, static_cast<_Args &&>(__args)...);
+    }
+
+    _Env &__env_;
+  };
 
   template <class _Env1, class _Env2>
   struct env<_Env1, _Env2>

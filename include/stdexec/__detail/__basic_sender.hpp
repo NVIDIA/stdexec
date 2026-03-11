@@ -216,8 +216,13 @@ namespace STDEXEC
     };
 
     template <class _Tag, class _Self, class... _Env>
-    concept __has_get_completion_signatures_impl = requires {
-      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self, _Env...>();
+    inline constexpr bool __has_get_completion_signatures_v = requires {
+      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self>();
+    };
+
+    template <class _Tag, class _Self, class _Env>
+    inline constexpr bool __has_get_completion_signatures_v<_Tag, _Self, _Env> = requires {
+      __sexpr_impl<_Tag>::template __get_completion_signatures<_Self, _Env>();
     };
   }  // namespace __detail
 
@@ -332,13 +337,16 @@ namespace STDEXEC
     {
       using sender_concept = sender_t;
 
-      using __desc_t = decltype(_DescriptorFn());
-      using __tag_t  = __desc_t::__tag;
+      using __desc_t      = decltype(_DescriptorFn());
+      using __tag_t       = __desc_t::__tag;
+      using __base_t      = __minvoke<__desc_t, __qq<__tuple>>;
+      using __get_attrs_t = __mtypeof<__sexpr_impl<__tag_t>::__get_attrs>;
+      using __attrs_t     = __apply_result_t<__get_attrs_t, __base_t const &>;
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto get_env() const noexcept -> decltype(auto)
+      constexpr auto get_env() const noexcept -> __attrs_t
       {
-        return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__sexpr>(*this));
+        return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__base_t>(*this));
       }
 
       template <class _Self, class... _Env>
@@ -347,11 +355,11 @@ namespace STDEXEC
         using namespace __detail;
         static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
         using __self_t = __copy_cvref_t<_Self, __sexpr>;
-        if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t, _Env...>)
+        if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
         {
           return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t, _Env...>();
         }
-        else if constexpr (__has_get_completion_signatures_impl<__tag_t, __self_t>)
+        else if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t>)
         {
           return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t>();
         }

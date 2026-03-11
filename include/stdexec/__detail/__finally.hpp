@@ -37,10 +37,8 @@ namespace STDEXEC
     struct __sender;
   }  // namespace __final
 
-  struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_
-  {};
-  struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_
-  {};
+  struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_;
+  struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_;
 
   struct __finally_t
   {
@@ -125,10 +123,12 @@ namespace STDEXEC
       }
     };
 
-    using __mk_secondary_env_t = __mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
+    using __mk_secondary_env_t =
+      STDEXEC::__mk_secondary_env_t<set_value_t, set_error_t, set_stopped_t>;
 
-    template <class _CvInitialSender, class _ReceiverEnv>
-    using __env2_t = __call_result_t<__mk_secondary_env_t, _CvInitialSender, _ReceiverEnv>;
+    template <class _CvInitialSender, class _Env>
+    using __env2_t =
+      __secondary_env_t<_CvInitialSender, _Env, set_value_t, set_error_t, set_stopped_t>;
 
     template <class _Env2, class _ReceiverEnv>
     using __final_env_t = __join_env_t<_Env2 const &, __fwd_env_t<_ReceiverEnv>>;
@@ -234,6 +234,7 @@ namespace STDEXEC
       using __env2_t            = __final::__env2_t<_CvInitialSender, env_of_t<_Receiver>>;
       using __base_t            = __final_opstate_t<_CvInitialSender, _CvFinalSender, _Receiver>;
       using __initial_results_t = __base_t::__results_t;
+      using __cv_fn             = __copy_cvref_fn<_CvInitialSender>;
 
       constexpr explicit __opstate(_CvInitialSender&& __initial,
                                    _CvFinalSender&&   __final,
@@ -241,7 +242,7 @@ namespace STDEXEC
         : __base_t(&__cleanup_initial_opstate,
                    static_cast<_CvFinalSender&&>(__final),
                    static_cast<_Receiver&&>(__rcvr),
-                   __mk_secondary_env_t{}(__initial, STDEXEC::get_env(__rcvr)))
+                   __mk_secondary_env_t{}(__cv_fn{}, __initial, get_env(__rcvr)))
       {
         __initial_opstate_.__emplace_from(STDEXEC::connect,
                                           static_cast<_CvInitialSender&&>(__initial),
