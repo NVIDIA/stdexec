@@ -63,9 +63,12 @@ namespace experimental::execution
 
     struct __attrs
     {
-      template <__one_of<set_value_t, set_stopped_t> _Tag>
+      template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_scheduler_t> _Env>
       [[nodiscard]]
-      constexpr auto query(get_completion_scheduler_t<_Tag>) const noexcept -> __scheduler;
+      constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const & __env) const noexcept
+      {
+        return get_scheduler(__env);
+      }
 
       template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_domain_t> _Env>
       [[nodiscard]]
@@ -302,13 +305,6 @@ namespace experimental::execution
 
         __op->__execute();
       }
-    }
-
-    template <__one_of<set_value_t, set_stopped_t> _Tag>
-    [[nodiscard]]
-    constexpr auto __attrs::query(get_completion_scheduler_t<_Tag>) const noexcept -> __scheduler
-    {
-      return __scheduler{__max_recursion_depth_};
     }
   }  // namespace __trampoline
 

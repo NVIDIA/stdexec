@@ -332,13 +332,16 @@ namespace STDEXEC
     {
       using sender_concept = sender_t;
 
-      using __desc_t = decltype(_DescriptorFn());
-      using __tag_t  = __desc_t::__tag;
+      using __desc_t      = decltype(_DescriptorFn());
+      using __tag_t       = __desc_t::__tag;
+      using __base_t      = __minvoke<__desc_t, __qq<__tuple>>;
+      using __get_attrs_t = __mtypeof<__sexpr_impl<__tag_t>::__get_attrs>;
+      using __attrs_t     = __apply_result_t<__get_attrs_t, __base_t const &>;
 
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto get_env() const noexcept -> decltype(auto)
+      constexpr auto get_env() const noexcept -> __attrs_t
       {
-        return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__sexpr>(*this));
+        return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__base_t>(*this));
       }
 
       template <class _Self, class... _Env>

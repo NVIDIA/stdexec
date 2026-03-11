@@ -64,8 +64,8 @@ namespace STDEXEC
     using __on_not_callable =
       __mbind_front_q<__callable_error_t, decltype(__let_from_set<_SetTag>)>;
 
-    template <class _SetTag, class _Sender, class... _Env>
-    using __env2_t = __call_result_t<__mk_secondary_env_t<_SetTag>, _Sender, _Env const &...>;
+    template <class _SetTag, class _Sender, class _Env>
+    using __env2_t = __secondary_env_t<_Sender, _Env, _SetTag>;
 
     template <class _SetTag, class _Sender, class _Env>
     using __result_env_t = __join_env_t<__env2_t<_SetTag, _Sender, _Env>, _Env>;
@@ -103,8 +103,7 @@ namespace STDEXEC
       _Env2 const & __env_;
     };
 
-    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_
-    {};
+    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_;
 
     template <class...>
     struct _NESTED_ERROR_;
@@ -189,8 +188,7 @@ namespace STDEXEC
       __cmplsigs::__default_completion,
       __mtry_q<__concat_completion_signatures_t>::__f>;
 
-    struct _THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_
-    {};
+    struct _THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_;
 
     template <class _SetTag, class... _Env>
     struct __try_common_domain_fn
@@ -262,15 +260,16 @@ namespace STDEXEC
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
 
-      template <class _Sender>
+      template <class _CvFn, class _Sender>
       constexpr explicit __opstate_base(_SetTag,
+                                        _CvFn           __cv,
                                         _Sender const & __sndr,
                                         _Fun            __fn,
                                         _Receiver&&     __rcvr) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
-        , __env2_(__mk_secondary_env_t<_SetTag>()(__sndr, STDEXEC::get_env(__rcvr_)))
+        , __env2_(__mk_secondary_env_t<_SetTag>()(__cv, __sndr, STDEXEC::get_env(__rcvr_)))
       {}
 
       constexpr virtual void __start_next() = 0;
@@ -368,12 +367,12 @@ namespace STDEXEC
 
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
-    template <class _SetTag, class _Child, class _Fun, class _Receiver, class... _Tuples>
+    template <class _SetTag, class _CvChild, class _Fun, class _Receiver, class... _Tuples>
     struct __opstate final
       : __opstate_base<_SetTag,
                        _Fun,
                        _Receiver,
-                       __let::__env2_t<_SetTag, _Child, env_of_t<_Receiver>>,
+                       __let::__env2_t<_SetTag, _CvChild, env_of_t<_Receiver>>,
                        _Tuples...>
     {
       using __env2_t        = __opstate::__opstate_base::__env2_t;
@@ -381,19 +380,20 @@ namespace STDEXEC
       using __second_rcvr_t = __opstate::__opstate_base::__second_rcvr_t;
 
       using __op_state_variant_t =
-        __variant<connect_result_t<_Child, __first_rcvr_t>,
+        __variant<connect_result_t<_CvChild, __first_rcvr_t>,
                   __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...>;
 
-      constexpr explicit __opstate(_Child&& __child, _Fun __fn, _Receiver&& __rcvr)
-        noexcept(__nothrow_connectable<_Child, __first_rcvr_t>
+      constexpr explicit __opstate(_CvChild&& __child, _Fun __fn, _Receiver&& __rcvr)
+        noexcept(__nothrow_connectable<_CvChild, __first_rcvr_t>
                  && __nothrow_move_constructible<_Fun>)
         : __opstate::__opstate_base(_SetTag(),
+                                    __copy_cvref_fn<_CvChild>{},
                                     __child,
                                     static_cast<_Fun&&>(__fn),
                                     static_cast<_Receiver&&>(__rcvr))
       {
         __storage_.__emplace_from(STDEXEC::connect,
-                                  static_cast<_Child&&>(__child),
+                                  static_cast<_CvChild&&>(__child),
                                   __first_rcvr_t{this});
       }
 

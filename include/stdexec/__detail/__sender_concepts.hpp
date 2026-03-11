@@ -103,6 +103,15 @@ namespace STDEXEC
   template <class _Tag, class _Sender, class... _Env>
   using __never_sends_t = __mbool<__never_sends<_Tag, _Sender, _Env...>>;
 
+  template <class _Error>
+  using __is_eptr = __mbool<__decays_to<_Error, std::exception_ptr>>;
+
+  template <class _Sender, class... _Env>
+  concept __has_eptr_completion = sender_in<_Sender, _Env...>  //
+                               && __error_types_t<__completion_signatures_of_t<_Sender, _Env...>,
+                                                  __q1<__is_eptr>,
+                                                  __qq<__mor_t>>::value;
+
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...>  //
                                && requires { typename __single_sender_value_t<_Sender, _Env...>; };

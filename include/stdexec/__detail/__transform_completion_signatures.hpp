@@ -277,14 +277,14 @@ namespace STDEXEC
     template <class... _Args, class _Fn>
     [[nodiscard]]
     consteval auto
-    __transform_expr(_Fn const &__fn, int) -> __transform_result_t<_Fn const &, _Args...>
+    __transform_expr(_Fn const &__fn, long) -> __transform_result_t<_Fn const &, _Args...>
     {
       return __fn.template operator()<_Args...>();
     }
 
     template <class _Fn>
     [[nodiscard]]
-    consteval auto __transform_expr(_Fn const &__fn, long) -> __call_result_t<_Fn const &>
+    consteval auto __transform_expr(_Fn const &__fn, int) -> __call_result_t<_Fn const &>
     {
       return __fn();
     }

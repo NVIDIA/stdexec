@@ -483,6 +483,51 @@ namespace STDEXEC
   };
 
   inline constexpr __mktuple_t __mktuple{};
+
+  //
+  // __fold_left(tuple, init, fn)
+  //
+  namespace __tup
+  {
+    struct __fold_left_fn
+    {
+      template <class _State>
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto operator()(_State&& __state, __ignore) const
+        noexcept(__nothrow_move_constructible<_State>) -> _State
+      {
+        return static_cast<_State&&>(__state);
+      }
+
+      template <class _State, class _Fn, class _First, class... _Rest>
+        requires __callable<__fold_left_fn, _State, _Fn, _Rest...>
+              && __callable<_Fn&, __call_result_t<__fold_left_fn, _State, _Fn, _Rest...>, _First>
+      STDEXEC_ATTRIBUTE(host, device)
+      constexpr auto
+      operator()(_State&& __state, _Fn& __fn, _First&& __first, _Rest&&... __rest) const noexcept(
+        __nothrow_callable<__fold_left_fn, _State, _Fn, _Rest...>
+        && __nothrow_callable<_Fn&, __call_result_t<__fold_left_fn, _State, _Fn, _Rest...>, _First>)
+        -> decltype(auto)
+      {
+        return __fn((*this)(static_cast<_State&&>(__state), __fn, static_cast<_Rest&&>(__rest)...),
+                    static_cast<_First&&>(__first));
+      }
+    };
+
+    template <class _Tuple, class _Init, class _Fn>
+      requires __applicable<__fold_left_fn, _Tuple, _Init, _Fn&>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto __fold_left(_Tuple&& __tupl, _Init&& __init, _Fn&& __fn)
+      noexcept(__nothrow_applicable<__fold_left_fn, _Tuple, _Init, _Fn&>)
+        -> __apply_result_t<__fold_left_fn, _Tuple, _Init, _Fn&>
+    {
+      return __apply(__fold_left_fn{},
+                     static_cast<_Tuple&&>(__tupl),
+                     static_cast<_Init&&>(__init),
+                     __fn);
+    }
+  }  // namespace __tup
+
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
