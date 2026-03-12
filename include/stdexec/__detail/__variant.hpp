@@ -20,7 +20,6 @@
 #include "__type_traits.hpp"
 #include "__utility.hpp"
 
-#include <array>
 #include <cstddef>
 #include <memory>
 #include <new>
@@ -346,9 +345,9 @@ namespace STDEXEC
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...))
           -> __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>
       {
-        using __result_t = __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>;
-
-        STDEXEC_CONSTEXPR_LOCAL auto __vtable = std::array{
+        using __result_t   = __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>;
+        using __visit_fn_t = decltype(&__var::__visit_alt<0, __result_t, _Fn, _Self, _Us...>);
+        STDEXEC_CONSTEXPR_LOCAL __visit_fn_t __vtable[] = {
           &__var::__visit_alt<_Is, __result_t, _Fn, _Self, _Us...>...};
         STDEXEC_ASSERT(__self.__index_ != __variant_npos);
         return (*__vtable[__self.__index_])(static_cast<_Fn &&>(__fn),

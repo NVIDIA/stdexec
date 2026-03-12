@@ -23,6 +23,9 @@
 #include "__memory.hpp"
 #include "__typeinfo.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+
 namespace STDEXEC
 {
   namespace __detail
@@ -120,3 +123,5 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __any_allocator(std::allocator<void>) -> __any_allocator<std::byte>;
 }  // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

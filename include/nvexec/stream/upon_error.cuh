@@ -195,11 +195,18 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<STDEXEC::upon_error_t>
   {
-    template <class Env, class Fun, stream_completing_sender<Env> Sender>
+    template <class Env, class Fun, class Sender>
     auto operator()(Env const &, __ignore, Fun fun, Sender&& sndr) const
     {
-      using _sender_t = upon_error_sender<__decay_t<Sender>, Fun>;
-      return _sender_t{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun)};
+      if constexpr (stream_completing_sender<Sender, Env>)
+      {
+        using _sender_t = upon_error_sender<__decay_t<Sender>, Fun>;
+        return _sender_t{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fun)};
+      }
+      else
+      {
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::upon_error_t, Sender, Env>();
+      }
     }
   };
 }  // namespace nv::execution::_strm

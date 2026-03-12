@@ -83,14 +83,16 @@ namespace nv::execution::_strm
         , sched_(std::move(sched))
         , count_(count)
       {
-        _connect();
+        if (count_ != 0)
+        {
+          _connect();
+        }
       }
 
-      void _connect()
+      auto& _connect()
       {
         inner_opstate_.__emplace_from(STDEXEC::connect,
                                       exec::sequence(STDEXEC::schedule(sched_), sndr_),
-                                      //STDEXEC::on(sched_, sndr_),
                                       receiver{*this});
       }
 
@@ -114,8 +116,7 @@ namespace nv::execution::_strm
             }
             else
             {
-              _connect();
-              STDEXEC::start(*inner_opstate_);
+              STDEXEC::start(_connect());
             }
           }
           else
@@ -167,6 +168,11 @@ namespace nv::execution::_strm
                                               STDEXEC::set_error_t(cudaError_t)>();
       }
 
+      explicit sender(CvSender&& sndr, std::size_t count)
+        : sndr_(static_cast<CvSender&&>(sndr))
+        , count_(count)
+      {}
+
       template <STDEXEC::receiver Receiver>
       auto connect(Receiver rcvr) && -> repeat_n::opstate<CvSender, Receiver>
       {
@@ -186,6 +192,7 @@ namespace nv::execution::_strm
         return STDEXEC::get_env(sndr_);
       }
 
+     private:
       CvSender    sndr_;  // could be a value or a reference
       std::size_t count_;
     };

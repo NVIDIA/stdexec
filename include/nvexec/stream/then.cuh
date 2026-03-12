@@ -208,11 +208,18 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<STDEXEC::then_t>
   {
-    template <class Env, class Fn, stream_completing_sender<Env> CvSender>
+    template <class Env, class Fn, class CvSender>
     auto operator()(Env const &, __ignore, Fn fun, CvSender&& sndr) const
     {
-      using _sender_t = then_sender<__decay_t<CvSender>, Fn>;
-      return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fn&&>(fun)};
+      if constexpr (stream_completing_sender<CvSender, Env>)
+      {
+        using _sender_t = then_sender<__decay_t<CvSender>, Fn>;
+        return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fn&&>(fun)};
+      }
+      else
+      {
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::then_t, CvSender, Env>();
+      }
     }
   };
 }  // namespace nv::execution::_strm

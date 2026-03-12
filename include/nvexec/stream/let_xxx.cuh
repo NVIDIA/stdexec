@@ -223,7 +223,7 @@ namespace nv::execution::_strm
             static_cast<CvSender&&>(sndr),
             static_cast<Receiver&&>(rcvr),
             [this](__ignore) noexcept { return _receiver_t{{}, this}; },
-            get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)).ctx_)
+            get_scheduler(env2).ctx_)
         , fun_(static_cast<Fun&&>(fun))
         , env2_(env2)
       {}
@@ -308,10 +308,18 @@ namespace nv::execution::_strm
   template <class SetTag>
   struct _transform_let_sender
   {
-    template <class Env, class Fun, stream_completing_sender<Env> Sender>
+    template <class Env, class Fun, class Sender>
     auto operator()(Env const &, __ignore, Fun fn, Sender&& sndr) const
     {
-      return let_sender{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn), SetTag{}};
+      if constexpr (stream_completing_sender<Sender, Env>)
+      {
+        return let_sender{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn), SetTag{}};
+      }
+      else
+      {
+        using _let_t = decltype(STDEXEC::__let::__let_from_set<SetTag>);
+        return _strm::_no_stream_scheduler_in_env<_let_t, Sender, Env>();
+      }
     }
   };
 

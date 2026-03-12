@@ -27,10 +27,6 @@
 
 namespace nv::execution
 {
-  struct CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER;
-  struct BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT;
-  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM;
-
   namespace _strm
   {
     namespace _schfr
@@ -188,15 +184,7 @@ namespace nv::execution
         }
         else
         {
-          return STDEXEC::__not_a_sender<
-            STDEXEC::_WHAT_(
-              CANNOT_DISPATCH_THE_SCHEDULE_FROM_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
-            STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
-            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::schedule_from_t),
-            // STDEXEC::_TO_FIX_THIS_ERROR_(
-            //   ADD_A_CONTINUES_ON_TRANSITION_TO_THE_CUDA_STREAM_SCHEDULER_BEFORE_THE_SCHEDULE_FROM_ALGORITHM),
-            STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
-            STDEXEC::_WITH_ENVIRONMENT_(Env)>{};
+          return _strm::_no_stream_scheduler_in_env<STDEXEC::schedule_from_t, Sender, Env>();
         }
       }
     };

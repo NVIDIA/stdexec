@@ -533,15 +533,26 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<STDEXEC::when_all_t>
   {
-    template <class Env, stream_completing_sender<Env>... CvSenders>
+    template <class Env, class... CvSenders>
     constexpr auto operator()(Env const &, __ignore, __ignore, CvSenders&&... sndrs) const
     {
-      using sender_t =
-        when_all_sender<STDEXEC::when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
-      return sender_t{
-        context{nullptr, nullptr, nullptr, nullptr},
-        static_cast<CvSenders&&>(sndrs)...
-      };
+      if constexpr ((stream_completing_sender<CvSenders, Env> && ...))
+      {
+        using sender_t =
+          when_all_sender<STDEXEC::when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
+        return sender_t{
+          context{nullptr, nullptr, nullptr, nullptr},
+          static_cast<CvSenders&&>(sndrs)...
+        };
+      }
+      else
+      {
+        // Find the first sender that does not have a stream completion scheduler:
+        STDEXEC_CONSTEXPR_LOCAL bool _map[]       = {!stream_completing_sender<CvSenders, Env>...};
+        STDEXEC_CONSTEXPR_LOCAL std::size_t index = __pos_of(_map, _map + sizeof...(CvSenders));
+        using _invalid_sender_t                   = __m_at_c<index, CvSenders...>;
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::when_all_t, _invalid_sender_t, Env>();
+      }
     }
   };
 

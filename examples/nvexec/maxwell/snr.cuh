@@ -21,6 +21,8 @@
 #include "common.cuh"
 #include "stdexec/execution.hpp"  // IWYU pragma: export
 
+#include "exec/repeat_n.hpp"  // IWYU pragma: export
+
 namespace ex = stdexec;
 
 #if STDEXEC_CUDA_COMPILATION()
@@ -69,20 +71,20 @@ namespace _repeat_n
 struct repeat_n_t
 {
   template <ex::sender Sender, ex::__sender_adaptor_closure Closure>
-  auto operator()(Sender __sndr, std::size_t n, Closure closure) const noexcept
+  auto operator()(Sender __sndr, std::size_t count, Closure closure) const noexcept
     -> _repeat_n::sender<Sender, Closure>
   {
     return _repeat_n::sender<Sender, Closure>{
       {},
-      {closure, n},
+      {closure, count},
       std::move(__sndr)
     };
   }
 
   template <ex::__sender_adaptor_closure Closure>
-  auto operator()(std::size_t n, Closure closure) const
+  auto operator()(std::size_t count, Closure closure) const
   {
-    return ex::__closure(*this, n, closure);
+    return ex::__closure(*this, count, closure);
   }
 };
 
@@ -90,140 +92,70 @@ inline constexpr repeat_n_t repeat_n{};
 
 namespace _repeat_n
 {
-  template <class OpT>
-  class receiver_2_t
+  template <class OpState>
+  class receiver
   {
-    using Sender   = OpT::child_t;
-    using Receiver = OpT::receiver_t;
-
-    OpT& op_state_;
-
+    using receiver_t = OpState::receiver_t;
    public:
     using receiver_concept = ex::receiver_t;
 
-    void set_value() noexcept
-    {
-      using inner_op_state_t = OpT::inner_op_state_t;
-
-      op_state_.i_++;
-
-      if (op_state_.i_ == op_state_.n_)
-      {
-        ex::set_value(std::move(op_state_.rcvr_));
-        return;
-      }
-
-      auto              sch            = ex::get_scheduler(ex::get_env(op_state_.rcvr_));
-      inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(ex::__emplace_from{
-        [&]() noexcept
-        {
-          return ex::connect(ex::schedule(sch) | op_state_.closure_, receiver_2_t<OpT>{op_state_});
-        }});
-
-      ex::start(inner_op_state);
-    }
-
-    template <class Error>
-    void set_error(Error&& err) noexcept
-    {
-      ex::set_error(std::move(op_state_.rcvr_), static_cast<Error&&>(err));
-    }
-
-    void set_stopped() noexcept
-    {
-      ex::set_stopped(std::move(op_state_.rcvr_));
-    }
-
-    [[nodiscard]]
-    auto get_env() const noexcept -> ex::env_of_t<Receiver>
-    {
-      return ex::get_env(op_state_.rcvr_);
-    }
-
-    explicit receiver_2_t(OpT& op_state)
-      : op_state_(op_state)
+    explicit receiver(OpState& op_state)
+      : opstate_(op_state)
     {}
-  };
-
-  template <class OpT>
-  class receiver_1_t
-  {
-    using Receiver = OpT::receiver_t;
-
-    OpT& op_state_;
-
-   public:
-    using receiver_concept = ex::receiver_t;
 
     void set_value() noexcept
     {
-      using inner_op_state_t = OpT::inner_op_state_t;
-
-      if (op_state_.n_)
+      if (opstate_.count_ == 0)
       {
-        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(
-          ex::__emplace_from{[this]() noexcept
-                             {
-                               auto sch = ex::get_scheduler(ex::get_env(op_state_.rcvr_));
-                               return ex::connect(ex::schedule(sch) | op_state_.closure_,
-                                                  receiver_2_t<OpT>{op_state_});
-                             }});
-
-        ex::start(inner_op_state);
+        ex::set_value(std::move(opstate_.rcvr_));
       }
       else
       {
-        ex::set_value(std::move(op_state_.rcvr_));
+        --opstate_.count_;
+        ex::start(opstate_._connect());
       }
     }
 
     template <class Error>
     void set_error(Error&& err) noexcept
     {
-      ex::set_error(std::move(op_state_.rcvr_), static_cast<Error&&>(err));
+      ex::set_error(std::move(opstate_.rcvr_), static_cast<Error&&>(err));
     }
 
     void set_stopped() noexcept
     {
-      ex::set_stopped(std::move(op_state_.rcvr_));
+      ex::set_stopped(std::move(opstate_.rcvr_));
     }
 
     [[nodiscard]]
-    auto get_env() const noexcept -> ex::env_of_t<Receiver>
+    auto get_env() const noexcept -> ex::env_of_t<receiver_t>
     {
-      return ex::get_env(op_state_.rcvr_);
+      return ex::get_env(opstate_.rcvr_);
     }
 
-    explicit receiver_1_t(OpT& op_state)
-      : op_state_(op_state)
-    {}
+   private:
+    OpState& opstate_;
   };
 
-  template <class PredSender, class Closure, class Receiver>
-  struct operation_state_t
+  template <class CvSender, class Closure, class Receiver>
+  struct opstate
   {
-    using receiver_t  = Receiver;
-    using child_t     = PredSender;
-    using Scheduler   = std::invoke_result_t<ex::get_scheduler_t, ex::env_of_t<Receiver>>;
-    using InnerSender = std::invoke_result_t<Closure, ex::schedule_result_t<Scheduler>>;
-
-    using predecessor_op_state_t =
-      ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
-    using inner_op_state_t = ex::connect_result_t<InnerSender, receiver_2_t<operation_state_t>>;
-
-    PredSender                            pred_sender_;
-    Closure                               closure_;
-    Receiver                              rcvr_;
-    std::optional<predecessor_op_state_t> pred_op_state_;
-    std::optional<inner_op_state_t>       inner_op_state_;
-    std::size_t                           n_{};
-    std::size_t                           i_{};
+    opstate(CvSender&& sndr, Closure closure, Receiver&& rcvr, std::size_t count)
+      : rcvr_(static_cast<Receiver&&>(rcvr))
+      , count_(count)
+      , closure_(std::move(closure))
+      , sched_(_get_scheduler(sndr))
+    {
+      pred_opstate_.emplace(ex::__emplace_from{
+        [&]() noexcept
+        { return ex::connect(static_cast<CvSender&&>(sndr), receiver<opstate>{*this}); }});
+    }
 
     void start() & noexcept
     {
-      if (n_)
+      if (count_ > 0)
       {
-        ex::start(*pred_op_state_);
+        ex::start(*pred_opstate_);
       }
       else
       {
@@ -231,16 +163,36 @@ namespace _repeat_n
       }
     }
 
-    operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
-      : pred_sender_{static_cast<PredSender&&>(pred_sender)}
-      , closure_(closure)
-      , rcvr_(rcvr)
-      , n_(n)
+   private:
+    friend receiver<opstate>;
+
+    using receiver_t      = Receiver;
+    using scheduler_t     = std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>,
+                                                 ex::env_of_t<CvSender>,
+                                                 ex::env_of_t<Receiver>>;
+    using inner_sender_t  = std::invoke_result_t<Closure, ex::schedule_result_t<scheduler_t>>;
+    using pred_opstate_t  = ex::connect_result_t<CvSender, receiver<opstate>>;
+    using inner_opstate_t = ex::connect_result_t<inner_sender_t, receiver<opstate>>;
+
+    auto& _connect()
     {
-      pred_op_state_.emplace(ex::__emplace_from{
+      return inner_opstate_.emplace(ex::__emplace_from{
         [&]() noexcept
-        { return ex::connect(static_cast<PredSender&&>(pred_sender_), receiver_1_t{*this}); }});
+        { return ex::connect(closure_(ex::schedule(sched_)), receiver<opstate>{*this}); }});
     }
+
+    scheduler_t _get_scheduler(CvSender const & sndr) noexcept
+    {
+      return ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr),
+                                                           ex::get_env(this->rcvr_));
+    }
+
+    Receiver                       rcvr_;
+    std::size_t                    count_;
+    Closure                        closure_;
+    scheduler_t                    sched_;
+    std::optional<pred_opstate_t>  pred_opstate_;
+    std::optional<inner_opstate_t> inner_opstate_;
   };
 
   template <class Sender, class Closure>
@@ -261,26 +213,25 @@ namespace _repeat_n
 
     template <ex::__decays_to<sender> Self, ex::receiver Receiver>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
-      -> _repeat_n::operation_state_t<Sender, Closure, Receiver>
+      -> _repeat_n::opstate<Sender, Closure, Receiver>
     {
-      return _repeat_n::operation_state_t<Sender, Closure, Receiver>(
-        static_cast<Self&&>(self).sender_,
-        static_cast<Self&&>(self).data_.first,
-        static_cast<Receiver&&>(r),
-        self.data_.second);
+      return _repeat_n::opstate<Sender, Closure, Receiver>(static_cast<Self&&>(self).sndr_,
+                                                           static_cast<Self&&>(self).data_.first,
+                                                           static_cast<Receiver&&>(r),
+                                                           self.data_.second);
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     [[nodiscard]]
     auto get_env() const noexcept -> ex::env_of_t<Sender const &>
     {
-      return ex::get_env(sender_);
+      return ex::get_env(sndr_);
     }
 
     STDEXEC_ATTRIBUTE(no_unique_address, maybe_unused)
     repeat_n_t                      tag_;
     std::pair<Closure, std::size_t> data_;
-    Sender                          sender_;
+    Sender                          sndr_;
   };
 }  // namespace _repeat_n
 
@@ -296,128 +247,59 @@ namespace nv::execution::_strm
 {
   namespace _repeat_n
   {
-    template <class OpT>
-    class receiver_2_t : public stream_receiver_base
+    template <class OpState>
+    class receiver : public stream_receiver_base
     {
-      using Sender   = OpT::child_t;
-      using Receiver = OpT::receiver_t;
-
-      OpT& op_state_;
-
      public:
-      void set_value() noexcept
-      {
-        using inner_op_state_t = OpT::inner_op_state_t;
-
-        op_state_.i_++;
-
-        if (op_state_.i_ == op_state_.n_)
-        {
-          op_state_.propagate_completion_signal(ex::set_value);
-          return;
-        }
-
-        inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(ex::__emplace_from{
-          [&]() noexcept
-          {
-            return ex::connect(op_state_.closure_(ex::schedule(op_state_.scheduler_)),
-                               receiver_2_t<OpT>{op_state_});
-          }});
-
-        ex::start(inner_op_state);
-      }
-
-      template <class Error>
-      void set_error(Error&& err) noexcept
-      {
-        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
-      }
-
-      void set_stopped() noexcept
-      {
-        op_state_.propagate_completion_signal(set_stopped_t());
-      }
-
-      auto get_env() const noexcept -> OpT::env_t
-      {
-        return op_state_.make_env();
-      }
-
-      explicit receiver_2_t(OpT& op_state)
-        : op_state_(op_state)
-      {}
-    };
-
-    template <class OpT>
-    class receiver_1_t : public stream_receiver_base
-    {
-      using Receiver = OpT::receiver_t;
-
-      OpT& op_state_;
-
-     public:
-      explicit receiver_1_t(OpT& op_state)
-        : op_state_(op_state)
+      explicit receiver(OpState& op_state)
+        : opstate_(op_state)
       {}
 
       void set_value() noexcept
       {
-        using inner_op_state_t = OpT::inner_op_state_t;
-
-        if (op_state_.n_)
+        if (opstate_.count_ == 0)
         {
-          inner_op_state_t& inner_op_state = op_state_.inner_op_state_.emplace(ex::__emplace_from{
-            [&]() noexcept
-            {
-              return ex::connect(op_state_.closure_(ex::schedule(op_state_.scheduler_)),
-                                 receiver_2_t<OpT>{op_state_});
-            }});
-
-          ex::start(inner_op_state);
+          opstate_.propagate_completion_signal(ex::set_value);
         }
         else
         {
-          op_state_.propagate_completion_signal(set_value_t());
+          --opstate_.count_;
+          ex::start(opstate_._connect());
         }
       }
 
       template <class Error>
       void set_error(Error&& err) noexcept
       {
-        op_state_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
+        opstate_.propagate_completion_signal(set_error_t(), static_cast<Error&&>(err));
       }
 
       void set_stopped() noexcept
       {
-        op_state_.propagate_completion_signal(set_stopped_t());
+        opstate_.propagate_completion_signal(set_stopped_t());
       }
 
-      auto get_env() const noexcept -> OpT::env_t
+      auto get_env() const noexcept -> OpState::env_t
       {
-        return op_state_.make_env();
+        return opstate_.make_env();
       }
+
+     private:
+      OpState& opstate_;
     };
 
-    template <class PredSender, class Closure, class Receiver>
-    struct operation_state_t : _strm::opstate_base<Receiver>
+    template <class CvSender, class Closure, class Receiver>
+    struct opstate : _strm::opstate_base<Receiver>
     {
-      using receiver_t  = Receiver;
-      using child_t     = PredSender;
-      using Scheduler   = std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>,
-                                               ex::env_of_t<PredSender>,
-                                               ex::env_of_t<Receiver>>;
-      using InnerSender = std::invoke_result_t<Closure, ex::schedule_result_t<Scheduler>>;
-
-      using predecessor_op_state_t =
-        ex::connect_result_t<PredSender, receiver_1_t<operation_state_t>>;
-      using inner_op_state_t = ex::connect_result_t<InnerSender, receiver_2_t<operation_state_t>>;
-
-      Scheduler                             scheduler_;
-      Closure                               closure_;
-      std::optional<predecessor_op_state_t> pred_op_state_;
-      std::optional<inner_op_state_t>       inner_op_state_;
-      std::size_t                           n_{};
-      std::size_t                           i_{};
+      explicit opstate(CvSender&& sndr, Closure closure, Receiver&& rcvr, std::size_t count)
+        : _strm::opstate_base<Receiver>(std::move(rcvr), _get_scheduler(sndr).ctx_)
+        , count_(count)
+        , closure_(std::move(closure))
+        , sched_(_get_scheduler(sndr))
+      {
+        pred_opstate_.emplace(ex::__emplace_from{
+          [&]() noexcept { return ex::connect(static_cast<CvSender&&>(sndr), receiver{*this}); }});
+      }
 
       void start() & noexcept
       {
@@ -425,36 +307,46 @@ namespace nv::execution::_strm
         {
           // Couldn't allocate memory for operation state, complete with error
           this->propagate_completion_signal(ex::set_error,
-                                            std::move(this->stream_provider_.status_));
+                                            cudaError_t(this->stream_provider_.status_));
+        }
+        else if (count_ > 0)
+        {
+          ex::start(*pred_opstate_);
         }
         else
         {
-          if (n_)
-          {
-            ex::start(*pred_op_state_);
-          }
-          else
-          {
-            this->propagate_completion_signal(ex::set_value);
-          }
+          this->propagate_completion_signal(ex::set_value);
         }
       }
 
-      operation_state_t(PredSender&& pred_sender, Closure closure, Receiver&& rcvr, std::size_t n)
-        : _strm::opstate_base<Receiver>(
-            static_cast<Receiver&&>(rcvr),
-            ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender),
-                                                          ex::get_env(rcvr))
-              .ctx_)
-        , scheduler_(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(pred_sender),
-                                                                   ex::get_env(rcvr)))
-        , closure_(closure)
-        , n_(n)
+     private:
+      friend receiver<opstate>;
+
+      using scheduler_t     = std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>,
+                                                   ex::env_of_t<CvSender>,
+                                                   ex::env_of_t<Receiver>>;
+      using inner_sender_t  = std::invoke_result_t<Closure, ex::schedule_result_t<scheduler_t>>;
+      using pred_opstate_t  = ex::connect_result_t<CvSender, receiver<opstate>>;
+      using inner_opstate_t = ex::connect_result_t<inner_sender_t, receiver<opstate>>;
+
+      auto& _connect()
       {
-        pred_op_state_.emplace(ex::__emplace_from{
+        return inner_opstate_.emplace(ex::__emplace_from{
           [&]() noexcept
-          { return ex::connect(static_cast<PredSender&&>(pred_sender), receiver_1_t{*this}); }});
+          { return ex::connect(closure_(ex::schedule(sched_)), receiver<opstate>{*this}); }});
       }
+
+      scheduler_t _get_scheduler(CvSender const & sndr) noexcept
+      {
+        return ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr),
+                                                             ex::get_env(this->rcvr_));
+      }
+
+      std::size_t                    count_;
+      Closure                        closure_;
+      scheduler_t                    sched_;
+      std::optional<pred_opstate_t>  pred_opstate_;
+      std::optional<inner_opstate_t> inner_opstate_;
     };
 
     template <class Sender, class Closure>
@@ -470,25 +362,25 @@ namespace nv::execution::_strm
       template <ex::__decays_to<sender> Self, ex::receiver Receiver>
         requires(ex::sender_to<Sender, Receiver>)
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver r)
-        -> nvexec::_strm::_repeat_n::operation_state_t<Sender, Closure, Receiver>
+        -> nvexec::_strm::_repeat_n::opstate<Sender, Closure, Receiver>
       {
-        return nvexec::_strm::_repeat_n::operation_state_t<Sender, Closure, Receiver>(
-          static_cast<Self&&>(self).sender_,
+        return nvexec::_strm::_repeat_n::opstate<Sender, Closure, Receiver>(
+          static_cast<Self&&>(self).sndr_,
           static_cast<Self&&>(self).closure_,
           static_cast<Receiver&&>(r),
-          self.n_);
+          self.count_);
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       [[nodiscard]]
       auto get_env() const noexcept -> ex::env_of_t<Sender const &>
       {
-        return ex::get_env(sender_);
+        return ex::get_env(sndr_);
       }
 
-      Sender      sender_;
+      Sender      sndr_;
       Closure     closure_;
-      std::size_t n_{};
+      std::size_t count_{};
     };
   }  // namespace _repeat_n
 
@@ -526,12 +418,21 @@ auto maxwell_eqs_snr(float                dt,
                      fields_accessor      accessor,
                      ex::scheduler auto&& computer)
 {
+#if 0
+  return ex::on(computer,
+                exec::repeat_n(ex::just()  //
+                                 | ex::bulk(ex::par, accessor.cells, update_h(accessor))
+                                 | ex::bulk(ex::par, accessor.cells, update_e(time, dt, accessor)),
+                               n_iterations))
+       | ex::then(dump_vtk(write_results, accessor));
+#else
   return ex::just()
        | ex::on(computer,
                 repeat_n(n_iterations,
                          ex::bulk(ex::par, accessor.cells, update_h(accessor))
                            | ex::bulk(ex::par, accessor.cells, update_e(time, dt, accessor))))
        | ex::then(dump_vtk(write_results, accessor));
+#endif
 }
 
 void run_snr(float                dt,
