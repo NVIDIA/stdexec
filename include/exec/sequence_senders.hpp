@@ -124,7 +124,7 @@ namespace experimental::execution
   {
     template <class _Receiver, class _Item>
     concept __has_set_next_member = requires(_Receiver& __rcvr, _Item&& __item) {
-      __rcvr.set_next(static_cast<_Item&&>(__item));
+      __rcvr.set_next(static_cast<_Item &&>(__item));
     };
 
     // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
@@ -426,8 +426,8 @@ namespace experimental::execution
   template <class _Sequence, class... _Env>
   concept has_sequence_item_types = STDEXEC::sender_in<_Sequence, _Env...>  //
                                  && requires(_Sequence&& __sequence, _Env&&... __env) {
-                                      get_item_types(static_cast<_Sequence&&>(__sequence),
-                                                     static_cast<_Env&&>(__env)...);
+                                      get_item_types(static_cast<_Sequence &&>(__sequence),
+                                                     static_cast<_Env &&>(__env)...);
                                     };
 
   template <class _Sequence, class... _Env>
@@ -518,8 +518,8 @@ namespace experimental::execution
   concept sequence_sender_in = sequence_sender<_Sequence, _Env...>
                             && requires(_Sequence&& __sequence, _Env&&... __env) {
                                  {
-                                   get_item_types(static_cast<_Sequence&&>(__sequence),
-                                                  static_cast<_Env&&>(__env)...)
+                                   get_item_types(static_cast<_Sequence &&>(__sequence),
+                                                  static_cast<_Env &&>(__env)...)
                                  } -> __well_formed_item_types<_Sequence>;
                                };
 
@@ -557,8 +557,7 @@ namespace experimental::execution
 #endif
 
   template <class _Data, class... _What>
-  struct __sequence_type_check_failure  //
-    : STDEXEC::__compile_time_error<__sequence_type_check_failure<_Data, _What...>>
+  struct __sequence_type_check_failure : STDEXEC::__compile_time_error
   {
     static_assert(std::is_nothrow_move_constructible_v<_Data>,
                   "The data member of sender_type_check_failure must be nothrow move "
@@ -570,16 +569,14 @@ namespace experimental::execution
       : __data_(static_cast<_Data&&>(data))
     {}
 
-   private:
-    friend struct STDEXEC::__compile_time_error<__sequence_type_check_failure>;
-
     [[nodiscard]]
-    constexpr auto what() const noexcept -> char const *
+    constexpr auto what() const noexcept -> char const *  // NOLINT(modernize-use-override)
     {
       return "This sequence sender is not well-formed. It does not meet the requirements of a "
              "sequence sender type.";
     }
 
+    // public so that __sequence_type_check_failure is a structural type
     _Data __data_{};
   };
 
@@ -845,10 +842,9 @@ namespace experimental::execution
           return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
-          // NOLINTNEXTLINE(bugprone-branch-clone)
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
-        {
+        {  // NOLINT(bugprone-branch-clone)
           return __tfx_seq.subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
                                      static_cast<_Receiver&&>(__rcvr));
         }
@@ -929,8 +925,8 @@ namespace experimental::execution
   template <class _Sequence, class _Receiver>
   concept sequence_sender_to = sequence_receiver_from<_Receiver, _Sequence>
                             && requires(_Sequence&& __sequence, _Receiver&& __rcvr) {
-                                 subscribe(static_cast<_Sequence&&>(__sequence),
-                                           static_cast<_Receiver&&>(__rcvr));
+                                 subscribe(static_cast<_Sequence &&>(__sequence),
+                                           static_cast<_Receiver &&>(__rcvr));
                                };
 
   template <class _Receiver>
