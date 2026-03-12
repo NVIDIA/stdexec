@@ -482,7 +482,7 @@ namespace STDEXEC
     {
       if constexpr (__mapply<__mcontains<__decay_t<_Error>>, __error_variant_t>::value)
       {
-        __state_->__errors_.template emplace<__decay_t<_Error>>(std::move(__error).__error_);
+        __state_->__errors_.template emplace<__decay_t<_Error>>(std::move(__error).error);
       }
       else
       {
