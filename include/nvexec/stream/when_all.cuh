@@ -88,12 +88,12 @@ namespace nv::execution::_strm
       requires(valid_child_sender<Senders, Env...> && ...)
     struct completions<__mlist<Env...>, Senders...>
     {
-      using non_values_t =
-        __minvoke_q<__concat_completion_signatures_t,
-                    completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-                    transform_completion_signatures<__completion_signatures_of_t<Senders, Env...>,
-                                                    completion_signatures<>,
-                                                    __mconst<completion_signatures<>>::__f>...>;
+      using non_values_t = __minvoke_q<
+        __concat_completion_signatures_t,
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
+        __transform_completion_signatures_t<__completion_signatures_of_t<Senders, Env...>,
+                                            completion_signatures<>,
+                                            __mconst<completion_signatures<>>::__f>...>;
 
       using values_t = __minvoke<__mconcat<__qf<set_value_t>>,
                                  __value_types_t<__completion_signatures_of_t<Senders, Env...>,

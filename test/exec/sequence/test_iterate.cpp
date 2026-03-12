@@ -111,7 +111,7 @@ namespace
     int                sum     = 0;
     auto               iterate = exec::iterate(std::views::all(array));
     STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), STDEXEC::env<>>);
-    STATIC_REQUIRE(STDEXEC::sender_expr_for<decltype(iterate), exec::iterate_t>);
+    STATIC_REQUIRE(STDEXEC::__sender_for<decltype(iterate), exec::iterate_t>);
     auto op = exec::subscribe(iterate, sum_receiver<>{.sum_ = sum});
     STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44));
@@ -119,7 +119,7 @@ namespace
 
   struct my_domain
   {
-    template <STDEXEC::sender_expr_for<exec::iterate_t> Sender, class _Env>
+    template <STDEXEC::__sender_for<exec::iterate_t> Sender, class _Env>
     auto transform_sender(STDEXEC::start_t, Sender&& sender, _Env&&) const noexcept
     {
       auto range = STDEXEC::__get<1>(std::forward<Sender>(sender));
@@ -133,7 +133,7 @@ namespace
     std::array<int, 3> array{42, 43, 44};
     auto               iterate = exec::iterate(std::views::all(array));
     STATIC_REQUIRE(exec::sequence_sender_in<decltype(iterate), STDEXEC::env<>>);
-    STATIC_REQUIRE(STDEXEC::sender_expr_for<decltype(iterate), exec::iterate_t>);
+    STATIC_REQUIRE(STDEXEC::__sender_for<decltype(iterate), exec::iterate_t>);
     auto env  = STDEXEC::prop{STDEXEC::get_domain, my_domain{}};
     using Env = decltype(env);
     int  sum  = 0;

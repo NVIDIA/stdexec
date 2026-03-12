@@ -78,18 +78,9 @@ namespace STDEXEC
     template <class _Query>
     struct __attrs
     {
-      template <class _Env>
-        requires __callable<_Query, _Env>
+      template <class _SetTag>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_value_t>, _Env const &) const noexcept
-      {
-        return __completion_behavior::__inline_completion;
-      }
-
-      template <class _Env>
-        requires __callable<_Query, _Env> && (!__nothrow_callable<_Query, _Env>)
-      STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(__get_completion_behavior_t<set_error_t>, _Env const &) const noexcept
+      constexpr auto query(__get_completion_behavior_t<_SetTag>) const noexcept
       {
         return __completion_behavior::__inline_completion;
       }
@@ -140,7 +131,7 @@ namespace STDEXEC
         []<class _Sender, class _Receiver>(_Sender const &, _Receiver&& __rcvr) noexcept
         requires std::is_reference_v<__call_result_t<__data_of<_Sender>, env_of_t<_Receiver>>>
       {
-        static_assert(sender_expr_for<_Sender, __read_env_t>);
+        static_assert(__sender_for<_Sender, __read_env_t>);
         using __query_t = __data_of<_Sender>;
         STDEXEC::__set_value_from(static_cast<_Receiver&&>(__rcvr),
                                   __query_t(),

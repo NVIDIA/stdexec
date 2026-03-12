@@ -170,8 +170,8 @@ namespace STDEXEC
     using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results_t = __cmplsigs::__partitions_of_t<
-      __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__all;
+    using __nothrow_decay_copyable_results_t =
+      STDEXEC::__nothrow_decay_copyable_results_t<__completion_signatures_of_t<_Sender, _Env...>>;
 
     template <class... _Env>
     struct __completions
@@ -203,11 +203,11 @@ namespace STDEXEC
         __concat_completion_signatures_t,
         __minvoke_q<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
         __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-        __transform_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
-                                            __mconst<completion_signatures<>>::__f,
-                                            __set_error_t,
-                                            completion_signatures<set_stopped_t()>,
-                                            __concat_completion_signatures_t>...>;
+        __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
+                                                   __mconst<completion_signatures<>>::__f,
+                                                   __set_error_t,
+                                                   completion_signatures<set_stopped_t()>,
+                                                   __concat_completion_signatures_t>...>;
     };
 
     template <class _Receiver, class _ValuesTuple>
@@ -367,7 +367,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
       {
-        return __completion_behavior::__weakest(
+        return __completion_behavior::__common(
           STDEXEC::__get_completion_behavior<_Tag, _Senders, _Env...>()...);
       }
     };
@@ -424,7 +424,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, when_all_t>);
+        static_assert(__sender_for<_Self, when_all_t>);
         if constexpr (__minvocable_q<__completions_t, _Self, _Env...>)
         {
           // TODO: update this to use constant evaluation:
@@ -583,7 +583,7 @@ namespace STDEXEC
                                               _Child const &...) noexcept
       {
         // TODO(ericniebler): check this use of __sched_attrs
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>
@@ -602,7 +602,7 @@ namespace STDEXEC
                                               _Scheduler const & __sched,
                                               _Child const &...) noexcept
       {
-        return __sched_attrs{std::cref(__sched)};
+        return __sched_attrs{__sched};
       };
 
       template <class _Sender, class... _Env>

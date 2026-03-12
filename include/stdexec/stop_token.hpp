@@ -29,7 +29,9 @@
 #  include <stop_token>  // IWYU pragma: export
 #endif
 
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
 extern void _mm_pause();
+#endif
 
 namespace STDEXEC::__stok
 {

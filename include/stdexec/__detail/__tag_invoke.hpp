@@ -30,12 +30,12 @@ namespace STDEXEC
     constexpr void tag_invoke();
 
     template <class _Tag, class... _Args>
-    concept __tag_invocable = requires(_Tag __tag, _Args&&... __args) {
+    concept __tag_invocable = requires(_Tag __tag, _Args &&...__args) {
       tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
     };
 
     template <class _Ret, class _Tag, class... _Args>
-    concept __tag_invocable_r = requires(_Tag __tag, _Args&&... __args) {
+    concept __tag_invocable_r = requires(_Tag __tag, _Args &&...__args) {
       {
         static_cast<_Ret>(tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...))
       };
@@ -43,7 +43,7 @@ namespace STDEXEC
 
     template <class _Tag, class... _Args>
     concept __nothrow_tag_invocable = __tag_invocable<_Tag, _Args...>
-                                   && requires(_Tag __tag, _Args&&... __args) {
+                                   && requires(_Tag __tag, _Args &&...__args) {
                                         {
                                           tag_invoke(static_cast<_Tag &&>(__tag),
                                                      static_cast<_Args &&>(__args)...)
@@ -70,10 +70,10 @@ namespace STDEXEC
         requires __tag_invocable<_Tag, _Args...>
       [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
       STDEXEC_ATTRIBUTE(always_inline) constexpr auto
-      operator()(_Tag __tag, _Args&&... __args) const
+      operator()(_Tag __tag, _Args &&...__args) const
         noexcept(__nothrow_tag_invocable<_Tag, _Args...>) -> __tag_invoke_result_t<_Tag, _Args...>
       {
-        return tag_invoke(static_cast<_Tag&&>(__tag), static_cast<_Args&&>(__args)...);
+        return tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
       }
     };
 
@@ -114,7 +114,7 @@ namespace STDEXEC
   using tag_invoke_result
     [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]] = __tag_invoke_result<_Tag, _Args...>;
 
-  template <auto& _Tag>
+  template <auto &_Tag>
   using tag_t [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
   = __decay_t<decltype(_Tag)>;
 }  // namespace STDEXEC

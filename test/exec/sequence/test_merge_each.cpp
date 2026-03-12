@@ -236,8 +236,8 @@ namespace
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
-    STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t>>);
+    STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -275,8 +275,8 @@ namespace
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
-    STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t>>);
+    STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -337,8 +337,8 @@ namespace
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
-    STATIC_REQUIRE(ex::__ok<__item_types_of_t<merged_t>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<merged_t>,
+    STATIC_REQUIRE(ex::__ok<__item_types_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<merged_t, ex::env<>>,
                                 ex::completion_signatures<ex::set_error_t(std::exception_ptr),
                                                           ex::set_stopped_t(),
                                                           ex::set_value_t()>>);

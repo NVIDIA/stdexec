@@ -21,6 +21,8 @@
 #include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/execution.hpp"
 
+#include "sender_for.hpp"
+
 namespace experimental::execution
 {
   namespace __unless_stop_requested
@@ -35,10 +37,10 @@ namespace experimental::execution
 
     template <class _Sender, class _Env>
     using __completions_t =
-      transform_completion_signatures<__completion_signatures_of_t<_Sender, _Env>,
-                                      __if_c<__unstoppable_env<_Env>,
-                                             completion_signatures<>,
-                                             completion_signatures<set_stopped_t()>>>;
+      __transform_completion_signatures_t<__completion_signatures_of_t<_Sender, _Env>,
+                                          __if_c<__unstoppable_env<_Env>,
+                                                 completion_signatures<>,
+                                                 completion_signatures<set_stopped_t()>>>;
 
     template <class _CvChild, class _Receiver>
     struct __opstate
@@ -90,7 +92,7 @@ namespace experimental::execution
       template <class _Self, class _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, unless_stop_requested_t>);
+        static_assert(sender_for<_Self, unless_stop_requested_t>);
         // TODO: port this to use constant evaluation
         return __completions_t<__child_of<_Self>, _Env>{};
       };

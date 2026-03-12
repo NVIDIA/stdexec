@@ -32,6 +32,9 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace experimental::execution
 {
+  struct repeat_n_t;
+  struct _THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_;
+
   namespace __repeat_n
   {
     using namespace STDEXEC;
@@ -50,9 +53,8 @@ namespace experimental::execution
       virtual constexpr void __cleanup() noexcept = 0;
       virtual constexpr void __repeat() noexcept  = 0;
 
-      _Receiver            __rcvr_;
-      std::size_t          __count_;
-      trampoline_scheduler __sched_{};
+      _Receiver   __rcvr_;
+      std::size_t __count_;
 
      protected:
       ~__opstate_base() noexcept = default;
@@ -109,8 +111,13 @@ namespace experimental::execution
         __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
       using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
 
+      static constexpr bool __nothrow_connect =
+        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler>
+        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
+        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>;
+
       constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
-        noexcept(__nothrow_move_constructible<_Child> && noexcept(__connect()))
+        noexcept(__nothrow_move_constructible<_Child> && __nothrow_connect)
         : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
         , __child_(std::move(__child))
       {
@@ -132,13 +139,10 @@ namespace experimental::execution
         }
       }
 
-      constexpr auto __connect() noexcept(
-        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler &>
-        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
-        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>) -> __child_op_t &
+      constexpr auto __connect() noexcept(__nothrow_connect) -> __child_op_t &
       {
         return __child_op_.__emplace_from(STDEXEC::connect,
-                                          exec::sequence(STDEXEC::schedule(this->__sched_),
+                                          exec::sequence(STDEXEC::schedule(trampoline_scheduler{}),
                                                          __child_),
                                           __receiver_t{this});
       }
@@ -165,7 +169,7 @@ namespace experimental::execution
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!noexcept(__connect()))
+          if constexpr (!__nothrow_connect)
           {
             STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
           }
@@ -179,9 +183,6 @@ namespace experimental::execution
     template <class _Child, class _Receiver>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __opstate(std::size_t, _Child, _Receiver) -> __opstate<_Child, _Receiver>;
-
-    struct repeat_n_t;
-    struct _THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_;
 
     template <class _Child, class... _Args>
     using __values_t =
@@ -197,15 +198,15 @@ namespace experimental::execution
     using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
 
     template <typename _Sender, typename... _Env>
-    using __with_eptr_completion_t = __eptr_completion_unless<
+    using __with_eptr_completion_t = __eptr_completion_unless_t<__mbool<
       __cmplsigs::__partitions_of_t<
         __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__errors::value
-      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>;
+      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>>;
 
     template <class _Child, class... _Env>
-    using __completions_t = STDEXEC::transform_completion_signatures<
+    using __completions_t = STDEXEC::__transform_completion_signatures_t<
       __completion_signatures_of_t<_Child &, _Env...>,
-      STDEXEC::transform_completion_signatures<
+      STDEXEC::__transform_completion_signatures_t<
         __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
         __with_eptr_completion_t<_Child, _Env...>,
         __cmplsigs::__default_set_value,
@@ -215,6 +216,13 @@ namespace experimental::execution
 
     struct __impls : __sexpr_defaults
     {
+      static constexpr auto __get_attrs =
+        []<class _Child>(__ignore, __ignore, _Child const &__child) noexcept
+        -> __seq::__attrs<schedule_result_t<trampoline_scheduler>, _Child &>
+      {
+        return {STDEXEC::schedule(trampoline_scheduler{}), const_cast<_Child &>(__child)};
+      };
+
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
@@ -232,24 +240,24 @@ namespace experimental::execution
                          static_cast<_Receiver &&>(__rcvr));
       };
     };
-
-    struct repeat_n_t
-    {
-      template <sender _Sender>
-      constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const
-      {
-        return __make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(std::size_t __count) const noexcept
-      {
-        return __closure(*this, __count);
-      }
-    };
   }  // namespace __repeat_n
 
-  using __repeat_n::repeat_n_t;
+  struct repeat_n_t
+  {
+    template <STDEXEC::sender _Sender>
+    constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const  //
+      -> STDEXEC::__well_formed_sender auto
+    {
+      return STDEXEC::__make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()(std::size_t __count) const noexcept
+    {
+      return STDEXEC::__closure(*this, __count);
+    }
+  };
+
   inline constexpr repeat_n_t repeat_n{};
 }  // namespace experimental::execution
 

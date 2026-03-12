@@ -46,18 +46,18 @@ namespace STDEXEC::ranges
     constexpr void end();
 
     template <class _Ty>
-    concept __has_member_begin = requires(_Ty&& __val) { static_cast<_Ty &&>(__val).begin(); };
+    concept __has_member_begin = requires(_Ty&& __val) { static_cast<_Ty&&>(__val).begin(); };
 
     template <class _Ty>
     concept __has_free_begin = __has_member_begin<_Ty>
-                            || requires(_Ty&& __val) { begin((static_cast<_Ty &&>(__val))); };
+                            || requires(_Ty&& __val) { begin((static_cast<_Ty&&>(__val))); };
 
     template <class _Ty>
-    concept __has_member_end = requires(_Ty&& __val) { static_cast<_Ty &&>(__val).end(); };
+    concept __has_member_end = requires(_Ty&& __val) { static_cast<_Ty&&>(__val).end(); };
 
     template <class _Ty>
     concept __has_free_end = __has_member_end<_Ty>
-                          || requires(_Ty&& __val) { end((static_cast<_Ty &&>(__val))); };
+                          || requires(_Ty&& __val) { end((static_cast<_Ty&&>(__val))); };
 
     struct __begin_t
     {

@@ -28,9 +28,11 @@
 #include <catch2/catch.hpp>
 
 #include <concepts>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace ex = STDEXEC;
@@ -315,7 +317,7 @@ namespace
       static_assert(
         std::same_as<ex::error_types_of_t<decltype(only_stopped)>, ex::__detail::__not_a_variant>,
         "Expect no value completions");
-      static_assert(ex::sender_of<decltype(only_stopped), ex::set_stopped_t()>,
+      static_assert(ex::sender_of<decltype(only_stopped), ex::set_stopped_t(), ex::env<>>,
                     "Missing set_stopped_t() from upstream");
 
       // operator| and sync_wait require valid completion signatures
@@ -331,11 +333,16 @@ namespace
       static_assert(std::same_as<ex::error_types_of_t<decltype(only_error)>, std::variant<int>>,
                     "Unexpected added set_error_t(std::exception_ptr)");
 
-      // set_stopped_t is always added as a consequence of the internal trampoline_scheduler
-      using SC = ex::completion_signatures_of_t<ex::schedule_result_t<exec::trampoline_scheduler>>;
-      static_assert(!ex::sender_of<SC, ex::set_stopped_t()>
-                      || ex::sender_of<decltype(only_error), ex::set_stopped_t()>,
+      // set_stopped_t is added when the receiver's stop token is stoppable, as a
+      // consequence of the internal trampoline_scheduler
+      using stoppable_env_t = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
+      static_assert(ex::sender_of<decltype(only_error), ex::set_stopped_t(), stoppable_env_t>,
                     "Missing added set_stopped_t()");
+
+      // set_stopped_t is *not* added when the receiver's stop token is unstoppable.
+      static_assert(!ex::sender_of<decltype(only_error), ex::set_stopped_t(), ex::env<>>,
+                    "set_stopped_t() should not be added when the receiver's stop token is "
+                    "unstoppable");
 
       // operator| and sync_wait require valid completion signatures
       ex::sync_wait(only_error | ex::upon_error([](auto const) { return -1; }));
@@ -464,5 +471,22 @@ namespace
         std::same_as<ex::error_types_of_t<decltype(snd)>, std::variant<std::exception_ptr>>,
         "Missing added set_error_t(std::exception_ptr)");
     }
+  }
+
+  TEST_CASE("repeat_until works with a dependent sender", "[adaptors][repeat_until]")
+  {
+    std::size_t invoked = 0;
+    auto        snd     = exec::repeat_until(ex::read_env(ex::get_stop_token)
+                                  | ex::then(
+                                    [&](auto token) noexcept
+                                    {
+                                      ++invoked;
+                                      return std::is_same_v<ex::never_stop_token, decltype(token)>;
+                                    }));
+    static_assert(ex::dependent_sender<decltype(snd)>);
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    CHECK(!invoked);
+    ex::start(op);
+    CHECK(invoked == 1);
   }
 }  // namespace

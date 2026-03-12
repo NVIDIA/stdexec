@@ -178,7 +178,7 @@ namespace STDEXEC
     using scheduler_type   = __minvoke_or_q<__task::__scheduler_type, task_scheduler, _Env>;
     using stop_source_type = __minvoke_or_q<__task::__stop_source_type, inplace_stop_source, _Env>;
     using stop_token_type  = decltype(__declval<stop_source_type>().get_token());
-    using error_types      = __minvoke_or_q<__task::__error_types, __eptr_completion, _Env>;
+    using error_types      = __minvoke_or_q<__task::__error_types, __eptr_completion_t, _Env>;
 
     constexpr task(task&& __that) noexcept
       : __coro_(std::exchange(__that.__coro_, {}))
@@ -232,7 +232,8 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
       {
-        return __completion_behavior::__asynchronous_affine;
+        return __completion_behavior::__asynchronous_affine
+             | __completion_behavior::__inline_completion;
       }
     };
 

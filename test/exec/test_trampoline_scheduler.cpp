@@ -26,7 +26,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-
   struct try_again
   {};
 
@@ -78,9 +77,7 @@ namespace
             "[schedulers][trampoline_scheduler]")
   {
     exec::trampoline_scheduler sched;
-    ex::run_loop               loop;
-
-    auto recurse_deeply = retry(ex::on(sched, fails_alot{}));
+    auto                       recurse_deeply = retry(ex::on(sched, fails_alot{}));
     ex::sync_wait(std::move(recurse_deeply));
   }
 

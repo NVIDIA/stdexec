@@ -101,7 +101,7 @@ namespace nv::execution::_strm::__algo_range_init_fun
     using _set_value_t = __minvoke_q<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
 
     template <class Self, class... Env>
-    using _completions_t = STDEXEC::transform_completion_signatures<
+    using _completions_t = STDEXEC::__transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       completion_signatures<set_error_t(cudaError_t)>,
       __mtry_q<_set_value_t>::template __f>;

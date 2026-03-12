@@ -246,11 +246,11 @@ namespace STDEXEC
 
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()  //
-        -> transform_completion_signatures<
+        -> __transform_completion_signatures_t<
           __completion_signatures_of_t<__wrap_sender_of_t<_Sender>, _Env...>,
           completion_signatures<set_stopped_t()>>
       {
-        static_assert(sender_expr_for<_Sender, associate_t>);
+        static_assert(__sender_for<_Sender, associate_t>);
         return {};
       };
 

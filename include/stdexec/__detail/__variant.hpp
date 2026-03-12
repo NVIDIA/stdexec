@@ -76,15 +76,19 @@ namespace STDEXEC
     }
 
     template <std::size_t _Ny, class _Variant>
+    using __variant_alternative_t =
+      __copy_cvref_t<_Variant, typename std::remove_reference_t<_Variant>::template __at_t<_Ny>>;
+
+    template <std::size_t _Ny, class _Variant>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto __get(_Variant &&__var) noexcept -> decltype(auto)
+    constexpr auto __get(_Variant &&__var) noexcept -> __variant_alternative_t<_Ny, _Variant> &&
     {
       return __var.template __get<_Ny>(static_cast<_Variant &&>(__var));
     }
 
-    template <size_t _Ny, class _Fn, class _Self, class... _Us>
+    template <size_t _Ny, class _Result, class _Fn, class _Self, class... _Us>
     STDEXEC_ATTRIBUTE(host, device)
-    static constexpr auto __visit_alt(_Fn &&__fn, _Self &&__self, _Us &&...__us) -> decltype(auto)
+    static constexpr auto __visit_alt(_Fn &&__fn, _Self &&__self, _Us &&...__us) -> _Result
     {
       return static_cast<_Fn &&>(__fn)(static_cast<_Us &&>(__us)...,
                                        __var::__get<_Ny>(static_cast<_Self &&>(__self)));
@@ -125,9 +129,6 @@ namespace STDEXEC
     {
       static constexpr std::size_t __max_size = STDEXEC::__umax({sizeof(_Ts)...});
 
-      template <std::size_t _Ny>
-      using __at_t = __m_at_c<_Ny, _Ts...>;
-
       struct __move_visitor
       {
         template <class _Self, class _Ty>
@@ -163,12 +164,16 @@ namespace STDEXEC
       alignas(_Ts...) std::byte __storage_[__max_size];
 
      public:
+      template <std::size_t _Ny>
+      using __at_t = __m_at_c<_Ny, _Ts...>;
+
       // Construct into the valueless state:
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit __variant(__no_init_t) noexcept {}
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>)
+        requires(std::move_constructible<_Ts> && ...)
       {
         if (!__other.__is_valueless())
         {
@@ -178,6 +183,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant const &__other) noexcept(__nothrow_copy_constructible<_Ts...>)
+        requires(std::copy_constructible<_Ts> && ...)
       {
         if (!__other.__is_valueless())
         {
@@ -193,6 +199,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant &operator=(__variant &&__other) noexcept
+        requires(std::move_constructible<_Ts> && ...)
       {
         if (this != &__other)
         {
@@ -207,6 +214,7 @@ namespace STDEXEC
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant &operator=(__variant const &__other)
+        requires(std::copy_constructible<_Ts> && ...)
       {
         if (this != &__other)
         {
@@ -336,10 +344,12 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __visit(_Fn &&__fn, _Self &&__self, _Us &&...__us)
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...))
-          -> decltype(auto)
+          -> __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>
       {
-        STDEXEC_STATIC_CONSTEXPR_LOCAL auto __vtable = std::array{
-          &__var::__visit_alt<_Is, _Fn, _Self, _Us...>...};
+        using __result_t = __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>;
+
+        STDEXEC_CONSTEXPR_LOCAL auto __vtable = std::array{
+          &__var::__visit_alt<_Is, __result_t, _Fn, _Self, _Us...>...};
         STDEXEC_ASSERT(__self.__index_ != __variant_npos);
         return (*__vtable[__self.__index_])(static_cast<_Fn &&>(__fn),
                                             static_cast<_Self &&>(__self),
@@ -353,7 +363,7 @@ namespace STDEXEC
 
       template <std::size_t _Ny, class _Self>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-      static constexpr auto __get(_Self &&__self) noexcept -> decltype(auto)
+      static constexpr auto __get(_Self &&__self) noexcept -> __copy_cvref_t<_Self, __at_t<_Ny>> &&
       {
         using __value_t = __at_t<_Ny>;
         STDEXEC_ASSERT(_Ny == __self.__index_);

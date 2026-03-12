@@ -18,10 +18,10 @@
 #define STDEXEC_PP_STRINGIZE_I(...) #__VA_ARGS__
 #define STDEXEC_PP_STRINGIZE(...)   STDEXEC_PP_STRINGIZE_I(__VA_ARGS__)
 
-#define STDEXEC_PP_LPAREN (
-#define STDEXEC_PP_RPAREN )
-#define STDEXEC_PP_PARENS            ()
-#define STDEXEC_PP_COMMA             ,
+#define STDEXEC_PP_LPAREN() (
+#define STDEXEC_PP_RPAREN() )
+#define STDEXEC_PP_PARENS() ()
+#define STDEXEC_PP_COMMA()  ,
 
 #define STDEXEC_PP_CAT_I(_XP, ...)   _XP##__VA_ARGS__
 #define STDEXEC_PP_CAT(_XP, ...)     STDEXEC_PP_CAT_I(_XP, __VA_ARGS__)
@@ -83,7 +83,7 @@
 
 #define STDEXEC_PP_FOR_EACH_AGAIN() STDEXEC_PP_FOR_EACH_HELPER
 #define STDEXEC_PP_FOR_EACH_HELPER(_MACRO, _A1, ...)                                               \
-  _MACRO(_A1) __VA_OPT__(STDEXEC_PP_FOR_EACH_AGAIN STDEXEC_PP_PARENS(_MACRO, __VA_ARGS__)) /**/
+  _MACRO(_A1) __VA_OPT__(STDEXEC_PP_FOR_EACH_AGAIN STDEXEC_PP_PARENS()(_MACRO, __VA_ARGS__)) /**/
 #define STDEXEC_PP_FOR_EACH(_MACRO, ...)                                                           \
   __VA_OPT__(STDEXEC_PP_EXPAND_R(STDEXEC_PP_FOR_EACH_HELPER(_MACRO, __VA_ARGS__)))
 
@@ -94,7 +94,7 @@
 #define STDEXEC_PP_BACK_AGAIN()      STDEXEC_PP_BACK_I
 #define STDEXEC_PP_BACK_I(_A1, ...)                                                                \
   STDEXEC_PP_FRONT(__VA_OPT__(, ) _A1, )                                                           \
-  __VA_OPT__(STDEXEC_PP_BACK_AGAIN STDEXEC_PP_PARENS(__VA_ARGS__))
+  __VA_OPT__(STDEXEC_PP_BACK_AGAIN STDEXEC_PP_PARENS()(__VA_ARGS__))
 #define STDEXEC_PP_BACK(...)                 __VA_OPT__(STDEXEC_PP_EXPAND_R(STDEXEC_PP_BACK_I(__VA_ARGS__)))
 
 #define STDEXEC_PP_TAIL(_IGN, ...)           __VA_ARGS__

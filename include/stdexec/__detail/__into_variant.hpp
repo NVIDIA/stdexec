@@ -50,7 +50,7 @@ namespace STDEXEC
       completion_signatures<set_value_t(_Variant), set_error_t(std::exception_ptr)>;
 
     template <class _Sender, class... _Env>
-    using __completions = transform_completion_signatures<
+    using __completions = __transform_completion_signatures_t<
       __completion_signatures_of_t<_Sender, _Env...>,
       __minvoke_q<__variant_completions, __variant_t<_Sender, _Env...>>,
       __mconst<completion_signatures<>>::__f>;
@@ -100,7 +100,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, into_variant_t>);
+        static_assert(__sender_for<_Self, into_variant_t>);
         return __completions<__child_of<_Self>, _Env...>{};
       };
     };

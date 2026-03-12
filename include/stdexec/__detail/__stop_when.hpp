@@ -71,7 +71,7 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()  //
         -> __completion_signatures_of_t<__child_of<_Sender>, _Env...>
       {
-        static_assert(sender_expr_for<_Sender, __stop_when_t>);
+        static_assert(__sender_for<_Sender, __stop_when_t>);
         return {};
       };
 

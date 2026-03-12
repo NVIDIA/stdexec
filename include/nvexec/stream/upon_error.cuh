@@ -151,7 +151,7 @@ namespace nv::execution::_strm
     using _set_error_t = __set_value_from_t<Fun, Error>;
 
     template <class Self, class... Env>
-    using completion_signatures = transform_completion_signatures<
+    using completion_signatures = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       completion_signatures<set_error_t(cudaError_t)>,
       __cmplsigs::__default_set_value,

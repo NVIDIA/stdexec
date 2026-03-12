@@ -102,11 +102,7 @@ namespace nv::execution
       template <class Receiver>
       using receiver_t = receiver<Kind, Receiver>;
 
-      template <class Self, class Env>
-      using _completions_t = __try_make_completion_signatures<__copy_cvref_t<Self, Sender>, Env>;
-
       template <__decays_to<nvtx_sender> Self, STDEXEC::receiver Receiver>
-        requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
       {
@@ -119,9 +115,9 @@ namespace nv::execution
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<nvtx_sender> Self, class Env>
-      static consteval auto get_completion_signatures() -> _completions_t<Self, Env>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env>();
       }
 
       auto get_env() const noexcept -> stream_sender_attrs<Sender>

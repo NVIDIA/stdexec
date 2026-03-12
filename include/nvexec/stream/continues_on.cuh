@@ -245,7 +245,7 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<continues_on_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> transform_completion_signatures<
+    static consteval auto get_completion_signatures() -> __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       completion_signatures<set_error_t(cudaError_t)>,
       _trnsfr::value_completions_t,

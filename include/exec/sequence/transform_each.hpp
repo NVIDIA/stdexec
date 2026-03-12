@@ -18,6 +18,7 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
+#include "../sender_for.hpp"
 #include "../sequence_senders.hpp"
 
 #include "../detail/basic_sequence.hpp"
@@ -155,7 +156,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, transform_each_t>);
+        static_assert(sender_for<_Self, transform_each_t>);
         return exec::__sequence_completion_signatures_of<__child_of<_Self>, _Env...>();
       }
 
@@ -170,7 +171,7 @@ namespace experimental::execution
       template <class _Self, class... _Env>
       static consteval auto get_item_types()
       {
-        static_assert(sender_expr_for<_Self, transform_each_t>);
+        static_assert(sender_for<_Self, transform_each_t>);
         using __closure_t  = STDEXEC::__decay_t<__data_of<_Self>>&;
         auto __child_items = exec::get_item_types<__child_of<_Self>, _Env...>();
 
@@ -206,17 +207,19 @@ namespace experimental::execution
       template <class _Self, class _Receiver>
       using __operation_t = __operation<__child_of<_Self>, _Receiver, __data_of<_Self>>;
 
-      template <sender_expr_for<transform_each_t> _Self, receiver _Receiver>
+      template <class _Self, receiver _Receiver>
       static auto subscribe(_Self&& __self, _Receiver __rcvr)
         noexcept(__nothrow_applicable<__subscribe_fn<_Receiver>, _Self>)
           -> __apply_result_t<__subscribe_fn<_Receiver>, _Self>
       {
+        static_assert(sender_for<_Self, transform_each_t>);
         return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_Self&&>(__self));
       }
 
-      template <sender_expr_for<transform_each_t> _Sexpr>
+      template <class _Sexpr>
       static auto get_env(_Sexpr const & __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>>
       {
+        static_assert(sender_for<_Sexpr, transform_each_t>);
         return __apply([]<class _Child>(__ignore, __ignore, _Child const & __child)
                        { return STDEXEC::get_env(__child); },
                        __sexpr);

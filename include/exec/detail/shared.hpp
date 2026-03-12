@@ -133,13 +133,13 @@ namespace experimental::execution::__shared
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvSender, class _Env>
   using __result_variant_t =
-    __transform_completion_signatures_t<__completion_signatures_of_t<_CvSender, _Env>,
-                                        __mbind_front_q<__decayed_tuple, set_value_t>::__f,
-                                        __mbind_front_q<__decayed_tuple, set_error_t>::__f,
-                                        __tuple<set_stopped_t>,
-                                        __munique<__qq<__variant>>::__f,
-                                        __tuple<set_error_t, std::exception_ptr>,
-                                        __tuple<set_stopped_t>>;
+    __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_CvSender, _Env>,
+                                               __mbind_front_q<__decayed_tuple, set_value_t>::__f,
+                                               __mbind_front_q<__decayed_tuple, set_error_t>::__f,
+                                               __tuple<set_stopped_t>,
+                                               __munique<__qq<__variant>>::__f,
+                                               __tuple<set_error_t, std::exception_ptr>,
+                                               __tuple<set_stopped_t>>;
 
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvChild, class _Env>
@@ -461,12 +461,12 @@ namespace experimental::execution::__shared
   };
 
   template <class _Cv, class _CvSender, class _Env>
-  using __make_completions_t = __try_make_completion_signatures<
+  using __make_completions_t = __transform_completion_signatures_of_t<
     _CvSender,
     __env_t<_Env>,
     completion_signatures<set_error_t(__mcall1<_Cv, std::exception_ptr>), set_stopped_t()>,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_value_t>>>,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_error_t>>>>;
+    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_value_t>>>::template __f,
+    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_error_t>>>::template __f>;
 
   // split completes with const T&. ensure_started completes with T&&.
   template <class _Tag>
@@ -496,7 +496,7 @@ namespace experimental::execution::__shared
     template <class _CvSender>
     static consteval auto __get_completion_signatures()
     {
-      static_assert(sender_expr_for<_CvSender, _Tag>);
+      static_assert(STDEXEC::__sender_for<_CvSender, _Tag>);
       return __get_completion_signatures_impl<__child_of<_CvSender>,
                                               __decay_t<__data_of<_CvSender>>>();
     };

@@ -115,7 +115,7 @@ namespace experimental::execution
     {
       template <class Fn>
       using __f = STDEXEC::__concat_completion_signatures_t<STDEXEC::__call_result_t<Fn, _probe_fn>,
-                                                            STDEXEC::__eptr_completion>;
+                                                            STDEXEC::__eptr_completion_t>;
     };
 
     template <class Fn>

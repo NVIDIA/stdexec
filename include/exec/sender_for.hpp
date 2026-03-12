@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 NVIDIA Corporation
+ * Copyright (c) 2022 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__sequence.hpp"
+#include "../stdexec/__detail/__sender_introspection.hpp"
 
 namespace experimental::execution
 {
-  using sequence_t = STDEXEC::__sequence_t;
-  inline constexpr sequence_t sequence{};
+  template <class _Sender, class... _Tag>
+  concept sender_for = STDEXEC::__sender_for<_Sender, _Tag...>;
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

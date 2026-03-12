@@ -23,6 +23,7 @@
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__transform_sender.hpp"
 #include "detail/shared.hpp"
+#include "sender_for.hpp"
 
 namespace experimental::execution
 {
@@ -51,7 +52,7 @@ namespace experimental::execution
     static constexpr auto
     transform_sender(STDEXEC::set_value_t, _CvSender&& __sndr, STDEXEC::__ignore)
     {
-      static_assert(STDEXEC::sender_expr_for<_CvSender, split_t>);
+      static_assert(sender_for<_CvSender, split_t>);
       return __shared::__sndr{split_t(),
                               STDEXEC::__get<2>(static_cast<_CvSender&&>(__sndr)),
                               STDEXEC::__get<1>(static_cast<_CvSender&&>(__sndr))};

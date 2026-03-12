@@ -258,14 +258,14 @@ namespace experimental::execution
                                  STDEXEC::__mbind_front_q<bulk_non_throwing_t, Fun, Shape>,
                                  STDEXEC::__q<STDEXEC::__mand>>::value,
         STDEXEC::completion_signatures<>,
-        STDEXEC::__eptr_completion>;
+        STDEXEC::__eptr_completion_t>;
 
       template <class... Tys>
       using set_value_t =
         STDEXEC::completion_signatures<STDEXEC::set_value_t(STDEXEC::__decay_t<Tys>...)>;
 
       template <class Self, class... Env>
-      using _completions_t = STDEXEC::transform_completion_signatures<
+      using _completions_t = STDEXEC::__transform_completion_signatures_t<
         STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
         with_error_invoke_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
         set_value_t>;

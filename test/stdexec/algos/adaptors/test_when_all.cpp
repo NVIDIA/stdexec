@@ -17,6 +17,7 @@
 #include <catch2/catch.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
+#include <exec/sender_for.hpp>
 #include <exec/split.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -339,7 +340,7 @@ namespace
     template <class Tag, customize C, auto Fun>
     struct basic_domain
     {
-      template <ex::sender_expr_for<Tag> Sender, class... Env>
+      template <exec::sender_for<Tag> Sender, class... Env>
         requires(sizeof...(Env) == C)
       auto transform_sender(STDEXEC::set_value_t, Sender&&, Env&&...) const
       {
@@ -362,7 +363,7 @@ namespace
 
       auto snd = ex::when_all(ex::just(3) | ex::continues_on(scheduler()),
                               ex::just(0.1415) | ex::continues_on(scheduler()));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::when_all_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
@@ -391,7 +392,7 @@ namespace
 
       auto snd = ex::when_all_with_variant(ex::just(3) | ex::continues_on(scheduler()),
                                            ex::just(0.1415) | ex::continues_on(scheduler()));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }
@@ -421,7 +422,7 @@ namespace
 
       auto snd = ex::when_all_with_variant(ex::just(3) | ex::continues_on(scheduler()),
                                            ex::just(0.1415) | ex::continues_on(scheduler()));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::when_all_with_variant_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd), ex::env{});
     }

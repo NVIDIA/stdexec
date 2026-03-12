@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/sender_for.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -127,7 +128,7 @@ namespace
     template <class Tag, auto Fun>
     struct basic_domain
     {
-      template <ex::sender_expr_for<Tag> Sender, class Env>
+      template <exec::sender_for<Tag> Sender, class Env>
       auto transform_sender(STDEXEC::set_value_t, Sender &&, Env const &) const
       {
         return Fun();
@@ -148,7 +149,7 @@ namespace
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::transfer_when_all(scheduler(), ex::just(3), ex::just(0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::transfer_when_all_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
@@ -168,7 +169,7 @@ namespace
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::transfer_when_all_with_variant(scheduler(), ex::just(3), ex::just(0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }
@@ -200,7 +201,7 @@ namespace
       using scheduler = basic_inline_scheduler<domain>;
 
       auto snd = ex::transfer_when_all_with_variant(scheduler(), ex::just(3), ex::just(0.1415));
-      static_assert(ex::sender_expr_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
+      static_assert(exec::sender_for<decltype(snd), ex::transfer_when_all_with_variant_t>);
       [[maybe_unused]]
       domain dom = ex::get_completion_domain<ex::set_value_t>(ex::get_env(snd));
     }

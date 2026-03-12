@@ -70,8 +70,8 @@ namespace STDEXEC
 
   /// Concept that matches `bulk_chunked` and `bulk_unchunked` senders.
   template <class _Sender>
-  concept __bulk_chunked_or_unchunked = sender_expr_for<_Sender, bulk_chunked_t>
-                                     || sender_expr_for<_Sender, bulk_unchunked_t>;
+  concept __bulk_chunked_or_unchunked = __sender_for<_Sender, bulk_chunked_t>
+                                     || __sender_for<_Sender, bulk_unchunked_t>;
 
   /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
@@ -606,7 +606,7 @@ namespace STDEXEC
   {
     /// Meta-function that returns the completion signatures of `this`.
     template <class _Self, class... _Env>
-    using __completions_t = transform_completion_signatures<
+    using __completions_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<_Self, _Previous>, _Env...>,
       completion_signatures<set_error_t(std::exception_ptr)>>;
 

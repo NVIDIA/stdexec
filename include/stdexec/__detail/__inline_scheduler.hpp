@@ -84,5 +84,5 @@ namespace STDEXEC
     constexpr auto operator==(inline_scheduler const &) const noexcept -> bool = default;
   };
 
-  static_assert(__is_scheduler_affine<schedule_result_t<inline_scheduler>>);
+  static_assert(__completes_inline<set_value_t, env_of_t<schedule_result_t<inline_scheduler>>>);
 }  // namespace STDEXEC

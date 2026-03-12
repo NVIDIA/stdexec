@@ -21,6 +21,7 @@
 // include these after execution.hpp
 #include "../../stdexec/__detail/__tuple.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
+#include "../sender_for.hpp"
 #include "../sequence_senders.hpp"
 
 #include "../../stdexec/__detail/__atomic.hpp"
@@ -29,12 +30,12 @@ namespace experimental::execution
 {
   template <class _Variant, class _Type, class... _Args>
   concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    __var.template emplace<_Type>(static_cast<_Args &&>(__args)...);
+    __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
   };
 
   template <class _Variant, class _Type, class... _Args>
   concept __nothrow_variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    { __var.template emplace<_Type>(static_cast<_Args &&>(__args)...) } noexcept;
+    { __var.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
   };
 
   namespace __ignore_all_values
@@ -248,7 +249,7 @@ namespace experimental::execution
     };
 
     template <class _Sigs>
-    using __result_variant_ = __transform_completion_signatures_t<
+    using __result_variant_ = __transform_reduce_completion_signatures_t<
       _Sigs,
       __mconst<__mlist<>>::__f,
       __mcompose_q<__mlist, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,
@@ -316,7 +317,7 @@ namespace experimental::execution
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+        static_assert(sender_for<_Sender, ignore_all_values_t>);
         return __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
       }
 
@@ -325,7 +326,7 @@ namespace experimental::execution
           __nothrow_applicable<__connect_fn, _Sender, _Receiver&>)
         -> __apply_result_t<__connect_fn, _Sender, _Receiver&>
       {
-        static_assert(sender_expr_for<_Sender, ignore_all_values_t>);
+        static_assert(sender_for<_Sender, ignore_all_values_t>);
         return __apply(__connect_fn(), static_cast<_Sender&&>(__sndr), __rcvr);
       };
     };

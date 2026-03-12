@@ -118,8 +118,7 @@ namespace nv::execution
 
         template <class Receiver>
         [[nodiscard]]
-        auto connect(Receiver rcvr) const & noexcept(__nothrow_move_constructible<Receiver>)
-          -> opstate<Receiver>
+        auto connect(Receiver rcvr) const & noexcept -> opstate<Receiver>
         {
           return opstate<Receiver>(static_cast<Receiver&&>(rcvr));
         }

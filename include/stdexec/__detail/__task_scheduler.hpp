@@ -536,7 +536,7 @@ namespace STDEXEC
                                                           __decay_arguments<set_value_t>(),
                                                           {},
                                                           {},
-                                                          __eptr_completion());
+                                                          __eptr_completion_t());
       }
 
       [[nodiscard]]
@@ -776,13 +776,6 @@ namespace STDEXEC
           __val.emplace(inline_scheduler{});
         }
       }
-    }
-
-    [[nodiscard]]
-    inline auto __proxy_env::query(get_scheduler_t) const noexcept -> task_scheduler
-    {
-      auto __sched = __rcvr_.template try_query<task_scheduler>(get_scheduler);
-      return __sched ? *__sched : task_scheduler(inline_scheduler{});
     }
   }  // namespace __detail
 }  // namespace STDEXEC

@@ -143,7 +143,7 @@ namespace STDEXEC
   {
     template <class... _Domains>
     using __indeterminate_domain_t = __if_c<sizeof...(_Domains) == 1,
-                                            decltype((__(), ..., _Domains())),
+                                            decltype((_Domains(), ...)),
                                             indeterminate_domain<_Domains...>>;
 
     template <class _DomainSet>
@@ -164,12 +164,15 @@ namespace STDEXEC
   }  // namespace __detail
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
+  template <class _Tag, class _Attrs, class... _Env>
+  using __completion_domain_t = __call_result_or_t<get_completion_domain_t<_Tag>,
+                                                   indeterminate_domain<>,
+                                                   _Attrs,
+                                                   _Env const &...>;
+
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
-  using __completion_domain_of_t = __call_result_or_t<get_completion_domain_t<_Tag>,
-                                                      indeterminate_domain<>,
-                                                      env_of_t<_Sender>,
-                                                      _Env const &...>;
+  using __completion_domain_of_t = __completion_domain_t<_Tag, env_of_t<_Sender>, _Env const &...>;
 
   template <class... _Domains>
   using __common_domain_t = __t<__detail::__common_domain<_Domains...>>;
@@ -235,10 +238,10 @@ namespace STDEXEC
   //! @brief A wrapper around an environment that hides the get_scheduler and get_domain
   //! queries.
   template <class _Env>
-  struct __hide_scheduler : __hide_query<_Env, get_scheduler_t, get_domain_t>
+  struct __hide_scheduler : __hide_query<_Env, get_scheduler_t>
   {
     constexpr explicit __hide_scheduler(_Env &&__env) noexcept
-      : __hide_query<_Env, get_scheduler_t, get_domain_t>{static_cast<_Env &&>(__env), {}, {}}
+      : __hide_query<_Env, get_scheduler_t>{static_cast<_Env &&>(__env), {}}
     {}
   };
 
@@ -262,18 +265,20 @@ namespace STDEXEC
     // accept an environment.
     struct __read_query_t
     {
-      template <class _Attrs>
-        requires __queryable_with<_Attrs, get_completion_domain_t>
-      constexpr auto operator()(_Attrs const &, __ignore = {}) const noexcept
+      template <class _Attrs, class... _Env>
+        requires(__queryable_with<_Attrs, get_completion_domain_t, _Env const &> || ...)
+             || __queryable_with<_Attrs, get_completion_domain_t>
+      constexpr auto operator()(_Attrs const &, _Env const &...) const noexcept
       {
-        return __decay_t<__query_result_t<_Attrs, get_completion_domain_t>>{};
-      }
-
-      template <class _Attrs, class _Env>
-        requires __queryable_with<_Attrs, get_completion_domain_t, _Env const &>
-      constexpr auto operator()(_Attrs const &, _Env const &) const noexcept
-      {
-        return __decay_t<__query_result_t<_Attrs, get_completion_domain_t, _Env const &>>{};
+        if constexpr ((__queryable_with<_Attrs, get_completion_domain_t, _Env const &> || ...))
+        {
+          return (__decay_t<__query_result_t<_Attrs, get_completion_domain_t, _Env const &>>{},
+                  ...);
+        }
+        else
+        {
+          return __decay_t<__query_result_t<_Attrs, get_completion_domain_t>>{};
+        }
       }
     };
 
@@ -342,8 +347,7 @@ namespace STDEXEC
       {
         using __sch_t =
           __call_result_t<get_completion_scheduler_t<_Tag>, _Attrs const &, _Env const &...>;
-        using X [[maybe_unused]] = decltype(__declval<__sch_t>().schedule());
-        using __read_query_t     = typename get_completion_domain_t<set_value_t>::__read_query_t;
+        using __read_query_t = typename get_completion_domain_t<set_value_t>::__read_query_t;
 
         if constexpr (__callable<__read_query_t, __sch_t, _Env const &...>)
         {
@@ -396,6 +400,11 @@ namespace STDEXEC
       return true;
     }
   };
+
+  template <class _Tag, class _Sender, class... _Env>
+  concept __has_completion_domain_for =
+    __sends<_Tag, _Sender, _Env...>
+    && __callable<get_completion_domain_t<_Tag>, env_of_t<_Sender>, _Env const &...>;
 
   struct get_domain_t
   {

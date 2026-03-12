@@ -36,7 +36,7 @@ namespace STDEXEC
     using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
 
     template <class _Fun, class _CvSender, class... _Env>
-    using __completions_t = transform_completion_signatures<
+    using __completions_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<_CvSender, _Env...>,
       __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvSender, _Env...>,
       __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f>;
@@ -53,7 +53,7 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()  //
         -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
       {
-        static_assert(sender_expr_for<_Sender, then_t>);
+        static_assert(__sender_for<_Sender, then_t>);
         // TODO: update this to use constant evaluation:
         return {};
       };

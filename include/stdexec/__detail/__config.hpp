@@ -482,16 +482,16 @@ namespace STDEXEC::__std
 #if STDEXEC_HAS_BUILTIN(__remove_reference)
 namespace STDEXEC
 {
-  template <class Ty>
-  using __unref_t = __remove_reference(Ty);
+  template <class _Ty>
+  using __unref_t = __remove_reference(_Ty);
 }  // namespace STDEXEC
 
 #  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
 namespace STDEXEC
 {
-  template <class Ty>
-  using __unref_t = __remove_reference_t(Ty);
+  template <class _Ty>
+  using __unref_t = __remove_reference_t(_Ty);
 }  // namespace STDEXEC
 
 #  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
@@ -600,6 +600,19 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 0
 #else
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
+#endif
+
+#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#  define STDEXEC_NO_STDCPP_RTTI() 0
+#else
+#  define STDEXEC_NO_STDCPP_RTTI() 1
+#endif
+
+// MSVC always has typeid support, even when RTTI is disabled
+#if STDEXEC_NO_STDCPP_RTTI() && !STDEXEC_MSVC()
+#  define STDEXEC_NO_STDCPP_TYPEID() 1
+#else
+#  define STDEXEC_NO_STDCPP_TYPEID() 0
 #endif
 
 // Perhaps the stdlib lacks support for concepts
@@ -788,16 +801,16 @@ namespace STDEXEC
                                   _NAME))
 
 #  define STDEXEC_EXPLICIT_THIS_EAT_this
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
-#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_auto auto STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_void void STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
+#  define STDEXEC_EXPLICIT_THIS_MANGLE_bool bool STDEXEC_EXPLICIT_THIS_MANGLE STDEXEC_PP_LPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_ARGS(...)                                                       \
-    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN
+    STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_EAT_, __VA_ARGS__) STDEXEC_PP_RPAREN()
 
 #  define STDEXEC_EXPLICIT_THIS_BEGIN(...)                                                      \
     static STDEXEC_PP_EXPAND(STDEXEC_PP_CAT(STDEXEC_EXPLICIT_THIS_MANGLE_, __VA_ARGS__)         \
-                             STDEXEC_PP_RPAREN) STDEXEC_PP_LPAREN STDEXEC_EXPLICIT_THIS_ARGS
+                             STDEXEC_PP_RPAREN()) STDEXEC_PP_LPAREN() STDEXEC_EXPLICIT_THIS_ARGS
 
 #  define STDEXEC_EXPLICIT_THIS_END(_NAME)                                                      \
     template <class... _Ts>                                                                     \
@@ -843,10 +856,10 @@ namespace STDEXEC
 
 #if __cplusplus >= 2022'11L
 #  define STDEXEC_CONSTEXPR_CXX23        constexpr
-#  define STDEXEC_STATIC_CONSTEXPR_LOCAL static constexpr
+#  define STDEXEC_CONSTEXPR_LOCAL static constexpr
 #else
 #  define STDEXEC_CONSTEXPR_CXX23
-#  define STDEXEC_STATIC_CONSTEXPR_LOCAL constexpr
+#  define STDEXEC_CONSTEXPR_LOCAL constexpr
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -168,10 +168,10 @@ namespace STDEXEC
                           typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>>,
              __q<__mand>>,
            completion_signatures<>,
-           __eptr_completion>;
+           __eptr_completion_t>;
 
     template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
-    using __completion_signatures = transform_completion_signatures<
+    using __completion_signatures = __transform_completion_signatures_t<
       __completion_signatures_of_t<_CvSender, _Env...>,
       __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvSender, _Env...>>;
 
@@ -260,7 +260,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, _AlgoTag>);
+        static_assert(__sender_for<_Sender, _AlgoTag>);
         // TODO: port this to use constant evaluation
         return __completion_signatures<_AlgoTag,
                                        __fun_t<_Sender>,

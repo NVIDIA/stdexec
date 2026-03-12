@@ -16,6 +16,7 @@
 #include <exception>
 
 #include <catch2/catch.hpp>
+#include <exec/sender_for.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -1307,7 +1308,7 @@ namespace
 
   struct my_domain
   {
-    template <ex::sender_expr_for<ex::bulk_chunked_t> Sender, class... Env>
+    template <exec::sender_for<ex::bulk_chunked_t> Sender, class... Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender, Env const &...)
     {
       return ex::just(std::string{"hijacked"});
@@ -1327,7 +1328,7 @@ namespace
 
   struct my_domain2
   {
-    template <ex::sender_expr_for<ex::bulk_t> Sender, class... Env>
+    template <exec::sender_for<ex::bulk_t> Sender, class... Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender, Env const &...)
     {
       return ex::just(std::string{"hijacked"});

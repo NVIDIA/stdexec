@@ -54,6 +54,7 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
+    stdexec/algos/adaptors/test_sequence.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_write_env.cpp
@@ -70,6 +71,7 @@ set(stdexec_test_sources
     stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
     stdexec/types/test_counting_scopes.cpp

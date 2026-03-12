@@ -165,7 +165,7 @@ namespace nv::execution::_strm
     using _set_value_t = __set_value_from_t<Fun, Args...>;
 
     template <class Self, class... Env>
-    using _completions_t = transform_completion_signatures<
+    using _completions_t = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
       __error_completions_t<Self, Env...>,
       _set_value_t,

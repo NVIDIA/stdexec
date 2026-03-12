@@ -65,14 +65,14 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static constexpr auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
+        static_assert(__sender_for<_Self, stopped_as_optional_t>);
         STDEXEC_COMPLSIGS_LET(__completions,
                               STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>())
         {
           using _Completions = decltype(__completions);
           if constexpr (__single_value_sender<__child_of<_Self>, _Env...>)
           {
-            return transform_completion_signatures<
+            return __transform_completion_signatures_t<
               _Completions,
               completion_signatures<set_error_t(std::exception_ptr)>,
               __set_value_t,
@@ -94,7 +94,7 @@ namespace STDEXEC
         -> __state<_Receiver, __value_type_t<_Self, _Receiver>>
         requires sender_in<__child_of<_Self>, env_of_t<_Receiver>>
       {
-        static_assert(sender_expr_for<_Self, stopped_as_optional_t>);
+        static_assert(__sender_for<_Self, stopped_as_optional_t>);
         using __value_t = __value_type_t<_Self, _Receiver>;
         return __state<_Receiver, __value_t>{static_cast<_Receiver&&>(__rcvr)};
       };

@@ -17,6 +17,7 @@
 #include "stdexec/__detail/__sender_introspection.hpp"
 #include <catch2/catch.hpp>
 #include <exec/env.hpp>
+#include <exec/sender_for.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -217,7 +218,7 @@ namespace
   // Return a different sender when we invoke this custom defined let_stopped implementation
   struct let_stopped_test_domain
   {
-    template <ex::sender_expr_for<ex::let_stopped_t> Sender>
+    template <exec::sender_for<ex::let_stopped_t> Sender>
     static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...)
     {
       return ex::just(std::string{"Don't stop me now"});

@@ -131,7 +131,7 @@ namespace experimental::execution
       {
         if constexpr (__with_scheduler)
         {
-          return completion_behavior::asynchronous_affine;
+          return completion_behavior::asynchronous_affine | completion_behavior::inline_completion;
         }
         else
         {

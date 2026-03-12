@@ -46,7 +46,7 @@ namespace STDEXEC
       template <class _Self, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Self, __write_env_t>);
+        static_assert(__sender_for<_Self, __write_env_t>);
         return STDEXEC::get_completion_signatures<
           __child_of<_Self>,
           __minvoke_q<__join_env_t, __decay_t<__data_of<_Self>> const &, _Env>...>();

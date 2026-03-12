@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "completion_behavior.hpp"
 
 #include <cstddef>
 #include <utility>
@@ -26,21 +27,22 @@ namespace experimental::execution
   namespace __trampoline
   {
     using namespace STDEXEC;
+    class __scheduler;
 
     template <class _Operation>
-    struct __trampoline_state
+    struct __state
     {
-      static thread_local __trampoline_state* __current_;
+      static thread_local __state* __current_;
 
-      constexpr __trampoline_state(std::size_t __max_recursion_depth,
-                                   std::size_t __max_recursion_size) noexcept
+      constexpr __state(std::size_t __max_recursion_depth,
+                        std::size_t __max_recursion_size) noexcept
         : __max_recursion_size_(__max_recursion_size)
         , __max_recursion_depth_(__max_recursion_depth)
       {
         __current_ = this;
       }
 
-      constexpr ~__trampoline_state()
+      constexpr ~__state()
       {
         __current_ = nullptr;
       }
@@ -59,36 +61,64 @@ namespace experimental::execution
       _Operation*   __tail_             = nullptr;
     };
 
-    class __scheduler
+    struct __attrs
     {
-      std::size_t const __max_recursion_size_;
-      std::size_t const __max_recursion_depth_;
+      template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_scheduler_t> _Env>
+      [[nodiscard]]
+      constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const & __env) const noexcept
+      {
+        return get_scheduler(__env);
+      }
+
+      template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_domain_t> _Env>
+      [[nodiscard]]
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env const &) const noexcept
+      {
+        return __domain_of_t<_Env>();
+      }
+
+      template <__one_of<set_value_t, set_stopped_t> _Tag>
+      [[nodiscard]]
+      constexpr auto query(exec::get_completion_behavior_t<_Tag>) const noexcept
+      {
+        return exec::completion_behavior::inline_completion
+             | exec::completion_behavior::asynchronous_affine;
+      }
+
+      constexpr auto operator==(__attrs const &) const noexcept -> bool = default;
+
+      std::size_t __max_recursion_depth_{4096};
+    };
+
+    class __scheduler : __attrs
+    {
+      std::size_t __max_recursion_size_;
 
      public:
       constexpr __scheduler() noexcept
-        : __max_recursion_size_(4096)
-        , __max_recursion_depth_(16)
+        : __attrs{16}
+        , __max_recursion_size_(4096)
       {}
 
       constexpr explicit __scheduler(std::size_t __max_recursion_depth) noexcept
-        : __max_recursion_size_(4096)
-        , __max_recursion_depth_(__max_recursion_depth)
+        : __attrs{__max_recursion_depth}
+        , __max_recursion_size_(4096)
       {}
 
       constexpr explicit __scheduler(std::size_t __max_recursion_depth,
                                      std::size_t __max_recursion_size) noexcept
-        : __max_recursion_size_(__max_recursion_size)
-        , __max_recursion_depth_(__max_recursion_depth)
+        : __attrs{__max_recursion_depth}
+        , __max_recursion_size_(__max_recursion_size)
       {}
 
      private:
-      struct __operation_base
+      struct __opstate_base
       {
-        using __execute_fn = void(__operation_base*) noexcept;
+        using __execute_fn = void(__opstate_base*) noexcept;
 
-        constexpr explicit __operation_base(__execute_fn* __execute,
-                                            std::size_t   __max_size,
-                                            std::size_t   __max_depth) noexcept
+        constexpr explicit __opstate_base(__execute_fn* __execute,
+                                          std::size_t   __max_size,
+                                          std::size_t   __max_depth) noexcept
           : __execute_(__execute)
           , __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth)
@@ -101,13 +131,12 @@ namespace experimental::execution
 
         void start() & noexcept
         {
-          auto* __current_state = __trampoline_state<__operation_base>::__current_;
+          auto* __current_state = __state<__opstate_base>::__current_;
 
           if (__current_state == nullptr)
           {
             // origin schedule frame on this thread
-            __trampoline_state<__operation_base> __state{__max_recursion_depth_,
-                                                         __max_recursion_size_};
+            __state<__opstate_base> __state{__max_recursion_depth_, __max_recursion_size_};
             __execute();
             __state.__drain();
           }
@@ -131,43 +160,42 @@ namespace experimental::execution
               // Exceeded recursion limit.
 
               // push this recursive schedule to list tail
-              __prev_ = std::exchange(__current_state->__tail_,
-                                      static_cast<__operation_base*>(this));
+              __prev_ = std::exchange(__current_state->__tail_, static_cast<__opstate_base*>(this));
               if (__prev_ != nullptr)
               {
                 // was not empty
-                std::exchange(__prev_->__next_, static_cast<__operation_base*>(this));
+                std::exchange(__prev_->__next_, static_cast<__opstate_base*>(this));
               }
               else
               {
                 // was empty
-                std::exchange(__current_state->__head_, static_cast<__operation_base*>(this));
+                std::exchange(__current_state->__head_, static_cast<__opstate_base*>(this));
               }
             }
           }
         }
 
-        __operation_base* __prev_ = nullptr;
-        __operation_base* __next_ = nullptr;
+        __opstate_base*   __prev_ = nullptr;
+        __opstate_base*   __next_ = nullptr;
         __execute_fn*     __execute_;
         std::size_t const __max_recursion_size_;
         std::size_t const __max_recursion_depth_;
       };
 
       template <class _Receiver>
-      struct __operation : __operation_base
+      struct __opstate : __opstate_base
       {
-        constexpr explicit __operation(_Receiver   __rcvr,
-                                       std::size_t __max_size,
-                                       std::size_t __max_depth) noexcept
-          : __operation_base(&__execute_impl, __max_size, __max_depth)
+        constexpr explicit __opstate(_Receiver   __rcvr,
+                                     std::size_t __max_size,
+                                     std::size_t __max_depth) noexcept
+          : __opstate_base(&__execute_impl, __max_size, __max_depth)
           , __rcvr_(static_cast<_Receiver&&>(__rcvr))
         {}
 
-        static constexpr void __execute_impl(__operation_base* __op) noexcept
+        static constexpr void __execute_impl(__opstate_base* __op) noexcept
         {
-          auto& __self = *static_cast<__operation*>(__op);
-          if (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>)
+          auto& __self = *static_cast<__opstate*>(__op);
+          if constexpr (STDEXEC::unstoppable_token<stop_token_of_t<env_of_t<_Receiver&>>>)
           {
             STDEXEC::set_value(static_cast<_Receiver&&>(__self.__rcvr_));
           }
@@ -188,40 +216,40 @@ namespace experimental::execution
         _Receiver __rcvr_;
       };
 
-      struct __schedule_sender;
-      friend __schedule_sender;
-
-      struct __schedule_sender
+      struct __sender
       {
         using sender_concept = STDEXEC::sender_t;
-        using completion_signatures =
-          STDEXEC::completion_signatures<set_value_t(), set_stopped_t()>;
 
-        constexpr explicit __schedule_sender(std::size_t __max_size,
-                                             std::size_t __max_depth) noexcept
+        constexpr explicit __sender(std::size_t __max_size, std::size_t __max_depth) noexcept
           : __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth)
         {}
 
-        template <receiver_of<completion_signatures> _Receiver>
-        constexpr auto connect(_Receiver __rcvr) const noexcept -> __operation<_Receiver>
+        template <class, class _Env>
+        static consteval auto get_completion_signatures() noexcept
         {
-          return __operation<_Receiver>{static_cast<_Receiver&&>(__rcvr),
-                                        __max_recursion_size_,
-                                        __max_recursion_depth_};
+          if constexpr (unstoppable_token<stop_token_of_t<_Env>>)
+          {
+            return completion_signatures<set_value_t()>();
+          }
+          else
+          {
+            return completion_signatures<set_value_t(), set_stopped_t()>();
+          }
+        }
+
+        template <class _Receiver>
+        constexpr auto connect(_Receiver __rcvr) const noexcept -> __opstate<_Receiver>
+        {
+          return __opstate<_Receiver>{static_cast<_Receiver&&>(__rcvr),
+                                      __max_recursion_size_,
+                                      __max_recursion_depth_};
         }
 
         [[nodiscard]]
-        constexpr auto
-        query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> __scheduler
+        constexpr auto get_env() const noexcept -> __attrs
         {
-          return __scheduler{__max_recursion_depth_};
-        }
-
-        [[nodiscard]]
-        constexpr auto get_env() const noexcept -> __schedule_sender const &
-        {
-          return *this;
+          return __attrs{__max_recursion_depth_};
         }
 
         std::size_t const __max_recursion_size_;
@@ -230,20 +258,21 @@ namespace experimental::execution
 
      public:
       [[nodiscard]]
-      constexpr auto schedule() const noexcept -> __schedule_sender
+      constexpr auto schedule() const noexcept -> __sender
       {
-        return __schedule_sender{__max_recursion_size_, __max_recursion_depth_};
+        return __sender{__max_recursion_size_, __max_recursion_depth_};
       }
 
       constexpr auto operator==(__scheduler const &) const noexcept -> bool = default;
+
+      using __attrs::query;
     };
 
     template <class _Operation>
-    thread_local __trampoline_state<_Operation>* __trampoline_state<_Operation>::__current_ =
-      nullptr;
+    thread_local __state<_Operation>* __state<_Operation>::__current_ = nullptr;
 
     template <class _Operation>
-    constexpr void __trampoline_state<_Operation>::__drain() noexcept
+    constexpr void __state<_Operation>::__drain() noexcept
     {
       while (__head_ != nullptr)
       {

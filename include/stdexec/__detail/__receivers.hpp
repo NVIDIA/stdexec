@@ -250,8 +250,10 @@ namespace STDEXEC
     };
   }
 
-  template <class _Env>
-  struct __receiver_archetype
+  // Used to test whether a sender has a nothrow connect to a receiver whose environment
+  // is _Env..., or if _Env... is empty (indicating that the sender is non-dependent), to
+  // a receiver with an arbitrary environment.
+  struct __receiver_archetype_base
   {
     using receiver_concept = receiver_t;
 
@@ -267,9 +269,13 @@ namespace STDEXEC
 
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_stopped() noexcept {}
+  };
 
+  template <class _Env>
+  struct __receiver_archetype : __receiver_archetype_base
+  {
     STDEXEC_ATTRIBUTE(nodiscard, noreturn, host, device)
-    _Env get_env() const noexcept
+    auto get_env() const noexcept -> _Env
     {
       STDEXEC_ASSERT(false);
       STDEXEC_TERMINATE();

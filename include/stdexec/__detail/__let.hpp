@@ -64,37 +64,11 @@ namespace STDEXEC
     using __on_not_callable =
       __mbind_front_q<__callable_error_t, decltype(__let_from_set<_SetTag>)>;
 
-    // This environment is part of the receiver used to connect the secondary sender.
-    template <class _SetTag, class _Attrs, class... _Env>
-    constexpr auto __mk_env2(_Attrs const & __attrs, _Env const &... __env) noexcept
-    {
-      if constexpr (__callable<get_completion_scheduler_t<_SetTag>,
-                               _Attrs const &,
-                               __fwd_env_t<_Env const &>...>)
-      {
-        return __mk_sch_env(get_completion_scheduler<_SetTag>(__attrs, __fwd_env(__env)...),
-                            __fwd_env(__env)...);
-      }
-      else if constexpr (__callable<get_completion_domain_t<_SetTag>,
-                                    _Attrs const &,
-                                    __fwd_env_t<_Env const &>...>)
-      {
-        using __domain_t = __call_result_t<get_completion_domain_t<_SetTag>,
-                                           _Attrs const &,
-                                           __fwd_env_t<_Env const &>...>;
-        return prop{get_domain, __domain_t{}};
-      }
-      else
-      {
-        return env{};
-      }
-    }
+    template <class _SetTag, class _Sender, class _Env>
+    using __env2_t = __secondary_env_t<_Sender, _Env, _SetTag>;
 
-    template <class _SetTag, class _Attrs, class... _Env>
-    using __env2_t = decltype(__let::__mk_env2<_SetTag>(__declval<_Attrs>(), __declval<_Env>()...));
-
-    template <class _SetTag, class _Attrs, class _Env>
-    using __result_env_t = __join_env_t<__env2_t<_SetTag, _Attrs, _Env>, _Env>;
+    template <class _SetTag, class _Sender, class _Env>
+    using __result_env_t = __join_env_t<__env2_t<_SetTag, _Sender, _Env>, _Env>;
 
     template <class _Receiver, class _Env2>
     struct __rcvr_env
@@ -129,8 +103,7 @@ namespace STDEXEC
       _Env2 const & __env_;
     };
 
-    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_
-    {};
+    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_;
 
     template <class...>
     struct _NESTED_ERROR_;
@@ -191,33 +164,31 @@ namespace STDEXEC
     struct __transform_signal_fn
     {
       template <class... _Args>
-      static constexpr bool __nothrow_connect_v =
+      using __nothrow_connect_t = __mbool<
         __nothrow_decay_copyable<_Args...> && __nothrow_callable<_Fun, __decay_t<_Args>&...>
         && (__nothrow_connectable<__mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2>, _Args...>,
                                   __receiver_archetype<_JoinEnv2>>
-            && ...);
+            && ...)>;
 
       template <class... _Args>
       using __f = __mcall<__mtry_q<__concat_completion_signatures_t>,
                           __completion_signatures_of_t<
                             __mcall<__result_sender_fn<_SetTag, _Fun, _JoinEnv2...>, _Args...>,
                             _JoinEnv2...>,
-                          __eptr_completion_unless<__nothrow_connect_v<_Args...>>>;
+                          __eptr_completion_unless_t<__nothrow_connect_t<_Args...>>>;
     };
 
     template <class _LetTag, class _Fun, class _CvSender, class... _Env>
     using __completions_t = __gather_completion_signatures_t<
       __completion_signatures_of_t<_CvSender, _Env...>,
       __t<_LetTag>,
-      __transform_signal_fn<
-        __t<_LetTag>,
-        _Fun,
-        __result_env_t<__t<_LetTag>, env_of_t<_CvSender>, _Env>...>::template __f,
+      __transform_signal_fn<__t<_LetTag>,
+                            _Fun,
+                            __result_env_t<__t<_LetTag>, _CvSender, _Env>...>::template __f,
       __cmplsigs::__default_completion,
       __mtry_q<__concat_completion_signatures_t>::__f>;
 
-    struct _THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_
-    {};
+    struct _THE_SENDERS_RETURNED_BY_THE_GIVEN_FUNCTION_DO_NOT_SHARE_A_COMMON_DOMAIN_;
 
     template <class _SetTag, class... _Env>
     struct __try_common_domain_fn
@@ -243,7 +214,7 @@ namespace STDEXEC
     using __result_domain_t = __gather_completions_t<
       _SetTag,
       __completion_signatures_of_t<_Child, _Env>,
-      __result_sender_fn<_SetTag, _Fun, __result_env_t<_SetTag, env_of_t<_Child>, _Env>>,
+      __result_sender_fn<_SetTag, _Fun, __result_env_t<_SetTag, _Child, _Env>>,
       __try_common_domain_fn<_SetTag, _Env>>;
 
     //! Metafunction creating the operation state needed to connect the result of calling
@@ -278,7 +249,7 @@ namespace STDEXEC
     using __has_nothrow_completions_t = __gather_completions_t<
       completion_signatures_of_t<_Child, _Env>,
       _SetTag,
-      __has_nothrow_completions_fn<_Fn, __result_env_t<_SetTag, env_of_t<_Child>, _Env>>,
+      __has_nothrow_completions_fn<_Fn, __result_env_t<_SetTag, _Child, _Env>>,
       __qq<__mand_t>>;
 
     //! The core of the operation state for `let_*`.
@@ -289,15 +260,16 @@ namespace STDEXEC
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
 
-      template <class _Attrs>
+      template <class _CvFn, class _Sender>
       constexpr explicit __opstate_base(_SetTag,
-                                        _Attrs const & __attrs,
-                                        _Fun           __fn,
-                                        _Receiver&&    __rcvr) noexcept
+                                        _CvFn           __cv,
+                                        _Sender const & __sndr,
+                                        _Fun            __fn,
+                                        _Receiver&&     __rcvr) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
-        , __env2_(__let::__mk_env2<_SetTag>(__attrs, STDEXEC::get_env(__rcvr_)))
+        , __env2_(__mk_secondary_env_t<_SetTag>()(__cv, __sndr, STDEXEC::get_env(__rcvr_)))
       {}
 
       constexpr virtual void __start_next() = 0;
@@ -395,12 +367,12 @@ namespace STDEXEC
 
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
-    template <class _SetTag, class _Child, class _Fun, class _Receiver, class... _Tuples>
+    template <class _SetTag, class _CvChild, class _Fun, class _Receiver, class... _Tuples>
     struct __opstate final
       : __opstate_base<_SetTag,
                        _Fun,
                        _Receiver,
-                       __let::__env2_t<_SetTag, env_of_t<_Child>, env_of_t<_Receiver>>,
+                       __let::__env2_t<_SetTag, _CvChild, env_of_t<_Receiver>>,
                        _Tuples...>
     {
       using __env2_t        = __opstate::__opstate_base::__env2_t;
@@ -408,19 +380,20 @@ namespace STDEXEC
       using __second_rcvr_t = __opstate::__opstate_base::__second_rcvr_t;
 
       using __op_state_variant_t =
-        __variant<connect_result_t<_Child, __first_rcvr_t>,
+        __variant<connect_result_t<_CvChild, __first_rcvr_t>,
                   __mapply<__submit_datum_for<_Receiver, _Fun, _SetTag, __env2_t>, _Tuples>...>;
 
-      constexpr explicit __opstate(_Child&& __child, _Fun __fn, _Receiver&& __rcvr)
-        noexcept(__nothrow_connectable<_Child, __first_rcvr_t>
+      constexpr explicit __opstate(_CvChild&& __child, _Fun __fn, _Receiver&& __rcvr)
+        noexcept(__nothrow_connectable<_CvChild, __first_rcvr_t>
                  && __nothrow_move_constructible<_Fun>)
         : __opstate::__opstate_base(_SetTag(),
-                                    STDEXEC::get_env(__child),
+                                    __copy_cvref_fn<_CvChild>{},
+                                    __child,
                                     static_cast<_Fun&&>(__fn),
                                     static_cast<_Receiver&&>(__rcvr))
       {
         __storage_.__emplace_from(STDEXEC::connect,
-                                  static_cast<_Child&&>(__child),
+                                  static_cast<_CvChild&&>(__child),
                                   __first_rcvr_t{this});
       }
 
@@ -512,16 +485,16 @@ namespace STDEXEC
       using __f = decltype(__impl<_Ts...>());
     };
 
-    template <class _SetTag, class _Fn, class _Attrs, class... _Env>
+    template <class _SetTag, class _Fn, class _Sender, class... _Env>
     struct __domain_transform_fn
     {
       using __result_sender_fn =
-        __let::__result_sender_fn<_SetTag, _Fn, __result_env_t<_SetTag, _Attrs, _Env>...>;
+        __let::__result_sender_fn<_SetTag, _Fn, __result_env_t<_SetTag, _Sender, _Env>...>;
 
       template <class... _As>
       using __f = __completion_domain_of_t<_SetTag,
                                            __mcall<__result_sender_fn, _As...>,
-                                           __result_env_t<_SetTag, _Attrs, _Env>...>;
+                                           __result_env_t<_SetTag, _Sender, _Env>...>;
     };
 
     //! @tparam _LetTag The tag type for the let_ operation.
@@ -534,8 +507,7 @@ namespace STDEXEC
     {
       if constexpr (sender_in<_Sndr, _Env...>)
       {
-        using __domain_transform_fn =
-          __let::__domain_transform_fn<_SetTag, _Fn, env_of_t<_Sndr>, _Env...>;
+        using __domain_transform_fn = __let::__domain_transform_fn<_SetTag, _Fn, _Sndr, _Env...>;
         return __minvoke_or_q<__gather_completions_t,
                               indeterminate_domain<>,
                               __t<_LetTag>,
@@ -600,24 +572,24 @@ namespace STDEXEC
       {
         if constexpr (sender_in<_Sndr, __fwd_env_t<_Env>...>)
         {
-          // The completion behavior of let_value(sndr, fn) is the weakest completion
+          // The completion behavior of let_value(sndr, fn) is the union of the completion
           // behavior of sndr and all the senders that fn can potentially produce. (MSVC
           // needs the constexpr computation broken up, hence the local variables.)
           using __transform_fn =
             __result_completion_behavior_fn<__set_tag_t,
                                             _Fn,
-                                            __result_env_t<__set_tag_t, env_of_t<_Sndr>, _Env>...>;
+                                            __result_env_t<__set_tag_t, _Sndr, _Env>...>;
           using __completions_t = __completion_signatures_of_t<_Sndr, __fwd_env_t<_Env>...>;
 
           constexpr auto __pred_behavior =
             STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
-          constexpr auto __result_behavior =
-            __gather_completions_t<__set_tag_t,
-                                   __completions_t,
-                                   __transform_fn,
-                                   __qq<__common_completion_behavior_t>>();
+          constexpr auto __result_behaviors = __gather_completions_t<
+            __set_tag_t,
+            __completions_t,
+            __transform_fn,
+            __mbind_front_q<__call_result_t, __completion_behavior::__common_t>>();
 
-          return __completion_behavior::__weakest(__pred_behavior, __result_behavior);
+          return __pred_behavior | __result_behaviors;
         }
         else
         {
@@ -687,7 +659,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_expr_for<_Sender, _LetTag>);
+        static_assert(__sender_for<_Sender, _LetTag>);
         if constexpr (__decay_copyable<_Sender>)
         {
           // TODO: update this to use constant evaluation
@@ -716,7 +688,7 @@ namespace STDEXEC
                                        __data_of<_CvSender>,
                                        _Receiver>) -> __opstate_t<_CvSender, _Receiver>
       {
-        static_assert(sender_expr_for<_CvSender, _LetTag>);
+        static_assert(__sender_for<_CvSender, _LetTag>);
         auto& [__tag, __fn, __child] = __sndr;
         return __opstate_t<_CvSender, _Receiver>(STDEXEC::__forward_like<_CvSender>(__child),
                                                  STDEXEC::__forward_like<_CvSender>(__fn),
