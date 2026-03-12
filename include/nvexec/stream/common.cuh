@@ -54,7 +54,7 @@ namespace nv::execution
   };
 
 #if defined(__clang__) && defined(__CUDA__) && !defined(STDEXEC_CLANG_TIDY_INVOKED)
-  __host__ inline auto get_device_type() noexcept -> device_type
+  inline __host__ auto get_device_type() noexcept -> device_type
   {
     return device_type::host;
   }
@@ -64,7 +64,7 @@ namespace nv::execution
     return device_type::device;
   }
 #else
-  __host__ __device__ inline auto get_device_type() noexcept -> device_type
+  inline __host__ __device__ auto get_device_type() noexcept -> device_type
   {
     NV_IF_TARGET(NV_IS_HOST, (return device_type::host;), (return device_type::device;));
   }
@@ -75,6 +75,12 @@ namespace nv::execution
     return get_device_type() == device_type::device;
   }
 
+  struct stream_context;
+  struct stream_domain;
+
+  struct CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT;
+
   namespace _strm
   {
     // Used by stream_domain to late-customize senders for execution
@@ -84,6 +90,49 @@ namespace nv::execution
 
     template <class Tag>
     struct apply_sender_for;
+
+    struct context;
+
+    template <class Scheduler, class Env>
+    concept gpu_stream_scheduler =
+      scheduler<Scheduler>
+      && __std::derived_from<__result_of<get_completion_domain<set_value_t>, Scheduler, Env>,
+                             stream_domain>
+      && requires(Scheduler sched) {
+           { sched.ctx_ } -> __decays_to<context>;
+         };
+
+    template <class Sender, class Env>
+    concept stream_completing_sender =
+      sender<Sender>
+      && gpu_stream_scheduler<
+        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
+        Env>;
+
+    template <class Sender, class Env>
+    concept has_stream_transform =
+      STDEXEC::__callable<STDEXEC::__structured_apply_t,
+                          transform_sender_for<STDEXEC::tag_of_t<Sender>>,
+                          Sender,
+                          Env const &>;
+
+    template <class Sender, class Env>
+    concept has_nothrow_stream_transform =
+      STDEXEC::__nothrow_callable<STDEXEC::__structured_apply_t,
+                                  transform_sender_for<STDEXEC::tag_of_t<Sender>>,
+                                  Sender,
+                                  Env const &>;
+
+    template <class Tag, class Sender, class Env>
+    auto _no_stream_scheduler_in_env() noexcept
+    {
+      using namespace STDEXEC;
+      return __not_a_sender<_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
+                            _WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
+                            _WHERE_(_IN_ALGORITHM_, Tag),
+                            _WITH_PRETTY_SENDER_<Sender>,
+                            _WITH_ENVIRONMENT_(Env)>{};
+    }
   }  // namespace _strm
 }  // namespace nv::execution
 
@@ -91,23 +140,14 @@ namespace nvexec = nv::execution;
 
 namespace nv::execution
 {
-  struct stream_context;
-
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
   struct stream_domain : STDEXEC::default_domain
   {
     template <::exec::sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
-      requires STDEXEC::__callable<STDEXEC::__structured_apply_t,
-                                   _strm::transform_sender_for<Tag>,
-                                   Sender,
-                                   Env const &>
+      requires _strm::has_stream_transform<Sender, Env>
     static auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
-      noexcept(STDEXEC::__nothrow_callable<STDEXEC::__structured_apply_t,
-                                           _strm::transform_sender_for<Tag>,
-                                           Sender,
-                                           Env const &>)
-
+      noexcept(_strm::has_nothrow_stream_transform<Sender, Env>)
     {
       return STDEXEC::__structured_apply(_strm::transform_sender_for<Tag>{},
                                          static_cast<Sender&&>(sndr),
@@ -277,15 +317,6 @@ namespace nv::execution
 
     template <class Sender, class Shape, class Fn>
     struct multi_gpu_bulk_sender;
-
-    template <class Scheduler, class Env>
-    concept gpu_stream_scheduler =
-      scheduler<Scheduler>
-      && __std::derived_from<__result_of<get_completion_domain<set_value_t>, Scheduler, Env>,
-                             stream_domain>
-      && requires(Scheduler sched) {
-           { sched.ctx_ } -> __decays_to<context>;
-         };
 
     struct stream_sender_base
     {
@@ -907,13 +938,6 @@ namespace nv::execution
         ctx);
     }
 
-    template <class Sender, class Env>
-    concept stream_completing_sender =
-      sender<Sender>
-      && gpu_stream_scheduler<
-        __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
-        Env>;
-
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t = __call_result_t<InnerReceiverProvider, opstate_base<OuterReceiver>&>;
 
@@ -957,8 +981,10 @@ namespace nv::execution
   inline constexpr _strm::get_stream_t get_stream{};
 
 #if CUDART_VERSION >= 13'00'0
-  __host__ inline cudaError_t
-  cudaMemPrefetchAsync(const void* dev_ptr, size_t count, int dst_device, cudaStream_t stream = 0)
+  inline __host__ cudaError_t cudaMemPrefetchAsync(void const * dev_ptr,
+                                                   size_t       count,
+                                                   int          dst_device,
+                                                   cudaStream_t stream = 0)
   {
     return ::cudaMemPrefetchAsync(dev_ptr,
                                   count,

@@ -29,6 +29,9 @@
 #  include <stop_token>  // IWYU pragma: export
 #endif
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
 extern void _mm_pause();
 #endif
@@ -464,3 +467,5 @@ namespace STDEXEC
     inplace_stop_source& __stop_source_;
   };
 }  // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

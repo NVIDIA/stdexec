@@ -409,11 +409,18 @@ namespace nv::execution::_strm
     template <class Sender>
     using _sender_t = ensure_started_sender<__decay_t<Sender>>;
 
-    template <class Env, stream_completing_sender<Env> Sender>
-    auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const -> _sender_t<Sender>
+    template <class Env, class Sender>
+    auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
     {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
-      return _sender_t<Sender>{sched.ctx_, static_cast<Sender&&>(sndr)};
+      if constexpr (stream_completing_sender<Sender, Env>)
+      {
+        auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), env);
+        return _sender_t<Sender>{sched.ctx_, static_cast<Sender&&>(sndr)};
+      }
+      else
+      {
+        return _strm::_no_stream_scheduler_in_env<exec::ensure_started_t, Sender, Env>();
+      }
     }
   };
 }  // namespace nv::execution::_strm

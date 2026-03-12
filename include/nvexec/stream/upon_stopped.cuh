@@ -186,11 +186,18 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<STDEXEC::upon_stopped_t>
   {
-    template <class Env, class Fun, stream_completing_sender<Env> CvSender>
+    template <class Env, class Fun, class CvSender>
     auto operator()(Env const &, __ignore, Fun fun, CvSender&& sndr) const
     {
-      using _sender_t = upon_stopped_sender<__decay_t<CvSender>, Fun>;
-      return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fun&&>(fun)};
+      if constexpr (stream_completing_sender<CvSender, Env>)
+      {
+        using _sender_t = upon_stopped_sender<__decay_t<CvSender>, Fun>;
+        return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fun&&>(fun)};
+      }
+      else
+      {
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::upon_stopped_t, CvSender, Env>();
+      }
     }
   };
 }  // namespace nv::execution::_strm

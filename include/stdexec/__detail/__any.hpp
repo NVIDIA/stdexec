@@ -34,6 +34,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
+STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
 // NOLINTBEGIN(moderize-use-override)
 

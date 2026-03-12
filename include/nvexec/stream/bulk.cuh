@@ -401,28 +401,35 @@ namespace nv::execution::_strm
   template <>
   struct transform_sender_for<STDEXEC::bulk_t>
   {
-    template <class Env, class Data, stream_completing_sender<Env> Sender>
+    template <class Env, class Data, class Sender>
     auto operator()(Env const & env, __ignore, Data data, Sender&& sndr) const
     {
-      auto [policy, shape, fun] = static_cast<Data&&>(data);
-      using shape_t             = decltype(shape);
-      using fun_t               = decltype(fun);
-      auto sched                = get_completion_scheduler<set_value_t>(get_env(sndr), env);
-      if constexpr (__std::same_as<decltype(sched), stream_scheduler>)
+      if constexpr (stream_completing_sender<Sender, Env>)
       {
-        // Use the bulk sender for a single GPU
-        using _sender_t = bulk_sender<__decay_t<Sender>, shape_t, fun_t>;
-        return _sender_t{{}, static_cast<Sender&&>(sndr), shape, static_cast<fun_t&&>(fun)};
+        auto [policy, shape, fun] = static_cast<Data&&>(data);
+        using shape_t             = decltype(shape);
+        using fun_t               = decltype(fun);
+        auto sched                = get_completion_scheduler<set_value_t>(get_env(sndr), env);
+        if constexpr (__std::same_as<decltype(sched), stream_scheduler>)
+        {
+          // Use the bulk sender for a single GPU
+          using _sender_t = bulk_sender<__decay_t<Sender>, shape_t, fun_t>;
+          return _sender_t{{}, static_cast<Sender&&>(sndr), shape, static_cast<fun_t&&>(fun)};
+        }
+        else
+        {
+          // Use the bulk sender for a multiple GPUs
+          using _sender_t = multi_gpu_bulk_sender<__decay_t<Sender>, shape_t, fun_t>;
+          return _sender_t{{},
+                           sched.num_devices_,
+                           static_cast<Sender&&>(sndr),
+                           shape,
+                           static_cast<fun_t&&>(fun)};
+        }
       }
       else
       {
-        // Use the bulk sender for a multiple GPUs
-        using _sender_t = multi_gpu_bulk_sender<__decay_t<Sender>, shape_t, fun_t>;
-        return _sender_t{{},
-                         sched.num_devices_,
-                         static_cast<Sender&&>(sndr),
-                         shape,
-                         static_cast<fun_t&&>(fun)};
+        return _strm::_no_stream_scheduler_in_env<STDEXEC::bulk_t, Sender, Env>();
       }
     }
   };
