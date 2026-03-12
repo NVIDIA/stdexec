@@ -80,11 +80,9 @@ namespace nv::execution::_strm
     using _sch_env_t = __result_of<_mk_sch_env, CvSender, Receiver, SetTag>;
 
     inline constexpr auto _mk_env2 =
-      []<class SchEnv, class Receiver>([[maybe_unused]]
-                                       SchEnv const &                        sch_env,
+      []<class SchEnv, class Receiver>(SchEnv const &                        sch_env,
                                        _strm::opstate_base<Receiver> const & opstate)
     {
-      //return opstate.make_env();
       return __env::__join(sch_env, opstate.make_env());
     };
 
@@ -210,22 +208,25 @@ namespace nv::execution::_strm
       using _mk_opstate_variant_fn = __mtransform<__muncurry<_mk_opstate_fn_t>, __qq<__variant>>;
       using _opstate_variant_t     = __mapply<_mk_opstate_variant_fn, _result_tuples_t>;
       using _propagate_receiver_t  = _let::_propagate_receiver_t<CvSender, Receiver, Fun, SetTag>;
+      using _sch_t =
+        __result_of<get_completion_scheduler<set_value_t>, env_of_t<CvSender>, env_of_t<Receiver>>;
 
       explicit _opstate(CvSender&& sndr, Receiver rcvr, Fun fun)
         : _opstate(static_cast<CvSender&&>(sndr),
                    static_cast<Receiver&&>(rcvr),
                    static_cast<Fun&&>(fun),
+                   get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)),
                    _mk_sch_env(sndr, rcvr, SetTag{}))
       {}
 
-      explicit _opstate(CvSender&& sndr, Receiver&& rcvr, Fun fun, _env2_t env2)
+      explicit _opstate(CvSender&& sndr, Receiver&& rcvr, Fun fun, _sch_t sch, _env2_t env2)
         : _opstate_base_t<CvSender, Receiver, Fun, SetTag>(
             static_cast<CvSender&&>(sndr),
             static_cast<Receiver&&>(rcvr),
             [this](__ignore) noexcept { return _receiver_t{{}, this}; },
-            get_scheduler(env2).ctx_)
+            sch.ctx_)
         , fun_(static_cast<Fun&&>(fun))
-        , env2_(env2)
+        , env2_(static_cast<_env2_t&&>(env2))
       {}
 
       STDEXEC_IMMOVABLE(_opstate);
