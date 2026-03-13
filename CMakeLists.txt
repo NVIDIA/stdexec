@@ -82,21 +82,32 @@ rapids_cmake_build_type(Release)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
+# Determine if STDEXEC is built as a subproject (using add_subdirectory) or if it is the main project.
+if (NOT DEFINED STDEXEC_MAIN_PROJECT)
+  set(STDEXEC_MAIN_PROJECT OFF)
+  # Checking project name is more reliable than checking source directories.
+  if (NOT DEFINED PROJECT_NAME)
+    set(STDEXEC_MAIN_PROJECT ON)
+  endif ()
+endif ()
+
 # Don't build tests if configuring stdexec as a submodule of another
 # CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE,
 # or they enabled CTest's BUILD_TESTING option
-if ((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME) OR BUILD_TESTING)
+if (STDEXEC_MAIN_PROJECT OR BUILD_TESTING)
     set(STDEXEC_BUILD_TESTS_DEFAULT ON)
 else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
 endif()
 option(STDEXEC_BUILD_TESTS "Build stdexec tests" ${STDEXEC_BUILD_TESTS_DEFAULT})
 
+option(STDEXEC_INSTALL "Generate the install target." ${STDEXEC_MAIN_PROJECT})
+
 # STDEXEC_BUILD_TESTS is used solely to configure CTest's BUILD_TESTING option,
 # which is CMake's preferred option for enabling testing when using CTest.
 set(BUILD_TESTING ${STDEXEC_BUILD_TESTS})
 
-if (BUILD_TESTING)
+if (STDEXEC_BUILD_TESTS)
   # CTest automatically calls enable_testing() if BUILD_TESTING is ON
   # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
   include(CTest)
@@ -108,7 +119,7 @@ endif()
 # Initialize CPM
 rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
-if (BUILD_TESTING)
+if (STDEXEC_BUILD_TESTS)
     # Add Catch2
     set(Catch2_VERSION 2.13.6)
     # Always download it, don't attempt to do `find_package(Catch2)` first
@@ -199,7 +210,7 @@ set_target_properties(stdexec PROPERTIES
                       VERSION "${STDEXEC_VERSION}"
                       SOVERSION "${STDEXEC_VERSION_MAJOR}")
 
-if (BUILD_TESTING)
+if (STDEXEC_BUILD_TESTS)
   # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES
                         VERIFY_INTERFACE_HEADER_SETS TRUE)
@@ -492,33 +503,34 @@ endif()
 
 ##############################################################################
 # Install targets ------------------------------------------------------------
-
-include(CPack)
-
-install(TARGETS stdexec system_context
-	EXPORT stdexec-exports
-	FILE_SET headers
-	FILE_SET version_config)
-
-##############################################################################
-# Install exports ------------------------------------------------------------
-
-set(code_string "")
-
-# Install side of the export set
-rapids_export(
-  INSTALL ${stdexec_export_targets}
-  EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS ${stdexec_export_targets}
-  NAMESPACE STDEXEC::
-  FINAL_CODE_BLOCK code_string
-)
-
-# Build side of the export set so a user can use the build dir as a CMake package root
-rapids_export(
-  BUILD ${stdexec_export_targets}
-  EXPORT_SET stdexec-exports
-  GLOBAL_TARGETS ${stdexec_export_targets}
-  NAMESPACE STDEXEC::
-  FINAL_CODE_BLOCK code_string
-)
+if(STDEXEC_INSTALL)
+	include(CPack)
+	
+	install(TARGETS stdexec system_context
+		EXPORT stdexec-exports
+		FILE_SET headers
+		FILE_SET version_config)
+	
+	##############################################################################
+	# Install exports ------------------------------------------------------------
+	
+	set(code_string "")
+	
+	# Install side of the export set
+	rapids_export(
+	  INSTALL ${stdexec_export_targets}
+	  EXPORT_SET stdexec-exports
+	  GLOBAL_TARGETS ${stdexec_export_targets}
+	  NAMESPACE STDEXEC::
+	  FINAL_CODE_BLOCK code_string
+	)
+	
+	# Build side of the export set so a user can use the build dir as a CMake package root
+	rapids_export(
+	  BUILD ${stdexec_export_targets}
+	  EXPORT_SET stdexec-exports
+	  GLOBAL_TARGETS ${stdexec_export_targets}
+	  NAMESPACE STDEXEC::
+	  FINAL_CODE_BLOCK code_string
+	)
+endif()
