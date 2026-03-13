@@ -61,8 +61,10 @@ if (STDEXEC_ENABLE_TBB)
     STDEXEC::stdexec
   )
 
-  install(TARGETS tbbexec
-    EXPORT stdexec-exports
-    FILE_SET headers
-  )
+  if(STDEXEC_INSTALL)
+    install(TARGETS tbbexec
+      EXPORT stdexec-exports
+      FILE_SET headers
+    )
+  endif()
 endif()
