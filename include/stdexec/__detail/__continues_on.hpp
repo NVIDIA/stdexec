@@ -174,13 +174,13 @@ namespace STDEXEC
         return false;
       }
 
-      _Scheduler const & __sch_;
-      _Sender const &    __sndr_;
+      _Scheduler        __sch_;
+      env_of_t<_Sender> __attrs_;
 
      public:
-      constexpr explicit __attrs(_Scheduler const & __sch, _Sender const & __sndr) noexcept
-        : __sch_(__sch)
-        , __sndr_(__sndr)
+      constexpr explicit __attrs(_Scheduler __sch, env_of_t<_Sender> __attrs) noexcept
+        : __sch_(static_cast<_Scheduler&&>(__sch))
+        , __attrs_(static_cast<env_of_t<_Sender>&&>(__attrs))
       {}
 
       //! @brief Queries the completion scheduler for a given @c _SetTag.
@@ -221,7 +221,7 @@ namespace STDEXEC
                            env_of_t<_Sender>,
                            __fwd_env_t<_Env>...>
       {
-        return get_completion_scheduler<_SetTag>(get_env(__sndr_), __fwd_env(__env)...);
+        return get_completion_scheduler<_SetTag>(__attrs_, __fwd_env(__env)...);
       }
 
       //! @brief Queries the completion domain for a given @c _SetTag.
@@ -295,15 +295,16 @@ namespace STDEXEC
       }
 
       //! @brief Forwards other queries to the underlying sender's environment.
-      //! @pre @c _Tag is a forwarding query but not a completion query.
-      template <__forwarding_query _Tag, class... _Args>
-        requires(!__completion_query<_Tag>) && __queryable_with<env_of_t<_Sender>, _Tag, _Args...>
+      //! @pre @c _Query is a forwarding query but not a completion query.
+      template <__forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>)
+             && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
       [[nodiscard]]
-      constexpr auto query(_Tag, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Tag, _Args...>)
-          -> __query_result_t<env_of_t<_Sender>, _Tag, _Args...>
+      constexpr auto query(_Query, _Args&&... __args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
+          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
       {
-        return get_env(__sndr_).query(_Tag{}, static_cast<_Args&&>(__args)...);
+        return __attrs_.query(_Query(), static_cast<_Args&&>(__args)...);
       }
     };
 
@@ -346,9 +347,11 @@ namespace STDEXEC
 
      public:
       static constexpr auto __get_attrs =
-        [](__ignore, auto const & __data, auto const & __child) noexcept
+        []<class _Scheduler, class _Child>(__ignore,
+                                           _Scheduler const & __data,
+                                           _Child const &     __child) noexcept
       {
-        return __attrs{__data, __child};
+        return __attrs<_Scheduler, _Child>{__data, STDEXEC::get_env(__child)};
       };
 
       template <class _Sender, class... _Env>

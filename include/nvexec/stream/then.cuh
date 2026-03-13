@@ -71,10 +71,9 @@ namespace nv::execution::_strm
         requires std::invocable<Fun, __decay_t<Args>...>
       void set_value(Args&&... args) noexcept
       {
-        using result_t = std::invoke_result_t<Fun, __decay_t<Args>...>;
-        constexpr bool                 does_not_return_a_value = std::is_same_v<void, result_t>;
-        _strm::opstate_base<Receiver>& opstate                 = opstate_;
-        cudaStream_t                   stream                  = opstate.get_stream();
+        using result_t                         = std::invoke_result_t<Fun, __decay_t<Args>...>;
+        constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
+        cudaStream_t   stream                  = opstate_.get_stream();
 
         if constexpr (does_not_return_a_value)
         {
@@ -83,29 +82,29 @@ namespace nv::execution::_strm
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
               status == cudaSuccess)
           {
-            opstate.propagate_completion_signal(STDEXEC::set_value);
+            opstate_.propagate_completion_signal(STDEXEC::set_value);
           }
           else
           {
-            opstate.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
         else
         {
           using decayed_result_t = __decay_t<result_t>;
-          auto* d_result         = static_cast<decayed_result_t*>(opstate.temp_storage_);
+          auto* d_result         = static_cast<decayed_result_t*>(opstate_.temp_storage_);
           _then_kernel_with_result<Args&&...>
             <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Args&&>(args)...);
-          opstate.defer_temp_storage_destruction(d_result);
+          opstate_.defer_temp_storage_destruction(d_result);
 
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
               status == cudaSuccess)
           {
-            opstate.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
+            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
           }
           else
           {
-            opstate.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
           }
         }
       }
@@ -185,7 +184,7 @@ namespace nv::execution::_strm
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr),
         [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-        { return receiver_t<Receiver>(self.fun_, stream_provider); });
+        { return receiver_t<Receiver>(static_cast<Self&&>(self).fun_, stream_provider); });
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
@@ -209,11 +208,11 @@ namespace nv::execution::_strm
   struct transform_sender_for<STDEXEC::then_t>
   {
     template <class Env, class Fn, class CvSender>
-    auto operator()(Env const &, __ignore, Fn fun, CvSender&& sndr) const
+    auto operator()(Env const &, __ignore, Fn&& fun, CvSender&& sndr) const
     {
       if constexpr (stream_completing_sender<CvSender, Env>)
       {
-        using _sender_t = then_sender<__decay_t<CvSender>, Fn>;
+        using _sender_t = then_sender<__decay_t<CvSender>, __decay_t<Fn>>;
         return _sender_t{static_cast<CvSender&&>(sndr), static_cast<Fn&&>(fun)};
       }
       else

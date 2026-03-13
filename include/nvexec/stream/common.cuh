@@ -532,7 +532,7 @@ namespace nv::execution
       {}
 
       template <class... Args>
-      STDEXEC_ATTRIBUTE(host, device)
+      STDEXEC_ATTRIBUTE(device)
       void set_value(Args&&... args) noexcept
       {
         using tuple_t = decayed_tuple_t<set_value_t, Args...>;
@@ -540,20 +540,13 @@ namespace nv::execution
         producer_(task_);
       }
 
-      STDEXEC_ATTRIBUTE(host, device) void set_stopped() noexcept
-      {
-        using tuple_t = decayed_tuple_t<set_stopped_t>;
-        variant_->template emplace<tuple_t>(set_stopped_t());
-        producer_(task_);
-      }
-
       template <class Error>
-      STDEXEC_ATTRIBUTE(host, device)
+      STDEXEC_ATTRIBUTE(device)
       void set_error(Error&& err) noexcept
       {
         if constexpr (__decays_to<Error, std::exception_ptr>)
         {
-          // What is `exception_ptr` but death pending
+          // What is `exception_ptr` but death pending?
           using tuple_t = decayed_tuple_t<set_error_t, cudaError_t>;
           variant_->template emplace<tuple_t>(STDEXEC::set_error, cudaErrorUnknown);
         }
@@ -565,6 +558,15 @@ namespace nv::execution
         producer_(task_);
       }
 
+      STDEXEC_ATTRIBUTE(device)
+      void set_stopped() noexcept
+      {
+        using tuple_t = decayed_tuple_t<set_stopped_t>;
+        variant_->template emplace<tuple_t>(set_stopped_t());
+        producer_(task_);
+      }
+
+      [[nodiscard]]
       auto get_env() const noexcept -> Env const &
       {
         return *env_;
