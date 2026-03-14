@@ -201,6 +201,11 @@ namespace STDEXEC
       using __env_t          = __join_env_t<_Env2 const &, __fwd_env_t<env_of_t<_Receiver>>>;
 
       template <class... _As>
+      constexpr explicit __rcvr2(__state<_Receiver, _Env2> *__self) noexcept
+        : __self_(__self)
+      {}
+
+      template <class... _As>
       constexpr void set_value(_As &&...__as) noexcept
       {
         STDEXEC::set_value(static_cast<_Receiver &&>(__self_->__rcvr_),
@@ -491,6 +496,12 @@ namespace STDEXEC
   template <class... _Senders>
   inline constexpr auto __structured_binding_size_v<__seq::__sndr<_Senders...>> = -1;
 
+  namespace __detail
+  {
+    template <class... _Senders>
+    extern __declfn_t<__seq::__sndr<__demangle_t<_Senders>...>>
+      __demangle_v<__seq::__sndr<_Senders...>>;
+  }  // namespace __detail
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

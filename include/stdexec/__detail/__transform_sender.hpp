@@ -198,10 +198,6 @@ namespace STDEXEC
   concept __completes_on =
     __decays_to<__call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, _Env>,
                 _Scheduler>;
-
-  /////////////////////////////////////////////////////////////////////////////
-  template <class _Sender, class _Scheduler, class _Env>
-  concept __starts_on = __decays_to<__call_result_t<get_scheduler_t, _Env>, _Scheduler>;
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

@@ -242,6 +242,24 @@ namespace STDEXEC
     template <class _Fun>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __as_bulk_chunked_fn(_Fun) -> __as_bulk_chunked_fn<_Fun>;
 
+    template <class _Child>
+    struct __attrs : env<__fwd_env_t<env_of_t<_Child>>>
+    {
+      using __base_t = env<__fwd_env_t<env_of_t<_Child>>>;
+      using __base_t::query;
+
+      constexpr explicit __attrs(_Child const & __child) noexcept
+        : __base_t{__fwd_env(STDEXEC::get_env(__child))}
+      {}
+
+      template <class... _Env>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(__get_completion_behavior_t<set_value_t>, _Env&&...) const noexcept
+      {
+        return STDEXEC::__get_completion_behavior<set_value_t, _Child, _Env...>();
+      }
+    };
+
     template <class _AlgoTag>
     struct __impl_base : __sexpr_defaults
     {
@@ -252,9 +270,10 @@ namespace STDEXEC
       using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
 
       // Forward the child sender's environment (which contains completion scheduler)
-      static constexpr auto __get_attrs = [](__ignore, __ignore, auto const & __child) noexcept
+      static constexpr auto __get_attrs =  //
+        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
       {
-        return __fwd_env(STDEXEC::get_env(__child));
+        return __attrs{__child};
       };
 
       template <class _Sender, class... _Env>
