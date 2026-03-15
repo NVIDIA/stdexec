@@ -25,11 +25,11 @@
 #include "__queries.hpp"
 #include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
+#include "__variant.hpp"
 
 #include <exception>
 #include <functional>  // for std::identity
 #include <system_error>
-#include <variant>
 
 namespace STDEXEC
 {
@@ -81,8 +81,7 @@ namespace STDEXEC
     using __value_or_void_t = __if_c<__same_as<_Value, void>, __void, _Value>;
 
     template <class _Value>
-    using __expected_t =
-      std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
+    using __expected_t = __variant<__value_or_void_t<_Value>, std::exception_ptr>;
 
     template <class _Tag, class _Sender, class... _Env>
     concept __completes_inline_for = __never_sends<_Tag, _Sender, _Env...>
@@ -103,11 +102,11 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          __result_.template emplace<1>(static_cast<_Us&&>(__us)...);
+          __result_.template emplace<0>(static_cast<_Us&&>(__us)...);
         }
         STDEXEC_CATCH_ALL
         {
-          __result_.template emplace<2>(std::current_exception());
+          __result_.template emplace<1>(std::current_exception());
         }
       }
 
@@ -115,11 +114,11 @@ namespace STDEXEC
       void set_error(_Error&& __err) noexcept
       {
         if constexpr (__decays_to<_Error, std::exception_ptr>)
-          __result_.template emplace<2>(static_cast<_Error&&>(__err));
+          __result_.template emplace<1>(static_cast<_Error&&>(__err));
         else if constexpr (__decays_to<_Error, std::error_code>)
-          __result_.template emplace<2>(std::make_exception_ptr(std::system_error(__err)));
+          __result_.template emplace<1>(std::make_exception_ptr(std::system_error(__err)));
         else
-          __result_.template emplace<2>(std::make_exception_ptr(static_cast<_Error&&>(__err)));
+          __result_.template emplace<1>(std::make_exception_ptr(static_cast<_Error&&>(__err)));
       }
 
       __expected_t<_Value>& __result_;
@@ -136,8 +135,8 @@ namespace STDEXEC
 
       void set_stopped() noexcept
       {
-        // no-op: the __result_ variant will remain engaged with the monostate
-        // alternative, which signals that the operation was stopped.
+        // no-op: the __result_ variant will remain valueless, which signals that the
+        // operation was stopped.
       }
 
       // Forward get_env query to the coroutine promise
@@ -185,7 +184,7 @@ namespace STDEXEC
         }
         STDEXEC_CATCH_ALL
         {
-          this->__result_.template emplace<2>(std::current_exception());
+          this->__result_.template emplace<1>(std::current_exception());
           this->__continuation_.resume();
         }
       }
@@ -207,21 +206,21 @@ namespace STDEXEC
 
       constexpr auto await_resume() -> _Value
       {
-        // If the operation completed with set_stopped (as denoted by the monostate
-        // alternative being active), we should not be resuming this coroutine at all.
-        STDEXEC_ASSERT(__result_.index() != 0);
-        if (__result_.index() == 2)
+        // If the operation completed with set_stopped (as denoted by the result variant
+        // being valueless), we should not be resuming this coroutine at all.
+        STDEXEC_ASSERT(!__result_.__is_valueless());
+        if (__result_.index() == 1)
         {
           // The operation completed with set_error, so we need to rethrow the exception.
-          std::rethrow_exception(std::move(std::get<2>(__result_)));
+          std::rethrow_exception(std::move(__var::__get<1>(__result_)));
         }
         // The operation completed with set_value, so we can just return the value, which
         // may be void.
-        return static_cast<std::add_rvalue_reference_t<_Value>>(std::get<1>(__result_));
+        return static_cast<std::add_rvalue_reference_t<_Value>>(__var::__get<0>(__result_));
       }
 
      protected:
-      __expected_t<_Value> __result_{};
+      __expected_t<_Value> __result_{__no_init};
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +268,7 @@ namespace STDEXEC
           STDEXEC::start(__opstate);
         }
 
-        if (this->__result_.index() == 0)
+        if (this->__result_.__is_valueless())
         {
           // The operation completed with set_stopped, so we need to call
           // unhandled_stopped() on the promise to propagate the stop signal. That will
