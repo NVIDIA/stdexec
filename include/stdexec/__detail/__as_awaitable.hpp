@@ -242,9 +242,10 @@ namespace STDEXEC
      private:
       void __done() noexcept
       {
-        // If __ready_ is still false, then we are completing inline. Update the
-        // value of __ready_. Otherwise, we are completing asynchronously, so we invoke
-        // the continuation without unwinding the stack.
+        // If __ready_ is still false when executing the CAS it means the started
+        // operation completed before await_suspend checked whether the operation
+        // completed. In this case resuming execution is handled by await_suspend.
+        // Otherwise, the execution needs to be resumed from here.
         auto  __expected = false;
         auto& __awaiter  = static_cast<__awaiter_t&>(this->__awaiter_);
         if (!__awaiter.__ready_.compare_exchange_strong(__expected,
@@ -297,7 +298,7 @@ namespace STDEXEC
                                                    __std::memory_order_release,
                                                    __std::memory_order_acquire))
         {
-          // If __ready_ is still false, then the operation has not completed inline. The
+          // If __ready_ is still false, then the operation did not complete inline. The
           // continuation will be resumed when the operation completes, so we return a
           // noop_coroutine to suspend the current coroutine.
           return __std::noop_coroutine();

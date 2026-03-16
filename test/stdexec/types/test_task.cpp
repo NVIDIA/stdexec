@@ -244,6 +244,11 @@ namespace
     CHECK(i == 42);
   }
 
+  auto sync() -> ex::task<int>
+  {
+    co_return 42;
+  }
+
   auto nested() -> ex::task<int>
   {
     auto sched = co_await ex::read_env(ex::get_scheduler);
@@ -257,6 +262,10 @@ namespace
     int result = co_await nested();
     for (int i = 0; i < 1'000'000; ++i)
     {
+      result += co_await sync();
+    }
+    for (int i = 0; i < 1'000'000; ++i)
+    {
       result += co_await ex::just(42);
     }
     co_return result;
@@ -266,7 +275,7 @@ namespace
   {
     auto t   = test_task_awaits_inline_sndr_without_stack_overflow();
     auto [i] = ex::sync_wait(std::move(t)).value();
-    CHECK(i == 42'000'042);
+    CHECK(i == 84'000'042);
   }
 
   // FUTURE TODO: add support so that `co_await sndr` can return a reference.
