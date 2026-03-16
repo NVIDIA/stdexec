@@ -30,6 +30,7 @@
 #include <exception>
 #include <functional>  // for std::identity
 #include <system_error>
+#include <thread>
 #include <variant>
 
 STDEXEC_PRAGMA_PUSH()
@@ -133,7 +134,8 @@ namespace STDEXEC
     template <class _Value>
     struct __sender_awaitable_base<_Value, false> : __sender_awaitable_base<_Value, true>
     {
-      __std::atomic<bool> __ready_{false};
+      __std::atomic<bool>   __ready_{false};
+      std::thread::id const __starting_thread_id_{std::this_thread::get_id()};
     };
 
     template <class _Value>
@@ -246,16 +248,29 @@ namespace STDEXEC
         // operation completed before await_suspend checked whether the operation
         // completed. In this case resuming execution is handled by await_suspend.
         // Otherwise, the execution needs to be resumed from here.
-        auto  __expected = false;
-        auto& __awaiter  = static_cast<__awaiter_t&>(this->__awaiter_);
-        if (!__awaiter.__ready_.compare_exchange_strong(__expected,
-                                                        true,
-                                                        __std::memory_order_release,
-                                                        __std::memory_order_acquire))
+        auto& __awaiter = static_cast<__awaiter_t&>(this->__awaiter_);
+
+        if (std::this_thread::get_id() != __awaiter.__starting_thread_id_)
         {
-          // We get here if __ready_ was true. It got set to true in await_suspend()
-          // immediately after the operation was started, which implies that the operation
-          // completed asynchronously, so we need to resume the continuation.
+          // If we're completing on a different thread than the one that started the
+          // operation, we know we are completing asynchronously, so we need to resume
+          // the continuation from here.
+          __awaiter.__continuation_.resume();
+          return;
+        }
+
+        bool       __expected = false;
+        bool const __was_ready =
+          !__awaiter.__ready_.compare_exchange_strong(__expected,
+                                                      true,
+                                                      __std::memory_order_release,
+                                                      __std::memory_order_acquire);
+        if (__was_ready)
+        {
+          // We get here if __ready_ was true then the CAS was executed. It got set to
+          // true in await_suspend() immediately after the operation was started, which
+          // implies that this completion is happening asynchronously, so we need to
+          // resume the continuation from here.
           __awaiter.__continuation_.resume();
         }
       }
@@ -298,9 +313,9 @@ namespace STDEXEC
                                                    __std::memory_order_release,
                                                    __std::memory_order_acquire))
         {
-          // If __ready_ is still false, then the operation did not complete inline. The
-          // continuation will be resumed when the operation completes, so we return a
-          // noop_coroutine to suspend the current coroutine.
+          // If __ready_ is still false when executing the CAS, then the operation did not
+          // complete inline. The continuation will be resumed when the operation
+          // completes, so we return a noop_coroutine to suspend the current coroutine.
           return __std::noop_coroutine();
         }
         else

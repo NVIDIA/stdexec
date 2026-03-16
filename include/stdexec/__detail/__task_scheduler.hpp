@@ -38,6 +38,9 @@
 #include <span>
 #include <utility>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+
 namespace STDEXEC
 {
   class task_scheduler;
@@ -779,3 +782,5 @@ namespace STDEXEC
     }
   }  // namespace __detail
 }  // namespace STDEXEC
+
+STDEXEC_PRAGMA_POP()

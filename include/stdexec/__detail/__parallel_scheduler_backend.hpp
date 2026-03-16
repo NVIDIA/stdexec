@@ -35,6 +35,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // warning C4702: unreachable code
+STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
 namespace STDEXEC
 {
