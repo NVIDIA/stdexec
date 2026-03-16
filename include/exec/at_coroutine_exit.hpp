@@ -150,13 +150,23 @@ namespace experimental::execution
         return false;
       }
 
+      //! \brief Splice the cleanup action into the chain of continuations.
+      //! \param __parent The coroutine that is registering an action to be performed at
+      //! coroutine exit; i.e., the coroutine that is co_await-ing the result of calling
+      //! at_coroutine_exit.
+      //! \note This function is called directly from basic_task's await_transform, so
+      //! we have no guarantee that the __parent coroutine is suspended here.
       template <__has_continuation _Promise>
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
       {
         __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
+        // This causes the parent to be resumed after the cleanup action is performed.
         __coro_.promise().set_continuation(__parent.promise().continuation());
+        // This causes the parent to invoke the cleanup action when it performs the final
+        // suspend. Also, the parent is now responsible for destroying the cleanup
+        // coroutine.
         __parent.promise().set_continuation(__coro_);
-        return false;
+        return false;  // i.e., do not suspend, call await_resume immediately
       }
 
       auto await_resume() noexcept -> std::tuple<_Ts&...>
@@ -172,12 +182,13 @@ namespace experimental::execution
           return false;
         }
 
-        static auto
-        await_suspend(__std::coroutine_handle<__promise> __h) noexcept -> __std::coroutine_handle<>
+        //! \param __h The coroutine created by __co_impl below.
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
+          -> __std::coroutine_handle<>
         {
           __promise& __p    = __h.promise();
-          auto       __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
-                                                          : __p.continuation().handle();
+          auto       __coro = __p.__is_stopped_ ? __p.continuation().unhandled_stopped()
+                                                : __p.continuation().handle();
           return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
@@ -209,11 +220,13 @@ namespace experimental::execution
         {}
 #endif
 
+        [[nodiscard]]
         auto initial_suspend() noexcept -> __std::suspend_always
         {
           return {};
         }
 
+        [[nodiscard]]
         auto final_suspend() noexcept -> __final_awaitable
         {
           return {};
@@ -227,33 +240,38 @@ namespace experimental::execution
           std::terminate();
         }
 
+        [[nodiscard]]
         auto unhandled_stopped() noexcept -> __std::coroutine_handle<__promise>
         {
-          __is_unhandled_stopped_ = true;
+          __is_stopped_ = true;
           return __std::coroutine_handle<__promise>::from_promise(*this);
         }
 
+        [[nodiscard]]
         auto get_return_object() noexcept -> __task
         {
           return __task(__std::coroutine_handle<__promise>::from_promise(*this));
         }
 
         template <class _Awaitable>
+        [[nodiscard]]
         auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto)
         {
           return as_awaitable(__die_on_stop(static_cast<_Awaitable&&>(__awaitable)), *this);
         }
 
+        [[nodiscard]]
         auto get_env() const noexcept -> __env
         {
           return {*this};
         }
 
-        bool                __is_unhandled_stopped_{false};
+        bool                __is_stopped_{false};
         std::tuple<_Ts&...> __args_{};
         __any_scheduler_t   __scheduler_{STDEXEC::inline_scheduler{}};
       };
 
+      // __coro_ refers to the coroutine created by __co_impl below
       __std::coroutine_handle<__promise> __coro_;
     };
 
@@ -261,7 +279,7 @@ namespace experimental::execution
     {
      private:
       template <class _Action, class... _Ts>
-      static auto __impl(_Action __action, _Ts... __ts) -> __task<_Ts...>
+      static auto __co_impl(_Action __action, _Ts... __ts) -> __task<_Ts...>
       {
         co_await static_cast<_Action&&>(__action)(static_cast<_Ts&&>(__ts)...);
       }
@@ -271,7 +289,7 @@ namespace experimental::execution
         requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
       auto operator()(_Action&& __action, _Ts&&... __ts) const -> __task<_Ts...>
       {
-        return __impl(static_cast<_Action&&>(__action), static_cast<_Ts&&>(__ts)...);
+        return __co_impl(static_cast<_Action&&>(__action), static_cast<_Ts&&>(__ts)...);
       }
     };
   }  // namespace __at_coro_exit
