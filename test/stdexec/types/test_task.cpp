@@ -244,7 +244,7 @@ namespace
     CHECK(i == 42);
   }
 
-#  if !STDEXEC_GCC() || defined(__OPTIMIZE__)
+#  if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 13'00 && defined(__OPTIMIZE__))
   // This test is disabled on GCC due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794
 
   auto sync() -> ex::task<int>
