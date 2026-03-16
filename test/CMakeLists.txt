@@ -86,6 +86,7 @@ set_target_properties(common_test_settings PROPERTIES
     )
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
+target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
 #     common_test_settings INTERFACE
 #     $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)

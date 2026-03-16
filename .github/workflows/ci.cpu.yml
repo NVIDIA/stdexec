@@ -21,6 +21,7 @@ jobs:
         include:
           - { name: "CPU (clang 16, Debug)",         build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Debug, c++23)",  build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "23", cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 16, Debug, TSAN)",   build: "Debug",   tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (gcc 11, Debug)",           build: "Debug",   tag: gcc11-cuda12.9,  cxxstd: "20", cxxflags: "", }
