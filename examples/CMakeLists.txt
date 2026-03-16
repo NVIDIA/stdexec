@@ -30,7 +30,8 @@ function(def_example example)
     add_executable(${target} ${source})
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
-                stdexec_executable_flags)
+                stdexec_executable_flags
+                $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endfunction()
 
 set(stdexec_examples
