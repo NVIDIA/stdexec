@@ -99,6 +99,7 @@ dependencies and only requires a sufficiently new compiler:
 
 - gcc 11+
 - clang 16+
+- MSVC 14.43+
 - XCode 16+
 - [nvc++ 25.9+](https://developer.nvidia.com/nvidia-hpc-sdk-releases) (required for [GPU
   support](#gpu-support)).

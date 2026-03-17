@@ -144,6 +144,12 @@ namespace experimental::execution
         : __coro_(std::exchange(__that.__coro_, {}))
       {}
 
+      ~__task()
+      {
+        if (__coro_)
+          __coro_.destroy();
+      }
+
       [[nodiscard]]
       static constexpr auto await_ready() noexcept -> bool
       {
@@ -185,10 +191,8 @@ namespace experimental::execution
         static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
           -> __std::coroutine_handle<>
         {
-          __promise& __p    = __h.promise();
-          auto       __coro = __p.__is_stopped_ ? __p.continuation().unhandled_stopped()
-                                                : __p.continuation().handle();
-          return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
+          auto __cont = __h.promise().continuation();
+          return __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
         }
 
         void await_resume() const noexcept {}
@@ -207,17 +211,10 @@ namespace experimental::execution
 
       struct __promise : with_awaitable_senders<__promise>
       {
-#if STDEXEC_EDG()
         template <class _Action>
-        __promise(_Action&&, _Ts&&... __ts) noexcept
+        explicit(!STDEXEC_EDG()) __promise(_Action&&, _Ts&... __ts) noexcept
           : __args_{__ts...}
         {}
-#else
-        template <class _Action>
-        explicit __promise(_Action&&, _Ts&... __ts) noexcept
-          : __args_{__ts...}
-        {}
-#endif
 
         [[nodiscard]]
         auto initial_suspend() noexcept -> __std::suspend_always

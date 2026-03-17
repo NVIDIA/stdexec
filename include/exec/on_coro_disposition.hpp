@@ -83,6 +83,12 @@ namespace experimental::execution
         : __coro_(std::exchange(__that.__coro_, {}))
       {}
 
+      ~__task()
+      {
+        if (__coro_)
+          __coro_.destroy();
+      }
+
       [[nodiscard]]
       auto await_ready() const noexcept -> bool
       {
@@ -117,13 +123,11 @@ namespace experimental::execution
           return false;
         }
 
-        static auto
-        await_suspend(__std::coroutine_handle<__promise> __h) noexcept -> __std::coroutine_handle<>
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
+          -> __std::coroutine_handle<>
         {
-          __promise& __p    = __h.promise();
-          auto       __coro = __p.__is_stopped_ ? __p.continuation().unhandled_stopped()
-                                                : __p.continuation().handle();
-          return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
+          auto __cont = __h.promise().continuation();
+          return __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
         }
 
         void await_resume() const noexcept {}
