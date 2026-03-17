@@ -318,12 +318,12 @@ namespace STDEXEC
         // Start the operation.
         STDEXEC::start(__opstate_);
 
-        auto __expected = false;
+        auto       __expected = false;
         bool const __was_ready =
-           !this->__ready_.compare_exchange_strong(__expected,
-                                                   true,
-                                                   __std::memory_order_release,
-                                                   __std::memory_order_acquire);
+          !this->__ready_.compare_exchange_strong(__expected,
+                                                  true,
+                                                  __std::memory_order_release,
+                                                  __std::memory_order_acquire);
         this->__ready_.notify_one();
 
         if (__was_ready)
