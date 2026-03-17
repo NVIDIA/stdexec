@@ -427,18 +427,22 @@ if (STDEXEC_ENABLE_NUMA)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
 endif()
 
-set(SYSTEM_CONTEXT_SOURCES src/system_context/system_context.cpp)
-add_library(system_context ${SYSTEM_CONTEXT_SOURCES})
-target_compile_features(system_context PUBLIC cxx_std_20)
-set_target_properties(system_context PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
-target_compile_options(system_context PUBLIC
-    $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr>
-    )
-add_library(STDEXEC::system_context ALIAS system_context)
-target_link_libraries(system_context PUBLIC stdexec)
+option(STDEXEC_BUILD_SYSTEM_CONTEXT "Build the system_context compiled library" OFF)
+
+if(STDEXEC_BUILD_SYSTEM_CONTEXT)
+  set(SYSTEM_CONTEXT_SOURCES src/system_context/system_context.cpp)
+  add_library(system_context ${SYSTEM_CONTEXT_SOURCES})
+  target_compile_features(system_context PUBLIC cxx_std_20)
+  set_target_properties(system_context PROPERTIES
+      CXX_STANDARD 20
+      CXX_STANDARD_REQUIRED ON
+      CXX_EXTENSIONS OFF)
+  target_compile_options(system_context PUBLIC
+      $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr>
+      )
+  add_library(STDEXEC::system_context ALIAS system_context)
+  target_link_libraries(system_context PUBLIC stdexec)
+endif()
 
 
 option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" OFF)
@@ -504,8 +508,13 @@ endif()
 if(STDEXEC_INSTALL)
 	include(CPack)
 	
-	install(TARGETS stdexec system_context
-		EXPORT stdexec-exports
+  set(stdexec_install_targets stdexec)
+  if(STDEXEC_BUILD_SYSTEM_CONTEXT)
+    list(APPEND stdexec_install_targets system_context)
+  endif()
+
+  install(TARGETS ${stdexec_install_targets}
+    EXPORT stdexec-exports
 		FILE_SET headers
 		FILE_SET version_config)
 	

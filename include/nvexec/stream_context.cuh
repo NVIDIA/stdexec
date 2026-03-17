@@ -35,6 +35,7 @@
 #include "stream/schedule_from.cuh"        // IWYU pragma: export
 #include "stream/split.cuh"                // IWYU pragma: export
 #include "stream/start_detached.cuh"       // IWYU pragma: export
+#include "stream/starts_on.cuh"            // IWYU pragma: export
 #include "stream/sync_wait.cuh"            // IWYU pragma: export
 #include "stream/then.cuh"                 // IWYU pragma: export
 #include "stream/upon_error.cuh"           // IWYU pragma: export

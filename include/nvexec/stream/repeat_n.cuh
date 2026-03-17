@@ -68,13 +68,8 @@ namespace nv::execution::_strm
     {
       using operation_state_concept = STDEXEC::operation_state_t;
 
-      using scheduler_t =
-        STDEXEC::__result_of<STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>,
-                             STDEXEC::env_of_t<Sender>,
-                             STDEXEC::env_of_t<Receiver>>;
-
-      using inner_sender_t =
-        STDEXEC::__result_of<exec::sequence, STDEXEC::schedule_result_t<scheduler_t&>, Sender&>;
+      using scheduler_t     = __completion_scheduler_of_t<set_value_t, Sender, env_of_t<Receiver>>;
+      using inner_sender_t  = STDEXEC::__result_of<STDEXEC::starts_on, scheduler_t, Sender&>;
       using inner_opstate_t = STDEXEC::connect_result_t<inner_sender_t, receiver<opstate>>;
 
       explicit opstate(Sender&& sndr, Receiver rcvr, std::size_t count, scheduler_t sched)
@@ -91,9 +86,9 @@ namespace nv::execution::_strm
 
       auto& _connect()
       {
-        inner_opstate_.__emplace_from(STDEXEC::connect,
-                                      exec::sequence(STDEXEC::schedule(sched_), sndr_),
-                                      receiver{*this});
+        return inner_opstate_.__emplace_from(STDEXEC::connect,
+                                             STDEXEC::starts_on(sched_, sndr_),
+                                             receiver{*this});
       }
 
       template <class Tag, class... Args>
