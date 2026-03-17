@@ -18,11 +18,10 @@
 #include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #include "__detail/__config.hpp"
 
-#if STDEXEC_MSVC()
+#if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
 namespace STDEXEC
 {
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
-  // Ostensibly, this issue was fixed in MSVC 19.40, but we still seem to be hitting it.
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates the return
   // buffer for await_suspend calls within the suspended coroutine frame. When the suspended
