@@ -492,8 +492,8 @@ namespace experimental::execution
           return false;
         }
 
-        static constexpr auto
-        await_suspend(__std::coroutine_handle<__promise> __h) noexcept -> __std::coroutine_handle<>
+        static constexpr auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
+          -> __std::coroutine_handle<>
         {
           return __h.promise().continuation().handle();
         }

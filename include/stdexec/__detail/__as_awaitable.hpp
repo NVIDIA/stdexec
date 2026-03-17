@@ -134,8 +134,8 @@ namespace STDEXEC
     template <class _Value>
     struct __sender_awaitable_base<_Value, false> : __sender_awaitable_base<_Value, true>
     {
-      __std::atomic<bool>   __ready_{false};
-      std::thread::id const __starting_thread_id_{std::this_thread::get_id()};
+      __std::atomic<bool>   __ready_{true};
+      std::thread::id const __starting_thread_{std::this_thread::get_id()};
     };
 
     template <class _Value>
@@ -231,8 +231,8 @@ namespace STDEXEC
           auto  __pcoro   = this->__awaiter_.__continuation_.address();
           auto  __hcoro   = __std::coroutine_handle<_Promise>::from_address(__pcoro);
           auto& __promise = __hcoro.promise();
-          __std::coroutine_handle<> __on_stopped = __promise.unhandled_stopped();
-          __on_stopped.resume();
+          __std::coroutine_handle<> __unwind = __promise.unhandled_stopped();
+          __unwind.resume();
         }
         STDEXEC_CATCH_ALL
         {
@@ -250,7 +250,7 @@ namespace STDEXEC
         // Otherwise, the execution needs to be resumed from here.
         auto& __awaiter = static_cast<__awaiter_t&>(this->__awaiter_);
 
-        if (std::this_thread::get_id() != __awaiter.__starting_thread_id_)
+        if (std::this_thread::get_id() != __awaiter.__starting_thread_)
         {
           // If we're completing on a different thread than the one that started the
           // operation, we know we are completing asynchronously, so we need to resume
@@ -298,32 +298,47 @@ namespace STDEXEC
         , __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(*this)))
       {}
 
+      ~__sender_awaitable()
+      {
+        // TODO: This wait here is only needed because of the existence of
+        // exec::at_coroutine_exit, which can cause the destructor of the sender_awaitable
+        // to run while start() is still executing. We should consider removing
+        // exec::at_coroutine_exit or fixing it.
+        this->__ready_.wait(false, __std::memory_order_acquire);
+      }
+
       constexpr auto
       await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro) noexcept  //
         -> __std::coroutine_handle<>
       {
         STDEXEC_ASSERT(this->__continuation_ == __hcoro);
 
+        this->__ready_.store(false, __std::memory_order_release);
+
         // Start the operation.
         STDEXEC::start(__opstate_);
 
         auto __expected = false;
-        if (this->__ready_.compare_exchange_strong(__expected,
+        bool const __was_ready =
+           !this->__ready_.compare_exchange_strong(__expected,
                                                    true,
                                                    __std::memory_order_release,
-                                                   __std::memory_order_acquire))
-        {
-          // If __ready_ is still false when executing the CAS, then the operation did not
-          // complete inline. The continuation will be resumed when the operation
-          // completes, so we return a noop_coroutine to suspend the current coroutine.
-          return __std::noop_coroutine();
-        }
-        else
+                                                   __std::memory_order_acquire);
+        this->__ready_.notify_one();
+
+        if (__was_ready)
         {
           // The operation completed inline with set_value or set_error, so we can just
           // resume the current coroutine. await_resume will either return the value or
           // throw as appropriate.
           return __hcoro;
+        }
+        else
+        {
+          // If __ready_ was still false when executing the CAS, then the operation did not
+          // complete inline. The continuation will be resumed when the operation
+          // completes, so we return a noop_coroutine to suspend the current coroutine.
+          return __std::noop_coroutine();
         }
       }
 
