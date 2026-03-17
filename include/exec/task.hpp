@@ -420,8 +420,8 @@ namespace experimental::execution
       }
 
       _Scheduler              __new_sched_;
-      std::exception_ptr      __eptr_;
-      __optional<__opstate_t> __opstate_;
+      std::exception_ptr      __eptr_{};
+      __optional<__opstate_t> __opstate_{};
     };
 
     struct __reschedule_coroutine_on_t

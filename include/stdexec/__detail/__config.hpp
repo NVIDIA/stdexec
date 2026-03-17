@@ -352,6 +352,14 @@ namespace STDEXEC::__std
 #endif
 #define STDEXEC_ATTR_empty_bases STDEXEC_PP_PROBE(~, 8)
 
+#if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
+#  define STDEXEC_ATTR_WHICH_9(_ATTR) __declspec(noinline)
+#else
+#  define STDEXEC_ATTR_WHICH_9(_ATTR) __attribute__((_ATTR))
+#endif
+#define STDEXEC_ATTR_noinline     STDEXEC_PP_PROBE(~, 9)
+#define STDEXEC_ATTR___noinline__ STDEXEC_PP_PROBE(~, 9)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
 #if STDEXEC_NVCC()

@@ -34,14 +34,17 @@ using namespace std::string_literals;
 
 namespace
 {
-
   // This is a work-around for clang-12 bugs in Release mode
   thread_local constinit int thread_id = 0;
 
   static_assert(STDEXEC::sender<exec::task<void>>);
 
-  // This is a work-around for apple clang bugs in Release mode
-  STDEXEC_PP_WHEN(STDEXEC_APPLE_CLANG(), [[clang::optnone]]) auto get_id() -> int
+  // Apple clang and MSVC generate bad code for this function in Release mode,
+  // so mark it as noinline as a workaround.
+#if STDEXEC_APPLE_CLANG() || STDEXEC_MSVC()
+  STDEXEC_ATTRIBUTE(noinline)
+#endif
+  auto get_id() -> int
   {
     return thread_id;
   }
