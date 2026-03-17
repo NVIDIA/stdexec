@@ -130,25 +130,13 @@ namespace experimental::execution
      public:
       using promise_type = __promise;
 
-#if STDEXEC_EDG()
-      __task(__std::coroutine_handle<__promise> __coro) noexcept
+      explicit(!STDEXEC_EDG()) __task(__std::coroutine_handle<__promise> __coro) noexcept
         : __coro_(__coro)
       {}
-#else
-      explicit __task(__std::coroutine_handle<__promise> __coro) noexcept
-        : __coro_(__coro)
-      {}
-#endif
 
       __task(__task&& __that) noexcept
         : __coro_(std::exchange(__that.__coro_, {}))
       {}
-
-      ~__task()
-      {
-        if (__coro_)
-          __coro_.destroy();
-      }
 
       [[nodiscard]]
       static constexpr auto await_ready() noexcept -> bool
@@ -176,7 +164,7 @@ namespace experimental::execution
 
       auto await_resume() noexcept -> std::tuple<_Ts&...>
       {
-        return __coro_.promise().__args_;
+        return std::exchange(__coro_, {}).promise().__args_;
       }
 
      private:
@@ -192,7 +180,9 @@ namespace experimental::execution
           -> __std::coroutine_handle<>
         {
           auto __cont = __h.promise().continuation();
-          return __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
+          auto __coro = __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
+          __h.destroy();
+          return __coro;
         }
 
         void await_resume() const noexcept {}
