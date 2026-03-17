@@ -122,8 +122,7 @@ namespace experimental::execution
         {
           auto __cont = __h.promise().continuation();
           auto __coro = __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
-          __h.destroy();
-          return __coro;
+          return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
         void await_resume() const noexcept {}
