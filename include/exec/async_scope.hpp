@@ -25,7 +25,7 @@
 #include <mutex>
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_MSVC(4702) // unreachable code
+STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // unreachable code
 
 namespace experimental::execution
 {
@@ -191,7 +191,7 @@ namespace experimental::execution
         STDEXEC::set_error(std::move(__opstate_->__rcvr_), static_cast<_Error&&>(__err));
         // do not access __op_
         // do not access this
-        __complete(__scope); // MSVC thinks this is unreachable :-/
+        __complete(__scope);  // MSVC thinks this is unreachable :-/
       }
 
       constexpr void set_stopped() noexcept

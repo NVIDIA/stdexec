@@ -38,7 +38,7 @@
 #include <variant>
 
 STDEXEC_PRAGMA_PUSH()
-STDEXEC_PRAGMA_IGNORE_MSVC(4714) // marked as __forceinline not inlined
+STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 
 namespace STDEXEC::__sync_wait
 {

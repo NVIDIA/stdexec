@@ -41,9 +41,9 @@ namespace
 
   // Apple clang and MSVC generate bad code for this function in Release mode,
   // so mark it as noinline as a workaround.
-#if STDEXEC_APPLE_CLANG() || STDEXEC_MSVC()
+#  if STDEXEC_APPLE_CLANG() || STDEXEC_MSVC()
   STDEXEC_ATTRIBUTE(noinline)
-#endif
+#  endif
   auto get_id() -> int
   {
     return thread_id;
