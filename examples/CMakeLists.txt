@@ -64,30 +64,34 @@ if (LINUX)
 endif ()
 
 foreach(example ${stdexec_examples})
-    def_example(${example})
+  def_example(${example})
 endforeach()
 
 if(STDEXEC_ENABLE_CUDA)
-    add_subdirectory(nvexec)
+  add_subdirectory(nvexec)
 endif()
 
 if (STDEXEC_ENABLE_TBB)
- add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
+  add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
+  target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
 
- add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
- target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
+  add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
+  target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
 
- add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
- target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
+  add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
+  target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
 endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)
- add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
- target_link_libraries(example.benchmark.taskflow_thread_pool PRIVATE STDEXEC::taskflowexec)
+  add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
+  target_link_libraries(example.benchmark.taskflow_thread_pool
+      PRIVATE STDEXEC::taskflowexec
+              $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()
 
 if(STDEXEC_ENABLE_ASIO)
-add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
-target_link_libraries(example.benchmark.asio_thread_pool PRIVATE STDEXEC::asioexec)
+  add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
+  target_link_libraries(example.benchmark.asio_thread_pool
+      PRIVATE STDEXEC::asioexec
+              $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()

@@ -154,11 +154,10 @@ namespace experimental::execution
       //! \param __parent The coroutine that is registering an action to be performed at
       //! coroutine exit; i.e., the coroutine that is co_await-ing the result of calling
       //! at_coroutine_exit.
-      //! \note This function is called directly from basic_task's await_transform, so
-      //! we have no guarantee that the __parent coroutine is suspended here.
       template <__has_continuation _Promise>
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
       {
+        // Set the cleanup task's scheduler to the parent coroutine's scheduler.
         __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
         // This causes the parent to be resumed after the cleanup action is performed.
         __coro_.promise().set_continuation(__parent.promise().continuation());
