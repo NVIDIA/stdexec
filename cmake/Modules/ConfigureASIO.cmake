@@ -57,10 +57,12 @@ if(STDEXEC_ENABLE_ASIO)
       STDEXEC::stdexec
       Boost::asio
     )
-    install(TARGETS asioexec
-      EXPORT stdexec-exports
-      FILE_SET headers
-    )
+    if(STDEXEC_INSTALL)
+      install(TARGETS asioexec
+        EXPORT stdexec-exports
+        FILE_SET headers
+      )
+    endif()
 
   elseif(${STDEXEC_ASIO_USES_STANDALONE})
     include(cmake/import_standalone_asio.cmake)
@@ -93,10 +95,12 @@ if(STDEXEC_ENABLE_ASIO)
       STDEXEC::stdexec
       asio
     )
-    install(TARGETS asioexec
-      EXPORT stdexec-exports
-      FILE_SET headers
-    )
+    if(STDEXEC_INSTALL)
+      install(TARGETS asioexec
+        EXPORT stdexec-exports
+        FILE_SET headers
+      )
+    endif()
 
   else()
     message(FATAL_ERROR "ASIO implementation is not configured")
