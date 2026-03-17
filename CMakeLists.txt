@@ -91,10 +91,8 @@ if (NOT DEFINED STDEXEC_MAIN_PROJECT)
   endif ()
 endif ()
 
-# Don't build tests if configuring stdexec as a submodule of another
-# CMake project, unless they explicitly set STDEXEC_BUILD_TESTS=TRUE,
-# or they enabled CTest's BUILD_TESTING option
-if (STDEXEC_MAIN_PROJECT OR BUILD_TESTING)
+# Disable the tests by default unless it is the top level project and build testing was specified.
+if (STDEXEC_MAIN_PROJECT AND BUILD_TESTING)
     set(STDEXEC_BUILD_TESTS_DEFAULT ON)
 else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
@@ -479,7 +477,7 @@ if(STDEXEC_BUILD_DOCS)
 endif()
 
 # Configure test executables
-if(BUILD_TESTING)
+if(STDEXEC_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
