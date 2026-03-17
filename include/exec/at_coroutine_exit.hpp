@@ -176,7 +176,7 @@ namespace experimental::execution
 
       auto await_resume() noexcept -> std::tuple<_Ts&...>
       {
-        return std::exchange(__coro_, {}).promise().__args_;
+        return __coro_.promise().__args_;
       }
 
      private:
