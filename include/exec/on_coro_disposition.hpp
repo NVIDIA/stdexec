@@ -117,12 +117,11 @@ namespace experimental::execution
           return false;
         }
 
-        static auto
-        await_suspend(__std::coroutine_handle<__promise> __h) noexcept -> __std::coroutine_handle<>
+        static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
+          -> __std::coroutine_handle<>
         {
-          __promise& __p    = __h.promise();
-          auto       __coro = __p.__is_unhandled_stopped_ ? __p.continuation().unhandled_stopped()
-                                                          : __p.continuation().handle();
+          auto __cont = __h.promise().continuation();
+          auto __coro = __h.promise().__is_stopped_ ? __cont.unhandled_stopped() : __cont.handle();
           return STDEXEC_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
@@ -174,7 +173,7 @@ namespace experimental::execution
 
         auto unhandled_stopped() noexcept -> __std::coroutine_handle<__promise>
         {
-          __is_unhandled_stopped_ = true;
+          __is_stopped_ = true;
           return __std::coroutine_handle<__promise>::from_promise(*this);
         }
 
@@ -200,7 +199,7 @@ namespace experimental::execution
           return {*this};
         }
 
-        bool                __is_unhandled_stopped_{false};
+        bool                __is_stopped_{false};
         std::tuple<_Ts&...> __args_{};
         using __get_disposition_callback_t = task_disposition (*)(void*) noexcept;
         __std::coroutine_handle<>    __parent_{};

@@ -24,6 +24,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/__detail/__variant.hpp"
 #include "../stdexec/execution.hpp"
+#include "../stdexec/functional.hpp"
 
 #include "any_sender_of.hpp"
 #include "at_coroutine_exit.hpp"
@@ -328,16 +329,111 @@ namespace experimental::execution
       failed,
     };
 
-    struct __reschedule_coroutine_on
+    template <class _Promise>
+    struct __reschedule_receiver
+    {
+      using receiver_concept = receiver_t;
+
+      void set_value() noexcept
+      {
+        // Resuming the continuation of the parent coroutine will cause it to continue
+        // executing on the new scheduler.
+        __parent_.resume();
+      }
+
+      void set_error(std::exception_ptr __eptr) noexcept
+      {
+        __eptr_ = std::move(__eptr);
+        __parent_.resume();
+      }
+
+      void set_stopped() noexcept
+      {
+        // Resuming the stopped continuation unwinds the coroutine stack until we reach
+        // a promise that can handle the stopped signal. The coroutine referred to by
+        // __continuation_ will never be resumed.
+        __std::coroutine_handle<> __unwind = __parent_.promise().unhandled_stopped();
+        __unwind.resume();
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept -> env_of_t<_Promise>
+      {
+        return STDEXEC::get_env(__parent_.promise());
+      }
+
+      std::exception_ptr&               __eptr_;
+      __std::coroutine_handle<_Promise> __parent_;
+    };
+
+    template <class _Scheduler, class _Promise>
+    struct __reschedule_awaiter
+    {
+      using __sender_t   = __result_of<unstoppable, schedule_result_t<_Scheduler>>;
+      using __receiver_t = __reschedule_receiver<_Promise>;
+      using __opstate_t  = STDEXEC::connect_result_t<__sender_t, __receiver_t>;
+
+      static constexpr auto await_ready() noexcept -> bool
+      {
+        return false;
+      }
+
+      auto await_suspend(__std::coroutine_handle<_Promise> __h) noexcept -> bool
+      {
+        STDEXEC_TRY
+        {
+          auto& __p = __h.promise();
+
+          if (!std::exchange(__p.__rescheduled_, true))
+          {
+            // Create a cleanup action that transitions back onto the current scheduler:
+            auto __sched = get_scheduler(*__p.__context_);
+            auto __guard = at_coroutine_exit(__compose(unstoppable, STDEXEC::schedule),
+                                             std::move(__sched));
+            // Insert the cleanup action into the head of the continuation chain by
+            // making direct calls to the cleanup task's awaiter member functions. See
+            // type __at_coro_exit::__task in at_coroutine_exit.hpp:
+            __guard.await_suspend(__h);
+            (void) __guard.await_resume();
+          }
+
+          __p.__context_->set_scheduler(__new_sched_);
+          auto& __op = __opstate_.__emplace_from(STDEXEC::connect,
+                                                 unstoppable(schedule(__new_sched_)),
+                                                 __receiver_t{__eptr_, __h});
+          STDEXEC::start(__op);
+          return true;  // suspend the coroutine until the scheduler operation completes
+        }
+        STDEXEC_CATCH_ALL
+        {
+          __eptr_ = std::current_exception();
+          return false;
+        }
+      }
+
+      void await_resume() noexcept
+      {
+        if (__eptr_)
+        {
+          std::rethrow_exception(std::move(__eptr_));
+        }
+      }
+
+      _Scheduler              __new_sched_;
+      std::exception_ptr      __eptr_{};
+      __optional<__opstate_t> __opstate_{};
+    };
+
+    struct __reschedule_coroutine_on_t
     {
       template <class _Scheduler>
-      struct __wrap
+      struct __wrapper
       {
         _Scheduler __sched_;
       };
 
       template <scheduler _Scheduler>
-      constexpr auto operator()(_Scheduler __sched) const noexcept -> __wrap<_Scheduler>
+      constexpr auto operator()(_Scheduler __sched) const noexcept -> __wrapper<_Scheduler>
       {
         return {static_cast<_Scheduler&&>(__sched)};
       }
@@ -349,12 +445,35 @@ namespace experimental::execution
     class [[nodiscard]] basic_task
     {
       struct __promise;
+
+      template <class _ParentPromise = void>
+      struct __task_awaiter;
+
+      using __promise_context_t = _Context::template promise_context_t<__promise>;
+
      public:
       using promise_type = __promise;
 
       constexpr basic_task(basic_task&& __that) noexcept
         : __coro_(std::exchange(__that.__coro_, {}))
       {}
+
+      // Make this task awaitable within a particular context:
+      template <class _ParentPromise>
+        requires __std::constructible_from<awaiter_context_t<__promise, _ParentPromise>,
+                                           __promise_context_t&,
+                                           _ParentPromise&>
+      constexpr auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaiter<_ParentPromise>
+      {
+        return __task_awaiter<_ParentPromise>{std::exchange(__coro_, {})};
+      }
+
+      // Make this task generally awaitable:
+      constexpr auto operator co_await() && noexcept -> __task_awaiter<>
+        requires __minvocable_q<awaiter_context_t, __promise>
+      {
+        return __task_awaiter<>{std::exchange(__coro_, {})};
+      }
 
       constexpr ~basic_task()
       {
@@ -373,16 +492,14 @@ namespace experimental::execution
           return false;
         }
 
-        static constexpr auto
-        await_suspend(__std::coroutine_handle<__promise> __h) noexcept -> __std::coroutine_handle<>
+        static constexpr auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
+          -> __std::coroutine_handle<>
         {
           return __h.promise().continuation().handle();
         }
 
         static constexpr void await_resume() noexcept {}
       };
-
-      using __promise_context_t = _Context::template promise_context_t<__promise>;
 
       struct __promise
         : __promise_base<_Ty>
@@ -423,19 +540,19 @@ namespace experimental::execution
         }
 
 #ifndef __clang_analyzer__
-        template <sender _Awaitable>
+        template <sender _CvSender>
           requires __scheduler_provider<_Context>
-        auto await_transform(_Awaitable&& __awaitable) noexcept -> decltype(auto)
+        auto await_transform(_CvSender&& __sndr) noexcept -> decltype(auto)
         {
           if constexpr (__completes_where_it_starts<set_value_t,
-                                                    env_of_t<_Awaitable>,
+                                                    env_of_t<_CvSender>,
                                                     __promise_context_t&>)
           {
-            return STDEXEC::as_awaitable(static_cast<_Awaitable&&>(__awaitable), *this);
+            return STDEXEC::as_awaitable(static_cast<_CvSender&&>(__sndr), *this);
           }
           else
           {
-            return STDEXEC::as_awaitable(continues_on(static_cast<_Awaitable&&>(__awaitable),
+            return STDEXEC::as_awaitable(continues_on(static_cast<_CvSender&&>(__sndr),
                                                       get_scheduler(*__context_)),
                                          *this);
           }
@@ -443,22 +560,10 @@ namespace experimental::execution
 
         template <class _Scheduler>
           requires __scheduler_provider<_Context>
-        auto await_transform(__reschedule_coroutine_on::__wrap<_Scheduler> __box) noexcept
+        auto await_transform(__reschedule_coroutine_on_t::__wrapper<_Scheduler> __box) noexcept
           -> decltype(auto)
         {
-          if (!std::exchange(__rescheduled_, true))
-          {
-            // Create a cleanup action that transitions back onto the current scheduler:
-            auto __sched        = get_scheduler(*__context_);
-            auto __cleanup_task = at_coroutine_exit(schedule, std::move(__sched));
-            // Insert the cleanup action into the head of the continuation chain by making
-            // direct calls to the cleanup task's awaiter member functions. See type
-            // __at_coro_exit::__task in at_coroutine_exit.hpp:
-            __cleanup_task.await_suspend(__std::coroutine_handle<__promise>::from_promise(*this));
-            (void) __cleanup_task.await_resume();
-          }
-          __context_->set_scheduler(__box.__sched_);
-          return STDEXEC::as_awaitable(schedule(__box.__sched_), *this);
+          return __reschedule_awaiter<_Scheduler, __promise>{__box.__sched_};
         }
 #endif
 
@@ -484,13 +589,10 @@ namespace experimental::execution
         bool                            __rescheduled_{false};
       };
 
-      template <class _ParentPromise = void>
-      struct __task_awaitable
+      template <class _ParentPromise>
+      struct __task_awaiter
       {
-        __std::coroutine_handle<__promise>                       __coro_;
-        __optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
-
-        constexpr ~__task_awaitable()
+        constexpr ~__task_awaiter()
         {
           if (__coro_)
             __coro_.destroy();
@@ -528,26 +630,12 @@ namespace experimental::execution
           if constexpr (!std::is_void_v<_Ty>)
             return std::move(__var::__get<0>(__coro_.promise().__data_));
         }
+
+        __std::coroutine_handle<__promise>                       __coro_;
+        __optional<awaiter_context_t<__promise, _ParentPromise>> __context_{};
       };
 
      public:
-      // Make this task awaitable within a particular context:
-      template <class _ParentPromise>
-        requires __std::constructible_from<awaiter_context_t<__promise, _ParentPromise>,
-                                           __promise_context_t&,
-                                           _ParentPromise&>
-      constexpr auto as_awaitable(_ParentPromise&) && noexcept -> __task_awaitable<_ParentPromise>
-      {
-        return __task_awaitable<_ParentPromise>{std::exchange(__coro_, {})};
-      }
-
-      // Make this task generally awaitable:
-      constexpr auto operator co_await() && noexcept -> __task_awaitable<>
-        requires __minvocable_q<awaiter_context_t, __promise>
-      {
-        return __task_awaitable<>{std::exchange(__coro_, {})};
-      }
-
       constexpr explicit basic_task(__std::coroutine_handle<promise_type> __coro) noexcept
         : __coro_(__coro)
       {}
@@ -570,7 +658,7 @@ namespace experimental::execution
   template <class _Ty>
   using task = basic_task<_Ty, default_task_context<_Ty>>;
 
-  inline constexpr __task::__reschedule_coroutine_on reschedule_coroutine_on{};
+  inline constexpr __task::__reschedule_coroutine_on_t reschedule_coroutine_on{};
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

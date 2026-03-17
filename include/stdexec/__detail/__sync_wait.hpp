@@ -37,6 +37,9 @@
 #include <tuple>
 #include <variant>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
+
 namespace STDEXEC::__sync_wait
 {
   /////////////////////////////////////////////////////////////////////////////
@@ -377,3 +380,5 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
 STDEXEC_P2300_NAMESPACE_END(this_thread)
+
+STDEXEC_PRAGMA_POP()
