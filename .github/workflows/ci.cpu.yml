@@ -170,7 +170,7 @@ jobs:
   #     - run: echo "CI (CPU) (Windows) success"
 
   build-cpu-macos:
-    runs-on: macos-15-large
+    runs-on: macos-26-large
     name: macos-${{ matrix.name }}
     strategy:
       fail-fast: false
