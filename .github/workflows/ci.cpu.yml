@@ -192,8 +192,6 @@ jobs:
 
       - name: Build and test CPU schedulers (MacOS)
         shell: bash
-        env:
-          LDFLAGS: "-fuse-ld=lld"
         run: |
           mkdir build
           cmake -S. -Bbuild -GNinja \
