@@ -290,7 +290,7 @@ namespace STDEXEC
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
     struct __sender_awaitable : __sender_awaitable_base<__value_t<_Sender, _Promise>, false>
     {
-      using __value_t = __value_t<_Sender, _Promise>;
+      using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
       constexpr explicit __sender_awaitable(_Sender&&                         __sndr,
                                             __std::coroutine_handle<_Promise> __hcoro)
