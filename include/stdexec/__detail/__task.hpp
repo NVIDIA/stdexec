@@ -180,9 +180,9 @@ namespace STDEXEC
       __stop_callback_box<stop_token_of_t<env_of_t<_EnvProvider>>, _StopSource>;
 
     inline constexpr auto __throw_error = __overload{
-      []<class _Error>(_Error&& __error) { STDEXEC_THROW(static_cast<_Error&&>(__error)); },
-      [](std::error_code __ec) { STDEXEC_THROW(std::system_error(__ec)); },
-      [](std::exception_ptr __eptr) { std::rethrow_exception(__eptr); }};
+      []([[maybe_unused]] auto&& __error) { STDEXEC_THROW((decltype(__error)&&) __error); },
+      []([[maybe_unused]] std::error_code __ec) { STDEXEC_THROW(std::system_error(__ec)); },
+      []([[maybe_unused]] std::exception_ptr __eptr) { std::rethrow_exception(__eptr); }};
 
   }  // namespace __task
 
