@@ -246,7 +246,7 @@ namespace nv::execution::_strm
       , public _strm::opstate_base<Receiver>
     {
       using on_stop_t = std::optional<
-        stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>>, __forward_stop_request>>;
+        stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>>, __forward_stop_request<>>>;
 
       on_stop_t                         on_stop_{};
       std::shared_ptr<sh_state<Sender>> sh_state_;

@@ -70,16 +70,6 @@ namespace STDEXEC
     auto operator=(__move_only const &) -> __move_only& = delete;
   };
 
-  // Helper to combine multiple function objects into one overload set
-  template <class... _Fns>
-  struct __overload : _Fns...
-  {
-    using _Fns::operator()...;
-  };
-
-  template <class... _Fns>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __overload(_Fns...) -> __overload<_Fns...>;
-
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 

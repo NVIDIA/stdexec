@@ -95,7 +95,7 @@ namespace experimental::execution
       {}
 
       using __on_stop =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request>;
+        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request<>>;
 
       inplace_stop_source      __stop_source_{};
       std::optional<__on_stop> __on_stop_{};
@@ -260,7 +260,7 @@ namespace experimental::execution
                                               __copy_cvref_t<_Self, _Senders>...>)
         -> __opstate_t<_Self, _Receiver>
       {
-        return STDEXEC::__apply(STDEXEC::__construct<__opstate_t<_Self, _Receiver>>{},
+        return STDEXEC::__apply(STDEXEC::__construct_from<__opstate_t<_Self, _Receiver>>{},
                                 static_cast<_Self&&>(__self).__sndrs_,
                                 static_cast<_Receiver&&>(__rcvr));
       }
