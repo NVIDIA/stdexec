@@ -15,11 +15,11 @@
  */
 #pragma once
 
+#include "../stop_token.hpp"
 #include "__affine_on.hpp"
 #include "__as_awaitable.hpp"
 #include "__config.hpp"
 #include "__inline_scheduler.hpp"
-#include "__manual_lifetime.hpp"
 #include "__meta.hpp"
 #include "__optional.hpp"
 #include "__schedulers.hpp"
@@ -57,19 +57,6 @@ namespace STDEXEC
     {
       constexpr void return_void() {}
     };
-
-    template <class _StopSource>
-    struct __on_stopped
-    {
-      void operator()() noexcept
-      {
-        __source_.request_stop();
-      }
-      _StopSource& __source_;
-    };
-
-    template <class _StopSource>
-    __on_stopped(_StopSource&) -> __on_stopped<_StopSource>;
 
     constexpr size_t __divmod(size_t __total_size, size_t __chunk_size) noexcept
     {
@@ -135,18 +122,68 @@ namespace STDEXEC
     template <class _Env>
     using __stop_source_type = _Env::stop_source_type;
 
-    template <class _Env, class _Rcvr>
-    using __environment_type = _Env::template env_type<env_of_t<_Rcvr>>;
-
     template <class _Env>
-    using __error_types = __error_types_t<typename _Env::error_types,
-                                          __munique<__qq<completion_signatures>>,
-                                          __mcompose<__qf<set_error_t>, __q1<__decay_t>>>;
+    using __error_types = _Env::error_types;
 
-    template <class _Rcvr, class _Alloc>
-    concept __has_allocator_compatible_with = requires(_Rcvr& __rcvr) {
-      _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__rcvr)));
-    } || std::default_initializable<_Alloc>;
+    template <class _Env, class _EnvProvider>
+    using __environment_type = _Env::template env_type<env_of_t<_EnvProvider>>;
+
+    template <class _EnvProvider, class _Alloc>
+    concept __has_allocator_compatible_with = requires(_EnvProvider const & __has_env) {
+      _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__has_env)));
+    };
+
+    template <class _EnvProvider, class _Scheduler>
+    concept __has_scheduler_compatible_with = requires(_EnvProvider const & __has_env) {
+      _Scheduler(STDEXEC::get_scheduler(STDEXEC::get_env(__has_env)));
+    };
+
+    template <class _StopSource>
+    using __stop_source_token_t = decltype(__declval<_StopSource>().get_token());
+
+    template <class _StopToken, class _StopSource>
+    struct __stop_callback_box
+    {
+      void __register_callback(__ignore, __ignore) noexcept {}
+      void __reset_callback() noexcept {}
+    };
+
+    template <class _StopToken, class _StopSource>
+      requires __not_same_as<__stop_source_token_t<_StopSource>, _StopToken>
+    struct __stop_callback_box<_StopToken, _StopSource>
+    {
+      using __stop_variant_t  = __variant<_StopSource, __stop_source_token_t<_StopSource>>;
+      using __callback_fn_t   = __forward_stop_request<_StopSource>;
+      using __stop_callback_t = stop_callback_for_t<_StopToken, __callback_fn_t>;
+
+      constexpr __stop_callback_box() {}
+
+      void __register_callback(auto const & __has_env, __stop_variant_t& __stop)
+        noexcept(__nothrow_constructible_from<__stop_callback_t, _StopToken, _StopSource&>)
+      {
+        std::construct_at(&__cb_, get_stop_token(get_env(__has_env)), __var::__get<0>(__stop));
+      }
+
+      void __reset_callback() noexcept
+      {
+        std::destroy_at(&__cb_);
+      }
+
+      union
+      {
+        __stop_callback_t __cb_;
+      };
+    };
+
+    template <class _EnvProvider, class _StopSource>
+    using __stop_callback_box_t =
+      __stop_callback_box<stop_token_of_t<env_of_t<_EnvProvider>>, _StopSource>;
+
+    inline constexpr auto __throw_error = __overload{
+      []<class _Error>(_Error&& __error) { STDEXEC_THROW(static_cast<_Error&&>(__error)); },
+      [](std::error_code __ec) { STDEXEC_THROW(std::system_error(__ec)); },
+      [](std::exception_ptr __eptr) { std::rethrow_exception(__eptr); }};
+
   }  // namespace __task
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +206,8 @@ namespace STDEXEC
     struct __promise;
     template <class _Rcvr>
     struct __opstate;
+    template <class _EnvProvider>
+    using __own_env_t = __minvoke_or_q<__task::__environment_type, env<>, _Env, _EnvProvider>;
    public:
     using sender_concept = sender_t;
     using promise_type   = __promise;
@@ -193,9 +232,10 @@ namespace STDEXEC
     template <receiver _Rcvr>
     constexpr auto connect(_Rcvr rcvr) && -> __opstate<_Rcvr>
     {
+      static_assert(__task::__has_allocator_compatible_with<_Rcvr, allocator_type>
+                    || std::default_initializable<allocator_type>);
       STDEXEC_ASSERT(__coro_);
-      static_assert(__task::__has_allocator_compatible_with<_Rcvr, allocator_type>);
-      return __opstate<_Rcvr>(std::exchange(__coro_, {}), static_cast<_Rcvr&&>(rcvr));
+      return __opstate<_Rcvr>(static_cast<task&&>(*this), static_cast<_Rcvr&&>(rcvr));
     }
 
     template <class>
@@ -207,11 +247,34 @@ namespace STDEXEC
     [[nodiscard]]
     constexpr auto get_env() const noexcept
     {
-      return __env{};
+      return __attrs{};
+    }
+
+    template <class _ParentPromise>
+    constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept
+    {
+      return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
     }
 
    private:
-    using __on_stopped_t = __task::__on_stopped<stop_source_type>;
+    using __on_stopped_t   = __forward_stop_request<stop_source_type>;
+    using __stop_variant_t = __variant<stop_source_type, stop_token_type>;
+
+    template <class _EnvProvider>
+    using __stop_callback_t =
+      stop_callback_for_t<stop_token_of_t<env_of_t<_EnvProvider>>, __on_stopped_t>;
+
+    template <class _EnvProvider>
+    using __stop_callback_box_t = __task::__stop_callback_box_t<_EnvProvider, stop_source_type>;
+
+    template <class _EnvProvider>
+    static constexpr bool __needs_stop_callback =
+      __not_same_as<stop_token_type, stop_token_of_t<env_of_t<_EnvProvider>>>;
+
+    template <class _EnvProvider>
+    static constexpr bool __nothrow_callback_registration = noexcept(
+      __declval<__stop_callback_box_t<_EnvProvider>&>()
+        .__register_callback(__declval<_EnvProvider&>(), __declval<__stop_variant_t&>()));
 
     using __error_variant_t = __error_types_t<error_types, __q<__variant>, __q1<__decay_t>>;
 
@@ -219,36 +282,204 @@ namespace STDEXEC
       completion_signatures<__detail::__single_value_sig_t<_Ty>, set_stopped_t()>,
       error_types>;
 
-    template <class _Rcvr>
-    using __stop_callback_t = stop_callback_for_t<stop_token_of_t<env_of_t<_Rcvr>>, __on_stopped_t>;
+    static constexpr void __sink(task) noexcept {}
 
-    template <class _Rcvr>
-    static constexpr bool __needs_stop_callback =
-      __not_same_as<stop_token_type, stop_token_of_t<env_of_t<_Rcvr>>>;
-
-    struct __env
+    template <class _EnvProvider>
+    [[nodiscard]]
+    static auto __mk_alloc(_EnvProvider const & __has_env) noexcept -> allocator_type
     {
-      template <class _Tag>
-      [[nodiscard]]
-      constexpr auto query(__get_completion_behavior_t<_Tag>) const noexcept
+      if constexpr (__task::__has_allocator_compatible_with<_EnvProvider, allocator_type>)
       {
-        return __completion_behavior::__asynchronous_affine
-             | __completion_behavior::__inline_completion;
+        return allocator_type(get_allocator(STDEXEC::get_env(__has_env)));
       }
-    };
+      else
+      {
+        return allocator_type{};
+      }
+    }
 
-    struct __opstate_base
+    template <class _EnvProvider>
+    [[nodiscard]]
+    static auto __mk_sched(_EnvProvider const & __has_env) noexcept -> scheduler_type
     {
-      constexpr explicit __opstate_base(scheduler_type __sched) noexcept
-        : __sch_(std::move(__sched))
-      {}
+      if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider, scheduler_type>)
+      {
+        return scheduler_type(get_scheduler(STDEXEC::get_env(__has_env)));
+      }
+      else
+      {
+        return scheduler_type{};
+      }
+    }
 
-      virtual void __completed() noexcept                       = 0;
-      virtual void __canceled() noexcept                        = 0;
-      virtual auto __get_allocator() noexcept -> allocator_type = 0;
+    template <class _EnvProvider>
+    [[nodiscard]]
+    static auto __mk_own_env(_EnvProvider const & __has_env) noexcept
+    {
+      if constexpr (__std::constructible_from<__own_env_t<_EnvProvider>, env_of_t<_EnvProvider>>)
+      {
+        return __own_env_t<_EnvProvider>(STDEXEC::get_env(__has_env));
+      }
+      else
+      {
+        return __own_env_t<_EnvProvider>{};
+      }
+    }
+
+    template <class _EnvProvider>
+    [[nodiscard]]
+    static auto
+    __mk_env(_EnvProvider const & __has_env, __own_env_t<_EnvProvider> const & __own_env) noexcept
+      -> _Env
+    {
+      if constexpr (__std::constructible_from<_Env, __own_env_t<_EnvProvider> const &>)
+      {
+        return _Env(__own_env);
+      }
+      else if constexpr (__std::constructible_from<_Env, env_of_t<_EnvProvider>>)
+      {
+        return _Env(STDEXEC::get_env(__has_env));
+      }
+      else
+      {
+        return _Env{};
+      }
+    }
+
+    struct __opstate_base : allocator_type
+    {
+      template <class _EnvProvider>
+      constexpr explicit __opstate_base(task&& __task, _EnvProvider const & __has_env) noexcept
+        : allocator_type(__mk_alloc(__has_env))
+        , __sch_(__mk_sched(__has_env))
+        , __task_(static_cast<task&&>(__task))
+      {
+        auto& __promise = __task_.__coro_.promise();
+        // Set the promise's state pointer to this operation state, so it can call back into
+        // it when the coroutine completes or is stopped.
+        __promise.__state_ = this;
+
+        // Initialize the promise's stop source if translation is needed between the
+        // receiver's stop token and the task's stop token:
+        if constexpr (__needs_stop_callback<_EnvProvider>)
+        {
+          __promise.__stop_.template emplace<0>();
+        }
+        else
+        {
+          __promise.__stop_.template emplace<1>(get_stop_token(STDEXEC::get_env(__has_env)));
+        }
+      }
+
+      STDEXEC_IMMOVABLE(__opstate_base);
+
+      virtual auto __completed() noexcept -> __std::coroutine_handle<> = 0;
+      virtual auto __canceled() noexcept -> __std::coroutine_handle<>  = 0;
+
+      [[nodiscard]]
+      constexpr auto __get_allocator() const noexcept -> allocator_type
+      {
+        return static_cast<allocator_type const &>(*this);
+      }
+
+      constexpr auto __handle() const noexcept -> __std::coroutine_handle<promise_type>
+      {
+        return __task_.__coro_;
+      }
 
       scheduler_type    __sch_;
+      task              __task_;
       __error_variant_t __errors_{__no_init};
+    };
+
+    template <class _ParentPromise>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __awaiter final
+      : __opstate_base
+      , __stop_callback_box_t<_ParentPromise>
+    {
+      constexpr explicit __awaiter(task&& __task, _ParentPromise& __parent) noexcept
+        : __opstate_base(static_cast<task&&>(__task), __parent)
+        , __own_env_(__mk_own_env(__parent))
+        , __env_(__mk_env(__parent, __own_env_))
+        , __parent_(__parent)
+      {}
+
+      static constexpr auto await_ready() noexcept -> bool
+      {
+        return false;
+      }
+
+      constexpr auto await_suspend(__std::coroutine_handle<_ParentPromise> __h)
+        noexcept(__nothrow_callback_registration<_ParentPromise>) -> __std::coroutine_handle<>
+      {
+        auto& __task_promise = this->__handle().promise();
+        // If the following throws, the coroutine is immediately resumed and the exception
+        // is rethrown at the suspension point.
+        this->__register_callback(__h.promise(), __task_promise.__stop_);
+        __task_promise.__state_ = this;
+        __continuation_         = __h;
+        return this->__handle();
+      }
+
+      constexpr auto await_resume() -> _Ty
+      {
+        // Destroy the coroutine after moving the result/error out of it
+        auto __task = std::move(this->__task_);
+        if (!this->__errors_.__is_valueless())
+        {
+          __visit(__task::__throw_error, std::move(this->__errors_));
+        }
+        else if constexpr (__same_as<_Ty, void>)
+        {
+          return;
+        }
+        else
+        {
+          return static_cast<_Ty&&>(*__task.__coro_.promise().__result_);
+        }
+        __std::unreachable();
+      }
+
+      [[nodiscard]]
+      auto __completed() noexcept -> __std::coroutine_handle<> final
+      {
+        this->__reset_callback();
+        return __continuation_;
+      }
+
+      [[nodiscard]]
+      auto __canceled() noexcept -> __std::coroutine_handle<> final
+      {
+        this->__reset_callback();
+        return __parent_.unhandled_stopped();
+      }
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __own_env_t<_ParentPromise> __own_env_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Env                        __env_;
+      __std::coroutine_handle<>   __continuation_;
+      _ParentPromise&             __parent_;
+    };
+
+    struct __attrs
+    {
+      template <class _Tag, class... _OtherEnv>
+      [[nodiscard]]
+      constexpr auto query(__get_completion_behavior_t<_Tag>, _OtherEnv&&...) const noexcept
+      {
+        using __attrs_t = env_of_t<schedule_result_t<scheduler_type>>;
+
+        if constexpr (__completes_inline<set_value_t, __attrs_t, _OtherEnv...>)
+        {
+          return __completion_behavior::__unknown;
+        }
+        else
+        {
+          return __completion_behavior::__asynchronous_affine
+               | __completion_behavior::__inline_completion;
+        }
+      }
     };
 
     constexpr explicit task(__std::coroutine_handle<promise_type> __coro) noexcept
@@ -264,170 +495,98 @@ namespace STDEXEC
   template <class _Rcvr>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate final
     : __opstate_base
-    , __if_c<__needs_stop_callback<_Rcvr>, __manual_lifetime<__stop_callback_t<_Rcvr>>, __empty>
+    , __stop_callback_box_t<_Rcvr>
   {
    public:
     using operation_state_concept = operation_state_t;
 
-    explicit __opstate(__std::coroutine_handle<promise_type> __coro, _Rcvr&& __rcvr) noexcept
-      : __opstate_base(__mk_sched(__rcvr))
-      , __coro_(std::move(__coro))
+    explicit __opstate(task&& __task, _Rcvr&& __rcvr) noexcept
+      : __opstate_base(static_cast<task&&>(__task), __rcvr)
+      , __own_env_(__mk_own_env(__rcvr))
+      , __env_(__mk_env(__rcvr, __own_env_))
       , __rcvr_(static_cast<_Rcvr&&>(__rcvr))
-      , __own_env_(__mk_own_env(__rcvr_))
-      , __env_(__mk_env(__rcvr_, __own_env_))
-    {
-      // Set the promise's state pointer to this operation state, so it can call back into
-      // it when the coroutine completes or is stopped.
-      __coro_.promise().__state_ = this;
-      // Initialize the promise's stop source if translation is needed between the
-      // receiver's stop token and the task's stop token:
-      if constexpr (__needs_stop_callback<_Rcvr>)
-      {
-        __coro_.promise().__stop_.template emplace<0>();
-      }
-      else
-      {
-        __coro_.promise().__stop_.template emplace<1>(get_stop_token(STDEXEC::get_env(__rcvr_)));
-      }
-    }
-
-    ~__opstate()
-    {
-      if (__coro_)
-        __coro_.destroy();
-    }
+    {}
 
     void start() & noexcept
     {
-      if constexpr (__needs_stop_callback<_Rcvr>)
+      STDEXEC_TRY
       {
-        // If the receiver's stop token is different from the task's stop token, then we need
-        // to set up a callback to request a stop on the task's stop source when the receiver's
-        // stop token is triggered:
-        __stop_callback().__construct(get_stop_token(STDEXEC::get_env(__rcvr_)),
-                                      __on_stopped_t{__var::__get<0>(__coro_.promise().__stop_)});
+        // Register a stop callback if needed
+        this->__register_callback(__rcvr_, this->__handle().promise().__stop_);
+        this->__handle().resume();
       }
-      __coro_.resume();
+      STDEXEC_CATCH_ALL
+      {
+        if constexpr (__nothrow_callback_registration<_Rcvr>)
+        {
+          // no-op
+        }
+        else if constexpr (__mapply<__mcontains<set_error_t(std::exception_ptr)>,
+                                    error_types>::value)
+        {
+          STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
+        }
+        else
+        {
+          STDEXEC::__die("Starting the task failed due to an exception being thrown while "
+                         "registering a stop callback, but the task's error_types does not "
+                         "include std::exception_ptr, so the exception cannot be propagated.");
+        }
+      }
     }
 
    private:
-    using __own_env_t = __minvoke_or_q<__task::__environment_type, env<>, _Env, _Rcvr>;
-
-    static auto __mk_own_env(_Rcvr const & __rcvr) noexcept -> __own_env_t
+    auto __completed() noexcept -> __std::coroutine_handle<> final
     {
-      if constexpr (__std::constructible_from<__own_env_t, env_of_t<_Rcvr>>)
+      STDEXEC_TRY
       {
-        return __own_env_t(STDEXEC::get_env(__rcvr));
-      }
-      else
-      {
-        return __own_env_t{};
-      }
-    }
+        this->__reset_callback();
 
-    static auto __mk_env(_Rcvr const & __rcvr, __own_env_t const & __own_env) noexcept -> _Env
-    {
-      if constexpr (__std::constructible_from<_Env, __own_env_t const &>)
-      {
-        return _Env(__own_env);
-      }
-      else if constexpr (__std::constructible_from<_Env, env_of_t<_Rcvr>>)
-      {
-        return _Env(STDEXEC::get_env(__rcvr));
-      }
-      else
-      {
-        return _Env{};
-      }
-    }
-
-    static auto __mk_sched(_Rcvr const & __rcvr) noexcept -> scheduler_type
-    {
-      if constexpr (requires { scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr))); })
-      {
-        return scheduler_type(get_scheduler(STDEXEC::get_env(__rcvr)));
-      }
-      else
-      {
-        return scheduler_type{};
-      }
-    }
-
-    auto __stop_callback() noexcept -> __manual_lifetime<__stop_callback_t<_Rcvr>>&
-      requires __needs_stop_callback<_Rcvr>
-    {
-      return *this;
-    }
-
-    void __completed() noexcept final
-    {
-      if constexpr (__needs_stop_callback<_Rcvr>)
-      {
-        // If we set up a stop callback on the receiver's stop token, then we need to
-        // disable it when the operation completes:
-        __stop_callback().__destroy();
-      }
-
-      if (this->__errors_.index() != __variant_npos)
-      {
-        std::exchange(__coro_, {}).destroy();
-        __visit(STDEXEC::set_error, std::move(this->__errors_), static_cast<_Rcvr&&>(__rcvr_));
-      }
-      else if constexpr (__same_as<_Ty, void>)
-      {
-        std::exchange(__coro_, {}).destroy();
-        STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_));
-      }
-      else
-      {
-        STDEXEC_TRY
+        if (!this->__errors_.__is_valueless())
+        {
+          // Move the errors out of the promise before destroying the coroutine.
+          auto __errors = std::move(this->__errors_);
+          __sink(static_cast<task&&>(this->__task_));
+          __visit(STDEXEC::set_error, std::move(__errors), static_cast<_Rcvr&&>(__rcvr_));
+        }
+        else if constexpr (__same_as<_Ty, void>)
+        {
+          __sink(static_cast<task&&>(this->__task_));
+          STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_));
+        }
+        else
         {
           // Move the result out of the promise before destroying the coroutine.
-          _Ty __result = static_cast<_Ty&&>(*__coro_.promise().__result_);
-          std::exchange(__coro_, {}).destroy();
+          _Ty __result = static_cast<_Ty&&>(*this->__handle().promise().__result_);
+          __sink(static_cast<task&&>(this->__task_));
           STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_), static_cast<_Ty&&>(__result));
         }
-        STDEXEC_CATCH_ALL
+      }
+      STDEXEC_CATCH_ALL
+      {
+        if constexpr (!__nothrow_move_constructible<_Ty>
+                      || !__nothrow_move_constructible<__error_variant_t>)
         {
-          if constexpr (!__nothrow_move_constructible<_Ty>)
-          {
-            std::exchange(__coro_, {}).destroy();
-            STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
-          }
+          __sink(static_cast<task&&>(this->__task_));
+          STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
         }
       }
+      return std::noop_coroutine();
     }
 
-    void __canceled() noexcept final
+    auto __canceled() noexcept -> __std::coroutine_handle<> final
     {
-      if constexpr (__needs_stop_callback<_Rcvr>)
-      {
-        __stop_callback().__destroy();
-      }
-
-      std::exchange(__coro_, {}).destroy();
+      this->__reset_callback();
+      __sink(static_cast<task&&>(this->__task_));
       STDEXEC::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
+      return std::noop_coroutine();
     }
 
-    [[nodiscard]]
-    auto __get_allocator() noexcept -> allocator_type final
-    {
-      if constexpr (requires { allocator_type(get_allocator(STDEXEC::get_env(__rcvr_))); })
-      {
-        return allocator_type(get_allocator(STDEXEC::get_env(__rcvr_)));
-      }
-      else
-      {
-        return allocator_type{};
-      }
-    }
-
-    __std::coroutine_handle<promise_type> __coro_;
-    _Rcvr                                 __rcvr_;
     STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    __own_env_t                           __own_env_;
+    __own_env_t<_Rcvr> __own_env_;
     STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Env                                  __env_;
+    _Env               __env_;
+    _Rcvr              __rcvr_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +609,7 @@ namespace STDEXEC
 
     auto final_suspend() noexcept
     {
-      return __completed_awaitable{};
+      return __completed_awaiter{};
     }
 
     void unhandled_exception()
@@ -458,10 +617,8 @@ namespace STDEXEC
       if constexpr (!__mapply<__mcontains<std::exception_ptr>, __error_variant_t>::value)
       {
         STDEXEC::__die("A task threw an exception but does not have std::exception_ptr in its "
-                       "error_types. "
-                       "Either add std::exception_ptr to the task's error_types or ensure that all "
-                       "code called "
-                       "by the task is noexcept.");
+                       "error_types. Either add std::exception_ptr to the task's error_types or "
+                       "ensure that all code called by the task is noexcept.");
       }
       else
       {
@@ -472,13 +629,12 @@ namespace STDEXEC
     [[nodiscard]]
     auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
     {
-      __state_->__canceled();
-      return std::noop_coroutine();
+      return __state_->__canceled();
     }
 
     template <class _Error>
-    constexpr auto
-    yield_value(with_error<_Error> __error) noexcept(__nothrow_decay_copyable<_Error>)
+    constexpr auto yield_value(with_error<_Error> __error)  //
+      noexcept(__nothrow_decay_copyable<_Error>)
     {
       if constexpr (__mapply<__mcontains<__decay_t<_Error>>, __error_variant_t>::value)
       {
@@ -488,13 +644,14 @@ namespace STDEXEC
       {
         static_assert(__mnever<_Error>, "Error type not in task's error_types");
       }
-      return __completed_awaitable{};
+      return __completed_awaiter{};
     }
 
     template <sender _Sender>
     constexpr auto await_transform(_Sender&& __sndr) noexcept
     {
-      if constexpr (__same_as<scheduler_type, STDEXEC::inline_scheduler>)
+      using __schedule_sndr_t = schedule_result_t<scheduler_type>;
+      if constexpr (__completes_inline<set_value_t, env_of_t<__schedule_sndr_t>, __env>)
       {
         return STDEXEC::as_awaitable(static_cast<_Sender&&>(__sndr), *this);
       }
@@ -537,10 +694,10 @@ namespace STDEXEC
         __task::__divmod(sizeof(__task::__any_alloc<__palloc_t>), sizeof(__task::__memblock));
       size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__task::__memblock));
 
-      __palloc_t        __palloc(__alloc);
-      __pointer_t const __ptr = std::allocator_traits<__palloc_t>::allocate(__palloc,
-                                                                            __promise_blocks
-                                                                              + __alloc_blocks);
+      __palloc_t  __palloc(__alloc);
+      auto* const __ptr = std::allocator_traits<__palloc_t>::allocate(__palloc,
+                                                                      __promise_blocks
+                                                                        + __alloc_blocks);
 
       // construct the allocator in the blocks immediately following the promise object:
       void* const __alloc_loc = __ptr + __promise_blocks;
@@ -558,19 +715,22 @@ namespace STDEXEC
 
    private:
     template <class>
+    friend struct __awaiter;
+    template <class>
     friend struct __opstate;
+    friend struct __opstate_base;
 
-    struct __completed_awaitable
+    struct __completed_awaiter
     {
       static constexpr bool await_ready() noexcept
       {
         return false;
       }
 
-      static constexpr void await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
+      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept  //
+        -> __std::coroutine_handle<>
       {
-        __promise& __self = __coro.promise();
-        __self.__state_->__completed();
+        return __coro.promise().__state_->__completed();
       }
 
       static constexpr void await_resume() noexcept {}
@@ -606,8 +766,8 @@ namespace STDEXEC
       __promise const * __promise_;
     };
 
-    __variant<stop_source_type, stop_token_type> __stop_{__no_init};
-    __opstate_base*                              __state_ = nullptr;
+    __stop_variant_t __stop_{__no_init};
+    __opstate_base*  __state_ = nullptr;
   };
 #endif  // !STDEXEC_NO_STDCPP_COROUTINES()
 }  // namespace STDEXEC

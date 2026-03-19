@@ -116,7 +116,7 @@ namespace STDEXEC
     template <class _Token>
     struct __stop_callback_for
     {
-      using __callback_t = stop_callback_for_t<_Token, __forward_stop_request>;
+      using __callback_t = stop_callback_for_t<_Token, __forward_stop_request<>>;
 
       bool __register_stop_callback(_Token __token)
       {

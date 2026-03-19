@@ -457,6 +457,7 @@ namespace STDEXEC
     }
   }  // namespace __stok
 
+  template <class _StopSource = inplace_stop_source>
   struct __forward_stop_request
   {
     void operator()() const noexcept
@@ -464,8 +465,12 @@ namespace STDEXEC
       __stop_source_.request_stop();
     }
 
-    inplace_stop_source& __stop_source_;
+    _StopSource& __stop_source_;
   };
+
+  template <class _StopSource>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+  __forward_stop_request(_StopSource&) -> __forward_stop_request<_StopSource>;
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

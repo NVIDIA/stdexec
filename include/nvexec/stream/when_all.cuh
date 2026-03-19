@@ -301,7 +301,7 @@ namespace nv::execution::_strm
       using _indices_t          = __indices_for<Senders...>;
       using _stream_providers_t = std::array<stream_provider, sizeof...(Senders)>;
       using _stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_receiver_t>>, __forward_stop_request>;
+        stop_callback_for_t<stop_token_of_t<env_of_t<_receiver_t>>, __forward_stop_request<>>;
 
       template <class Sender, std::size_t Index>
       using _child_opstate_t =
