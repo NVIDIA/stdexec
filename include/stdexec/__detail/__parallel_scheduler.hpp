@@ -62,7 +62,7 @@ namespace STDEXEC
   class parallel_scheduler;
   class __parallel_sender;
 
-  template <bool, sender _S, std::integral _Size, class _Fn, bool>
+  template <bool, sender _Sender, std::integral _Size, class _Fn, bool>
   class __parallel_bulk_sender;
 
   /// Returns a scheduler that can add work to the underlying execution context.

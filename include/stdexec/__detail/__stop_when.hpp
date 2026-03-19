@@ -104,20 +104,20 @@ namespace STDEXEC
         template <class _Fn>
         struct callback_type
         {
-          template <class _C>
-            requires __std::constructible_from<_Fn, _C>
-          explicit callback_type(__fused_token&& __ftkn, _C&& __fn)
-            noexcept(__nothrow_constructible_from<_Fn, _C>)
-            : __fn_(static_cast<_C&&>(__fn))
+          template <class _Cb>
+            requires __std::constructible_from<_Fn, _Cb>
+          explicit callback_type(__fused_token&& __ftkn, _Cb&& __fn)
+            noexcept(__nothrow_constructible_from<_Fn, _Cb>)
+            : __fn_(static_cast<_Cb&&>(__fn))
             , __cb1_(std::move(__ftkn.__tkn1_), __cb(this))
             , __cb2_(std::move(__ftkn.__tkn2_), __cb(this))
           {}
 
-          template <class _C>
-            requires __std::constructible_from<_Fn, _C>
-          explicit callback_type(__fused_token const & __ftkn, _C&& __fn)
-            noexcept(__nothrow_constructible_from<_Fn, _C>)
-            : __fn_(static_cast<_C&&>(__fn))
+          template <class _Cb>
+            requires __std::constructible_from<_Fn, _Cb>
+          explicit callback_type(__fused_token const & __ftkn, _Cb&& __fn)
+            noexcept(__nothrow_constructible_from<_Fn, _Cb>)
+            : __fn_(static_cast<_Cb&&>(__fn))
             , __cb1_(__ftkn.__tkn1_, __cb(this))
             , __cb2_(__ftkn.__tkn2_, __cb(this))
           {}
