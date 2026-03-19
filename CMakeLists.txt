@@ -53,6 +53,15 @@ endif()
 file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
 string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
 
+# Determine if STDEXEC is built as a subproject (using add_subdirectory) or if it is the main project.
+if (NOT DEFINED STDEXEC_MAIN_PROJECT)
+  set(STDEXEC_MAIN_PROJECT OFF)
+  # Checking project name is more reliable than checking source directories.
+  if (NOT DEFINED PROJECT_NAME)
+    set(STDEXEC_MAIN_PROJECT ON)
+  endif ()
+endif ()
+
 project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
@@ -81,15 +90,6 @@ rapids_cmake_write_version_file(include/stdexec_version_config.hpp)
 rapids_cmake_build_type(Release)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
-
-# Determine if STDEXEC is built as a subproject (using add_subdirectory) or if it is the main project.
-if (NOT DEFINED STDEXEC_MAIN_PROJECT)
-  set(STDEXEC_MAIN_PROJECT OFF)
-  # Checking project name is more reliable than checking source directories.
-  if (NOT DEFINED PROJECT_NAME)
-    set(STDEXEC_MAIN_PROJECT ON)
-  endif ()
-endif ()
 
 # Disable the tests by default unless it is the top level project and build testing was specified.
 if (STDEXEC_MAIN_PROJECT AND BUILD_TESTING)
