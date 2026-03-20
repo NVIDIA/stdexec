@@ -311,48 +311,51 @@ namespace STDEXEC
                             get_completion_signatures<_CvInitialSender, _Env...>())
       {
         using __initial_completions_t = decltype(__initial_completions);
-        auto __final_completions =
-          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>();
-
-        if constexpr (__never_sends<set_value_t,
-                                    _CvFinalSender,
-                                    __mk_final_env_t<_CvInitialSender, _Env>...>)
+        STDEXEC_COMPLSIGS_LET(
+          __final_completions,
+          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>())
         {
-          // If the finally sender doesn't have set_value completions, then we
-          // don't need to worry about the initial sender's value types not being
-          // nothrow decay-copyable, because they won't be propagated to the
-          // receiver.
-          return STDEXEC::__transform_completion_signatures(__initial_completions,
-                                                            __ignore_completion(),
-                                                            {},
-                                                            {},
-                                                            __final_completions);
-        }
-        else if constexpr (!sender_of<_CvFinalSender,
-                                      set_value_t(),
+          if constexpr (__never_sends<set_value_t,
+                                      _CvFinalSender,
                                       __mk_final_env_t<_CvInitialSender, _Env>...>)
-        {
-          // If the finally sender has value completions other than set_value_t(), then
-          // throw a compilation error.
-          return STDEXEC::__throw_compile_time_error<
-            _WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
-            _WHERE_(_IN_ALGORITHM_, __finally_t),
-            _WHY_(_THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_),
-            _WITH_PRETTY_SENDER_<_CvFinalSender>>();
-        }
-        else
-        {
-          using __is_nothrow_t = __nothrow_decay_copyable_results_t<__initial_completions_t>;
-          // The finally sender's completion signatures are ...
-          return STDEXEC::__concat_completion_signatures(
-            // ... the initial sender's completions with value types decayed ...
-            STDEXEC::__transform_completion_signatures(
-              __initial_completions,
-              __decay_arguments<set_value_t, __finally_t>()),
-            // ... and the final sender's error and stopped completions ...
-            STDEXEC::__transform_completion_signatures(__final_completions, __ignore_completion()),
-            // ... and possibly a set_error(exception_ptr) completion.
-            __eptr_completion_unless_t<__is_nothrow_t>());
+          {
+            // If the finally sender doesn't have set_value completions, then we
+            // don't need to worry about the initial sender's value types not being
+            // nothrow decay-copyable, because they won't be propagated to the
+            // receiver.
+            return STDEXEC::__transform_completion_signatures(__initial_completions,
+                                                              __ignore_completion(),
+                                                              {},
+                                                              {},
+                                                              __final_completions);
+          }
+          else if constexpr (!sender_of<_CvFinalSender,
+                                        set_value_t(),
+                                        __mk_final_env_t<_CvInitialSender, _Env>...>)
+          {
+            // If the finally sender has value completions other than set_value_t(), then
+            // throw a compilation error.
+            return STDEXEC::__throw_compile_time_error<
+              _WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
+              _WHERE_(_IN_ALGORITHM_, __finally_t),
+              _WHY_(_THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_),
+              _WITH_PRETTY_SENDER_<_CvFinalSender>>();
+          }
+          else
+          {
+            using __is_nothrow_t = __nothrow_decay_copyable_results_t<__initial_completions_t>;
+            // The finally sender's completion signatures are ...
+            return STDEXEC::__concat_completion_signatures(
+              // ... the initial sender's completions with value types decayed ...
+              STDEXEC::__transform_completion_signatures(
+                __initial_completions,
+                __decay_arguments<set_value_t, __finally_t>()),
+              // ... and the final sender's error and stopped completions ...
+              STDEXEC::__transform_completion_signatures(__final_completions,
+                                                         __ignore_completion()),
+              // ... and possibly a set_error(exception_ptr) completion.
+              __eptr_completion_unless_t<__is_nothrow_t>());
+          }
         }
       }
     }
