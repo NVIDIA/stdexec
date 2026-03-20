@@ -270,4 +270,21 @@ namespace
     CHECK(ctx.stopped());
   }
 
+#if !STDEXEC_NO_STDCPP_COROUTINES()
+  template <typename Timer>
+  ::STDEXEC::task<void> test_awaitable_in_stdexec_task(Timer& timer)
+  {
+    co_await timer.async_wait(::asio_impl::as_tuple(exec::asio::use_sender));
+  }
+
+  TEST_CASE("Can await an Asio-based asynchronous operation which uses use_sender as its "
+            "completion token from a stdexec task",
+            "[asioexec][use_sender]")
+  {
+    ::asio_impl::io_context   ctx;
+    ::asio_impl::steady_timer timer(ctx);
+    CHECK_NOTHROW(test_awaitable_in_stdexec_task(timer));
+  }
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+
 }  // namespace
