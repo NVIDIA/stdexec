@@ -386,6 +386,13 @@ namespace experimental::execution
         using bulk_opstate_t =
           bulk_opstate<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>;
 
+        explicit bulk_sender(DerivedPoolType& pool, Sender sndr, Shape shape, Fun fun)
+          : pool_(pool)
+          , sndr_(std::move(sndr))
+          , shape_(shape)
+          , fun_(std::move(fun))
+        {}
+
         template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
           requires STDEXEC::receiver_of<Receiver,
                                         _completion_signatures_t<Self, STDEXEC::env_of_t<Receiver>>>
@@ -433,6 +440,7 @@ namespace experimental::execution
           return {*this};
         }
 
+       private:
         DerivedPoolType& pool_;
         Sender           sndr_;
         Shape            shape_;
