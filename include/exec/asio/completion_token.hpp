@@ -628,7 +628,7 @@ namespace ASIOEXEC_ASIO_NAMESPACE
 
     static type
     get(::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver> const & h,
-        Allocator const &) noexcept
+        ::STDEXEC::__ignore = {}) noexcept
     {
       return ::STDEXEC::get_allocator(::STDEXEC::get_env(h.state().r_));
     }
