@@ -130,4 +130,20 @@ namespace
       // Verify the program finishes without crashing
     }
   }
+
+#if !STDEXEC_NO_STDCPP_COROUTINES()
+  template <typename AsyncScope>
+  ::STDEXEC::task<void> test_awaitable_in_stdexec_task(AsyncScope& scope)
+  {
+    co_await scope.on_empty();
+  }
+
+  TEST_CASE("Can await async_scope on_empty operation from a stdexec task",
+            "[types][type_async_scope]")
+  {
+    exec::async_scope scope;
+    CHECK_NOTHROW(test_awaitable_in_stdexec_task(scope));
+  }
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+
 }  // namespace
