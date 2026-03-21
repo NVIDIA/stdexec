@@ -21,6 +21,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
+#include "__tuple.hpp"
 #include "__utility.hpp"
 
 #include <type_traits>
