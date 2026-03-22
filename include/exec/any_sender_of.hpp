@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__any.hpp"
 #include "../stdexec/execution.hpp"
 
 #include "sequence_senders.hpp"
@@ -1303,88 +1302,6 @@ namespace experimental::execution
       template <class _Sig>
       using __f = STDEXEC::__mbool<STDEXEC_IS_SAME(_Tag, __detail::__tag_of_sig_t<_Sig>)>;
     };
-
-    template <class _Query, class... _Queries>
-    struct __query_traits
-    {
-      static constexpr std::size_t __index = STDEXEC::__npos;
-    };
-
-    template <class _Query, class... _Results, class... _Queries>
-      requires __one_of<_Query, _Queries...>
-    struct __query_traits<_Query, _Results(_Queries)...>
-    {
-      static constexpr std::size_t __index = STDEXEC::__index_of<_Query, _Queries...>();
-      using __result_t                     = STDEXEC::__m_at_c<__index, _Results...>;
-    };
-
-    template <class _Sigs, class... _Queries>
-    struct __rcvr_ref;
-
-    template <class... _Sigs, class... _Queries, class... _Results>
-    struct __rcvr_ref<completion_signatures<_Sigs...>, _Results(_Queries)...>
-    {
-      template <class _Base>
-      struct __interface;
-
-      template <class _Base>
-      using __interface_base_t =
-        STDEXEC::__any::__interface_base<__interface,
-                                         _Base,
-                                         STDEXEC::__any::__extends<STDEXEC::__any::__imovable>>;
-
-      template <class _Base>
-      struct __interface : __interface_base_t<_Base>
-      {
-       private:
-        template <class>
-        friend struct __interface;
-
-        virtual void __complete(std::size_t __index, void* __args) noexcept
-        {
-          STDEXEC::__any::__value(*this).__complete(__index, __args);
-        }
-
-        virtual void __query(std::size_t __index, void* __out) const
-        {
-          STDEXEC::__any::__value(*this).__query(__index, __out);
-        }
-
-        struct __env
-        {
-          template <__one_of<_Queries...> _Query>
-          constexpr auto query() const;
-        };
-
-       public:
-        using __interface_base_t<_Base>::__interface_base_t;
-
-        template <class... _As>
-          requires __one_of<set_value_t(_As...), _Sigs...>
-        constexpr void set_value(_As && ... __as) noexcept
-        {
-          constexpr auto             __index = STDEXEC::__index_of<set_value_t(_As...), _Sigs...>();
-          STDEXEC::__tuple<_As&&...> __args{static_cast<_As&&>(__as)...};
-          __complete(__index, &__args);
-        }
-
-        template <class _Error>
-          requires __one_of<set_error_t(_Error), _Sigs...>
-        constexpr void set_error(_Error && __err) noexcept
-        {
-          constexpr auto __index = STDEXEC::__index_of<set_error_t(_Error), _Sigs...>();
-          __complete(__index, &__err);
-        }
-
-        constexpr void set_stopped() noexcept
-          requires __one_of<set_stopped_t(), _Sigs...>
-        {
-          constexpr auto __index = STDEXEC::__index_of<set_stopped_t(), _Sigs...>();
-          __complete(__index, nullptr);
-        }
-      };
-    };
-
   }  // namespace __any
 
   template <auto... _Sigs>
