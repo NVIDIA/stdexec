@@ -35,7 +35,8 @@ namespace experimental::execution
 
     template <class... Sigs>
     constexpr auto make_unique(Sigs*...)
-      -> STDEXEC::__mapply_q<STDEXEC::completion_signatures, STDEXEC::__mmake_set<Sigs...>>;
+      -> STDEXEC::__mcall<STDEXEC::__munique<STDEXEC::__qq<STDEXEC::completion_signatures>>,
+                          Sigs...>;
 
     template <class... Sigs>
     using make_completion_signatures_t = decltype(detail::make_unique(

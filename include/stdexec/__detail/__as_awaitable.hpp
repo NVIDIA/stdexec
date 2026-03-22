@@ -17,6 +17,7 @@
 
 #include "__execution_fwd.hpp"
 
+#include "../coroutine.hpp"
 #include "../functional.hpp"
 #include "__atomic.hpp"
 #include "__awaitable.hpp"
@@ -25,7 +26,6 @@
 #include "__connect.hpp"
 #include "__meta.hpp"
 #include "__queries.hpp"
-#include "__tag_invoke.hpp"
 #include "__type_traits.hpp"
 
 #include <exception>
@@ -193,8 +193,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> env_of_t<_Promise&>
       {
-        auto __pcoro = this->__awaiter_.__continuation_.address();
-        auto __hcoro = __std::coroutine_handle<_Promise>::from_address(__pcoro);
+        auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(this->__awaiter_.__continuation_);
         return STDEXEC::get_env(__hcoro.promise());
       }
     };
@@ -230,10 +229,9 @@ namespace STDEXEC
           // Resuming the stopped continuation unwinds the coroutine stack until we reach
           // a promise that can handle the stopped signal. The coroutine referred to by
           // __continuation_ will never be resumed.
-          auto  __pcoro   = this->__awaiter_.__continuation_.address();
-          auto  __hcoro   = __std::coroutine_handle<_Promise>::from_address(__pcoro);
-          auto& __promise = __hcoro.promise();
-          __std::coroutine_handle<> __unwind = __promise.unhandled_stopped();
+          auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(
+            this->__awaiter_.__continuation_);
+          __std::coroutine_handle<> __unwind = __hcoro.promise().unhandled_stopped();
           __unwind.resume();
         }
         STDEXEC_CATCH_ALL
@@ -269,7 +267,7 @@ namespace STDEXEC
                                                       __std::memory_order_acquire);
         if (__was_ready)
         {
-          // We get here if __ready_ was true then the CAS was executed. It got set to
+          // We get here if __ready_ was true when the CAS was executed. It got set to
           // true in await_suspend() immediately after the operation was started, which
           // implies that this completion is happening asynchronously, so we need to
           // resume the continuation from here.

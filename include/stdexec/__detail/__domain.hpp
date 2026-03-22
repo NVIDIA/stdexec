@@ -146,14 +146,15 @@ namespace STDEXEC
                                             decltype((_Domains(), ...)),
                                             indeterminate_domain<_Domains...>>;
 
-    template <class _DomainSet>
-    using __domain_from_set_t = __mapply<__if_c<__mset_contains<_DomainSet, indeterminate_domain<>>,
-                                                __mconst<indeterminate_domain<>>,
-                                                __qq<__indeterminate_domain_t>>,
-                                         _DomainSet>;
+    template <class... _DomainSet>
+    using __domain_from_set_t =
+      __mcall<__if<__mcall<__mcontains<indeterminate_domain<>>, _DomainSet...>,
+                   __mconst<indeterminate_domain<>>,
+                   __qq<__indeterminate_domain_t>>,
+              _DomainSet...>;
 
     template <class... _Domains>
-    using __make_domain_t = __domain_from_set_t<__mmake_set<_Domains...>>;
+    using __make_domain_t = __mcall<__munique<__qq<__domain_from_set_t>>, _Domains...>;
 
     // Common domain for a set of domains
     template <class... _Domains>

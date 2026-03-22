@@ -1089,7 +1089,15 @@ namespace STDEXEC
   template <class _Continuation = __q<__mlist>>
   struct __munique
   {
+#if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack) && STDEXEC_HAS_BUILTIN(__builtin_sort_pack)
+    template <class... _Ts>
+    using __f = __minvoke<_Continuation, __builtin_sort_pack<__builtin_dedup_pack<_Ts...>...>...>;
+#elif STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
+    template <class... _Ts>
+    using __f = __minvoke<_Continuation, __builtin_dedup_pack<_Ts...>...>;
+#else
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
+#endif
   };
 }  // namespace STDEXEC

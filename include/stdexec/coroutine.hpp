@@ -16,11 +16,19 @@
 #pragma once
 
 #include "__detail/__awaitable.hpp"  // IWYU pragma: export
+#include "__detail/__concepts.hpp"
 #include "__detail/__config.hpp"
 
-#if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
 namespace STDEXEC
 {
+  template <class _Tp, __one_of<_Tp, void> _Up>
+  constexpr auto __coroutine_handle_cast(__std::coroutine_handle<_Up> __h) noexcept  //
+    -> __std::coroutine_handle<_Tp>
+  {
+    return __std::coroutine_handle<_Tp>::from_address(__h.address());
+  }
+
+#if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates the return
@@ -129,10 +137,10 @@ namespace STDEXEC
       return __c.__coro_;
     }
   }  // namespace __destroy_and_continue_msvc
-}  // namespace STDEXEC
 
 #  define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue)                                      \
     (::STDEXEC::__destroy_and_continue_msvc::__impl(__destroy, __continue))
 #else
 #  define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) (__destroy.destroy(), __continue)
 #endif
+}  // namespace STDEXEC

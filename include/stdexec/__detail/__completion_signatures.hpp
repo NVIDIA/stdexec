@@ -21,7 +21,7 @@
 #include "__concepts.hpp"
 #include "__diagnostics.hpp"
 #include "__meta.hpp"
-#include "__tuple.hpp"
+#include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 #include "__utility.hpp"
 
 #include <type_traits>
@@ -272,6 +272,10 @@ namespace STDEXEC
   inline constexpr bool __sends_stopped =
     __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value != 0;
 
+  // set_value_t() when _Type is void; otherwise, set_value_t(_Type)
+  template <class _Type>
+  using __single_value_sig_t = __mcall1<__mremove<void, __qf<set_value_t>>, _Type>;
+
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
   STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
@@ -280,7 +284,7 @@ namespace STDEXEC
   // concat_completion_signatures
   template <class... _Sigs>
   using __concat_completion_signatures_t =
-    __mconcat<__qq<completion_signatures>>::__f<__mconcat<__qq<__mmake_set>>::__f<_Sigs...>>;
+    __mcall<__mconcat<__munique<__qq<completion_signatures>>>, _Sigs...>;
 
   namespace __detail
   {
