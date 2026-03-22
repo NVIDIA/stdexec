@@ -21,7 +21,6 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
-#include "__meta.hpp"
 #include "__receivers.hpp"
 
 #include <exception>
