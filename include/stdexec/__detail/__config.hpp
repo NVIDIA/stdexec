@@ -227,27 +227,27 @@ STDEXEC_NAMESPACE_STD_END
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
 {
-  namespace __coro = std;  // NOLINT(misc-unused-alias-decls)
+  // NOLINTBEGIN(misc-unused-alias-decls)
+  using std::coroutine_handle;
+  using std::suspend_always;
+  using std::suspend_never;
+  using std::noop_coroutine;
+  // NOLINTEND(misc-unused-alias-decls)
 }  // namespace STDEXEC::__std
 #elif defined(__cpp_coroutines) && __has_include(<experimental/coroutine>)
-#  include <experimental/coroutine>
+#  include <experimental/coroutine>  // IWYU pragma: keep
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
 {
-  namespace __coro = std::experimental;  // NOLINT(misc-unused-alias-decls)
+  // NOLINTBEGIN(misc-unused-alias-decls)
+  using std::experimental::coroutine_handle;
+  using std::experimental::suspend_always;
+  using std::experimental::suspend_never;
+  using std::experimental::noop_coroutine;
+  // NOLINTEND(misc-unused-alias-decls)
 }  // namespace STDEXEC::__std
 #else
 #  define STDEXEC_NO_STDCPP_COROUTINES() 1
-#endif
-
-#if !STDEXEC_NO_STDCPP_COROUTINES()
-namespace STDEXEC::__std
-{
-  using __coro::coroutine_handle;
-  using __coro::suspend_always;
-  using __coro::suspend_never;
-  using __coro::noop_coroutine;
-}  // namespace STDEXEC::__std
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
