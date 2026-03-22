@@ -18,10 +18,10 @@
 #include "__execution_fwd.hpp"
 
 #include "__awaitable.hpp"
+#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
-#include "__meta.hpp"
 #include "__receivers.hpp"
 
 #include <exception>
@@ -37,10 +37,12 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
+    // clang-format off
     template <class _Tp, class _Promise>
     concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
       static_cast<_Tp&&>(__t).as_awaitable(__promise);
     };
+    // clang-format on
 
     // A partial duplicate of with_awaitable_senders to avoid circular type dependencies
     template <class _Promise>
@@ -66,8 +68,9 @@ namespace STDEXEC
       template <class _Ty>
         requires __has_as_awaitable_member<_Ty, _Promise&>
               || __tag_invocable<as_awaitable_t, _Ty, _Promise&>
-      STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto await_transform(_Ty&& __value)
+      [[deprecated("The use of tag_invoke to customize the behavior of await_transform is "
+                   "deprecated. Please provide an as_awaitable member function instead.")]]
+      STDEXEC_ATTRIBUTE(nodiscard, host, device) auto await_transform(_Ty&& __value)
         noexcept(__nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
           -> __tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&>
       {
@@ -154,15 +157,9 @@ namespace STDEXEC
       : __promise_base
       , __with_await_transform<__promise<_Receiver>>
     {
-#  if STDEXEC_EDG()
-      constexpr __promise(auto&&, _Receiver&& __rcvr) noexcept
+      constexpr explicit(!STDEXEC_EDG()) __promise(auto&, _Receiver& __rcvr) noexcept
         : __rcvr_(__rcvr)
       {}
-#  else
-      constexpr explicit __promise(auto&, _Receiver& __rcvr) noexcept
-        : __rcvr_(__rcvr)
-      {}
-#  endif
 
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
       {
@@ -227,8 +224,8 @@ namespace STDEXEC
 #  if STDEXEC_GCC() && (STDEXEC_GCC_VERSION >= 12'00)
     __attribute__((__used__))
 #  endif
-    static auto
-    __co_impl(_Awaitable __awaitable, _Receiver __rcvr) -> __connect_await::__operation<_Receiver>
+    static auto __co_impl(_Awaitable __awaitable, _Receiver __rcvr)  //
+      -> __connect_await::__operation<_Receiver>
     {
       using __result_t = __await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>;
       std::exception_ptr __eptr;
@@ -252,12 +249,10 @@ namespace STDEXEC
     }
 
     template <receiver _Receiver, class _Awaitable>
-    using __completions_t =
-      completion_signatures<__minvoke<  // set_value_t() or set_value_t(T)
-                              __mremove<void, __qf<set_value_t>>,
-                              __await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>>,
-                            set_error_t(std::exception_ptr),
-                            set_stopped_t()>;
+    using __completions_t = completion_signatures<
+      __single_value_sig_t<__await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>>,
+      set_error_t(std::exception_ptr),
+      set_stopped_t()>;
 
    public:
     template <class _Receiver, __awaitable<__connect_await::__promise<_Receiver>> _Awaitable>

@@ -19,7 +19,6 @@
 #include "__affine_on.hpp"
 #include "__as_awaitable.hpp"
 #include "__config.hpp"
-#include "__inline_scheduler.hpp"
 #include "__meta.hpp"
 #include "__optional.hpp"
 #include "__schedulers.hpp"
@@ -279,7 +278,7 @@ namespace STDEXEC
     using __error_variant_t = __error_types_t<error_types, __q<__variant>, __q1<__decay_t>>;
 
     using __completions_t = __concat_completion_signatures_t<
-      completion_signatures<__detail::__single_value_sig_t<_Ty>, set_stopped_t()>,
+      completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
       error_types>;
 
     static constexpr void __sink(task) noexcept {}
@@ -346,7 +345,7 @@ namespace STDEXEC
       }
     }
 
-    struct __opstate_base : allocator_type
+    struct __opstate_base : private allocator_type
     {
       template <class _EnvProvider>
       constexpr explicit __opstate_base(task&& __task, _EnvProvider const & __has_env) noexcept
@@ -651,7 +650,7 @@ namespace STDEXEC
     constexpr auto await_transform(_Sender&& __sndr) noexcept
     {
       using __schedule_sndr_t = schedule_result_t<scheduler_type>;
-      if constexpr (__completes_inline<set_value_t, env_of_t<__schedule_sndr_t>, __env>)
+      if constexpr (__completes_where_it_starts<set_value_t, env_of_t<__schedule_sndr_t>, __env>)
       {
         return STDEXEC::as_awaitable(static_cast<_Sender&&>(__sndr), *this);
       }
@@ -708,7 +707,7 @@ namespace STDEXEC
 
     template <class _Alloc, class... _Args>
     static void
-    operator delete(void* __ptr, size_t __bytes, std::allocator_arg_t, _Alloc, _Args&&...)
+    operator delete(void* __ptr, size_t __bytes, std::allocator_arg_t, _Alloc, _Args&&...) noexcept
     {
       __promise::operator delete(__ptr, __bytes);
     }

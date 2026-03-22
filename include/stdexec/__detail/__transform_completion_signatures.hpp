@@ -610,8 +610,8 @@ namespace STDEXEC
 
   template <class _Fun, class... _Args>
     requires __invocable<_Fun, _Args...>
-  using __set_value_from_t = completion_signatures<
-    __minvoke<__mremove<void, __qf<set_value_t>>, __invoke_result_t<_Fun, _Args...>>>;
+  using __set_value_from_t =
+    completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>>;
 
   template <class _Completions>
   using __decay_copyable_results_t =

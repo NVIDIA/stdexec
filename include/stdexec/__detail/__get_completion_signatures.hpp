@@ -37,10 +37,6 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       auto get_env() const noexcept -> _Env const &;
     };
-
-    // set_value_t(_Type) when _Type is not void, and set_value_t() when _Type is void
-    template <class _Type>
-    using __single_value_sig_t = __mcall1<__mremove<void, __qf<set_value_t>>, _Type>;
   }  // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
@@ -99,7 +95,7 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     using __co_await_completions_t =  //
       completion_signatures<
-        __detail::__single_value_sig_t<__await_result_t<_Sender, __detail::__promise<_Env>...>>,
+        __single_value_sig_t<__await_result_t<_Sender, __detail::__promise<_Env>...>>,
         set_error_t(std::exception_ptr),
         set_stopped_t()>;
 
