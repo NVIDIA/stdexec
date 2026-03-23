@@ -132,9 +132,10 @@ namespace STDEXEC
       _Alloc(STDEXEC::get_allocator(STDEXEC::get_env(__has_env)));
     };
 
-    template <class _EnvProvider, class _Scheduler>
-    concept __has_scheduler_compatible_with = requires(_EnvProvider const & __has_env) {
-      _Scheduler(STDEXEC::get_scheduler(STDEXEC::get_env(__has_env)));
+    template <class _EnvProvider, class _Scheduler, class... _Alloc>
+    concept __has_scheduler_compatible_with = requires(_EnvProvider const & __has_env,
+                                                       _Alloc const &... __alloc) {
+      _Scheduler(STDEXEC::get_scheduler(STDEXEC::get_env(__has_env)), __alloc...);
     };
 
     template <class _StopSource>
@@ -299,9 +300,17 @@ namespace STDEXEC
 
     template <class _EnvProvider>
     [[nodiscard]]
-    static auto __mk_sched(_EnvProvider const & __has_env) noexcept -> scheduler_type
+    static auto __mk_sched(_EnvProvider const & __has_env, allocator_type const & __alloc) noexcept
+      -> scheduler_type
     {
-      if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider, scheduler_type>)
+      // NOT TO SPEC: try constructing the scheduler with the allocator if possible.
+      if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider,
+                                                            scheduler_type,
+                                                            allocator_type>)
+      {
+        return scheduler_type(get_scheduler(STDEXEC::get_env(__has_env)), __alloc);
+      }
+      else if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider, scheduler_type>)
       {
         return scheduler_type(get_scheduler(STDEXEC::get_env(__has_env)));
       }
@@ -350,7 +359,7 @@ namespace STDEXEC
       template <class _EnvProvider>
       constexpr explicit __opstate_base(task&& __task, _EnvProvider const & __has_env) noexcept
         : allocator_type(__mk_alloc(__has_env))
-        , __sch_(__mk_sched(__has_env))
+        , __sch_(__mk_sched(__has_env, __get_allocator()))
         , __task_(static_cast<task&&>(__task))
       {
         auto& __promise = __task_.__coro_.promise();
@@ -376,7 +385,7 @@ namespace STDEXEC
       virtual auto __canceled() noexcept -> __std::coroutine_handle<>  = 0;
 
       [[nodiscard]]
-      constexpr auto __get_allocator() const noexcept -> allocator_type
+      constexpr auto __get_allocator() const noexcept -> allocator_type const &
       {
         return static_cast<allocator_type const &>(*this);
       }
