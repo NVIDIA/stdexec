@@ -216,13 +216,13 @@ namespace STDEXEC
       {
         constexpr bool __non_throwing = (__nothrow_constructible_from<__decay_t<_T>, _T> && ...);
 
-        try
+        STDEXEC_TRY
         {
           __state_->__result_.template emplace<__decayed_tuple<_CPO, _T...>>(_CPO{},
                                                                              static_cast<_T&&>(
                                                                                __t)...);
         }
-        catch (...)
+        STDEXEC_CATCH_ALL
         {
           if constexpr (!__non_throwing)
           {
@@ -814,11 +814,11 @@ namespace STDEXEC
       {
         constexpr bool __non_throwing = noexcept(__state.__run());
 
-        try
+        STDEXEC_TRY
         {
           __state.__run();
         }
-        catch (...)
+        STDEXEC_CATCH_ALL
         {
           if constexpr (!__non_throwing)
           {
