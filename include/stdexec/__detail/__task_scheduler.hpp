@@ -598,13 +598,12 @@ namespace STDEXEC
     class __opstate : _Alloc
     {
      public:
-      using allocator_type = _Alloc;
-      using receiver_proxy = system_context_replaceability::receiver_proxy;
-      using __receiver_t   = __detail::__proxy_receiver<receiver_proxy, _Env>;
+      using __rcvr_proxy_t = system_context_replaceability::receiver_proxy;
+      using __receiver_t   = __detail::__proxy_receiver<__rcvr_proxy_t, _Env>;
 
       constexpr explicit __opstate(_Alloc          __alloc,
                                    _Sndr           __sndr,
-                                   receiver_proxy& __rcvr,
+                                   __rcvr_proxy_t& __rcvr,
                                    bool            __in_situ)
         : _Alloc(std::move(__alloc))
         , __opstate_(STDEXEC::connect(std::move(__sndr),
