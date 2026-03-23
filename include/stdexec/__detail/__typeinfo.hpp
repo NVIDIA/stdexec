@@ -19,8 +19,6 @@
 #include "__config.hpp"
 #include "__meta.hpp"
 
-#include <cstddef>
-
 #include <compare>
 #include <string_view>
 #include <typeinfo>
