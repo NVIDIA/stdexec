@@ -455,29 +455,8 @@ namespace STDEXEC::__any
     }
 
    private:
+    STDEXEC_ATTRIBUTE(no_unique_address)
     _Value __val_;
-  };
-
-  // A specialization of __box to take advantage of EBO (empty base optimization):
-  template <class _Value>
-    requires std::is_empty_v<_Value> && (!std::is_final_v<_Value>)
-  struct STDEXEC_ATTRIBUTE(empty_bases) __box<_Value> : private _Value
-  {
-    constexpr explicit __box(_Value __value) noexcept
-      : _Value(std::move(__value))
-    {}
-
-    template <class... _Args>
-    constexpr explicit __box(_Args &&...__args) noexcept
-      : _Value(static_cast<_Args &&>(__args)...)
-    {}
-
-    template <class _Self>
-    [[nodiscard]]
-    static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
-    {
-      return std::forward<__copy_cvref_t<_Self, _Value>>(__self);
-    }
   };
 
   template <class _Interface, __box_kind _BoxKind>
@@ -1790,6 +1769,7 @@ namespace STDEXEC::__any
     }
 
    private:
+    using __model_type = __reference_proxy_model<_Interface>;
     static_assert(sizeof(__iabstract<_Interface>) == sizeof(void *));  // sanity check
 
     template <template <class> class>
@@ -1822,7 +1802,6 @@ namespace STDEXEC::__any
     constexpr void __proxy_assign(_CvReferenceProxy *__proxy_ptr) noexcept
     {
       static_assert(_CvReferenceProxy::__box_kind == __box_kind::__proxy);
-      using __model_type         = __reference_proxy_model<_Interface>;
       constexpr bool __is_const_ = std::is_const_v<_CvReferenceProxy>;
 
       if (__proxy_ptr == nullptr || __empty(*__proxy_ptr))
@@ -1849,7 +1828,7 @@ namespace STDEXEC::__any
 
     // the proxy model is mutable so that a const __any_ptr can return non-const
     // references from operator-> and operator*.
-    mutable __reference_proxy_model<_Interface> __reference_;
+    mutable __model_type __reference_;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -1857,6 +1836,9 @@ namespace STDEXEC::__any
   template <template <class> class _Interface>
   struct __any_ptr : __any_ptr_base<_Interface>
   {
+    using __reference = __any_ptr_base<_Interface>::__model_type;
+    using __pointer   = __reference *;
+
     using __any_ptr_base<_Interface>::__any_ptr_base;
     using __any_ptr_base<_Interface>::operator=;
 
@@ -1916,13 +1898,16 @@ namespace STDEXEC::__any
   };
 
   template <template <class> class _Interface, class _Base>
-  __any_ptr(_Interface<_Base> *) -> __any_ptr<_Interface>;
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __any_ptr(_Interface<_Base> *) -> __any_ptr<_Interface>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __any_const_ptr
   template <template <class> class _Interface>
   struct __any_const_ptr : __any_ptr_base<_Interface>
   {
+    using __reference = __any_ptr_base<_Interface>::__model_type const;
+    using __pointer   = __reference *;
+
     using __any_ptr_base<_Interface>::__any_ptr_base;
     using __any_ptr_base<_Interface>::operator=;
 
@@ -1975,6 +1960,7 @@ namespace STDEXEC::__any
   };
 
   template <template <class> class _Interface, class _Base>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __any_const_ptr(_Interface<_Base> const *) -> __any_const_ptr<_Interface>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
