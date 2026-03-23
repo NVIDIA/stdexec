@@ -157,7 +157,7 @@ namespace STDEXEC
 
     /// The operation state used to execute the work described by this sender.
     template <class _Rcvr>
-    struct __system_op : __immovable
+    struct __system_op
     {
       /// Constructs `this` from `__rcvr` and `__sched_impl`.
       __system_op(_Rcvr&& __rcvr, __backend_ptr_t __sched_impl)
@@ -169,6 +169,8 @@ namespace STDEXEC
         auto* __p = &__preallocated_.__as<__backend_ptr_t>();
         std::construct_at(__p, std::move(__sched_impl));
       }
+
+      STDEXEC_IMMOVABLE(__system_op);
 
       /// Starts the work stored in `this`.
       void start() & noexcept

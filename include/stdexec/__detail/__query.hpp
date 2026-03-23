@@ -76,7 +76,7 @@ namespace STDEXEC
   struct __query<_Query, __no_default, _Transform>
   {
     template <class _Sig>
-    inline static constexpr _Query (*signature)(_Sig) = nullptr;
+    [[deprecated]] inline static constexpr _Query (*signature)(_Sig) = nullptr;
 
     // Query with a .query member function:
     template <class _Qy = _Query, class _Env, class... _Args>

@@ -232,8 +232,8 @@ namespace STDEXEC
     constexpr auto operator()(_Sender&& __sndr, _Receiver&& __rcvr) const
       noexcept(__nothrow_callable<_DeclFn>) -> __call_result_t<_DeclFn>
     {
-      auto&& __new_sndr  = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
-      using __new_sndr_t = decltype(__new_sndr);
+      decltype(auto) __new_sndr = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
+      using __new_sndr_t        = decltype(__new_sndr);
 
       if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>)
       {

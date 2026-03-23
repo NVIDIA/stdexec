@@ -29,9 +29,9 @@ auto serial_fib(long n) -> long
   return n < 2 ? n : serial_fib(n - 1) + serial_fib(n - 2);
 }
 
-template <class... Ts>
+template <class... CompletionSigs>
 using any_sender_of =
-  exec::any_receiver_ref<stdexec::completion_signatures<Ts...>>::template any_sender<>;
+  exec::any_sender<exec::any_receiver<stdexec::completion_signatures<CompletionSigs...>>>;
 
 using fib_sender = any_sender_of<stdexec::set_value_t(long)>;
 

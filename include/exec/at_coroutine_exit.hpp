@@ -31,7 +31,8 @@ namespace experimental::execution
     using namespace STDEXEC;
 
     using __any_scheduler_t =
-      any_receiver_ref<completion_signatures<set_error_t(std::exception_ptr),
+      any_receiver_ref<completion_signatures<set_value_t(),
+                                             set_error_t(std::exception_ptr),
                                              set_stopped_t()>>::any_sender<>::any_scheduler<>;
 
     struct __die_on_stop_t

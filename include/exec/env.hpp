@@ -123,8 +123,15 @@ namespace experimental::execution
     struct read_with_default_t;
 
     template <class _Tag, class _Default, class _Receiver>
-    struct __opstate : __immovable
+    struct __opstate
     {
+      constexpr explicit __opstate(_Default&& __default, _Receiver&& __rcvr)
+        : __default_(static_cast<_Default&&>(__default))
+        , __rcvr_(static_cast<_Receiver&&>(__rcvr))
+      {}
+
+      STDEXEC_IMMOVABLE(__opstate);
+
       constexpr void start() & noexcept
       {
         STDEXEC_TRY
@@ -171,7 +178,9 @@ namespace experimental::execution
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
           -> __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
-        return {{}, static_cast<_Self&&>(__self).__default_, static_cast<_Receiver&&>(__rcvr)};
+        using __opstate_t = __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>;
+        return __opstate_t{static_cast<_Self&&>(__self).__default_,
+                           static_cast<_Receiver&&>(__rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 

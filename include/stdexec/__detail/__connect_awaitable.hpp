@@ -114,9 +114,15 @@ namespace STDEXEC
     {
       using __opstate_t = __opstate<_Awaitable, _Receiver>;
 
-      struct __task : __immovable
+      struct __task
       {
         using promise_type = __promise;
+
+        constexpr explicit __task(__std::coroutine_handle<__promise> __coro) noexcept
+          : __coro_(__coro)
+        {}
+
+        STDEXEC_IMMOVABLE(__task);
 
         ~__task()
         {
@@ -160,6 +166,7 @@ namespace STDEXEC
         : __opstate_(__opstate)
       {}
 
+#  if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 12'00
       static constexpr auto
       operator new([[maybe_unused]] std::size_t __bytes, __opstate_t& __opstate) noexcept -> void*
       {
@@ -171,10 +178,11 @@ namespace STDEXEC
       {
         // no-op
       }
+#  endif
 
       constexpr auto get_return_object() noexcept -> __task
       {
-        return __task{{}, __std::coroutine_handle<__promise>::from_promise(*this)};
+        return __task{__std::coroutine_handle<__promise>::from_promise(*this)};
       }
 
       [[noreturn]]

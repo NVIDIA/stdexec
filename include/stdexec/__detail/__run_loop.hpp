@@ -35,10 +35,11 @@ namespace STDEXEC
   // run_loop
   namespace __run_loop
   {
-    class __run_loop_base : __immovable
+    class __run_loop_base
     {
      public:
       __run_loop_base() = default;
+      STDEXEC_IMMOVABLE(__run_loop_base);
 
       ~__run_loop_base() noexcept
       {
@@ -83,7 +84,7 @@ namespace STDEXEC
         __task_count_.fetch_sub(2, __std::memory_order_release);
       }
 
-      struct __task : __immovable
+      struct __task
       {
         using __execute_fn_t = void(__task*) noexcept;
 
@@ -92,6 +93,8 @@ namespace STDEXEC
         constexpr explicit __task(__execute_fn_t* __execute_fn) noexcept
           : __execute_fn_(__execute_fn)
         {}
+
+        STDEXEC_IMMOVABLE(__task);
 
         STDEXEC_ATTRIBUTE(host, device)
         constexpr void __execute() noexcept

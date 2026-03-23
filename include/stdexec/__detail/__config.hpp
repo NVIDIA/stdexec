@@ -535,8 +535,8 @@ namespace STDEXEC
 #  define STDEXEC_UNREACHABLE(...) std::terminate()
 #endif
 
-// Before gcc-12, gcc really didn't like tuples or variants of immovable types
-#if STDEXEC_GCC() && (STDEXEC_GCC_VERSION < 12'00)
+// gcc struggles with copy-elision of immovable types
+#if STDEXEC_GCC()
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&)
 #else
 #  define STDEXEC_IMMOVABLE(_XP) _XP(_XP&&) = delete

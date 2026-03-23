@@ -63,6 +63,10 @@ set(exec_test_sources
     test_unless_stop_requested.cpp
     )
 
+set_source_files_properties(test_any_sender.cpp
+    PROPERTIES
+    COMPILE_FLAGS $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
+
 add_executable(test.exec ${exec_test_sources})
 target_link_libraries(test.exec
     PUBLIC
