@@ -412,18 +412,15 @@ namespace STDEXEC
     template <class _Sender, class _Promise>
     concept __awaitable_sender = __awaitable_adapted_sender<__adapted_sender_t<_Sender>, _Promise>;
 
-    struct __unspecified
-    {
-      constexpr auto get_return_object() noexcept -> __unspecified;
-      constexpr auto initial_suspend() noexcept -> __unspecified;
-      constexpr auto final_suspend() noexcept -> __unspecified;
-      constexpr void unhandled_exception() noexcept;
-      constexpr void return_void() noexcept;
-      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>;
-    };
-
     template <class _Sender, class _Promise>
     concept __incompatible_sender = sender<_Sender> && __merror<__value_t<_Sender, _Promise>>;
+
+    // clang-format off
+    template <class _Ty, class _Promise>
+    concept __simple_awaitable = requires(_Ty&& __value, _Promise& __promise) {
+      { STDEXEC::__get_awaiter(static_cast<_Ty&&>(__value)) } -> __awaiter<_Promise>;
+    };
+    // clang-format on
 
     template <class _Sender, class _Promise>
     concept __has_transform_as_awaitable_member =
@@ -448,7 +445,7 @@ namespace STDEXEC
             .as_awaitable(__promise));
 
     inline constexpr auto __with_await =  //
-      []<__awaitable<__unspecified> _Tp>(_Tp&& __t, __ignore)
+      []<class _Promise, __simple_awaitable<_Promise> _Tp>(_Tp&& __t, _Promise&)
         STDEXEC_AUTO_RETURN(static_cast<_Tp&&>(__t));
 
     inline constexpr auto __with_sender =  //

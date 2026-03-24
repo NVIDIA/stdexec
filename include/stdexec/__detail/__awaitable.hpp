@@ -35,8 +35,8 @@ namespace STDEXEC
   };
 
   template <class _Awaitable, class _Promise>
-  concept __has_await_transform = requires(_Promise *__promise, _Awaitable &&__awaitable) {
-    __promise->await_transform(static_cast<_Awaitable &&>(__awaitable));
+  concept __has_await_transform = requires(_Awaitable &&__awaitable, _Promise &__promise) {
+    __promise.await_transform(static_cast<_Awaitable &&>(__awaitable));
   };
 
   template <class _Awaitable>
@@ -46,9 +46,9 @@ namespace STDEXEC
   }
 
   template <class _Promise, __has_await_transform<_Promise> _Awaitable>
-  constexpr auto __get_awaitable(_Awaitable &&__awaitable, _Promise *__promise) -> decltype(auto)
+  constexpr auto __get_awaitable(_Awaitable &&__awaitable, _Promise &__promise) -> decltype(auto)
   {
-    return __promise->await_transform(static_cast<_Awaitable &&>(__awaitable));
+    return __promise.await_transform(static_cast<_Awaitable &&>(__awaitable));
   }
 
   template <class _Awaitable>
@@ -69,7 +69,7 @@ namespace STDEXEC
   }
 
   template <class _Awaitable, class... _Promise>
-  concept __awaitable = requires(_Awaitable &&__awaitable, _Promise *...__promise) {
+  concept __awaitable = requires(_Awaitable &&__awaitable, _Promise &...__promise) {
     {
       STDEXEC::__get_awaiter(
         STDEXEC::__get_awaitable(static_cast<_Awaitable &&>(__awaitable), __promise...))
@@ -81,11 +81,11 @@ namespace STDEXEC
 
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
-  using __await_result_t =
-    decltype(STDEXEC::__as_lvalue(STDEXEC::__get_awaiter(
-                                    STDEXEC::__get_awaitable(__declval<_Awaitable>(),
-                                                             static_cast<_Promise *>(nullptr)...)))
-               .await_resume());
+  using __await_result_t = decltype(STDEXEC::__as_lvalue(
+                                      STDEXEC::__get_awaiter(
+                                        STDEXEC::__get_awaitable(__declval<_Awaitable>(),
+                                                                 __declval<_Promise &>()...)))
+                                      .await_resume());
 
 #else
 
