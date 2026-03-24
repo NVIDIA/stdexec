@@ -22,6 +22,7 @@
 // include these after __execution_fwd.hpp
 #include "../functional.hpp"  // IWYU pragma: keep for __with_default
 #include "../stop_token.hpp"  // IWYU pragma: keep for get_stop_token_t
+#include "__any.hpp"
 #include "__any_allocator.hpp"
 #include "__inline_scheduler.hpp"
 #include "__optional.hpp"
@@ -56,6 +57,7 @@ namespace STDEXEC
 
       /// Query the receiver for a property of type `_Query`.
       template <class _Value, __class _Query>
+      [[nodiscard]]
       constexpr auto try_query(_Query) const noexcept -> std::optional<_Value>
       {
         std::optional<_Value> __val;
@@ -75,40 +77,60 @@ namespace STDEXEC
     };
 
     /// Interface for the parallel scheduler backend.
-    struct parallel_scheduler_backend
+    template <class _Base>
+    struct __iparallel_scheduler_backend
+      : __any::__interface_base<__iparallel_scheduler_backend, _Base>
     {
-      virtual constexpr ~parallel_scheduler_backend() = 0;
+      using __any::__interface_base<__iparallel_scheduler_backend, _Base>::__interface_base;
 
       /// Future-proofing: in case we need to add more virtual functions, we can use this
       /// to query for additional interfaces without breaking ABI.
       [[nodiscard]]
       virtual constexpr auto __query_interface(__type_index __id) const noexcept -> void*
       {
-        if (__id == __mtypeid<parallel_scheduler_backend>)
+        using __interface_t = __any::__iabstract<__iparallel_scheduler_backend>;
+        if constexpr (requires { __any::__value(*this).__query_interface(__id); })
         {
-          return const_cast<parallel_scheduler_backend*>(this);
+          return __any::__value(*this).__query_interface(__id);
+        }
+        else if (__id == __mtypeid<__interface_t>)
+        {
+          __interface_t const * __self = this;
+          return const_cast<__interface_t*>(__self);
         }
         return nullptr;
       }
 
-      /// Schedule work on parallel scheduler, calling `__r` when done and using `__s` for preallocated
+      /// Schedule work on parallel scheduler, calling `__rcvr` when done and using
+      /// `__scratch` for preallocated memory.
+      virtual constexpr void
+      schedule(receiver_proxy& __rcvr, std::span<std::byte> __scratch) noexcept
+      {
+        __any::__value(*this).schedule(__rcvr, __scratch);
+      }
+
+      /// Schedule bulk work of size `__count` on parallel scheduler, calling `__rcvr` for
+      /// different subranges of [0, __count), and using `__scratch` for preallocated
       /// memory.
-      virtual constexpr void schedule(receiver_proxy&, std::span<std::byte>) noexcept = 0;
+      virtual constexpr void schedule_bulk_chunked(std::size_t               __count,
+                                                   bulk_item_receiver_proxy& __rcvr,
+                                                   std::span<std::byte>      __scratch) noexcept
+      {
+        __any::__value(*this).schedule_bulk_chunked(__count, __rcvr, __scratch);
+      }
 
-      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for different
-      /// subranges of [0, __n), and using `__s` for preallocated memory.
-      virtual constexpr void schedule_bulk_chunked(std::size_t,
-                                                   bulk_item_receiver_proxy&,
-                                                   std::span<std::byte>) noexcept = 0;
-
-      /// Schedule bulk work of size `__n` on parallel scheduler, calling `__r` for each item, and
-      /// using `__s` for preallocated memory.
-      virtual constexpr void schedule_bulk_unchunked(std::size_t,
-                                                     bulk_item_receiver_proxy&,
-                                                     std::span<std::byte>) noexcept = 0;
+      /// Schedule bulk work of size `__count` on parallel scheduler, calling `__rcvr` for
+      /// each item, and using `__scratch` for preallocated memory.
+      virtual constexpr void schedule_bulk_unchunked(std::size_t               __count,
+                                                     bulk_item_receiver_proxy& __rcvr,
+                                                     std::span<std::byte>      __scratch) noexcept
+      {
+        __any::__value(*this).schedule_bulk_unchunked(__count, __rcvr, __scratch);
+      }
     };
 
-    inline constexpr parallel_scheduler_backend::~parallel_scheduler_backend() = default;
+    struct parallel_scheduler_backend : __any::__iabstract<__iparallel_scheduler_backend>
+    {};
   }  // namespace system_context_replaceability
 
   namespace __detail
