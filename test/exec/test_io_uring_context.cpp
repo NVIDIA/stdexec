@@ -25,6 +25,7 @@
 #  include "exec/linux/io_uring_context.hpp"
 #  include "exec/scope.hpp"
 #  include "exec/single_thread_context.hpp"
+#  include "exec/start_detached.hpp"
 #  include "exec/when_any.hpp"
 
 #  include "catch2/catch.hpp"
@@ -119,13 +120,13 @@ namespace
     io_uring_context   context;
     io_uring_scheduler scheduler = context.get_scheduler();
     bool               is_called = false;
-    start_detached(schedule(scheduler)
-                   | then(
-                     [&]
-                     {
-                       CHECK(context.is_running());
-                       is_called = true;
-                     }));
+    exec::start_detached(schedule(scheduler)
+                         | then(
+                           [&]
+                           {
+                             CHECK(context.is_running());
+                             is_called = true;
+                           }));
     context.run_until_empty();
     CHECK(is_called);
     CHECK(!context.is_running());
@@ -206,13 +207,13 @@ namespace
     io_uring_scheduler scheduler = context.get_scheduler();
     {
       bool is_called = false;
-      start_detached(schedule(scheduler)
-                     | then(
-                       [&]
-                       {
-                         CHECK(context.is_running());
-                         is_called = true;
-                       }));
+      exec::start_detached(schedule(scheduler)
+                           | then(
+                             [&]
+                             {
+                               CHECK(context.is_running());
+                               is_called = true;
+                             }));
       context.run_until_empty();
       CHECK(is_called);
       CHECK(!context.is_running());
