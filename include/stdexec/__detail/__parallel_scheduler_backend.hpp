@@ -216,7 +216,7 @@ namespace STDEXEC
         if constexpr (_Infallible)
         {
           STDEXEC_ASSERT(!+"set_error called on an infallible receiver proxy");
-          STDEXEC_UNREACHABLE();
+          __std::unreachable();
         }
         else
         {
@@ -230,7 +230,7 @@ namespace STDEXEC
         if constexpr (_Infallible && unstoppable_token<__stop_token_t>)
         {
           STDEXEC_ASSERT(!+"set_stopped called on an unstoppable receiver proxy");
-          STDEXEC_UNREACHABLE();
+          __std::unreachable();
         }
         else
         {

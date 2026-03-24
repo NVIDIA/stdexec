@@ -16,8 +16,13 @@
 #pragma once
 
 #include "__atomic.hpp"
+#include "__bulk.hpp"
+#include "__operation_states.hpp"
 #include "__parallel_scheduler_backend.hpp"
+#include "__schedulers.hpp"
+#include "__senders.hpp"
 #include "__system_context_replaceability_api.hpp"
+#include "__utility.hpp"
 
 #if STDEXEC_ENABLE_LIBDISPATCH
 #  include "../../exec/libdispatch_queue.hpp"  // IWYU pragma: keep
@@ -26,6 +31,14 @@
 #else
 #  include "../../exec/static_thread_pool.hpp"  // IWYU pragma: keep
 #endif
+
+#include <concepts>
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <span>
+#include <thread>
+#include <utility>
 
 namespace STDEXEC::__system_context_default_impl
 {
@@ -184,7 +197,7 @@ namespace STDEXEC::__system_context_default_impl
       [[nodiscard]]
       size_t __end(size_t __chunk_index) const noexcept
       {
-        return (std::min) (__begin(__chunk_index + 1), __max_size_);
+        return STDEXEC::__umin({__begin(__chunk_index + 1), __max_size_});
       }
     };
 
