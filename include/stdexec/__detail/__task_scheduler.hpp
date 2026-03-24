@@ -91,9 +91,10 @@ namespace STDEXEC
       // NOLINTEND(modernize-use-override)
     };
 
-    struct __any_task_scheduler_backend final : STDEXEC::__any::__any<__itask_scheduler_backend>
+    struct __any_task_scheduler_backend final
+      : STDEXEC::__any::__any<__task::__itask_scheduler_backend>
     {
-      using STDEXEC::__any::__any<__itask_scheduler_backend>::__any;
+      using STDEXEC::__any::__any<__task::__itask_scheduler_backend>::__any;
     };
 
     //////////////////////////////////////////////////////////////////////////////////////
