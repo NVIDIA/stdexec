@@ -17,6 +17,7 @@
 
 #include "__concepts.hpp"
 #include "__config.hpp"
+#include "__memory.hpp"
 #include "__type_traits.hpp"
 #include "__typeinfo.hpp"
 #include "__utility.hpp"
@@ -28,6 +29,7 @@
 #include <bit>
 #include <exception>
 #include <memory>
+#include <new>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -211,7 +213,7 @@ namespace STDEXEC::__any
     {
       template <class _Ty>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto &operator()(_Ty &&__arg) const noexcept
+      constexpr auto &&operator()(_Ty &&__arg) const noexcept
       {
         return __arg.__value_(static_cast<_Ty &&>(__arg));
       }
@@ -395,6 +397,11 @@ namespace STDEXEC::__any
     // needed by MSVC for EBO to work for some reason:
     constexpr virtual ~__iroot() = default;
 
+    constexpr virtual void __delete_() noexcept
+    {
+      this->~__iroot();
+    }
+
    private:
     template <template <class> class, class, class, size_t, size_t>
     friend struct __interface_base;
@@ -506,8 +513,9 @@ namespace STDEXEC::__any
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __emplace_into
-  template <class _Model, class... _Args>
-  constexpr _Model &__emplace_into([[maybe_unused]] __iroot            *&__root_ptr,
+  template <class _Model, class _Allocator, class... _Args>
+  constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const    &__alloc,
+                                   [[maybe_unused]] __iroot            *&__root_ptr,
                                    [[maybe_unused]] std::span<std::byte> __buff,
                                    _Args &&...__args)
   {
@@ -526,20 +534,27 @@ namespace STDEXEC::__any
       }
       else
       {
-        auto *const __model = ::new _Model(static_cast<_Args &&>(__args)...);
+        auto __alloc2         = STDEXEC::__rebind_allocator<_Model>(__alloc);
+        using __traits_t      = std::allocator_traits<decltype(__alloc2)>;
+        auto *const   __model = __traits_t::allocate(__alloc2, 1);
+        __scope_guard __guard{[&]() noexcept { __traits_t::deallocate(__alloc2, __model, 1); }};
+        __traits_t::construct(__alloc2, __model, static_cast<_Args &&>(__args)...);
+        __guard.__dismiss();
         *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(__model);
         return *__model;
       }
     }
   }
 
-  template <int = 0, class _CvRefValue, class _Value = std::decay_t<_CvRefValue>>
+  template <int = 0, class _CvRefValue, class _Allocator, class _Value = std::decay_t<_CvRefValue>>
   STDEXEC_ATTRIBUTE(always_inline)
-  constexpr _Value &__emplace_into(__iroot            *&__root_ptr,
+  constexpr _Value &__emplace_into(_Allocator const    &__alloc,
+                                   __iroot            *&__root_ptr,
                                    std::span<std::byte> __buff,
                                    _CvRefValue        &&__value)
   {
-    return STDEXEC::__any::__emplace_into<_Value>(__root_ptr,
+    return STDEXEC::__any::__emplace_into<_Value>(__alloc,
+                                                  __root_ptr,
                                                   __buff,
                                                   static_cast<_CvRefValue &&>(__value));
   }
@@ -574,15 +589,26 @@ namespace STDEXEC::__any
   using __reference_proxy_model = __reference<_Interface>;
 
   // __value
-  template <template <class> class _Interface, class _Value>
-  struct __value_root;
+  template <template <class> class _Interface, class _Value, class _Allocator>
+  struct __value_root_with_allocator;
 
-  template <template <class> class _Interface, class _Value>
+  template <template <class> class _Interface, class _Value, class _Allocator>
   struct __value_model final
-    : _Interface<__mcall1<__bases_of<_Interface>, __value_root<_Interface, _Value>>>
+    : _Interface<__mcall1<__bases_of<_Interface>,
+                          __value_root_with_allocator<_Interface, _Value, _Allocator>>>
   {
-    using __base_t = _Interface<__mcall1<__bases_of<_Interface>, __value_root<_Interface, _Value>>>;
+    using __base_t =
+      _Interface<__mcall1<__bases_of<_Interface>,
+                          __value_root_with_allocator<_Interface, _Value, _Allocator>>>;
     using __base_t::__base_t;
+
+    constexpr void __delete_() noexcept final
+    {
+      auto __alloc     = STDEXEC::__rebind_allocator<__value_model>(this->__get_allocator());
+      using __traits_t = std::allocator_traits<decltype(__alloc)>;
+      __traits_t::destroy(__alloc, this);
+      __traits_t::deallocate(__alloc, this, 1);
+    }
 
     // This is a virtual override if _Interface extends __imovable
     //! @pre __is_small<__value_model>(__buff.size())
@@ -590,7 +616,12 @@ namespace STDEXEC::__any
     {
       static_assert(__extension_of<__iabstract<_Interface>, __imovable>);
       STDEXEC_ASSERT(STDEXEC::__any::__is_small<__value_model>(__buff.size()));
-      STDEXEC::__any::__emplace_into(__ptr, __buff, std::move(*this));
+      STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
+                                                    __ptr,
+                                                    __buff,
+                                                    std::allocator_arg,
+                                                    this->__get_allocator(),
+                                                    __value(std::move(*this)));
       __reset(*this);
     }
 
@@ -599,7 +630,12 @@ namespace STDEXEC::__any
     {
       static_assert(__extension_of<__iabstract<_Interface>, __icopyable>);
       STDEXEC_ASSERT(!__empty(*this));
-      STDEXEC::__any::__emplace_into(__ptr, __buff, *this);
+      STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
+                                                    __ptr,
+                                                    __buff,
+                                                    std::allocator_arg,
+                                                    this->__get_allocator(),
+                                                    __value(*this));
     }
   };
 
@@ -740,6 +776,34 @@ namespace STDEXEC::__any
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // __value_root_with_allocator
+  template <template <class> class _Interface, class _Value, class _Allocator>
+  struct STDEXEC_ATTRIBUTE(empty_bases) __value_root_with_allocator
+    : __value_root<_Interface, _Value>
+    , private _Allocator
+  {
+    constexpr explicit __value_root_with_allocator(_Value            __value,
+                                                   _Allocator const &__alloc = _Allocator())
+      : __value_root<_Interface, _Value>(std::move(__value))
+      , _Allocator(__alloc)
+    {}
+
+    template <class... _Args>
+    constexpr explicit __value_root_with_allocator(std::allocator_arg_t,
+                                                   _Allocator const &__alloc,
+                                                   _Args &&...__args)
+      : __value_root<_Interface, _Value>(static_cast<_Args &&>(__args)...)
+      , _Allocator(__alloc)
+    {}
+
+    [[nodiscard]]
+    constexpr auto __get_allocator() const noexcept -> _Allocator const &
+    {
+      return *this;
+    }
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // __value_proxy_root
   template <template <class> class _Interface>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_proxy_root
@@ -869,22 +933,27 @@ namespace STDEXEC::__any
     friend struct __any;
     friend struct __access;
 
-    template <class _Value, class... _Args>
-    constexpr _Value &__emplace_(_Args &&...__args)
+    template <class _Value, class _Allocator, class... _Args>
+    constexpr _Value &__emplace_(std::allocator_arg_t, _Allocator const &__alloc, _Args &&...__args)
     {
       static_assert(__decays_to<_Value, _Value>, "Value must be an object type.");
-      using __model_type = __value_model<_Interface, _Value>;
-      auto &__model      = STDEXEC::__any::__emplace_into<__model_type>(__root_ptr_,
-                                                                   __buff_,
-                                                                   static_cast<_Args &&>(
-                                                                     __args)...);
+      static_assert(__simple_allocator<_Allocator>);
+      using __model_type = __value_model<_Interface, _Value, _Allocator>;
+      auto &__model      =  //
+        STDEXEC::__any::__emplace_into<__model_type>(__alloc,
+                                                     __root_ptr_,
+                                                     __buff_,
+                                                     std::allocator_arg,
+                                                     __alloc,
+                                                     static_cast<_Args &&>(__args)...);
       return __value(__model);
     }
 
-    template <int = 0, class _CvRefValue, class _Value = std::decay_t<_CvRefValue>>
-    constexpr _Value &__emplace_(_CvRefValue &&__value)
+    template <class _Value, class... _Args>
+    constexpr _Value &__emplace_(_Args &&...__args)
     {
-      return __emplace_<_Value>(static_cast<_CvRefValue &&>(__value));
+      std::allocator<_Value> const __alloc{};
+      return __emplace_<_Value>(std::allocator_arg, __alloc, static_cast<_Args &&>(__args)...);
     }
 
     template <class _Self>
@@ -938,7 +1007,7 @@ namespace STDEXEC::__any
         else if (!__ptr.__is_tagged())
           std::destroy_at(std::addressof(__value(*this)));
         else
-          delete std::addressof(__value(*this));
+          __value(*this).__delete_();
 
         __ptr = __tagged_ptr();
       }
@@ -1238,7 +1307,8 @@ namespace STDEXEC::__any
       using __model_type     = __reference_model<_Interface, __value_type, __extension_type>;
       if constexpr (_CvModel::__root_kind == __root_kind::__reference)
       {
-        STDEXEC::__any::__emplace_into<__model_type>(__root_ptr_,
+        STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
+                                                     __root_ptr_,
                                                      __buff_,
                                                      __model.__get_value_ptr_(),
                                                      __model.__get_root_ptr_());
@@ -1246,7 +1316,8 @@ namespace STDEXEC::__any
       else
       {
         __iroot *__root_ptr = std::addressof(STDEXEC::__unconst(__model));
-        STDEXEC::__any::__emplace_into<__model_type>(__root_ptr_,
+        STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
+                                                     __root_ptr_,
                                                      __buff_,
                                                      static_cast<__value_type *>(nullptr),
                                                      STDEXEC_DECAY_COPY(__root_ptr));
@@ -1258,7 +1329,8 @@ namespace STDEXEC::__any
     {
       static_assert(!__extension_of<_CvValue, _Interface>);
       using __model_type = __reference_model<_Interface, _CvValue>;
-      STDEXEC::__any::__emplace_into<__model_type>(__root_ptr_,
+      STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
+                                                   __root_ptr_,
                                                    __buff_,
                                                    std::addressof(__value),
                                                    static_cast<__iroot *>(nullptr));
@@ -1597,18 +1669,19 @@ namespace STDEXEC::__any
 
     // Construct from an object that implements the interface (and is not an any<>
     // itself)
-    template <__model_of<_Interface> _Value>
-    constexpr __any(_Value __value)
+    template <__model_of<_Interface> _Value, class _Allocator = std::allocator<_Value>>
+    constexpr __any(_Value __value, _Allocator const &__alloc = _Allocator())
       : __any()
     {
-      (*this).__emplace_(std::move(__value));
+      static_assert(__simple_allocator<_Allocator>);
+      (*this).template __emplace_<_Value>(std::allocator_arg, __alloc, std::move(__value));
     }
 
-    template <class _Type, class... _Args>
-    constexpr explicit __any(std::in_place_type_t<_Type>, _Args &&...__args)
+    template <class _Value, class... _Args>
+    constexpr explicit __any(std::in_place_type_t<_Value>, _Args &&...__args)
       : __any()
     {
-      (*this).template __emplace_<_Type>(static_cast<_Args &&>(__args)...);
+      (*this).template __emplace_<_Value>(static_cast<_Args &&>(__args)...);
     }
 
     // Implicit derived-to-base conversion constructor
@@ -1634,7 +1707,7 @@ namespace STDEXEC::__any
     constexpr __any &operator=(_Value __value)
     {
       __reset(*this);
-      (*this).__emplace_(std::move(__value));
+      (*this).template __emplace_<_Value>(std::move(__value));
       return *this;
     }
 
@@ -1654,7 +1727,7 @@ namespace STDEXEC::__any
             && (_Other::__root_kind == __root_kind::__reference)
     constexpr __any &operator=(_Interface<_Other> const &__other)
     {
-      // Guard against __self-assignment when __other is a reference to *this
+      // Guard against self-assignment when __other is a reference to *this
       if (__data(__other) == __data(*this))
         return *this;
 

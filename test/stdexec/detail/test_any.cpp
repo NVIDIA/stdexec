@@ -20,7 +20,50 @@
 
 #include <catch2/catch.hpp>  // IWYU pragma: keep
 
+// NOLINTBEGIN(modernize-use-override)
+
 namespace any = STDEXEC::__any;
+
+template <class _Value>
+struct test_allocator
+{
+  using value_type = _Value;
+
+  constexpr explicit test_allocator(std::size_t &bytes)
+    : bytes_(bytes)
+  {}
+
+  template <class _Other>
+  constexpr test_allocator(test_allocator<_Other> const &other) noexcept
+    : bytes_(other.bytes_)
+  {}
+
+  [[nodiscard]]
+  constexpr _Value *allocate(std::size_t n)
+  {
+    bytes_ += n * sizeof(_Value);
+    return static_cast<_Value *>(::operator new(n * sizeof(_Value)));
+  }
+
+  constexpr void deallocate(_Value *ptr, std::size_t n) noexcept
+  {
+    bytes_ -= n * sizeof(_Value);
+    ::operator delete(ptr);
+  }
+
+  bool operator==(test_allocator const &other) const noexcept
+  {
+    return &bytes_ == &other.bytes_;
+  }
+
+ private:
+  template <class>
+  friend struct test_allocator;
+
+  std::size_t &bytes_;
+};
+
+static_assert(STDEXEC::__simple_allocator<test_allocator<int>>);
 
 template <class Base>
 struct ifoo : any::__interface_base<ifoo, Base>
@@ -187,6 +230,8 @@ consteval void test_consteval()
 
 TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>)
 {
+  static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
+
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
   test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #endif
@@ -255,5 +300,26 @@ TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, 
 
   REQUIRE(y == z);
 
+  // test allocator support
+  SECTION("allocator support")
+  {
+    std::size_t bytes = 0;
+    {
+      [[maybe_unused]]
+      any::__any<any::__icopyable> a1(TestType{}, test_allocator<TestType>{bytes});
+      if (is_small)
+      {
+        REQUIRE(bytes == 0);  // small objects should not use the allocator
+      }
+      else
+      {
+        REQUIRE(bytes > 0);
+      }
+    }
+    REQUIRE(bytes == 0);  // memory should be deallocated
+  }
+
   test_deadly_diamond_of_death<TestType>();
 }
+
+// NOLINTEND(modernize-use-override)
