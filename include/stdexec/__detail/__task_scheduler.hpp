@@ -227,10 +227,11 @@ namespace STDEXEC
    public:
     using scheduler_concept = scheduler_t;
 
-    template <__not_same_as<task_scheduler> _Sch, class _Alloc = std::allocator<std::byte>>
+    template <__not_same_as<task_scheduler> _Sch, class _Alloc = std::allocator<_Sch>>
       requires __infallible_scheduler<_Sch, __task::__env_t<true>>
-    constexpr explicit task_scheduler(_Sch __sch, _Alloc __alloc = {})
-      : __backend_(__backend_for{std::move(__sch), __alloc})
+    constexpr explicit task_scheduler(_Sch __sch, _Alloc const & __alloc = {})
+      : __backend_(__backend_for{std::move(__sch), STDEXEC::__rebind_allocator<_Sch>(__alloc)},
+                   STDEXEC::__rebind_allocator<__backend_for<_Sch, _Alloc>>(__alloc))
     {
       using __opstate_t = __task::__opstate<_Alloc, schedule_result_t<_Sch>, __task::__env_t<true>>;
       static_assert(sizeof(__opstate_t) <= STDEXEC_TASK_SCHEDULE_OPSTATE_SIZE,
@@ -668,10 +669,11 @@ namespace STDEXEC
     // __emplace_into
     template <class _Ty, class _Alloc, class... _Args>
     constexpr auto
-    __emplace_into(std::span<std::byte> __storage, _Alloc& __alloc, _Args&&... __args) -> _Ty&
+    __emplace_into(std::span<std::byte> __storage, _Alloc const & __alloc, _Args&&... __args)
+      -> _Ty&
     {
-      using __traits_t  = std::allocator_traits<_Alloc>::template rebind_traits<_Ty>;
       auto __alloc_copy = STDEXEC::__rebind_allocator<_Ty>(__alloc);
+      using __traits_t  = std::allocator_traits<decltype(__alloc_copy)>;
 
       bool const    __in_situ = __storage.size() >= sizeof(_Ty);
       auto*         __ptr     = __in_situ ? reinterpret_cast<_Ty*>(__storage.data())
@@ -756,10 +758,10 @@ namespace STDEXEC
     {
       STDEXEC_TRY
       {
-        using __opstate_t    = __task::__opstate<_Alloc, _Sndr, _Env>;
-        bool const __in_situ = __storage.size() >= sizeof(__opstate_t);
-        _Alloc&    __alloc   = *this;
-        auto&      __opstate = __task::__emplace_into<__opstate_t>(__storage,
+        using __opstate_t        = __task::__opstate<_Alloc, _Sndr, _Env>;
+        bool const     __in_situ = __storage.size() >= sizeof(__opstate_t);
+        _Alloc const & __alloc   = *this;
+        auto&          __opstate = __task::__emplace_into<__opstate_t>(__storage,
                                                               __alloc,
                                                               __alloc,
                                                               static_cast<_Sndr&&>(__sndr),
