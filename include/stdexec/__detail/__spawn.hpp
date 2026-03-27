@@ -124,13 +124,13 @@ namespace STDEXEC
     struct spawn_t
     {
       template <sender _Sender, scope_token _Token>
-      void operator()(_Sender&& __sndr, _Token&& __tkn) const
+      void operator()(_Sender&& __sndr, _Token __tkn) const
       {
         return (*this)(static_cast<_Sender&&>(__sndr), static_cast<_Token&&>(__tkn), env<>{});
       }
 
       template <sender _Sender, scope_token _Token, class _Env>
-      void operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const
+      void operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const
       {
         auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
         auto __sndr_env       = get_env(__wrapped_sender);
