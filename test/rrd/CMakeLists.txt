@@ -33,6 +33,7 @@ endfunction()
 
 set(relacy_tests
   async_scope
+  bwos_lifo_queue
   intrusive_mpsc_queue
   split
   sync_wait
