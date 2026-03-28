@@ -401,6 +401,15 @@ namespace STDEXEC::__std
 #  define STDEXEC_PRAGMA_IGNORE_MSVC(...)
 #endif
 
+#if STDEXEC_MSVC()
+#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(optimize("", on))
+#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(optimize("", off))
+#else
+#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(GCC push_options) \
+                                           STDEXEC_PRAGMA(GCC optimize("O3"))
+#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(GCC pop_options)
+#endif
+
 #if !STDEXEC_MSVC() && defined(__has_builtin)
 #  define STDEXEC_HAS_BUILTIN __has_builtin
 #else

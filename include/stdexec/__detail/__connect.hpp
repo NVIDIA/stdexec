@@ -43,7 +43,7 @@ namespace STDEXEC
       };
 
     template <class _Sender, class _Receiver>
-    concept __with_co_await = __awaitable<_Sender, __connect_await::__promise<_Receiver>>;
+    concept __with_co_await = __awaitable<_Sender, __connect_await::__promise<_Sender, _Receiver>>;
 
     template <class _Sender, class _Receiver>
     concept __with_legacy_tag_invoke = __tag_invocable<connect_t, _Sender, _Receiver>;

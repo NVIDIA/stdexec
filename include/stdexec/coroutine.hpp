@@ -19,6 +19,8 @@
 #include "__detail/__concepts.hpp"
 #include "__detail/__config.hpp"
 
+#include <exception>
+
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 
 namespace STDEXEC
@@ -29,6 +31,94 @@ namespace STDEXEC
   {
     return __std::coroutine_handle<_Tp>::from_address(__h.address());
   }
+
+  // A coroutine handle that also supports unhandled_stopped() for propagating stop
+  // signals through co_awaits of senders.
+  template <class _Promise = void>
+  class __coroutine_handle;
+
+  template <>
+  class __coroutine_handle<void> : __std::coroutine_handle<>
+  {
+   public:
+    constexpr __coroutine_handle() = default;
+
+    template <class _Promise>
+    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
+      : __std::coroutine_handle<>(__coro)
+    {
+      if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); })
+      {
+        __stopped_callback_ = [](void* __address) noexcept -> __std::coroutine_handle<>
+        {
+          // This causes the rest of the coroutine (the part after the co_await
+          // of the sender) to be skipped and invokes the calling coroutine's
+          // stopped handler.
+          return __std::coroutine_handle<_Promise>::from_address(__address)
+            .promise()
+            .unhandled_stopped();
+        };
+      }
+      // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
+      // reaches this point, it's considered an unhandled exception and terminate()
+      // is called.
+    }
+
+    [[nodiscard]]
+    constexpr auto handle() const noexcept -> __std::coroutine_handle<>
+    {
+      return *this;
+    }
+
+    [[nodiscard]]
+    constexpr auto unhandled_stopped() const noexcept -> __std::coroutine_handle<>
+    {
+      return __stopped_callback_(address());
+    }
+
+   private:
+    using __stopped_callback_t = __std::coroutine_handle<> (*)(void*) noexcept;
+
+    __stopped_callback_t __stopped_callback_ = [](void*) noexcept -> __std::coroutine_handle<>
+    {
+      std::terminate();
+    };
+  };
+
+  template <class _Promise>
+  class __coroutine_handle : public __coroutine_handle<>
+  {
+   public:
+    constexpr __coroutine_handle() = default;
+
+    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
+      : __coroutine_handle<>{__coro}
+    {}
+
+    [[nodiscard]]
+    static constexpr auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle
+    {
+      return __coroutine_handle(__std::coroutine_handle<_Promise>::from_promise(__promise));
+    }
+
+    [[nodiscard]]
+    constexpr auto promise() const noexcept -> _Promise&
+    {
+      return __std::coroutine_handle<_Promise>::from_address(address()).promise();
+    }
+
+    [[nodiscard]]
+    constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise>
+    {
+      return __std::coroutine_handle<_Promise>::from_address(address());
+    }
+
+    [[nodiscard]]
+    constexpr operator __std::coroutine_handle<_Promise>() const noexcept
+    {
+      return handle();
+    }
+  };
 
 #  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
@@ -140,10 +230,11 @@ namespace STDEXEC
     }
   }  // namespace __destroy_and_continue_msvc
 
-#    define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue)                                      \
-    (::STDEXEC::__destroy_and_continue_msvc::__impl(__destroy, __continue))
+#    define STDEXEC_CORO_DESTROY_AND_CONTINUE(__destroy, __continue)                      \
+       (::STDEXEC::__destroy_and_continue_msvc::__impl(__destroy, __continue))
 #  else
-#    define STDEXEC_DESTROY_AND_CONTINUE(__destroy, __continue) (__destroy.destroy(), __continue)
+#    define STDEXEC_CORO_DESTROY_AND_CONTINUE(__destroy, __continue)                      \
+       (__destroy.destroy(), __continue)
 #  endif
 }  // namespace STDEXEC
 

@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include "../functional.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__meta.hpp"
@@ -39,20 +40,20 @@ namespace STDEXEC
     __promise.await_transform(static_cast<_Awaitable &&>(__awaitable));
   };
 
-  template <class _Awaitable>
-  constexpr auto __get_awaitable(_Awaitable &&__awaitable, __ignore = {}) -> decltype(auto)
-  {
-    return static_cast<_Awaitable &&>(__awaitable);
-  }
+  inline constexpr auto __get_awaitable = __first_callable{
+    []<class _Promise, __has_await_transform<_Promise> _Awaitable>(_Awaitable &&__awaitable,
+                                                                   _Promise    &__promise)
+      -> decltype(auto)
+    { return __promise.await_transform(static_cast<_Awaitable &&>(__awaitable)); },
+    []<class _Awaitable>(_Awaitable &&__awaitable, __ignore = {}) -> decltype(auto)
+    { return static_cast<_Awaitable &&>(__awaitable); }};
 
-  template <class _Promise, __has_await_transform<_Promise> _Awaitable>
-  constexpr auto __get_awaitable(_Awaitable &&__awaitable, _Promise &__promise) -> decltype(auto)
-  {
-    return __promise.await_transform(static_cast<_Awaitable &&>(__awaitable));
-  }
+  template <class _Awaitable, class _Promise>
+  using __awaitable_of_t = decltype(STDEXEC::__get_awaitable(__declval<_Awaitable>(),
+                                                             __declval<_Promise &>()));
 
-  template <class _Awaitable>
-  constexpr auto __get_awaiter(_Awaitable &&__awaitable) -> decltype(auto)
+  inline constexpr auto __get_awaiter =
+    []<class _Awaitable>(_Awaitable &&__awaitable) -> decltype(auto)
   {
     if constexpr (requires { __declval<_Awaitable>().operator co_await(); })
     {
@@ -66,7 +67,10 @@ namespace STDEXEC
     {
       return static_cast<_Awaitable &&>(__awaitable);
     }
-  }
+  };
+
+  template <class _Awaitable>
+  using __awaiter_of_t = decltype(STDEXEC::__get_awaiter(__declval<_Awaitable>()));
 
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable &&__awaitable, _Promise &...__promise) {

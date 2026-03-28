@@ -17,142 +17,70 @@
 
 #include "__execution_fwd.hpp"
 
-#include "../coroutine.hpp"  // IWYU pragma: keep for __std::coroutine_handle
+#include "../coroutine.hpp"  // IWYU pragma: keep for __coroutine_handle
 #include "__as_awaitable.hpp"
 #include "__concepts.hpp"
-
-#include <exception>
 
 namespace STDEXEC
 {
 #if !STDEXEC_NO_STDCPP_COROUTINES()
-  template <class _Promise = void>
-  class __coroutine_handle;
+  template <class _Promise>
+  struct with_awaitable_senders;
 
-  template <>
-  class __coroutine_handle<void> : __std::coroutine_handle<>
+  namespace __detail
   {
-   public:
-    constexpr __coroutine_handle() = default;
-
-    template <class _Promise>
-    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
-      : __std::coroutine_handle<>(__coro)
+    struct __with_awaitable_senders
     {
-      if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); })
+      template <class _OtherPromise>
+      constexpr void set_continuation(__std::coroutine_handle<_OtherPromise> __hcoro) noexcept
       {
-        __stopped_callback_ = [](void* __address) noexcept -> __std::coroutine_handle<>
-        {
-          // This causes the rest of the coroutine (the part after the co_await
-          // of the sender) to be skipped and invokes the calling coroutine's
-          // stopped handler.
-          return __std::coroutine_handle<_Promise>::from_address(__address)
-            .promise()
-            .unhandled_stopped();
-        };
+        static_assert(!__same_as<_OtherPromise, void>);
+        __continuation_ = __hcoro;
       }
-      // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
-      // reaches this point, it's considered an unhandled exception and terminate()
-      // is called.
-    }
 
-    [[nodiscard]]
-    constexpr auto handle() const noexcept -> __std::coroutine_handle<>
-    {
-      return *this;
-    }
+      constexpr void set_continuation(__coroutine_handle<> __continuation) noexcept
+      {
+        __continuation_ = __continuation;
+      }
 
-    [[nodiscard]]
-    constexpr auto unhandled_stopped() const noexcept -> __std::coroutine_handle<>
-    {
-      return __stopped_callback_(address());
-    }
+      [[nodiscard]]
+      constexpr auto continuation() const noexcept -> __coroutine_handle<>
+      {
+        return __continuation_;
+      }
 
-   private:
-    using __stopped_callback_t = __std::coroutine_handle<> (*)(void*) noexcept;
+      [[nodiscard]]
+      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
+      {
+        return __continuation_.unhandled_stopped();
+      }
 
-    __stopped_callback_t __stopped_callback_ = [](void*) noexcept -> __std::coroutine_handle<>
-    {
-      std::terminate();
+     private:
+      template <class>
+      friend struct STDEXEC::with_awaitable_senders;
+
+      __with_awaitable_senders() = default;
+
+      __coroutine_handle<> __continuation_{};
     };
-  };
+  }  // namespace __detail
 
   template <class _Promise>
-  class __coroutine_handle : public __coroutine_handle<>
-  {
-   public:
-    constexpr __coroutine_handle() = default;
-
-    constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
-      : __coroutine_handle<>{__coro}
-    {}
-
-    [[nodiscard]]
-    static constexpr auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle
-    {
-      return __coroutine_handle(__std::coroutine_handle<_Promise>::from_promise(__promise));
-    }
-
-    [[nodiscard]]
-    constexpr auto promise() const noexcept -> _Promise&
-    {
-      return __std::coroutine_handle<_Promise>::from_address(address()).promise();
-    }
-
-    [[nodiscard]]
-    constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise>
-    {
-      return __std::coroutine_handle<_Promise>::from_address(address());
-    }
-
-    [[nodiscard]]
-    constexpr operator __std::coroutine_handle<_Promise>() const noexcept
-    {
-      return handle();
-    }
-  };
-
-  struct __with_awaitable_senders_base
-  {
-    template <class _OtherPromise>
-    constexpr void set_continuation(__std::coroutine_handle<_OtherPromise> __hcoro) noexcept
-    {
-      static_assert(!__same_as<_OtherPromise, void>);
-      __continuation_ = __hcoro;
-    }
-
-    constexpr void set_continuation(__coroutine_handle<> __continuation) noexcept
-    {
-      __continuation_ = __continuation;
-    }
-
-    [[nodiscard]]
-    constexpr auto continuation() const noexcept -> __coroutine_handle<>
-    {
-      return __continuation_;
-    }
-
-    [[nodiscard]]
-    constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
-    {
-      return __continuation_.unhandled_stopped();
-    }
-
-   private:
-    __coroutine_handle<> __continuation_{};
-  };
-
-  template <class _Promise>
-  struct with_awaitable_senders : __with_awaitable_senders_base
+  struct with_awaitable_senders : __detail::__with_awaitable_senders
   {
     template <class _Value>
     [[nodiscard]]
-    constexpr auto
-    await_transform(_Value&& __val) -> __call_result_t<as_awaitable_t, _Value, _Promise&>
+    constexpr auto await_transform(_Value&& __val)
+      noexcept(__nothrow_callable<as_awaitable_t, _Value, _Promise&>)  //
+      -> __call_result_t<as_awaitable_t, _Value, _Promise&>
     {
       static_assert(__std::derived_from<_Promise, with_awaitable_senders>);
       return as_awaitable(static_cast<_Value&&>(__val), static_cast<_Promise&>(*this));
     }
+
+   private:
+    friend _Promise;
+    with_awaitable_senders() = default;
   };
 #endif
 }  // namespace STDEXEC

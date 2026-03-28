@@ -19,12 +19,11 @@
 #include <stdexec/execution.hpp>
 
 #if !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_NVHPC()
-#  include <exec/task.hpp>
 
 using namespace stdexec;
 
 template <sender S1, sender S2>
-auto async_answer(S1 s1, S2 s2) -> exec::task<int>
+auto async_answer(S1 s1, S2 s2) -> stdexec::task<int>
 {
   // Senders are implicitly awaitable (in this coroutine type):
   co_await static_cast<S2&&>(s2);
@@ -32,13 +31,13 @@ auto async_answer(S1 s1, S2 s2) -> exec::task<int>
 }
 
 template <sender S1, sender S2>
-auto async_answer2(S1 s1, S2 s2) -> exec::task<std::optional<int>>
+auto async_answer2(S1 s1, S2 s2) -> stdexec::task<std::optional<int>>
 {
   co_return co_await stopped_as_optional(async_answer(s1, s2));
 }
 
 // tasks have an associated stop token
-auto async_stop_token() -> exec::task<std::optional<stdexec::inplace_stop_token>>
+auto async_stop_token() -> stdexec::task<std::optional<stdexec::inplace_stop_token>>
 {
   co_return co_await stopped_as_optional(get_stop_token());
 }
