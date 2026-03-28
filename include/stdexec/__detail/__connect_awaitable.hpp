@@ -18,13 +18,11 @@
 #include "__execution_fwd.hpp"
 
 #include "../coroutine.hpp"
-#include "../functional.hpp"
 #include "__awaitable.hpp"
-#include "__completion_signatures.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
-#include "__manual_lifetime.hpp"
+#include "__optional.hpp"
 #include "__receivers.hpp"
 
 #include <exception>
@@ -42,12 +40,13 @@ namespace STDEXEC
   {
     STDEXEC_PRAGMA_OPTIMIZE_BEGIN()
 
-    static constexpr std::size_t __storage_size  = 256;
+    static constexpr std::size_t __storage_size  = 8 * sizeof(void*);
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
     // clang-format off
     template <class _Tp, class _Promise>
-    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise) {
+    concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise)
+    {
       static_cast<_Tp&&>(__t).as_awaitable(__promise);
     };
     // clang-format on
@@ -63,29 +62,18 @@ namespace STDEXEC
         return static_cast<_Ty&&>(__value);
       }
 
-      template <class _Ty>
-        requires __has_as_awaitable_member<_Ty, _Promise&>
+      template <__has_as_awaitable_member<_Promise&> _Ty>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
-      auto await_transform(_Ty&& __value)
-        noexcept(noexcept(__declval<_Ty>().as_awaitable(__declval<_Promise&>())))
-          -> decltype(__declval<_Ty>().as_awaitable(__declval<_Promise&>()))
+      constexpr auto await_transform(_Ty&& __value)                                //
+        noexcept(noexcept(__declval<_Ty>().as_awaitable(__declval<_Promise&>())))  //
+        -> decltype(auto)
       {
         return static_cast<_Ty&&>(__value).as_awaitable(static_cast<_Promise&>(*this));
       }
 
-      template <class _Ty>
-        requires __has_as_awaitable_member<_Ty, _Promise&>
-              || __tag_invocable<as_awaitable_t, _Ty, _Promise&>
-      [[deprecated("The use of tag_invoke to customize the behavior of await_transform is "
-                   "deprecated. Please provide an as_awaitable member function instead.")]]
-      STDEXEC_ATTRIBUTE(nodiscard, host, device) auto await_transform(_Ty&& __value)
-        noexcept(__nothrow_tag_invocable<as_awaitable_t, _Ty, _Promise&>)
-          -> __tag_invoke_result_t<as_awaitable_t, _Ty, _Promise&>
-      {
-        return __tag_invoke(as_awaitable,
-                            static_cast<_Ty&&>(__value),
-                            static_cast<_Promise&>(*this));
-      }
+     private:
+      friend _Promise;
+      __with_await_transform() = default;
     };
 
     struct __awaiter_base
@@ -96,124 +84,82 @@ namespace STDEXEC
       }
 
       [[noreturn]]
-      void await_resume() noexcept
+      inline void await_resume() noexcept
       {
         __std::unreachable();
       }
     };
 
-    // Turn a nothrow nullary-callable into an awaitable that simply invokes the callable
-    // in await_suspend.
-    template <class _Receiver, class... _Args>
-    struct __set_value_awaiter;
-
-    template <class _Receiver>
-    struct __set_value_awaiter<_Receiver> : __awaiter_base
+    inline void __destroy_coro(__std::coroutine_handle<> __coro) noexcept
     {
-      constexpr void await_suspend(__std::coroutine_handle<>) noexcept
-      {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
-        // This coroutine is never resumed; its work is done.
-      }
-
-      _Receiver& __rcvr_;
-    };
-
-    template <class _Receiver, class _Arg>
-    struct __set_value_awaiter<_Receiver, _Arg> : __awaiter_base
-    {
-      constexpr void await_suspend(__std::coroutine_handle<>) noexcept
-      {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_Arg&&>(__arg_));
-        // This coroutine is never resumed; its work is done.
-      }
-
-      _Receiver& __rcvr_;
-      _Arg&&     __arg_;
-    };
-
-    struct __task_base
-    {
-      constexpr explicit __task_base(__std::coroutine_handle<> __coro) noexcept
-        : __coro_(__coro)
-      {}
-
-      constexpr __task_base(__task_base&& __other) noexcept
-        : __coro_(std::exchange(__other.__coro_, {}))
-      {}
-
-      constexpr ~__task_base()
-      {
-        if (__coro_)
-        {
 #  if STDEXEC_MSVC()
-          // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
-
-          // Reassign __coro_ before calling destroy to make the mutation
-          // observable and to hopefully ensure that the compiler does not eliminate it.
-          auto __coro = __coro_;
-          __coro_     = {};
-          __coro.destroy();
+      // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
+      // Reassign __coro_ before calling destroy to make the mutation
+      // observable and to hopefully ensure that the compiler does not eliminate it.
+      std::exchange(__coro, {}).destroy();
 #  else
-          __coro_.destroy();
+      __coro.destroy();
 #  endif
+    }
+
+    template <class _Awaitable, class _Receiver>
+    struct __opstate;
+
+    template <class _Awaitable, class _Receiver>
+    struct __promise : __with_await_transform<__promise<_Awaitable, _Receiver>>
+    {
+      using __opstate_t = __opstate<_Awaitable, _Receiver>;
+
+      struct __task : __immovable
+      {
+        using promise_type = __promise;
+
+        ~__task()
+        {
+          __connect_await::__destroy_coro(__coro_);
         }
-      }
 
-      __std::coroutine_handle<> __coro_;
-    };
+        __std::coroutine_handle<__promise> __coro_{};
+      };
 
-    template <class _Receiver>
-    struct __promise;
-
-    template <class _Receiver>
-    struct __task : __task_base
-    {
-      using promise_type = __promise<_Receiver>;
-      using __task_base::__task_base;
-    };
-
-    struct __promise_base
-    {
-      static constexpr auto initial_suspend() noexcept -> __std::suspend_always
+      struct __final_awaiter : __awaiter_base
       {
-        return {};
-      }
+        void await_suspend(__std::coroutine_handle<>) noexcept
+        {
+          using __awaitable_t = __result_of<__get_awaitable, _Awaitable, __promise&>;
+          using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
+          using __result_t    = decltype(__declval<__awaiter_t>().await_resume());
 
-      void unhandled_exception() noexcept
-      {
-        __eptr_ = std::current_exception();
-      }
+          if (__opstate_.__eptr_)
+          {
+            STDEXEC::set_error(static_cast<_Receiver&&>(__opstate_.__rcvr_),
+                               std::move(__opstate_.__eptr_));
+          }
+          else if constexpr (__same_as<__result_t, void>)
+          {
+            STDEXEC_ASSERT(__opstate_.__result_.has_value());
+            STDEXEC::set_value(static_cast<_Receiver&&>(__opstate_.__rcvr_));
+          }
+          else
+          {
+            STDEXEC_ASSERT(__opstate_.__result_.has_value());
+            STDEXEC::set_value(static_cast<_Receiver&&>(__opstate_.__rcvr_),
+                               static_cast<__result_t&&>(*__opstate_.__result_));
+          }
+          // This coroutine is never resumed; its work is done.
+        }
 
-      [[noreturn]]
-      static void return_void() noexcept
-      {
-        __std::unreachable();
-      }
+        __opstate<_Awaitable, _Receiver>& __opstate_;
+      };
 
-      std::exception_ptr __eptr_;
-    };
-
-    template <class _Receiver>
-    struct __opstate_base
-    {
-      _Receiver __rcvr_;
-      alignas(__storage_align) std::byte __storage_[__storage_size];
-    };
-
-    template <class _Receiver>
-    struct STDEXEC_ATTRIBUTE(empty_bases) __promise
-      : __promise_base
-      , __with_await_transform<__promise<_Receiver>>
-    {
-      constexpr explicit(!STDEXEC_EDG()) __promise(__opstate_base<_Receiver>& __opstate) noexcept
+      constexpr explicit(!STDEXEC_EDG()) __promise(__opstate_t& __opstate) noexcept
         : __opstate_(__opstate)
       {}
 
-      static constexpr auto operator new([[maybe_unused]] std::size_t __bytes,
-                                         __opstate_base<_Receiver>&   __opstate) noexcept -> void*
+      static constexpr auto
+      operator new([[maybe_unused]] std::size_t __bytes, __opstate_t& __opstate) noexcept -> void*
       {
-        STDEXEC_ASSERT(__bytes <= __storage_size);
+        STDEXEC_ASSERT(__bytes <= sizeof(__opstate.__storage_));
         return __opstate.__storage_;
       }
 
@@ -222,22 +168,25 @@ namespace STDEXEC
         // no-op
       }
 
-      struct __set_error_awaiter : __awaiter_base
+      constexpr auto get_return_object() noexcept -> __task
       {
-        void await_suspend(__std::coroutine_handle<>) noexcept
-        {
-          STDEXEC::set_error(static_cast<_Receiver&&>(__promise_.__opstate_.__rcvr_),
-                             std::move(__promise_.__eptr_));
-          // This coroutine is never resumed; its work is done.
-        }
+        return __task{{}, __std::coroutine_handle<__promise>::from_promise(*this)};
+      }
 
-        __promise& __promise_;
-      };
-
-      constexpr auto final_suspend() noexcept -> __set_error_awaiter
+      [[noreturn]]
+      static auto get_return_object_on_allocation_failure() noexcept -> __task
       {
-        STDEXEC_ASSERT(__eptr_);
-        return __set_error_awaiter{{}, *this};
+        __std::unreachable();
+      }
+
+      static constexpr auto initial_suspend() noexcept -> __std::suspend_always
+      {
+        return {};
+      }
+
+      void unhandled_exception() noexcept
+      {
+        __opstate_.__eptr_ = std::current_exception();
       }
 
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
@@ -249,51 +198,37 @@ namespace STDEXEC
         return __std::noop_coroutine();
       }
 
-      constexpr auto get_return_object() noexcept -> __task<_Receiver>
+      constexpr auto final_suspend() noexcept -> __final_awaiter
       {
-        return __task<_Receiver>{__std::coroutine_handle<__promise>::from_promise(*this)};
+        return __final_awaiter{{}, __opstate_};
       }
 
-      [[noreturn]]
-      static constexpr auto get_return_object_on_allocation_failure() noexcept -> __task<_Receiver>
+      static void return_void() noexcept
       {
-        __std::unreachable();
+        // no-op
       }
 
+      [[nodiscard]]
       constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
       {
         return STDEXEC::get_env(__opstate_.__rcvr_);
       }
 
-      __opstate_base<_Receiver>& __opstate_;
+      __opstate<_Awaitable, _Receiver>& __opstate_;
     };
 
     template <class _Awaitable, class _Receiver>
-    struct __opstate : __opstate_base<_Receiver>
+    struct __opstate
     {
-      explicit __opstate(_Awaitable&& __awaitable, _Receiver&& __rcvr)
-        noexcept(__nothrow_move_constructible<_Awaitable>)
-        : __opstate_base<_Receiver>{static_cast<_Receiver&&>(__rcvr)}
+      constexpr explicit __opstate(_Awaitable&& __awaitable, _Receiver&& __rcvr)
+        noexcept(__is_nothrow)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __task_(__co_impl(*this))
         , __awaitable1_(static_cast<_Awaitable&&>(__awaitable))
-        , __task_(__opstate::__co_impl(*this))
-      {
-        auto __coro = STDEXEC::__coroutine_handle_cast<__promise<_Receiver>>(__task_.__coro_);
-
-        __awaitable2_.__construct_from(STDEXEC::__get_awaitable,
-                                       static_cast<_Awaitable&&>(__awaitable1_),
-                                       __coro.promise());
-
-        __awaiter_.__construct_from(STDEXEC::__get_awaiter,
-                                    static_cast<__awaitable_t&&>(__awaitable2_.__get()));
-      }
-
-      STDEXEC_IMMOVABLE(__opstate);
-
-      ~__opstate()
-      {
-        __awaiter_.__destroy();
-        __awaitable2_.__destroy();
-      }
+        , __awaitable2_(
+            __get_awaitable(static_cast<_Awaitable&&>(__awaitable1_), __task_.__coro_.promise()))
+        , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable2_)))
+      {}
 
       void start() & noexcept
       {
@@ -301,31 +236,44 @@ namespace STDEXEC
       }
 
      private:
-      using __awaitable_t = __awaitable_of_t<_Awaitable, __promise<_Receiver>>;
+      using __promise_t   = __promise<_Awaitable, _Receiver>;
+      using __task_t      = __promise_t::__task;
+      using __awaitable_t = __result_of<__get_awaitable, _Awaitable, __promise_t&>;
       using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
+      using __result_t    = decltype(__declval<__awaiter_t>().await_resume());
 
-      static auto __co_impl(__opstate& __op) noexcept -> __task<_Receiver>
+      friend __promise_t;
+
+      static constexpr bool __is_nothrow = __nothrow_move_constructible<_Awaitable>
+                                        && __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
+                                        && __noexcept_of<__get_awaiter, __awaitable_t>;
+
+      static constexpr std::size_t __storage_size = __connect_await::__storage_size
+                                                  + sizeof(__manual_lifetime<__result_t>)
+                                                  - __same_as<__result_t, void>;
+
+      static auto __co_impl(__opstate& __op) noexcept -> __task_t
       {
-        auto&& __awaiter = __op.__awaiter_.__get();
-        using __result_t = decltype(__declval<__awaiter_t>().await_resume());
-
-        if constexpr (__same_as<__result_t, void>)
+        using __awaiter_t = decltype(__op.__awaiter_);
+        if constexpr (__same_as<decltype(*__op.__result_), void>)
         {
-          using __set_value_t = __set_value_awaiter<_Receiver>;
-          co_await (co_await static_cast<__awaiter_t&&>(__awaiter),
-                    __set_value_t{{}, __op.__rcvr_});
+          co_await static_cast<__awaiter_t&&>(__op.__awaiter_);
+          __op.__result_.emplace();
         }
         else
         {
-          using __set_value_t = __set_value_awaiter<_Receiver, __result_t>;
-          co_await __set_value_t{{}, __op.__rcvr_, co_await static_cast<__awaiter_t&&>(__awaiter)};
+          __op.__result_.emplace(co_await static_cast<__awaiter_t&&>(__op.__awaiter_));
         }
       }
 
-      _Awaitable                       __awaitable1_;
-      __manual_lifetime<__awaitable_t> __awaitable2_;
-      __manual_lifetime<__awaiter_t>   __awaiter_;
-      __task<_Receiver>                __task_;
+      alignas(__storage_align) std::byte __storage_[__storage_size];
+      _Receiver              __rcvr_;
+      __promise_t::__task    __task_;
+      _Awaitable             __awaitable1_;
+      __awaitable_t          __awaitable2_;
+      __awaiter_t            __awaiter_;
+      std::exception_ptr     __eptr_{};
+      __optional<__result_t> __result_{};
     };
 
     STDEXEC_PRAGMA_OPTIMIZE_END()
@@ -333,17 +281,19 @@ namespace STDEXEC
 
   struct __connect_awaitable_t
   {
-    template <class _Receiver, __awaitable<__connect_await::__promise<_Receiver>> _Awaitable>
-    auto operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const
-      noexcept(__nothrow_move_constructible<_Awaitable>)
+    template <class _Awaitable, class _Receiver>
+    using __opstate_t = __connect_await::__opstate<_Awaitable, _Receiver>;
+
+    template <class _Awaitable, class _Receiver>
+    using __promise_t = __connect_await::__promise<_Awaitable, _Receiver>;
+
+    template <class _Awaitable, class _Receiver>
+      requires __awaitable<_Awaitable, __promise_t<_Awaitable, _Receiver>>
+    auto operator()(_Awaitable&& __awaitable, _Receiver __rcvr) const noexcept(
+      __nothrow_constructible_from<__opstate_t<_Awaitable, _Receiver>, _Awaitable, _Receiver>)
     {
-      using __result_t      = __await_result_t<_Awaitable, __connect_await::__promise<_Receiver>>;
-      using __completions_t = completion_signatures<__single_value_sig_t<__result_t>,
-                                                    set_error_t(std::exception_ptr),
-                                                    set_stopped_t()>;
-      static_assert(receiver_of<_Receiver, __completions_t>);
-      return __connect_await::__opstate(static_cast<_Awaitable&&>(__awaitable),
-                                        static_cast<_Receiver&&>(__rcvr));
+      return __opstate_t<_Awaitable, _Receiver>(static_cast<_Awaitable&&>(__awaitable),
+                                                static_cast<_Receiver&&>(__rcvr));
     }
   };
 

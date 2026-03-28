@@ -17,6 +17,7 @@
 #pragma once
 
 #include "__concepts.hpp"
+#include "__utility.hpp"
 
 #include <memory>
 #include <new>
@@ -24,11 +25,10 @@
 
 namespace STDEXEC
 {
-
   //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`, `__destry()`,
   //! and `__get()` the `_Ty` without regard for usual lifetime rules.
   template <class _Ty>
-  class __manual_lifetime
+  class __manual_lifetime : __immovable
   {
    public:
     //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
@@ -37,12 +37,6 @@ namespace STDEXEC
 
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
     constexpr ~__manual_lifetime() = default;
-
-    constexpr __manual_lifetime(__manual_lifetime const &)                    = delete;
-    constexpr auto operator=(__manual_lifetime const &) -> __manual_lifetime& = delete;
-
-    constexpr __manual_lifetime(__manual_lifetime&&)                    = delete;
-    constexpr auto operator=(__manual_lifetime&&) -> __manual_lifetime& = delete;
 
     //! Construct the `_Ty` in place.
     //! There are no safeties guarding against the case that there's already one there.
@@ -64,7 +58,7 @@ namespace STDEXEC
       // Use placement new instead of std::construct_at in case the function returns an immovable
       // type.
       return *std::launder(::new (static_cast<void*>(__buffer_))
-                             _Ty{(static_cast<_Func&&>(func))(static_cast<_Args&&>(__args)...)});
+                             _Ty{static_cast<_Func&&>(func)(static_cast<_Args&&>(__args)...)});
     }
 
     //! End the lifetime of the contained `_Ty`.
@@ -113,22 +107,9 @@ namespace STDEXEC
 
   template <class _Reference>
     requires std::is_reference_v<_Reference>
-  class __manual_lifetime<_Reference>
+  class __manual_lifetime<_Reference> : __immovable
   {
    public:
-    //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
-    //! if you want the `_Reference`'s lifetime to begin.
-    constexpr __manual_lifetime() noexcept = default;
-
-    //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
-    constexpr ~__manual_lifetime() = default;
-
-    constexpr __manual_lifetime(__manual_lifetime const &)                    = delete;
-    constexpr auto operator=(__manual_lifetime const &) -> __manual_lifetime& = delete;
-
-    constexpr __manual_lifetime(__manual_lifetime&&)                    = delete;
-    constexpr auto operator=(__manual_lifetime&&) -> __manual_lifetime& = delete;
-
     constexpr auto __construct(_Reference __ref) noexcept -> _Reference
     {
       __ptr_ = std::addressof(__ref);
@@ -159,5 +140,28 @@ namespace STDEXEC
 
    private:
     std::add_pointer_t<_Reference> __ptr_{nullptr};
+  };
+
+  template <>
+  struct __manual_lifetime<void> : __immovable
+  {
+    template <class... _Args>
+    constexpr void __construct(_Args&&...) noexcept
+    {}
+
+    template <class _Func, class... _Args>
+    constexpr void __construct_from(_Func&& __func, _Args&&... __args) noexcept
+    {
+      (void) static_cast<_Func&&>(__func)(static_cast<_Args&&>(__args)...);
+    }
+
+    constexpr void __destroy() noexcept {}
+
+    constexpr auto __get() const noexcept -> void {}
+
+    constexpr auto operator->() const noexcept -> void*
+    {
+      return nullptr;
+    }
   };
 }  // namespace STDEXEC

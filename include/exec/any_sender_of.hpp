@@ -371,9 +371,8 @@ namespace experimental::execution
 
       void __reset() noexcept
       {
-        (*__vtable_)(__any::__delete, this);
-        __object_pointer_ = nullptr;
-        __vtable_         = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
+        auto* __default_vtable = __default_storage_vtable((__vtable_t*) nullptr);
+        (*std::exchange(__vtable_, __default_vtable))(__any::__delete, this);
       }
 
       [[nodiscard]]
@@ -561,9 +560,8 @@ namespace experimental::execution
 
       void __reset() noexcept
       {
-        (*__vtable_)(__any::__delete, this);
-        __object_pointer_ = nullptr;
-        __vtable_         = __default_storage_vtable(static_cast<__vtable_t*>(nullptr));
+        auto* __default_vtable = __default_storage_vtable((__vtable_t*) nullptr);
+        (*std::exchange(__vtable_, __default_vtable))(__any::__delete, this);
       }
 
       auto __get_vtable() const noexcept -> _Vtable const *

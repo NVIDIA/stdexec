@@ -19,6 +19,7 @@
 
 // include these after __execution_fwd.hpp
 #include "__concepts.hpp"
+#include "__manual_lifetime.hpp"
 #include "__scope.hpp"
 
 #include <exception>
@@ -55,13 +56,6 @@ namespace STDEXEC
     {
       static_assert(__std::destructible<_Tp>);
 
-      union
-      {
-        _Tp __value_;
-      };
-
-      bool __has_value_ = false;
-
       constexpr __optional() noexcept {}
 
       constexpr __optional(__nullopt_t) noexcept {}
@@ -87,7 +81,7 @@ namespace STDEXEC
       {
         if (__has_value_)
         {
-          std::destroy_at(std::addressof(__value_));
+          __value_.__destroy();
         }
       }
 
@@ -110,10 +104,10 @@ namespace STDEXEC
       emplace(_Us&&... __us) noexcept(__nothrow_constructible_from<_Tp, _Us...>) -> _Tp&
       {
         reset();
-        auto  __sg = __mk_has_value_guard(__has_value_);
-        auto* __p  = std::construct_at(std::addressof(__value_), static_cast<_Us&&>(__us)...);
+        auto __sg = __mk_has_value_guard(__has_value_);
+        _Tp& __t  = __value_.__construct(static_cast<_Us&&>(__us)...);
         __sg.__dismiss();
-        return *std::launder(__p);
+        return __t;
       }
 
       template <class _Fn, class... _Args>
@@ -122,11 +116,11 @@ namespace STDEXEC
         -> _Tp&
       {
         reset();
-        auto  __sg = __mk_has_value_guard(__has_value_);
-        auto* __p  = ::new (static_cast<void*>(std::addressof(__value_)))
-          _Tp(static_cast<_Fn&&>(__f)(static_cast<_Args&&>(__args)...));
+        auto __sg = __mk_has_value_guard(__has_value_);
+        _Tp& __t  = __value_.__construct_from(static_cast<_Fn&&>(__f),
+                                             static_cast<_Args&&>(__args)...);
         __sg.__dismiss();
-        return *std::launder(__p);
+        return __t;
       }
 
       constexpr auto value() & -> _Tp&
@@ -135,7 +129,7 @@ namespace STDEXEC
         {
           STDEXEC_THROW(__bad_optional_access());
         }
-        return __value_;
+        return __value_.__get();
       }
 
       constexpr auto value() const & -> _Tp const &
@@ -144,7 +138,7 @@ namespace STDEXEC
         {
           STDEXEC_THROW(__bad_optional_access());
         }
-        return __value_;
+        return __value_.__get();
       }
 
       constexpr auto value() && -> _Tp&&
@@ -153,37 +147,37 @@ namespace STDEXEC
         {
           STDEXEC_THROW(__bad_optional_access());
         }
-        return static_cast<_Tp&&>(static_cast<_Tp&>(__value_));
+        return std::move(__value_).__get();
       }
 
       constexpr auto operator*() & noexcept -> _Tp&
       {
         STDEXEC_ASSERT(__has_value_);
-        return __value_;
+        return __value_.__get();
       }
 
       constexpr auto operator*() const & noexcept -> _Tp const &
       {
         STDEXEC_ASSERT(__has_value_);
-        return __value_;
+        return __value_.__get();
       }
 
       constexpr auto operator*() && noexcept -> _Tp&&
       {
         STDEXEC_ASSERT(__has_value_);
-        return static_cast<_Tp&&>(static_cast<_Tp&>(__value_));
+        return std::move(__value_).__get();
       }
 
       constexpr auto operator->() & noexcept -> std::add_pointer_t<_Tp>
       {
         STDEXEC_ASSERT(__has_value_);
-        return std::addressof(static_cast<_Tp&>(__value_));
+        return std::addressof(__value_.__get());
       }
 
       constexpr auto operator->() const & noexcept -> std::add_pointer_t<_Tp const>
       {
         STDEXEC_ASSERT(__has_value_);
-        return std::addressof(static_cast<_Tp const &>(__value_));
+        return std::addressof(__value_.__get());
       }
 
       [[nodiscard]]
@@ -196,85 +190,62 @@ namespace STDEXEC
       {
         if (__has_value_)
         {
-          std::destroy_at(std::addressof(__value_));
+          __value_.__destroy();
           __has_value_ = false;
         }
       }
+
+     private:
+      __manual_lifetime<_Tp> __value_;
+      bool                   __has_value_ = false;
     };
 
-    // __optional<T&>
-    template <class _Tp>
-    struct __optional<_Tp&>
+    // __optional<void>
+    template <>
+    struct __optional<void>
     {
-      _Tp* __value_ = nullptr;
-
       __optional() noexcept = default;
 
       __optional(__nullopt_t) noexcept {}
 
-      template <__not_decays_to<__optional> _Up>
-        requires __std::constructible_from<_Tp&, _Up>
-      constexpr __optional(_Up&& __val) noexcept(__nothrow_constructible_from<_Tp&, _Up>)
+      template <class... _Us>
+      constexpr auto emplace(_Us&&...) noexcept -> void
       {
-        emplace(static_cast<_Up&&>(__val));
+        __has_value_ = true;
       }
 
-      template <__not_decays_to<__optional> _Up>
-        requires __std::constructible_from<_Tp&, _Up>
-      constexpr __optional(std::in_place_t, _Up&& __val)
-        noexcept(__nothrow_constructible_from<_Tp&, _Up>)
+      constexpr auto value() const -> void
       {
-        emplace(static_cast<_Up&&>(__val));
-      }
-
-      template <class _Up>
-        requires __std::constructible_from<_Tp&, _Up>
-      constexpr auto emplace(_Up&& __us) noexcept(__nothrow_constructible_from<_Tp&, _Up>) -> _Tp&
-      {
-        __value_ = std::addressof(static_cast<_Up&&>(__us));
-        return *__value_;
-      }
-
-      template <class _Fn, class... _Args>
-        requires __std::same_as<_Tp&, __call_result_t<_Fn, _Args...>>
-      auto __emplace_from(_Fn&& __f, _Args&&... __args) noexcept(__nothrow_callable<_Fn, _Args...>)
-        -> _Tp&
-      {
-        __value_ = std::addressof(static_cast<_Fn&&>(__f)(static_cast<_Args&&>(__args)...));
-        return *__value_;
-      }
-
-      constexpr auto value() const -> _Tp&
-      {
-        if (__value_ == nullptr)
+        if (!__has_value_)
         {
           STDEXEC_THROW(__bad_optional_access());
         }
-        return *__value_;
       }
 
-      constexpr auto operator*() const -> _Tp&
+      constexpr auto operator*() const -> void
       {
-        STDEXEC_ASSERT(__value_ != nullptr);
-        return *__value_;
+        STDEXEC_ASSERT(__has_value_);
       }
 
-      constexpr auto operator->() const -> _Tp*
+      constexpr auto operator->() const -> void*
       {
-        STDEXEC_ASSERT(__value_ != nullptr);
-        return __value_;
+        STDEXEC_ASSERT(__has_value_);
+        return nullptr;
       }
 
       [[nodiscard]]
       constexpr auto has_value() const noexcept -> bool
       {
-        return __value_ != nullptr;
+        return __has_value_;
       }
 
       constexpr void reset() noexcept
       {
-        __value_ = nullptr;
+        __has_value_ = false;
       }
+
+     private:
+      bool __has_value_ = false;
     };
   }  // namespace __opt
 
