@@ -94,7 +94,7 @@ namespace STDEXEC
     {
 #  if STDEXEC_MSVC()
       // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
-      // Reassign __coro_ before calling destroy to make the mutation
+      // Reassign __coro before calling destroy to make the mutation
       // observable and to hopefully ensure that the compiler does not eliminate it.
       std::exchange(__coro, {}).destroy();
 #  else
@@ -301,7 +301,7 @@ namespace STDEXEC
 
   namespace __connect_await
   {
-    template <class>
+    template <class, class>
     struct __promise
     {};
 
