@@ -417,16 +417,20 @@ TEST_CASE("exec::bwos::lifo_queue - steal during wraparound", "[bwos]")
   constexpr std::size_t blockSize = 4;
 
   exec::bwos::lifo_queue<std::size_t> queue(numBlocks, blockSize);
-  std::atomic<bool>                   startStealing{false};
+  std::atomic<bool>                   ownerDone{false};
   std::atomic<std::size_t>            stolen{0};
 
   std::thread thief(
     [&]()
     {
-      while (!startStealing)
+      while (!ownerDone.load(std::memory_order_relaxed))
       {
-        std::this_thread::yield();
+        if (queue.steal_front() != 0)
+        {
+          stolen++;
+        }
       }
+      // Drain remaining
       while (queue.steal_front() != 0)
       {
         stolen++;
@@ -437,18 +441,14 @@ TEST_CASE("exec::bwos::lifo_queue - steal during wraparound", "[bwos]")
   {
     for (std::size_t i = 0; i < numBlocks * blockSize; ++i)
     {
-      if (!queue.push_back((round * 100) + i + 1))
+      while (!queue.push_back((round * 100) + i + 1))
       {
-        startStealing = true;
-        while (!queue.push_back((round * 100) + i + 1))
-        {
-          std::this_thread::yield();
-        }
+        std::this_thread::yield();
       }
     }
   }
 
-  startStealing = true;
+  ownerDone = true;
   thief.join();
 }
 
@@ -460,7 +460,7 @@ TEST_CASE("exec::bwos::lifo_queue - takeover grant synchronization", "[bwos]")
 
   exec::bwos::lifo_queue<std::size_t> queue(numBlocks, blockSize);
   std::atomic<std::size_t>            totalStolen{0};
-  std::atomic<std::size_t>            totalPopped{0};
+  std::atomic<bool>                   ownerDone{false};
 
   std::thread owner(
     [&]()
@@ -474,20 +474,19 @@ TEST_CASE("exec::bwos::lifo_queue - takeover grant synchronization", "[bwos]")
             std::this_thread::yield();
           }
         }
+        // Pop some back (triggers takeover when moving backward across blocks)
         for (std::size_t i = 0; i < blockSize / 2; ++i)
         {
-          if (queue.pop_back() != 0)
-          {
-            totalPopped++;
-          }
+          queue.pop_back();
         }
       }
+      ownerDone = true;
     });
 
   std::thread thief(
     [&]()
     {
-      while (totalPopped < iterations * blockSize / 2)
+      while (!ownerDone.load(std::memory_order_relaxed))
       {
         if (queue.steal_front() != 0)
         {
