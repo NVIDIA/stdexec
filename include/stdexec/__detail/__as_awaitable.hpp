@@ -27,6 +27,7 @@
 #include "__meta.hpp"
 #include "__queries.hpp"
 #include "__type_traits.hpp"
+#include "__variant.hpp"
 
 #include <exception>
 #include <functional>  // for std::identity
@@ -86,8 +87,7 @@ namespace STDEXEC
     using __value_or_void_t = __if_c<__same_as<_Value, void>, __void, _Value>;
 
     template <class _Value>
-    using __expected_t =
-      std::variant<std::monostate, __value_or_void_t<_Value>, std::exception_ptr>;
+    using __expected_t = __variant<__value_or_void_t<_Value>, std::exception_ptr>;
 
     using __connect_await::__has_as_awaitable_member;
 
@@ -113,22 +113,22 @@ namespace STDEXEC
 
       constexpr auto await_resume() -> _Value
       {
-        // If the operation completed with set_stopped (as denoted by the monostate
-        // alternative being active), we should not be resuming this coroutine at all.
-        STDEXEC_ASSERT(__result_.index() != 0);
-        if (__result_.index() == 2)
+        // If the operation completed with set_stopped (as denoted by the result variant
+        // being valueless), we should not be resuming this coroutine at all.
+        STDEXEC_ASSERT(!__result_.__is_valueless());
+        if (__result_.index() == 1)
         {
           // The operation completed with set_error, so we need to rethrow the exception.
-          std::rethrow_exception(std::move(std::get<2>(__result_)));
+          std::rethrow_exception(std::move(__var::__get<1>(__result_)));
         }
         // The operation completed with set_value, so we can just return the value, which
         // may be void.
         using __reference_t = std::add_rvalue_reference_t<_Value>;
-        return static_cast<__reference_t>(std::get<1>(__result_));
+        return static_cast<__reference_t>(__var::__get<0>(__result_));
       }
 
       __std::coroutine_handle<> __continuation_;
-      __expected_t<_Value>      __result_{};
+      __expected_t<_Value>      __result_{__no_init};
     };
 
     // When the sender is not statically known to complete inline, we need to use atomic
@@ -150,11 +150,11 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          __awaiter_.__result_.template emplace<1>(static_cast<_Us&&>(__us)...);
+          __awaiter_.__result_.template emplace<0>(static_cast<_Us&&>(__us)...);
         }
         STDEXEC_CATCH_ALL
         {
-          __awaiter_.__result_.template emplace<2>(std::current_exception());
+          __awaiter_.__result_.template emplace<1>(std::current_exception());
         }
       }
 
@@ -162,12 +162,12 @@ namespace STDEXEC
       void set_error(_Error&& __err) noexcept
       {
         if constexpr (__decays_to<_Error, std::exception_ptr>)
-          __awaiter_.__result_.template emplace<2>(static_cast<_Error&&>(__err));
+          __awaiter_.__result_.template emplace<1>(static_cast<_Error&&>(__err));
         else if constexpr (__decays_to<_Error, std::error_code>)
-          __awaiter_.__result_.template emplace<2>(
+          __awaiter_.__result_.template emplace<1>(
             std::make_exception_ptr(std::system_error(__err)));
         else
-          __awaiter_.__result_.template emplace<2>(
+          __awaiter_.__result_.template emplace<1>(
             std::make_exception_ptr(static_cast<_Error&&>(__err)));
       }
 
@@ -236,7 +236,7 @@ namespace STDEXEC
         }
         STDEXEC_CATCH_ALL
         {
-          this->__awaiter_.__result_.template emplace<2>(std::current_exception());
+          this->__awaiter_.__result_.template emplace<1>(std::current_exception());
           this->__awaiter_.__continuation_.resume();
         }
       }
@@ -373,7 +373,7 @@ namespace STDEXEC
           STDEXEC::start(__opstate);
         }
 
-        if (this->__result_.index() == 0)
+        if (this->__result_.__is_valueless())
         {
           // The operation completed with set_stopped, so we need to call
           // unhandled_stopped() on the promise to propagate the stop signal. That will
