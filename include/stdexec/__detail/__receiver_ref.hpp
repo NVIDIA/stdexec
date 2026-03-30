@@ -22,106 +22,58 @@
 #include "__receivers.hpp"
 
 #include <memory>
+#include <utility>
 
 namespace STDEXEC
 {
-  template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
-  struct __rcvr_ref
+  template <class _RcvrPtr, class _Env = env_of_t<decltype(*_RcvrPtr())>>
+  struct __pointer_receiver
   {
     using receiver_concept = receiver_t;
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr explicit __rcvr_ref(_Rcvr& __rcvr) noexcept
-      : __rcvr_{std::addressof(__rcvr)}
+    constexpr explicit __pointer_receiver(_RcvrPtr __rcvr_ptr) noexcept
+      : __rcvr_ptr_{__rcvr_ptr}
     {}
 
     template <class... _As>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_value(_As&&... __as) noexcept
     {
-      STDEXEC::set_value(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_As&&>(__as)...);
+      STDEXEC::set_value(std::move(*__rcvr_ptr_), static_cast<_As&&>(__as)...);
     }
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_error(_Error&& __err) noexcept
     {
-      STDEXEC::set_error(static_cast<_Rcvr&&>(*__rcvr_), static_cast<_Error&&>(__err));
+      STDEXEC::set_error(std::move(*__rcvr_ptr_), static_cast<_Error&&>(__err));
     }
 
-    STDEXEC_ATTRIBUTE(host, device) constexpr void set_stopped() noexcept
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr void set_stopped() noexcept
     {
-      STDEXEC::set_stopped(static_cast<_Rcvr&&>(*__rcvr_));
+      STDEXEC::set_stopped(std::move(*__rcvr_ptr_));
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, host, device)
     constexpr auto get_env() const noexcept -> _Env
     {
-      static_assert(__same_as<_Env, env_of_t<_Rcvr>>,
+      static_assert(__same_as<_Env, env_of_t<decltype(*_RcvrPtr())>>,
                     "get_env() must return the same type as env_of_t<_Rcvr>");
-      return STDEXEC::get_env(*__rcvr_);
+      return STDEXEC::get_env(*__rcvr_ptr_);
     }
 
    private:
-    _Rcvr* __rcvr_;
+    _RcvrPtr __rcvr_ptr_;
   };
 
-  namespace __detail
-  {
-    template <class _Rcvr, size_t = sizeof(_Rcvr)>
-    STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto __is_type_complete(int) noexcept
-    {
-      return true;
-    }
-
-    template <class _Rcvr>
-    STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto __is_type_complete(long) noexcept
-    {
-      return false;
-    }
-  }  // namespace __detail
-
-  // The __ref_rcvr function and its helpers are used to avoid wrapping a receiver in a
-  // __rcvr_ref when that is possible. The logic goes as follows:
-
-  // 1. If the receiver is an instance of __rcvr_ref, return it.
-  // 2. If the type is incomplete or an operation state, return a __rcvr_ref wrapping the
-  //    receiver.
-  // 3. If the receiver is nothrow copy constructible, return it.
-  // 4. Otherwise, return a __rcvr_ref wrapping the receiver.
-  template <class _Env = void, class _Rcvr>
-  STDEXEC_ATTRIBUTE(nodiscard, host, device)
-  constexpr auto __ref_rcvr(_Rcvr& __rcvr) noexcept
-  {
-    if constexpr (__same_as<_Env, void>)
-    {
-      return STDEXEC::__ref_rcvr<env_of_t<_Rcvr>>(__rcvr);
-    }
-    else if constexpr (__is_instance_of<_Rcvr, __rcvr_ref>)
-    {
-      return __rcvr;
-    }
-    else if constexpr (!__detail::__is_type_complete<_Rcvr>(0))
-    {
-      return __rcvr_ref<_Rcvr, _Env>{__rcvr};
-    }
-    else if constexpr (operation_state<_Rcvr>)
-    {
-      return __rcvr_ref<_Rcvr, _Env>{__rcvr};
-    }
-    else if constexpr (__nothrow_constructible_from<_Rcvr, _Rcvr const &>)
-    {
-      return const_cast<_Rcvr const &>(__rcvr);
-    }
-    else
-    {
-      return __rcvr_ref{__rcvr};
-    }
-    STDEXEC_UNREACHABLE();
-  }
-
   template <class _Rcvr, class _Env = env_of_t<_Rcvr>>
-  using __rcvr_ref_t = decltype(STDEXEC::__ref_rcvr<_Env>(STDEXEC::__declval<_Rcvr&>()));
+  struct __receiver_ref : __pointer_receiver<_Rcvr*, _Env>
+  {
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr __receiver_ref(_Rcvr& __rcvr) noexcept
+      : __pointer_receiver<_Rcvr*, _Env>(std::addressof(__rcvr))
+    {}
+  };
 }  // namespace STDEXEC

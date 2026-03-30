@@ -46,13 +46,13 @@ namespace experimental::execution
     struct __opstate
     {
       using receiver_concept = receiver_t;
-      using __child_op_t     = connect_result_t<_CvChild, __rcvr_ref_t<_Receiver>>;
+      using __child_op_t     = connect_result_t<_CvChild, __receiver_ref<_Receiver>>;
 
       constexpr explicit __opstate(_CvChild&& __child, _Receiver __rcvr)
-        noexcept(__nothrow_connectable<_CvChild, __rcvr_ref_t<_Receiver>>)
+        noexcept(__nothrow_connectable<_CvChild, __receiver_ref<_Receiver>>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __child_op_(
-            STDEXEC::connect(static_cast<_CvChild&&>(__child), STDEXEC::__ref_rcvr(__rcvr_)))
+            STDEXEC::connect(static_cast<_CvChild&&>(__child), STDEXEC::__receiver_ref(__rcvr_)))
       {}
 
       constexpr void start() noexcept
@@ -99,7 +99,7 @@ namespace experimental::execution
 
       template <class _Receiver>
       using __rcvr_t =
-        __if_c<__unstoppable_receiver<_Receiver>, _Receiver, __rcvr_ref_t<_Receiver>>;
+        __if_c<__unstoppable_receiver<_Receiver>, _Receiver, __receiver_ref<_Receiver>>;
 
       static constexpr auto __connect =  //
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
