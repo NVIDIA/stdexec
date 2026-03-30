@@ -68,6 +68,7 @@ set_source_files_properties(test_any_sender.cpp
     COMPILE_FLAGS $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
 add_executable(test.exec ${exec_test_sources})
+add_compile_diagnostics(test.exec)
 target_link_libraries(test.exec
     PUBLIC
     STDEXEC::stdexec

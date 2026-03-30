@@ -57,7 +57,7 @@ namespace STDEXEC
       }
 
       _Receiver       __rcvr_;
-      __optional<_Ty> __result_;
+      __optional<_Ty> __result_ = __nullopt;
     };
 
     template <class _Receiver, class _Query, class _Ty>

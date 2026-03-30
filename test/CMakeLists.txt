@@ -14,6 +14,12 @@
 # limitations under the License.
 #=============================================================================
 
+function(add_compile_diagnostics TARGET)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endfunction()
+
 set(stdexec_test_sources
     test_main.cpp
     stdexec/cpos/test_cpo_bulk.cpp
@@ -97,6 +103,7 @@ target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB
 #     $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 add_executable(test.stdexec ${stdexec_test_sources})
+add_compile_diagnostics(test.stdexec)
 target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
@@ -109,6 +116,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
   add_executable(test.parallel_scheduler_replacement
                  test_main.cpp
                  stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
+  add_compile_diagnostics(test.parallel_scheduler_replacement)
   target_link_libraries(test.parallel_scheduler_replacement
       PUBLIC
       STDEXEC::stdexec
@@ -120,6 +128,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
 endif()
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
+add_compile_diagnostics(test.scratch)
 target_link_libraries(test.scratch
     PUBLIC
     STDEXEC::stdexec
