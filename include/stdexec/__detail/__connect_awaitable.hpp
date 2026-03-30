@@ -122,6 +122,9 @@ namespace STDEXEC
       static constexpr auto
       operator new([[maybe_unused]] std::size_t __bytes, __opstate_t& __opstate) noexcept -> void*
       {
+        // the first implementation of storing the coroutine frame inline in __opstate using the
+        // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
+        // shared at https://godbolt.org/z/zGG9fsPrz
         STDEXEC_ASSERT(__bytes == __storage_size);
         return __opstate.__storage_;
       }
