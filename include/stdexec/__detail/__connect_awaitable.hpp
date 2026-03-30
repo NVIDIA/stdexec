@@ -38,13 +38,7 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-    STDEXEC_PRAGMA_OPTIMIZE_BEGIN()
-
-#  if STDEXEC_MSVC()
-    static constexpr std::size_t __storage_size = 256;
-#  else
-    static constexpr std::size_t __storage_size = 8 * sizeof(void*);
-#  endif
+    static constexpr std::size_t __storage_size  = 5 * sizeof(void*);
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
     // clang-format off
@@ -80,31 +74,32 @@ namespace STDEXEC
       __with_await_transform() = default;
     };
 
-    struct __awaiter_base
+    struct __final_awaiter
     {
       static constexpr auto await_ready() noexcept -> bool
       {
         return false;
       }
 
+      template <class _Promise>
+      static constexpr void await_suspend(__std::coroutine_handle<_Promise> __h) noexcept
+      {
+        try
+        {
+          __h.promise().__opstate_.__on_resume();
+        }
+        catch (...)
+        {
+          __std::unreachable();
+        }
+      }
+
       [[noreturn]]
-      inline void await_resume() noexcept
+      static void await_resume() noexcept
       {
         __std::unreachable();
       }
     };
-
-    inline void __destroy_coro(__std::coroutine_handle<> __coro) noexcept
-    {
-#  if STDEXEC_MSVC()
-      // MSVCBUG https://developercommunity.visualstudio.com/t/Double-destroy-of-a-local-in-coroutine-d/10456428
-      // Reassign __coro before calling destroy to make the mutation
-      // observable and to hopefully ensure that the compiler does not eliminate it.
-      std::exchange(__coro, {}).destroy();
-#  else
-      __coro.destroy();
-#  endif
-    }
 
     template <class _Awaitable, class _Receiver>
     struct __opstate;
@@ -114,79 +109,44 @@ namespace STDEXEC
     {
       using __opstate_t = __opstate<_Awaitable, _Receiver>;
 
-      struct __task
-      {
-        using promise_type = __promise;
-
-        constexpr explicit __task(__std::coroutine_handle<__promise> __coro) noexcept
-          : __coro_(__coro)
-        {}
-
-        STDEXEC_IMMOVABLE(__task);
-
-        ~__task()
-        {
-          __connect_await::__destroy_coro(__coro_);
-        }
-
-        __std::coroutine_handle<__promise> __coro_{};
-      };
-
-      struct __final_awaiter : __awaiter_base
-      {
-        void await_suspend(__std::coroutine_handle<>) noexcept
-        {
-          using __awaitable_t = __result_of<__get_awaitable, _Awaitable, __promise&>;
-          using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
-          using __result_t    = decltype(__declval<__awaiter_t>().await_resume());
-
-          if (__opstate_.__eptr_)
-          {
-            STDEXEC::set_error(static_cast<_Receiver&&>(__opstate_.__rcvr_),
-                               std::move(__opstate_.__eptr_));
-          }
-          else if constexpr (__same_as<__result_t, void>)
-          {
-            STDEXEC_ASSERT(__opstate_.__result_.has_value());
-            STDEXEC::set_value(static_cast<_Receiver&&>(__opstate_.__rcvr_));
-          }
-          else
-          {
-            STDEXEC_ASSERT(__opstate_.__result_.has_value());
-            STDEXEC::set_value(static_cast<_Receiver&&>(__opstate_.__rcvr_),
-                               static_cast<__result_t&&>(*__opstate_.__result_));
-          }
-          // This coroutine is never resumed; its work is done.
-        }
-
-        __opstate<_Awaitable, _Receiver>& __opstate_;
-      };
-
       constexpr explicit(!STDEXEC_EDG()) __promise(__opstate_t& __opstate) noexcept
         : __opstate_(__opstate)
       {}
 
-#  if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 12'00
+      ~__promise()
+      {
+        // never invoked
+        __std::unreachable();
+      }
+
       static constexpr auto
       operator new([[maybe_unused]] std::size_t __bytes, __opstate_t& __opstate) noexcept -> void*
       {
-        STDEXEC_ASSERT(__bytes <= sizeof(__opstate.__storage_));
+        STDEXEC_ASSERT(__bytes == __storage_size);
         return __opstate.__storage_;
       }
 
-      static constexpr void operator delete([[maybe_unused]] void* __ptr) noexcept
+      static constexpr void operator delete(void*, std::size_t) noexcept
       {
-        // no-op
+        // never invoked
+        __std::unreachable();
       }
-#  endif
 
-      constexpr auto get_return_object() noexcept -> __task
+      constexpr auto get_return_object() noexcept -> __std::coroutine_handle<__promise>
       {
-        return __task{__std::coroutine_handle<__promise>::from_promise(*this)};
+        try
+        {
+          return __std::coroutine_handle<__promise>::from_promise(*this);
+        }
+        catch (...)
+        {
+          __std::unreachable();
+        }
       }
 
       [[noreturn]]
-      static auto get_return_object_on_allocation_failure() noexcept -> __task
+      static auto
+      get_return_object_on_allocation_failure() noexcept -> __std::coroutine_handle<__promise>
       {
         __std::unreachable();
       }
@@ -196,26 +156,27 @@ namespace STDEXEC
         return {};
       }
 
-      void unhandled_exception() noexcept
+      [[noreturn]]
+      static void unhandled_exception() noexcept
       {
-        __opstate_.__eptr_ = std::current_exception();
+        __std::unreachable();
       }
 
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
       {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__opstate_.__rcvr_));
+        __opstate_.__on_stopped();
         // Returning noop_coroutine here causes the __connect_awaitable
         // coroutine to never resume past the point where it co_await's
         // the awaitable.
         return __std::noop_coroutine();
       }
 
-      constexpr auto final_suspend() noexcept -> __final_awaiter
+      static constexpr auto final_suspend() noexcept -> __final_awaiter
       {
-        return __final_awaiter{{}, __opstate_};
+        return __final_awaiter{};
       }
 
-      static void return_void() noexcept
+      static constexpr void return_void() noexcept
       {
         // no-op
       }
@@ -228,67 +189,134 @@ namespace STDEXEC
 
       __opstate<_Awaitable, _Receiver>& __opstate_;
     };
+  }  // namespace __connect_await
+}
 
+template <class _Awaitable, class _Receiver>
+struct std::coroutine_traits<
+  STDEXEC::__std::coroutine_handle<STDEXEC::__connect_await::__promise<_Awaitable, _Receiver>>,
+  STDEXEC::__connect_await::__opstate<_Awaitable, _Receiver>&>
+{
+  using promise_type = STDEXEC::__connect_await::__promise<_Awaitable, _Receiver>;
+};
+
+namespace STDEXEC
+{
+  namespace __connect_await
+  {
     template <class _Awaitable, class _Receiver>
     struct __opstate
     {
       constexpr explicit __opstate(_Awaitable&& __awaitable, _Receiver&& __rcvr)
         noexcept(__is_nothrow)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __task_(__co_impl(*this))
+        , __coro(__co_impl(*this))
         , __awaitable1_(static_cast<_Awaitable&&>(__awaitable))
-        , __awaitable2_(
-            __get_awaitable(static_cast<_Awaitable&&>(__awaitable1_), __task_.__coro_.promise()))
+        , __awaitable2_(__get_awaitable(static_cast<_Awaitable&&>(__awaitable1_), __coro.promise()))
         , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable2_)))
       {}
 
       void start() & noexcept
       {
-        __task_.__coro_.resume();
+        try
+        {
+          if (!__awaiter_.await_ready())
+          {
+            using __suspend_result_t = decltype(__awaiter_.await_suspend(__coro));
+
+            // suspended
+            if constexpr (std::is_void_v<__suspend_result_t>)
+            {
+              // void-returning await_suspend means "always suspend"
+              __awaiter_.await_suspend(__coro);
+              return;
+            }
+            else if constexpr (std::same_as<bool, __suspend_result_t>)
+            {
+              if (__awaiter_.await_suspend(__coro))
+              {
+                // returning true from a bool-returning await_suspend means suspend
+                return;
+              }
+              else
+              {
+                // returning false means immediately resume
+              }
+            }
+            else
+            {
+              static_assert(__std::convertible_to<__suspend_result_t, __std::coroutine_handle<>>);
+              auto __resume_target = __awaiter_.await_suspend(__coro);
+              __resume_target.resume();
+              return;
+            }
+          }
+
+          // immediate resumption
+          __on_resume();
+        }
+        catch (...)
+        {
+          if constexpr (!noexcept(__awaiter_.await_ready())
+                        || !noexcept(__awaiter_.await_suspend(__coro)))
+          {
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
+        }
       }
 
      private:
       using __promise_t   = __promise<_Awaitable, _Receiver>;
-      using __task_t      = __promise_t::__task;
       using __awaitable_t = __result_of<__get_awaitable, _Awaitable, __promise_t&>;
       using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
-      using __result_t    = decltype(__declval<__awaiter_t>().await_resume());
 
       friend __promise_t;
+      friend __final_awaiter;
 
       static constexpr bool __is_nothrow = __nothrow_move_constructible<_Awaitable>
                                         && __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
                                         && __noexcept_of<__get_awaiter, __awaitable_t>;
 
-      static constexpr std::size_t __storage_size = __connect_await::__storage_size
-                                                  + sizeof(__manual_lifetime<__result_t>)
-                                                  - __same_as<__result_t, void>;
-
-      static auto __co_impl(__opstate& __op) noexcept -> __task_t
+      static auto __co_impl(__opstate&) noexcept -> __std::coroutine_handle<__promise_t>
       {
-        using __op_awaiter_t = decltype(__op.__awaiter_);
-        if constexpr (__same_as<decltype(*__op.__result_), void>)
+        co_return;
+      }
+
+      constexpr void __on_resume() noexcept
+      {
+        try
         {
-          co_await static_cast<__op_awaiter_t&&>(__op.__awaiter_);
-          __op.__result_.emplace();
+          if constexpr (std::is_void_v<decltype(__awaiter_.await_resume())>)
+          {
+            __awaiter_.await_resume();
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+          }
+          else
+          {
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __awaiter_.await_resume());
+          }
         }
-        else
+        catch (...)
         {
-          __op.__result_.emplace(co_await static_cast<__op_awaiter_t&&>(__op.__awaiter_));
+          if constexpr (!noexcept(__awaiter_.await_resume()))
+          {
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
         }
       }
 
-      alignas(__storage_align) std::byte __storage_[__storage_size];
-      _Receiver              __rcvr_;
-      __promise_t::__task    __task_;
-      _Awaitable             __awaitable1_;
-      __awaitable_t          __awaitable2_;
-      __awaiter_t            __awaiter_;
-      std::exception_ptr     __eptr_{};
-      __optional<__result_t> __result_{};
-    };
+      constexpr void __on_stopped() noexcept
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+      }
 
-    STDEXEC_PRAGMA_OPTIMIZE_END()
+      alignas(__storage_align) std::byte __storage_[__storage_size];
+      _Receiver                            __rcvr_;
+      __std::coroutine_handle<__promise_t> __coro;
+      _Awaitable                           __awaitable1_;
+      __awaitable_t                        __awaitable2_;
+      __awaiter_t                          __awaiter_;
+    };
   }  // namespace __connect_await
 
   struct __connect_awaitable_t
