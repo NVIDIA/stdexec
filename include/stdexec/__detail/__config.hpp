@@ -402,8 +402,8 @@ namespace STDEXEC::__std
 #endif
 
 #if STDEXEC_MSVC()
-#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(optimize("", on))
-#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(optimize("", off))
+#  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(optimize("t", on))
+#  define STDEXEC_PRAGMA_OPTIMIZE_END()    STDEXEC_PRAGMA(optimize("", on))
 #else
 #  define STDEXEC_PRAGMA_OPTIMIZE_BEGIN()  STDEXEC_PRAGMA(GCC push_options) \
                                            STDEXEC_PRAGMA(GCC optimize("O3"))
