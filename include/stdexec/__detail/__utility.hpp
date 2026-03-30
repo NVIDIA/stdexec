@@ -46,6 +46,11 @@ namespace STDEXEC
   {
   } __no_init{};
 
+  inline constexpr struct __in_place_from_t
+  {
+    explicit __in_place_from_t() = default;
+  } __in_place_from{};
+
   namespace
   {
     struct __anon
