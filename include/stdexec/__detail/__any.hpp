@@ -159,7 +159,7 @@ namespace STDEXEC::__any
   struct __any_ptr;
 
   template <template <class> class _Interface>
-  struct __any_const_ptr;
+  struct __any_cptr;
 
   template <template <class> class... _BaseInterfaces>
   struct __extends;
@@ -265,7 +265,7 @@ namespace STDEXEC::__any
       [[nodiscard]]
       constexpr auto operator()(_Interface<_Base> const &__arg) const noexcept
       {
-        return __any_const_ptr<_Interface>(std::addressof(__arg));
+        return __any_cptr<_Interface>(std::addressof(__arg));
       }
     };
 
@@ -309,14 +309,38 @@ namespace STDEXEC::__any
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  enum class __box_kind
+  {
+    __abstract,
+    __object,
+    __proxy
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////
+  enum class __root_kind
+  {
+    __value,
+    __reference
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // __is_small: Model is Interface<_Ty> for some concrete _Ty
   template <class _Model>
   [[nodiscard]]
   constexpr bool __is_small(size_t __buffer_size) noexcept
   {
-    constexpr bool __nothrow_movable = !__extension_of<_Model, __imovable>
-                                    || std::is_nothrow_move_constructible_v<_Model>;
-    return sizeof(_Model) <= __buffer_size && __nothrow_movable;
+    if constexpr (_Model::__root_kind == __root_kind::__reference)
+    {
+      STDEXEC_ASSERT(sizeof(_Model) <= __buffer_size);
+      return true;
+    }
+    else
+    {
+      // If _Model requires movability, then it must be nothrow moveable to be small.
+      STDEXEC_CONSTEXPR_LOCAL bool __nothrow_movable = !__extension_of<_Model, __imovable>
+                                                    || __nothrow_move_constructible<_Model>;
+      return sizeof(_Model) <= __buffer_size && __nothrow_movable;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -371,19 +395,6 @@ namespace STDEXEC::__any
   //! Derived<Base<__iroot>>.
   template <template <class> class _Interface, class _BaseInterfaces = __bases_of<_Interface>>
   using __iabstract = _Interface<__mcall1<_BaseInterfaces, __iroot>>;
-
-  enum class __box_kind
-  {
-    __abstract,
-    __object,
-    __proxy
-  };
-
-  enum class __root_kind
-  {
-    __value,
-    __reference
-  };
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __iroot
@@ -453,6 +464,14 @@ namespace STDEXEC::__any
     constexpr explicit __box(_Args &&...__args) noexcept
       : __val_(static_cast<_Args &&>(__args)...)
     {}
+
+    template <class _Fn, class... _Args>
+    constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
+      noexcept(__nothrow_callable<_Fn, _Args...>)
+      : __val_(static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...))
+    {
+      static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
+    }
 
     template <class _Self>
     [[nodiscard]]
@@ -1140,10 +1159,9 @@ namespace STDEXEC::__any
 
       STDEXEC_IF_NOT_CONSTEVAL
       {
-        STDEXEC_ASSERT((std::is_convertible_v<_Value &, __value_ref_t>)
+        STDEXEC_ASSERT((__std::convertible_to<_Value &, __value_ref_t>)
                        && "attempt to get a mutable reference from a const reference, or an rvalue "
-                          "from an "
-                          "lvalue");
+                          "from an lvalue");
       }
 
       if (__self.__is_indirect_())
@@ -1232,6 +1250,11 @@ namespace STDEXEC::__any
       }
     }
 
+    // __reference_proxy_root is not movable or copyable to preserve const-correctness of
+    // __any_cptr. Dereferencing an __any_cptr returns an lvalue reference to a const
+    // __reference_proxy_model. If __reference_proxy_model were copyable or movable, then
+    // it would be possible to cast away const-ness simply by copying or moving the
+    // __reference_proxy_model into a non-const object. That would be bad.
     __reference_proxy_root(__reference_proxy_root &&)            = delete;
     __reference_proxy_root &operator=(__reference_proxy_root &&) = delete;
 
@@ -1249,10 +1272,7 @@ namespace STDEXEC::__any
 
     constexpr ~__reference_proxy_root()
     {
-      STDEXEC_IF_CONSTEVAL
-      {
-        __reset_();
-      }
+      __reset_();
     }
 
     constexpr void swap(__reference_proxy_root &__other) noexcept
@@ -1287,8 +1307,7 @@ namespace STDEXEC::__any
           //! introducing an indirection.
           //! @post __is_tagged() == true
           auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-          __ptr       = static_cast<__iabstract<_Interface> *>(
-            std::addressof(STDEXEC::__unconst(__model)));
+          __ptr = static_cast<__interface_type *>(std::addressof(STDEXEC::__unconst(__model)));
         }
         else
         {
@@ -1592,7 +1611,7 @@ namespace STDEXEC::__any
 
     template <template <class> class _Interface>
     [[nodiscard]]
-    constexpr auto *operator()(__any_const_ptr<_Interface> const &__ptr) const
+    constexpr auto *operator()(__any_cptr<_Interface> const &__ptr) const
     {
       return (*this)(__ptr.operator->());
     }
@@ -1682,6 +1701,16 @@ namespace STDEXEC::__any
       : __any()
     {
       (*this).template __emplace_<_Value>(static_cast<_Args &&>(__args)...);
+    }
+
+    template <class _Fn, class... _Args>
+    constexpr explicit __any(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
+      : __any()
+    {
+      using __value_t = __decay_t<__call_result_t<_Fn, _Args...>>;
+      (*this).template __emplace_<__value_t>(
+        __emplace_from{[&]() noexcept(__nothrow_callable<_Fn, _Args...>)
+                       { return static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...); }});
     }
 
     // Implicit derived-to-base conversion constructor
@@ -1797,7 +1826,7 @@ namespace STDEXEC::__any
     constexpr __any_ptr_base(__any_ptr_base const &__other) noexcept
       : __reference_()
     {
-      (*this).__proxy_assign(std::addressof(__other.__reference_));
+      __reference_.__copy(__other.__reference_);
     }
 
     template <template <class> class _OtherInterface>
@@ -1811,7 +1840,7 @@ namespace STDEXEC::__any
     constexpr __any_ptr_base &operator=(__any_ptr_base const &__other) noexcept
     {
       __reset(__reference_);
-      (*this).__proxy_assign(std::addressof(__other.__reference_));
+      __reference_.__copy(__other.__reference_);
       return *this;
     }
 
@@ -1847,9 +1876,8 @@ namespace STDEXEC::__any
 
     template <template <class> class>
     friend struct __any_ptr_base;
-
     friend struct __any_ptr<_Interface>;
-    friend struct __any_const_ptr<_Interface>;
+    friend struct __any_cptr<_Interface>;
 
     //! @param __other A pointer to a value proxy model implementing _Interface.
     template <__extension_of<_Interface> _CvValueProxy>
@@ -1917,9 +1945,9 @@ namespace STDEXEC::__any
 
     // Disable const-to-mutable conversions:
     template <template <class> class _Other>
-    __any_ptr(__any_const_ptr<_Other> const &) = delete;
+    __any_ptr(__any_cptr<_Other> const &) = delete;
     template <template <class> class _Other>
-    __any_ptr &operator=(__any_const_ptr<_Other> const &) = delete;
+    __any_ptr &operator=(__any_cptr<_Other> const &) = delete;
 
     template <__model_of<_Interface> _Value>
     constexpr __any_ptr(_Value *__value_ptr) noexcept
@@ -1974,9 +2002,9 @@ namespace STDEXEC::__any
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __any_ptr(_Interface<_Base> *) -> __any_ptr<_Interface>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
-  // __any_const_ptr
+  // __any_cptr
   template <template <class> class _Interface>
-  struct __any_const_ptr : __any_ptr_base<_Interface>
+  struct __any_cptr : __any_ptr_base<_Interface>
   {
     using __reference = __any_ptr_base<_Interface>::__model_type const;
     using __pointer   = __reference *;
@@ -1985,21 +2013,21 @@ namespace STDEXEC::__any
     using __any_ptr_base<_Interface>::operator=;
 
     template <__model_of<_Interface> _Value>
-    constexpr __any_const_ptr(_Value const *__value_ptr) noexcept
+    constexpr __any_cptr(_Value const *__value_ptr) noexcept
       : __any_ptr_base<_Interface>()
     {
       (*this).__value_assign(__value_ptr);
     }
 
     template <__extension_of<_Interface> _Proxy>
-    constexpr __any_const_ptr(_Proxy const *__proxy_ptr) noexcept
+    constexpr __any_cptr(_Proxy const *__proxy_ptr) noexcept
       : __any_ptr_base<_Interface>()
     {
       (*this).__proxy_assign(__proxy_ptr);
     }
 
     template <__model_of<_Interface> _Value>
-    constexpr __any_const_ptr &operator=(_Value const *__value_ptr) noexcept
+    constexpr __any_cptr &operator=(_Value const *__value_ptr) noexcept
     {
       __reset((*this).__reference_);
       (*this).__value_assign(__value_ptr);
@@ -2007,14 +2035,14 @@ namespace STDEXEC::__any
     }
 
     template <__extension_of<_Interface> _Proxy>
-    constexpr __any_const_ptr &operator=(_Proxy const *__proxy_ptr) noexcept
+    constexpr __any_cptr &operator=(_Proxy const *__proxy_ptr) noexcept
     {
       __reset((*this).__reference_);
       (*this).__proxy_assign(__proxy_ptr);
       return *this;
     }
 
-    friend constexpr void swap(__any_const_ptr &__lhs, __any_const_ptr &__rhs) noexcept
+    friend constexpr void swap(__any_cptr &__lhs, __any_cptr &__rhs) noexcept
     {
       __lhs.__reference_.swap(__rhs.__reference_);
     }
@@ -2034,7 +2062,7 @@ namespace STDEXEC::__any
 
   template <template <class> class _Interface, class _Base>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-  __any_const_ptr(_Interface<_Base> const *) -> __any_const_ptr<_Interface>;
+  __any_cptr(_Interface<_Base> const *) -> __any_cptr<_Interface>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __iequality_comparable
@@ -2053,7 +2081,7 @@ namespace STDEXEC::__any
    private:
     [[nodiscard]]
     // NOLINTNEXTLINE(modernize-use-override)
-    constexpr virtual bool __equal_to(__any_const_ptr<__iequality_comparable> __other) const
+    constexpr virtual bool __equal_to(__any_cptr<__iequality_comparable> __other) const
     {
       auto const &type = STDEXEC::__any::__type(*this);
 
