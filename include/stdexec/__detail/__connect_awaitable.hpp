@@ -38,7 +38,7 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-    static constexpr std::size_t __storage_size  = 4 * sizeof(void*);
+    static constexpr std::size_t __storage_size  = 4 * sizeof(void*) - 1;
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
     // clang-format off
@@ -130,7 +130,7 @@ namespace STDEXEC
         // the first implementation of storing the coroutine frame inline in __opstate using the
         // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
         // shared at https://godbolt.org/z/zGG9fsPrz
-        STDEXEC_ASSERT(__bytes == __storage_size);
+        STDEXEC_ASSERT(__bytes == __storage_size + 1);
         return __opstate.__storage_;
       }
 
@@ -230,28 +230,39 @@ namespace STDEXEC
         , __source_awaitable_(static_cast<_Awaitable&&>(__awaitable))
       {}
 
+      __opstate(__opstate&&) = delete;
+
+      ~__opstate()
+      {
+        if (__started_)
+        {
+          std::destroy_at(&__awaiter_);
+        }
+      }
+
       void start() & noexcept
       {
         auto __coro = __co_impl(*this);
+        __started_  = true;
 
         STDEXEC_TRY
         {
-          __awaiter_.emplace(__source_awaitable_, __coro);
+          std::construct_at(&__awaiter_, __source_awaitable_, __coro);
 
-          if (!__awaiter_->await_ready())
+          if (!__awaiter_.await_ready())
           {
-            using __suspend_result_t = decltype(__awaiter_->await_suspend(__coro));
+            using __suspend_result_t = decltype(__awaiter_.await_suspend(__coro));
 
             // suspended
             if constexpr (std::is_void_v<__suspend_result_t>)
             {
               // void-returning await_suspend means "always suspend"
-              __awaiter_->await_suspend(__coro);
+              __awaiter_.await_suspend(__coro);
               return;
             }
             else if constexpr (std::same_as<bool, __suspend_result_t>)
             {
-              if (__awaiter_->await_suspend(__coro))
+              if (__awaiter_.await_suspend(__coro))
               {
                 // returning true from a bool-returning await_suspend means suspend
                 return;
@@ -264,7 +275,7 @@ namespace STDEXEC
             else
             {
               static_assert(__std::convertible_to<__suspend_result_t, __std::coroutine_handle<>>);
-              auto __resume_target = __awaiter_->await_suspend(__coro);
+              auto __resume_target = __awaiter_.await_suspend(__coro);
               STDEXEC_TRY
               {
                 __resume_target.resume();
@@ -288,8 +299,8 @@ namespace STDEXEC
           if constexpr (!__nothrow_constructible_from<__awaitable_state,
                                                       _Awaitable&,
                                                       __std::coroutine_handle<__promise_t>>
-                        || !noexcept(__awaiter_->await_ready())
-                        || !noexcept(__awaiter_->await_suspend(__coro)))
+                        || !noexcept(__awaiter_.await_ready())
+                        || !noexcept(__awaiter_.await_suspend(__coro)))
           {
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
@@ -313,19 +324,19 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          if constexpr (std::is_void_v<decltype(__awaiter_->await_resume())>)
+          if constexpr (std::is_void_v<decltype(__awaiter_.await_resume())>)
           {
-            __awaiter_->await_resume();
+            __awaiter_.await_resume();
             STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
           }
           else
           {
-            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __awaiter_->await_resume());
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __awaiter_.await_resume());
           }
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!noexcept(__awaiter_->await_resume()))
+          if constexpr (!noexcept(__awaiter_.await_resume()))
           {
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
@@ -373,9 +384,14 @@ namespace STDEXEC
       };
 
       alignas(__storage_align) std::byte __storage_[__storage_size];
-      _Receiver                     __rcvr_;
-      _Awaitable                    __source_awaitable_;
-      __optional<__awaitable_state> __awaiter_;
+      [[no_unique_address]]
+      bool       __started_{false};
+      _Receiver  __rcvr_;
+      _Awaitable __source_awaitable_;
+      union
+      {
+        __awaitable_state __awaiter_;
+      };
     };
   }  // namespace __connect_await
 
