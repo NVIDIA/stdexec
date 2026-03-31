@@ -38,7 +38,7 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-    static constexpr std::size_t __storage_size  = 5 * sizeof(void*);
+    static constexpr std::size_t __storage_size  = 4 * sizeof(void*);
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
     // clang-format off
@@ -86,7 +86,7 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          __h.promise().__opstate_.__on_resume();
+          __h.promise().__get_opstate().__on_resume();
         }
         STDEXEC_CATCH_ALL
         {
@@ -109,9 +109,14 @@ namespace STDEXEC
     {
       using __opstate_t = __opstate<_Awaitable, _Receiver>;
 
-      constexpr explicit(!STDEXEC_EDG()) __promise(__opstate_t& __opstate) noexcept
-        : __opstate_(__opstate)
-      {}
+      static constexpr std::ptrdiff_t __promise_offset = sizeof(void*) * 2;
+
+      explicit(!STDEXEC_EDG()) __promise([[maybe_unused]]
+                                         __opstate_t& __opstate) noexcept
+      {
+        STDEXEC_ASSERT(__promise_offset
+                       == reinterpret_cast<std::byte*>(this) - __opstate.__storage_);
+      }
 
       ~__promise()
       {
@@ -167,7 +172,7 @@ namespace STDEXEC
 
       constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
       {
-        __opstate_.__on_stopped();
+        __get_opstate().__on_stopped();
         // Returning noop_coroutine here causes the __connect_awaitable
         // coroutine to never resume past its initial_suspend point
         return __std::noop_coroutine();
@@ -186,10 +191,20 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
       {
-        return STDEXEC::get_env(__opstate_.__rcvr_);
+        return STDEXEC::get_env(__get_opstate().__rcvr_);
       }
 
-      __opstate<_Awaitable, _Receiver>& __opstate_;
+      __opstate<_Awaitable, _Receiver>& __get_opstate() noexcept
+      {
+        return *reinterpret_cast<__opstate<_Awaitable, _Receiver>*>(
+          reinterpret_cast<std::byte*>(this) - __promise_offset);
+      }
+
+      __opstate<_Awaitable, _Receiver> const & __get_opstate() const noexcept
+      {
+        return *reinterpret_cast<__opstate<_Awaitable, _Receiver> const *>(
+          reinterpret_cast<std::byte const *>(this) - __promise_offset);
+      }
     };
   }  // namespace __connect_await
 }
@@ -322,8 +337,15 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
-      struct __awaitable_state
+      class __awaitable_state
       {
+        static constexpr bool __is_nothrow =
+          __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
+          && __noexcept_of<__get_awaiter, __awaitable_t>;
+
+        __awaitable_t __awaitable_;
+        __awaiter_t   __awaiter_;
+       public:
         explicit __awaitable_state(_Awaitable&                          __source,
                                    __std::coroutine_handle<__promise_t> __coro)
           noexcept(__is_nothrow)
@@ -343,18 +365,11 @@ namespace STDEXEC
           return __awaiter_.await_suspend(__h);
         }
 
-        constexpr decltype(auto) await_resume() noexcept(noexcept(__awaiter_.await_resume()))
+        constexpr auto await_resume() noexcept(noexcept(__awaiter_.await_resume()))
+          -> decltype(__awaiter_.await_resume())
         {
           return __awaiter_.await_resume();
         }
-
-       private:
-        static constexpr bool __is_nothrow =
-          __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
-          && __noexcept_of<__get_awaiter, __awaitable_t>;
-
-        __awaitable_t __awaitable_;
-        __awaiter_t   __awaiter_;
       };
 
       alignas(__storage_align) std::byte __storage_[__storage_size];
