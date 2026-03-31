@@ -210,33 +210,33 @@ namespace STDEXEC
     struct __opstate
     {
       constexpr explicit __opstate(_Awaitable&& __awaitable, _Receiver&& __rcvr)
-        noexcept(__is_nothrow)
+        noexcept(__nothrow_move_constructible<_Awaitable>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __coro_(__co_impl(*this))
-        , __awaitable1_(static_cast<_Awaitable&&>(__awaitable))
-        , __awaitable2_(
-            __get_awaitable(static_cast<_Awaitable&&>(__awaitable1_), __coro_.promise()))
-        , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable2_)))
+        , __source_awaitable_(static_cast<_Awaitable&&>(__awaitable))
       {}
 
       void start() & noexcept
       {
+        auto __coro = __co_impl(*this);
+
         STDEXEC_TRY
         {
-          if (!__awaiter_.await_ready())
+          __awaiter_.emplace(__source_awaitable_, __coro);
+
+          if (!__awaiter_->await_ready())
           {
-            using __suspend_result_t = decltype(__awaiter_.await_suspend(__coro_));
+            using __suspend_result_t = decltype(__awaiter_->await_suspend(__coro));
 
             // suspended
             if constexpr (std::is_void_v<__suspend_result_t>)
             {
               // void-returning await_suspend means "always suspend"
-              __awaiter_.await_suspend(__coro_);
+              __awaiter_->await_suspend(__coro);
               return;
             }
             else if constexpr (std::same_as<bool, __suspend_result_t>)
             {
-              if (__awaiter_.await_suspend(__coro_))
+              if (__awaiter_->await_suspend(__coro))
               {
                 // returning true from a bool-returning await_suspend means suspend
                 return;
@@ -249,7 +249,7 @@ namespace STDEXEC
             else
             {
               static_assert(__std::convertible_to<__suspend_result_t, __std::coroutine_handle<>>);
-              auto __resume_target = __awaiter_.await_suspend(__coro_);
+              auto __resume_target = __awaiter_->await_suspend(__coro);
               STDEXEC_TRY
               {
                 __resume_target.resume();
@@ -270,8 +270,11 @@ namespace STDEXEC
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!noexcept(__awaiter_.await_ready())
-                        || !noexcept(__awaiter_.await_suspend(__coro_)))
+          if constexpr (!__nothrow_constructible_from<__awaitable_state,
+                                                      _Awaitable&,
+                                                      __std::coroutine_handle<__promise_t>>
+                        || !noexcept(__awaiter_->await_ready())
+                        || !noexcept(__awaiter_->await_suspend(__coro)))
           {
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
@@ -286,10 +289,6 @@ namespace STDEXEC
       friend __promise_t;
       friend __final_awaiter;
 
-      static constexpr bool __is_nothrow = __nothrow_move_constructible<_Awaitable>
-                                        && __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
-                                        && __noexcept_of<__get_awaiter, __awaitable_t>;
-
       static auto __co_impl(__opstate&) noexcept -> __std::coroutine_handle<__promise_t>
       {
         co_return;
@@ -299,19 +298,19 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          if constexpr (std::is_void_v<decltype(__awaiter_.await_resume())>)
+          if constexpr (std::is_void_v<decltype(__awaiter_->await_resume())>)
           {
-            __awaiter_.await_resume();
+            __awaiter_->await_resume();
             STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
           }
           else
           {
-            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __awaiter_.await_resume());
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __awaiter_->await_resume());
           }
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!noexcept(__awaiter_.await_resume()))
+          if constexpr (!noexcept(__awaiter_->await_resume()))
           {
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
           }
@@ -323,12 +322,45 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
+      struct __awaitable_state
+      {
+        explicit __awaitable_state(_Awaitable&                          __source,
+                                   __std::coroutine_handle<__promise_t> __coro)
+          noexcept(__is_nothrow)
+          : __awaitable_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
+          , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
+        {}
+
+        constexpr auto await_ready() noexcept(noexcept(__awaiter_.await_ready())) -> bool
+        {
+          return __awaiter_.await_ready();
+        }
+
+        template <class _P>
+        constexpr auto await_suspend(__std::coroutine_handle<_P> __h)
+          noexcept(noexcept(__awaiter_.await_suspend(__h)))
+        {
+          return __awaiter_.await_suspend(__h);
+        }
+
+        constexpr decltype(auto) await_resume() noexcept(noexcept(__awaiter_.await_resume()))
+        {
+          return __awaiter_.await_resume();
+        }
+
+       private:
+        static constexpr bool __is_nothrow =
+          __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
+          && __noexcept_of<__get_awaiter, __awaitable_t>;
+
+        __awaitable_t __awaitable_;
+        __awaiter_t   __awaiter_;
+      };
+
       alignas(__storage_align) std::byte __storage_[__storage_size];
-      _Receiver                            __rcvr_;
-      __std::coroutine_handle<__promise_t> __coro_;
-      _Awaitable                           __awaitable1_;
-      __awaitable_t                        __awaitable2_;
-      __awaiter_t                          __awaiter_;
+      _Receiver                     __rcvr_;
+      _Awaitable                    __source_awaitable_;
+      __optional<__awaitable_state> __awaiter_;
     };
   }  // namespace __connect_await
 
