@@ -74,6 +74,222 @@ namespace STDEXEC
       __with_await_transform() = default;
     };
 
+    template <class _Derived>
+    struct __awaitable_wrapper
+    {
+      constexpr auto& __awaiter() noexcept
+      {
+        return static_cast<_Derived*>(this)->__awaiter_;
+      }
+
+      constexpr auto await_ready() noexcept(noexcept(__awaiter().await_ready())) -> bool
+      {
+        return __awaiter().await_ready();
+      }
+
+      template <class _Promise>
+      constexpr auto await_suspend(__std::coroutine_handle<_Promise> __h)
+        noexcept(noexcept(__awaiter().await_suspend(__h)))
+      {
+        return __awaiter().await_suspend(__h);
+      }
+
+      constexpr decltype(auto) await_resume() noexcept(noexcept(__awaiter().await_resume()))
+      {
+        return __awaiter().await_resume();
+      }
+    };
+
+    template <class _Tp, class _Promise>
+    concept __has_distinct_awaitable = __has_as_awaitable_member<_Tp, _Promise>;
+
+    template <class _Awaitable>
+    concept __has_distinct_awaiter = requires(_Awaitable&& __awaitable) {
+      { static_cast<_Awaitable&&>(__awaitable).operator co_await() };
+    } || requires(_Awaitable&& __awaitable) {
+      { operator co_await(static_cast<_Awaitable&&>(__awaitable)) };
+    };
+
+    template <class _Awaitable, class _Promise>
+    struct __awaitable_state : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
+    {
+      using __awaitable_t = __result_of<__get_awaitable, _Awaitable, _Promise&>;
+      using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
+
+      static constexpr bool __is_nothrow = __noexcept_of<__get_awaitable, _Awaitable, _Promise&>
+                                        && __noexcept_of<__get_awaiter, __awaitable_t>;
+
+      struct __state : __awaitable_wrapper<__state>
+      {
+        __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
+          noexcept(__is_nothrow)
+          : __awaitable_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
+          , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
+        {}
+
+        __awaitable_t __awaitable_;
+        __awaiter_t   __awaiter_;
+      };
+
+      _Awaitable __source_awaitable_;
+      union
+      {
+        __state __awaiter_;
+      };
+
+      template <class _A>
+        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
+      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      {}
+
+      ~__awaitable_state() {}
+
+      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      {
+        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+      }
+
+      constexpr void destroy() noexcept
+      {
+        std::destroy_at(&__awaiter_);
+      }
+    };
+
+    template <class _Awaitable, class _Promise>
+      requires __awaitable<_Awaitable, _Promise>
+            && (!__has_distinct_awaitable<_Awaitable, _Promise>)
+            && __has_distinct_awaiter<_Awaitable>
+    struct __awaitable_state<_Awaitable, _Promise>
+      : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
+    {
+      // _Awaitable has a distinct awaiter, but no distinct as_awaitable()
+      // so we don't need separate storage for it
+      using __awaiter_t = __awaiter_of_t<_Awaitable&&>;
+
+      static constexpr bool __is_nothrow = __noexcept_of<__get_awaiter, _Awaitable&&>;
+
+      struct __state : __awaitable_wrapper<__state>
+      {
+        __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
+          noexcept(__is_nothrow)
+          : __awaiter_(__get_awaiter(static_cast<_Awaitable&&>(__source)))
+        {
+          [[maybe_unused]]
+          auto&& __awaitable = __get_awaitable(static_cast<_Awaitable&&>(__source),
+                                               __coro.promise());
+
+          STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
+        }
+
+        __awaiter_t __awaiter_;
+      };
+
+      _Awaitable __source_awaitable_;
+      union
+      {
+        __state __awaiter_;
+      };
+
+      template <class _A>
+        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
+      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      {}
+
+      ~__awaitable_state() {}
+
+      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      {
+        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+      }
+
+      constexpr void destroy() noexcept
+      {
+        std::destroy_at(&__awaiter_);
+      }
+    };
+
+    template <class _Awaitable, class _Promise>
+      requires __awaitable<_Awaitable, _Promise>  //
+            && __has_distinct_awaitable<_Awaitable, _Promise>
+            && (!__has_distinct_awaiter<_Awaitable>)
+    struct __awaitable_state<_Awaitable, _Promise>
+      : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
+    {
+      // _Awaitable has a distinct awaitable, but no distinct awaiter
+      // so we don't need separate storage for it
+      using __awaiter_t = __result_of<__get_awaitable, _Awaitable, _Promise&>;
+
+      static constexpr bool __is_nothrow = __noexcept_of<__get_awaitable, _Awaitable, _Promise&>;
+
+      struct __state : __awaitable_wrapper<__state>
+      {
+        __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
+          noexcept(__is_nothrow)
+          : __awaiter_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
+        {
+          [[maybe_unused]]
+          auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_));
+          STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
+        }
+
+        __awaiter_t __awaiter_;
+      };
+
+      _Awaitable __source_awaitable_;
+      union
+      {
+        __state __awaiter_;
+      };
+
+      template <class _A>
+        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
+      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      {}
+
+      ~__awaitable_state() {}
+
+      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      {
+        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+      }
+
+      constexpr void destroy() noexcept
+      {
+        std::destroy_at(&__awaiter_);
+      }
+    };
+
+    template <class _Awaitable, class _Promise>
+      requires __awaitable<_Awaitable, _Promise>
+            && (!__has_distinct_awaitable<_Awaitable, _Promise>)
+            && (!__has_distinct_awaiter<_Awaitable>)
+    struct __awaitable_state<_Awaitable, _Promise>
+      : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
+    {
+      // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
+      // so we don't need separate storage for either
+      _Awaitable __awaiter_;
+
+      template <class _A>
+        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
+      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+        : __awaiter_(static_cast<_A&&>(__awaitable))
+      {}
+
+      static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
+      {
+        // no-op
+      }
+
+      static constexpr void destroy() noexcept
+      {
+        // no-op
+      }
+    };
+
     struct __final_awaiter
     {
       static constexpr auto await_ready() noexcept -> bool
@@ -227,7 +443,7 @@ namespace STDEXEC
       constexpr explicit __opstate(_Awaitable&& __awaitable, _Receiver&& __rcvr)
         noexcept(__nothrow_move_constructible<_Awaitable>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __source_awaitable_(static_cast<_Awaitable&&>(__awaitable))
+        , __awaiter_(static_cast<_Awaitable&&>(__awaitable))
       {}
 
       __opstate(__opstate&&) = delete;
@@ -236,7 +452,7 @@ namespace STDEXEC
       {
         if (__started_)
         {
-          std::destroy_at(&__awaiter_);
+          __awaiter_.destroy();
         }
       }
 
@@ -247,7 +463,7 @@ namespace STDEXEC
 
         STDEXEC_TRY
         {
-          std::construct_at(&__awaiter_, __source_awaitable_, __coro);
+          __awaiter_.construct(__coro);
 
           if (!__awaiter_.await_ready())
           {
@@ -296,9 +512,7 @@ namespace STDEXEC
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!__nothrow_constructible_from<__awaitable_state,
-                                                      _Awaitable&,
-                                                      __std::coroutine_handle<__promise_t>>
+          if constexpr (!noexcept(__awaiter_.construct(__coro))
                         || !noexcept(__awaiter_.await_ready())
                         || !noexcept(__awaiter_.await_suspend(__coro)))
           {
@@ -348,50 +562,11 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
-      class __awaitable_state
-      {
-        static constexpr bool __is_nothrow =
-          __noexcept_of<__get_awaitable, _Awaitable, __promise_t&>
-          && __noexcept_of<__get_awaiter, __awaitable_t>;
-
-        __awaitable_t __awaitable_;
-        __awaiter_t   __awaiter_;
-       public:
-        explicit __awaitable_state(_Awaitable&                          __source,
-                                   __std::coroutine_handle<__promise_t> __coro)
-          noexcept(__is_nothrow)
-          : __awaitable_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
-          , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
-        {}
-
-        constexpr auto await_ready() noexcept(noexcept(__awaiter_.await_ready())) -> bool
-        {
-          return __awaiter_.await_ready();
-        }
-
-        template <class _P>
-        constexpr auto await_suspend(__std::coroutine_handle<_P> __h)
-          noexcept(noexcept(__awaiter_.await_suspend(__h)))
-        {
-          return __awaiter_.await_suspend(__h);
-        }
-
-        constexpr auto await_resume() noexcept(noexcept(__awaiter_.await_resume()))
-          -> decltype(__awaiter_.await_resume())
-        {
-          return __awaiter_.await_resume();
-        }
-      };
-
       alignas(__storage_align) std::byte __storage_[__storage_size];
       [[no_unique_address]]
-      bool       __started_{false};
-      _Receiver  __rcvr_;
-      _Awaitable __source_awaitable_;
-      union
-      {
-        __awaitable_state __awaiter_;
-      };
+      bool                                       __started_{false};
+      _Receiver                                  __rcvr_;
+      __awaitable_state<_Awaitable, __promise_t> __awaiter_;
     };
   }  // namespace __connect_await
 
