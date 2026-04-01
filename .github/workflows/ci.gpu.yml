@@ -102,6 +102,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }} \
+            -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             ;
 
           # Compile

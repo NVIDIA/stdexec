@@ -106,8 +106,9 @@ jobs:
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') }} \
             -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
             -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
-            -DCMAKE_CXX_STANDARD=${{ matrix.cxxstd }} \
-            -DCMAKE_CXX_EXTENSIONS=OFF \
+            -DCMAKE_CXX_STANDARD:STRING=${{ matrix.cxxstd }} \
+            -DCMAKE_CXX_EXTENSIONS:BOOL=OFF \
+            -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             ;
 
           # Compile
@@ -199,7 +200,9 @@ jobs:
             -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
             -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
             -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
-            -DCMAKE_CXX_STANDARD=20
+            -DCMAKE_CXX_STANDARD:STRING=20 \
+            -DSTDEXEC_BUILD_TESTS:BOOL=ON
+
           cmake --build build/ -v
           cd build
           ctest --output-on-failure
