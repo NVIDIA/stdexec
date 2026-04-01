@@ -33,11 +33,11 @@ namespace
    public:
     explicit constexpr ready_awaitable(T&& t) noexcept
       : t_(std::move(t))
-    {}
+    { }
 
     explicit constexpr ready_awaitable(T const & t)
       : t_(t)
-    {}
+    { }
 
     static constexpr bool await_ready() noexcept
     {
@@ -76,7 +76,7 @@ namespace
       FAIL_CHECK("this awaitable should never suspend");
     }
 
-    static constexpr void await_resume() noexcept {}
+    static constexpr void await_resume() noexcept { }
 
     ready_awaitable& base() noexcept
     {
@@ -91,7 +91,7 @@ namespace
 
     explicit constexpr awaitable_ref(Awaitable& awaitable) noexcept
       : awaitable_(&awaitable)
-    {}
+    { }
 
     constexpr auto await_ready() const noexcept(noexcept(awaitable_->await_ready()))
       requires requires(Awaitable& a) {
@@ -192,7 +192,7 @@ namespace
     explicit constexpr conditionally_suspending_awaitable(bool suspend, U&&... u) noexcept
       : suspending_awaitable<T>(std::forward<U>(u)...)
       , suspend_(suspend)
-    {}
+    { }
 
     constexpr bool await_suspend(std::coroutine_handle<> coro) noexcept
     {
@@ -236,7 +236,7 @@ namespace
     }
   };
 
-  template <class Awaitable>
+  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
   struct with_as_awaitable
   {
     template <class... T>
@@ -244,12 +244,12 @@ namespace
     explicit(sizeof...(T) == 1) with_as_awaitable(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    {}
+    { }
 
     template <class Promise>
-    awaitable_ref<Awaitable> as_awaitable(Promise&) noexcept
+    Wrapper<awaitable_ref<Awaitable>> as_awaitable(Promise&) noexcept
     {
-      return awaitable_ref(awaitable_);
+      return Wrapper<awaitable_ref<Awaitable>>(awaitable_);
     }
 
     auto& base() noexcept
@@ -261,7 +261,7 @@ namespace
     Awaitable awaitable_;
   };
 
-  template <class Awaitable>
+  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
   struct with_member_co_await
   {
     template <class... T>
@@ -269,11 +269,11 @@ namespace
     explicit(sizeof...(T) == 1) with_member_co_await(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    {}
+    { }
 
-    constexpr awaitable_ref<Awaitable> operator co_await() noexcept
+    constexpr Wrapper<awaitable_ref<Awaitable>> operator co_await() noexcept
     {
-      return awaitable_ref(awaitable_);
+      return Wrapper<awaitable_ref<Awaitable>>(awaitable_);
     }
 
     auto& base() noexcept
@@ -285,7 +285,7 @@ namespace
     Awaitable awaitable_;
   };
 
-  template <class Awaitable>
+  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
   struct with_friend_co_await
   {
     template <class... T>
@@ -293,7 +293,7 @@ namespace
     explicit(sizeof...(T) == 1) with_friend_co_await(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    {}
+    { }
 
     auto& base() noexcept
     {
@@ -305,9 +305,9 @@ namespace
 
     template <class Self>
       requires std::same_as<std::remove_cvref_t<Self>, with_friend_co_await>
-    friend constexpr awaitable_ref<Awaitable> operator co_await(Self&& self) noexcept
+    friend constexpr Wrapper<awaitable_ref<Awaitable>> operator co_await(Self&& self) noexcept
     {
-      return awaitable_ref(self.awaitable_);
+      return Wrapper<awaitable_ref<Awaitable>>(self.awaitable_);
     }
   };
 
@@ -700,12 +700,65 @@ namespace
       return coro.promise().unhandled_stopped();
     }
 
-    static constexpr void await_resume() noexcept {}
+    static constexpr void await_resume() noexcept { }
   };
 
   TEST_CASE("promise().unhandled_stopped() invokes set_stopped", "[cpo][cpo_connect_awaitable]")
   {
     auto op = ex::connect(stop_on_suspend{}, expect_stopped_receiver{});
     op.start();
+  }
+
+  template <class Awaitable>
+  struct as_immovable : Awaitable
+  {
+    using Awaitable::Awaitable;
+
+    as_immovable(as_immovable&&) = delete;
+
+    as_immovable& base() noexcept
+    {
+      return *this;
+    }
+  };
+
+  TEST_CASE("can connect and start immovable awaiters", "[cpo][cpo_connect_awaitable]")
+  {
+    {
+      // .as_awaitable(promise) returns an immovable value
+      auto op = ex::connect(with_as_awaitable<ready_awaitable<void>, as_immovable>{},
+                            expect_void_receiver{});
+      op.start();
+    }
+    {
+      // .operator co_await() returns an immovable value
+      auto op = ex::connect(with_member_co_await<ready_awaitable<void>, as_immovable>{},
+                            expect_void_receiver{});
+      op.start();
+    }
+    {
+      // operator co_await(awaitable) returns an immovable value
+      auto op = ex::connect(with_friend_co_await<ready_awaitable<void>, as_immovable>{},
+                            expect_void_receiver{});
+      op.start();
+    }
+    {
+      // both .as_awaitable(promise) and .as_awaitable(promise).operator co_await() return
+      // immovable values
+      auto op =
+        ex::connect(with_as_awaitable<with_member_co_await<ready_awaitable<void>, as_immovable>,
+                                      as_immovable>{},
+                    expect_void_receiver{});
+      op.start();
+    }
+    {
+      // both .as_awaitable(promise) and operator co_await(as_awaitable(promise)) return
+      // immovable values
+      auto op =
+        ex::connect(with_as_awaitable<with_friend_co_await<ready_awaitable<void>, as_immovable>,
+                                      as_immovable>{},
+                    expect_void_receiver{});
+      op.start();
+    }
   }
 }  // namespace

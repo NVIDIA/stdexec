@@ -38,7 +38,10 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-    static constexpr std::size_t __storage_size  = 4 * sizeof(void*) - 1;
+    // four pointers' worth of space when compiling with Clang or MSVC; five with GCC
+    static constexpr std::size_t __num_pointers  = 4 * (STDEXEC_CLANG() + STDEXEC_MSVC())
+                                                 + 5 * STDEXEC_GCC();
+    static constexpr std::size_t __storage_size  = __num_pointers * sizeof(void*) - 1;
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
     // clang-format off
@@ -123,14 +126,36 @@ namespace STDEXEC
       {
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
           noexcept(__is_nothrow)
-          : __awaitable_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
-          , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
-        {}
+        {
+          // GCC doesn't like initializing __awaitable_ or __awaiter_ in the member initializer
+          // clause when the result of __get_awaitable or __get_awaiter is immovable; it *seems*
+          // like direct initialization of a member with the result of a function ought to trigger
+          // C++17's mandatory copy elision, and both Clang and MSVC accept that code, but using
+          // a union with in-place new works around the issue.
+          new (static_cast<void*>(std::addressof(__awaitable_)))
+            __awaitable_t(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()));
+          new (static_cast<void*>(std::addressof(__awaiter_)))
+            __awaiter_t(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)));
+        }
 
-        [[no_unique_address]]
-        __awaitable_t __awaitable_;
-        [[no_unique_address]]
-        __awaiter_t __awaiter_;
+        ~__state()
+        {
+          // make sure to destroy in the reverse order of construction
+          std::destroy_at(std::addressof(__awaiter_));
+          std::destroy_at(std::addressof(__awaitable_));
+        }
+
+        union
+        {
+          [[no_unique_address]]
+          __awaitable_t __awaitable_;
+        };
+
+        union
+        {
+          [[no_unique_address]]
+          __awaiter_t __awaiter_;
+        };
       };
 
       [[no_unique_address]]
@@ -146,9 +171,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      {}
+      { }
 
-      ~__awaitable_state() {}
+      ~__awaitable_state() { }
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -178,8 +203,15 @@ namespace STDEXEC
       {
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
           noexcept(__is_nothrow)
-          : __awaiter_(__get_awaiter(static_cast<_Awaitable&&>(__source)))
         {
+          // GCC doesn't like initializing __awaiter_ in the member initializer clause when the
+          // result of __get_awaiter is immovable; it *seems* like direct initialization of a
+          // member with the result of a function ought to trigger C++17's mandatory copy elision,
+          // and both Clang and MSVC accept that code, but using a union with in-place new works
+          // around the issue.
+          new (static_cast<void*>(std::addressof(__awaiter_)))
+            __awaiter_t(__get_awaiter(static_cast<_Awaitable&&>(__source)));
+
           [[maybe_unused]]
           auto&& __awaitable = __get_awaitable(static_cast<_Awaitable&&>(__source),
                                                __coro.promise());
@@ -187,8 +219,16 @@ namespace STDEXEC
           STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
         }
 
-        [[no_unique_address]]
-        __awaiter_t __awaiter_;
+        ~__state()
+        {
+          std::destroy_at(std::addressof(__awaiter_));
+        }
+
+        union
+        {
+          [[no_unique_address]]
+          __awaiter_t __awaiter_;
+        };
       };
 
       [[no_unique_address]]
@@ -204,9 +244,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      {}
+      { }
 
-      ~__awaitable_state() {}
+      ~__awaitable_state() { }
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -236,15 +276,29 @@ namespace STDEXEC
       {
         __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
           noexcept(__is_nothrow)
-          : __awaiter_(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()))
         {
+          // GCC doesn't like initializing __awaiter_ in the member initializer clause when the
+          // result of __get_awaitable is immovable; it *seems* like direct initialization of a
+          // member with the result of a function ought to trigger C++17's mandatory copy elision,
+          // and both Clang and MSVC accept that code, but using a union with in-place new works
+          // around the issue.
+          new (static_cast<void*>(std::addressof(__awaiter_)))
+            __awaiter_t(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()));
+
           [[maybe_unused]]
           auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_));
           STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
         }
 
-        [[no_unique_address]]
-        __awaiter_t __awaiter_;
+        ~__state()
+        {
+          std::destroy_at(std::addressof(__awaiter_));
+        }
+
+        [[no_unique_address]] union
+        {
+          __awaiter_t __awaiter_;
+        };
       };
 
       [[no_unique_address]]
@@ -260,9 +314,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      {}
+      { }
 
-      ~__awaitable_state() {}
+      ~__awaitable_state() { }
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -292,7 +346,7 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __awaiter_(static_cast<_A&&>(__awaitable))
-      {}
+      { }
 
       static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
       {
@@ -459,7 +513,7 @@ namespace STDEXEC
         noexcept(__nothrow_move_constructible<_Awaitable>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __awaiter_(static_cast<_Awaitable&&>(__awaitable))
-      {}
+      { }
 
       __opstate(__opstate&&) = delete;
 
@@ -611,15 +665,15 @@ namespace STDEXEC
   {
     template <class, class>
     struct __promise
-    {};
+    { };
 
     template <class>
     struct __with_await_transform
-    {};
+    { };
   }  // namespace __connect_await
 
   struct __connect_awaitable_t
-  {};
+  { };
 
 #endif
 
