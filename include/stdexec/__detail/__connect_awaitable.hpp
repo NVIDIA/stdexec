@@ -127,13 +127,17 @@ namespace STDEXEC
           , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
         {}
 
+        [[no_unique_addres]]
         __awaitable_t __awaitable_;
-        __awaiter_t   __awaiter_;
+        [[no_unique_addres]]
+        __awaiter_t __awaiter_;
       };
 
+      [[no_unique_addres]]
       _Awaitable __source_awaitable_;
       union
       {
+        [[no_unique_addres]]
         __state __awaiter_;
       };
 
@@ -182,12 +186,15 @@ namespace STDEXEC
           STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
         }
 
+        [[no_unique_addres]]
         __awaiter_t __awaiter_;
       };
 
+      [[no_unique_addres]]
       _Awaitable __source_awaitable_;
       union
       {
+        [[no_unique_addres]]
         __state __awaiter_;
       };
 
@@ -213,7 +220,7 @@ namespace STDEXEC
     template <class _Awaitable, class _Promise>
       requires __awaitable<_Awaitable, _Promise>  //
             && __has_distinct_awaitable<_Awaitable, _Promise>
-            && (!__has_distinct_awaiter<_Awaitable>)
+            && (!__has_distinct_awaiter<__result_of<__get_awaitable, _Awaitable, _Promise&>>)
     struct __awaitable_state<_Awaitable, _Promise>
       : __awaitable_wrapper<__awaitable_state<_Awaitable, _Promise>>
     {
@@ -234,12 +241,15 @@ namespace STDEXEC
           STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
         }
 
+        [[no_unique_addres]]
         __awaiter_t __awaiter_;
       };
 
+      [[no_unique_addres]]
       _Awaitable __source_awaitable_;
       union
       {
+        [[no_unique_addres]]
         __state __awaiter_;
       };
 
@@ -271,6 +281,7 @@ namespace STDEXEC
     {
       // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
       // so we don't need separate storage for either
+      [[no_unique_addres]]
       _Awaitable __awaiter_;
 
       template <class _A>
@@ -564,8 +575,10 @@ namespace STDEXEC
 
       alignas(__storage_align) std::byte __storage_[__storage_size];
       [[no_unique_address]]
-      bool                                       __started_{false};
-      _Receiver                                  __rcvr_;
+      bool __started_{false};
+      [[no_unique_addres]]
+      _Receiver __rcvr_;
+      [[no_unique_addres]]
       __awaitable_state<_Awaitable, __promise_t> __awaiter_;
     };
   }  // namespace __connect_await
