@@ -201,6 +201,13 @@ PUBLIC
   FILES
     ${CMAKE_CURRENT_BINARY_DIR}/include/stdexec_version_config.hpp
 )
+# Mark include directories as SYSTEM so consumers don't get warnings from stdexec internals
+target_include_directories(stdexec SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+
 list(APPEND stdexec_export_targets stdexec)
 
 # Set library version
