@@ -127,23 +127,24 @@ namespace STDEXEC
           , __awaiter_(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)))
         {}
 
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __awaitable_t __awaitable_;
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __awaiter_t __awaiter_;
       };
 
-      [[no_unique_addres]]
+      [[no_unique_address]]
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __state __awaiter_;
       };
 
       template <class _A>
         requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+      explicit __awaitable_state(_A&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
       {}
 
@@ -186,21 +187,22 @@ namespace STDEXEC
           STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
         }
 
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __awaiter_t __awaiter_;
       };
 
-      [[no_unique_addres]]
+      [[no_unique_address]]
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __state __awaiter_;
       };
 
       template <class _A>
         requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+      explicit __awaitable_state(_A&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
       {}
 
@@ -241,21 +243,22 @@ namespace STDEXEC
           STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
         }
 
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __awaiter_t __awaiter_;
       };
 
-      [[no_unique_addres]]
+      [[no_unique_address]]
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_addres]]
+        [[no_unique_address]]
         __state __awaiter_;
       };
 
       template <class _A>
         requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+      explicit __awaitable_state(_A&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
       {}
 
@@ -281,12 +284,13 @@ namespace STDEXEC
     {
       // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
       // so we don't need separate storage for either
-      [[no_unique_addres]]
+      [[no_unique_address]]
       _Awaitable __awaiter_;
 
       template <class _A>
         requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      __awaitable_state(_A&& __awaitable) noexcept(__nothrow_constructible_from<_Awaitable, _A>)
+      explicit __awaitable_state(_A&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __awaiter_(static_cast<_A&&>(__awaitable))
       {}
 
@@ -470,11 +474,11 @@ namespace STDEXEC
       void start() & noexcept
       {
         auto __coro = __co_impl(*this);
-        __started_  = true;
 
         STDEXEC_TRY
         {
           __awaiter_.construct(__coro);
+          __started_ = true;
 
           if (!__awaiter_.await_ready())
           {
@@ -576,9 +580,9 @@ namespace STDEXEC
       alignas(__storage_align) std::byte __storage_[__storage_size];
       [[no_unique_address]]
       bool __started_{false};
-      [[no_unique_addres]]
+      [[no_unique_address]]
       _Receiver __rcvr_;
-      [[no_unique_addres]]
+      [[neo_unique_addres]]
       __awaitable_state<_Awaitable, __promise_t> __awaiter_;
     };
   }  // namespace __connect_await

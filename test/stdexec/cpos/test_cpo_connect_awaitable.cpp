@@ -20,6 +20,7 @@
 #include <catch2/catch.hpp>
 #include <stdexec/execution.hpp>
 
+#include <stdexcept>
 #include <type_traits>
 
 namespace ex = STDEXEC;
@@ -140,13 +141,13 @@ namespace
   awaitable_ref(Awaitable&) -> awaitable_ref<Awaitable>;
 
   template <class Awaitable>
-    requires requires(Awaitable& a) {
-      { operator co_await(a) };
+    requires requires(Awaitable&& a) {
+      { operator co_await(std::move(a)) };
     }
   constexpr auto operator co_await(awaitable_ref<Awaitable> ref)
-    noexcept(noexcept(operator co_await(*ref.awaitable_)))
+    noexcept(noexcept(operator co_await(std::move(*ref.awaitable_))))
   {
-    return operator co_await(*ref.awaitable_);
+    return operator co_await(std::move(*ref.awaitable_));
   }
 
   template <class T>
@@ -486,5 +487,225 @@ namespace
       test(
         with_as_awaitable<with_friend_co_await<symmetrically_suspending_awaitable<void>>>(false));
     }
+  }
+
+  TEST_CASE("exceptions thrown from await_ready are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    struct throw_on_ready : ready_awaitable<void>
+    {
+      static bool await_ready()
+      {
+        throw std::runtime_error("not ready!");
+      }
+    };
+
+    auto op = ex::connect(throw_on_ready{}, expect_error_receiver{});
+    op.start();
+  }
+
+  TEST_CASE("exceptions thrown from void-returning await_suspend are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    struct throw_on_suspend : suspending_awaitable<void>
+    {
+      static void await_suspend(std::coroutine_handle<>)
+      {
+        throw std::runtime_error("do not suspend!");
+      }
+    } awaiter;
+
+    auto op = ex::connect(awaitable_ref{awaiter}, expect_error_receiver{});
+    op.start();
+  }
+
+  TEST_CASE("exceptions thrown from bool-returning await_suspend are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    struct throw_on_suspend : suspending_awaitable<void>
+    {
+      static bool await_suspend(std::coroutine_handle<>)
+      {
+        throw std::runtime_error("do not suspend!");
+      }
+    } awaiter;
+
+    auto op = ex::connect(awaitable_ref{awaiter}, expect_error_receiver{});
+    op.start();
+  }
+
+  TEST_CASE("exceptions thrown from handle-returning await_suspend are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    struct throw_on_suspend : suspending_awaitable<void>
+    {
+      static std::coroutine_handle<> await_suspend(std::coroutine_handle<>)
+      {
+        throw std::runtime_error("do not suspend!");
+      }
+    } awaiter;
+
+    auto op = ex::connect(awaitable_ref{awaiter}, expect_error_receiver{});
+    op.start();
+  }
+
+  TEST_CASE("exceptions thrown from immediately-invoked await_resume are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    {
+      struct throw_on_void_resume : ready_awaitable<void>
+      {
+        static void await_resume()
+        {
+          throw std::runtime_error("no result for you!");
+        }
+      };
+
+      auto op = ex::connect(throw_on_void_resume{}, expect_error_receiver{});
+      op.start();
+    }
+    {
+      struct throw_on_int_resume : ready_awaitable<void>
+      {
+        static int await_resume()
+        {
+          throw std::runtime_error("no result for you!");
+        }
+      };
+
+      auto op = ex::connect(throw_on_int_resume{}, expect_error_receiver{});
+      op.start();
+    }
+  }
+
+  TEST_CASE("exceptions thrown from deferred-invoked await_resume are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    {
+      {
+        struct throw_on_void_resume : suspending_awaitable<void>
+        {
+          static void await_resume()
+          {
+            throw std::runtime_error("no result for you!");
+          }
+        } awaitable;
+
+        auto op = ex::connect(awaitable_ref{awaitable}, expect_error_receiver{});
+        op.start();
+        awaitable.resume_parent();
+      }
+      {
+        struct throw_on_int_resume : suspending_awaitable<void>
+        {
+          static int await_resume()
+          {
+            throw std::runtime_error("no result for you!");
+          }
+        } awaitable;
+
+        auto op = ex::connect(awaitable_ref{awaitable}, expect_error_receiver{});
+        op.start();
+        awaitable.resume_parent();
+      }
+    }
+  }
+
+  template <template <class> class Wrapper = std::type_identity_t>
+  struct throw_on_get_awaitable
+  {
+    template <class Promise>
+    Wrapper<ready_awaitable<void>> as_awaitable(Promise&)
+    {
+      throw std::runtime_error("no awaitable for you!");
+    }
+  };
+
+  TEST_CASE("exceptions thrown from __get_awaitable are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    {
+      auto op = ex::connect(throw_on_get_awaitable{}, expect_error_receiver{});
+      op.start();
+    }
+
+    {
+      auto op = ex::connect(throw_on_get_awaitable<with_member_co_await>{},
+                            expect_error_receiver{});
+      op.start();
+    }
+
+    {
+      auto op = ex::connect(throw_on_get_awaitable<with_friend_co_await>{},
+                            expect_error_receiver{});
+      op.start();
+    }
+  }
+
+  TEST_CASE("exceptions thrown from member operator co_await are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    struct throw_on_co_await
+    {
+      ready_awaitable<void> operator co_await()
+      {
+        throw std::runtime_error("no awaitable for you!");
+      }
+    };
+
+    {
+      auto op = ex::connect(throw_on_co_await{}, expect_error_receiver{});
+      op.start();
+    }
+
+    {
+      auto op = ex::connect(with_as_awaitable<throw_on_co_await>{}, expect_error_receiver{});
+      op.start();
+    }
+  }
+
+  struct throw_on_co_await
+  {
+    friend ready_awaitable<void> operator co_await(throw_on_co_await&&)
+    {
+      throw std::runtime_error("no awaitable for you!");
+    }
+  };
+
+  TEST_CASE("exceptions thrown from friend operator co_await are reported to set_error",
+            "[cpo][cpo_connect_awaitable]")
+  {
+    {
+      auto op = ex::connect(throw_on_co_await{}, expect_error_receiver{});
+      op.start();
+    }
+
+    {
+      auto op = ex::connect(with_as_awaitable<throw_on_co_await>{}, expect_error_receiver{});
+      op.start();
+    }
+  }
+
+  struct stop_on_suspend
+  {
+    static constexpr bool await_ready() noexcept
+    {
+      return false;
+    }
+
+    template <class Promise>
+    static constexpr auto
+    await_suspend(std::coroutine_handle<Promise> coro) noexcept -> std::coroutine_handle<>
+    {
+      return coro.promise().unhandled_stopped();
+    }
+
+    static constexpr void await_resume() noexcept {}
+  };
+
+  TEST_CASE("promise().unhandled_stopped() invokes set_stopped", "[cpo][cpo_connect_awaitable]")
+  {
+    auto op = ex::connect(stop_on_suspend{}, expect_stopped_receiver{});
+    op.start();
   }
 }  // namespace
