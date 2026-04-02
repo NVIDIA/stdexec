@@ -295,8 +295,9 @@ namespace STDEXEC
           std::destroy_at(std::addressof(__awaiter_));
         }
 
-        [[no_unique_address]] union
+        union
         {
+          [[no_unique_address]]
           __awaiter_t __awaiter_;
         };
       };
