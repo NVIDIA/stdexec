@@ -29,15 +29,41 @@ namespace STDEXEC
   // __write adaptor
   namespace __write
   {
+    // write_env can change the scheduler in the receiver's environment, which
+    // invalidates the child sender's completion behavior claims (e.g., a task
+    // that reports "asynchronous_affine" is affine to *its* scheduler, not to
+    // the scheduler that write_env substitutes). So we must not forward the
+    // child's completion behavior; we report __unknown instead.
+    template <class _Sender>
+    struct __write_env_attrs
+    {
+      template <__forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>)
+             && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
+      [[nodiscard]]
+      constexpr auto query(_Query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
+          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
+      {
+        return __query<_Query>()(get_env(__sndr_), static_cast<_Args &&>(__args)...);
+      }
+
+      _Sender const &__sndr_;
+    };
+
+    template <class _Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+    __write_env_attrs(_Sender const &) -> __write_env_attrs<_Sender>;
+
     struct __write_env_impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+        []<class _Child>(__ignore, __ignore, _Child const &__child) noexcept
       {
-        return __sync_attrs{__child};
+        return __write_env_attrs{__child};
       };
 
-      static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+      static constexpr auto __get_env = []<class _State>(__ignore, _State const &__state) noexcept
         -> decltype(__env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_)))
       {
         return __env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_));
@@ -57,17 +83,17 @@ namespace STDEXEC
   struct __write_env_t
   {
     template <sender _Sender, class _Env>
-    constexpr auto operator()(_Sender&& __sndr, _Env __env) const
+    constexpr auto operator()(_Sender &&__sndr, _Env __env) const
     {
-      return __make_sexpr<__write_env_t>(static_cast<_Env&&>(__env),
-                                         static_cast<_Sender&&>(__sndr));
+      return __make_sexpr<__write_env_t>(static_cast<_Env &&>(__env),
+                                         static_cast<_Sender &&>(__sndr));
     }
 
     template <class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Env __env) const
     {
-      return __closure(*this, static_cast<_Env&&>(__env));
+      return __closure(*this, static_cast<_Env &&>(__env));
     }
   };
 

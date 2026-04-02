@@ -244,6 +244,41 @@ namespace
     CHECK(i == 42);
   }
 
+  template <ex::scheduler Worker>
+  ex::task<int> inner_task(Worker worker)
+  {
+    CHECK(get_id() == 0);
+    int i = co_await ex::starts_on(worker,
+                                   just_int(42)
+                                     | ex::then(
+                                       [](int i)
+                                       {
+                                         CHECK(get_id() != 0);
+                                         return i;
+                                       }));
+    CHECK(get_id() != 0);
+    co_return i;
+  }
+
+  template <ex::scheduler Worker>
+  ex::task<int> test_task_affinity_with_write_env(Worker worker)
+  {
+    CHECK(get_id() == 0);
+    auto task = inner_task(worker)
+              | ex::write_env(ex::prop{ex::get_scheduler, ex::inline_scheduler{}});
+    int i = co_await std::move(task);
+    CHECK(get_id() == 0);
+    co_return i;
+  }
+
+  TEST_CASE("test task scheduler affinity works with write_env", "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    auto                        t = test_task_affinity_with_write_env(ctx.get_scheduler());
+    auto [i]                      = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42);
+  }
+
 #  if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 13'00 && defined(__OPTIMIZE__))
   // This test is disabled on GCC due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794
 
