@@ -33,11 +33,11 @@ namespace
    public:
     explicit constexpr ready_awaitable(T&& t) noexcept
       : t_(std::move(t))
-    { }
+    {}
 
     explicit constexpr ready_awaitable(T const & t)
       : t_(t)
-    { }
+    {}
 
     static constexpr bool await_ready() noexcept
     {
@@ -76,7 +76,7 @@ namespace
       FAIL_CHECK("this awaitable should never suspend");
     }
 
-    static constexpr void await_resume() noexcept { }
+    static constexpr void await_resume() noexcept {}
 
     ready_awaitable& base() noexcept
     {
@@ -91,7 +91,7 @@ namespace
 
     explicit constexpr awaitable_ref(Awaitable& awaitable) noexcept
       : awaitable_(&awaitable)
-    { }
+    {}
 
     constexpr auto await_ready() const noexcept(noexcept(awaitable_->await_ready()))
       requires requires(Awaitable& a) {
@@ -192,7 +192,7 @@ namespace
     explicit constexpr conditionally_suspending_awaitable(bool suspend, U&&... u) noexcept
       : suspending_awaitable<T>(std::forward<U>(u)...)
       , suspend_(suspend)
-    { }
+    {}
 
     constexpr bool await_suspend(std::coroutine_handle<> coro) noexcept
     {
@@ -236,7 +236,7 @@ namespace
     }
   };
 
-  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
+  template <class Awaitable, template <class...> class Wrapper = std::type_identity_t>
   struct with_as_awaitable
   {
     template <class... T>
@@ -244,7 +244,7 @@ namespace
     explicit(sizeof...(T) == 1) with_as_awaitable(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    { }
+    {}
 
     template <class Promise>
     Wrapper<awaitable_ref<Awaitable>> as_awaitable(Promise&) noexcept
@@ -261,7 +261,7 @@ namespace
     Awaitable awaitable_;
   };
 
-  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
+  template <class Awaitable, template <class...> class Wrapper = std::type_identity_t>
   struct with_member_co_await
   {
     template <class... T>
@@ -269,7 +269,7 @@ namespace
     explicit(sizeof...(T) == 1) with_member_co_await(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    { }
+    {}
 
     constexpr Wrapper<awaitable_ref<Awaitable>> operator co_await() noexcept
     {
@@ -285,7 +285,7 @@ namespace
     Awaitable awaitable_;
   };
 
-  template <class Awaitable, template <class> class Wrapper = std::type_identity_t>
+  template <class Awaitable, template <class...> class Wrapper = std::type_identity_t>
   struct with_friend_co_await
   {
     template <class... T>
@@ -293,7 +293,7 @@ namespace
     explicit(sizeof...(T) == 1) with_friend_co_await(T&&... t)
       noexcept(std::is_nothrow_constructible_v<Awaitable, T...>)
       : awaitable_(std::forward<T>(t)...)
-    { }
+    {}
 
     auto& base() noexcept
     {
@@ -700,7 +700,7 @@ namespace
       return coro.promise().unhandled_stopped();
     }
 
-    static constexpr void await_resume() noexcept { }
+    static constexpr void await_resume() noexcept {}
   };
 
   TEST_CASE("promise().unhandled_stopped() invokes set_stopped", "[cpo][cpo_connect_awaitable]")

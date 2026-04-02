@@ -39,8 +39,8 @@ namespace STDEXEC
   namespace __connect_await
   {
     // four pointers' worth of space when compiling with Clang or MSVC; five with GCC
-    static constexpr std::size_t __num_pointers  = 4 * (STDEXEC_CLANG() + STDEXEC_MSVC())
-                                                 + 5 * STDEXEC_GCC();
+    static constexpr std::size_t __num_pointers = 4 * (STDEXEC_CLANG() + STDEXEC_MSVC())
+                                                + 5 * STDEXEC_GCC();
     static constexpr std::size_t __storage_size  = __num_pointers * sizeof(void*) - 1;
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
@@ -171,9 +171,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      { }
+      {}
 
-      ~__awaitable_state() { }
+      ~__awaitable_state() {}
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -244,9 +244,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      { }
+      {}
 
-      ~__awaitable_state() { }
+      ~__awaitable_state() {}
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -315,9 +315,9 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __source_awaitable_(static_cast<_A&&>(__awaitable))
-      { }
+      {}
 
-      ~__awaitable_state() { }
+      ~__awaitable_state() {}
 
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
@@ -347,7 +347,7 @@ namespace STDEXEC
       explicit __awaitable_state(_A&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _A>)
         : __awaiter_(static_cast<_A&&>(__awaitable))
-      { }
+      {}
 
       static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
       {
@@ -514,7 +514,7 @@ namespace STDEXEC
         noexcept(__nothrow_move_constructible<_Awaitable>)
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __awaiter_(static_cast<_Awaitable&&>(__awaitable))
-      { }
+      {}
 
       __opstate(__opstate&&) = delete;
 
@@ -666,15 +666,15 @@ namespace STDEXEC
   {
     template <class, class>
     struct __promise
-    { };
+    {};
 
     template <class>
     struct __with_await_transform
-    { };
+    {};
   }  // namespace __connect_await
 
   struct __connect_awaitable_t
-  { };
+  {};
 
 #endif
 
