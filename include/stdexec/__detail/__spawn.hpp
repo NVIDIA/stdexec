@@ -135,18 +135,18 @@ namespace STDEXEC
         auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
         auto __sndr_env       = get_env(__wrapped_sender);
 
-        using __raw_alloc = decltype(__spawn_common::__choose_alloc(__env, __sndr_env));
+        auto __raw_alloc    = __spawn_common::__choose_alloc(__env, __sndr_env);
+        using __raw_alloc_t = decltype(__raw_alloc);
 
         auto __sender_with_env = write_env(std::move(__wrapped_sender),
                                            __spawn_common::__choose_senv(__env, __sndr_env));
 
         using __spawn_state_t =
-          __spawn_state<__raw_alloc, std::remove_cvref_t<_Token>, decltype(__sender_with_env)>;
+          __spawn_state<__raw_alloc_t, std::remove_cvref_t<_Token>, decltype(__sender_with_env)>;
 
         using __traits =
-          std::allocator_traits<__raw_alloc>::template rebind_traits<__spawn_state_t>;
-        typename __traits::allocator_type __alloc(
-          __spawn_common::__choose_alloc(__env, __sndr_env));
+          std::allocator_traits<__raw_alloc_t>::template rebind_traits<__spawn_state_t>;
+        typename __traits::allocator_type __alloc(__raw_alloc);
 
         auto* __op = __traits::allocate(__alloc, 1);
 
