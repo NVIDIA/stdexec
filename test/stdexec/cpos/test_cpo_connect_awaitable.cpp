@@ -611,11 +611,11 @@ namespace
     }
   }
 
-  template <template <class> class Wrapper = std::type_identity_t>
+  template <class Awaitable>
   struct throw_on_get_awaitable
   {
     template <class Promise>
-    Wrapper<ready_awaitable<void>> as_awaitable(Promise&)
+    Awaitable as_awaitable(Promise&)
     {
       throw std::runtime_error("no awaitable for you!");
     }
@@ -625,18 +625,19 @@ namespace
             "[cpo][cpo_connect_awaitable]")
   {
     {
-      auto op = ex::connect(throw_on_get_awaitable{}, expect_error_receiver{});
-      op.start();
-    }
-
-    {
-      auto op = ex::connect(throw_on_get_awaitable<with_member_co_await>{},
+      auto op = ex::connect(throw_on_get_awaitable<ready_awaitable<void>>{},
                             expect_error_receiver{});
       op.start();
     }
 
     {
-      auto op = ex::connect(throw_on_get_awaitable<with_friend_co_await>{},
+      auto op = ex::connect(throw_on_get_awaitable<with_member_co_await<ready_awaitable<void>>>{},
+                            expect_error_receiver{});
+      op.start();
+    }
+
+    {
+      auto op = ex::connect(throw_on_get_awaitable<with_friend_co_await<ready_awaitable<void>>>{},
                             expect_error_receiver{});
       op.start();
     }
