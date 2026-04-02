@@ -456,8 +456,8 @@ namespace STDEXEC::__any
   template <class _Value>
   struct __box
   {
-    constexpr explicit __box(_Value __value) noexcept
-      : __val_(std::move(__value))
+    constexpr explicit __box(_Value __val) noexcept
+      : __val_(std::move(__val))
     {}
 
     template <class... _Args>
@@ -570,12 +570,12 @@ namespace STDEXEC::__any
   constexpr _Value &__emplace_into(_Allocator const    &__alloc,
                                    __iroot            *&__root_ptr,
                                    std::span<std::byte> __buff,
-                                   _CvRefValue        &&__value)
+                                   _CvRefValue        &&__val)
   {
     return STDEXEC::__any::__emplace_into<_Value>(__alloc,
                                                   __root_ptr,
                                                   __buff,
-                                                  static_cast<_CvRefValue &&>(__value));
+                                                  static_cast<_CvRefValue &&>(__val));
   }
 
   // reference
@@ -801,9 +801,9 @@ namespace STDEXEC::__any
     : __value_root<_Interface, _Value>
     , private _Allocator
   {
-    constexpr explicit __value_root_with_allocator(_Value            __value,
+    constexpr explicit __value_root_with_allocator(_Value            __val,
                                                    _Allocator const &__alloc = _Allocator())
-      : __value_root<_Interface, _Value>(std::move(__value))
+      : __value_root<_Interface, _Value>(std::move(__val))
       , _Allocator(__alloc)
     {}
 
@@ -928,10 +928,10 @@ namespace STDEXEC::__any
     }
 
     template <int = 0, class _CvRefValue, class _Value = std::decay_t<_CvRefValue>>
-    constexpr _Value &emplace(_CvRefValue &&__value)
+    constexpr _Value &emplace(_CvRefValue &&__val)
     {
       __reset_();
-      return __emplace_<_Value>(static_cast<_CvRefValue &&>(__value));
+      return __emplace_<_Value>(static_cast<_CvRefValue &&>(__val));
     }
 
     [[nodiscard]]
@@ -1344,14 +1344,14 @@ namespace STDEXEC::__any
     }
 
     template <class _CvValue>
-    constexpr void __value_bind_(_CvValue &__value) noexcept
+    constexpr void __value_bind_(_CvValue &__val) noexcept
     {
       static_assert(!__extension_of<_CvValue, _Interface>);
       using __model_type = __reference_model<_Interface, _CvValue>;
       STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
                                                    __root_ptr_,
                                                    __buff_,
-                                                   std::addressof(__value),
+                                                   std::addressof(__val),
                                                    static_cast<__iroot *>(nullptr));
     }
 
@@ -1689,11 +1689,11 @@ namespace STDEXEC::__any
     // Construct from an object that implements the interface (and is not an any<>
     // itself)
     template <__model_of<_Interface> _Value, class _Allocator = std::allocator<_Value>>
-    constexpr __any(_Value __value, _Allocator const &__alloc = _Allocator())
+    constexpr __any(_Value __val, _Allocator const &__alloc = _Allocator())
       : __any()
     {
       static_assert(__simple_allocator<_Allocator>);
-      (*this).template __emplace_<_Value>(std::allocator_arg, __alloc, std::move(__value));
+      (*this).template __emplace_<_Value>(std::allocator_arg, __alloc, std::move(__val));
     }
 
     template <class _Value, class... _Args>
@@ -1733,10 +1733,10 @@ namespace STDEXEC::__any
     }
 
     template <__model_of<_Interface> _Value>
-    constexpr __any &operator=(_Value __value)
+    constexpr __any &operator=(_Value __val)
     {
       __reset(*this);
-      (*this).template __emplace_<_Value>(std::move(__value));
+      (*this).template __emplace_<_Value>(std::move(__val));
       return *this;
     }
 
