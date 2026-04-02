@@ -254,15 +254,15 @@ namespace STDEXEC
 
       static auto __co_impl(__opstate& __op) noexcept -> __task_t
       {
-        using __awaiter_t = decltype(__op.__awaiter_);
+        using __op_awaiter_t = decltype(__op.__awaiter_);
         if constexpr (__same_as<decltype(*__op.__result_), void>)
         {
-          co_await static_cast<__awaiter_t&&>(__op.__awaiter_);
+          co_await static_cast<__op_awaiter_t&&>(__op.__awaiter_);
           __op.__result_.emplace();
         }
         else
         {
-          __op.__result_.emplace(co_await static_cast<__awaiter_t&&>(__op.__awaiter_));
+          __op.__result_.emplace(co_await static_cast<__op_awaiter_t&&>(__op.__awaiter_));
         }
       }
 
