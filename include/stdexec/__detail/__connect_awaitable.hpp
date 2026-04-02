@@ -41,9 +41,9 @@ namespace STDEXEC
     STDEXEC_PRAGMA_OPTIMIZE_BEGIN()
 
 #  if STDEXEC_MSVC()
-    static constexpr std::size_t __storage_size  = 256;
+    static constexpr std::size_t __storage_size = 256;
 #  else
-    static constexpr std::size_t __storage_size  = 8 * sizeof(void*);
+    static constexpr std::size_t __storage_size = 8 * sizeof(void*);
 #  endif
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
 
