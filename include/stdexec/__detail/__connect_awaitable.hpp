@@ -26,10 +26,16 @@
 #include "__receivers.hpp"
 
 #include <exception>
+#include <iostream>
+#include <sstream>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
+
+#define STDEXEC_DEBUG_PRINT(...) \
+    (std::cout << (std::stringstream() << __FILE__ << ':' << __LINE__ << ' ' \
+    << __VA_ARGS__ << '\n').str())
 
 namespace STDEXEC
 {
@@ -216,6 +222,9 @@ namespace STDEXEC
           auto&& __awaitable = __get_awaitable(static_cast<_Awaitable&&>(__source),
                                                __coro.promise());
 
+          STDEXEC_DEBUG_PRINT("address of awaitable: " << (void*) std::addressof(__awaitable)
+                                                       << ", address of source: "
+                                                       << (void*) std::addressof(__source));
           STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
         }
 
@@ -287,6 +296,10 @@ namespace STDEXEC
 
           [[maybe_unused]]
           auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_));
+
+          STDEXEC_DEBUG_PRINT("address of awaiter: " << (void*) std::addressof(__awaiter)
+                                                     << ", address of source: "
+                                                     << (void*) std::addressof(__source));
           STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
         }
 
@@ -400,6 +413,10 @@ namespace STDEXEC
       explicit(!STDEXEC_EDG()) __promise([[maybe_unused]]
                                          __opstate_t& __opstate) noexcept
       {
+        STDEXEC_DEBUG_PRINT("__promise_offset: "
+                            << __promise_offset << ", actual offset: "
+                            << (reinterpret_cast<std::byte*>(this) - __opstate.__storage_));
+
         STDEXEC_ASSERT(__promise_offset
                        == reinterpret_cast<std::byte*>(this) - __opstate.__storage_);
       }
@@ -416,6 +433,8 @@ namespace STDEXEC
         // the first implementation of storing the coroutine frame inline in __opstate using the
         // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
         // shared at https://godbolt.org/z/zGG9fsPrz
+        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1));
+
         STDEXEC_ASSERT(__bytes == __storage_size + 1);
         return __opstate.__storage_;
       }
@@ -568,6 +587,9 @@ namespace STDEXEC
               }
               STDEXEC_CATCH_ALL
               {
+                STDEXEC_DEBUG_PRINT("Commiting UB in the face of an exception thrown from "
+                                    "resume()");
+
                 STDEXEC_ASSERT(false
                                && "about to deliberately commit UB in response to a misbehaving "
                                   "awaitable");
@@ -680,5 +702,7 @@ namespace STDEXEC
 
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 }  // namespace STDEXEC
+
+#undef STDEXEC_DEBUG_PRINT
 
 STDEXEC_PRAGMA_POP()
