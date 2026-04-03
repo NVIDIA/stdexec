@@ -20,6 +20,7 @@ set(stdexec_test_sources
     stdexec/cpos/test_cpo_receiver.cpp
     stdexec/cpos/test_cpo_start.cpp
     stdexec/cpos/test_cpo_connect.cpp
+    stdexec/cpos/test_cpo_connect_awaitable.cpp
     stdexec/cpos/test_cpo_schedule.cpp
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/cpos/test_cpo_upon_stopped.cpp
