@@ -465,12 +465,12 @@ namespace STDEXEC
         // the first implementation of storing the coroutine frame inline in __opstate using the
         // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
         // shared at https://godbolt.org/z/zGG9fsPrz
-        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1)
+        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1));
 #  ifdef CUDART_VERSION
-                                        << " CUDART version: " << CUDART_VERSION
+        STDEXEC_DEBUG_PRINT("CUDART version: " << CUDART_VERSION);
 #  endif
 #  ifdef CUDA_VERSION
-                                        << " CUDA version: " << CUDA_VERSION
+        STDEXEC_DEBUG_PRINT("CUDA version: " << CUDA_VERSION);
 #  endif
         );
 
