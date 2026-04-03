@@ -51,7 +51,7 @@ namespace STDEXEC
 #      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 4
 #    elif CUDART_VERSION == 12'00'0
 // Clang for CUDA 12.0 only needs three pointers
-#      define STDEXEC_CONNECT_AWAITBALE_NUM_POINTERS 3
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 3
 #    elif CUDART_VERSION >= 12'09'0
 // yes, I experimentally determined this is *56* pointers
 #      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 56
