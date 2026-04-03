@@ -49,12 +49,12 @@ namespace STDEXEC
 // but the requirement is different when it's a CUDA compilation
 #    if !STDEXEC_CUDA_COMPILATION()
 #      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 4
-#    elif CUDART_VERSION == 12'00'0
-// Clang for CUDA 12.0 only needs three pointers
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 3
-#    elif CUDART_VERSION >= 12'09'0
+#    elif CUDA_VERSION >= 12'09'0
 // yes, I experimentally determined this is *56* pointers
 #      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 56
+#    elif CUDA_VERSION >= 12'00'0
+// Clang for CUDA 12.0 only needs three pointers
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 3
 #    else
 #      error frame size unknown for Clang with this CUDA version
 #    endif
@@ -66,8 +66,11 @@ namespace STDEXEC
 #      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 5
 #    endif
 #  elif STDEXEC_MSVC()
-// this is currently a guess; I don't actually know what MSVC needs
-#    define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 5
+#    ifndef NDEBUG
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 12
+#    else
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 6
+#    endif
 #  else
 // there's no way to define a default for this
 #    error What compiler are you using?
@@ -462,7 +465,14 @@ namespace STDEXEC
         // the first implementation of storing the coroutine frame inline in __opstate using the
         // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
         // shared at https://godbolt.org/z/zGG9fsPrz
-        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1));
+        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1)
+#  ifdef CUDART_VERSION
+                                        << " CUDART version: " << CUDART_VERSION
+#  endif
+#  ifdef CUDA_VERSION
+                                        << " CUDA version: " << CUDA_VERSION
+#  endif
+        );
 
         STDEXEC_ASSERT(__bytes == __storage_size + 1);
         return __opstate.__storage_;
