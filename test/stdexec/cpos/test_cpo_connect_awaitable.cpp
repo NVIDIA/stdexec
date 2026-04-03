@@ -14,6 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <stdexec/coroutine.hpp>
+
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 
 #include "test_common/receivers.hpp"
 #include "test_common/type_helpers.hpp"
@@ -763,3 +766,5 @@ namespace
     }
   }
 }  // namespace
+
+#endif

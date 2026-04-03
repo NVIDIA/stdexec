@@ -44,11 +44,40 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-    // four pointers' worth of space when compiling with Clang or MSVC; five with GCC
-    static constexpr std::size_t __num_pointers = 4 * (STDEXEC_CLANG() + STDEXEC_MSVC())
-                                                + 5 * STDEXEC_GCC();
+#  if STDEXEC_CLANG()
+// clang normally needs four pointer's worth of storage for the promise type
+// but the requirement is different when it's a CUDA compilation
+#    if !STDEXEC_CUDA_COMPILATION()
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 4
+#    elif CUDART_VERSION == 12'00'0
+// Clang for CUDA 12.0 only needs three pointers
+#      define STDEXEC_CONNECT_AWAITBALE_NUM_POINTERS 3
+#    elif CUDART_VERSION >= 12'09'0
+// yes, I experimentally determined this is *56* pointers
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 56
+#    else
+#      error frame size unknown for Clang with this CUDA version
+#    endif
+#  elif STDEXEC_GCC()
+// GCC needs six pointers through version 14, and five thereafter
+#    if STDEXEC_GCC_VERSION < 15'00
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 6
+#    else
+#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 5
+#    endif
+#  elif STDEXEC_MSVC()
+// this is currently a guess; I don't actually know what MSVC needs
+#    define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 5
+#  else
+// there's no way to define a default for this
+#    error What compiler are you using?
+#  endif
+
+    static constexpr std::size_t __num_pointers  = STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS;
     static constexpr std::size_t __storage_size  = __num_pointers * sizeof(void*) - 1;
     static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
+
+#  undef STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS
 
     // clang-format off
     template <class _Tp, class _Promise>
