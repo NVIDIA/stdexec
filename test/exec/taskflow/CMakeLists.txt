@@ -29,4 +29,4 @@ target_link_libraries(test.taskflowexec
     PRIVATE
     common_test_settings)
 
-catch_discover_tests(test.taskflowexec)
+catch_discover_tests(test.taskflowexec PROPERTIES TIMEOUT 30)

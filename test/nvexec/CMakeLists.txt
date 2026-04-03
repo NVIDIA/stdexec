@@ -61,4 +61,4 @@ target_link_libraries(test.nvexec
 #     target_compile_options(test.nvexec PRIVATE "-ftemplate-backtrace-limit=9999")
 # endif()
 
-catch_discover_tests(test.nvexec)
+catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)

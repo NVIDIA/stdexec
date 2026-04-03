@@ -133,10 +133,12 @@ include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 # For testing that builds fail as expected
 include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
-catch_discover_tests(test.stdexec)
-catch_discover_tests(test.scratch)
+catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
+
+catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+
 if(STDEXEC_BUILD_SYSTEM_CONTEXT AND NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability)
+    catch_discover_tests(test.system_context_replaceability PROPERTIES TIMEOUT 30)
 endif()
 
 add_subdirectory(exec)

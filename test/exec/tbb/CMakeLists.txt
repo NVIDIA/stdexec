@@ -29,4 +29,4 @@ target_link_libraries(test.tbbexec
     PRIVATE
     common_test_settings)
 
-catch_discover_tests(test.tbbexec)
+catch_discover_tests(test.tbbexec PROPERTIES TIMEOUT 30)

@@ -31,4 +31,4 @@ target_link_libraries(test.asioexec
     PRIVATE
     common_test_settings)
 
-catch_discover_tests(test.asioexec)
+catch_discover_tests(test.asioexec PROPERTIES TIMEOUT 30)

@@ -109,6 +109,7 @@ set(BUILD_TESTING ${STDEXEC_BUILD_TESTS})
 if (STDEXEC_BUILD_TESTS)
   # CTest automatically calls enable_testing() if BUILD_TESTING is ON
   # https://cmake.org/cmake/help/latest/module/CTest.html#module:CTest
+  list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
   include(CTest)
 endif()
 
