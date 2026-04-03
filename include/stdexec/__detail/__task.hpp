@@ -465,9 +465,9 @@ namespace STDEXEC
       // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __own_env_t<_ParentPromise> __own_env_;
       // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Env                        __env_;
-      __std::coroutine_handle<>   __continuation_;
-      _ParentPromise&             __parent_;
+      _Env                      __env_;
+      __std::coroutine_handle<> __continuation_;
+      _ParentPromise&           __parent_;
     };
 
     struct __attrs
@@ -593,8 +593,8 @@ namespace STDEXEC
     // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     __own_env_t<_Rcvr> __own_env_;
     // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Env               __env_;
-    _Rcvr              __rcvr_;
+    _Env  __env_;
+    _Rcvr __rcvr_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
