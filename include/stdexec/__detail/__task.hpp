@@ -462,9 +462,9 @@ namespace STDEXEC
         return __parent_.unhandled_stopped();
       }
 
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __own_env_t<_ParentPromise> __own_env_;
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env                        __env_;
       __std::coroutine_handle<>   __continuation_;
       _ParentPromise&             __parent_;
@@ -590,9 +590,9 @@ namespace STDEXEC
       return std::noop_coroutine();
     }
 
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+    // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     __own_env_t<_Rcvr> __own_env_;
-    STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+    // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     _Env               __env_;
     _Rcvr              __rcvr_;
   };
