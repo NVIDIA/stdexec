@@ -97,7 +97,7 @@ below](#nvhpc-sdk) for more details).
 `stdexec` requires compiling with C++20 (`-std=c++20`) but otherwise does not have any
 dependencies and only requires a sufficiently new compiler:
 
-- gcc 11+
+- gcc 12+
 - clang 16+
 - MSVC 14.43+
 - XCode 16+
