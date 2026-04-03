@@ -74,7 +74,11 @@ namespace STDEXEC
     struct __synthetic_coro_frame
     {
       void (*__resume_)(void*) noexcept;
-      void (*__destroy_)(void*) noexcept = nullptr;
+      // a coroutine frame is usually headed by two function pointers, resume and destroy
+      // in our use, below, we never invoke destroy so there's no need to actually store
+      // it; instead, leave some padding at the end of the struct so we can use its last
+      // byte to store a bool indicating whether or not we ever started the operation
+      std::byte __padding_[sizeof(void*) - 1]{};
     };
 
     static constexpr std::ptrdiff_t __promise_offset = sizeof(__synthetic_coro_frame);
