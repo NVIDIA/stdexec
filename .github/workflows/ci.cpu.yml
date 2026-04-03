@@ -26,12 +26,14 @@ jobs:
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (gcc 12, Debug)",           build: "Debug",   tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
           - { name: "CPU (gcc 12, Release)",         build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
-          - { name: "CPU (gcc 12, Release, ASAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
+          # With the following config, 2 tests mysteriously time out, but only in CI and not locally.
+          # - { name: "CPU (gcc 12, Release, ASAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
           - { name: "CPU (gcc 12, Release, TSAN)",   build: "Release", tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 13, Debug)",           build: "Debug",   tag: gcc13-cuda12.9,  cxxstd: "20", cxxflags: "", }
           - { name: "CPU (gcc 14, Debug)",           build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "", }
           - { name: "CPU (gcc 14, Debug, ASAN)",     build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
           - { name: "CPU (gcc 14, Debug, TSAN)",     build: "Debug",   tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
+          - { name: "CPU (gcc 14, Release, ASAN)",   build: "Release", tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=address" }
           - { name: "CPU (gcc 14, Release, LEAK)",   build: "Release", tag: gcc14-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=leak", }
           - { name: "CPU (gcc 14, Release, c++23)",  build: "Release", tag: gcc14-cuda12.9,  cxxstd: "23", cxxflags: "", }
     container:
