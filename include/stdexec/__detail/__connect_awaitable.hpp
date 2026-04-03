@@ -26,16 +26,10 @@
 #include "__receivers.hpp"
 
 #include <exception>
-#include <iostream>
-#include <sstream>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
-
-#define STDEXEC_DEBUG_PRINT(...) \
-    (std::cout << (std::stringstream() << __FILE__ << ':' << __LINE__ << ' ' \
-    << __VA_ARGS__ << '\n').str())
 
 namespace STDEXEC
 {
@@ -44,44 +38,6 @@ namespace STDEXEC
   // __connect_await
   namespace __connect_await
   {
-#  if STDEXEC_CLANG()
-// clang normally needs four pointer's worth of storage for the promise type
-// but the requirement is different when it's a CUDA compilation
-#    if !STDEXEC_CUDA_COMPILATION()
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 4
-#    elif CUDA_VERSION >= 12'09'0
-// yes, I experimentally determined this is *56* pointers
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 56
-#    elif CUDA_VERSION >= 12'00'0
-// Clang for CUDA 12.0 only needs three pointers
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 3
-#    else
-#      error frame size unknown for Clang with this CUDA version
-#    endif
-#  elif STDEXEC_GCC()
-// GCC needs six pointers through version 14, and five thereafter
-#    if STDEXEC_GCC_VERSION < 15'00
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 6
-#    else
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 5
-#    endif
-#  elif STDEXEC_MSVC()
-#    ifndef NDEBUG
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 12
-#    else
-#      define STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS 6
-#    endif
-#  else
-// there's no way to define a default for this
-#    error What compiler are you using?
-#  endif
-
-    static constexpr std::size_t __num_pointers  = STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS;
-    static constexpr std::size_t __storage_size  = __num_pointers * sizeof(void*) - 1;
-    static constexpr std::size_t __storage_align = __STDCPP_DEFAULT_NEW_ALIGNMENT__;
-
-#  undef STDEXEC_CONNECT_AWAITABLE_NUM_POINTERS
-
     // clang-format off
     template <class _Tp, class _Promise>
     concept __has_as_awaitable_member = requires(_Tp&& __t, _Promise& __promise)
@@ -113,6 +69,57 @@ namespace STDEXEC
      private:
       friend _Promise;
       __with_await_transform() = default;
+    };
+
+    struct __synthetic_coro_frame
+    {
+      void (*__resume_)(void*) noexcept;
+      void (*__destroy_)(void*) noexcept = nullptr;
+    };
+
+    static constexpr std::ptrdiff_t __promise_offset = sizeof(__synthetic_coro_frame);
+
+    template <class _Awaiter, class _Receiver>
+    struct __opstate;
+
+    template <class _Awaiter, class _Receiver>
+    struct __promise : __with_await_transform<__promise<_Awaiter, _Receiver>>
+    {
+      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
+      {
+        __get_opstate().__on_stopped();
+        // Returning noop_coroutine here causes the __connect_awaitable
+        // coroutine to never resume past its initial_suspend point
+        return __std::noop_coroutine();
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
+      {
+        return STDEXEC::get_env(__get_opstate().__rcvr_);
+      }
+
+     private:
+      using __opstate_t = __opstate<_Awaiter, _Receiver>;
+      friend __opstate_t;
+
+      static void __resume(void* __frame) noexcept
+      {
+        auto* __op = static_cast<__opstate_t*>(__frame);
+        __op->__on_resume();
+      }
+
+      __opstate_t& __get_opstate() noexcept
+      {
+        return *reinterpret_cast<__opstate_t*>(reinterpret_cast<std::byte*>(this)
+                                               - __promise_offset);
+      }
+
+      __opstate_t const & __get_opstate() const noexcept
+      {
+        return *reinterpret_cast<__opstate_t const *>(reinterpret_cast<std::byte const *>(this)
+                                                      - __promise_offset);
+      }
     };
 
     template <class _Derived>
@@ -254,9 +261,6 @@ namespace STDEXEC
           auto&& __awaitable = __get_awaitable(static_cast<_Awaitable&&>(__source),
                                                __coro.promise());
 
-          STDEXEC_DEBUG_PRINT("address of awaitable: " << (void*) std::addressof(__awaitable)
-                                                       << ", address of source: "
-                                                       << (void*) std::addressof(__source));
           STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
         }
 
@@ -329,9 +333,6 @@ namespace STDEXEC
           [[maybe_unused]]
           auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_));
 
-          STDEXEC_DEBUG_PRINT("address of awaiter: " << (void*) std::addressof(__awaiter)
-                                                     << ", address of source: "
-                                                     << (void*) std::addressof(__source));
           STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
         }
 
@@ -405,166 +406,6 @@ namespace STDEXEC
       }
     };
 
-    struct __final_awaiter
-    {
-      static constexpr auto await_ready() noexcept -> bool
-      {
-        return false;
-      }
-
-      template <class _Promise>
-      static constexpr void await_suspend(__std::coroutine_handle<_Promise> __h) noexcept
-      {
-        STDEXEC_TRY
-        {
-          __h.promise().__get_opstate().__on_resume();
-        }
-        STDEXEC_CATCH_ALL
-        {
-          __std::unreachable();
-        }
-      }
-
-      [[noreturn]]
-      static void await_resume() noexcept
-      {
-        __std::unreachable();
-      }
-    };
-
-    template <class _Awaitable, class _Receiver>
-    struct __opstate;
-
-    template <class _Awaitable, class _Receiver>
-    struct __promise : __with_await_transform<__promise<_Awaitable, _Receiver>>
-    {
-      using __opstate_t = __opstate<_Awaitable, _Receiver>;
-
-      static constexpr std::ptrdiff_t __promise_offset = sizeof(void*) * 2;
-
-      explicit(!STDEXEC_EDG()) __promise([[maybe_unused]]
-                                         __opstate_t& __opstate) noexcept
-      {
-        STDEXEC_DEBUG_PRINT("__promise_offset: "
-                            << __promise_offset << ", actual offset: "
-                            << (reinterpret_cast<std::byte*>(this) - __opstate.__storage_));
-
-        STDEXEC_ASSERT(__promise_offset
-                       == reinterpret_cast<std::byte*>(this) - __opstate.__storage_);
-      }
-
-      ~__promise()
-      {
-        // never invoked
-        __std::unreachable();
-      }
-
-      static constexpr auto
-      operator new([[maybe_unused]] std::size_t __bytes, __opstate_t& __opstate) noexcept -> void*
-      {
-        // the first implementation of storing the coroutine frame inline in __opstate using the
-        // technique in this file is due to Lewis Baker <lewissbaker@gmail.com>, and was first
-        // shared at https://godbolt.org/z/zGG9fsPrz
-        STDEXEC_DEBUG_PRINT("__bytes: " << __bytes << ", storage size " << (__storage_size + 1));
-#  ifdef CUDART_VERSION
-        STDEXEC_DEBUG_PRINT("CUDART version: " << CUDART_VERSION);
-#  endif
-#  ifdef CUDA_VERSION
-        STDEXEC_DEBUG_PRINT("CUDA version: " << CUDA_VERSION);
-#  endif
-        );
-
-        STDEXEC_ASSERT(__bytes == __storage_size + 1);
-        return __opstate.__storage_;
-      }
-
-      static constexpr void operator delete(void*, std::size_t) noexcept
-      {
-        // never invoked
-        __std::unreachable();
-      }
-
-      constexpr auto get_return_object() noexcept -> __std::coroutine_handle<__promise>
-      {
-        STDEXEC_TRY
-        {
-          return __std::coroutine_handle<__promise>::from_promise(*this);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          __std::unreachable();
-        }
-      }
-
-      [[noreturn]]
-      static auto
-      get_return_object_on_allocation_failure() noexcept -> __std::coroutine_handle<__promise>
-      {
-        __std::unreachable();
-      }
-
-      static constexpr auto initial_suspend() noexcept -> __std::suspend_always
-      {
-        return {};
-      }
-
-      [[noreturn]]
-      static void unhandled_exception() noexcept
-      {
-        __std::unreachable();
-      }
-
-      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
-      {
-        __get_opstate().__on_stopped();
-        // Returning noop_coroutine here causes the __connect_awaitable
-        // coroutine to never resume past its initial_suspend point
-        return __std::noop_coroutine();
-      }
-
-      static constexpr auto final_suspend() noexcept -> __final_awaiter
-      {
-        return __final_awaiter{};
-      }
-
-      static constexpr void return_void() noexcept
-      {
-        // no-op
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
-      {
-        return STDEXEC::get_env(__get_opstate().__rcvr_);
-      }
-
-      __opstate<_Awaitable, _Receiver>& __get_opstate() noexcept
-      {
-        return *reinterpret_cast<__opstate<_Awaitable, _Receiver>*>(
-          reinterpret_cast<std::byte*>(this) - __promise_offset);
-      }
-
-      __opstate<_Awaitable, _Receiver> const & __get_opstate() const noexcept
-      {
-        return *reinterpret_cast<__opstate<_Awaitable, _Receiver> const *>(
-          reinterpret_cast<std::byte const *>(this) - __promise_offset);
-      }
-    };
-  }  // namespace __connect_await
-}
-
-template <class _Awaitable, class _Receiver>
-struct std::coroutine_traits<
-  STDEXEC::__std::coroutine_handle<STDEXEC::__connect_await::__promise<_Awaitable, _Receiver>>,
-  STDEXEC::__connect_await::__opstate<_Awaitable, _Receiver>&>
-{
-  using promise_type = STDEXEC::__connect_await::__promise<_Awaitable, _Receiver>;
-};
-
-namespace STDEXEC
-{
-  namespace __connect_await
-  {
     template <class _Awaitable, class _Receiver>
     struct __opstate
     {
@@ -626,9 +467,6 @@ namespace STDEXEC
               }
               STDEXEC_CATCH_ALL
               {
-                STDEXEC_DEBUG_PRINT("Commiting UB in the face of an exception thrown from "
-                                    "resume()");
-
                 STDEXEC_ASSERT(false
                                && "about to deliberately commit UB in response to a misbehaving "
                                   "awaitable");
@@ -658,11 +496,10 @@ namespace STDEXEC
       using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
 
       friend __promise_t;
-      friend __final_awaiter;
 
-      static auto __co_impl(__opstate&) noexcept -> __std::coroutine_handle<__promise_t>
+      static auto __co_impl(__opstate& __op) noexcept -> __std::coroutine_handle<__promise_t>
       {
-        co_return;
+        return __std::coroutine_handle<__promise_t>::from_address(&__op.__synthetic_frame_);
       }
 
       constexpr void __on_resume() noexcept
@@ -693,7 +530,7 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
-      alignas(__storage_align) std::byte __storage_[__storage_size];
+      __synthetic_coro_frame __synthetic_frame_{&__promise_t::__resume};
       [[no_unique_address]]
       bool __started_{false};
       [[no_unique_address]]
@@ -741,7 +578,5 @@ namespace STDEXEC
 
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 }  // namespace STDEXEC
-
-#undef STDEXEC_DEBUG_PRINT
 
 STDEXEC_PRAGMA_POP()
