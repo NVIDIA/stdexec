@@ -84,12 +84,18 @@ namespace STDEXEC
   constexpr auto __as_lvalue(_Tp &&) -> _Tp &;
 
   template <class _Awaitable, class... _Promise>
+  struct __await_result
+  {
+    using __t = decltype(STDEXEC::__as_lvalue(
+                           STDEXEC::__get_awaiter(
+                             STDEXEC::__get_awaitable(__declval<_Awaitable>(),
+                                                      __declval<_Promise &>()...)))
+                           .await_resume());
+  };
+
+  template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
-  using __await_result_t = decltype(STDEXEC::__as_lvalue(
-                                      STDEXEC::__get_awaiter(
-                                        STDEXEC::__get_awaitable(__declval<_Awaitable>(),
-                                                                 __declval<_Promise &>()...)))
-                                      .await_resume());
+  using __await_result_t = __t<__await_result<_Awaitable, _Promise...>>;
 
 #else
 

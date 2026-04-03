@@ -140,6 +140,9 @@ namespace experimental::execution
         noexcept(noexcept(__rcvr.set_next(static_cast<_Item&&>(__item))))
           -> decltype(__rcvr.set_next(static_cast<_Item&&>(__item)))
       {
+        static_assert(next_sender<decltype(__rcvr.set_next(static_cast<_Item&&>(__item)))>,
+                      "The sender returned from set_next is required to complete with "
+                      "set_value_t() or set_stopped_t()");
         return __rcvr.set_next(static_cast<_Item&&>(__item));
       }
 
@@ -153,8 +156,7 @@ namespace experimental::execution
       {
         static_assert(next_sender<__tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
                       "The sender returned from set_next is required to complete with "
-                      "set_value_t() or "
-                      "set_stopped_t()");
+                      "set_value_t() or set_stopped_t()");
         return __tag_invoke(*this, __rcvr, static_cast<_Item&&>(__item));
       }
     };
@@ -819,8 +821,10 @@ namespace experimental::execution
         }
         else
         {
-          static_assert(__subscribable_with_static_member<__tfx_seq_t, _Receiver>,
-                        STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
+          using __result_t
+            [[maybe_unused]] = decltype(__declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
+          // static_assert(__subscribable_with_static_member<__tfx_seq_t, _Receiver>,
+          //               STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
           return _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_();
         }
       }

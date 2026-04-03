@@ -27,17 +27,18 @@
 
 #include <catch2/catch.hpp>
 
+#include <iostream>
+
 namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // unreachable code
+STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'function' was declared deprecated
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
 
 namespace
 {
-
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                             exec::any_receiver_ref
-
   struct get_address_t : ex::__query<get_address_t>
   {};
 
@@ -94,13 +95,13 @@ namespace
     using Sigs = ex::completion_signatures<ex::set_value_t(int)>;
     sink_receiver                rcvr;
     exec::any_receiver_ref<Sigs> ref{rcvr};
-    CHECK(ex::receiver<decltype(ref)>);
-    CHECK(ex::receiver_of<decltype(ref), Sigs>);
-    CHECK(!ex::receiver_of<decltype(ref), ex::completion_signatures<ex::set_value_t()>>);
-    CHECK(std::is_copy_assignable_v<exec::any_receiver_ref<Sigs>>);
-    CHECK(std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver const &>);
-    CHECK(!std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver &&>);
-    CHECK(
+    STATIC_REQUIRE(ex::receiver<decltype(ref)>);
+    STATIC_REQUIRE(ex::receiver_of<decltype(ref), Sigs>);
+    STATIC_REQUIRE(!ex::receiver_of<decltype(ref), ex::completion_signatures<ex::set_value_t()>>);
+    STATIC_REQUIRE(std::is_copy_assignable_v<exec::any_receiver_ref<Sigs>>);
+    STATIC_REQUIRE(std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver const &>);
+    STATIC_REQUIRE(!std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver &&>);
+    STATIC_REQUIRE(
       !std::is_constructible_v<exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>,
                                sink_receiver const &>);
   }
@@ -180,134 +181,47 @@ namespace
     CHECK(std::get<1>(rcvr.value_) == 42);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                                any.storage
-
-  struct empty_vtable_t
-  {
-    template <class T>
-    static auto __create_vtable(ex::__mtype<T>) noexcept -> empty_vtable_t *
-    {
-      static empty_vtable_t vtable{};
-      return &vtable;
-    }
-  };
-
-  TEST_CASE("empty storage is movable", "[types][any_sender]")
-  {
-    struct foo
-    {};
-
-    using any_unique = exec::__any::__unique_storage_t<empty_vtable_t>;
-    any_unique s1{};
-    any_unique s2 = foo{};
-    static_assert(std::is_move_assignable_v<any_unique>);
-    static_assert(!std::is_copy_assignable_v<any_unique>);
-
-    CHECK(s2.__get_vtable());
-    CHECK(s1.__get_vtable() != s2.__get_vtable());
-    CHECK(s1.__get_object_pointer() == nullptr);
-    CHECK(s2.__get_object_pointer() != nullptr);
-    // Test SBO
-    auto obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
-    auto s2_ptr  = reinterpret_cast<std::intptr_t>(&s2);
-    CHECK(std::abs(s2_ptr - obj_ptr) < std::intptr_t(sizeof(any_unique)));
-
-    s1 = std::move(s2);
-    CHECK(s2.__get_vtable());
-    CHECK(s1.__get_vtable() != s2.__get_vtable());
-    CHECK(s1.__get_object_pointer() != nullptr);
-    CHECK(s2.__get_object_pointer() == nullptr);
-
-    s1 = std::move(s2);
-    CHECK(s1.__get_object_pointer() == nullptr);
-    CHECK(s2.__get_object_pointer() == nullptr);
-  }
-
-  TEST_CASE("empty storage is movable, throwing moves will allocate", "[types][any_sender]")
-  {
-    struct move_throws
-    {
-      move_throws() = default;
-
-      move_throws(move_throws &&) noexcept(false) {}
-
-      auto operator=(move_throws &&) noexcept(false) -> move_throws &
-      {
-        return *this;
-      }
-    };
-
-    using any_unique = exec::__any::__unique_storage_t<empty_vtable_t>;
-    any_unique s1{};
-    any_unique s2 = move_throws{};
-    static_assert(std::is_move_assignable_v<any_unique>);
-    static_assert(!std::is_copy_assignable_v<any_unique>);
-
-    CHECK(s2.__get_vtable());
-    CHECK(s1.__get_vtable() != s2.__get_vtable());
-    CHECK(s1.__get_object_pointer() == nullptr);
-    CHECK(s2.__get_object_pointer() != nullptr);
-    // Test SBO
-    auto obj_ptr = reinterpret_cast<std::intptr_t>(s2.__get_object_pointer());
-    auto s2_ptr  = reinterpret_cast<std::intptr_t>(&s2);
-    CHECK(std::abs(s2_ptr - obj_ptr) >= std::intptr_t(sizeof(any_unique)));
-
-    s1 = std::move(s2);
-    CHECK(s2.__get_vtable());
-    CHECK(s1.__get_vtable() != s2.__get_vtable());
-    CHECK(s1.__get_object_pointer() != nullptr);
-    CHECK(s2.__get_object_pointer() == nullptr);
-
-    s1 = std::move(s2);
-    CHECK(s1.__get_object_pointer() == nullptr);
-    CHECK(s2.__get_object_pointer() == nullptr);
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                                any_sender
-
   template <class... Ts>
   using any_sender_of =
     exec::any_receiver_ref<ex::completion_signatures<Ts...>>::template any_sender<>;
 
   TEST_CASE("any sender is a sender", "[types][any_sender]")
   {
-    CHECK(ex::sender<any_sender_of<ex::set_value_t()>>);
-    CHECK(std::is_move_assignable_v<any_sender_of<ex::set_value_t()>>);
-    CHECK(std::is_nothrow_move_assignable_v<any_sender_of<ex::set_value_t()>>);
-    CHECK(!std::is_copy_assignable_v<any_sender_of<ex::set_value_t()>>);
-    any_sender_of<ex::set_value_t()> sender = ex::just();
+    STATIC_REQUIRE(ex::sender<any_sender_of<ex::set_value_t()>>);
+    STATIC_REQUIRE(std::is_move_assignable_v<any_sender_of<ex::set_value_t()>>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<any_sender_of<ex::set_value_t()>>);
+    STATIC_REQUIRE(!std::is_copy_assignable_v<any_sender_of<ex::set_value_t()>>);
+    any_sender_of<ex::set_value_t()> sndr = ex::just();
   }
 
   TEST_CASE("ex::sync_wait works on any_sender_of", "[types][any_sender]")
   {
-    int                              value  = 0;
-    any_sender_of<ex::set_value_t()> sender = ex::just(42)
-                                            | ex::then([&](int v) noexcept { value = v; });
+    int                              value = 0;
+    any_sender_of<ex::set_value_t()> sndr  = ex::just(42)
+                                          | ex::then([&](int v) noexcept { value = v; });
     CHECK(std::same_as<ex::completion_signatures_of_t<any_sender_of<ex::set_value_t()>>,
                        ex::completion_signatures<ex::set_value_t()>>);
-    ex::sync_wait(std::move(sender));
+    ex::sync_wait(std::move(sndr));
     CHECK(value == 42);
   }
 
   TEST_CASE("construct any_sender_of recursively from ex::when_all", "[types][any_sender]")
   {
     any_sender_of<ex::set_value_t(), ex::set_stopped_t(), ex::set_error_t(std::exception_ptr)>
-      sender = ex::just();
+      sndr = ex::just();
     using sender_t =
       any_sender_of<ex::set_value_t(), ex::set_stopped_t(), ex::set_error_t(std::exception_ptr)>;
-    using when_all_t = decltype(ex::when_all(std::move(sender)));
-    static_assert(std::is_constructible_v<sender_t, when_all_t &&>);
+    using when_all_t = decltype(ex::when_all(std::move(sndr)));
+    STATIC_REQUIRE(std::is_constructible_v<sender_t, when_all_t &&>);
   }
 
   TEST_CASE("ex::sync_wait returns value", "[types][any_sender]")
   {
-    any_sender_of<ex::set_value_t(int)> sender = ex::just(21)
-                                               | ex::then([&](int v) noexcept { return 2 * v; });
+    any_sender_of<ex::set_value_t(int)> sndr = ex::just(21)
+                                             | ex::then([&](int v) noexcept { return 2 * v; });
     CHECK(std::same_as<ex::completion_signatures_of_t<any_sender_of<ex::set_value_t(int)>>,
                        ex::completion_signatures<ex::set_value_t(int)>>);
-    auto [value1] = *ex::sync_wait(std::move(sender));
+    auto [value1] = *ex::sync_wait(std::move(sndr));
     CHECK(value1 == 42);
   }
 
@@ -317,12 +231,12 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("ex::sync_wait returns value and exception", "[types][any_sender]")
   {
-    my_sender_of<int> sender = ex::just(21) | ex::then([&](int v) { return 2 * v; });
-    auto [value]             = *ex::sync_wait(std::move(sender));
+    my_sender_of<int> sndr = ex::just(21) | ex::then([&](int v) { return 2 * v; });
+    auto [value]           = *ex::sync_wait(std::move(sndr));
     CHECK(value == 42);
 
-    sender = ex::just(21) | ex::then([&](int) -> int { throw 420; });
-    CHECK_THROWS_AS(ex::sync_wait(std::move(sender)), int);
+    sndr = ex::just(21) | ex::then([&](int) -> int { throw 420; });
+    CHECK_THROWS_AS(ex::sync_wait(std::move(sndr)), int);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -370,16 +284,16 @@ namespace
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]")
   {
     auto split_sender = exec::split(ex::just(42));
-    static_assert(
+    STATIC_REQUIRE(
       ex::sender_of<decltype(split_sender), ex::set_error_t(std::exception_ptr const &)>);
-    static_assert(ex::sender_of<decltype(split_sender), ex::set_value_t(int const &)>);
-    my_stoppable_sender_of<int> sender = split_sender;
+    STATIC_REQUIRE(ex::sender_of<decltype(split_sender), ex::set_value_t(int const &)>);
+    my_stoppable_sender_of<int> sndr = split_sender;
 
-    auto [value] = *ex::sync_wait(std::move(sender));
+    auto [value] = *ex::sync_wait(std::move(sndr));
     CHECK(value == 42);
 
-    sender = ex::just(21) | ex::then([&](int) -> int { throw 420; });
-    CHECK_THROWS_AS(ex::sync_wait(std::move(sender)), int);
+    sndr = ex::just(21) | ex::then([&](int) -> int { throw 420; });
+    CHECK_THROWS_AS(ex::sync_wait(std::move(sndr)), int);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -478,70 +392,80 @@ namespace
 
   TEST_CASE("any_sender - does connect with stop token", "[types][any_sender]")
   {
-    using stoppable_sender         = any_sender_of<ex::set_value_t(int), ex::set_stopped_t()>;
-    stoppable_sender        sender = exec::when_any(ex::just(21));
+    using completions_t = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
+    constexpr auto stop_token_query =
+      ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>;
+
+    using stoppable_sender = exec::any_receiver_ref<completions_t, stop_token_query>::any_sender<>;
+    stoppable_sender        sndr = exec::when_any(ex::just(21));
     ex::inplace_stop_source stop_source{};
-    stopped_receiver        receiver{stop_source.get_token(), true};
+    stopped_receiver        rcvr{stop_source.get_token(), true};
     stop_source.request_stop();
-    auto do_check = ex::connect(std::move(sender), std::move(receiver));
+    auto do_check = ex::connect(std::move(sndr), std::move(rcvr));
     // This CHECKS whether set_value is called
     ex::start(do_check);
   }
 
   TEST_CASE("any_sender - does connect with an user-defined stop token", "[types][any_sender]")
   {
-    using stoppable_sender  = any_sender_of<ex::set_value_t(int), ex::set_stopped_t()>;
-    stoppable_sender sender = exec::when_any(ex::just(21));
+    using completions_t = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
+    constexpr auto stop_token_query =
+      ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>;
+
+    using stoppable_sender = exec::any_receiver_ref<completions_t, stop_token_query>::any_sender<>;
+    stoppable_sender sndr  = exec::when_any(ex::just(21));
+
     SECTION("stopped true")
     {
       stopped_token    token{true};
-      stopped_receiver receiver{token, true};
-      auto             do_check = ex::connect(std::move(sender), std::move(receiver));
+      stopped_receiver rcvr{token, true};
+      auto             do_check = ex::connect(std::move(sndr), std::move(rcvr));
       // This CHECKS whether set_value is called
       ex::start(do_check);
     }
+
     SECTION("stopped false")
     {
       stopped_token    token{false};
-      stopped_receiver receiver{token, false};
-      auto             do_check = ex::connect(std::move(sender), std::move(receiver));
+      stopped_receiver rcvr{token, false};
+      auto             do_check = ex::connect(std::move(sndr), std::move(rcvr));
       // This CHECKS whether set_value is called
       ex::start(do_check);
     }
   }
 
   TEST_CASE("any_sender - does connect with stop token if the get_stop_token query is registered "
-            "with "
-            "ex::inplace_stop_token",
+            "with ex::inplace_stop_token",
             "[types][any_sender]")
   {
-    using Sigs = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
-    using receiver_ref =
-      exec::any_receiver_ref<Sigs, ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>>;
-    using stoppable_sender         = receiver_ref::any_sender<>;
-    stoppable_sender        sender = exec::when_any(ex::just(21));
+    using completions_t = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
+    constexpr auto stop_token_query =
+      ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>;
+
+    using stoppable_sender = exec::any_receiver_ref<completions_t, stop_token_query>::any_sender<>;
+    stoppable_sender        sndr = exec::when_any(ex::just(21));
     ex::inplace_stop_source stop_source{};
-    stopped_receiver        receiver{stop_source.get_token(), true};
+    stopped_receiver        rcvr{stop_source.get_token(), true};
     stop_source.request_stop();
-    auto do_check = ex::connect(std::move(sender), std::move(receiver));
+    auto do_check = ex::connect(std::move(sndr), std::move(rcvr));
     // This CHECKS whether a set_stopped is called
     ex::start(do_check);
   }
 
   TEST_CASE("any_sender - does connect with stop token if the ex::get_stop_token query is "
-            "registered with "
-            "ex::never_stop_token",
+            "registered with ex::never_stop_token",
             "[types][any_sender]")
   {
-    using Sigs = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
-    using receiver_ref =
-      exec::any_receiver_ref<Sigs, ex::get_stop_token.signature<ex::never_stop_token() noexcept>>;
-    using unstoppable_sender       = receiver_ref::any_sender<>;
-    unstoppable_sender      sender = exec::when_any(ex::just(21));
+    using completions_t = ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>;
+    constexpr auto stop_token_query = ex::get_stop_token.signature<ex::never_stop_token() noexcept>;
+
+    using unstoppable_sender =
+      exec::any_receiver_ref<completions_t, stop_token_query>::any_sender<>;
+    unstoppable_sender      sndr = exec::when_any(ex::just(21));
     ex::inplace_stop_source stop_source{};
-    stopped_receiver        receiver{stop_source.get_token(), false};
+    stopped_receiver        rcvr{stop_source.get_token(), false};
     stop_source.request_stop();
-    auto do_check = ex::connect(std::move(sender), std::move(receiver));
+    auto do_check = ex::connect(std::move(sndr), std::move(rcvr));
     // This CHECKS whether a set_stopped is called
     ex::start(do_check);
   }
@@ -550,110 +474,77 @@ namespace
             "ex::receiver stop_token queries",
             "[types][any_sender]")
   {
-    using Sigs = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
-    using receiver_ref =
-      exec::any_receiver_ref<Sigs, ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>>;
-    using sender = receiver_ref::any_sender<>;
-    static_assert(requires {
-      {
-        ex::get_completion_signatures(std::declval<sender>())
-      } -> std::derived_from<ex::dependent_sender_error>;
+    using completions_t = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+    constexpr auto stop_token_query =
+      ex::get_stop_token.signature<ex::inplace_stop_token() noexcept>;
+
+    using sender = exec::any_receiver_ref<completions_t, stop_token_query>::any_sender<>;
+    using env    = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
+
+    STATIC_REQUIRE(ex::dependent_sender<sender>);
+    STATIC_REQUIRE(requires {
+      { ex::get_completion_signatures<sender, env>() } -> std::same_as<completions_t>;
     });
-    using env = exec::make_env_t<ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>>;
-    static_assert(requires {
-      {
-        ex::get_completion_signatures(std::declval<sender>(), std::declval<env>())
-      } -> std::same_as<Sigs>;
-    });
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                                any_scheduler
-
-  template <auto... Queries>
-  using my_scheduler = any_sender_of<>::any_scheduler<Queries...>;
-
-  TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]")
-  {
-    static_assert(ex::scheduler<my_scheduler<>>);
-    my_scheduler<> scheduler = ex::inline_scheduler();
-    my_scheduler<> copied    = scheduler;
-    CHECK(copied == scheduler);
-
-    auto sndr = ex::schedule(scheduler);
-    static_assert(ex::sender<decltype(sndr)>);
-    std::same_as<my_scheduler<>> auto get_sched = ex::get_completion_scheduler<ex::set_value_t>(
-      ex::get_env(sndr));
-    CHECK(get_sched == scheduler);
-
-    bool called = false;
-    ex::sync_wait(std::move(sndr) | ex::then([&] { called = true; }));
-    CHECK(called);
   }
 
   TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]")
   {
-    using my_scheduler2 = my_scheduler<
-      ex::get_forward_progress_guarantee.signature<ex::forward_progress_guarantee() noexcept>>;
-    static_assert(ex::scheduler<my_scheduler2>);
+    using completions_t        = ex::completion_signatures<ex::set_value_t()>;
+    using any_sender_t         = exec::any_sender<exec::any_receiver<completions_t>>;
+    using fwd_progress_query_t = ex::forward_progress_guarantee(
+      ex::get_forward_progress_guarantee_t) noexcept;
+    using my_scheduler2 = exec::any_scheduler<any_sender_t, exec::queries<fwd_progress_query_t>>;
+
+    STATIC_REQUIRE(ex::scheduler<my_scheduler2>);
     my_scheduler2 scheduler = ex::inline_scheduler();
     my_scheduler2 copied    = scheduler;
     CHECK(copied == scheduler);
 
-    auto sched = ex::schedule(scheduler);
-    static_assert(ex::sender<decltype(sched)>);
+    auto sndr = ex::schedule(scheduler);
+    STATIC_REQUIRE(ex::sender<decltype(sndr)>);
     std::same_as<my_scheduler2> auto get_sched = ex::get_completion_scheduler<ex::set_value_t>(
-      ex::get_env(sched));
+      ex::get_env(sndr));
     CHECK(get_sched == scheduler);
 
     CHECK(ex::get_forward_progress_guarantee(scheduler)
           == ex::get_forward_progress_guarantee(ex::inline_scheduler()));
 
     bool called = false;
-    ex::sync_wait(std::move(sched) | ex::then([&] { called = true; }));
+    ex::sync_wait(std::move(sndr) | ex::then([&] { called = true; }));
     CHECK(called);
   }
 
   TEST_CASE("any_scheduler adds ex::set_value_t() completion sig",
             "[types][any_scheduler][any_sender]")
   {
-    using scheduler_t = any_sender_of<>::any_scheduler<>;
-    using schedule_t  = decltype(ex::schedule(std::declval<scheduler_t>()));
-    CHECK(std::is_same_v<ex::completion_signatures_of_t<schedule_t>,
-                         ex::completion_signatures<ex::set_value_t()>>);
-    CHECK(ex::scheduler<scheduler_t>);
-  }
-
-  TEST_CASE("any_scheduler uniquely adds ex::set_value_t() completion sig",
-            "[types][any_scheduler][any_sender]")
-  {
-    using scheduler_t = any_sender_of<ex::set_value_t()>::any_scheduler<>;
-    using schedule_t  = decltype(ex::schedule(std::declval<scheduler_t>()));
-    CHECK(std::is_same_v<ex::completion_signatures_of_t<schedule_t>,
-                         ex::completion_signatures<ex::set_value_t()>>);
-    CHECK(ex::scheduler<scheduler_t>);
-  }
-
-  TEST_CASE("any_scheduler adds ex::set_value_t() completion sig (along with error)",
-            "[types][any_sender]")
-  {
-    using scheduler_t = any_sender_of<ex::set_error_t(std::exception_ptr)>::any_scheduler<>;
-    using schedule_t  = decltype(ex::schedule(std::declval<scheduler_t>()));
-    CHECK(ex::sender_of<schedule_t, ex::set_value_t()>);
-    CHECK(ex::sender_of<schedule_t, ex::set_error_t(std::exception_ptr)>);
+    using namespace exec;
+    using completions_t = ex::completion_signatures<ex::set_value_t()>;
+    using scheduler_t   = any_scheduler<any_sender<any_receiver<completions_t>>>;
+    using sender_t      = decltype(ex::schedule(std::declval<scheduler_t>()));
+    STATIC_REQUIRE(std::is_same_v<ex::completion_signatures_of_t<sender_t>, completions_t>);
+    STATIC_REQUIRE(ex::scheduler<scheduler_t>);
   }
 
   TEST_CASE("User-defined completion_scheduler<ex::set_value_t> is ignored",
             "[types][any_scheduler][any_sender]")
   {
-    using not_scheduler_t =
-      exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>::any_sender<
-        ex::get_completion_scheduler<ex::set_value_t>.signature<void()>>::any_scheduler<>;
-    CHECK(ex::scheduler<not_scheduler_t>);
+    using namespace exec;
+    using completions_t = ex::completion_signatures<ex::set_value_t()>;
+    using sender_queries_t =
+      queries<ex::inline_scheduler(ex::get_completion_scheduler_t<ex::set_value_t>) noexcept>;
+    using weird_scheduler_t =
+      any_scheduler<any_sender<any_receiver<completions_t>, sender_queries_t>>;
+    using completion_scheduler_t = decltype(ex::get_completion_scheduler<ex::set_value_t>(
+      std::declval<weird_scheduler_t>()));
+    STATIC_REQUIRE(ex::scheduler<weird_scheduler_t>);
+    STATIC_REQUIRE(std::same_as<completion_scheduler_t, weird_scheduler_t>);
   }
 
-  template <auto... Queries>
-  using stoppable_scheduler = any_sender_of<ex::set_stopped_t()>::any_scheduler<Queries...>;
+  template <class... Queries>
+  using stoppable_scheduler =
+    exec::any_scheduler<exec::any_sender<exec::any_receiver<
+                          ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>>>,
+                        exec::queries<Queries...>>;
 
   TEST_CASE("any scheduler with static_thread_pool", "[types][any_sender]")
   {
@@ -662,47 +553,52 @@ namespace
     auto                     copied    = scheduler;
     CHECK(copied == scheduler);
 
-    auto sched = ex::schedule(scheduler);
-    static_assert(ex::sender<decltype(sched)>);
+    auto sndr = ex::schedule(scheduler);
+    STATIC_REQUIRE(ex::sender<decltype(sndr)>);
     std::same_as<stoppable_scheduler<>> auto get_sched =
-      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sched));
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr));
     CHECK(get_sched == scheduler);
 
     bool called = false;
-    ex::sync_wait(std::move(sched) | ex::then([&] { called = true; }));
+    ex::sync_wait(std::move(sndr) | ex::then([&] { called = true; }));
     CHECK(called);
   }
 
   TEST_CASE("queryable any_scheduler with static_thread_pool", "[types][any_sender]")
   {
-    using my_scheduler = stoppable_scheduler<
-      ex::get_forward_progress_guarantee.signature<ex::forward_progress_guarantee() noexcept>>;
+    using my_scheduler = stoppable_scheduler<ex::forward_progress_guarantee(
+      ex::get_forward_progress_guarantee_t) noexcept>;
 
     exec::static_thread_pool pool(1);
     my_scheduler             scheduler = pool.get_scheduler();
     auto                     copied    = scheduler;
     CHECK(copied == scheduler);
 
-    auto sched = ex::schedule(scheduler);
-    static_assert(ex::sender<decltype(sched)>);
-    std::same_as<my_scheduler> auto get_sched = ex::get_completion_scheduler<ex::set_value_t>(
-      ex::get_env(sched));
-    CHECK(get_sched == scheduler);
+    auto sndr = ex::schedule(scheduler);
+    STATIC_REQUIRE(ex::sender<decltype(sndr)>);
+    std::same_as<my_scheduler> auto completion_sched =
+      ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(sndr));
+    CHECK(completion_sched == scheduler);
+
+    auto fwd_progress = scheduler.query(ex::get_forward_progress_guarantee);
+    STATIC_REQUIRE(std::same_as<decltype(fwd_progress), ex::forward_progress_guarantee>);
 
     CHECK(ex::get_forward_progress_guarantee(scheduler)
           == ex::get_forward_progress_guarantee(pool.get_scheduler()));
 
     bool called = false;
-    ex::sync_wait(std::move(sched) | ex::then([&] { called = true; }));
+    ex::sync_wait(std::move(sndr) | ex::then([&] { called = true; }));
     CHECK(called);
   }
 
   TEST_CASE("Scheduler with error handling and set_stopped", "[types][any_scheduler][any_sender]")
   {
-    using receiver_ref = exec::any_receiver_ref<
-      ex::completion_signatures<ex::set_stopped_t(), ex::set_error_t(std::exception_ptr)>>;
-    using sender_t        = receiver_ref::any_sender<>;
-    using scheduler_t     = sender_t::any_scheduler<>;
+    using receiver_t =
+      exec::any_receiver<ex::completion_signatures<ex::set_value_t(),
+                                                   ex::set_stopped_t(),
+                                                   ex::set_error_t(std::exception_ptr)>>;
+    using sender_t        = exec::any_sender<receiver_t>;
+    using scheduler_t     = exec::any_scheduler<sender_t>;
     scheduler_t scheduler = ex::inline_scheduler();
     {
       auto op = ex::connect(ex::schedule(scheduler), expect_void_receiver{});
@@ -720,21 +616,23 @@ namespace
     }
   }
 
-  TEST_CASE("Schedule Sender lifetime", "[types][any_scheduler][any_sender]")
+  TEST_CASE("any_scheduler sender lifetime", "[types][any_scheduler][any_sender]")
   {
-    using receiver_ref = exec::any_receiver_ref<
-      ex::completion_signatures<ex::set_stopped_t(), ex::set_error_t(std::exception_ptr)>>;
-    using sender_t        = receiver_ref::any_sender<>;
-    using scheduler_t     = sender_t::any_scheduler<>;
+    using receiver_t =
+      exec::any_receiver<ex::completion_signatures<ex::set_value_t(),
+                                                   ex::set_stopped_t(),
+                                                   ex::set_error_t(std::exception_ptr)>>;
+    using sender_t        = exec::any_sender<receiver_t>;
+    using scheduler_t     = exec::any_scheduler<sender_t>;
     scheduler_t scheduler = ex::inline_scheduler();
-    auto        sched     = ex::schedule(scheduler);
+    auto        sndr      = ex::schedule(scheduler);
     scheduler             = stopped_scheduler();
     {
       auto op = ex::connect(ex::schedule(scheduler), expect_stopped_receiver{});
       ex::start(op);
     }
     {
-      auto op = ex::connect(std::move(sched), expect_void_receiver{});
+      auto op = ex::connect(std::move(sndr), expect_void_receiver{});
       ex::start(op);
     }
   }
@@ -816,12 +714,13 @@ namespace
   TEST_CASE("check that any_scheduler cleans up all resources",
             "[types][any_scheduler][any_sender]")
   {
-    using receiver_ref = exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>;
-    using sender_t     = receiver_ref::any_sender<>;
-    using scheduler_t  = sender_t::any_scheduler<>;
+    using receiver_t  = exec::any_receiver<ex::completion_signatures<ex::set_value_t()>>;
+    using sender_t    = exec::any_sender<receiver_t>;
+    using scheduler_t = exec::any_scheduler<sender_t>;
     {
       scheduler_t scheduler = ex::inline_scheduler{};
       scheduler             = counting_scheduler{};
+      CHECK(counting_scheduler::count == 1);
       {
         auto op = ex::connect(ex::schedule(scheduler), expect_value_receiver<>{});
         ex::start(op);
@@ -830,6 +729,102 @@ namespace
     CHECK(counting_scheduler::count == 0);
   }
 
+  ///////////////////////////////////////////////////////////////////////////////
+  //                                                                any_scheduler
+
+  template <auto... Queries>
+  using my_scheduler = any_sender_of<ex::set_value_t()>::any_scheduler<Queries...>;
+
+  TEST_CASE("any scheduler with inline_scheduler", "[types][any_sender]")
+  {
+    STATIC_REQUIRE(ex::scheduler<my_scheduler<>>);
+    my_scheduler<> scheduler = ex::inline_scheduler();
+    my_scheduler<> copied    = scheduler;
+    CHECK(copied == scheduler);
+
+    auto sndr = ex::schedule(scheduler);
+    STATIC_REQUIRE(ex::sender<decltype(sndr)>);
+    std::same_as<my_scheduler<>> auto get_sched = ex::get_completion_scheduler<ex::set_value_t>(
+      ex::get_env(sndr));
+    CHECK(get_sched == scheduler);
+
+    bool called = false;
+    ex::sync_wait(std::move(sndr) | ex::then([&] { called = true; }));
+    CHECK(called);
+  }
+
+  template <class _Sigs>
+  struct sink;
+
+  template <class... _Sigs>
+  struct sink<ex::completion_signatures<_Sigs...>>
+  {
+    using receiver_concept = ex::receiver_t;
+
+    template <class... _Args>
+    void set_value(_Args &&...__args) noexcept
+      requires ex::__one_of<ex::set_value_t(_Args...), _Sigs...>
+    {
+      std::printf("set_value called");
+      ((std::cout << ' ' << __args), ...);
+      std::cout << '\n';
+    }
+    template <class Error>
+    void set_error(Error &&) noexcept
+      requires ex::__one_of<ex::set_error_t(Error), _Sigs...>
+    {
+      std::puts("set_error called");
+    }
+    void set_stopped() noexcept
+      requires ex::__one_of<ex::set_stopped_t(), _Sigs...>
+    {
+      std::puts("set_stopped called");
+    }
+    struct env
+    {
+      [[nodiscard]]
+      constexpr auto query(ex::get_stop_token_t) const noexcept -> ex::inplace_stop_token
+      {
+        return {};
+      }
+    };
+    [[nodiscard]]
+    constexpr env get_env() const noexcept
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("any_receiver", "[types][any_sender]")
+  {
+    using completions_t = ex::completion_signatures<ex::set_value_t(int),
+                                                    ex::set_error_t(std::exception_ptr),
+                                                    ex::set_stopped_t()>;
+    using queries_t     = exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>;
+
+    using any_receiver_t = exec::any_receiver<completions_t, queries_t>;
+    any_receiver_t rcvr  = sink<completions_t>{};
+    std::move(rcvr).set_value(42);
+    std::move(rcvr).set_error(std::make_exception_ptr(std::runtime_error("error")));
+    std::move(rcvr).set_stopped();
+
+    [[maybe_unused]]
+    auto tok = ex::get_stop_token(ex::get_env(rcvr));
+    STATIC_REQUIRE(std::same_as<decltype(tok), ex::inplace_stop_token>);
+
+    using any_sender_t = exec::any_sender<any_receiver_t>;
+    any_sender_t sndr  = ex::just(42);
+    auto         op    = ex::connect(std::move(sndr), sink<completions_t>{});
+    ex::start(op);
+
+    using inline_completions_t                     = ex::completion_signatures<ex::set_value_t()>;
+    using inline_any_receiver_t                    = exec::any_receiver<inline_completions_t>;
+    using inline_any_sender_t                      = exec::any_sender<inline_any_receiver_t>;
+    exec::any_scheduler<inline_any_sender_t> sch   = ex::inline_scheduler{};
+    auto                                     sndr2 = ex::schedule(sch);
+    auto op2 = ex::connect(std::move(sndr2), sink<inline_completions_t>{});
+    ex::start(op2);
+  }
 }  // namespace
 
 STDEXEC_PRAGMA_POP()

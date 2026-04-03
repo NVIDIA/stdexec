@@ -45,8 +45,6 @@ namespace
   struct immovable
   {
     immovable() = default;
-
-   private:
     STDEXEC_IMMOVABLE(immovable);
   };
 
@@ -63,7 +61,8 @@ namespace
     auto value() -> int
     {
       return value_;
-    }  // silence warning of unused private field
+    }
+
    private:
     int value_;
   };

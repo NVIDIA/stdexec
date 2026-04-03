@@ -156,13 +156,13 @@ namespace experimental::execution::__shared
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////
-  struct __local_state_base : __immovable
+  struct __local_state_base
   {
-    __local_state_base() = default;
     constexpr virtual void __notify() noexcept
     {
       // should never be called
     }
+
     __local_state_base* __next_ = nullptr;
   };
 
@@ -185,6 +185,8 @@ namespace experimental::execution::__shared
       , __rcvr_(static_cast<_Receiver&&>(__rcvr))
       , __sh_state_(std::move(__sh_state))
     {}
+
+    STDEXEC_IMMOVABLE(__local_state);
 
     constexpr ~__local_state()
     {

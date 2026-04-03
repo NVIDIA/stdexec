@@ -92,7 +92,7 @@ namespace STDEXEC
     }
 
     template <class _Sexpr, class _Receiver>
-    struct __state_base : __immovable
+    struct __state_base
     {
       using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
@@ -142,9 +142,10 @@ namespace STDEXEC
       using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
-        : __state::__state_base{{}, static_cast<_Receiver&&>(__rcvr)}
+        : __state::__state_base{static_cast<_Receiver&&>(__rcvr)}
         , __state2_(connect(schedule(__sched), __receiver2_t{this}))
       {}
+      STDEXEC_IMMOVABLE(__state);
 
       connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
     };

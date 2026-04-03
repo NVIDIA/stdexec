@@ -23,4 +23,5 @@ jobs:
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - shell: bash
         run: |
+          clang-format-21 --version
           git ls-files '*.[ch]' '*.[ch]pp' '*.cu' '*.cuh' | xargs clang-format-21 --dry-run --Werror

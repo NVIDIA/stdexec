@@ -20,15 +20,29 @@
 #include "__execution_fwd.hpp"
 #include "__operation_states.hpp"
 #include "__receivers.hpp"
+#include "__sender_concepts.hpp"
 
 #include <memory>
 #include <utility>
 
 namespace STDEXEC
 {
+  namespace __detail
+  {
+    template <class _Rcvr, class _Item>
+    concept __has_set_next = requires(_Rcvr& __rcvr, __declfn_t<_Item&&> __item) {
+      __rcvr.set_next(__item());
+    };
+  }  // namespace __detail
+
   template <class _RcvrPtr, class _Env = env_of_t<decltype(*_RcvrPtr())>>
   struct __pointer_receiver
   {
+   private:
+    using __receiver_t = std::remove_reference_t<decltype(*_RcvrPtr())>;
+    _RcvrPtr __rcvr_ptr_;
+
+   public:
     using receiver_concept = receiver_t;
 
     STDEXEC_ATTRIBUTE(host, device)
@@ -37,6 +51,7 @@ namespace STDEXEC
     {}
 
     template <class... _As>
+      requires __callable<set_value_t, __receiver_t, _As...>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_value(_As&&... __as) noexcept
     {
@@ -44,6 +59,7 @@ namespace STDEXEC
     }
 
     template <class _Error>
+      requires __callable<set_error_t, __receiver_t, _Error>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_error(_Error&& __err) noexcept
     {
@@ -52,6 +68,7 @@ namespace STDEXEC
 
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_stopped() noexcept
+      requires __callable<set_stopped_t, __receiver_t>
     {
       STDEXEC::set_stopped(std::move(*__rcvr_ptr_));
     }
@@ -64,8 +81,17 @@ namespace STDEXEC
       return STDEXEC::get_env(*__rcvr_ptr_);
     }
 
-   private:
-    _RcvrPtr __rcvr_ptr_;
+    // clang-format off
+    template <sender _Item>
+      requires __detail::__has_set_next<__receiver_t, _Item>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto set_next(_Item&& __item) STDEXEC_AUTO_RETURN
+    (
+      // Make the type of __rcvr_ptr_ dependent on _Item to avoid forming an invalid
+      // expression when _Rcvr doesn't have set_next:
+      (__item, __rcvr_ptr_)->set_next(static_cast<_Item&&>(__item))
+    )
+    // clang-format on
   };
 
   template <class _Rcvr, class _Env = env_of_t<_Rcvr>>

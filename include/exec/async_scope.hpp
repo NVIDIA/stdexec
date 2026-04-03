@@ -143,7 +143,7 @@ namespace experimental::execution
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::nest implementation
     template <class _Receiver>
-    struct __nest_opstate_base : __immovable
+    struct __nest_opstate_base
     {
       __impl const * __scope_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -222,9 +222,11 @@ namespace experimental::execution
 
       template <__decays_to<_Constrained> _Sender, __decays_to<_Receiver> _Rcvr>
       constexpr explicit __nest_opstate(__impl const * __scope, _Sender&& __c, _Rcvr&& __rcvr)
-        : __nest_opstate_base<_Receiver>{{}, __scope, static_cast<_Rcvr&&>(__rcvr)}
+        : __nest_opstate_base<_Receiver>{__scope, static_cast<_Rcvr&&>(__rcvr)}
         , __op_(STDEXEC::connect(static_cast<_Sender&&>(__c), __nest_rcvr_t{this}))
       {}
+
+      STDEXEC_IMMOVABLE(__nest_opstate);
 
       constexpr void start() & noexcept
       {
@@ -805,9 +807,10 @@ namespace experimental::execution
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope
-    struct async_scope : __immovable
+    struct async_scope
     {
       async_scope() = default;
+      STDEXEC_IMMOVABLE(async_scope);
 
       template <sender _Constrained>
       [[nodiscard]]

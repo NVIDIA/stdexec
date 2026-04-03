@@ -59,7 +59,7 @@ namespace experimental::execution
     };
 
     template <class _ResultVariant>
-    struct __result_type : __immovable
+    struct __result_type
     {
       template <class... _Args>
       void __emplace(_Args&&... __args) noexcept
@@ -273,6 +273,8 @@ namespace experimental::execution
         : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
         , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})}
       {}
+
+      STDEXEC_IMMOVABLE(__operation);
 
       void start() & noexcept
       {

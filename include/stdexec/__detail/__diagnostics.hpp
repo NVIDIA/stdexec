@@ -218,6 +218,11 @@ namespace STDEXEC
 
   struct dependent_sender_error : __compile_time_error<dependent_sender_error>
   {
+    constexpr dependent_sender_error() noexcept
+      : what_("This sender needs to know its execution environment before it can know how it will "
+              "complete.")
+    {}
+
     constexpr explicit dependent_sender_error(char const *what) noexcept
       : what_(what)
     {}

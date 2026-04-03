@@ -87,12 +87,14 @@ namespace experimental::execution
     }
 
     template <class _Receiver, class _ResultVariant>
-    struct __opstate_base : __immovable
+    struct __opstate_base
     {
       __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
+
+      STDEXEC_IMMOVABLE(__opstate_base);
 
       using __on_stop =
         stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request<>>;
@@ -210,6 +212,8 @@ namespace experimental::execution
         : __op_base_t{static_cast<_Receiver&&>(__rcvr), sizeof...(_CvSenders)}
         , __ops_{STDEXEC::connect(static_cast<_CvSenders&&>(__sndrs), __receiver_t{this})...}
       {}
+
+      STDEXEC_IMMOVABLE(__opstate);
 
       void start() & noexcept
       {

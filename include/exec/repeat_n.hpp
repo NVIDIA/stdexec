@@ -40,7 +40,7 @@ namespace experimental::execution
     using namespace STDEXEC;
 
     template <class _Receiver>
-    struct __opstate_base : __immovable
+    struct __opstate_base
     {
       constexpr explicit __opstate_base(_Receiver &&__rcvr, std::size_t __count) noexcept
         : __rcvr_{static_cast<_Receiver &&>(__rcvr)}
@@ -49,6 +49,8 @@ namespace experimental::execution
         static_assert(__nothrow_constructible_from<trampoline_scheduler>,
                       "trampoline_scheduler c'tor is always expected to be noexcept");
       }
+
+      STDEXEC_IMMOVABLE(__opstate_base);
 
       virtual constexpr void __cleanup() noexcept = 0;
       virtual constexpr void __repeat() noexcept  = 0;

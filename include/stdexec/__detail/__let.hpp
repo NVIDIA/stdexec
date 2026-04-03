@@ -255,7 +255,7 @@ namespace STDEXEC
     //! The core of the operation state for `let_*`.
     //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
-    struct __opstate_base : __immovable
+    struct __opstate_base
     {
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
@@ -271,6 +271,8 @@ namespace STDEXEC
         // TODO(ericniebler): this needs a fallback:
         , __env2_(__mk_secondary_env_t<_SetTag>()(__cv, __sndr, STDEXEC::get_env(__rcvr_)))
       {}
+
+      STDEXEC_IMMOVABLE(__opstate_base);
 
       constexpr virtual void __start_next() = 0;
 

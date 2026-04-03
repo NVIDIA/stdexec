@@ -667,6 +667,9 @@ namespace STDEXEC::__any
     : _Interface<__mcall1<__bases_of<_Interface>, __value_proxy_root<_Interface>>>
   {};
 
+  template <class _Interface, __root_kind _RootKind>
+  concept __has_root_kind = std::remove_reference_t<_Interface>::__root_kind == _RootKind;
+
   //////////////////////////////////////////////////////////////////////////////////////////
   //! __interface_base
   template <template <class> class _Interface,
@@ -693,15 +696,20 @@ namespace STDEXEC::__any
                                                  ? _BufferAlignment
                                                  : _Base::__buffer_alignment;
 
+    static constexpr bool __can_slice = __extension_of<_Base, __imovable>
+                                     && (__has_root_kind<_Base, __root_kind::__value>
+                                         || __extension_of<_Base, __icopyable>);
+
     static constexpr bool __nothrow_slice =
       STDEXEC::__any::__nothrow_slice<__this_interface_type, _Base, __buffer_size>;
 
     //! @pre !empty(*this)
-    constexpr virtual void
-    __slice_to_(__value_proxy_root<_Interface> &__result) noexcept(__nothrow_slice)
+    constexpr virtual void __slice_to_(__value_proxy_root<_Interface> &__result)  //
+      noexcept(__nothrow_slice)
     {
       STDEXEC_ASSERT(!__empty(*this));
-      if constexpr (_Base::__box_kind != __box_kind::__abstract)
+      STDEXEC_ASSERT(__can_slice);
+      if constexpr (_Base::__box_kind != __box_kind::__abstract && __can_slice)
       {
         using __root_interface_t = _Base::__interface_type;
         constexpr bool __is_root_interface =
@@ -714,12 +722,15 @@ namespace STDEXEC::__any
             __value(*this).__slice_to_(__result);
             __reset(*this);
           }
-          else  // if constexpr (_Base::__box_kind == __box_kind::__object)
+          else if constexpr (_Base::__root_kind == __root_kind::__value)
           {
             // Move from type-erased values, but not from type-erased references
-            constexpr bool __is_value = (_Base::__root_kind == __root_kind::__value);
             // potentially throwing:
-            __result.emplace(STDEXEC_DECAY_COPY(STDEXEC::__move_if<__is_value>(__value(*this))));
+            __result.emplace(std::move(__value(*this)));
+          }
+          else
+          {
+            __result.emplace(__value(*this));
           }
         }
       }
@@ -975,6 +986,38 @@ namespace STDEXEC::__any
       return __emplace_<_Value>(std::allocator_arg, __alloc, static_cast<_Args &&>(__args)...);
     }
 
+    template <class _Allocator, class _Fn, class... _Args>
+    constexpr auto
+    __emplace_from_(std::allocator_arg_t, _Allocator const &__alloc, _Fn &&__fn, _Args &&...__args)
+      -> __call_result_t<_Fn, _Args...> &
+    {
+      static_assert(__simple_allocator<_Allocator>);
+      using __value_type = __call_result_t<_Fn, _Args...>;
+      using __model_type = __value_model<_Interface, __value_type, _Allocator>;
+      auto &__model      =  //
+        STDEXEC::__any::__emplace_into<__model_type>(__alloc,
+                                                     __root_ptr_,
+                                                     __buff_,
+                                                     std::allocator_arg,
+                                                     __alloc,
+                                                     __in_place_from,
+                                                     static_cast<_Fn &&>(__fn),
+                                                     static_cast<_Args &&>(__args)...);
+      return __value(__model);
+    }
+
+    template <class _Fn, class... _Args>
+    constexpr auto
+    __emplace_from_(_Fn &&__fn, _Args &&...__args) -> __call_result_t<_Fn, _Args...> &
+    {
+      using __value_type = __call_result_t<_Fn, _Args...>;
+      std::allocator<__value_type> const __alloc{};
+      return __emplace_from_(std::allocator_arg,
+                             __alloc,
+                             static_cast<_Fn &&>(__fn),
+                             static_cast<_Args &&>(__args)...);
+    }
+
     template <class _Self>
     [[nodiscard]]
     static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
@@ -1155,19 +1198,20 @@ namespace STDEXEC::__any
     [[nodiscard]]
     static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
     {
-      using __value_ref_t = __copy_cvref_t<_Self &&, __value_type>;
+      using __from_ref_t = __if_c<std::is_lvalue_reference_v<_Self>, _Value &, _Value &&>;
+      using __to_ref_t   = __copy_cvref_t<_Self &&, __value_type>;
 
       STDEXEC_IF_NOT_CONSTEVAL
       {
-        STDEXEC_ASSERT((__std::convertible_to<_Value &, __value_ref_t>)
-                       && "attempt to get a mutable reference from a const reference, or an rvalue "
-                          "from an lvalue");
+        // We permit getting an rvalue reference when _Self&& is also an rvalue reference.
+        STDEXEC_ASSERT((__std::convertible_to<__from_ref_t, __to_ref_t>)
+                       && "attempt to get a mutable reference from a const reference");
       }
 
       if (__self.__is_indirect_())
-        return static_cast<__value_ref_t>(const_cast<__value_ref_t &>(__self.__dereference_()));
+        return static_cast<__to_ref_t>(const_cast<__to_ref_t &>(__self.__dereference_()));
       else
-        return static_cast<__value_ref_t>(const_cast<__value_ref_t &>(*__self.__get_value_ptr_()));
+        return static_cast<__to_ref_t>(const_cast<__to_ref_t &>(*__self.__get_value_ptr_()));
     }
 
     [[nodiscard]]
@@ -1707,10 +1751,7 @@ namespace STDEXEC::__any
     constexpr explicit __any(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       : __any()
     {
-      using __value_t = __decay_t<__call_result_t<_Fn, _Args...>>;
-      (*this).template __emplace_<__value_t>(
-        __emplace_from{[&]() noexcept(__nothrow_callable<_Fn, _Args...>)
-                       { return static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...); }});
+      (*this).__emplace_from_(static_cast<_Fn &&>(__fn), static_cast<_Args &&>(__args)...);
     }
 
     // Implicit derived-to-base conversion constructor
