@@ -74,11 +74,14 @@ namespace STDEXEC
     struct __synthetic_coro_frame
     {
       void (*__resume_)(void*) noexcept;
-      // a coroutine frame is usually headed by two function pointers, resume and destroy
-      // in our use, below, we never invoke destroy so there's no need to actually store
-      // it; instead, leave some padding at the end of the struct so we can use its last
-      // byte to store a bool indicating whether or not we ever started the operation
-      std::byte __padding_[sizeof(void*) - 1]{};
+      // we never invoke __destroy_ so a no-op implementation is fine; we've chosen
+      // the address of a no-op function rather than nullptr in case some rogue awaitable
+      // *does* invoke destroy on the synthesized handle that it receives in its
+      // await_suspend function
+      void (*__destroy_)(void*) noexcept = &__noop_destroy;
+
+     private:
+      static void __noop_destroy(void*) noexcept {}
     };
 
     static constexpr std::ptrdiff_t __promise_offset = sizeof(__synthetic_coro_frame);
@@ -532,11 +535,11 @@ namespace STDEXEC
 
       __synthetic_coro_frame __synthetic_frame_{&__promise_t::__resume};
       [[no_unique_address]]
-      bool __started_{false};
-      [[no_unique_address]]
       _Receiver __rcvr_;
       [[neo_unique_addres]]
       __awaitable_state<_Awaitable, __promise_t> __awaiter_;
+      [[no_unique_address]]
+      bool __started_{false};
     };
   }  // namespace __connect_await
 
