@@ -18,13 +18,13 @@
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 
-#include "test_common/receivers.hpp"
-#include "test_common/type_helpers.hpp"
-#include <catch2/catch.hpp>
-#include <stdexec/execution.hpp>
+#  include "test_common/receivers.hpp"
+#  include "test_common/type_helpers.hpp"
+#  include <catch2/catch.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <stdexcept>
-#include <type_traits>
+#  include <stdexcept>
+#  include <type_traits>
 
 namespace ex = STDEXEC;
 
