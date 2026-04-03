@@ -91,8 +91,9 @@ rapids_cmake_build_type(Release)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 
-# Disable the tests by default unless it is the top level project and build testing was specified.
-if (STDEXEC_MAIN_PROJECT AND BUILD_TESTING)
+# Disable the tests by default unless it is the top level project or build testing was
+# specified.
+if (STDEXEC_MAIN_PROJECT OR BUILD_TESTING)
     set(STDEXEC_BUILD_TESTS_DEFAULT ON)
 else()
     set(STDEXEC_BUILD_TESTS_DEFAULT OFF)
