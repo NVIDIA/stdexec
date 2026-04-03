@@ -158,6 +158,8 @@ namespace STDEXEC
 
       constexpr __stop_callback_box() {}
 
+      constexpr ~__stop_callback_box() {}
+
       void __register_callback(auto const & __has_env, __stop_variant_t& __stop)
         noexcept(__nothrow_constructible_from<__stop_callback_t, _StopToken, _StopSource&>)
       {
