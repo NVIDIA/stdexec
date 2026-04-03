@@ -215,11 +215,10 @@ namespace STDEXEC
         __state __awaiter_;
       };
 
-      template <class _A>
-        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      explicit __awaitable_state(_A&& __awaitable)
-        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
-        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      template <__not_decays_to<__awaitable_state> _Awaitable2>
+      explicit __awaitable_state(_Awaitable2&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _Awaitable2>)
+        : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
       ~__awaitable_state() {}
@@ -288,11 +287,10 @@ namespace STDEXEC
         __state __awaiter_;
       };
 
-      template <class _A>
-        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      explicit __awaitable_state(_A&& __awaitable)
-        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
-        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      template <__not_decays_to<__awaitable_state> _Awaitable2>
+      explicit __awaitable_state(_Awaitable2&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _Awaitable2>)
+        : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
       ~__awaitable_state() {}
@@ -360,11 +358,10 @@ namespace STDEXEC
         __state __awaiter_;
       };
 
-      template <class _A>
-        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      explicit __awaitable_state(_A&& __awaitable)
-        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
-        : __source_awaitable_(static_cast<_A&&>(__awaitable))
+      template <__not_decays_to<__awaitable_state> _Awaitable2>
+      explicit __awaitable_state(_Awaitable2&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _Awaitable2>)
+        : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
       ~__awaitable_state() {}
@@ -392,11 +389,10 @@ namespace STDEXEC
       [[no_unique_address]]
       _Awaitable __awaiter_;
 
-      template <class _A>
-        requires(!std::same_as<std::remove_cvref_t<_A>, __awaitable_state>)
-      explicit __awaitable_state(_A&& __awaitable)
-        noexcept(__nothrow_constructible_from<_Awaitable, _A>)
-        : __awaiter_(static_cast<_A&&>(__awaitable))
+      template <__not_decays_to<__awaitable_state> _Awaitable2>
+      explicit __awaitable_state(_Awaitable2&& __awaitable)
+        noexcept(__nothrow_constructible_from<_Awaitable, _Awaitable2>)
+        : __awaiter_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
       static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
