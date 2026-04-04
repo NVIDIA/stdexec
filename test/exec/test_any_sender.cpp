@@ -36,6 +36,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // unreachable code
 STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'function' was declared deprecated
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
 
 namespace
 {

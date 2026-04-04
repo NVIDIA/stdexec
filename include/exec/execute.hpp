@@ -18,7 +18,6 @@
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
 #include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__schedulers.hpp"
 #include "../stdexec/__detail/__senders.hpp"
 #include "../stdexec/__detail/__then.hpp"

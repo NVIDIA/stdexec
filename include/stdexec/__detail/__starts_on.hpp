@@ -28,7 +28,6 @@
 #include "__senders.hpp"
 #include "__sequence.hpp"
 #include "__utility.hpp"
-#include "__write_env.hpp"
 
 namespace STDEXEC
 {

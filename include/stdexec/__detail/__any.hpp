@@ -1198,7 +1198,8 @@ namespace STDEXEC::__any
     [[nodiscard]]
     static constexpr auto __value_(_Self &&__self) noexcept -> auto &&
     {
-      using __from_ref_t = __if_c<std::is_lvalue_reference_v<_Self>, _Value &, _Value &&>;
+      using __from_ref_t
+        [[maybe_unused]] = __if_c<std::is_lvalue_reference_v<_Self>, _Value &, _Value &&>;
       using __to_ref_t   = __copy_cvref_t<_Self &&, __value_type>;
 
       STDEXEC_IF_NOT_CONSTEVAL

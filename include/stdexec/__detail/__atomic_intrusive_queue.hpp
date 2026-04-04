@@ -22,7 +22,6 @@
 #include "__intrusive_queue.hpp"
 
 #include <cassert>
-#include <cstddef>
 
 namespace STDEXEC
 {

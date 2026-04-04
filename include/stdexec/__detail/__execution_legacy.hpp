@@ -18,7 +18,7 @@
 #include "__config.hpp"
 
 #if !STDEXEC_NO_STDCPP_EXECUTION_POLICY()
-#  include <execution>
+#  include <execution>  // IWYU pragma: keep
 #endif
 
 namespace STDEXEC

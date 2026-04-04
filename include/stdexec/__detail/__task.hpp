@@ -156,7 +156,7 @@ namespace STDEXEC
       using __callback_fn_t   = __forward_stop_request<_StopSource>;
       using __stop_callback_t = stop_callback_for_t<_StopToken, __callback_fn_t>;
 
-      constexpr __stop_callback_box() {}
+      constexpr __stop_callback_box() noexcept {}
 
       constexpr ~__stop_callback_box() {}
 

@@ -22,11 +22,9 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
-#include "__optional.hpp"
 #include "__receivers.hpp"
 
 #include <exception>
-#include <utility>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
@@ -199,22 +197,22 @@ namespace STDEXEC
 
         union
         {
-          [[no_unique_address]]
+          STDEXEC_ATTRIBUTE(no_unique_address)
           __awaitable_t __awaitable_;
         };
 
         union
         {
-          [[no_unique_address]]
+          STDEXEC_ATTRIBUTE(no_unique_address)
           __awaiter_t __awaiter_;
         };
       };
 
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_address]]
+        STDEXEC_ATTRIBUTE(no_unique_address)
         __state __awaiter_;
       };
 
@@ -277,16 +275,16 @@ namespace STDEXEC
 
         union
         {
-          [[no_unique_address]]
+          STDEXEC_ATTRIBUTE(no_unique_address)
           __awaiter_t __awaiter_;
         };
       };
 
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_address]]
+        STDEXEC_ATTRIBUTE(no_unique_address)
         __state __awaiter_;
       };
 
@@ -348,16 +346,16 @@ namespace STDEXEC
 
         union
         {
-          [[no_unique_address]]
+          STDEXEC_ATTRIBUTE(no_unique_address)
           __awaiter_t __awaiter_;
         };
       };
 
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
       union
       {
-        [[no_unique_address]]
+        STDEXEC_ATTRIBUTE(no_unique_address)
         __state __awaiter_;
       };
 
@@ -389,7 +387,7 @@ namespace STDEXEC
     {
       // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
       // so we don't need separate storage for either
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __awaiter_;
 
       template <__not_decays_to<__awaitable_state> _Awaitable2>
@@ -534,11 +532,11 @@ namespace STDEXEC
       }
 
       __synthetic_coro_frame __synthetic_frame_{&__promise_t::__resume};
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       _Receiver __rcvr_;
       [[neo_unique_addres]]
       __awaitable_state<_Awaitable, __promise_t> __awaiter_;
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       bool __started_{false};
     };
   }  // namespace __connect_await

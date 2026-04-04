@@ -28,12 +28,12 @@ endfunction()
 function(def_example example)
     split(${example} target source)
     add_executable(${target} ${source})
+    target_compile_options(${target} PUBLIC
+        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>) # warnings being emitted from stdlib headers, why?
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags
                 $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
-    target_compile_options(${target} INTERFACE
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>) # warnings being emitted from stdlib headers, why?
 endfunction()
 
 set(stdexec_examples

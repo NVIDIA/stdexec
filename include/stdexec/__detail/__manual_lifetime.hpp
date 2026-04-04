@@ -17,7 +17,6 @@
 #pragma once
 
 #include "__concepts.hpp"
-#include "__utility.hpp"
 
 #include <memory>
 #include <new>
@@ -36,7 +35,7 @@ namespace STDEXEC
     constexpr __manual_lifetime() noexcept = default;
 
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
-    constexpr ~__manual_lifetime() = default;
+    constexpr ~__manual_lifetime() {}
 
     STDEXEC_IMMOVABLE(__manual_lifetime);
 

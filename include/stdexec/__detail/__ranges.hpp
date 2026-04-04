@@ -16,7 +16,6 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__type_traits.hpp"
 
 #if !STDEXEC_NO_STDCPP_RANGES()
 

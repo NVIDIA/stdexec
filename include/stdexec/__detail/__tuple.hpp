@@ -252,7 +252,7 @@ namespace STDEXEC
         noexcept(__nothrow_callable<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>)
           -> __call_result_t<__impl_t<_Tuple>, _Fn, _Tuple, _Us...>
       {
-        constexpr size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
+        STDEXEC_CONSTEXPR_LOCAL size_t __size = STDEXEC_REMOVE_REFERENCE(_Tuple)::__size;
 
         if constexpr (__size == 0)
         {
