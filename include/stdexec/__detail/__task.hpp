@@ -252,11 +252,17 @@ namespace STDEXEC
       return __attrs{};
     }
 
+#if !STDEXEC_GCC()
+    // This transforms a task into an __awaiter that can perform symmetric transfer when
+    // co_awaited. It is disabled on GCC due to
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, which causes unbounded stack
+    // growth.
     template <class _ParentPromise>
     constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept
     {
       return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
     }
+#endif
 
    private:
     using __on_stopped_t   = __forward_stop_request<stop_source_type>;
