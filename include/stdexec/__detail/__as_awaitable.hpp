@@ -33,7 +33,6 @@
 #include <functional>  // for std::identity
 #include <system_error>
 #include <thread>
-#include <variant>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
@@ -307,8 +306,7 @@ namespace STDEXEC
       }
 
       constexpr auto
-      await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro) noexcept  //
-        -> __std::coroutine_handle<>
+      await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro) noexcept -> bool
       {
         STDEXEC_ASSERT(this->__continuation_ == __hcoro);
 
@@ -330,14 +328,14 @@ namespace STDEXEC
           // The operation completed inline with set_value or set_error, so we can just
           // resume the current coroutine. await_resume will either return the value or
           // throw as appropriate.
-          return __hcoro;
+          return false;
         }
         else
         {
           // If __ready_ was still false when executing the CAS, then the operation did not
           // complete inline. The continuation will be resumed when the operation
           // completes, so we return a noop_coroutine to suspend the current coroutine.
-          return __std::noop_coroutine();
+          return true;
         }
       }
 
@@ -363,7 +361,7 @@ namespace STDEXEC
       {}
 
       auto await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro)
-        -> __std::coroutine_handle<>
+        -> STDEXEC_PP_IF(STDEXEC_GCC(), bool, __std::coroutine_handle<>)
       {
         STDEXEC_ASSERT(this->__continuation_ == __hcoro);
         {
@@ -379,14 +377,16 @@ namespace STDEXEC
           // unhandled_stopped() on the promise to propagate the stop signal. That will
           // result in the coroutine being torn down, so beware. We then resume the
           // returned coroutine handle (which may be a noop_coroutine).
-          return __hcoro.promise().unhandled_stopped();
+          return STDEXEC_PP_IF(STDEXEC_GCC(),
+                               (__hcoro.promise().unhandled_stopped().resume(), true),
+                               __hcoro.promise().unhandled_stopped());
         }
         else
         {
           // The operation completed with set_value or set_error, so we can just resume
           // the current coroutine. await_resume will either return the value or throw as
           // appropriate.
-          return __hcoro;
+          return STDEXEC_PP_IF(STDEXEC_GCC(), false, __hcoro);
         }
       }
 

@@ -77,7 +77,7 @@ target_link_libraries(test.exec
     common_test_settings)
 
 # Discover the Catch2 test built by the application
-catch_discover_tests(test.exec)
+catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 
 if(STDEXEC_ENABLE_ASIO)
     add_subdirectory(asio)

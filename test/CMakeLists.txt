@@ -88,7 +88,9 @@ set_target_properties(common_test_settings PROPERTIES
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
 target_compile_options(common_test_settings INTERFACE
-    $<$<CXX_COMPILER_ID:MSVC>:/wd4714>) # function marked as __forceinline not inlined
+    $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+    )
 target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
 #     common_test_settings INTERFACE
@@ -133,10 +135,12 @@ include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
 # For testing that builds fail as expected
 include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
-catch_discover_tests(test.stdexec)
-catch_discover_tests(test.scratch)
+catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
+
+catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+
 if(STDEXEC_BUILD_SYSTEM_CONTEXT AND NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability)
+    catch_discover_tests(test.system_context_replaceability PROPERTIES TIMEOUT 30)
 endif()
 
 add_subdirectory(exec)

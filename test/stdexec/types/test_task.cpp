@@ -244,9 +244,6 @@ namespace
     CHECK(i == 42);
   }
 
-#  if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 13'00 && defined(__OPTIMIZE__))
-  // This test is disabled on GCC due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794
-
   auto sync() -> ex::task<int>
   {
     co_return 42;
@@ -280,8 +277,6 @@ namespace
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
-
-#  endif
 
   // FUTURE TODO: add support so that `co_await sndr` can return a reference.
   // auto test_task_awaits_just_ref_sender() -> ex::task<void> {

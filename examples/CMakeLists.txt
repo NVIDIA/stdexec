@@ -32,6 +32,8 @@ function(def_example example)
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags
                 $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+    target_compile_options(${target} INTERFACE
+        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>) # warnings being emitted from stdlib headers, why?
 endfunction()
 
 set(stdexec_examples

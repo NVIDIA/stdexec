@@ -1,5 +1,22 @@
 include(FetchContent)
 
+# Relacy has its own runtime checks and does not compose with compiler sanitizers.
+# Strip any -fsanitize* flags in this directory so Relacy-linked targets run cleanly.
+function(_stdexec_strip_sanitize_flags out_var in_value)
+  separate_arguments(_flags UNIX_COMMAND "${in_value}")
+  list(FILTER _flags EXCLUDE REGEX "^-fsanitize")
+  string(JOIN " " _joined ${_flags})
+  set(${out_var} "${_joined}" PARENT_SCOPE)
+endfunction()
+
+foreach(_cfg "" "_DEBUG" "_RELEASE" "_RELWITHDEBINFO" "_MINSIZEREL")
+  set(_var "CMAKE_CXX_FLAGS${_cfg}")
+  if(DEFINED ${_var} AND NOT "${${_var}}" STREQUAL "")
+    _stdexec_strip_sanitize_flags(_stripped "${${_var}}")
+    set(${_var} "${_stripped}")
+  endif()
+endforeach()
+
 FetchContent_Declare(
   relacy
   GIT_REPOSITORY https://github.com/dvyukov/relacy
@@ -29,6 +46,7 @@ function(add_relacy_test target_name)
       CXX_EXTENSIONS OFF)
 
   add_test(NAME relacy-${target_name} COMMAND ${target_name})
+  set_tests_properties(relacy-${target_name} PROPERTIES TIMEOUT 120)
 endfunction()
 
 set(relacy_tests
