@@ -18,7 +18,6 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__execution_fwd.hpp"
-#include "__operation_states.hpp"
 #include "__receivers.hpp"
 #include "__sender_concepts.hpp"
 

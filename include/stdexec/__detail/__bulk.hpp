@@ -176,8 +176,8 @@ namespace STDEXEC
       __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvSender, _Env...>>;
 
     template <class _AlgoTag>
-    struct __generic_bulk_t
-    {  // NOLINT(bugprone-crtp-constructor-accessibility)
+    struct __generic_bulk_t  // NOLINT(bugprone-crtp-constructor-accessibility)
+    {
       template <sender _Sender,
                 typename _Policy,
                 __std::integral           _Shape,

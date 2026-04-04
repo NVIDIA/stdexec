@@ -20,7 +20,6 @@
 #include "../../stdexec/__detail/__execution_fwd.hpp"
 #include "../../stdexec/__detail/__system_context_replaceability_api.hpp"
 
-#include <cstddef>
 #include <memory>
 
 namespace experimental::execution::system_context_replaceability

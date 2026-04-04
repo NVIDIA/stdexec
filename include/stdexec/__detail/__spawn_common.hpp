@@ -20,7 +20,6 @@
 
 #include "__concepts.hpp"
 #include "__env.hpp"
-#include "__queries.hpp"
 
 #include <memory>
 
@@ -69,7 +68,7 @@ namespace STDEXEC::__spawn_common
       // [exec.spawn] paragraph 9
       // [exec.spawn.future] paragraph 15
       if constexpr (__callable<get_allocator_t, _Env&>)
-      {
+      {  // NOLINT(bugprone-branch-clone)
         //   (9/15.1) -- if the expression get_allocator(env) is well-formed, then ...
         //               senv is the expression env;
         return static_cast<_Env&&>(__env);

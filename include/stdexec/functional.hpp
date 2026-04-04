@@ -21,7 +21,6 @@
 
 #include "concepts.hpp"  // IWYU pragma: keep
 
-#include <cstddef>
 #include <functional>
 
 namespace STDEXEC

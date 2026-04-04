@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <numeric>
 #include <ranges>
 #include <thread>
 #include <vector>

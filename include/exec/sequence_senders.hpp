@@ -849,10 +849,9 @@ namespace experimental::execution
           return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
-          // NOLINTNEXTLINE(bugprone-branch-clone)
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
-        {
+        {  // NOLINT(bugprone-branch-clone)
           return __tfx_seq.subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
                                      static_cast<_Receiver&&>(__rcvr));
         }
