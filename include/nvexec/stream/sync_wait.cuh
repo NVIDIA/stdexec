@@ -162,7 +162,7 @@ namespace nv::execution::_strm
       [[nodiscard]]
       auto get_env() const noexcept -> env
       {
-        return {loop_->get_start_scheduler()};
+        return {loop_->get_scheduler()};
       }
 
       state<Sender>* state_;
