@@ -540,13 +540,15 @@ namespace experimental::execution
         [[nodiscard]]
         constexpr auto disposition() const noexcept -> __task::disposition
         {
-          // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-          STDEXEC_CONSTEXPR_LOCAL __task::disposition __map[] = {__task::disposition::stopped,
-                                                                 __task::disposition::succeeded,
-                                                                 __task::disposition::failed};
-          // index() returns 0 for success, 1 for error, and -1 for stopped, so add 1 to
-          // get the correct disposition.
-          return __map[this->__data_.index() + 1ul];
+          switch (this->__data_.index())
+          {
+          case 0:
+            return __task::disposition::succeeded;
+          case 1:
+            return __task::disposition::failed;
+          default:
+            return __task::disposition::stopped;
+          }
         }
 
         constexpr void unhandled_exception() noexcept
