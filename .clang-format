@@ -71,7 +71,9 @@ EmptyLineAfterAccessModifier: Never
 EmptyLineBeforeAccessModifier: Leave
 FixNamespaceComments: true
 IfMacros: [
-  'STDEXEC_CATCH'
+  'STDEXEC_CATCH',
+  'STDEXEC_IF_CONSTEVAL',
+  'STDEXEC_IF_NOT_CONSTEVAL'
 ]
 IncludeBlocks: Preserve
 IndentAccessModifiers: false

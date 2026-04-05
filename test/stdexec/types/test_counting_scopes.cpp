@@ -67,7 +67,7 @@ namespace
     STATIC_REQUIRE(ex::sender<decltype(scope.join())>);
 
     ex::run_loop loop;
-    auto         env = ex::prop(ex::get_scheduler, loop.get_scheduler());
+    auto         env = ex::prop(ex::get_start_scheduler, loop.get_scheduler());
 
     STATIC_REQUIRE(ex::sender_in<decltype(scope.join()), decltype(env)>);
     // the join-sender requires a scheduler in its receiver's environment

@@ -27,7 +27,7 @@ namespace
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {})
   {
-    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
+    return ex::write_env(ex::prop{ex::get_start_scheduler, std::move(sched)});
   }
 
   TEST_CASE("STDEXEC::on transitions back to the receiver's scheduler when completing with a value",

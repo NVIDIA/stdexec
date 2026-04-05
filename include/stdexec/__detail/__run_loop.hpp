@@ -361,9 +361,9 @@ namespace STDEXEC
   constexpr auto __run_loop::__basic_run_loop<_Derived, _Env>::__attrs_t::query(
     get_completion_scheduler_t<set_value_t>) const noexcept
   {
-    if constexpr (__callable<get_scheduler_t, _Env&>)
+    if constexpr (__callable<get_start_scheduler_t, _Env&>)
     {
-      return STDEXEC::get_scheduler(__loop_->__env_);
+      return STDEXEC::get_start_scheduler(__loop_->__env_);
     }
     else
     {

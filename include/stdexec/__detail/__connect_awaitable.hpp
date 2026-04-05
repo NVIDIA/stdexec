@@ -531,13 +531,13 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
-      __synthetic_coro_frame __synthetic_frame_{&__promise_t::__resume};
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      _Receiver __rcvr_;
-      [[neo_unique_addres]]
+      __synthetic_coro_frame                     __synthetic_frame_{&__promise_t::__resume};
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver                                  __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __awaitable_state<_Awaitable, __promise_t> __awaiter_;
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      bool __started_{false};
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      bool                                       __started_{false};
     };
   }  // namespace __connect_await
 

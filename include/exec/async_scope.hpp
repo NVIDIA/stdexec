@@ -726,7 +726,7 @@ namespace experimental::execution
       }
 
       [[nodiscard]]
-      constexpr auto query(get_scheduler_t) const noexcept -> STDEXEC::inline_scheduler
+      constexpr auto query(get_start_scheduler_t) const noexcept -> STDEXEC::inline_scheduler
       {
         return {};
       }

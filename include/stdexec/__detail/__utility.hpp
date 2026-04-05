@@ -293,6 +293,16 @@ namespace STDEXEC
     return static_cast<__value_type*>(__from_ptr);
   }
 
+  template <bool _DoMove, class _Ty>
+  [[nodiscard]]
+  inline constexpr auto __maybe_move(_Ty& t) noexcept -> decltype(auto)
+  {
+    if constexpr (_DoMove)
+      return static_cast<_Ty&&>(t);
+    else
+      return t;
+  }
+
   namespace __std
   {
 //////////////////////////////////////////////////////////////////////////////////////////

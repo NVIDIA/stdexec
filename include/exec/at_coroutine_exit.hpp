@@ -30,10 +30,8 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    using __any_scheduler_t =
-      any_receiver_ref<completion_signatures<set_value_t(),
-                                             set_error_t(std::exception_ptr),
-                                             set_stopped_t()>>::any_sender<>::any_scheduler<>;
+    using __any_scheduler_t = any_scheduler<any_sender<any_receiver<
+      completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>>>>;
 
     struct __die_on_stop_t
     {
@@ -153,7 +151,7 @@ namespace experimental::execution
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
       {
         // Set the cleanup task's scheduler to the parent coroutine's scheduler.
-        __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
+        __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
         // This causes the parent to be resumed after the cleanup action is performed.
         __coro_.promise().set_continuation(__parent.promise().continuation());
         // This causes the parent to invoke the cleanup action when it performs the final
@@ -190,13 +188,13 @@ namespace experimental::execution
 
       struct __env
       {
-        __promise const & __promise_;
-
         [[nodiscard]]
-        auto query(get_scheduler_t) const noexcept -> __any_scheduler_t
+        auto query(get_start_scheduler_t) const noexcept -> __any_scheduler_t
         {
           return __promise_.__scheduler_;
         }
+
+        __promise const & __promise_;
       };
 
       struct __promise : with_awaitable_senders<__promise>

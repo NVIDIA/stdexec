@@ -66,7 +66,8 @@ namespace STDEXEC
       auto &[__tag, __ign, __child] = __sndr;
       using __child_t               = decltype(__child);
       using __cv_child_t            = __copy_cvref_t<_Sender, __child_t>;
-      using __sched_t = __call_result_or_t<get_scheduler_t, __not_a_scheduler<>, _Env const &>;
+      using __sched_t =
+        __call_result_or_t<get_start_scheduler_t, __not_a_scheduler<>, _Env const &>;
 
       if constexpr (!sender_in<__cv_child_t, _Env>)
       {  // NOLINT(bugprone-branch-clone)
@@ -109,7 +110,7 @@ namespace STDEXEC
         // the environment has an infallible scheduler, so we can adapt the sender to run on
         // that scheduler, which will make it affine.
         return STDEXEC::__finally_(STDEXEC::__forward_like<_Sender>(__child),
-                                   unstoppable(schedule(get_scheduler(__env))));
+                                   unstoppable(schedule(get_start_scheduler(__env))));
       }
     }
   };

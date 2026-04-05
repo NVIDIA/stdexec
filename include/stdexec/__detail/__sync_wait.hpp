@@ -47,16 +47,9 @@ namespace STDEXEC::__sync_wait
   // [execution.senders.consumers.sync_wait_with_variant]
   struct __env
   {
-    run_loop* __loop_ = nullptr;
-
+    template <__one_of<get_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
     [[nodiscard]]
-    constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler
-    {
-      return __loop_->get_scheduler();
-    }
-
-    [[nodiscard]]
-    constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler
+    constexpr auto query(_Query) const noexcept -> run_loop::scheduler
     {
       return __loop_->get_scheduler();
     }
@@ -66,6 +59,8 @@ namespace STDEXEC::__sync_wait
     {
       return true;
     }
+
+    run_loop* __loop_ = nullptr;
   };
 
   // What should sync_wait(just_stopped()) return?

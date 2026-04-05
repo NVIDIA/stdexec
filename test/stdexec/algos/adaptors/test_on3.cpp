@@ -99,7 +99,7 @@ namespace
 
   static auto const probe_env = probe_env_t{};
 
-  static auto const env = ex::prop{ex::get_scheduler, inline_scheduler{}};
+  static auto const env = ex::prop{ex::get_start_scheduler, inline_scheduler{}};
 
   TEST_CASE("Can pass STDEXEC::on sender to start_detached", "[adaptors][on]")
   {
@@ -140,18 +140,18 @@ namespace
 
   TEST_CASE("STDEXEC::on updates the current scheduler in the receiver", "[adaptors][on]")
   {
-    auto snd = ex::get_scheduler() | ex::on(inline_scheduler{}, probe_env())
+    auto snd = ex::get_start_scheduler() | ex::on(inline_scheduler{}, probe_env())
              | ex::then(
                  []<class Env>(Env) noexcept
                  {
-                   using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                   using Sched = ex::__call_result_t<ex::get_start_scheduler_t, Env>;
                    static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                  })
              | probe_env()
              | ex::then(
                  []<class Env>(Env) noexcept
                  {
-                   using Sched = ex::__call_result_t<ex::get_scheduler_t, Env>;
+                   using Sched = ex::__call_result_t<ex::get_start_scheduler_t, Env>;
                    static_assert(std::same_as<Sched, ex::run_loop::scheduler>);
                  });
 

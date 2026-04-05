@@ -236,13 +236,13 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __hide_query(_Env &&, _Queries...) -> __hide_query<_Env, _Queries...>;
 
-  //! @brief A wrapper around an environment that hides the get_scheduler and get_domain
+  //! @brief A wrapper around an environment that hides the get_start_scheduler and get_domain
   //! queries.
   template <class _Env>
-  struct __hide_scheduler : __hide_query<_Env, get_scheduler_t>
+  struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t>
   {
     constexpr explicit __hide_scheduler(_Env &&__env) noexcept
-      : __hide_query<_Env, get_scheduler_t>{static_cast<_Env &&>(__env), {}}
+      : __hide_query<_Env, get_start_scheduler_t>{static_cast<_Env &&>(__env), {}}
     {}
   };
 
@@ -421,9 +421,9 @@ namespace STDEXEC
       {
         return __decay_t<__member_query_result_t<_Env, get_domain_t>>{};
       }
-      else if constexpr (__callable<get_scheduler_t, _Env const &>)
+      else if constexpr (__callable<get_start_scheduler_t, _Env const &>)
       {
-        using __sch_t = __call_result_t<get_scheduler_t, _Env const &>;
+        using __sch_t = __call_result_t<get_start_scheduler_t, _Env const &>;
         using __env_t = __hide_scheduler<_Env const &>;
         using __cmpl_sch_t =
           __call_result_t<get_completion_scheduler_t<set_value_t>, __sch_t, __env_t>;

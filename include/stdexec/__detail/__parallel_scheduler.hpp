@@ -748,7 +748,7 @@ namespace STDEXEC
   {
     if constexpr (__completes_on<_Sender, parallel_scheduler, _Env>)
     {
-      auto __sched = get_scheduler(__env);
+      auto __sched = get_completion_scheduler<set_value_t>(get_env(__sndr), __env);
       return __apply(__transform_parallel_bulk_sender{__sched}, static_cast<_Sender&&>(__sndr));
     }
     else

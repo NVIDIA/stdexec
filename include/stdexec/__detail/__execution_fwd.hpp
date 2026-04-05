@@ -109,6 +109,7 @@ namespace STDEXEC
   struct __execute_may_block_caller_t;
   struct get_forward_progress_guarantee_t;
   struct get_scheduler_t;
+  struct get_start_scheduler_t;
   struct get_delegation_scheduler_t;
   template <__completion_tag _CPO>
   struct get_completion_scheduler_t;
@@ -124,6 +125,7 @@ namespace STDEXEC
   extern __execute_may_block_caller_t const     __execute_may_block_caller;
   extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
   extern get_scheduler_t const                  get_scheduler;
+  extern get_start_scheduler_t const            get_start_scheduler;
   extern get_delegation_scheduler_t const       get_delegation_scheduler;
   template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;

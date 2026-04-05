@@ -116,7 +116,7 @@ namespace STDEXEC
     using __allocator_type = _Env::allocator_type;
 
     template <class _Env>
-    using __scheduler_type = _Env::scheduler_type;
+    using __start_scheduler_type = _Env::start_scheduler_type;
 
     template <class _Env>
     using __stop_source_type = _Env::stop_source_type;
@@ -135,7 +135,7 @@ namespace STDEXEC
     template <class _EnvProvider, class _Scheduler, class... _Alloc>
     concept __has_scheduler_compatible_with = requires(_EnvProvider const & __has_env,
                                                        _Alloc const &... __alloc) {
-      _Scheduler(STDEXEC::get_scheduler(STDEXEC::get_env(__has_env)), __alloc...);
+      _Scheduler(STDEXEC::get_start_scheduler(STDEXEC::get_env(__has_env)), __alloc...);
     };
 
     template <class _StopSource>
@@ -216,9 +216,10 @@ namespace STDEXEC
 
     using allocator_type =
       __minvoke_or_q<__task::__allocator_type, std::allocator<std::byte>, _Env>;
-    using scheduler_type   = __minvoke_or_q<__task::__scheduler_type, task_scheduler, _Env>;
+    using start_scheduler_type =
+      __minvoke_or_q<__task::__start_scheduler_type, task_scheduler, _Env>;
     using stop_source_type = __minvoke_or_q<__task::__stop_source_type, inplace_stop_source, _Env>;
-    using stop_token_type  = decltype(__declval<stop_source_type>().get_token());
+    using stop_token_type  = __task::__stop_source_token_t<stop_source_type>;
     using error_types      = __minvoke_or_q<__task::__error_types, __eptr_completion_t, _Env>;
 
     constexpr task(task&& __that) noexcept
@@ -309,22 +310,23 @@ namespace STDEXEC
     template <class _EnvProvider>
     [[nodiscard]]
     static auto __mk_sched(_EnvProvider const & __has_env, allocator_type const & __alloc) noexcept
-      -> scheduler_type
+      -> start_scheduler_type
     {
       // NOT TO SPEC: try constructing the scheduler with the allocator if possible.
       if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider,
-                                                            scheduler_type,
+                                                            start_scheduler_type,
                                                             allocator_type>)
       {
-        return scheduler_type(get_scheduler(STDEXEC::get_env(__has_env)), __alloc);
+        return start_scheduler_type(get_start_scheduler(STDEXEC::get_env(__has_env)), __alloc);
       }
-      else if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider, scheduler_type>)
+      else if constexpr (__task::__has_scheduler_compatible_with<_EnvProvider,
+                                                                 start_scheduler_type>)
       {
-        return scheduler_type(get_scheduler(STDEXEC::get_env(__has_env)));
+        return start_scheduler_type(get_start_scheduler(STDEXEC::get_env(__has_env)));
       }
       else
       {
-        return scheduler_type{};
+        return start_scheduler_type{};
       }
     }
 
@@ -403,9 +405,9 @@ namespace STDEXEC
         return __task_.__coro_;
       }
 
-      scheduler_type    __sch_;
-      task              __task_;
-      __error_variant_t __errors_{__no_init};
+      start_scheduler_type __sch_;
+      task                 __task_;
+      __error_variant_t    __errors_{__no_init};
     };
 
     template <class _ParentPromise>
@@ -484,7 +486,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>, _OtherEnv&&...) const noexcept
       {
-        using __attrs_t = env_of_t<schedule_result_t<scheduler_type>>;
+        using __attrs_t = env_of_t<schedule_result_t<start_scheduler_type>>;
 
         if constexpr (__completes_inline<set_value_t, __attrs_t, _OtherEnv...>)
         {
@@ -666,7 +668,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto await_transform(_Sender&& __sndr) noexcept
     {
-      using __schedule_sndr_t = schedule_result_t<scheduler_type>;
+      using __schedule_sndr_t = schedule_result_t<start_scheduler_type>;
       if constexpr (__completes_where_it_starts<set_value_t, env_of_t<__schedule_sndr_t>, __env>)
       {
         return STDEXEC::as_awaitable(static_cast<_Sender&&>(__sndr), *this);
@@ -754,8 +756,9 @@ namespace STDEXEC
 
     struct __env
     {
+      template <__one_of<get_scheduler_t, get_start_scheduler_t> _Tag>
       [[nodiscard]]
-      constexpr auto query(get_scheduler_t) const noexcept -> scheduler_type
+      constexpr auto query(_Tag) const noexcept -> start_scheduler_type
       {
         return __promise_->__state_->__sch_;
       }

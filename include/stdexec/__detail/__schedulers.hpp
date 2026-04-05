@@ -82,13 +82,49 @@ namespace STDEXEC
   using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
 
   template <class _SchedulerProvider>
-  concept __scheduler_provider = requires(_SchedulerProvider const &__sp) {
-    { get_scheduler(__sp) } -> scheduler;
+  concept __start_scheduler_provider = requires(_SchedulerProvider const &__sp) {
+    { get_start_scheduler(__sp) } -> scheduler;
+  };
+
+  struct get_start_scheduler_t : __query<get_start_scheduler_t>
+  {
+    using __query<get_start_scheduler_t>::operator();
+
+    // defined in __read_env.hpp
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    constexpr auto operator()() const noexcept;
+
+    template <class _Env>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    static constexpr void __validate() noexcept
+    {
+      static_assert(__nothrow_callable<get_start_scheduler_t, _Env const &>);
+      static_assert(scheduler<__call_result_t<get_start_scheduler_t, _Env const &>>);
+    }
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    static consteval auto query(forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
   };
 
   struct get_scheduler_t : __query<get_scheduler_t>
   {
     using __query<get_scheduler_t>::operator();
+
+    // NOT TO SPEC: If _Env does not have a get_scheduler query but does have a
+    // get_start_scheduler query, then we return the start scheduler.
+    template <class _Env>
+      requires(!__callable<__query<get_scheduler_t>, _Env const &>)
+           && __callable<get_start_scheduler_t, _Env const &>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto operator()(_Env const &__env) const
+      noexcept(__nothrow_callable<get_start_scheduler_t, _Env const &>)
+        -> __call_result_t<get_start_scheduler_t, _Env const &>
+    {
+      return get_start_scheduler(__env);
+    }
 
     // defined in __read_env.hpp
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -252,10 +288,10 @@ namespace STDEXEC
       // the environment for the current scheduler and return that (after checking the
       // scheduler for _its_ completion scheduler).
       else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
-                         && (__callable<get_scheduler_t, _Env const &> || ...))
+                         && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         using __result_t = __call_result_t<__recurse_query_t,
-                                           __call_result_t<get_scheduler_t, _Env const &>...,
+                                           __call_result_t<get_start_scheduler_t, _Env const &>...,
                                            _Env const &...>;
         return __declfn<__result_t>();
       }
@@ -286,10 +322,10 @@ namespace STDEXEC
       // the environment for the current scheduler and return that (after checking the
       // scheduler for _its_ completion scheduler).
       else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
-                         && __callable<get_scheduler_t, _Env const &...>)
+                         && __callable<get_start_scheduler_t, _Env const &...>)
       {
         return __check_domain<_Attrs, _Env...>(
-          __recurse_query_t{}(get_scheduler(__env...), __hide_scheduler{__env}...));
+          __recurse_query_t{}(get_start_scheduler(__env...), __hide_scheduler{__env}...));
       }
       // Otherwise, if we are asking a scheduler for a completion scheduler, return the
       // scheduler itself.
@@ -340,6 +376,7 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t     __execute_may_block_caller{};
   inline constexpr get_forward_progress_guarantee_t get_forward_progress_guarantee{};
   inline constexpr get_scheduler_t                  get_scheduler{};
+  inline constexpr get_start_scheduler_t            get_start_scheduler{};
   inline constexpr get_delegation_scheduler_t       get_delegation_scheduler{};
 
 #if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
@@ -399,7 +436,7 @@ namespace STDEXEC
     {}
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-    constexpr auto query(get_scheduler_t) const noexcept
+    constexpr auto query(get_start_scheduler_t) const noexcept
     {
       return __sched_;
     }
@@ -428,9 +465,9 @@ namespace STDEXEC
   constexpr auto __mk_sch_env([[maybe_unused]] _Sch __sch, _Env const &__env) noexcept
   {
     if constexpr (__completes_inline<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env>
-                  && __callable<get_scheduler_t, _Env const &>)
+                  && __callable<get_start_scheduler_t, _Env const &>)
     {
-      auto __sch2 = get_completion_scheduler<set_value_t>(get_scheduler(__env),
+      auto __sch2 = get_completion_scheduler<set_value_t>(get_start_scheduler(__env),
                                                           __hide_scheduler{__env});
       return __sched_env{std::move(__sch2), __env};
     }
