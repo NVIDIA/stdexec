@@ -130,6 +130,15 @@ namespace STDEXEC
       }
 
       template <sender _Sender, scope_token _Token, class _Env>
+        requires __sends<STDEXEC::set_error_t, _Sender, _Env>
+      void operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const
+      {
+        static_assert(__never_sends<STDEXEC::set_error_t, _Sender, _Env>,
+                      "spawn does not support senders that can complete with an error");
+      }
+
+      template <sender _Sender, scope_token _Token, class _Env>
+        requires __never_sends<STDEXEC::set_error_t, _Sender, _Env>
       void operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const
       {
         auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
