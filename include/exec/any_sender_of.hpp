@@ -560,7 +560,7 @@ namespace experimental::execution
     // Adds the get_completion_scheduler_t<set_value_t> query to the type-erased sender's
     // attributes. This type is used for the return of any_scheduler::schedule.
     template <class AnyScheduler, class AnySender>
-    struct _any_schedule_sender : AnySender
+    struct _any_schedule_sender final : AnySender
     {
      private:
       using _any_receiver_ref_t = AnySender::_any_receiver_ref_t;

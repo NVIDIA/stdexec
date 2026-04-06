@@ -1,16 +1,16 @@
-#ifdef STDEXEC_TEST_SYSTEM_CONTEXT
-#  include <exec/system_context.hpp>
-#else
-#  include <exec/static_thread_pool.hpp>
-#endif
 #include <stdexec/execution.hpp>
 
+#ifndef STDEXEC_TEST_PARALLEL_SCHEDULER
+#  include <exec/static_thread_pool.hpp>
+#endif
+
 #include <cstdlib>
+#include <utility>
 
 int main()
 {
-#ifdef STDEXEC_TEST_SYSTEM_CONTEXT
-  auto x = stdexec::starts_on(exec::get_parallel_scheduler(), stdexec::just(42));
+#ifdef STDEXEC_TEST_PARALLEL_SCHEDULER
+  auto x = stdexec::starts_on(stdexec::get_parallel_scheduler(), stdexec::just(42));
 #else
   exec::static_thread_pool pool{1};
   auto                     x = stdexec::starts_on(pool.get_scheduler(), stdexec::just(42));

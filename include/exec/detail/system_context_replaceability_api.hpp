@@ -18,56 +18,62 @@
 #define STDEXEC_SYSTEM_CONTEXT_REPLACEABILITY_API_H
 
 #include "../../stdexec/__detail/__execution_fwd.hpp"
-#include "../../stdexec/__detail/__system_context_replaceability_api.hpp"
+#include "../../stdexec/__detail/__parallel_scheduler_replacement_api.hpp"
 
 #include <memory>
 
-namespace experimental::execution::system_context_replaceability
+namespace experimental::execution
 {
-  using STDEXEC::system_context_replaceability::__parallel_scheduler_backend_factory_t;
-
-  /// Interface for the parallel scheduler backend.
-  using parallel_scheduler_backend
-    [[deprecated("Use STDEXEC::system_context_replaceability::parallel_scheduler_backend "
-                 "instead.")]] = STDEXEC::system_context_replaceability::parallel_scheduler_backend;
-
-  /// Get the backend for the parallel scheduler.
-  /// Users might replace this function.
-  [[deprecated("Use STDEXEC::system_context_replaceability::query_parallel_scheduler_backend "
-               "instead.")]]
-  inline auto query_parallel_scheduler_backend()
-    -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend>
+  namespace [[deprecated("Use the STDEXEC::parallel_scheduler_replacement namespace "
+                         "instead.")]] system_context_replaceability
   {
-    return STDEXEC::system_context_replaceability::query_parallel_scheduler_backend();
-  }
+    using STDEXEC::parallel_scheduler_replacement::__parallel_scheduler_backend_factory_t;
 
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
-  STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // warning C4996: 'function': was declared deprecated
-  STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
-  /// Set a factory for the parallel scheduler backend.
-  /// Can be used to replace the parallel scheduler at runtime.
-  /// Out of spec.
-  [[deprecated("Use STDEXEC::system_context_replaceability::set_parallel_scheduler_backend "
-               "instead.")]]
-  inline auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
-    -> __parallel_scheduler_backend_factory_t
-  {
-    return STDEXEC::system_context_replaceability::set_parallel_scheduler_backend(__new_factory);
-  }
-  STDEXEC_PRAGMA_POP()
+    /// Interface for the parallel scheduler backend.
+    using parallel_scheduler_backend  //
+      [[deprecated("Use STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend "
+                   "instead.")]] =  //
+      STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend;
 
-  /// Interface for completing a sender operation. Backend will call frontend though this interface
-  /// for completing the `schedule` and `schedule_bulk` operations.
-  using receiver
-    [[deprecated("Use STDEXEC::system_context_replaceability::receiver_proxy "
-                 "instead.")]] = STDEXEC::system_context_replaceability::receiver_proxy;
+    /// Get the backend for the parallel scheduler.
+    /// Users might replace this function.
+    [[deprecated("Use STDEXEC::parallel_scheduler_replacement::query_parallel_scheduler_backend "
+                 "instead.")]]
+    inline auto query_parallel_scheduler_backend()
+      -> std::shared_ptr<STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend>
+    {
+      return STDEXEC::parallel_scheduler_replacement::query_parallel_scheduler_backend();
+    }
 
-  /// Receiver for bulk scheduling operations.
-  using bulk_item_receiver
-    [[deprecated("Use STDEXEC::system_context_replaceability::bulk_item_receiver_proxy "
-                 "instead.")]] = STDEXEC::system_context_replaceability::bulk_item_receiver_proxy;
-}  // namespace experimental::execution::system_context_replaceability
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+    STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // warning C4996: 'function': was declared deprecated
+    STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
+    STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
+    /// Set a factory for the parallel scheduler backend.
+    /// Can be used to replace the parallel scheduler at runtime.
+    /// Out of spec.
+    [[deprecated("Use STDEXEC::parallel_scheduler_replacement::set_parallel_scheduler_backend "
+                 "instead.")]]
+    inline auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
+      -> __parallel_scheduler_backend_factory_t
+    {
+      return STDEXEC::parallel_scheduler_replacement::set_parallel_scheduler_backend(__new_factory);
+    }
+    STDEXEC_PRAGMA_POP()
+
+    /// Interface for completing a sender operation. Backend will call frontend though this interface
+    /// for completing the `schedule` and `schedule_bulk` operations.
+    using receiver
+      [[deprecated("Use STDEXEC::parallel_scheduler_replacement::receiver_proxy "
+                   "instead.")]] = STDEXEC::parallel_scheduler_replacement::receiver_proxy;
+
+    /// Receiver for bulk scheduling operations.
+    using bulk_item_receiver [[deprecated(
+      "Use STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy "
+      "instead.")]] = STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy;
+  }  // namespace system_context_replaceability
+}  // namespace experimental::execution
 
 namespace exec = experimental::execution;
 

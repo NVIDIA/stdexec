@@ -25,7 +25,6 @@ using stdexec::sync_wait;
 
 auto main() -> int
 {
-  exec::numa_policy        numa{exec::no_numa_policy{}};
   exec::static_thread_pool ctx{8};
   scheduler auto           sch = ctx.get_scheduler();  // 1
 

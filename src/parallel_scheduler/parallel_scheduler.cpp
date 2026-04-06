@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 
-#define STDEXEC_SYSTEM_CONTEXT_INLINE /*no inline*/
-#include "../../include/stdexec/__detail/__system_context_default_impl_entry.hpp"
+#define STDEXEC_PARALLEL_SCHEDULER_INLINE /*no inline*/
+#include "../../include/stdexec/__detail/__parallel_scheduler_default_impl_entry.hpp"

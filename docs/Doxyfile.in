@@ -2368,8 +2368,8 @@ INCLUDE_FILE_PATTERNS  =
 PREDEFINED             =  "__cplusplus=202302L" \
                           "STDEXEC_DOXYGEN_INVOKED=1" \
                           "STDEXEC=stdexec" \
-                          "STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY=1" \
-                          "STDEXEC_SYSTEM_CONTEXT_INLINE=inline" \
+                          "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY=1" \
+                          "STDEXEC_PARALLEL_SCHEDULER_INLINE=inline" \
                           "STDEXEC_ATTRIBUTE(X)= " \
                           "STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS= " \
                           "STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }" \
@@ -2816,4 +2816,4 @@ CLANG_DATABASE_PATH    = "@COMPILATION_DB_PATH@"
 CLANG_OPTIONS          = -isystem "@STDDEF_INCLUDE_PATH@" \
                          -std=c++23 \
                          -DSTDEXEC_DOXYGEN_INVOKED=1 \
-                         -DSTDEXEC_SYSTEM_CONTEXT_HEADER_ONLY=1
+                         -DSTDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY=1
