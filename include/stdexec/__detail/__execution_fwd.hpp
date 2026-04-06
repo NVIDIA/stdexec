@@ -15,8 +15,9 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"  // IWYU pragma: export
+
+#include "__concepts.hpp"
 #include "__meta.hpp"
 #include "__type_traits.hpp"
 #include "__utility.hpp"

@@ -16,7 +16,14 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__execution_fwd.hpp"
+
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__domain.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/stop_token.hpp"
+
 #include "completion_behavior.hpp"
 
 #include <cstddef>
