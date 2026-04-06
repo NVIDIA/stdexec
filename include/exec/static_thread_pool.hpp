@@ -27,8 +27,9 @@
 #include "../stdexec/__detail/__execution_legacy.hpp"
 #include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__manual_lifetime.hpp"  // IWYU pragma: keep
-#include "../stdexec/__detail/__meta.hpp"             // IWYU pragma: keep
+#include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
@@ -704,12 +705,12 @@ namespace experimental::execution
 
       alignas(64) __std::atomic<std::uint32_t> num_active_{};
       alignas(64) remote_queue_list remotes_;
-      std::uint32_t                            thread_count_;
-      std::uint32_t                            max_steals_{thread_count_ + 1};
-      bwos_params                              params_;
-      std::vector<std::thread>                 threads_;
-      std::vector<std::optional<thread_state>> thread_states_;
-      numa_policy                              numa_;
+      std::uint32_t                         thread_count_;
+      std::uint32_t                         max_steals_{thread_count_ + 1};
+      bwos_params                           params_;
+      std::vector<std::thread>              threads_;
+      std::vector<__optional<thread_state>> thread_states_;
+      numa_policy                           numa_;
 
       struct thread_index_by_numa_node
       {
