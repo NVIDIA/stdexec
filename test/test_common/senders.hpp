@@ -30,7 +30,7 @@ namespace
   template <class... Sigs>
   struct a_sender_of
   {
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<Sigs...>;
 
     struct operation
@@ -48,7 +48,7 @@ namespace
   template <class... Values>
   struct fallible_just
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
 
     explicit fallible_just(Values... values)
       : values_(std::move(values)...)
@@ -133,7 +133,7 @@ namespace
   {
     std::remove_cvref_t<Env> env_;
     std::tuple<Values...>    values_;
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(Values...)>;
 
     template <class Receiver>
@@ -163,7 +163,7 @@ namespace
 
   struct completes_if
   {
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
     bool condition_;
@@ -253,7 +253,7 @@ namespace
   template <class Tag, class... Args>
   struct succeed_n_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(), Tag(Args...)>;
 
     explicit succeed_n_sender(int count, Tag, Args... args)
@@ -297,7 +297,7 @@ namespace
   template <class Type>
   struct just_ref
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
 
     explicit just_ref(Type& value)
       : value_(value)
@@ -334,7 +334,7 @@ namespace
     template <class Receiver>
     struct opstate
     {
-      using operation_state_concept = ex::operation_state_t;
+      using operation_state_concept = ex::operation_state_tag;
 
       explicit opstate(Type& value, Receiver rcvr)
         : value_(value)

@@ -29,7 +29,7 @@ using stdexec::sync_wait;
 
 struct noop_receiver
 {
-  using receiver_concept = receiver_t;
+  using receiver_concept = receiver_tag;
 
   template <class... _As>
   void set_value(_As&&...) noexcept

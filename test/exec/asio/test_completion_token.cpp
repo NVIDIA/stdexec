@@ -70,7 +70,7 @@ namespace
       ptr_.reset();
     }
    public:
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     template <typename T>
       requires std::constructible_from<Receiver, T>
@@ -698,7 +698,7 @@ namespace
 
   struct value_category_receiver
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     void set_value(std::mutex&&) && noexcept
     {

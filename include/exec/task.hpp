@@ -320,7 +320,7 @@ namespace experimental::execution
     template <class _Sch>
     struct __just_void
     {
-      using sender_concept        = sender_t;
+      using sender_concept        = sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
       template <class _Rcvr>
@@ -349,7 +349,7 @@ namespace experimental::execution
     template <class _Promise>
     struct __reschedule_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       void set_value() noexcept
       {

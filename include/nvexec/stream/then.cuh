@@ -56,7 +56,7 @@ namespace nv::execution::_strm
     template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
     struct receiver : public stream_receiver_base
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       static constexpr std::size_t memory_allocation_size() noexcept
       {
         return MemoryAllocationSize;

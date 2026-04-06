@@ -28,7 +28,7 @@ namespace
   template <class Receiver>
   struct ignore_all_item_rcvr
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
     Receiver rcvr;
 
     [[nodiscard]]
@@ -58,7 +58,7 @@ namespace
   template <class Item>
   struct ignore_all_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
 
     Item item_;
@@ -75,7 +75,7 @@ namespace
 
   struct ignore_all_receiver
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
 
     template <class Item>
     auto set_next(Item&& item) noexcept -> ignore_all_sender<STDEXEC::__decay_t<Item>>

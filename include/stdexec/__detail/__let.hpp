@@ -73,7 +73,7 @@ namespace STDEXEC
     template <class _Receiver, class _Env2>
     struct __rcvr_env
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       template <class... _As>
       constexpr void set_value(_As&&... __as) noexcept
       {
@@ -320,7 +320,7 @@ namespace STDEXEC
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
     struct __first_rcvr
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       template <class... _Args>
       constexpr void set_value(_Args&&... __args) noexcept
       {

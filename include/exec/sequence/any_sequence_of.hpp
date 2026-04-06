@@ -58,7 +58,7 @@ namespace experimental::execution
        private:
         using _base_t = STDEXEC::__any::__interface_base<_interface_, _Base, _extends_t>;
        public:
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
         using _base_t::_base_t;
 
         virtual constexpr auto set_next(_item_sender _sndr) -> _void_sender
@@ -131,7 +131,7 @@ namespace experimental::execution
     template <class _Receiver, class _TargetStopToken>
     struct _any_seq_opstate
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       template <class _AnySender>
       constexpr explicit _any_seq_opstate(_AnySender &&_sndr, _Receiver _rcvr)

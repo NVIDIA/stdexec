@@ -202,7 +202,7 @@ namespace
 
   struct dup_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = STDEXEC::completion_signatures<set_value_t(),
                                                                  set_error_t(std::exception_ptr),
                                                                  set_error_t(std::exception_ptr&&)>;

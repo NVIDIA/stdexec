@@ -54,7 +54,7 @@ namespace
   template <class Sndr>
   struct opaque_sender : private Sndr
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     explicit opaque_sender(Sndr sndr)
       : Sndr{std::move(sndr)}
     {}

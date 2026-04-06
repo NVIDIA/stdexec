@@ -31,16 +31,16 @@ namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
   // [execution.senders]
-  struct sender_t
+  struct sender_tag
   {
     // NOT TO SPEC:
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
   };
 
   namespace __detail
   {
     template <class _Sender>
-    concept __enable_sender = __std::derived_from<typename _Sender::sender_concept, sender_t>
+    concept __enable_sender = __std::derived_from<typename _Sender::sender_concept, sender_tag>
                            || __awaitable<_Sender, __detail::__promise<env<>>>;
   }  // namespace __detail
 

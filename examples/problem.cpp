@@ -24,7 +24,7 @@ namespace ex = stdexec;
 
 struct receiver_t
 {
-  using receiver_concept = ex::receiver_t;
+  using receiver_concept = ex::receiver_tag;
 
   void set_value() && noexcept {}
 
@@ -78,7 +78,7 @@ struct expect_value_receiver_ex
   T   dest_;
   Env env_{};
 
-  using receiver_concept = stdexec::receiver_t;
+  using receiver_concept = stdexec::receiver_tag;
 
   explicit expect_value_receiver_ex(T dest)
     : dest_(dest)

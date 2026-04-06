@@ -42,7 +42,7 @@ namespace
 
   struct my_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int)>;
 
     int value_{0};
@@ -57,7 +57,7 @@ namespace
 
   struct my_sender_unconstrained
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int)>;
 
     int value_{0};

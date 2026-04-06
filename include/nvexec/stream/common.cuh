@@ -320,12 +320,12 @@ namespace nv::execution
 
     struct stream_sender_base
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
     };
 
     struct stream_receiver_base
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       static constexpr std::size_t memory_allocation_size() noexcept
       {
         return 0;
@@ -519,7 +519,7 @@ namespace nv::execution
     template <class Env, class Variant>
     struct stream_enqueue_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       explicit stream_enqueue_receiver(Env const *       env,
                                        Variant*          variant,
@@ -655,7 +655,7 @@ namespace nv::execution
     template <class OuterReceiver>
     struct opstate_base : stream_opstate_base
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
       using outer_env_t             = env_of_t<OuterReceiver>;
       using env_t                   = make_stream_env_t<outer_env_t>;
 

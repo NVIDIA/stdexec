@@ -59,7 +59,7 @@ class _then_receiver : public exec::receiver_adaptor<_then_receiver<R, F>, R>
 template <stdexec::sender S, class F>
 struct _then_sender
 {
-  using sender_concept = stdexec::sender_t;
+  using sender_concept = stdexec::sender_tag;
 
   S s_;
   F f_;

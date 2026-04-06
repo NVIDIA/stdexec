@@ -43,7 +43,7 @@ namespace nv::execution
 
         struct receiver
         {
-          using receiver_concept = STDEXEC::receiver_t;
+          using receiver_concept = STDEXEC::receiver_tag;
 
           template <class... Args>
           void set_value(Args&&... args) noexcept

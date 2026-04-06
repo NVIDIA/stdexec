@@ -32,7 +32,7 @@ namespace STDEXEC
 
       struct __receiver : __nope
       {
-        using receiver_concept = receiver_t;
+        using receiver_concept = receiver_tag;
 
         constexpr void set_error(std::exception_ptr) noexcept;
         constexpr void set_stopped() noexcept;
@@ -110,7 +110,7 @@ namespace STDEXEC
   template <__class _Derived, class _Base = __adaptors::__not_a_receiver>
   struct __receiver_adaptor
     : __adaptors::__adaptor_base<_Base>
-    , receiver_t
+    , receiver_tag
   {
     static constexpr bool __has_base = !__std::derived_from<_Base, __adaptors::__no::__nope>;
 
@@ -138,7 +138,7 @@ namespace STDEXEC
     }
 
    public:
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     constexpr __receiver_adaptor() = default;
     using __adaptors::__adaptor_base<_Base>::__adaptor_base;

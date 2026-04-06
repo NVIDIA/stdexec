@@ -98,7 +98,7 @@ namespace experimental::execution
       class sender
       {
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
         template <class Self, class Env>
         static consteval auto get_completion_signatures() noexcept
         {
@@ -269,7 +269,7 @@ namespace experimental::execution
       template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
       struct bulk_receiver
       {
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
 
         using shared_state = bulk_shared_state<CvSender, Receiver, Shape, Fun, MayThrow>;
 
@@ -363,7 +363,7 @@ namespace experimental::execution
       template <class Sender, std::integral Shape, class Fun>
       struct bulk_sender
       {
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         template <class Self, class... Env>
         using _with_error_invoke_t = STDEXEC::__eptr_completion_unless_t<STDEXEC::__value_types_t<

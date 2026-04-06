@@ -77,7 +77,7 @@ namespace experimental::execution
     template <class _Iterator, class _Sentinel>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
 
@@ -94,7 +94,7 @@ namespace experimental::execution
     template <class _Iterator, class _Sentinel, class _Receiver>
     struct __next_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr void set_value() noexcept
       {

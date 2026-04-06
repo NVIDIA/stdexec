@@ -42,7 +42,7 @@ namespace STDEXEC
     _RcvrPtr __rcvr_ptr_;
 
    public:
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     STDEXEC_ATTRIBUTE(host, device)
     constexpr explicit __pointer_receiver(_RcvrPtr __rcvr_ptr) noexcept

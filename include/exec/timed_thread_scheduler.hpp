@@ -371,7 +371,7 @@ namespace experimental::execution
     class schedule_at_sender
     {
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
 

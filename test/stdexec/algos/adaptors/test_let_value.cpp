@@ -389,7 +389,7 @@ namespace
 
   struct bad_receiver
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     bad_receiver(bool& completed) noexcept
       : completed_{completed}
@@ -416,7 +416,7 @@ namespace
 
   struct throws_on_connect
   {
-    using sender_concept = ::STDEXEC::sender_t;
+    using sender_concept = ::STDEXEC::sender_tag;
 
     template <class>
     static consteval auto get_completion_signatures() noexcept
@@ -439,7 +439,7 @@ namespace
   {
     struct receiver
     {
-      using receiver_concept = ::STDEXEC::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_tag;
       std::shared_ptr<int> ptr;
       void                 set_value() noexcept
       {
@@ -481,7 +481,7 @@ namespace
 
   struct immovable_sender
   {
-    using sender_concept = ::STDEXEC::sender_t;
+    using sender_concept = ::STDEXEC::sender_tag;
 
     template <class, class... Env>
     static consteval auto get_completion_signatures() noexcept

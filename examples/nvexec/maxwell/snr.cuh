@@ -33,12 +33,12 @@ namespace nvexec
 {
   struct stream_receiver_base
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
   };
 
   struct stream_sender_base
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
   };
 
   namespace detail
@@ -97,7 +97,7 @@ namespace _repeat_n
   {
     using receiver_t = OpState::receiver_t;
    public:
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     explicit receiver(OpState& op_state)
       : opstate_(op_state)
@@ -198,7 +198,7 @@ namespace _repeat_n
   template <class Sender, class Closure>
   struct sender
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
 
     template <class, class Env>
     static consteval auto get_completion_signatures() noexcept
@@ -352,7 +352,7 @@ namespace nv::execution::_strm
     template <class Sender, class Closure>
     struct sender
     {
-      using sender_concept = ex::sender_t;
+      using sender_concept = ex::sender_tag;
 
       using completion_signatures = ex::completion_signatures<ex::set_value_t(),
                                                               ex::set_stopped_t(),

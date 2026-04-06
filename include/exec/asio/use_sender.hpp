@@ -179,7 +179,7 @@ namespace experimental::execution::asio
         : s_(static_cast<T&&>(t))
       {}
 
-      using sender_concept = ::STDEXEC::sender_t;
+      using sender_concept = ::STDEXEC::sender_tag;
 
       template <typename Self, typename... Env>
       static consteval completion_signatures<

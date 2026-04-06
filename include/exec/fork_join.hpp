@@ -93,12 +93,12 @@ namespace experimental::execution
     template <class Variant, class Domain>
     struct _cache_sndr_t
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class Rcvr>
       struct _opstate_t
       {
-        using operation_state_concept = STDEXEC::operation_state_t;
+        using operation_state_concept = STDEXEC::operation_state_tag;
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept
         {
@@ -140,7 +140,7 @@ namespace experimental::execution
     template <class Sndr, class Closures, class Rcvr>
     struct _opstate_t
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
       using _env_t                  = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
       using _child_completions_t    = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;

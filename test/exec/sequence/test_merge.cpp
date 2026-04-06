@@ -45,7 +45,7 @@ namespace
 
   struct null_receiver
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     void set_value() noexcept {}
 

@@ -34,7 +34,7 @@ namespace experimental::execution
   {
     struct __submit_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       template <class... _As>
       constexpr void set_value(_As&&...) noexcept
@@ -75,7 +75,7 @@ namespace experimental::execution
     template <class _Env>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       template <class... _As>
       constexpr void set_value(_As&&...) noexcept

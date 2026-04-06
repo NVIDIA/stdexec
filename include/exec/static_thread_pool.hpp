@@ -364,7 +364,7 @@ namespace experimental::execution
           };
 
          public:
-          using sender_concept = sender_t;
+          using sender_concept = sender_tag;
           template <class Receiver>
           using _opstate_t = _opstate<Receiver>;
 
@@ -1260,7 +1260,7 @@ namespace experimental::execution
     template <bool Parallelize, std::integral Shape, class Fun, class Sender>
     struct _static_thread_pool::_bulk_sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       template <class CvSender, class... Env>
       using _with_error_invoke_t =
@@ -1487,7 +1487,7 @@ namespace experimental::execution
               class Receiver>
     struct _static_thread_pool::_bulk_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       using shared_state =
         _bulk_shared_state<Parallelize, Shape, Fun, MayThrow, CvSender, Receiver>;
@@ -1649,7 +1649,7 @@ namespace experimental::execution
       template <class Range>
       struct item_sender
       {
-        using sender_concept = sender_t;
+        using sender_concept = sender_tag;
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(std::ranges::range_reference_t<Range>)>;
 
@@ -1694,7 +1694,7 @@ namespace experimental::execution
       template <class Range, class Receiver>
       struct next_receiver
       {
-        using receiver_concept = receiver_t;
+        using receiver_concept = receiver_tag;
 
         void set_value() noexcept
         {

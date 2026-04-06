@@ -38,7 +38,7 @@ namespace
 
   struct P2300r7_sender_1
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
   };
 
   struct P2300r7_sender_2
@@ -100,7 +100,7 @@ namespace
 
   struct my_sender0
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(),
                                                             ex::set_error_t(std::exception_ptr),
                                                             ex::set_stopped_t()>;
@@ -113,7 +113,7 @@ namespace
 
   struct void_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>
@@ -125,7 +125,7 @@ namespace
 
   struct invalid_receiver
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
 
     template <class... As>
     void set_value(As&&...) noexcept
@@ -161,7 +161,7 @@ namespace
 
   struct my_sender_int
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int),
                                                             ex::set_error_t(std::exception_ptr),
                                                             ex::set_stopped_t()>;
@@ -217,7 +217,7 @@ namespace
 
   struct multival_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(int, double),
                                                             ex::set_value_t(short, long),
                                                             ex::set_error_t(std::exception_ptr)>;
@@ -239,7 +239,7 @@ namespace
 
   struct ec_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(),
                                                             ex::set_error_t(std::exception_ptr),
                                                             ex::set_error_t(int)>;
@@ -261,7 +261,7 @@ namespace
 
   struct my_r5_sender0
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t(),
                                                             ex::set_error_t(std::exception_ptr),
                                                             ex::set_stopped_t()>;

@@ -348,7 +348,7 @@ namespace nv::execution::_strm
   template <class Sender>
   struct ensure_started_sender : stream_sender_base
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using sh_state_t     = _ensure_started::sh_state<Sender>;
     template <class Receiver>
     using opstate_t = _ensure_started::opstate<Sender, Receiver>;

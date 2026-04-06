@@ -31,7 +31,7 @@ namespace
 
   struct fails_alot
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(), ex::set_error_t(try_again)>;
 

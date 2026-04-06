@@ -162,7 +162,7 @@ namespace experimental::execution
     struct __receiver
     {
      public:
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       explicit __receiver(__opstate_base<_Receiver, _ResultVariant>* __op) noexcept
         : __op_{__op}
@@ -249,7 +249,7 @@ namespace experimental::execution
       using __completions_t =
         __minvoke<__completions_fn<_Env...>, __copy_cvref_t<_Self, _Senders>...>;
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <__not_decays_to<__sender>... _CvSenders>
       explicit __sender(_CvSenders&&... __sndrs)

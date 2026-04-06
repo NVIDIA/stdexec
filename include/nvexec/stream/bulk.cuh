@@ -350,7 +350,7 @@ namespace nv::execution::_strm
   struct multi_gpu_bulk_sender : stream_sender_base
   {
     static_assert(std::integral<Shape>);
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
 
     using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
 

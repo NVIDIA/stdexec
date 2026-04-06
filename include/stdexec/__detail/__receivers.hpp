@@ -165,9 +165,9 @@ namespace STDEXEC
   inline constexpr set_error_t   set_error{};
   inline constexpr set_stopped_t set_stopped{};
 
-  struct receiver_t
+  struct receiver_tag
   {
-    using receiver_concept = receiver_t;  // NOT TO SPEC
+    using receiver_concept = receiver_tag;  // NOT TO SPEC
   };
 
   namespace __detail
@@ -177,7 +177,7 @@ namespace STDEXEC
       STDEXEC_EDG(),
       requires {
         typename _Receiver::receiver_concept;
-      } &&) __std::derived_from<typename _Receiver::receiver_concept, receiver_t>);
+      } &&) __std::derived_from<typename _Receiver::receiver_concept, receiver_tag>);
   }  // namespace __detail
 
   template <class _Receiver>
@@ -255,7 +255,7 @@ namespace STDEXEC
   // a receiver with an arbitrary environment.
   struct __receiver_archetype_base
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     template <class... _Args>
     STDEXEC_ATTRIBUTE(host, device)

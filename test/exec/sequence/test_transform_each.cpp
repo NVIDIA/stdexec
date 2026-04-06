@@ -33,7 +33,7 @@ namespace
 
   struct next_rcvr
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     auto set_next(auto item)
     {

@@ -189,7 +189,7 @@ namespace STDEXEC
     template <class _Completions>
     struct __spawn_future_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       __spawn_future_state_base<_Completions>* __state_;
 
@@ -743,7 +743,7 @@ namespace STDEXEC
      private:
       struct __receiver
       {
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
 
         template <class... _Ts>
         void set_value(_Ts&&... __ts) && noexcept

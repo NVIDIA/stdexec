@@ -74,7 +74,7 @@ namespace experimental::execution
     STDEXEC::__variant<_Senders...> __sndrs_{STDEXEC::__no_init};
 
    public:
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
 
     constexpr variant_sender()
       requires std::default_initializable<__nth_t<0>>

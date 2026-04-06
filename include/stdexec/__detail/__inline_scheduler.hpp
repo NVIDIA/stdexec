@@ -39,7 +39,7 @@ namespace STDEXEC
     template <class _Receiver>
     struct __opstate
     {
-      using operation_state_concept = operation_state_t;
+      using operation_state_concept = operation_state_tag;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void start() noexcept
@@ -52,7 +52,7 @@ namespace STDEXEC
 
     struct __sender
     {
-      using sender_concept        = sender_t;
+      using sender_concept        = sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
 
       template <class _Receiver>
@@ -70,7 +70,7 @@ namespace STDEXEC
     };
 
    public:
-    using scheduler_concept = scheduler_t;
+    using scheduler_concept = scheduler_tag;
 
     constexpr inline_scheduler() = default;
 

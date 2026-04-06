@@ -80,7 +80,7 @@ namespace experimental::execution
     template <class Rcvr, class Fn>
     struct _opstate
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       Rcvr _rcvr;
       Fn   _fn;
@@ -138,7 +138,7 @@ namespace experimental::execution
     template <class Fn>
     struct _sndr_base
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = _completions<Fn>;
 
       STDEXEC_ATTRIBUTE(no_unique_address) JustTag _tag;

@@ -64,7 +64,7 @@ namespace nv::execution::_strm
     template <class Sender, class SharedState>
     struct receiver : stream_receiver_base
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       explicit receiver(SharedState& sh_state_t) noexcept
         : sh_state_(sh_state_t)
@@ -341,7 +341,7 @@ namespace nv::execution::_strm
   template <class Sender>
   struct split_sender : stream_sender_base
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using sh_state_t     = _split::sh_state<Sender>;
 
     template <class Receiver>

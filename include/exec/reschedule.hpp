@@ -50,7 +50,7 @@ namespace experimental::execution
     {
       struct __sender
       {
-        using sender_concept = sender_t;
+        using sender_concept = sender_tag;
 
         template <class _Self, class _Env>
         static consteval auto get_completion_signatures() -> __completions<_Env>

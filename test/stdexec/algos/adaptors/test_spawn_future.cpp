@@ -378,7 +378,7 @@ namespace
 
   struct never
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
 
     template <class Sender, class... Env>
     static consteval auto get_completion_signatures(Sender&&, Env&&...) noexcept
@@ -390,7 +390,7 @@ namespace
     template <class Receiver>
     struct opstate
     {
-      using operation_state_concept = ex::operation_state_t;
+      using operation_state_concept = ex::operation_state_tag;
 
       template <ex::receiver Rcvr>
         requires std::constructible_from<Receiver, Rcvr>

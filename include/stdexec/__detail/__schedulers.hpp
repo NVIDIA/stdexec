@@ -31,7 +31,7 @@
 namespace STDEXEC
 {
   // scheduler concept opt-in tag
-  struct scheduler_t
+  struct scheduler_tag
   {};
 
   /////////////////////////////////////////////////////////////////////////////

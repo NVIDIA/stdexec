@@ -34,7 +34,7 @@ namespace
   template <scope_t Scope>
   struct cpo_t
   {
-    using sender_concept           = STDEXEC::sender_t;
+    using sender_concept           = STDEXEC::sender_tag;
     static constexpr scope_t scope = Scope;
 
     using completion_signatures = ex::completion_signatures<ex::set_value_t(),
@@ -79,7 +79,7 @@ namespace
   {
     struct sender_t
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = ex::completion_signatures<ex::set_value_t(),
                                                               ex::set_error_t(std::exception_ptr),
                                                               ex::set_stopped_t()>;

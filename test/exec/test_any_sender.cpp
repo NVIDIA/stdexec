@@ -65,7 +65,7 @@ namespace
 
   struct sink_receiver
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     std::variant<std::monostate, int, std::exception_ptr, ex::set_stopped_t> value_{};
 
@@ -340,7 +340,7 @@ namespace
   template <class Token>
   struct stopped_receiver_base
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
     Token stop_token_{};
   };
 
@@ -679,7 +679,7 @@ namespace
 
     struct sender
     {
-      using sender_concept        = ex::sender_t;
+      using sender_concept        = ex::sender_tag;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
@@ -760,7 +760,7 @@ namespace
   template <class... _Sigs>
   struct sink<ex::completion_signatures<_Sigs...>>
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     template <class... _Args>
     void set_value(_Args &&...__args) noexcept

@@ -142,7 +142,7 @@ namespace STDEXEC
     template <class _Value>
     struct __receiver_base
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class... _Us>
       void set_value(_Us&&... __us) noexcept

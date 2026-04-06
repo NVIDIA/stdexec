@@ -45,7 +45,7 @@ namespace experimental::execution
     template <class _CvChild, class _Receiver>
     struct __opstate
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __child_op_t     = connect_result_t<_CvChild, __receiver_ref<_Receiver>>;
 
       constexpr explicit __opstate(_CvChild&& __child, _Receiver __rcvr)

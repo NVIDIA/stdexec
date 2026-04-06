@@ -59,7 +59,7 @@ namespace STDEXEC
 
     struct __spawn_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       __spawn_state_base* __state_;
 
