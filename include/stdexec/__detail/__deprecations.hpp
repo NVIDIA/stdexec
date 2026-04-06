@@ -49,6 +49,10 @@ namespace STDEXEC
   [[deprecated("transfer has been renamed continues_on")]]
   inline constexpr continues_on_t const & transfer = continues_on;
 
+  using affine_on_t [[deprecated("affine_on_t has been renamed affine_t")]] = affine_t;
+  [[deprecated("affine_on has been renamed affine")]]
+  inline constexpr affine_t const & affine_on = affine;
+
   using transfer_just_t [[deprecated]] = __transfer_just_t;
   [[deprecated]]
   inline constexpr __transfer_just_t const & transfer_just = __transfer_just;

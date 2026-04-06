@@ -16,7 +16,7 @@
 #pragma once
 
 #include "../stop_token.hpp"
-#include "__affine_on.hpp"
+#include "__affine.hpp"
 #include "__as_awaitable.hpp"
 #include "__config.hpp"
 #include "__meta.hpp"
@@ -675,7 +675,7 @@ namespace STDEXEC
       }
       else
       {
-        return STDEXEC::as_awaitable(STDEXEC::affine_on(static_cast<_Sender&&>(__sndr)), *this);
+        return STDEXEC::as_awaitable(STDEXEC::affine(static_cast<_Sender&&>(__sndr)), *this);
       }
     }
 
