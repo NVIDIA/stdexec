@@ -463,7 +463,7 @@ namespace experimental::execution
     {
       struct __promise;
 
-      template <class _ParentPromise = void>
+      template <class _ParentPromise>
       struct __task_awaiter;
 
       using __promise_context_t = _Context::template promise_context_t<__promise>;
@@ -486,10 +486,10 @@ namespace experimental::execution
       }
 
       // Make this task generally awaitable:
-      constexpr auto operator co_await() && noexcept -> __task_awaiter<>
+      constexpr auto operator co_await() && noexcept -> __task_awaiter<void>
         requires __minvocable_q<awaiter_context_t, __promise>
       {
-        return __task_awaiter<>{std::exchange(__coro_, {})};
+        return __task_awaiter<void>{std::exchange(__coro_, {})};
       }
 
       constexpr ~basic_task()
