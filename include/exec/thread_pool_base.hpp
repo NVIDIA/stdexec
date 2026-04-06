@@ -17,7 +17,6 @@
  */
 #pragma once
 
-
 #include "../stdexec/__detail/__execution_fwd.hpp"
 
 #include "../stdexec/__detail/__connect.hpp"
