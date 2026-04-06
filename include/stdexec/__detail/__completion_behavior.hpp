@@ -148,7 +148,7 @@ namespace STDEXEC
                     "The __get_completion_behavior query must be noexcept.");
       static_assert(__std::convertible_to<__result_t, __completion_behavior::__behavior>,
                     "The __get_completion_behavior query must return one of the static member "
-                    "variables in STDEXEC::__completion_behavior.");
+                    "variables in " STDEXEC_PP_STRINGIZE(STDEXEC) "::__completion_behavior.");
       return __result_t{};
     }
 

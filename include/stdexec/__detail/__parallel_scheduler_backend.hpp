@@ -133,7 +133,8 @@ namespace STDEXEC
     {};
   }  // namespace parallel_scheduler_replacement
 
-  namespace [[deprecated("Use STDEXEC::parallel_scheduler_replacement instead.")]]  //
+  namespace [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement "
+                                                              "instead.")]]  //
   system_context_replaceability
   {
     using namespace parallel_scheduler_replacement;

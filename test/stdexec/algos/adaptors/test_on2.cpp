@@ -103,8 +103,9 @@ namespace
     CHECK(recv_error == 19);
   }
 
-  TEST_CASE("inner STDEXEC::on transitions back to outer on's scheduler when completing with a "
-            "value",
+  TEST_CASE("inner " STDEXEC_PP_STRINGIZE(STDEXEC) "::on transitions back to outer on's scheduler "
+                                                   "when completing with a "
+                                                   "value",
             "[adaptors][on]")
   {
     bool called{false};
@@ -158,8 +159,9 @@ namespace
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE("inner STDEXEC::on transitions back to outer on's scheduler when completing with an "
-            "error",
+  TEST_CASE("inner " STDEXEC_PP_STRINGIZE(STDEXEC) "::on transitions back to outer on's scheduler "
+                                                   "when completing with an "
+                                                   "error",
             "[adaptors][on]")
   {
     bool called{false};
@@ -287,9 +289,10 @@ namespace
     CHECK(recv_error == 19);
   }
 
-  TEST_CASE("inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing "
-            "with a "
-            "value",
+  TEST_CASE("inner " STDEXEC_PP_STRINGIZE(STDEXEC) "::on(closure) transitions back to outer on's "
+                                                   "scheduler when completing "
+                                                   "with a "
+                                                   "value",
             "[adaptors][on]")
   {
     bool called{false};
@@ -343,9 +346,10 @@ namespace
     CHECK(recv_value == 19);
   }
 
-  TEST_CASE("inner STDEXEC::on(closure) transitions back to outer on's scheduler when completing "
-            "with an "
-            "error",
+  TEST_CASE("inner " STDEXEC_PP_STRINGIZE(STDEXEC) "::on(closure) transitions back to outer on's "
+                                                   "scheduler when completing "
+                                                   "with an "
+                                                   "error",
             "[adaptors][on]")
   {
     bool called{false};

@@ -25,7 +25,8 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t const & execute_may_block_caller =
     __execute_may_block_caller;
 
-  using empty_env [[deprecated("STDEXEC::empty_env is now spelled STDEXEC::env<>")]] = env<>;
+  using empty_env [[deprecated(
+    "STDEXEC::empty_env is now spelled " STDEXEC_PP_STRINGIZE(STDEXEC) "::env<>")]] = env<>;
 
   using dependent_completions [[deprecated("use dependent_sender_error instead of "
                                            "dependent_completions")]] = dependent_sender_error;

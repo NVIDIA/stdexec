@@ -203,8 +203,8 @@ namespace STDEXEC
       }
 
       template <sender _Sender, __std::integral _Shape, __std::copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as STDEXEC::par as an "
-                   "argument.")]]
+      [[deprecated("The bulk algorithm now requires an execution policy such "
+                   "as " STDEXEC_PP_STRINGIZE(STDEXEC) "::par as an argument.")]]
       STDEXEC_ATTRIBUTE(host, device) auto
       operator()(_Sender&& __sndr, _Shape __shape, _Fun __fun) const
       {
@@ -215,8 +215,8 @@ namespace STDEXEC
       }
 
       template <__std::integral _Shape, __std::copy_constructible _Fun>
-      [[deprecated("The bulk algorithm now requires an execution policy such as STDEXEC::par as an "
-                   "argument.")]]
+      [[deprecated("The bulk algorithm now requires an execution policy such "
+                   "as " STDEXEC_PP_STRINGIZE(STDEXEC) "::par as an argument.")]]
       STDEXEC_ATTRIBUTE(always_inline) auto operator()(_Shape __shape, _Fun __fun) const
       {
         return (*this)(par, static_cast<_Shape&&>(__shape), static_cast<_Fun&&>(__fun));

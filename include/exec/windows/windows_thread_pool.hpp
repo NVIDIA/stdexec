@@ -1024,7 +1024,9 @@ namespace experimental::execution
   using __win32::windows_thread_pool;
 
   static_assert(STDEXEC::scheduler<decltype(windows_thread_pool{}.get_scheduler())>,
-                "windows_thread_pool::scheduler must model STDEXEC::scheduler");
+                "windows_thread_pool::scheduler must model " STDEXEC_PP_STRINGIZE(STDEXEC) "::"
+                                                                                           "schedul"
+                                                                                           "er");
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
