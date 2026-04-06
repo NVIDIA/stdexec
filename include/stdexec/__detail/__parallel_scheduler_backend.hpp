@@ -251,9 +251,9 @@ namespace STDEXEC
         {
           __query(get_allocator, __value, __dest);
         }
-        else if (__query_id == __mtypeid<get_scheduler_t>)
+        else if (__query_id == __mtypeid<get_start_scheduler_t>)
         {
-          __query(get_scheduler, __value, __dest);
+          __query(get_start_scheduler, __value, __dest);
         }
       }
 
@@ -310,7 +310,7 @@ namespace STDEXEC
       }
 
       // Defined in __task_scheduler.hpp
-      constexpr void __query(get_scheduler_t, __type_index, void*) const noexcept;
+      constexpr void __query(get_start_scheduler_t, __type_index, void*) const noexcept;
 
      public:
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -349,9 +349,9 @@ namespace STDEXEC
       // A template because task_scheduler is not a complete type yet.
       template <class _TaskScheduler = task_scheduler>
       [[nodiscard]]
-      auto query(get_scheduler_t) const noexcept -> _TaskScheduler
+      auto query(get_start_scheduler_t) const noexcept -> _TaskScheduler
       {
-        auto __sched = __rcvr_.template try_query<_TaskScheduler>(get_scheduler);
+        auto __sched = __rcvr_.template try_query<_TaskScheduler>(get_start_scheduler);
         return __sched ? *__sched : _TaskScheduler(inline_scheduler{});
       }
 

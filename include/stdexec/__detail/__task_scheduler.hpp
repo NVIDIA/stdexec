@@ -847,20 +847,20 @@ namespace STDEXEC
 
   namespace __detail
   {
-    // Implementation of the get_scheduler_t query for __receiver_proxy_base and
+    // Implementation of the get_start_scheduler_t query for __receiver_proxy_base and
     // __proxy_env from __parallel_scheduler_backend.hpp.
     template <class _Rcvr, class _Proxy, bool _Infallible>
     constexpr void
-    __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(get_scheduler_t,
+    __receiver_proxy_base<_Rcvr, _Proxy, _Infallible>::__query(get_start_scheduler_t,
                                                                __type_index __value_type,
                                                                void*        __dest) const noexcept
     {
       if (__value_type == __mtypeid<task_scheduler>)
       {
         auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
-        if constexpr (__callable<get_scheduler_t, env_of_t<_Rcvr>>)
+        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
         {
-          __val.emplace(get_scheduler(get_env(__rcvr_)));
+          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
         }
         else
         {

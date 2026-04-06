@@ -36,7 +36,7 @@ namespace experimental::execution
                    _WITH_ENVIRONMENT_(_Env)>;
 
     template <class _Env>
-    using __schedule_sender_t = schedule_result_t<__call_result_t<get_scheduler_t, _Env>>;
+    using __schedule_sender_t = schedule_result_t<__call_result_t<get_start_scheduler_t, _Env>>;
 
     template <class _Env>
     using __try_schedule_sender_t =
@@ -63,7 +63,7 @@ namespace experimental::execution
         auto connect(_Receiver __rcvr) const
           -> connect_result_t<__schedule_sender_t<env_of_t<_Receiver>>, _Receiver>
         {
-          auto __sched = get_scheduler(STDEXEC::get_env(__rcvr));
+          auto __sched = get_start_scheduler(STDEXEC::get_env(__rcvr));
           return STDEXEC::connect(STDEXEC::schedule(__sched), static_cast<_Receiver&&>(__rcvr));
         }
 

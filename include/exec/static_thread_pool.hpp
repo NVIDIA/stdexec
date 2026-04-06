@@ -283,7 +283,8 @@ namespace experimental::execution
         {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>)
           {
-            auto sched = STDEXEC::get_completion_scheduler<set_value_t>(get_env(sndr), env);
+            auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(get_env(sndr),
+                                                                                 env);
             static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
             return __apply(_transform_bulk{*sched.pool_}, static_cast<Sender&&>(sndr));
           }
@@ -308,7 +309,8 @@ namespace experimental::execution
         {
           if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>)
           {
-            auto sched = STDEXEC::get_scheduler(env);
+            auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(get_env(sndr),
+                                                                                 env);
             return __apply(_transform_iterate{*sched.pool_}, static_cast<Sender&&>(sndr));
           }
           else

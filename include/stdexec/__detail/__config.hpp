@@ -311,7 +311,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
 #elif STDEXEC_CLANG()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR)                                                              \
-    __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
+    inline //__attribute__((__always_inline__, __artificial__, __nodebug__)) inline
 #elif STDEXEC_GCC()
 #  define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
 #else

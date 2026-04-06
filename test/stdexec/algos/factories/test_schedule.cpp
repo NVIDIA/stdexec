@@ -28,7 +28,7 @@ namespace
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _with_scheduler(Sched sched = {})
   {
-    return ex::write_env(ex::prop{ex::get_scheduler, std::move(sched)});
+    return ex::write_env(ex::prop{ex::get_start_scheduler, std::move(sched)});
   }
 
   TEST_CASE("schedule returns a sender", "[factories][schedule]")
@@ -51,7 +51,8 @@ namespace
     STATIC_REQUIRE(std::is_same_v<pool_scheduler, target_sched>);
     STATIC_REQUIRE(std::is_same_v<pool_domain, target_domain>);
 
-    using inline_env = decltype(ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler{}}));
+    using inline_env = decltype(ex::write_env(
+      ex::prop{ex::get_start_scheduler, inline_scheduler{}}));
     using scheduler_with_env =
       ex::__call_result_t<ex::get_completion_scheduler_t<ex::set_value_t>, pool_attr, inline_env>;
     using domain_with_env =
@@ -59,7 +60,7 @@ namespace
     STATIC_REQUIRE(std::is_same_v<scheduler_with_env, target_sched>);
     STATIC_REQUIRE(std::is_same_v<domain_with_env, target_domain>);
 
-    using pool_env = ex::prop<ex::get_scheduler_t, target_sched>;
+    using pool_env = ex::prop<ex::get_start_scheduler_t, target_sched>;
     using scheduler_with_pool_env =
       ex::__call_result_t<ex::get_completion_scheduler_t<ex::set_value_t>, pool_attr, pool_env>;
     using domain_with_pool_env =

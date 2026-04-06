@@ -35,14 +35,10 @@ namespace nv::execution::_strm
   {
     struct env
     {
+      template <
+        __one_of<get_start_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
       [[nodiscard]]
-      constexpr auto query(get_scheduler_t) const noexcept -> run_loop::scheduler
-      {
-        return __sched_;
-      }
-
-      [[nodiscard]]
-      constexpr auto query(get_delegation_scheduler_t) const noexcept -> run_loop::scheduler
+      constexpr auto query(_Query) const noexcept -> run_loop::scheduler
       {
         return __sched_;
       }

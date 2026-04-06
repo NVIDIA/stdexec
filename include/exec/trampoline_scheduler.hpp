@@ -63,11 +63,12 @@ namespace experimental::execution
 
     struct __attrs
     {
-      template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_scheduler_t> _Env>
+      template <__one_of<set_value_t, set_stopped_t>    _Tag,
+                __queryable_with<get_start_scheduler_t> _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<_Tag>, _Env const & __env) const noexcept
       {
-        return get_scheduler(__env);
+        return get_start_scheduler(__env);
       }
 
       template <__one_of<set_value_t, set_stopped_t> _Tag, __queryable_with<get_domain_t> _Env>

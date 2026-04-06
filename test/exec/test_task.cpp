@@ -306,7 +306,7 @@ namespace
     template <class, class>
     using awaiter_context_t = test_task_context;
 
-    static constexpr auto query(ex::get_scheduler_t) noexcept
+    static constexpr auto query(ex::get_start_scheduler_t) noexcept
     {
       return basic_inline_scheduler<test_domain>{};
     }

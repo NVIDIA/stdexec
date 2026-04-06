@@ -162,6 +162,12 @@ namespace STDEXEC
   }
 
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+  constexpr auto get_start_scheduler_t::operator()() const noexcept
+  {
+    return read_env(get_start_scheduler);
+  }
+
+  STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto get_delegation_scheduler_t::operator()() const noexcept
   {
     return read_env(get_delegation_scheduler);

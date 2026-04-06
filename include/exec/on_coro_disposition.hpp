@@ -32,10 +32,8 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    using __any_scheduler =
-      any_receiver_ref<completion_signatures<set_value_t(),
-                                             set_error_t(std::exception_ptr),
-                                             set_stopped_t()>>::any_sender<>::any_scheduler<>;
+    using __any_scheduler = any_scheduler<any_sender<any_receiver<
+      completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>>>>;
 
     template <class _Promise>
     concept __promise_with_disposition = __at_coro_exit::__has_continuation<_Promise>
@@ -99,7 +97,7 @@ namespace experimental::execution
           _Promise& __promise = __std::coroutine_handle<_Promise>::from_address(__parent).promise();
           return __promise.disposition();
         };
-        __coro_.promise().__scheduler_ = get_scheduler(get_env(__parent.promise()));
+        __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
         __coro_.promise().set_continuation(__parent.promise().continuation());
         __parent.promise().set_continuation(__coro_);
         return false;
@@ -131,28 +129,21 @@ namespace experimental::execution
 
       struct __env
       {
-        __promise const & __promise_;
-
         [[nodiscard]]
-        auto query(get_scheduler_t) const noexcept -> __any_scheduler
+        auto query(get_start_scheduler_t) const noexcept -> __any_scheduler
         {
           return __promise_.__scheduler_;
         }
+
+        __promise const & __promise_;
       };
 
       struct __promise : with_awaitable_senders<__promise>
       {
-#if STDEXEC_EDG()
         template <class _Action>
-        __promise(_Action&&, _Ts&&... __ts) noexcept
+        explicit(STDEXEC_EDG() != 0) __promise(_Action&&, _Ts&... __ts) noexcept
           : __args_{__ts...}
         {}
-#else
-        template <class _Action>
-        explicit __promise(_Action&&, _Ts&... __ts) noexcept
-          : __args_{__ts...}
-        {}
-#endif
 
         auto initial_suspend() noexcept -> __std::suspend_always
         {

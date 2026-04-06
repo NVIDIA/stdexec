@@ -88,7 +88,7 @@ namespace STDEXEC
     struct __scope_join_impl : __sexpr_defaults
     {
       template <class _Env>
-      using __scheduler_of_t = __call_result_t<get_scheduler_t, _Env const &>;
+      using __scheduler_of_t = __call_result_t<get_start_scheduler_t, _Env const &>;
 
       template <class _Env>
       using __sched_sender_of_t = __call_result_t<schedule_t, __scheduler_of_t<_Env>>;
@@ -96,7 +96,7 @@ namespace STDEXEC
       template <class _Sender, class _Env>
       static consteval auto __get_completion_signatures()
       {
-        if constexpr (__callable<get_scheduler_t, _Env const &>)
+        if constexpr (__callable<get_start_scheduler_t, _Env const &>)
         {
           return STDEXEC::get_completion_signatures<__sched_sender_of_t<_Env>, _Env>();
         }
@@ -161,7 +161,7 @@ namespace STDEXEC
                                 STDEXEC::start(__self->__op_);
                               })
           , __rcvr_(std::move(__rcvr))
-          , __op_(STDEXEC::connect(schedule(get_scheduler(STDEXEC::get_env(__rcvr_))),
+          , __op_(STDEXEC::connect(schedule(get_start_scheduler(STDEXEC::get_env(__rcvr_))),
                                    __rcvr_t(__rcvr_)))
         {}
 
