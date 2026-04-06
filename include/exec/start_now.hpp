@@ -96,7 +96,7 @@ namespace experimental::execution
     template <class _Env>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       template <class... _As>
       constexpr void set_value(_As&&...) noexcept
@@ -152,7 +152,7 @@ namespace experimental::execution
     template <class _Env>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       using __completions_t =
         STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;

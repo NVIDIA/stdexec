@@ -65,7 +65,7 @@ namespace experimental::execution
     template <class _Receiver>
     struct __receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       template <class... _Booleans>
       constexpr void set_value(_Booleans &&...__bools) noexcept

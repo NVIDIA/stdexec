@@ -14,7 +14,7 @@ namespace
   //! Sender that throws exception when connected
   struct throwing_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>

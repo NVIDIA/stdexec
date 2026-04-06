@@ -116,7 +116,7 @@ namespace STDEXEC
       {
         struct __rcvr_t
         {
-          using receiver_concept = receiver_t;
+          using receiver_concept = receiver_tag;
 
           _Rcvr& __rcvr_;
 

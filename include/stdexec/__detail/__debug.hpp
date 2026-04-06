@@ -69,7 +69,7 @@ namespace STDEXEC
     template <class _CvSender, class _Env, class... _Sigs>
     struct __receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class _Which>
       STDEXEC_ATTRIBUTE(host, device)

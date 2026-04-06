@@ -43,7 +43,7 @@ namespace STDEXEC
   {
     struct __test_sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       using completion_signatures =
         STDEXEC::completion_signatures<STDEXEC::set_value_t(int),
@@ -52,7 +52,7 @@ namespace STDEXEC
 
       struct __op
       {
-        using operation_state_concept = STDEXEC::operation_state_t;
+        using operation_state_concept = STDEXEC::operation_state_tag;
 
         __op()       = default;
         __op(__op&&) = delete;

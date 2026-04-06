@@ -24,8 +24,8 @@
 
 namespace STDEXEC
 {
-  struct sender_t;
-  struct scheduler_t;
+  struct sender_tag;
+  struct scheduler_tag;
 
   struct _WHAT_
   {};
@@ -287,7 +287,7 @@ namespace STDEXEC
   template <class... _What>
   struct __not_a_sender
   {
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
 
     template <class _Self>
     static consteval auto get_completion_signatures()
@@ -299,7 +299,7 @@ namespace STDEXEC
   template <class... _What>
   struct __not_a_scheduler
   {
-    using scheduler_concept = scheduler_t;
+    using scheduler_concept = scheduler_tag;
 
     constexpr auto schedule() noexcept
     {
@@ -316,13 +316,13 @@ namespace STDEXEC
   "\n"                                                                                             \
   "The given type is not a sender because STDEXEC::enable_sender<Sender> is false. Either:\n"      \
   "\n"                                                                                             \
-  "1. Give the type a nested '::sender_concept' type that is an alias for 'STDEXEC::sender_t',\n"  \
+  "1. Give the type a nested '::sender_concept' type that is an alias for 'STDEXEC::sender_tag',\n"\
   "   as in:\n"                                                                                    \
   "\n"                                                                                             \
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
   "     public:\n"                                                                                 \
-  "       using sender_concept = STDEXEC::sender_t;\n"                                             \
+  "       using sender_concept = STDEXEC::sender_tag;\n"                                           \
   "       ...\n"                                                                                   \
   "     };\n"                                                                                      \
   "\n"                                                                                             \
@@ -354,7 +354,7 @@ namespace STDEXEC
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
   "     public:\n"                                                                                 \
-  "       using sender_concept        = STDEXEC::sender_t;\n"                                      \
+  "       using sender_concept        = STDEXEC::sender_tag;\n"                                    \
   "       using completion_signatures = STDEXEC::completion_signatures<\n"                         \
   "         // This sender can complete successfully with an int and a float...\n"                 \
   "         STDEXEC::set_value_t(int, float),\n"                                                   \
@@ -371,7 +371,7 @@ namespace STDEXEC
   "     class MySender\n"                                                                          \
   "     {\n"                                                                                       \
   "     public:\n"                                                                                 \
-  "       using sender_concept        = STDEXEC::sender_t;\n"                                      \
+  "       using sender_concept        = STDEXEC::sender_tag;\n"                                    \
   "\n"                                                                                             \
   "       template <class Self, class... Env>\n"                                                   \
   "       static consteval auto get_completion_signatures() -> STDEXEC::completion_signatures<\n"  \
@@ -404,7 +404,7 @@ namespace STDEXEC
   "  class MySender\n"                                                                             \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept = STDEXEC::sender_t;\n"                                                \
+  "    using sender_concept = STDEXEC::sender_tag;\n"                                              \
   "\n"                                                                                             \
   "    template <class Self, class... Env>\n"                                                      \
   "    static consteval auto get_completion_signatures() -> STDEXEC::completion_signatures<\n"     \
@@ -428,13 +428,13 @@ namespace STDEXEC
   "  class MySender\n"                                                                             \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept        = STDEXEC::sender_t;\n"                                         \
+  "    using sender_concept        = STDEXEC::sender_tag;\n"                                       \
   "    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;\n"    \
   "\n"                                                                                             \
   "    template <class Receiver>\n"                                                                \
   "    struct MyOpState\n"                                                                         \
   "    {\n"                                                                                        \
-  "      using operation_state_concept = STDEXEC::operation_state_t;\n"                            \
+  "      using operation_state_concept = STDEXEC::operation_state_tag;\n"                          \
   "\n"                                                                                             \
   "      void start() noexcept\n"                                                                  \
   "      {\n"                                                                                      \

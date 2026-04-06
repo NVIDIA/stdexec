@@ -231,7 +231,7 @@ namespace STDEXEC
   template <class _Tag, class _State, std::size_t _Idx>
   struct __rcvr
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
     using __index_t        = __msize_t<_Idx>;
 
     template <class... _Args>
@@ -322,7 +322,7 @@ namespace STDEXEC
   {
     struct type
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
     };
   };
 
@@ -335,7 +335,7 @@ namespace STDEXEC
     template <auto _DescriptorFn>
     struct __sexpr : __minvoke<decltype(_DescriptorFn()), __qq<__tuple>>
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       using __desc_t      = decltype(_DescriptorFn());
       using __tag_t       = __desc_t::__tag;

@@ -64,7 +64,7 @@ namespace experimental::execution
     template <class _Fun, class _Args, class... _Sigs>
     struct __sender
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
 
       template <__decays_to<__sender> _Self, receiver_of<completion_signatures> _Receiver>

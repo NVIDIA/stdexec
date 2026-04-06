@@ -42,7 +42,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "    template <class Receiver>\n"                                                                \
   "    struct MyOpState\n"                                                                         \
   "    {\n"                                                                                        \
-  "      using operation_state_concept = STDEXEC::operation_state_t;\n"                            \
+  "      using operation_state_concept = STDEXEC::operation_state_tag;\n"                            \
   "\n"                                                                                             \
   "      void start() noexcept\n"                                                                  \
   "      {\n"                                                                                      \
@@ -90,7 +90,7 @@ namespace experimental::execution
   template <class... _Sequences>
   using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
-  struct sequence_sender_t : STDEXEC::sender_t
+  struct sequence_sender_t : STDEXEC::sender_tag
   {};
 
   using sequence_tag [[deprecated("Renamed to exec::sequence_sender_t")]] = exec::sequence_sender_t;
@@ -175,7 +175,7 @@ namespace experimental::execution
     template <class _Receiver>
     struct __stopped_means_break
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       using __token_t        = stop_token_of_t<env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
@@ -1082,7 +1082,7 @@ namespace experimental::execution
       : STDEXEC::__debug::__receiver<_CvSequence, _Env, _Sigs...>
       , __valid_next<_Items...>
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto get_env() const noexcept -> STDEXEC::__debug::__env_t<_Env>

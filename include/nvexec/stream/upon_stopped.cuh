@@ -53,7 +53,7 @@ namespace nv::execution::_strm
     template <class Receiver, class Fun>
     struct receiver : public stream_receiver_base
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
       using _result_t        = std::invoke_result_t<Fun>;
       using _env_t           = _strm::opstate_base<Receiver>::env_t;
 
@@ -130,7 +130,7 @@ namespace nv::execution::_strm
   template <class Sender, class Fun>
   struct upon_stopped_sender : stream_sender_base
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using _set_error_t   = completion_signatures<set_error_t(std::exception_ptr)>;
 
     template <class Receiver>

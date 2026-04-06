@@ -261,7 +261,7 @@ namespace experimental::execution
        private:
         using _base_t = STDEXEC::__any::__interface_base<_isemi_receiver, Base, _extends_base_t>;
        public:
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
         using _base_t::_base_t;
       };
 
@@ -402,7 +402,7 @@ namespace experimental::execution
     template <class Base>
     struct _iopstate : _iopstate_base_t<Base>
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
       using _iopstate_base_t<Base>::_iopstate_base_t;
 
       virtual constexpr void start() & noexcept
@@ -425,7 +425,7 @@ namespace experimental::execution
     template <class Receiver, class TargetStopToken>
     struct _any_opstate
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       template <class AnySender>
       constexpr explicit _any_opstate(AnySender &&_sndr, Receiver _rcvr)
@@ -473,7 +473,7 @@ namespace experimental::execution
         using _any_receiver_ref_t = __pointer_receiver<typename _ireceiver_t::_pointer_t>;
         using _base_t             = STDEXEC::__any::__interface_base<_interface_, Base, _extends_t>;
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
         using _base_t::_base_t;
 
         template <__std::derived_from<_interface_> Self, class... Env>
@@ -546,7 +546,7 @@ namespace experimental::execution
         using _base_t =
           STDEXEC::__any::__interface_base<_interface_, _inject_query_memfn_t<Base>, _extends_t>;
        public:
-        using scheduler_concept = STDEXEC::scheduler_t;
+        using scheduler_concept = STDEXEC::scheduler_tag;
         using _base_t::_base_t;
 
         [[nodiscard]]

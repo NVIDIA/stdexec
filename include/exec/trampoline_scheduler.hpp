@@ -219,7 +219,7 @@ namespace experimental::execution
 
       struct __sender
       {
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         constexpr explicit __sender(std::size_t __max_size, std::size_t __max_depth) noexcept
           : __max_recursion_size_(__max_size)

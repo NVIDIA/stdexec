@@ -68,7 +68,7 @@ namespace
   template <class S, class R>
   struct _retry_receiver
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
     _op_base<R>* o_;
 
     auto base() && noexcept -> R&&
@@ -152,7 +152,7 @@ namespace
   template <class S>
   struct _retry_sender
   {
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     S s_;
 
     explicit _retry_sender(S s)

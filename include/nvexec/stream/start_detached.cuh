@@ -33,7 +33,7 @@ namespace nv::execution::_strm
   {
     struct submit_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class... Args>
       void set_value(Args&&...) noexcept
@@ -122,7 +122,7 @@ namespace nv::execution::_strm
     template <class CvSender, class Env>
     struct opstate
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       explicit opstate(connect_t, CvSender&& sndr, Env env)
         : env_(static_cast<Env&&>(env))

@@ -240,11 +240,11 @@ namespace STDEXEC
         {}
 
        public:
-        using scheduler_concept = scheduler_t;
+        using scheduler_concept = scheduler_tag;
 
         struct __sndr_t
         {
-          using sender_concept = sender_t;
+          using sender_concept = sender_tag;
 
           template <class _Rcvr>
           STDEXEC_ATTRIBUTE(nodiscard, host, device)

@@ -196,7 +196,7 @@ namespace experimental::execution
   //! template <class Child, class Fn>
   //! struct then_sender
   //! {
-  //!   using sender_concept = ex::sender_t;
+  //!   using sender_concept = ex::sender_tag;
   //!
   //!   template <class Self, class... Env>
   //!   static consteval auto get_completion_signatures()

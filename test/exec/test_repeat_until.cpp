@@ -42,7 +42,7 @@ namespace
 
   struct boolean_sender
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     using completion_signatures =
       ex::completion_signatures<ex::set_value_t(bool), ex::set_error_t(int const &)>;
 
@@ -271,7 +271,7 @@ namespace
     };
     struct receiver
     {
-      using receiver_concept = ::STDEXEC::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_tag;
       void set_value() && noexcept
       {
         FAIL_CHECK("Unexpected value completion signal");
@@ -382,7 +382,7 @@ namespace
     };
     struct receiver
     {
-      using receiver_concept = ::STDEXEC::receiver_t;
+      using receiver_concept = ::STDEXEC::receiver_tag;
       void set_value() && noexcept
       {
         done_ = true;

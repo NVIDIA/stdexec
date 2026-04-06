@@ -38,7 +38,7 @@ namespace
   template <__completion_signature... _Sigs>
   struct some_sender_of
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = STDEXEC::completion_signatures<_Sigs...>;
 
     template <class R>
@@ -61,7 +61,7 @@ namespace
   template <__completion_signature... _Sigs>
   struct test_receiver
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
 
     template <class... _Args>
       requires __one_of<set_value_t(_Args...), _Sigs...>
@@ -100,7 +100,7 @@ namespace
   template <__completion_signature... _Sigs>
   struct next_receiver
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
 
     template <sender_to<test_receiver<_Sigs...>> _Item>
     auto set_next(_Item&& __item) & noexcept -> _Item

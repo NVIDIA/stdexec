@@ -128,7 +128,7 @@ namespace
       Fun fun_;
 
      public:
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       explicit receiver(Receiver rcvr, Fun fun)
         : exec::receiver_adaptor<receiver, Receiver>(static_cast<Receiver&&>(rcvr))
@@ -157,7 +157,7 @@ namespace
     template <class Sender, class Fun>
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class Self, class Receiver>
       using op_t = operation_state<STDEXEC::__copy_cvref_t<Self, Sender>, receiver<Receiver, Fun>>;
@@ -221,7 +221,7 @@ namespace
     template <class Sender>
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       Sender sndr_;
 

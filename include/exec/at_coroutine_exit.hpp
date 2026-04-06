@@ -38,7 +38,7 @@ namespace experimental::execution
       template <class _Receiver>
       struct __receiver
       {
-        using receiver_concept = STDEXEC::receiver_t;
+        using receiver_concept = STDEXEC::receiver_tag;
 
         template <class... _Args>
           requires __callable<set_value_t, _Receiver, _Args...>
@@ -71,7 +71,7 @@ namespace experimental::execution
       template <class _Sender>
       struct __sender
       {
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         template <class... _Env>
         using __completions_t = __mapply<__mremove<set_stopped_t(), __q<completion_signatures>>,

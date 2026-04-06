@@ -28,7 +28,7 @@ namespace experimental::execution
     struct __receiver
     {
      public:
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr __receiver(_Receiver&& __upstream)
         : __upstream_{static_cast<_Receiver&&>(__upstream)}
@@ -69,7 +69,7 @@ namespace experimental::execution
     struct __sender
     {
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <__decays_to<_Sender> _Sndr>
       constexpr explicit __sender(_Sndr&& __sender)
@@ -139,7 +139,7 @@ namespace experimental::execution
     struct __receiver
     {
      public:
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       constexpr __receiver(_Receiver&& __upstream)
         : __upstream_{static_cast<_Receiver&&>(__upstream)}
@@ -177,7 +177,7 @@ namespace experimental::execution
     struct __sender
     {
      public:
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <__decays_to<_Sender> _Sndr>
       constexpr explicit __sender(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)

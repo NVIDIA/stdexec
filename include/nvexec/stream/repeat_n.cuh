@@ -66,7 +66,7 @@ namespace nv::execution::_strm
     template <class Sender, class Receiver>
     struct opstate : _strm::opstate_base<Receiver>
     {
-      using operation_state_concept = STDEXEC::operation_state_t;
+      using operation_state_concept = STDEXEC::operation_state_tag;
 
       using scheduler_t     = __completion_scheduler_of_t<set_value_t, Sender, env_of_t<Receiver>>;
       using inner_sender_t  = STDEXEC::__result_of<STDEXEC::starts_on, scheduler_t, Sender&>;
@@ -152,7 +152,7 @@ namespace nv::execution::_strm
     template <class CvSender>
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class>
       static consteval auto get_completion_signatures()

@@ -211,7 +211,7 @@ namespace STDEXEC
     template <class _EnvProvider>
     using __own_env_t = __minvoke_or_q<__task::__environment_type, env<>, _Env, _EnvProvider>;
    public:
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
     using promise_type   = __promise;
 
     using allocator_type =
@@ -516,7 +516,7 @@ namespace STDEXEC
     , __stop_callback_box_t<_Rcvr>
   {
    public:
-    using operation_state_concept = operation_state_t;
+    using operation_state_concept = operation_state_tag;
 
     explicit __opstate(task&& __task, _Rcvr&& __rcvr) noexcept
       : __opstate_base(static_cast<task&&>(__task), __rcvr)

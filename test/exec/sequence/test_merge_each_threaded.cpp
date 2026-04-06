@@ -50,7 +50,7 @@ namespace
 
   struct null_receiver
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
 
     template <class... _Values>
     void set_value(_Values&&...) noexcept

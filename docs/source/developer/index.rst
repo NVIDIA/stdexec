@@ -87,7 +87,7 @@ member functions that handle completion:
 .. code-block:: cpp
 
     struct MyReceiver {
-      using receiver_concept = stdexec::receiver_t;
+      using receiver_concept = stdexec::receiver_tag;
 
       void set_value(int v) noexcept                { /* success      */ }
       void set_error(std::exception_ptr e) noexcept { /* error        */ }

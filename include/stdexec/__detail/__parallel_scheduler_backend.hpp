@@ -188,7 +188,7 @@ namespace STDEXEC
       , __stop_callback_for<stop_token_of_t<env_of_t<_Rcvr>>>
     {
      public:
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __stop_token_t   = stop_token_of_t<env_of_t<_Rcvr>>;
       using __allocator_t    = std::allocator_traits<
            __call_result_or_t<get_allocator_t,
@@ -365,7 +365,7 @@ namespace STDEXEC
     template <class _RcvrProxy, class _Env>
     struct __proxy_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __delete_fn_t    = void(void*) noexcept;
 
       constexpr void set_value() noexcept

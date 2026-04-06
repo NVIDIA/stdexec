@@ -107,7 +107,7 @@ namespace STDEXEC
     template <class _Sexpr, class _Receiver>
     struct __receiver2
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       constexpr void set_value() noexcept
       {

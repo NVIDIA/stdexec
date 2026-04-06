@@ -176,7 +176,7 @@ namespace experimental::execution::__win32
   class windows_thread_pool::_cancellable_schedule_op_base<StopToken>::type
   {
    public:
-    using operation_state_concept     = STDEXEC::operation_state_t;
+    using operation_state_concept     = STDEXEC::operation_state_tag;
     type(type &&)                     = delete;
     auto operator=(type &&) -> type & = delete;
 
@@ -483,7 +483,7 @@ namespace experimental::execution::__win32
   class windows_thread_pool::schedule_sender
   {
    public:
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using completion_signatures =
       STDEXEC::completion_signatures<STDEXEC::set_value_t(),
                                      STDEXEC::set_error_t(std::exception_ptr),
@@ -565,7 +565,7 @@ namespace experimental::execution::__win32
     }
 
    public:
-    using operation_state_concept = STDEXEC::operation_state_t;
+    using operation_state_concept = STDEXEC::operation_state_tag;
 
     ~type()
     {
@@ -777,7 +777,7 @@ namespace experimental::execution::__win32
   class windows_thread_pool::schedule_at_sender
   {
    public:
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using completion_signatures =
       STDEXEC::completion_signatures<STDEXEC::set_value_t(),
                                      STDEXEC::set_error_t(std::exception_ptr),
@@ -856,7 +856,7 @@ namespace experimental::execution::__win32
   class windows_thread_pool::_schedule_after<Duration>::sender
   {
    public:
-    using sender_concept = STDEXEC::sender_t;
+    using sender_concept = STDEXEC::sender_tag;
     using completion_signatures =
       STDEXEC::completion_signatures<STDEXEC::set_value_t(),
                                      STDEXEC::set_error_t(std::exception_ptr),

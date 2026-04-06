@@ -92,7 +92,7 @@ namespace
   template <class... AdditionalCompletions>
   struct many_error_sender
   {
-    using sender_concept        = STDEXEC::sender_t;
+    using sender_concept        = STDEXEC::sender_tag;
     using completion_signatures = ex::completion_signatures<AdditionalCompletions...,
                                                             ex::set_error_t(Error1),
                                                             ex::set_error_t(Error2),

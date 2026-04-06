@@ -408,7 +408,7 @@ namespace experimental::execution::asio
     {
       using args_type_ = std::tuple<std::decay_t<Args>...>;
      public:
-      using sender_concept = ::STDEXEC::sender_t;
+      using sender_concept = ::STDEXEC::sender_tag;
 
       template <typename T, typename... Us>
         requires std::constructible_from<Initiation, T>

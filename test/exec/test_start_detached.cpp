@@ -101,7 +101,7 @@ namespace
 
   struct custom_sender
   {
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
     bool* called;
 
@@ -138,7 +138,7 @@ namespace
   {
     struct sender
     {
-      using sender_concept        = ex::sender_t;
+      using sender_concept        = ex::sender_tag;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       [[nodiscard]]

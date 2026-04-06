@@ -99,7 +99,7 @@ namespace experimental::execution::__shared
   template <class _Env, class _Variant>
   struct __receiver
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
     template <class... _As>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr void set_value(_As&&... __as) noexcept
@@ -509,7 +509,7 @@ namespace experimental::execution::__shared
   template <class _Tag, class _CvChild, class _Env>
   struct __sndr : __if_c<__same_as<_Tag, split_t>, __empty, __move_only>
   {
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
     using __tag_t        = _Tag;
 
     constexpr explicit __sndr(_Tag, _CvChild&& __child, _Env __env)

@@ -57,7 +57,7 @@ namespace
   //! operation_state object is created and started).
   struct impulse_scheduler
   {
-    using scheduler_concept = ex::scheduler_t;
+    using scheduler_concept = ex::scheduler_tag;
 
     impulse_scheduler()
       : shared_data_(std::make_shared<data>(0))
@@ -174,7 +174,7 @@ namespace
 
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
@@ -206,7 +206,7 @@ namespace
   template <class Domain = void>
   struct basic_inline_scheduler
   {
-    using scheduler_concept = ex::scheduler_t;
+    using scheduler_concept = ex::scheduler_tag;
 
     auto schedule() const noexcept
     {
@@ -235,7 +235,7 @@ namespace
 
     struct sender
     {
-      using sender_concept        = STDEXEC::sender_t;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <class Receiver>
@@ -310,7 +310,7 @@ namespace
   template <class Error = std::exception_ptr>
   struct error_scheduler
   {
-    using scheduler_concept = ex::scheduler_t;
+    using scheduler_concept = ex::scheduler_tag;
 
     error_scheduler() = default;
 
@@ -348,7 +348,7 @@ namespace
 
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_error_t(Error), ex::set_stopped_t()>;
 
@@ -380,7 +380,7 @@ namespace
     struct sender;
 
    public:
-    using scheduler_concept = ex::scheduler_t;
+    using scheduler_concept = ex::scheduler_tag;
 
     auto operator==(stopped_scheduler const &) const noexcept -> bool = default;
 
@@ -411,7 +411,7 @@ namespace
 
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
@@ -445,7 +445,7 @@ namespace
     template <class Rcvr>
     struct _opstate_t : ex::__immovable
     {
-      using operation_state_concept = ex::operation_state_t;
+      using operation_state_concept = ex::operation_state_tag;
 
       constexpr _opstate_t(Rcvr rcvr) noexcept
         : _rcvr(static_cast<Rcvr &&>(rcvr))
@@ -462,7 +462,7 @@ namespace
     template <class Domain>
     struct _sndr_t
     {
-      using sender_concept = ex::sender_t;
+      using sender_concept = ex::sender_tag;
 
       template <class Self>
       static consteval auto get_completion_signatures() noexcept
@@ -488,7 +488,7 @@ namespace
   template <class Domain = ex::default_domain>
   struct dummy_scheduler : _dummy::_attrs_t<Domain>
   {
-    using scheduler_concept = ex::scheduler_t;
+    using scheduler_concept = ex::scheduler_tag;
 
     static constexpr auto schedule() noexcept -> _dummy::_sndr_t<Domain>
     {

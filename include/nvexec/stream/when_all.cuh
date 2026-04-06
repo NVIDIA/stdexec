@@ -205,7 +205,7 @@ namespace nv::execution::_strm
     template <class CvReceiver, std::size_t Index>
     struct receiver : stream_receiver_base
     {
-      using receiver_concept  = STDEXEC::receiver_t;
+      using receiver_concept  = STDEXEC::receiver_tag;
       using when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
       using receiver_t        = __decay_t<CvReceiver>;
       using sender_t          = __m_at_c<Index, Senders...>;

@@ -86,7 +86,7 @@ namespace STDEXEC::__sync_wait
   template <class... _Values>
   struct __receiver
   {
-    using receiver_concept = receiver_t;
+    using receiver_concept = receiver_tag;
 
     template <class... _As>
     constexpr void set_value(_As&&... __as) noexcept

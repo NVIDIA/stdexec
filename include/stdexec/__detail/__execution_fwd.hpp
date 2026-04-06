@@ -145,10 +145,16 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // concept tag types:
-  struct sender_t;
-  struct operation_state_t;
-  struct scheduler_t;
-  struct receiver_t;
+  struct sender_tag;
+  struct operation_state_tag;
+  struct scheduler_tag;
+  struct receiver_tag;
+
+  // concept tag aliases for backwards compatibility:
+  using sender_t          = sender_tag;
+  using operation_state_t = operation_state_tag;
+  using scheduler_t       = scheduler_tag;
+  using receiver_t        = receiver_tag;
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

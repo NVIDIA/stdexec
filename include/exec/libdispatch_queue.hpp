@@ -119,7 +119,7 @@ namespace experimental::execution
 
     struct sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
       using completion_signatures =
         STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
 
@@ -251,7 +251,7 @@ namespace experimental::execution
     template <class Sender, std::integral Shape, class Fun>
     struct bulk_sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class CvSender, class... Env>
       using with_error_invoke_t = STDEXEC::__if_c<
@@ -426,7 +426,7 @@ namespace experimental::execution
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct bulk_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       using shared_state = bulk_shared_state<CvSender, Receiver, Shape, Fun, MayThrow>;
 

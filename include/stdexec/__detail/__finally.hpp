@@ -136,7 +136,7 @@ namespace STDEXEC
     template <class _ResultType, class _Receiver, class _Env2>
     struct __final_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __env_t          = __final_env_t<_Env2, env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
@@ -271,7 +271,7 @@ namespace STDEXEC
     template <class _CvFinalSender, class _ResultType, class _Receiver, class _Env2>
     struct __initial_receiver
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class... _As>
       constexpr void set_value(_As&&... __as) noexcept
@@ -363,7 +363,7 @@ namespace STDEXEC
     template <class _InitialSender, class _FinalSender>
     struct __sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<__copy_cvref_t<_Self, _InitialSender>,

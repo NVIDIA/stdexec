@@ -197,7 +197,7 @@ namespace STDEXEC
     template <class _Receiver, class _Env2>
     struct __rcvr2
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
       using __env_t          = __join_env_t<_Env2 const &, __fwd_env_t<env_of_t<_Receiver>>>;
 
       template <class... _As>
@@ -236,7 +236,7 @@ namespace STDEXEC
     template <class _Receiver, class _Env2>
     struct __rcvr1
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       constexpr void set_value() noexcept
       {
@@ -349,7 +349,7 @@ namespace STDEXEC
     template <class _Sender1, class _Sender2>
     struct __sndr<_Sender1, _Sender2>
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<__copy_cvref_t<_Self, _Sender1>, _Sender2, _Receiver>;

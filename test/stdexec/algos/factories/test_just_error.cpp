@@ -28,7 +28,7 @@ namespace
   {
     struct receiver
     {
-      using receiver_concept = ex::receiver_t;
+      using receiver_concept = ex::receiver_tag;
       constexpr void set_error(int const j) && noexcept
       {
         i = j;

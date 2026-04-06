@@ -38,7 +38,7 @@ using fib_sender = any_sender_of<stdexec::set_value_t(long)>;
 template <typename Scheduler>
 struct fib_s
 {
-  using sender_concept        = stdexec::sender_t;
+  using sender_concept        = stdexec::sender_tag;
   using completion_signatures = stdexec::completion_signatures<stdexec::set_value_t(long)>;
 
   long      cutoff;

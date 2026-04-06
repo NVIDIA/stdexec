@@ -40,7 +40,7 @@ namespace
 
   struct count_set_next_receiver_t
   {
-    using receiver_concept = STDEXEC::receiver_t;
+    using receiver_concept = STDEXEC::receiver_tag;
     int& count_invocations_;
 
     auto set_next(auto /* item */) & noexcept

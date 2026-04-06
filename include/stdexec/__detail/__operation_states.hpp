@@ -26,7 +26,7 @@
 namespace STDEXEC
 {
   // operation state tag type
-  struct operation_state_t
+  struct operation_state_tag
   {};
 
   /////////////////////////////////////////////////////////////////////////////

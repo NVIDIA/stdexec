@@ -160,7 +160,7 @@ namespace experimental::execution
     template <class _Tag, class _Default>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class _Env>
       using __value_t =
@@ -219,7 +219,7 @@ namespace experimental::execution
     template <class _Sender, class _Attrs>
     struct __sender
     {
-      using sender_concept = sender_t;
+      using sender_concept = sender_tag;
 
       constexpr auto get_env() const noexcept -> __join_env_t<_Attrs const &, env_of_t<_Sender>>
       {

@@ -553,7 +553,7 @@ namespace
 
   struct my_sender
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     using is_sender      = void;
 
     using completion_signatures = ex::completion_signatures_of_t<decltype(ex::just())>;

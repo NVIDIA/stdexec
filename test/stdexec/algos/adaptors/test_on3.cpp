@@ -30,7 +30,7 @@ namespace
   template <class Rcvr>
   struct get_env_rcvr
   {
-    using receiver_concept = ex::receiver_t;
+    using receiver_concept = ex::receiver_tag;
     Rcvr rcvr;
 
     template <class... Values>
@@ -61,7 +61,7 @@ namespace
   template <class Sndr>
   struct get_env_sender
   {
-    using sender_concept = ex::sender_t;
+    using sender_concept = ex::sender_tag;
     Sndr sndr;
 
     template <ex::__decays_to<get_env_sender> Self, ex::receiver Rcvr>

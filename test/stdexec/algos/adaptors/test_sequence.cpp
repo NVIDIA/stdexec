@@ -50,12 +50,12 @@ namespace
 
   struct throwing_connect
   {
-    using sender_concept        = ex::sender_t;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     struct op
     {
-      using operation_state_concept = ex::operation_state_t;
+      using operation_state_concept = ex::operation_state_tag;
 
       void start() & noexcept {}
     };

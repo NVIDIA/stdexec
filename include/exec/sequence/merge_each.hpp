@@ -255,7 +255,7 @@ namespace experimental::execution
     struct __error_sender
     {
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
-      using sender_concept               = STDEXEC::sender_t;
+      using sender_concept               = STDEXEC::sender_tag;
 
       template <class _ErrorReceiver>
       using __error_op_t = __error_op<_ErrorReceiver, _ErrorStorage>;
@@ -297,7 +297,7 @@ namespace experimental::execution
     template <class _ErrorStorage, class _EnvFn>
     struct __error_next_receiver
     {
-      using receiver_concept = STDEXEC::receiver_t;
+      using receiver_concept = STDEXEC::receiver_tag;
 
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
 
@@ -565,7 +565,7 @@ namespace experimental::execution
     template <class _NestedValueReceiver, class _ErrorStorage>
     struct __receive_nested_value
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
 
@@ -649,7 +649,7 @@ namespace experimental::execution
     template <class _NestedValueSender, class _ErrorStorage>
     struct __nested_value_sender
     {
-      using sender_concept               = STDEXEC::sender_t;
+      using sender_concept               = STDEXEC::sender_tag;
       using __operation_base_interface_t = __operation_base_interface<_ErrorStorage>;
 
       template <class _NestedValueReceiver>
@@ -764,7 +764,7 @@ namespace experimental::execution
     template <class _OperationBase>
     struct __receive_nested_values
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       using __error_storage_t = _OperationBase::__error_storage_t;
       using __receiver_t      = decltype(_OperationBase::__rcvr_);
@@ -1017,7 +1017,7 @@ namespace experimental::execution
     template <class _NextReceiver, class _OperationBase, class _NestedSeqOp>
     struct __receive_nested_sequence
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       using __next_op_base_t = __next_operation_base<_NextReceiver, _OperationBase, _NestedSeqOp>;
 
@@ -1104,7 +1104,7 @@ namespace experimental::execution
     template <class _NestedSequenceSender, class _OperationBase, class _NestedSeqOp>
     struct __next_sequence_sender
     {
-      using sender_concept = STDEXEC::sender_t;
+      using sender_concept = STDEXEC::sender_tag;
 
       template <class _NextReceiver>
       using __next_sequence_op_t =
@@ -1143,7 +1143,7 @@ namespace experimental::execution
     template <class _OperationBase, class _NestedSeqOp>
     struct __receive_nested_sequences
     {
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       template <class _NestedSequenceSender>
       using __next_sequence_sender_t =

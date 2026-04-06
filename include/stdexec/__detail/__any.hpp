@@ -29,7 +29,6 @@
 #include <bit>
 #include <exception>
 #include <memory>
-#include <new>
 #include <span>
 #include <type_traits>
 #include <utility>

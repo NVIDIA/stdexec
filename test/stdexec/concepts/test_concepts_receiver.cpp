@@ -22,7 +22,7 @@ namespace ex = STDEXEC;
 
 struct recv_no_set_value
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   void set_stopped() noexcept {}
   void set_error(std::exception_ptr) noexcept {}
@@ -36,7 +36,7 @@ struct recv_no_set_value
 
 struct recv_set_value_except
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   void set_value() {}
   void set_stopped() noexcept {}
@@ -51,7 +51,7 @@ struct recv_set_value_except
 
 struct recv_set_value_noexcept
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   void set_value() noexcept {}
   void set_stopped() noexcept {}
@@ -66,7 +66,7 @@ struct recv_set_value_noexcept
 
 struct recv_set_error_except
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   void set_value() noexcept {}
   void set_stopped() noexcept {}
@@ -83,7 +83,7 @@ struct recv_set_error_except
 };
 struct recv_set_stopped_except
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   void set_value() noexcept {}
   void set_stopped()
@@ -101,7 +101,7 @@ struct recv_set_stopped_except
 
 struct recv_non_movable
 {
-  using receiver_concept = STDEXEC::receiver_t;
+  using receiver_concept = STDEXEC::receiver_tag;
 
   recv_non_movable()                                    = default;
   ~recv_non_movable()                                   = default;

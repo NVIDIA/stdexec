@@ -204,7 +204,7 @@ namespace STDEXEC
   {
    public:
     /// Marks this type as being a sender
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
 
     /// Implementation __detail. Constructs the sender to wrap `__impl`.
     explicit __parallel_sender(__detail::__backend_ptr_t __impl)
@@ -462,7 +462,7 @@ namespace STDEXEC
     struct __bulk_intermediate_receiver
     {
       /// Declare that this is a `receiver`.
-      using receiver_concept = receiver_t;
+      using receiver_concept = receiver_tag;
 
       /// Object that holds the relevant data for the entire bulk operation.
       _BulkState& __state_;
@@ -617,7 +617,7 @@ namespace STDEXEC
 
    public:
     /// Marks this type as being a sender
-    using sender_concept = sender_t;
+    using sender_concept = sender_tag;
 
     /// Constructs `this`.
     __parallel_bulk_sender(parallel_scheduler __sched,

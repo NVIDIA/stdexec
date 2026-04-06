@@ -685,7 +685,7 @@ namespace experimental::execution
       class __run_sender
       {
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
         using completion_signatures =
           STDEXEC::completion_signatures<STDEXEC::set_value_t(),
                                          STDEXEC::set_error_t(std::exception_ptr),
@@ -1250,7 +1250,7 @@ namespace experimental::execution
         __schedule_env __env_;
 
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         explicit __schedule_sender(__schedule_env __env) noexcept
           : __env_{__env}
@@ -1286,7 +1286,7 @@ namespace experimental::execution
                                          STDEXEC::set_stopped_t()>;
 
        public:
-        using sender_concept = STDEXEC::sender_t;
+        using sender_concept = STDEXEC::sender_tag;
 
         __schedule_env           __env_;
         std::chrono::nanoseconds __duration_;
