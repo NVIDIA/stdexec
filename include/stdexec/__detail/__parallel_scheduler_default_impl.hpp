@@ -19,9 +19,9 @@
 #include "__bulk.hpp"
 #include "__operation_states.hpp"
 #include "__parallel_scheduler_backend.hpp"
+#include "__parallel_scheduler_replacement_api.hpp"
 #include "__schedulers.hpp"
 #include "__senders.hpp"
-#include "__parallel_scheduler_replacement_api.hpp"
 #include "__utility.hpp"
 
 #if STDEXEC_ENABLE_LIBDISPATCH

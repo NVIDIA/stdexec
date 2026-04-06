@@ -430,7 +430,8 @@ TEST_CASE("can change the implementation of parallel scheduler at runtime",
   (void) scr::set_parallel_scheduler_backend(old_factory);
 }
 
-TEST_CASE("can change the implementation of parallel scheduler at runtime, with an inline scheduler",
+TEST_CASE("can change the implementation of parallel scheduler at runtime, with an inline "
+          "scheduler",
           "[scheduler][parallel_scheduler]")
 {
   auto old_factory = scr::set_parallel_scheduler_backend(
