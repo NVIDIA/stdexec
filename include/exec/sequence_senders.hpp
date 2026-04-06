@@ -29,7 +29,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
   "A sequence sender must provide a `subscribe` member function that takes a receiver as an\n"     \
-  "argument and returns an object whose type satisfies `STDEXEC::operation_state`,\n"              \
+  "argument and returns an object whose type satisfies `" STDEXEC_PP_STRINGIZE(STDEXEC)            \
+  "::operation_state`,\n"                                                                          \
   "as shown below:\n"                                                                              \
   "\n"                                                                                             \
   "  class MySequenceSender\n"                                                                     \
@@ -37,12 +38,13 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "  public:\n"                                                                                    \
   "    using sender_concept        = exec::sequence_sender_t;\n"                                   \
   "    using item_types            = exec::item_types<>;\n"                                        \
-  "    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;\n"    \
+  "    using completion_signatures = " STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<"    \
+       STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t()>;\n"                                         \
   "\n"                                                                                             \
   "    template <class Receiver>\n"                                                                \
   "    struct MyOpState\n"                                                                         \
   "    {\n"                                                                                        \
-  "      using operation_state_concept = STDEXEC::operation_state_tag;\n"                            \
+  "      using operation_state_concept = " STDEXEC_PP_STRINGIZE(STDEXEC) "::operation_state_tag;\n"\
   "\n"                                                                                             \
   "      void start() noexcept\n"                                                                  \
   "      {\n"                                                                                      \
@@ -53,7 +55,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "      Receiver rcvr_;\n"                                                                        \
   "    };\n"                                                                                       \
   "\n"                                                                                             \
-  "    template <STDEXEC::receiver Receiver>\n"                                                    \
+  "    template <" STDEXEC_PP_STRINGIZE(STDEXEC) "::receiver Receiver>\n"                          \
   "    auto subscribe(Receiver rcvr) -> MyOpState<Receiver>\n"                                     \
   "    {\n"                                                                                        \
   "      return MyOpState<Receiver>{std::move(rcvr)};\n"                                           \
@@ -71,7 +73,8 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 ////////////////////////////////////////////////////////////////////////////////
 #define STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE                                    \
   "\n"                                                                                             \
-  "FAILURE: The subscribe customization did not return an `STDEXEC::operation_state`.\n"           \
+  "FAILURE: The subscribe customization did not return an `" STDEXEC_PP_STRINGIZE(STDEXEC)         \
+  "::operation_state`.\n"                                                                          \
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
 namespace experimental::execution
@@ -780,9 +783,11 @@ namespace experimental::execution
 
         static_assert(sequence_sender<_Sequence>
                         || has_sequence_item_types<_Sequence, env_of_t<_Receiver>>,
-                      "The first argument to STDEXEC::subscribe must be a sequence sender");
+                      "The first argument to " STDEXEC_PP_STRINGIZE(STDEXEC) "::subscribe must be "
+                                                                             "a sequence sender");
         static_assert(receiver<_Receiver>,
-                      "The second argument to STDEXEC::subscribe must be a receiver");
+                      "The second argument to " STDEXEC_PP_STRINGIZE(STDEXEC) "::subscribe must be "
+                                                                              "a receiver");
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<__tfx_seq_t, _Receiver>());
 #endif
@@ -993,7 +998,7 @@ namespace experimental::execution
   "    template <class... _Env>\n"                                                                 \
   "    auto get_item_types(_Env&&...) -> exec::item_types<\n"                                      \
   "      // This sequence produces void items...\n"                                                \
-  "      STDEXEC::__call_result_t<STDEXEC::just_t>>\n"                                             \
+  "      " STDEXEC_PP_STRINGIZE(STDEXEC) "::__call_result_t<" STDEXEC_PP_STRINGIZE(STDEXEC) "::just_t>>\n"                                             \
   "    {\n"                                                                                        \
   "    return {};\n"                                                                               \
   "    }\n"                                                                                        \

@@ -101,24 +101,27 @@ namespace
 
   static auto const env = ex::prop{ex::get_start_scheduler, inline_scheduler{}};
 
-  TEST_CASE("Can pass STDEXEC::on sender to start_detached", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to start_detached",
+            "[adaptors][on]")
   {
     exec::start_detached(ex::on(inline_scheduler{}, ex::just()), env);
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to split", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to split", "[adaptors][on]")
   {
     auto snd = exec::split(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to ensure_started", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to ensure_started",
+            "[adaptors][on]")
   {
     auto snd = exec::ensure_started(ex::on(inline_scheduler{}, ex::just()), env);
     (void) snd;
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to async_scope::spawn", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to async_scope::spawn",
+            "[adaptors][on]")
   {
     exec::async_scope scope;
     impulse_scheduler sched;
@@ -127,7 +130,8 @@ namespace
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("Can pass STDEXEC::on sender to async_scope::spawn_future", "[adaptors][on]")
+  TEST_CASE("Can pass " STDEXEC_PP_STRINGIZE(STDEXEC) "::on sender to async_scope::spawn_future",
+            "[adaptors][on]")
   {
     exec::async_scope scope;
     impulse_scheduler sched;

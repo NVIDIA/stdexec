@@ -21,9 +21,10 @@ namespace experimental::execution
 {
   /////////////////////////////////////////////////////////////////////////////
   // A scoped version of [execution.senders.adaptors.on]
-  using on_t [[deprecated("on_t has been moved to the STDEXEC:: namespace")]] = STDEXEC::on_t;
+  using on_t [[deprecated(
+    "on_t has been moved to the " STDEXEC_PP_STRINGIZE(STDEXEC) ":: namespace")]] = STDEXEC::on_t;
 
-  [[deprecated("on has been moved to the STDEXEC:: namespace")]]
+  [[deprecated("on has been moved to the " STDEXEC_PP_STRINGIZE(STDEXEC) ":: namespace")]]
   inline constexpr STDEXEC::on_t const & on = STDEXEC::on;
 }  // namespace experimental::execution
 

@@ -24,21 +24,23 @@
 
 namespace experimental::execution
 {
-  namespace [[deprecated("Use the STDEXEC::parallel_scheduler_replacement namespace "
+  namespace [[deprecated("Use the " STDEXEC_PP_STRINGIZE(STDEXEC)  //
+                         "::parallel_scheduler_replacement namespace "
                          "instead.")]] system_context_replaceability
   {
     using STDEXEC::parallel_scheduler_replacement::__parallel_scheduler_backend_factory_t;
 
     /// Interface for the parallel scheduler backend.
-    using parallel_scheduler_backend  //
-      [[deprecated("Use STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend "
-                   "instead.")]] =  //
+    using parallel_scheduler_backend                                                             //
+      [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)                                          //
+                   "::parallel_scheduler_replacement::parallel_scheduler_backend instead.")]] =  //
       STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend;
 
     /// Get the backend for the parallel scheduler.
     /// Users might replace this function.
-    [[deprecated("Use STDEXEC::parallel_scheduler_replacement::query_parallel_scheduler_backend "
-                 "instead.")]]
+    [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement::query_"
+                                                      "parallel_scheduler_backend "
+                                                      "instead.")]]
     inline auto query_parallel_scheduler_backend()
       -> std::shared_ptr<STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend>
     {
@@ -53,8 +55,9 @@ namespace experimental::execution
     /// Set a factory for the parallel scheduler backend.
     /// Can be used to replace the parallel scheduler at runtime.
     /// Out of spec.
-    [[deprecated("Use STDEXEC::parallel_scheduler_replacement::set_parallel_scheduler_backend "
-                 "instead.")]]
+    [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement::set_"
+                                                      "parallel_scheduler_backend "
+                                                      "instead.")]]
     inline auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
       -> __parallel_scheduler_backend_factory_t
     {
@@ -64,14 +67,15 @@ namespace experimental::execution
 
     /// Interface for completing a sender operation. Backend will call frontend though this interface
     /// for completing the `schedule` and `schedule_bulk` operations.
-    using receiver
-      [[deprecated("Use STDEXEC::parallel_scheduler_replacement::receiver_proxy "
-                   "instead.")]] = STDEXEC::parallel_scheduler_replacement::receiver_proxy;
+    using receiver [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)                              //
+                                "::parallel_scheduler_replacement::receiver_proxy instead.")]] =  //
+      STDEXEC::parallel_scheduler_replacement::receiver_proxy;
 
     /// Receiver for bulk scheduling operations.
-    using bulk_item_receiver [[deprecated(
-      "Use STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy "
-      "instead.")]] = STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy;
+    using bulk_item_receiver [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)  //
+                                          "::parallel_scheduler_replacement::bulk_item_receiver_"
+                                          "proxy instead.")]] =  //
+      STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy;
   }  // namespace system_context_replaceability
 }  // namespace experimental::execution
 

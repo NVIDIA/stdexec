@@ -46,8 +46,8 @@ Examples of execution contexts:
 
 .. code-block:: cpp
 
-    auto sched = exec::get_parallel_scheduler();   // Obtain the default system scheduler
-    auto sndr  = stdexec::schedule(sched);         // Create a sender from the scheduler
+    auto sched = stdexec::get_parallel_scheduler(); // Obtain the default system scheduler
+    auto sndr  = stdexec::schedule(sched);          // Create a sender from the scheduler
 
 The sender you get back from ``stdexec::schedule`` is a factory for operations that,
 when started, will immediately call ``set_value()`` on the receiver the operation was

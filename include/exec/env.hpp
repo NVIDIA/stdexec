@@ -207,9 +207,10 @@ namespace experimental::execution
 
   inline constexpr __read_with_default::__read_with_default_t read_with_default{};
 
-  [[deprecated("exec::write has been renamed to STDEXEC::write_env")]]
+  [[deprecated("exec::write has been renamed to " STDEXEC_PP_STRINGIZE(STDEXEC) "::write_env")]]
   inline constexpr STDEXEC::__write_env_t write{};
-  [[deprecated("exec::write_env has been moved to the STDEXEC:: namespace")]]
+  [[deprecated("exec::write_env has been moved to the " STDEXEC_PP_STRINGIZE(STDEXEC) ":: "
+                                                                                      "namespace")]]
   inline constexpr STDEXEC::__write_env_t write_env{};
 
   namespace __write_attrs

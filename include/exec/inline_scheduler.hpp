@@ -21,8 +21,8 @@ namespace experimental::execution
 {
   // A simple scheduler that executes its continuation inline, on the
   // thread of the caller of start().
-  using inline_scheduler
-    [[deprecated("Use STDEXEC::inline_scheduler instead")]] = STDEXEC::inline_scheduler;
+  using inline_scheduler [[deprecated("Use " STDEXEC_PP_STRINGIZE(
+    STDEXEC) "::inline_scheduler instead")]] = STDEXEC::inline_scheduler;
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
