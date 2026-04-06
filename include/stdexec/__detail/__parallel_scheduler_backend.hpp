@@ -42,7 +42,7 @@ namespace STDEXEC
 {
   class task_scheduler;
 
-  namespace system_context_replaceability
+  namespace parallel_scheduler_replacement
   {
     /// Interface for completing a sender operation. Backend will call frontend though
     /// this interface for completing the `schedule` and `schedule_bulk` operations.
@@ -131,6 +131,12 @@ namespace STDEXEC
 
     struct parallel_scheduler_backend : __any::__iabstract<__iparallel_scheduler_backend>
     {};
+  }  // namespace parallel_scheduler_replacement
+
+  namespace [[deprecated("Use STDEXEC::parallel_scheduler_replacement instead.")]]  //
+  system_context_replaceability
+  {
+    using namespace parallel_scheduler_replacement;
   }  // namespace system_context_replaceability
 
   namespace __detail
@@ -319,7 +325,7 @@ namespace STDEXEC
 
     template <class _Rcvr, bool _Infallible = false>
     struct __receiver_proxy
-      : __receiver_proxy_base<_Rcvr, system_context_replaceability::receiver_proxy, _Infallible>
+      : __receiver_proxy_base<_Rcvr, parallel_scheduler_replacement::receiver_proxy, _Infallible>
     {
       using __receiver_proxy::__receiver_proxy_base::__receiver_proxy_base;
 
@@ -355,7 +361,7 @@ namespace STDEXEC
         return __sched ? *__sched : _TaskScheduler(inline_scheduler{});
       }
 
-      system_context_replaceability::receiver_proxy& __rcvr_;
+      parallel_scheduler_replacement::receiver_proxy& __rcvr_;
     };
 
     // A receiver type that forwards its completion operations to a _RcvrProxy member held

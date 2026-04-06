@@ -11,11 +11,11 @@ ImplementationFileExtensions:
   - cpp
   - cu
 HeaderFilterRegex: '^.*[.](h|hpp|cuh)$'
-ExcludeHeaderFilterRegex: '^.*__system_context_default_impl_entry[.]hpp$'
+ExcludeHeaderFilterRegex: '^.*__parallel_scheduler_default_impl_entry[.]hpp$'
 FormatStyle:     none
 User:            eniebler
 ExtraArgsBefore: [
-  '-DSTDEXEC_SYSTEM_CONTEXT_HEADER_ONLY=1',
+  '-DSTDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY=1',
   '-DSTDEXEC_CLANG_TIDY_INVOKED=1',
 ]
 CheckOptions:

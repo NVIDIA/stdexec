@@ -436,23 +436,29 @@ if (STDEXEC_ENABLE_NUMA)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_NUMA)
 endif()
 
-option(STDEXEC_BUILD_SYSTEM_CONTEXT "Build the system_context compiled library" OFF)
+option(STDEXEC_BUILD_PARALLEL_SCHEDULER "Build the parallel_scheduler compiled library" OFF)
+if (DEFINED STDEXEC_BUILD_SYSTEM_CONTEXT)
+  message(DEPRECATION "STDEXEC_BUILD_SYSTEM_CONTEXT is deprecated. Use STDEXEC_BUILD_PARALLEL_SCHEDULER instead.")
+  set(STDEXEC_BUILD_PARALLEL_SCHEDULER ${STDEXEC_BUILD_SYSTEM_CONTEXT})
+endif()
 
-if(STDEXEC_BUILD_SYSTEM_CONTEXT)
-  set(SYSTEM_CONTEXT_SOURCES src/system_context/system_context.cpp)
-  add_library(system_context ${SYSTEM_CONTEXT_SOURCES})
-  target_compile_features(system_context PUBLIC cxx_std_20)
-  set_target_properties(system_context PROPERTIES
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  set(STDEXEC_PARALLEL_SCHEDULER_SOURCES src/parallel_scheduler/parallel_scheduler.cpp)
+  add_library(parallel_scheduler ${STDEXEC_PARALLEL_SCHEDULER_SOURCES})
+  target_compile_features(parallel_scheduler PUBLIC cxx_std_20)
+  set_target_properties(parallel_scheduler PROPERTIES
       CXX_STANDARD 20
       CXX_STANDARD_REQUIRED ON
       CXX_EXTENSIONS OFF)
-  target_compile_options(system_context PUBLIC
+  target_compile_options(parallel_scheduler PUBLIC
       $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr>
       )
-  add_library(STDEXEC::system_context ALIAS system_context)
-  target_link_libraries(system_context PUBLIC stdexec)
-endif()
+  target_link_libraries(parallel_scheduler PUBLIC stdexec)
 
+  add_library(STDEXEC::parallel_scheduler ALIAS parallel_scheduler)
+  add_library(system_context ALIAS parallel_scheduler)
+  add_library(STDEXEC::system_context ALIAS parallel_scheduler)
+endif()
 
 option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" OFF)
 
@@ -518,8 +524,8 @@ if(STDEXEC_INSTALL)
 	include(CPack)
 	
   set(stdexec_install_targets stdexec)
-  if(STDEXEC_BUILD_SYSTEM_CONTEXT)
-    list(APPEND stdexec_install_targets system_context)
+  if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
+    list(APPEND stdexec_install_targets parallel_scheduler)
   endif()
 
   install(TARGETS ${stdexec_install_targets}

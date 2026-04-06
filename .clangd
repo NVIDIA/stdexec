@@ -21,10 +21,10 @@ CompileFlags:
 
 # The following file assumes a define.
 If:
-  PathMatch: .*/__system_context_default_impl_entry\.hpp
+  PathMatch: .*/__parallel_scheduler_default_impl_entry\.hpp
 CompileFlags:
   Add:
-    - "-DSTDEXEC_SYSTEM_CONTEXT_INLINE=inline"
+    - "-DSTDEXEC_PARALLEL_SCHEDULER_INLINE=inline"
 
 ---
 

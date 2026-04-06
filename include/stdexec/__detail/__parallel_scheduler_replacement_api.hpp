@@ -21,7 +21,7 @@
 
 #include <memory>
 
-namespace STDEXEC::system_context_replaceability
+namespace STDEXEC::parallel_scheduler_replacement
 {
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
@@ -42,4 +42,4 @@ namespace STDEXEC::system_context_replaceability
                "instead.")]]
   auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
     -> __parallel_scheduler_backend_factory_t;
-}  // namespace STDEXEC::system_context_replaceability
+}  // namespace STDEXEC::parallel_scheduler_replacement

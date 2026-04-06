@@ -105,14 +105,14 @@ target_link_libraries(test.stdexec
     PRIVATE
     common_test_settings)
 
-if(STDEXEC_BUILD_SYSTEM_CONTEXT)
-  add_executable(test.system_context_replaceability
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  add_executable(test.parallel_scheduler_replacement
                  test_main.cpp
-                 stdexec/schedulers/test_system_context_replaceability.cpp)
-  target_link_libraries(test.system_context_replaceability
+                 stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
+  target_link_libraries(test.parallel_scheduler_replacement
       PUBLIC
       STDEXEC::stdexec
-      STDEXEC::system_context
+      STDEXEC::parallel_scheduler
       stdexec_executable_flags
       Catch2::Catch2
       PRIVATE
@@ -139,8 +139,8 @@ catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
 catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
 
-if(STDEXEC_BUILD_SYSTEM_CONTEXT AND NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.system_context_replaceability PROPERTIES TIMEOUT 30)
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
+    catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT 30)
 endif()
 
 add_subdirectory(exec)

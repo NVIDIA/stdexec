@@ -19,9 +19,9 @@
 #include "__bulk.hpp"
 #include "__operation_states.hpp"
 #include "__parallel_scheduler_backend.hpp"
+#include "__parallel_scheduler_replacement_api.hpp"
 #include "__schedulers.hpp"
 #include "__senders.hpp"
-#include "__system_context_replaceability_api.hpp"
 #include "__utility.hpp"
 
 #if STDEXEC_ENABLE_LIBDISPATCH
@@ -40,9 +40,9 @@
 #include <thread>
 #include <utility>
 
-namespace STDEXEC::__system_context_default_impl
+namespace STDEXEC::__parallel_scheduler_default_impl
 {
-  using system_context_replaceability::__parallel_scheduler_backend_factory_t;
+  using parallel_scheduler_replacement::__parallel_scheduler_backend_factory_t;
 
   /// Receiver that calls the callback when the operation completes.
   template <class _Sender>
@@ -98,14 +98,15 @@ namespace STDEXEC::__system_context_default_impl
   struct __operation
   {
     /// The inner operation state, that results out of connecting the underlying sender with the receiver.
-    using __receiver_t = __detail::__proxy_receiver<system_context_replaceability::receiver_proxy,
+    using __receiver_t = __detail::__proxy_receiver<parallel_scheduler_replacement::receiver_proxy,
                                                     __detail::__proxy_env>;
     STDEXEC::connect_result_t<_Sender, __receiver_t> __inner_op_;
 
     /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
-    static auto __construct_maybe_alloc(std::span<std::byte>                           __storage,
-                                        system_context_replaceability::receiver_proxy& __completion,
-                                        _Sender __sndr) -> __operation*
+    static auto
+    __construct_maybe_alloc(std::span<std::byte>                            __storage,
+                            parallel_scheduler_replacement::receiver_proxy& __completion,
+                            _Sender                                         __sndr) -> __operation*
     {
       __storage = __ensure_alignment(__storage, alignof(__operation));
       if (__storage.data() == nullptr || __storage.size() < sizeof(__operation))
@@ -128,9 +129,9 @@ namespace STDEXEC::__system_context_default_impl
    private:
     using __destruct_fn_t = void(void*) noexcept;
 
-    explicit __operation(_Sender                                        __sndr,
-                         system_context_replaceability::receiver_proxy& __completion,
-                         __destruct_fn_t*                               __destruct)
+    explicit __operation(_Sender                                         __sndr,
+                         parallel_scheduler_replacement::receiver_proxy& __completion,
+                         __destruct_fn_t*                                __destruct)
       : __inner_op_(
           STDEXEC::connect(std::move(__sndr), __receiver_t{__completion, this, __destruct}))
     {}
@@ -156,7 +157,7 @@ namespace STDEXEC::__system_context_default_impl
   };
 
   template <typename _BaseSchedulerContext>
-  struct __generic_impl : system_context_replaceability::parallel_scheduler_backend
+  struct __generic_impl : parallel_scheduler_replacement::parallel_scheduler_backend
   {
     __generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler())
@@ -204,8 +205,8 @@ namespace STDEXEC::__system_context_default_impl
     //! Functor called by the `bulk_chunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_chunked_functor
     {
-      system_context_replaceability::bulk_item_receiver_proxy* __r_;
-      __chunker                                                __chunker_;
+      parallel_scheduler_replacement::bulk_item_receiver_proxy* __r_;
+      __chunker                                                 __chunker_;
 
       void operator()(size_t const __idx) const noexcept
       {
@@ -216,7 +217,7 @@ namespace STDEXEC::__system_context_default_impl
     //! Functor called by the `bulk_unchunked` operation; sends a `execute` signal to the frontend.
     struct __bulk_unchunked_functor
     {
-      system_context_replaceability::bulk_item_receiver_proxy* __r_;
+      parallel_scheduler_replacement::bulk_item_receiver_proxy* __r_;
 
       void operator()(size_t const __idx) const noexcept
       {
@@ -240,8 +241,8 @@ namespace STDEXEC::__system_context_default_impl
                                          __declval<__bulk_unchunked_functor>()))>;
 
    public:
-    void schedule(system_context_replaceability::receiver_proxy& __rcvr,
-                  std::span<std::byte>                           __storage) noexcept override
+    void schedule(parallel_scheduler_replacement::receiver_proxy& __rcvr,
+                  std::span<std::byte>                            __storage) noexcept override
     {
       STDEXEC_TRY
       {
@@ -257,8 +258,8 @@ namespace STDEXEC::__system_context_default_impl
       }
     }
 
-    void schedule_bulk_chunked(size_t                                                   __size,
-                               system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+    void schedule_bulk_chunked(size_t                                                    __size,
+                               parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr,
                                std::span<std::byte> __storage) noexcept override
     {
       STDEXEC_TRY
@@ -289,8 +290,8 @@ namespace STDEXEC::__system_context_default_impl
       }
     }
 
-    void schedule_bulk_unchunked(size_t                                                   __size,
-                                 system_context_replaceability::bulk_item_receiver_proxy& __rcvr,
+    void schedule_bulk_unchunked(size_t                                                    __size,
+                                 parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr,
                                  std::span<std::byte> __storage) noexcept override
     {
       STDEXEC_TRY
@@ -394,8 +395,8 @@ namespace STDEXEC::__system_context_default_impl
 #endif
 
   /// The singleton to hold the `parallel_scheduler_backend` instance.
-  inline constinit __instance_data<system_context_replaceability::parallel_scheduler_backend,
+  inline constinit __instance_data<parallel_scheduler_replacement::parallel_scheduler_backend,
                                    __parallel_scheduler_backend_impl>
     __parallel_scheduler_backend_singleton{};
 
-}  // namespace STDEXEC::__system_context_default_impl
+}  // namespace STDEXEC::__parallel_scheduler_default_impl

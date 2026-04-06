@@ -15,17 +15,17 @@
  */
 
 #include <stdexec/__detail/__parallel_scheduler.hpp>
-#include <stdexec/__detail/__system_context_default_impl.hpp>
+#include <stdexec/__detail/__parallel_scheduler_default_impl.hpp>
 #include <stdexec/execution.hpp>
 
 #include <catch2/catch.hpp>
 
-#if defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
+#if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 #  error This should be testing replacement of the system context with weak linking.
 #endif
 
 namespace ex  = STDEXEC;
-namespace scr = ex::system_context_replaceability;
+namespace psr = ex::parallel_scheduler_replacement;
 
 namespace
 {
@@ -33,13 +33,13 @@ namespace
   static int count_schedules = 0;
 
   struct my_parallel_scheduler_backend_impl
-    : ex::__system_context_default_impl::__parallel_scheduler_backend_impl
+    : ex::__parallel_scheduler_default_impl::__parallel_scheduler_backend_impl
   {
-    using base_t = ex::__system_context_default_impl::__parallel_scheduler_backend_impl;
+    using base_t = ex::__parallel_scheduler_default_impl::__parallel_scheduler_backend_impl;
 
     my_parallel_scheduler_backend_impl() = default;
 
-    void schedule(scr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override
+    void schedule(psr::receiver_proxy& __r, std::span<std::byte> __s) noexcept override
     {
       count_schedules++;
       base_t::schedule(__r, __s);
@@ -48,15 +48,15 @@ namespace
 
 }  // namespace
 
-namespace STDEXEC::system_context_replaceability
+namespace STDEXEC::parallel_scheduler_replacement
 {
-  // Should replace the function defined in __system_context_default_impl_entry.hpp
+  // Should replace the function defined in __parallel_scheduler_default_impl_entry.hpp
   auto query_parallel_scheduler_backend()
-    -> std::shared_ptr<STDEXEC::system_context_replaceability::parallel_scheduler_backend>
+    -> std::shared_ptr<STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend>
   {
     return std::make_shared<my_parallel_scheduler_backend_impl>();
   }
-}  // namespace STDEXEC::system_context_replaceability
+}  // namespace STDEXEC::parallel_scheduler_replacement
 
 TEST_CASE("Check that we are using a replaced system context (with weak linking)",
           "[scheduler][parallel_scheduler][replaceability]")

@@ -15,10 +15,13 @@ class StdexecPackage(ConanFile):
 
   settings = "os", "arch", "compiler", "build_type"
   options = {
+    # Legacy name for backward compatibility. Use parallel_scheduler instead.
     "system_context": [True, False],
+    "parallel_scheduler": [True, False],
   }
   default_options = {
     "system_context": False,
+    "parallel_scheduler": False,
   }
   exports_sources = (
     "include/*",
@@ -32,6 +35,8 @@ class StdexecPackage(ConanFile):
 
   def configure(self):
     if self.options.system_context:
+      self.options.parallel_scheduler = True
+    if self.options.parallel_scheduler:
       self.package_type = "static-library"
     else:
       self.package_type = "header-library"
@@ -49,19 +54,19 @@ class StdexecPackage(ConanFile):
 
   def build(self):
     tests = "OFF" if self.conf.get("tools.build:skip_test", default=False) else "ON"
-    system_context = "ON" if self.options.system_context else "OFF"
+    parallel_scheduler = "ON" if self.options.parallel_scheduler else "OFF"
 
     cmake = CMake(self)
     cmake.configure(variables={
       "STDEXEC_BUILD_TESTS": tests,
       "STDEXEC_BUILD_EXAMPLES": tests,
-      "STDEXEC_BUILD_SYSTEM_CONTEXT": system_context,
+      "STDEXEC_BUILD_PARALLEL_SCHEDULER": parallel_scheduler,
     })
     cmake.build()
     cmake.test()
 
   def package_id(self):
-    if not self.info.options.system_context:
+    if not self.info.options.parallel_scheduler:
       # Clear settings because this package is header-only.
       self.info.clear()
 
@@ -73,8 +78,8 @@ class StdexecPackage(ConanFile):
     self.cpp_info.set_property("cmake_file_name", "P2300")
     self.cpp_info.set_property("cmake_target_name", "P2300::P2300")
     self.cpp_info.set_property("cmake_target_aliases", ["STDEXEC::stdexec"])
-    if self.options.system_context:
-      self.cpp_info.components["system_context"].libs = ["system_context"]
-      self.cpp_info.components["system_context"].set_property(
-        "cmake_target_name", "STDEXEC::system_context"
+    if self.options.parallel_scheduler:
+      self.cpp_info.components["parallel_scheduler"].libs = ["parallel_scheduler"]
+      self.cpp_info.components["parallel_scheduler"].set_property(
+        "cmake_target_name", "STDEXEC::parallel_scheduler"
       )

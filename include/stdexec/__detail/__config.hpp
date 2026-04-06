@@ -179,8 +179,18 @@
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
-  namespace execution::system_context_replaceability
-  {}
+  namespace execution
+  {
+    namespace parallel_scheduler_replacement
+    {}
+
+    namespace [[deprecated("Use the std::execution::parallel_scheduler_replacement namespace "
+                           "instead.")]] system_context_replaceability
+    {
+      using namespace parallel_scheduler_replacement;
+    }  // namespace system_context_replaceability
+  }  // namespace execution
+
   namespace this_thread
   {}
 STDEXEC_NAMESPACE_STD_END

@@ -28,7 +28,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros: [
-  STDEXEC_SYSTEM_CONTEXT_INLINE
+  STDEXEC_PARALLEL_SCHEDULER_INLINE
   STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 ]
 BinPackArguments: false

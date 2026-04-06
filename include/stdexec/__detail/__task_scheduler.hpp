@@ -64,7 +64,7 @@ namespace STDEXEC
 
   namespace __task
   {
-    using namespace system_context_replaceability;
+    using namespace parallel_scheduler_replacement;
 
     // The concrete type-erased sender returned by task_scheduler::schedule()
     struct __sender;
@@ -788,8 +788,8 @@ namespace STDEXEC
       , __sch_(std::move(__sch))
     {}
 
-    constexpr void schedule(system_context_replaceability::receiver_proxy& __rcvr_proxy,
-                            std::span<std::byte>                           __storage) noexcept
+    constexpr void schedule(parallel_scheduler_replacement::receiver_proxy& __rcvr_proxy,
+                            std::span<std::byte>                            __storage) noexcept
     {
       // Check whether the receiver's stop token is unstoppable. If so, we can connect the
       // schedule sender with a receiver that doesn't propagate stop requests, which may
@@ -809,8 +809,8 @@ namespace STDEXEC
     }
 
     constexpr void
-    schedule_bulk_chunked(size_t                                                   __count,
-                          system_context_replaceability::bulk_item_receiver_proxy& __rcvr_proxy,
+    schedule_bulk_chunked(size_t                                                    __count,
+                          parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr_proxy,
                           std::span<std::byte> __storage) noexcept
     {
       auto __sndr = STDEXEC::bulk_chunked(__task::__just_with_scheduler{__sch_},
@@ -821,8 +821,8 @@ namespace STDEXEC
     }
 
     constexpr void
-    schedule_bulk_unchunked(size_t                                                   __count,
-                            system_context_replaceability::bulk_item_receiver_proxy& __rcvr_proxy,
+    schedule_bulk_unchunked(size_t                                                    __count,
+                            parallel_scheduler_replacement::bulk_item_receiver_proxy& __rcvr_proxy,
                             std::span<std::byte> __storage) noexcept
     {
       auto __sndr = STDEXEC::bulk_unchunked(__task::__just_with_scheduler{__sch_},

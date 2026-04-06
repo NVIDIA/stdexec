@@ -16,7 +16,7 @@
 
 #include <thread>
 
-#define STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY 1
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 
 #include <stdexec/execution.hpp>
 
@@ -28,20 +28,20 @@
 #include <test_common/receivers.hpp>
 
 namespace ex  = STDEXEC;
-namespace scr = ex::system_context_replaceability;
+namespace scr = ex::parallel_scheduler_replacement;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // warning C4996: 'function': was declared deprecated
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
 
-TEST_CASE("system_context can return a scheduler", "[scheduler][parallel_scheduler]")
+TEST_CASE("get_parallel_scheduler() can return a scheduler", "[scheduler][parallel_scheduler]")
 {
   auto sched = STDEXEC::get_parallel_scheduler();
   STATIC_REQUIRE(ex::scheduler<decltype(sched)>);
 }
 
-TEST_CASE("system scheduler is not default constructible", "[scheduler][parallel_scheduler]")
+TEST_CASE("parallel scheduler is not default constructible", "[scheduler][parallel_scheduler]")
 {
   auto sched    = STDEXEC::get_parallel_scheduler();
   using sched_t = decltype(sched);
@@ -49,7 +49,7 @@ TEST_CASE("system scheduler is not default constructible", "[scheduler][parallel
   STATIC_REQUIRE(std::is_destructible_v<sched_t>);
 }
 
-TEST_CASE("system scheduler is copyable and movable", "[scheduler][parallel_scheduler]")
+TEST_CASE("parallel scheduler is copyable and movable", "[scheduler][parallel_scheduler]")
 {
   auto sched    = STDEXEC::get_parallel_scheduler();
   using sched_t = decltype(sched);
@@ -57,14 +57,14 @@ TEST_CASE("system scheduler is copyable and movable", "[scheduler][parallel_sche
   STATIC_REQUIRE(std::is_move_constructible_v<sched_t>);
 }
 
-TEST_CASE("a copied scheduler is equal to the original", "[scheduler][parallel_scheduler]")
+TEST_CASE("a copied parallel scheduler is equal to the original", "[scheduler][parallel_scheduler]")
 {
   auto sched1 = STDEXEC::get_parallel_scheduler();
   auto sched2 = sched1;
   REQUIRE(sched1 == sched2);
 }
 
-TEST_CASE("two schedulers obtained from get_parallel_scheduler() are equal",
+TEST_CASE("two parallel schedulers obtained from get_parallel_scheduler() are equal",
           "[scheduler][parallel_scheduler]")
 {
   auto sched1 = STDEXEC::get_parallel_scheduler();
@@ -72,7 +72,7 @@ TEST_CASE("two schedulers obtained from get_parallel_scheduler() are equal",
   REQUIRE(sched1 == sched2);
 }
 
-TEST_CASE("system scheduler can produce a sender", "[scheduler][parallel_scheduler]")
+TEST_CASE("parallel scheduler can produce a sender", "[scheduler][parallel_scheduler]")
 {
   auto snd       = ex::schedule(STDEXEC::get_parallel_scheduler());
   using sender_t = decltype(snd);
@@ -82,14 +82,14 @@ TEST_CASE("system scheduler can produce a sender", "[scheduler][parallel_schedul
   STATIC_REQUIRE(ex::sender_of<sender_t, ex::set_stopped_t()>);
 }
 
-TEST_CASE("trivial schedule task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("trivial schedule task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
 
   ex::sync_wait(ex::schedule(sched));
 }
 
-TEST_CASE("simple schedule task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple schedule task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id = std::this_thread::get_id();
   std::thread::id             pool_id{};
@@ -116,7 +116,7 @@ TEST_CASE("get_completion_scheduler", "[scheduler][parallel_scheduler]")
   REQUIRE(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(ex::schedule(sched))) == sched);
 }
 
-TEST_CASE("simple chain task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple chain task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id = std::this_thread::get_id();
   std::thread::id             pool_id{};
@@ -156,7 +156,7 @@ TEST_CASE("checks stop_token before starting the work", "[scheduler][parallel_sc
   REQUIRE_FALSE(called);
 }
 
-TEST_CASE("simple bulk task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple bulk task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
   constexpr size_t            num_tasks = 16;
@@ -177,7 +177,7 @@ TEST_CASE("simple bulk task on system context", "[scheduler][parallel_scheduler]
   }
 }
 
-TEST_CASE("simple bulk chaining on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
   constexpr size_t            num_tasks = 16;
@@ -219,7 +219,7 @@ TEST_CASE("simple bulk chaining on system context", "[scheduler][parallel_schedu
   CHECK(std::get<0>(res.value()) == pool_id);
 }
 
-TEST_CASE("simple bulk_chunked task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple bulk_chunked task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
   constexpr unsigned long     num_tasks = 16;
@@ -244,7 +244,7 @@ TEST_CASE("simple bulk_chunked task on system context", "[scheduler][parallel_sc
   }
 }
 
-TEST_CASE("simple bulk_unchunked task on system context", "[scheduler][parallel_scheduler]")
+TEST_CASE("simple bulk_unchunked task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
   constexpr size_t            num_tasks = 16;
@@ -265,7 +265,7 @@ TEST_CASE("simple bulk_unchunked task on system context", "[scheduler][parallel_
   }
 }
 
-TEST_CASE("bulk_unchunked with seq will run everything on one thread",
+TEST_CASE("bulk_unchunked with seq on parallel scheduler will run everything on one thread",
           "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id   = std::this_thread::get_id();
@@ -359,9 +359,9 @@ TEST_CASE("bulk_chunked with seq on parallel_scheduler doesn't do chunking",
 }
 
 struct my_parallel_scheduler_backend_impl
-  : ex::__system_context_default_impl::__parallel_scheduler_backend_impl
+  : ex::__parallel_scheduler_default_impl::__parallel_scheduler_backend_impl
 {
-  using base_t = ex::__system_context_default_impl::__parallel_scheduler_backend_impl;
+  using base_t = ex::__parallel_scheduler_default_impl::__parallel_scheduler_backend_impl;
 
   my_parallel_scheduler_backend_impl() = default;
 
@@ -407,7 +407,7 @@ struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend
   }
 };
 
-TEST_CASE("can change the implementation of system context at runtime",
+TEST_CASE("can change the implementation of parallel scheduler at runtime",
           "[scheduler][parallel_scheduler]")
 {
   static auto my_scheduler_backend = std::make_shared<my_parallel_scheduler_backend_impl>();
@@ -430,7 +430,8 @@ TEST_CASE("can change the implementation of system context at runtime",
   (void) scr::set_parallel_scheduler_backend(old_factory);
 }
 
-TEST_CASE("can change the implementation of system context at runtime, with an inline scheduler",
+TEST_CASE("can change the implementation of parallel scheduler at runtime, with an inline "
+          "scheduler",
           "[scheduler][parallel_scheduler]")
 {
   auto old_factory = scr::set_parallel_scheduler_backend(
@@ -474,7 +475,7 @@ TEST_CASE("empty environment always returns nullopt for any query",
 TEST_CASE("environment with a stop token can expose its stop token",
           "[scheduler][parallel_scheduler]")
 {
-  struct my_receiver : ex::system_context_replaceability::receiver_proxy
+  struct my_receiver : ex::parallel_scheduler_replacement::receiver_proxy
   {
     void set_value() noexcept override {}
 
