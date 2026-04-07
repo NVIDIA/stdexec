@@ -16,11 +16,25 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__execution_fwd.hpp"
 
+#include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__connect.hpp"
+#include "../stdexec/__detail/__debug.hpp"
 #include "../stdexec/__detail/__diagnostics.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__just.hpp"
 #include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__senders.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
+#include "../stdexec/__detail/__tag_invoke.hpp"
+#include "../stdexec/__detail/__transform_sender.hpp"
+#include "../stdexec/__detail/__type_traits.hpp"
+#include "../stdexec/__detail/__utility.hpp"
+#include "../stdexec/stop_token.hpp"
+
 #include "completion_signatures.hpp"
 
 STDEXEC_PRAGMA_PUSH()
@@ -565,7 +579,7 @@ namespace experimental::execution
   struct __sequence_type_check_failure  //
     : STDEXEC::__compile_time_error<__sequence_type_check_failure<_Data, _What...>>
   {
-    static_assert(std::is_nothrow_move_constructible_v<_Data>,
+    static_assert(STDEXEC::__nothrow_move_constructible<_Data>,
                   "The data member of sender_type_check_failure must be nothrow move "
                   "constructible.");
 
@@ -783,11 +797,9 @@ namespace experimental::execution
 
         static_assert(sequence_sender<_Sequence>
                         || has_sequence_item_types<_Sequence, env_of_t<_Receiver>>,
-                      "The first argument to " STDEXEC_PP_STRINGIZE(STDEXEC) "::subscribe must be "
-                                                                             "a sequence sender");
+                      "The first argument to exec::subscribe must be a sequence sender");
         static_assert(receiver<_Receiver>,
-                      "The second argument to " STDEXEC_PP_STRINGIZE(STDEXEC) "::subscribe must be "
-                                                                              "a receiver");
+                      "The second argument to exec::subscribe must be a receiver");
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<__tfx_seq_t, _Receiver>());
 #endif

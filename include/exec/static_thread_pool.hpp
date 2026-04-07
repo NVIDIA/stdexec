@@ -18,11 +18,24 @@
 #pragma once
 
 #include "../stdexec/__detail/__atomic.hpp"
+#include "../stdexec/__detail/__bulk.hpp"
+#include "../stdexec/__detail/__completion_signatures.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__config.hpp"
+#include "../stdexec/__detail/__domain.hpp"
+#include "../stdexec/__detail/__execution_fwd.hpp"
+#include "../stdexec/__detail/__execution_legacy.hpp"
+#include "../stdexec/__detail/__get_completion_signatures.hpp"
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__manual_lifetime.hpp"  // IWYU pragma: keep
-#include "../stdexec/__detail/__meta.hpp"             // IWYU pragma: keep
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__manual_lifetime.hpp"
+#include "../stdexec/__detail/__meta.hpp"
+#include "../stdexec/__detail/__optional.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../stdexec/__detail/__tuple.hpp"
+#include "../stdexec/__detail/__type_traits.hpp"
+#include "../stdexec/__detail/__variant.hpp"
+
 #include "detail/atomic_intrusive_queue.hpp"
 #include "detail/bwos_lifo_queue.hpp"
 #include "detail/numa.hpp"
@@ -37,7 +50,9 @@
 #include <condition_variable>
 #include <cstdint>
 #include <exception>
+#include <limits>
 #include <mutex>
+#include <random>
 #include <span>
 #include <thread>
 #include <type_traits>
@@ -690,12 +705,12 @@ namespace experimental::execution
 
       alignas(64) __std::atomic<std::uint32_t> num_active_{};
       alignas(64) remote_queue_list remotes_;
-      std::uint32_t                            thread_count_;
-      std::uint32_t                            max_steals_{thread_count_ + 1};
-      bwos_params                              params_;
-      std::vector<std::thread>                 threads_;
-      std::vector<std::optional<thread_state>> thread_states_;
-      numa_policy                              numa_;
+      std::uint32_t                         thread_count_;
+      std::uint32_t                         max_steals_{thread_count_ + 1};
+      bwos_params                           params_;
+      std::vector<std::thread>              threads_;
+      std::vector<__optional<thread_state>> thread_states_;
+      numa_policy                           numa_;
 
       struct thread_index_by_numa_node
       {
@@ -1416,12 +1431,10 @@ namespace experimental::execution
         }
       };
 
-      using variant_t = __value_types_of_t<CvSender,
-                                           env_of_t<Receiver>,
-                                           __q<__decayed_std_tuple>,
-                                           __q<__nullable_std_variant>>;
+      using variant_t =
+        __value_types_of_t<CvSender, env_of_t<Receiver>, __q<__decayed_tuple>, __q<__variant>>;
 
-      variant_t            data_;
+      variant_t            data_{STDEXEC::__no_init};
       _static_thread_pool& pool_;
       Receiver             rcvr_;
       Shape                shape_;
@@ -1440,7 +1453,7 @@ namespace experimental::execution
         if constexpr (Parallelize)
         {
           return static_cast<std::uint32_t>(
-            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
+            __umin({std::size_t(shape_), std::size_t(pool_.available_parallelism())}));
         }
         else
         {
@@ -1451,19 +1464,8 @@ namespace experimental::execution
       template <class F>
       void apply(F f)
       {
-        std::visit(
-          [&]<class Tuple>(Tuple& tupl) -> void
-          {
-            if constexpr (__std::same_as<Tuple, std::monostate>)
-            {
-              STDEXEC_TERMINATE();
-            }
-            else
-            {
-              std::apply([&](auto&... args) -> void { f(args...); }, tupl);
-            }
-          },
-          data_);
+        STDEXEC_ASSERT(!data_.__is_valueless());
+        __visit([&](auto& tupl) -> void { __apply(std::move(f), tupl); }, data_);
       }
 
       //! Construct from a pool, receiver, shape, and function.
@@ -1501,7 +1503,7 @@ namespace experimental::execution
       template <class... As>
       void set_value(As&&... as) noexcept
       {
-        using tuple_t = __decayed_std_tuple<As...>;
+        using tuple_t = __decayed_tuple<As...>;
 
         shared_state& state = shared_state_;
 
@@ -1514,6 +1516,7 @@ namespace experimental::execution
           if constexpr (MayThrow)
           {
             STDEXEC::set_error(std::move(state.rcvr_), std::current_exception());
+            return;
           }
         }
 
@@ -1523,7 +1526,7 @@ namespace experimental::execution
         }
         else
         {
-          state.apply([&](auto&... args)
+          state.apply([&](auto&... args) noexcept -> void
                       { STDEXEC::set_value(std::move(state.rcvr_), std::move(args)...); });
         }
       }
@@ -1761,7 +1764,7 @@ namespace experimental::execution
           std::size_t nthreads     = this->pool_.available_parallelism();
           bwos_params params       = this->pool_.params();
           std::size_t local_size   = params.blockSize * params.numBlocks;
-          std::size_t chunk_size   = (std::min) (size / nthreads, local_size * nthreads);
+          std::size_t chunk_size   = __umin({size / nthreads, local_size * nthreads});
           auto&       remote_queue = *this->pool_.get_remote_queue();
           auto        it           = std::ranges::begin(this->range_);
           std::size_t i0           = 0;
