@@ -83,8 +83,9 @@ namespace STDEXEC
           STDEXEC_TRY
           {
             STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               __variant_t{
-                                 std::tuple<_Args&&...>{static_cast<_Args&&>(__args)...}});
+                               __variant_t{std::in_place_type<__decayed_std_tuple<_Args...>>,
+                                           std::tuple<_Args&&...>{
+                                             static_cast<_Args&&>(__args)...}});
           }
           STDEXEC_CATCH_ALL
           {

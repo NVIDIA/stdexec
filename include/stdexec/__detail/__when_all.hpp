@@ -56,6 +56,16 @@ namespace STDEXEC
 
   struct when_all_with_variant_t
   {
+   private:
+    static constexpr auto __mk_transform_fn() noexcept
+    {
+      return []<class... _Child>(__ignore, __ignore, _Child&&... __child)
+      {
+        return when_all(into_variant(static_cast<_Child&&>(__child))...);
+      };
+    }
+
+   public:
     template <sender... _Senders>
     constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
     {
@@ -66,9 +76,7 @@ namespace STDEXEC
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
       // transform when_all_with_variant(sndrs...) into when_all(into_variant(sndrs)...).
-      return __apply([&]<class... _Child>(__ignore, __ignore, _Child&&... __child)
-                     { return when_all(into_variant(static_cast<_Child&&>(__child))...); },
-                     static_cast<_Sender&&>(__sndr));
+      return __apply(__mk_transform_fn(), static_cast<_Sender&&>(__sndr));
     }
   };
 
