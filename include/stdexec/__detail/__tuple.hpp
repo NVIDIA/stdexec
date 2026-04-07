@@ -449,9 +449,9 @@ namespace STDEXEC
   //
   namespace __tup
   {
-    template <class _Fn, class _Tuple>
+    template <__is_tuple _Tuple, class _Fn>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator<<(_Tuple&& __tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>)
+    constexpr auto operator%(_Tuple&& __tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>)
     {
       return [&__tup, __fn = static_cast<_Fn&&>(__fn)]<class... _Us>(_Us&&... __us) noexcept(
                __nothrow_applicable<_Fn, _Tuple, _Us...>) -> __apply_result_t<_Fn, _Tuple, _Us...>
@@ -465,7 +465,7 @@ namespace STDEXEC
       template <class _Fn, class... _Tuples>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto operator()(_Fn __fn, _Tuples&&... __tups) const
-        STDEXEC_AUTO_RETURN((static_cast<_Tuples&&>(__tups) << ... << __fn)())
+        STDEXEC_AUTO_RETURN((static_cast<_Tuples&&>(__tups) % ... % __fn)())
     };
   }  // namespace __tup
 
