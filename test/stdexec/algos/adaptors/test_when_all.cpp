@@ -15,6 +15,7 @@
  */
 
 #include <catch2/catch.hpp>
+#include <exec/any_sender_of.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
 #include <exec/sender_for.hpp>
@@ -460,5 +461,14 @@ namespace
     scope.spawn(snd);
     scope.request_stop();
     ex::sync_wait(scope.on_empty());
+  }
+
+  TEST_CASE("regression test for #1988", "[adaptors][when_all")
+  {
+    // just test that this compiles:
+    using any_sender = exec::any_sender<
+      exec::any_receiver<ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(double)>>>;
+    ex::sync_wait(ex::when_all_with_variant(any_sender{ex::just(1)}));
+    SUCCEED();
   }
 }  // namespace
