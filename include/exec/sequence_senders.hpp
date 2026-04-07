@@ -50,7 +50,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "  class MySequenceSender\n"                                                                     \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept        = exec::sequence_sender_t;\n"                                   \
+  "    using sender_concept        = exec::sequence_sender_tag;\n"                                 \
   "    using item_types            = exec::item_types<>;\n"                                        \
   "    using completion_signatures = " STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<"    \
        STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t()>;\n"                                         \
@@ -107,38 +107,27 @@ namespace experimental::execution
   template <class... _Sequences>
   using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
-  struct sequence_sender_t : STDEXEC::sender_tag
+  struct sequence_sender_tag : STDEXEC::sender_tag
   {};
 
-  using sequence_tag [[deprecated("Renamed to exec::sequence_sender_t")]] = exec::sequence_sender_t;
-
-  namespace __sequence_sndr
-  {
-    using namespace STDEXEC;
-
-    template <class _Haystack>
-    struct __mall_contained_in_impl
-    {
-      template <class... _Needles>
-      using __f = __mand<__mapply<__mcontains<_Needles>, _Haystack>...>;
-    };
-    template <class _Needles, class _Haystack>
-    using __mall_contained_in_t = __mapply<__mall_contained_in_impl<_Haystack>, _Needles>;
-
-    template <class _Needles, class _Haystack>
-    concept __all_contained_in = __mall_contained_in_t<_Needles, _Haystack>::value;
-  }  // namespace __sequence_sndr
+  using sequence_tag
+    [[deprecated("Renamed to exec::sequence_sender_tag")]] = exec::sequence_sender_tag;
+  using sequence_sender_t
+    [[deprecated("Renamed to exec::sequence_sender_tag")]] = exec::sequence_sender_tag;
 
   // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
   template <class _Sender, class _Env = STDEXEC::env<>>
   concept next_sender =
     STDEXEC::sender_in<_Sender, _Env>
-    && __sequence_sndr::__all_contained_in<
-      STDEXEC::completion_signatures_of_t<_Sender, _Env>,
-      STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>>;
+    && STDEXEC::__mapply<
+      STDEXEC::__mbind_front_q<STDEXEC::__mset_contains_t,
+                               STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>>,
+      STDEXEC::completion_signatures_of_t<_Sender, _Env>>::value;
 
   namespace __sequence_sndr
   {
+    using namespace STDEXEC;
+
     template <class _Receiver, class _Item>
     concept __has_set_next_member = requires(_Receiver& __rcvr, _Item&& __item) {
       __rcvr.set_next(static_cast<_Item&&>(__item));
@@ -233,7 +222,7 @@ namespace experimental::execution
   template <class _Sequence>
   concept __enable_sequence_sender =
     requires { typename _Sequence::sender_concept; }  //
-    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_t>;
+    && STDEXEC::__std::derived_from<typename _Sequence::sender_concept, sequence_sender_tag>;
 
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
@@ -745,7 +734,7 @@ namespace experimental::execution
 
     template <class _Sequence, class _Receiver>
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sequence)::subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
+      _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
 
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
@@ -817,10 +806,10 @@ namespace experimental::execution
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
           __check_operation_state<__result_t>();
           constexpr bool __nothrow_subscribe = noexcept(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
         else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
@@ -861,16 +850,16 @@ namespace experimental::execution
         if constexpr (__next_connectable<__tfx_seq_t, _Receiver>)
         {
           // sender as sequence of one
-          next_sender_of_t<_Receiver, __tfx_seq_t> __next =
-            set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
-          return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
+          using __next_sender_t  = next_sender_of_t<_Receiver, __tfx_seq_t>;
+          __next_sender_t __next = set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
+          return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {  // NOLINT(bugprone-branch-clone)
-          return __tfx_seq.subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
-                                     static_cast<_Receiver&&>(__rcvr));
+          return __tfx_seq.__static_subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
+                                              static_cast<_Receiver&&>(__rcvr));
         }
         else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
         {
@@ -891,9 +880,9 @@ namespace experimental::execution
 
           // This should generate an instantiate backtrace that contains useful
           // debugging information.
-          next_sender_of_t<_Receiver, __tfx_seq_t> __next =
-            set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
-          return STDEXEC::connect(static_cast<next_sender_of_t<_Receiver, __tfx_seq_t>&&>(__next),
+          using __next_sender_t  = next_sender_of_t<_Receiver, __tfx_seq_t>;
+          __next_sender_t __next = set_next(__rcvr, static_cast<__tfx_seq_t&&>(__tfx_seq));
+          return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
         }
@@ -1005,7 +994,7 @@ namespace experimental::execution
   "  class MySequence\n"                                                                           \
   "  {\n"                                                                                          \
   "  public:\n"                                                                                    \
-  "    using sender_concept = exec::sequence_sender_t;\n"                                          \
+  "    using sender_concept = exec::sequence_sender_tag;\n"                                        \
   "\n"                                                                                             \
   "    template <class... _Env>\n"                                                                 \
   "    auto get_item_types(_Env&&...) -> exec::item_types<\n"                                      \

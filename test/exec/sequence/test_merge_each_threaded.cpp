@@ -36,17 +36,14 @@
 #include <iomanip>
 #include <stdexcept>
 
+using namespace std::chrono_literals;
+using namespace exec;
+namespace ex = STDEXEC;
+
 namespace
 {
-  using namespace std::chrono_literals;
-  using namespace exec;
-  namespace ex = STDEXEC;
-
-  template <class _A, class _B>
-  concept __equivalent = __sequence_sndr::__all_contained_in<_A, _B>
-                      && __sequence_sndr::__all_contained_in<_B, _A>
-                      && ex::__mapply<ex::__msize, _A>::value
-                           == ex::__mapply<ex::__msize, _B>::value;
+  template <class A, class B>
+  concept __equivalent = ex::__mset_eq<ex::__mapply<ex::__q<ex::__mset>, A>, B>;
 
   struct null_receiver
   {
@@ -213,7 +210,7 @@ namespace
   template <ex::sender Sender>
   struct as_sequence_t : Sender
   {
-    using sender_concept = sequence_sender_t;
+    using sender_concept = sequence_sender_tag;
     using item_types     = exec::item_types<Sender>;
     template <ex::receiver Receiver>
     auto subscribe(Receiver receiver)

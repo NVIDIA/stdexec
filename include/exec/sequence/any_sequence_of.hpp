@@ -93,7 +93,7 @@ namespace experimental::execution
        public:
         using completion_signatures = __to_sequence_completions_t<_Sigs>;
         using item_types            = execution::item_types<_item_sender_t>;
-        using sender_concept        = sequence_sender_t;
+        using sender_concept        = sequence_sender_tag;
         using _any_receiver_ref_t   = any_sequence_receiver_ref<_Sigs, _Queries>;
         using _base_t::_base_t;
 
