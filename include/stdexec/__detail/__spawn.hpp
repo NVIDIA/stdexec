@@ -123,6 +123,20 @@ namespace STDEXEC
 
     struct spawn_t
     {
+     private:
+      template <class _Sender, class _Token>
+      using _wrapped_sender_t = decltype(__declval<_Token&>().wrap(__declval<_Sender>()));
+
+      template <class _Sender, class _Env>
+      using __choose_senv_t = __result_of<__spawn_common::__choose_senv, _Env, env_of_t<_Sender>>;
+
+      template <class _Sender, class _Env>
+      using _spawn_sndr_impl_t = __result_of<write_env, _Sender, __choose_senv_t<_Sender, _Env>>;
+
+      template <class _Sender, class _Token, class _Env>
+      using _spawn_sndr_t = _spawn_sndr_impl_t<_wrapped_sender_t<_Sender, _Token>, _Env>;
+
+     public:
       template <sender _Sender, scope_token _Token>
       void operator()(_Sender&& __sndr, _Token __tkn) const
       {
@@ -130,6 +144,16 @@ namespace STDEXEC
       }
 
       template <sender _Sender, scope_token _Token, class _Env>
+      void operator()(_Sender&&, _Token, _Env&&) const
+      {
+        using _spawn_sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
+        static_assert(sender_in<_spawn_sndr_t, _Env>
+                        && __never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
+                      "spawn expects a sender that cannot fail");
+      }
+
+      template <sender _Sender, scope_token _Token, class _Env>
+        requires __never_sends<STDEXEC::set_error_t, _spawn_sndr_t<_Sender, _Token, _Env>, _Env>
       void operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const
       {
         auto __wrapped_sender = __tkn.wrap(static_cast<_Sender&&>(__sndr));
@@ -141,8 +165,7 @@ namespace STDEXEC
         auto __sender_with_env = write_env(std::move(__wrapped_sender),
                                            __spawn_common::__choose_senv(__env, __sndr_env));
 
-        using __spawn_state_t =
-          __spawn_state<__raw_alloc_t, std::remove_cvref_t<_Token>, decltype(__sender_with_env)>;
+        using __spawn_state_t = __spawn_state<__raw_alloc_t, _Token, decltype(__sender_with_env)>;
 
         using __traits =
           std::allocator_traits<__raw_alloc_t>::template rebind_traits<__spawn_state_t>;
