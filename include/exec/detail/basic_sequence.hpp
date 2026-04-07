@@ -71,19 +71,19 @@ namespace experimental::execution
       template <class _Self, STDEXEC::receiver _Receiver>
       static constexpr auto __static_subscribe(_Self&& __self, _Receiver __rcvr) STDEXEC_AUTO_RETURN
       (
-        __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))
+        __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))
       )
 
       template <STDEXEC::receiver _Receiver>
       constexpr auto subscribe(_Receiver __rcvr) && STDEXEC_AUTO_RETURN
       (
-        __tag().subscribe(static_cast<__seqexpr&&>(*this), static_cast<_Receiver&&>(__rcvr))
+        __tag_t::subscribe(static_cast<__seqexpr&&>(*this), static_cast<_Receiver&&>(__rcvr))
       )
 
       template <STDEXEC::receiver _Receiver>
       constexpr auto subscribe(_Receiver __rcvr) const & STDEXEC_AUTO_RETURN
       (
-        __tag().subscribe(*this, static_cast<_Receiver&&>(__rcvr))
+        __tag_t::subscribe(*this, static_cast<_Receiver&&>(__rcvr))
       )
       // clang-format on
     };
