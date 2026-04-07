@@ -59,9 +59,21 @@ namespace STDEXEC
 
   inline constexpr start_t start{};
 
+  template <class _Op>
+  concept __startable_operation_state = requires(_Op &__op) {
+    { __op.start() } noexcept -> std::same_as<void>;
+  };
+
+  template <class _Op>
+  concept __start_invocable_operation_state = requires(_Op &__op) {
+    { tag_invoke(start_t{}, __op) } noexcept -> std::same_as<void>;
+  };
+
   /////////////////////////////////////////////////////////////////////////////
   // [execution.op_state]
   template <class _Op>
-  concept operation_state = __std::destructible<_Op> && std::is_object_v<_Op>
-                         && requires(_Op &__op) { STDEXEC::start(__op); };
+  concept operation_state =
+    __std::destructible<_Op> && std::is_object_v<_Op> && requires(_Op &__op) {
+      { STDEXEC::start(__op) } noexcept -> std::same_as<void>;
+    } && (__startable_operation_state<_Op> || __start_invocable_operation_state<_Op>);
 }  // namespace STDEXEC

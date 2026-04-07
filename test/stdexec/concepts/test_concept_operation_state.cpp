@@ -42,13 +42,31 @@ namespace
     void start() & noexcept {}
   };
 
+  struct op_noexcept_nonvoid
+  {
+    op_noexcept_nonvoid()                      = default;
+    op_noexcept_nonvoid(op_noexcept_nonvoid&&) = delete;
+
+    bool start() & noexcept
+    {
+      return true;
+    }
+  };
+
   STDEXEC_PRAGMA_POP()
 
-  // TEST_CASE(
-  //   "type with start CPO that throws is not an operation_state",
-  //   "[concepts][operation_state]") {
-  //   REQUIRE(!ex::operation_state<op_except>);
-  // }
+  TEST_CASE("type with start CPO that throws is not an operation_state",
+            "[concepts][operation_state]")
+  {
+    REQUIRE(!ex::operation_state<op_except>);
+  }
+
+  TEST_CASE("type with start CPO that does not throw but returns non-void is not an "
+            "operation_state",
+            "[concepts][operation_state]")
+  {
+    REQUIRE(!ex::operation_state<op_noexcept_nonvoid>);
+  }
 
   TEST_CASE("type with start CPO noexcept is an operation_state", "[concepts][operation_state]")
   {
