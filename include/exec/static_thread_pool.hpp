@@ -1803,7 +1803,7 @@ namespace experimental::execution
         _static_thread_pool* pool_;
 
        public:
-        using sender_concept = sequence_sender_t;
+        using sender_concept = sequence_sender_tag;
 
         using completion_signatures =
           STDEXEC::completion_signatures<set_value_t(),

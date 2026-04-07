@@ -1035,6 +1035,9 @@ namespace STDEXEC
   template <class _Set, class... _Ty>
   concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);
 
+  template <class _Set, class... _Ty>
+  using __mset_contains_t = __mbool<__mset_contains<_Set, _Ty...>>;
+
   struct __mset_nil;
 
   namespace __set

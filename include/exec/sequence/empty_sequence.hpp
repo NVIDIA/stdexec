@@ -40,7 +40,7 @@ namespace experimental::execution
 
     struct __sender
     {
-      using sender_concept        = sequence_sender_t;
+      using sender_concept        = sequence_sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
       using item_types            = exec::item_types<>;
 

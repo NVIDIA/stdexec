@@ -36,10 +36,11 @@ namespace experimental::execution
     struct __seqexpr
       : STDEXEC::__minvoke<decltype(_DescriptorFn()), STDEXEC::__qq<STDEXEC::__tuple>>
     {
-      using sender_concept = sequence_sender_t;
+      using sender_concept = sequence_sender_tag;
       using __desc_t       = decltype(_DescriptorFn());
       using __tag_t        = __desc_t::__tag;
 
+      STDEXEC_ATTRIBUTE(always_inline)
       static constexpr auto __tag() noexcept -> __tag_t
       {
         return {};
@@ -66,16 +67,25 @@ namespace experimental::execution
         return __tag_t::template get_item_types<_Self, _Env...>();
       }
 
+      // clang-format off
       template <class _Self, STDEXEC::receiver _Receiver>
-      static auto subscribe(_Self&& __self, _Receiver&& __rcvr)
-        noexcept(noexcept(__self.__tag().subscribe(static_cast<_Self&&>(__self),
-                                                   static_cast<_Receiver&&>(__rcvr))))
-          -> decltype(__self.__tag().subscribe(static_cast<_Self&&>(__self),
-                                               static_cast<_Receiver&&>(__rcvr)))
-      {
-        static_assert(STDEXEC::__decays_to_derived_from<_Self, __seqexpr>);
-        return __tag_t::subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr));
-      }
+      static constexpr auto __static_subscribe(_Self&& __self, _Receiver __rcvr) STDEXEC_AUTO_RETURN
+      (
+        __self.__tag().subscribe(static_cast<_Self&&>(__self), static_cast<_Receiver&&>(__rcvr))
+      )
+
+      template <STDEXEC::receiver _Receiver>
+      constexpr auto subscribe(_Receiver __rcvr) && STDEXEC_AUTO_RETURN
+      (
+        __tag().subscribe(static_cast<__seqexpr&&>(*this), static_cast<_Receiver&&>(__rcvr))
+      )
+
+      template <STDEXEC::receiver _Receiver>
+      constexpr auto subscribe(_Receiver __rcvr) const & STDEXEC_AUTO_RETURN
+      (
+        __tag().subscribe(*this, static_cast<_Receiver&&>(__rcvr))
+      )
+      // clang-format on
     };
 
     template <class _Tag, class _Data, class... _Child>
