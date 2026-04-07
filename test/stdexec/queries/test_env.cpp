@@ -21,6 +21,8 @@
 
 namespace ex = STDEXEC;
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace
 {
   template <typename T>
@@ -106,4 +108,59 @@ namespace
     auto sch = ex::get_completion_scheduler<ex::set_value_t>(attrs, ex::env{});
     CHECK(std::same_as<decltype(sch), ex::inline_scheduler>);
   }
+
+  // Before v19, clang could not compile this test because of the large number of nested
+  // envs.
+#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 19'00
+
+#  define DEFINE_QUERY(name) constexpr struct name ## _t : ex::__query<name ## _t> {} name{}
+
+  DEFINE_QUERY(query_0);
+  DEFINE_QUERY(query_1);
+  DEFINE_QUERY(query_2);
+  DEFINE_QUERY(query_3);
+  DEFINE_QUERY(query_4);
+  DEFINE_QUERY(query_5);
+  DEFINE_QUERY(query_6);
+  DEFINE_QUERY(query_7);
+  DEFINE_QUERY(query_8);
+  DEFINE_QUERY(query_9);
+  DEFINE_QUERY(query_10);
+  DEFINE_QUERY(query_11);
+  DEFINE_QUERY(query_12);
+
+  TEST_CASE("env supports lots of child envs without exceeding compiler limits", "[queries][env]")
+  {
+    auto env = ex::env{
+      ex::prop{ query_0,  0},
+      ex::prop{ query_1,  1},
+      ex::prop{ query_2,  2},
+      ex::prop{ query_3,  3},
+      ex::prop{ query_4,  4},
+      ex::prop{ query_5,  5},
+      ex::prop{ query_6,  6},
+      ex::prop{ query_7,  7},
+      ex::prop{ query_8,  8},
+      ex::prop{ query_9,  9},
+      ex::prop{query_10, 10},
+      ex::prop{query_11, 11},
+      ex::prop{query_12, 12}
+    };
+
+    CHECK(env.query(query_0) == 0);
+    CHECK(env.query(query_1) == 1);
+    CHECK(env.query(query_2) == 2);
+    CHECK(env.query(query_3) == 3);
+    CHECK(env.query(query_4) == 4);
+    CHECK(env.query(query_5) == 5);
+    CHECK(env.query(query_6) == 6);
+    CHECK(env.query(query_7) == 7);
+    CHECK(env.query(query_8) == 8);
+    CHECK(env.query(query_9) == 9);
+    CHECK(env.query(query_10) == 10);
+    CHECK(env.query(query_11) == 11);
+    CHECK(env.query(query_12) == 12);
+  }
+
+#endif
 }  // namespace
