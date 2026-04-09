@@ -149,7 +149,7 @@ namespace STDEXEC
 
   using __exception = ::std::exception;
 
-#elif __cpp_constexpr >= 2024'11L  // constexpr virtual functions
+#elif __cpp_constexpr >= 202411L  // constexpr virtual functions
 
   struct __exception
   {
@@ -176,7 +176,7 @@ namespace STDEXEC
     }
   };
 
-#endif  // __cpp_lib_constexpr_exceptions >= 2025'02L
+#endif  // __cpp_lib_constexpr_exceptions >= 202502L
 
   template <class _Derived>
   struct __compile_time_error : __exception

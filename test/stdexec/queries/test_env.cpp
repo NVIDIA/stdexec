@@ -111,7 +111,7 @@ namespace
 
   // Before v19, clang could not compile this test because of the large number of nested
   // envs.
-#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 19'00
+#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1900
 
 #  define DEFINE_QUERY(name) constexpr struct name ## _t : ex::__query<name ## _t> {} name{}
 

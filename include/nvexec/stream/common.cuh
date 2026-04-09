@@ -982,7 +982,7 @@ namespace nv::execution
 
   inline constexpr _strm::get_stream_t get_stream{};
 
-#if CUDART_VERSION >= 13'00'0
+#if CUDART_VERSION >= 13000
   inline __host__ cudaError_t cudaMemPrefetchAsync(void const * dev_ptr,
                                                    size_t       count,
                                                    int          dst_device,

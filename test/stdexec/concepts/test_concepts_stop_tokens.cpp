@@ -36,7 +36,7 @@ namespace
     std::is_same_v<::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
                    ::STDEXEC::never_stop_token::callback_type<on_stop_request>>);
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 2019'11L
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
   static_assert(::STDEXEC::stoppable_token<std::stop_token>);
   static_assert(std::is_same_v<::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
                                std::stop_callback<on_stop_request>>);

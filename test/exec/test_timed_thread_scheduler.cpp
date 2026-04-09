@@ -23,7 +23,7 @@
 #include <exec/when_any.hpp>
 
 // Avoid a TSAN bug in GCC 11 and earlier
-#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 12'00 && defined(__SANITIZE_THREAD__)
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1200 && defined(__SANITIZE_THREAD__)
 // nothing
 #else
 namespace

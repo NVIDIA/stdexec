@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#if __cpp_concepts < 2019'07L
+#if __cpp_concepts < 201907L
 #  error This library requires support for C++20 concepts
 #endif
 

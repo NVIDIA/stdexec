@@ -17,7 +17,7 @@
 
 // IWYU pragma: always_keep
 
-#if __cplusplus < 2020'02L
+#if __cplusplus < 202002L
 #  if defined(_MSC_VER) && !defined(__clang__)
 #    error This library requires the use of C++20. Use /Zc:__cplusplus to enable __cplusplus conformance.
 #  else
@@ -114,7 +114,7 @@
 
 // Not all supported compilers have implemented the resolution of CWG 2428 yet.
 // https://cplusplus.github.io/CWG/issues/2428.html
-#if (STDEXEC_CLANG_VERSION >= 19'00) || (STDEXEC_GCC_VERSION >= 13'00)                             \
+#if (STDEXEC_CLANG_VERSION >= 1900) || (STDEXEC_GCC_VERSION >= 1300)                               \
   || (STDEXEC_MSVC_VERSION >= 19'44)
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG) [[deprecated(_MSG)]]
 #else
@@ -232,7 +232,7 @@ STDEXEC_NAMESPACE_STD_END
 // clang-format on
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if __cpp_impl_coroutine >= 2019'02L && __cpp_lib_coroutine >= 2019'02L
+#if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
 #  include <coroutine>  // IWYU pragma: keep
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
@@ -292,7 +292,7 @@ namespace STDEXEC::__std
 
 #if STDEXEC_NVHPC()
 // NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
-#  if STDEXEC_NVHPC_VERSION < 23'05
+#  if STDEXEC_NVHPC_VERSION < 2305
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
@@ -300,14 +300,14 @@ namespace STDEXEC::__std
 #elif STDEXEC_CLANG_CL()
 // clang-cl does not support [[no_unique_address]]: https://reviews.llvm.org/D110485
 // TODO: Find the version that started supporting [[msvc::no_unique_address]]
-#  if STDEXEC_CLANG_VERSION < 18'01
+#  if STDEXEC_CLANG_VERSION < 1801
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
 #  endif
 #elif STDEXEC_MSVC()
 // MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
-#  if STDEXEC_MSVC_VERSION < 19'43
+#  if STDEXEC_MSVC_VERSION < 1943
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
 #  else
 #    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
@@ -438,7 +438,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_IS_TRIVIALLY_COPYABLE(...) std::is_trivially_copyable_v<__VA_ARGS__>
 #endif
 
-#if STDEXEC_HAS_BUILTIN(__is_base_of) || (STDEXEC_MSVC_VERSION >= 19'14)
+#if STDEXEC_HAS_BUILTIN(__is_base_of) || (STDEXEC_MSVC_VERSION >= 1914)
 #  define STDEXEC_IS_BASE_OF(...) __is_base_of(__VA_ARGS__)
 #else
 #  define STDEXEC_IS_BASE_OF(...) std::is_base_of_v<__VA_ARGS__>
@@ -535,7 +535,7 @@ namespace STDEXEC
   inline constexpr bool __same_as_v<_Ap, _Ap> = true;
 }  // namespace STDEXEC
 
-#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 2022'02L
+#if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
 #  define STDEXEC_UNREACHABLE() std::unreachable()
 #elif STDEXEC_HAS_BUILTIN(__builtin_unreachable)
 #  define STDEXEC_UNREACHABLE() __builtin_unreachable()
@@ -605,31 +605,31 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 1
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2016'03L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201603L
 #  define STDEXEC_NO_STDCPP_EXECUTION_POLICY() 0
 #else
 #  define STDEXEC_NO_STDCPP_EXECUTION_POLICY() 1
 #endif
 
-#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 2019'02L
+#if defined(__cpp_lib_execution) && __cpp_lib_execution >= 201902L
 #  define STDEXEC_NO_STDCPP_UNSEQUENCED_EXECUTION_POLICY() 0
 #else
 #  define STDEXEC_NO_STDCPP_UNSEQUENCED_EXECUTION_POLICY() 1
 #endif
 
-#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 2016'03L
+#if defined(__cpp_lib_parallel_algorithm) && __cpp_lib_parallel_algorithm >= 201603L
 #  define STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS() 0
 #else
 #  define STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS() 1
 #endif
 
-#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 2021'10L)
+#if defined(__cpp_explicit_this_parameter) && (__cpp_explicit_this_parameter >= 202110L)
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 0
 #else
 #  define STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER() 1
 #endif
 
-#if defined(__cpp_rtti) && __cpp_rtti >= 1997'11L
+#if defined(__cpp_rtti) && __cpp_rtti >= 199711L
 #  define STDEXEC_NO_STDCPP_RTTI() 0
 #else
 #  define STDEXEC_NO_STDCPP_RTTI() 1
@@ -643,13 +643,13 @@ namespace STDEXEC
 #endif
 
 // Perhaps the stdlib lacks support for concepts
-#if __has_include(<concepts>) && __cpp_lib_concepts >= 2020'02L
+#if __has_include(<concepts>) && __cpp_lib_concepts >= 202002L
 #  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 0
 #else
 #  define STDEXEC_NO_STDCPP_CONCEPTS_HEADER() 1
 #endif
 
-#if defined(__cpp_if_consteval) && __cpp_if_consteval >= 2021'06L
+#if defined(__cpp_if_consteval) && __cpp_if_consteval >= 202106L
 #  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
 #else
@@ -679,7 +679,7 @@ namespace STDEXEC
   }
 
 // GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
-#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 13'00)
+#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1300)
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
 #else
 #  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
@@ -701,7 +701,7 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
-#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 2024'11L
+#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
 #  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 // https://wg21.link/p3068
 #    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
@@ -872,7 +872,7 @@ namespace STDEXEC
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_MSVC()
-#  if _MSC_VER >= 19'35
+#  if _MSC_VER >= 1935
 #    define STDEXEC_PRETTY_FUNCTION() __builtin_FUNCSIG()
 #  else
 #    define STDEXEC_PRETTY_FUNCTION() __FUNCSIG__
@@ -881,7 +881,7 @@ namespace STDEXEC
 #  define STDEXEC_PRETTY_FUNCTION() __PRETTY_FUNCTION__
 #endif
 
-#if __cplusplus >= 2022'11L
+#if __cplusplus >= 202211L
 #  define STDEXEC_CONSTEXPR_CXX23        constexpr
 #  define STDEXEC_CONSTEXPR_LOCAL static constexpr
 #else

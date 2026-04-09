@@ -232,7 +232,7 @@ TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, 
 {
   static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
 
-#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
+#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403)
   test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #endif
 

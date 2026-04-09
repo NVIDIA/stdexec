@@ -143,7 +143,7 @@ namespace experimental::execution
 
     struct schedule_after_t : __schedule_after_base_t
     {
-#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00
+#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1600
       using __schedule_after_base_t::operator();
 #else
       // clang prior to 16 is not able to find the correct overload in the
@@ -222,7 +222,7 @@ namespace experimental::execution
 
     struct schedule_at_t : __schedule_at_base_t
     {
-#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00
+#if !STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1600
       using __schedule_at_base_t::operator();
 #else
       // clang prior to 16 is not able to find the correct overload in the

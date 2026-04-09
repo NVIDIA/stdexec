@@ -120,7 +120,7 @@ namespace STDEXEC
     }
   };
 
-#  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 19'39
+#  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION <= 1939
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates the return
