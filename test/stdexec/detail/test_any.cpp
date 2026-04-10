@@ -236,8 +236,6 @@ namespace
 
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403)
     test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
-#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
-    test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #endif
 
     any::__any<ibaz> m(foobar<TestType>{});
