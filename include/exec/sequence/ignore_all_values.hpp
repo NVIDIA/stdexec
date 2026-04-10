@@ -73,7 +73,7 @@ namespace experimental::execution
       }
 
       template <class _Receiver>
-#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION <= 25'09
+#if STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION <= 2509
       // Avoid a codegen issue in NVHPC 25.9 and earlier
       [[gnu::noinline]]
 #endif

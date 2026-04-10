@@ -95,7 +95,7 @@ namespace
   }
 
 // TODO: GCC-11 generates warnings (treated as errors) for the following test
-#if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 12'00)
+#if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 1200)
   TEST_CASE("waiting on work that spawns more work", "[async_scope][empty]")
   {
     impulse_scheduler sch;
@@ -146,7 +146,7 @@ namespace
 #endif
 
 // TODO: GCC-11 generates warnings (treated as errors) for the following test
-#if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 12'00)
+#if !STDEXEC_GCC() || (STDEXEC_GCC_VERSION >= 1200)
   TEST_CASE("async_scope is empty after adding work when in cancelled state",
             "[async_scope][empty]")
   {

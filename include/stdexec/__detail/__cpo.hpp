@@ -84,7 +84,7 @@
 #define STDEXEC_MEMFN_FRIEND(_TAG)                                                                 \
   using STDEXEC_PP_CAT(_TAG, _t) = STDEXEC_PP_CAT(STDEXEC::_TAG, _t)
 
-#if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 14'00)
+#if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1400)
 #  define STDEXEC_CUSTOM                                                                           \
     _Pragma("GCC warning \"STDEXEC_CUSTOM is deprecated.\"") STDEXEC_MEMFN_DECL_IMPL
 #  define STDEXEC_MEMFN_DECL                                                                       \
@@ -94,7 +94,7 @@
 #  define STDEXEC_MEMFN_DECL STDEXEC_MEMFN_DECL_IMPL
 #endif
 
-#if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION >= 14'00
+#if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION >= 1400
 #  pragma clang deprecated(STDEXEC_CUSTOM)
 #  pragma clang deprecated(STDEXEC_MEMFN_DECL)
 #endif

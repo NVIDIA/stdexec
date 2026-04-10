@@ -51,7 +51,7 @@ namespace
     {
       if (bytes_ != nullptr)
         *bytes_ -= n * sizeof(T);
-#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 2013'09L
+#if defined(__cpp_sized_deallocation) && __cpp_sized_deallocation >= 201309L
       ::operator delete(p, n * sizeof(T));
 #else
       ::operator delete(p);

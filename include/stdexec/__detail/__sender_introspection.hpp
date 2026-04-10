@@ -90,7 +90,7 @@ namespace STDEXEC
       static constexpr type value = _Apply;
     };
 
-#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 2024'11L
+#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 202411L
 
     // Structured bindings can introduce a pack, so the implementation of
     // __structured_apply is simple.

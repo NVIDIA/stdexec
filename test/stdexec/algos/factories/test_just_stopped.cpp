@@ -22,7 +22,7 @@
 namespace
 {
 
-#if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 12'00
+#if !STDEXEC_GCC() || STDEXEC_GCC_VERSION >= 1200
   constexpr int test_constexpr() noexcept
   {
     struct receiver

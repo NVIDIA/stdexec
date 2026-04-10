@@ -54,7 +54,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
-#if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 21'00)
+#if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 2100)
   namespace __tt
   {
     template <class>
