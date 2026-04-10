@@ -118,6 +118,7 @@ namespace experimental::execution
       constexpr explicit __default_task_context_impl(_ParentPromise& __parent) noexcept
       {
         if constexpr (__with_affinity)
+        {
           if constexpr (__parent_promise_has_start_scheduler<_ParentPromise>())
           {
             // get_start_scheduler is used here to get the parent's "current" scheduler,
@@ -125,6 +126,7 @@ namespace experimental::execution
             auto __parent_sched = get_start_scheduler(get_env(__parent));
             this->__scheduler_  = __parent_sched;
           }
+        }
       }
 
       template <scheduler _Scheduler>
