@@ -115,7 +115,7 @@
 // Not all supported compilers have implemented the resolution of CWG 2428 yet.
 // https://cplusplus.github.io/CWG/issues/2428.html
 #if (STDEXEC_CLANG_VERSION >= 1900) || (STDEXEC_GCC_VERSION >= 1300)                               \
-  || (STDEXEC_MSVC_VERSION >= 19'44)
+  || (STDEXEC_MSVC_VERSION >= 1944)
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG) [[deprecated(_MSG)]]
 #else
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG)
@@ -577,7 +577,7 @@ namespace STDEXEC
 // available. Pack indexing is disabled for clang < 20 because of:
 // https://github.com/llvm/llvm-project/issues/116105
 #if defined(__cpp_pack_indexing) && !STDEXEC_NVCC()                                                \
-  && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 20'00)
+  && !(STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 2000)
 #  define STDEXEC_NO_STDCPP_PACK_INDEXING() 0
 #else  // ^^^ has pack indexing ^^^ / vvv no pack indexing vvv
 #  define STDEXEC_NO_STDCPP_PACK_INDEXING() 1
@@ -591,8 +591,8 @@ namespace STDEXEC
 
 // Before clang-16, clang did not like libstdc++'s ranges implementation
 #if __has_include(<ranges>) && \
-  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 2019'11L) && \
-  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 16'00 || defined(_LIBCPP_VERSION))
+  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
+  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1600 || defined(_LIBCPP_VERSION))
 #  define STDEXEC_NO_STDCPP_RANGES() 0
 #else
 #  define STDEXEC_NO_STDCPP_RANGES() 1
