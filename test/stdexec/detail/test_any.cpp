@@ -234,13 +234,10 @@ namespace
   {
     static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
 
-<<<<<<< nix-digit-separators-in-pp-directives
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403)
-  test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
-=======
+    test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
     test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
->>>>>>> main
 #endif
 
     any::__any<ibaz> m(foobar<TestType>{});
