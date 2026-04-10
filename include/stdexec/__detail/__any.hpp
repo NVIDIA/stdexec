@@ -916,14 +916,14 @@ namespace STDEXEC::__any
           return std::swap(__this_ptr, __that_ptr);
 
         if (__this_ptr == nullptr)
-          return __value(__other).__move_to(__root_ptr_, __buff_);
+          return __other.__move_to_empty(*this);
 
         if (__that_ptr == nullptr)
-          return __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          return (*this).__move_to_empty(__other);
 
-        auto temp = std::move(*this);
-        __value(__other).__move_to(__root_ptr_, __buff_);
-        __value(temp).__move_to(__other.__root_ptr_, __other.__buff_);
+        auto __temp = std::move(*this);
+        __other.__move_to_empty(*this);
+        __temp.__move_to_empty(__other);
       }
     }
 
@@ -1047,6 +1047,31 @@ namespace STDEXEC::__any
       else
       {
         return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
+      }
+    }
+
+    constexpr void __move_to_empty(__value_proxy_root &__other) noexcept
+      requires __movable
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        __other.__root_ptr_ = std::exchange(__root_ptr_, nullptr);
+      }
+      else
+      {
+        STDEXEC_ASSERT(!__empty(*this));
+        STDEXEC_ASSERT(__empty(__other));
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        if (__this_ptr.__is_tagged())
+        {
+          __that_ptr = std::exchange(__this_ptr, nullptr);
+        }
+        else
+        {
+          __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          __reset(*this);
+        }
       }
     }
 

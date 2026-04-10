@@ -24,302 +24,325 @@
 
 namespace any = STDEXEC::__any;
 
-template <class _Value>
-struct test_allocator
+namespace
 {
-  using value_type = _Value;
-
-  constexpr explicit test_allocator(std::size_t &bytes)
-    : bytes_(bytes)
-  {}
-
-  template <class _Other>
-  constexpr test_allocator(test_allocator<_Other> const &other) noexcept
-    : bytes_(other.bytes_)
-  {}
-
-  [[nodiscard]]
-  constexpr _Value *allocate(std::size_t n)
+  template <class _Value>
+  struct test_allocator
   {
-    bytes_ += n * sizeof(_Value);
-    return static_cast<_Value *>(::operator new(n * sizeof(_Value)));
-  }
+    using value_type = _Value;
 
-  constexpr void deallocate(_Value *ptr, std::size_t n) noexcept
-  {
-    bytes_ -= n * sizeof(_Value);
-    ::operator delete(ptr);
-  }
+    constexpr explicit test_allocator(std::size_t &bytes)
+      : bytes_(bytes)
+    {}
 
-  bool operator==(test_allocator const &other) const noexcept
-  {
-    return &bytes_ == &other.bytes_;
-  }
+    template <class _Other>
+    constexpr test_allocator(test_allocator<_Other> const &other) noexcept
+      : bytes_(other.bytes_)
+    {}
 
- private:
-  template <class>
-  friend struct test_allocator;
-
-  std::size_t &bytes_;
-};
-
-static_assert(STDEXEC::__simple_allocator<test_allocator<int>>);
-
-template <class Base>
-struct ifoo : any::__interface_base<ifoo, Base>
-{
-  using ifoo::__interface_base::__interface_base;
-
-  constexpr virtual void foo()
-  {
-    any::__value(*this).foo();
-  }
-
-  constexpr virtual void cfoo() const
-  {
-    any::__value(*this).cfoo();
-  }
-};
-
-template <class Base>
-struct ibar : any::__interface_base<ibar, Base, any::__extends<ifoo, any::__icopyable>>
-{
-  using ibar::__interface_base::__interface_base;
-
-  constexpr virtual void bar()
-  {
-    any::__value(*this).bar();
-  }
-};
-
-template <class Base>
-struct ibaz : any::__interface_base<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)>
-{
-  using ibaz::__interface_base::__interface_base;
-
-  constexpr ~ibaz() = default;
-
-  constexpr virtual void baz()
-  {
-    any::__value(*this).baz();
-  }
-};
-
-using Small = char;
-using Big   = char[sizeof(any::__any<ibaz>) + 1];
-
-template <class State>
-struct foobar
-{
-  constexpr void foo()
-  {
-    STDEXEC_IF_NOT_CONSTEVAL
+    [[nodiscard]]
+    constexpr _Value *allocate(std::size_t n)
     {
-      std::printf("foo override, __value = %d\n", __value);
+      bytes_ += n * sizeof(_Value);
+      return static_cast<_Value *>(::operator new(n * sizeof(_Value)));
     }
-  }
 
-  constexpr void cfoo() const
-  {
-    STDEXEC_IF_NOT_CONSTEVAL
+    constexpr void deallocate(_Value *ptr, std::size_t n) noexcept
     {
-      std::printf("cfoo override, __value = %d\n", __value);
+      bytes_ -= n * sizeof(_Value);
+      ::operator delete(ptr);
     }
-  }
 
-  constexpr void bar()
-  {
-    STDEXEC_IF_NOT_CONSTEVAL
+    bool operator==(test_allocator const &other) const noexcept
     {
-      std::printf("bar override, __value = %d\n", __value);
+      return &bytes_ == &other.bytes_;
     }
-  }
 
-  constexpr void baz()
+   private:
+    template <class>
+    friend struct test_allocator;
+
+    std::size_t &bytes_;
+  };
+
+  static_assert(STDEXEC::__simple_allocator<test_allocator<int>>);
+
+  template <class Base>
+  struct ifoo : any::__interface_base<ifoo, Base>
   {
-    STDEXEC_IF_NOT_CONSTEVAL
+    using ifoo::__interface_base::__interface_base;
+
+    constexpr virtual void foo()
     {
-      std::printf("baz override, __value = %d\n", __value);
+      any::__value(*this).foo();
     }
-  }
 
-  bool operator==(foobar const &other) const noexcept = default;
+    constexpr virtual void cfoo() const
+    {
+      any::__value(*this).cfoo();
+    }
+  };
 
-  int   __value = 42;
-  State state;
-};
-
-static_assert(
-  std::derived_from<any::__iabstract<any::__icopyable>, any::__iabstract<any::__imovable>>);
-static_assert(std::derived_from<any::__iabstract<ibar>, any::__iabstract<ifoo>>);
-static_assert(!std::derived_from<any::__iabstract<ibar>, any::__iabstract<any::__icopyable>>);
-static_assert(any::__extension_of<any::__iabstract<ibar>, any::__icopyable>);
-
-// Test the Diamond of Death inheritance problem:
-template <class Base>
-struct IFoo : any::__interface_base<IFoo, Base, any::__extends<any::__icopyable>>
-{
-  using IFoo::__interface_base::__interface_base;
-
-  constexpr virtual void foo()
+  template <class Base>
+  struct ibar : any::__interface_base<ibar, Base, any::__extends<ifoo, any::__icopyable>>
   {
-    any::__value(*this).foo();
-  }
-};
+    using ibar::__interface_base::__interface_base;
 
-template <class Base>
-struct IBar : any::__interface_base<IBar, Base, any::__extends<any::__icopyable>>
-{
-  using IBar::__interface_base::__interface_base;
+    constexpr virtual void bar()
+    {
+      any::__value(*this).bar();
+    }
+  };
 
-  constexpr virtual void bar()
+  template <class Base>
+  struct ibaz : any::__interface_base<ibaz, Base, any::__extends<ibar>, 5 * sizeof(void *)>
   {
-    any::__value(*this).bar();
-  }
-};
+    using ibaz::__interface_base::__interface_base;
 
-template <class Base>
-struct IBaz : any::__interface_base<IBaz, Base, any::__extends<IFoo, IBar>>  // inherits twice
-                                                                             // from __icopyable
-{
-  using IBaz::__interface_base::__interface_base;
+    constexpr ~ibaz() = default;
 
-  constexpr virtual void baz()
+    constexpr virtual void baz()
+    {
+      any::__value(*this).baz();
+    }
+  };
+
+  using Small = char;
+  using Big   = char[sizeof(any::__any<ibaz>) + 1];
+
+  template <class State>
+  struct foobar
   {
-    any::__value(*this).baz();
+    constexpr void foo()
+    {
+      STDEXEC_IF_NOT_CONSTEVAL
+      {
+        std::printf("foo override, __value = %d\n", __value);
+      }
+    }
+
+    constexpr void cfoo() const
+    {
+      STDEXEC_IF_NOT_CONSTEVAL
+      {
+        std::printf("cfoo override, __value = %d\n", __value);
+      }
+    }
+
+    constexpr void bar()
+    {
+      STDEXEC_IF_NOT_CONSTEVAL
+      {
+        std::printf("bar override, __value = %d\n", __value);
+      }
+    }
+
+    constexpr void baz()
+    {
+      STDEXEC_IF_NOT_CONSTEVAL
+      {
+        std::printf("baz override, __value = %d\n", __value);
+      }
+    }
+
+    bool operator==(foobar const &other) const noexcept = default;
+
+    int   __value = 42;
+    State state;
+  };
+
+  static_assert(
+    std::derived_from<any::__iabstract<any::__icopyable>, any::__iabstract<any::__imovable>>);
+  static_assert(std::derived_from<any::__iabstract<ibar>, any::__iabstract<ifoo>>);
+  static_assert(!std::derived_from<any::__iabstract<ibar>, any::__iabstract<any::__icopyable>>);
+  static_assert(any::__extension_of<any::__iabstract<ibar>, any::__icopyable>);
+
+  // Test the Diamond of Death inheritance problem:
+  template <class Base>
+  struct IFoo : any::__interface_base<IFoo, Base, any::__extends<any::__icopyable>>
+  {
+    using IFoo::__interface_base::__interface_base;
+
+    constexpr virtual void foo()
+    {
+      any::__value(*this).foo();
+    }
+  };
+
+  template <class Base>
+  struct IBar : any::__interface_base<IBar, Base, any::__extends<any::__icopyable>>
+  {
+    using IBar::__interface_base::__interface_base;
+
+    constexpr virtual void bar()
+    {
+      any::__value(*this).bar();
+    }
+  };
+
+  template <class Base>
+  struct IBaz : any::__interface_base<IBaz, Base, any::__extends<IFoo, IBar>>  // inherits twice
+                                                                               // from __icopyable
+  {
+    using IBaz::__interface_base::__interface_base;
+
+    constexpr virtual void baz()
+    {
+      any::__value(*this).baz();
+    }
+  };
+
+  static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<IFoo>>);
+  static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<any::__icopyable>>);
+
+  template <class T>
+  void test_deadly_diamond_of_death()
+  {
+    any::__any<IBaz> m(foobar<T>{});
+
+    m.foo();
+    m.bar();
+    m.baz();
   }
-};
 
-static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<IFoo>>);
-static_assert(std::derived_from<any::__iabstract<IBaz>, any::__iabstract<any::__icopyable>>);
+  static_assert(any::__iabstract<ifoo>::__buffer_size < any::__iabstract<ibaz>::__buffer_size);
 
-template <class T>
-void test_deadly_diamond_of_death()
-{
-  any::__any<IBaz> m(foobar<T>{});
+  // test constant evaluation works
+  template <class T>
+  consteval void test_consteval()
+  {
+    any::__any<ibaz> m(foobar<T>{});
+    [[maybe_unused]]
+    auto x = any::__any_static_cast<foobar<T>>(m);
+    x      = any::__any_cast<foobar<T>>(m);
+    m.foo();
+    [[maybe_unused]]
+    auto n = m;
+    [[maybe_unused]]
+    auto p = any::__caddressof(m);
 
-  m.foo();
-  m.bar();
-  m.baz();
-}
+    any::__any<any::__iequality_comparable> a = 42;
+    if (a != a)
+      throw "error";
 
-static_assert(any::__iabstract<ifoo>::__buffer_size < any::__iabstract<ibaz>::__buffer_size);
+    any::__any_ptr<ibaz> pifoo = any::__addressof(m);
+    [[maybe_unused]]
+    auto y = any::__any_cast<foobar<T>>(pifoo);
+  }
 
-// test constant evaluation works
-template <class T>
-consteval void test_consteval()
-{
-  any::__any<ibaz> m(foobar<T>{});
-  [[maybe_unused]]
-  auto x = any::__any_static_cast<foobar<T>>(m);
-  x      = any::__any_cast<foobar<T>>(m);
-  m.foo();
-  [[maybe_unused]]
-  auto n = m;
-  [[maybe_unused]]
-  auto p = any::__caddressof(m);
+  TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>)
+  {
+    static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
 
-  any::__any<any::__iequality_comparable> a = 42;
-  if (a != a)
-    throw "error";
-
-  any::__any_ptr<ibaz> pifoo = any::__addressof(m);
-  [[maybe_unused]]
-  auto y = any::__any_cast<foobar<T>>(pifoo);
-}
-
-TEMPLATE_TEST_CASE("basic usage of any::__any", "[detail][any]", foobar<Small>, foobar<Big>)
-{
-  static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
-
+<<<<<<< nix-digit-separators-in-pp-directives
 #if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403)
   test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
+=======
+#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 14'03)
+    test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
+>>>>>>> main
 #endif
 
-  any::__any<ibaz> m(foobar<TestType>{});
-  REQUIRE(m.__in_situ_() == (sizeof(TestType) <= any::__iabstract<ibaz>::__buffer_size));
-  REQUIRE(any::__type(m) == STDEXEC::__mtypeid<foobar<TestType>>);
+    any::__any<ibaz> m(foobar<TestType>{});
+    REQUIRE(m.__in_situ_() == (sizeof(TestType) <= any::__iabstract<ibaz>::__buffer_size));
+    REQUIRE(any::__type(m) == STDEXEC::__mtypeid<foobar<TestType>>);
 
-  m.foo();
-  m.bar();
-  m.baz();
+    m.foo();
+    m.bar();
+    m.baz();
 
-  any::__any<ifoo> n = std::move(m);
-  n.foo();
+    any::__any<ifoo> n = std::move(m);
+    n.foo();
 
-  m = foobar<TestType>{};
+    m = foobar<TestType>{};
 
-  auto ptr = any::__caddressof(m);
-  STDEXEC::__unconst(*ptr).foo();
-  // ptr->foo(); // does not compile because it is a const-correctness violation
-  ptr->cfoo();
-  auto const ptr2 = any::__addressof(m);
-  ptr2->foo();
-  any::__any_ptr<ifoo> pifoo = ptr2;
-  m                          = *ptr;  // assignment from type-erased references is supported
+    auto ptr = any::__caddressof(m);
+    STDEXEC::__unconst(*ptr).foo();
+    // ptr->foo(); // does not compile because it is a const-correctness violation
+    ptr->cfoo();
+    auto const ptr2 = any::__addressof(m);
+    ptr2->foo();
+    any::__any_ptr<ifoo> pifoo = ptr2;
+    m                          = *ptr;  // assignment from type-erased references is supported
 
-  any::__any<any::__isemiregular> a = 42;
-  any::__any<any::__isemiregular> b = 42;
-  any::__any<any::__isemiregular> c = 43;
-  REQUIRE(a == b);
-  REQUIRE(!(a != b));
-  REQUIRE(!(a == c));
-  REQUIRE(a != c);
+    any::__any<any::__isemiregular> a = 42;
+    any::__any<any::__isemiregular> b = 42;
+    any::__any<any::__isemiregular> c = 43;
+    REQUIRE(a == b);
+    REQUIRE(!(a != b));
+    REQUIRE(!(a == c));
+    REQUIRE(a != c);
 
-  any::__reset(b);
-  REQUIRE(!(a == b));
-  REQUIRE(a != b);
-  REQUIRE(!(b == a));
-  REQUIRE(b != a);
+    any::__reset(b);
+    REQUIRE(!(a == b));
+    REQUIRE(a != b);
+    REQUIRE(!(b == a));
+    REQUIRE(b != a);
 
-  any::__any<any::__iequality_comparable> x = a;
-  REQUIRE(x == x);
-  REQUIRE(x == a);
-  REQUIRE(a == x);
-  a = 43;
-  REQUIRE(x != a);
-  REQUIRE(a != x);
+    any::__any<any::__iequality_comparable> x = a;
+    REQUIRE(x == x);
+    REQUIRE(x == a);
+    REQUIRE(a == x);
+    a = 43;
+    REQUIRE(x != a);
+    REQUIRE(a != x);
 
-  any::__reset(a);
-  REQUIRE(b == a);
+    any::__reset(a);
+    REQUIRE(b == a);
 
-  auto z = any::__caddressof(c);
-  [[maybe_unused]]
-  int const *p = &any::__any_cast<int>(c);
-  [[maybe_unused]]
-  int const *q = any::__any_cast<int>(z);
+    auto z = any::__caddressof(c);
+    [[maybe_unused]]
+    int const *p = &any::__any_cast<int>(c);
+    [[maybe_unused]]
+    int const *q = any::__any_cast<int>(z);
 
-  REQUIRE(any::__any_cast<int>(z) == &any::__any_cast<int>(c));
+    REQUIRE(any::__any_cast<int>(z) == &any::__any_cast<int>(c));
 
-  auto y = any::__addressof(c);
-  int *r = any::__any_cast<int>(std::move(y));
-  REQUIRE(r == &any::__any_cast<int>(c));
+    auto y = any::__addressof(c);
+    int *r = any::__any_cast<int>(std::move(y));
+    REQUIRE(r == &any::__any_cast<int>(c));
 
-  z = y;  // assign non-const ptr to const ptr
-  z = &*y;
+    z = y;  // assign non-const ptr to const ptr
+    z = &*y;
 
-  REQUIRE(y == z);
+    REQUIRE(y == z);
 
-  // test allocator support
-  SECTION("allocator support")
-  {
-    std::size_t bytes = 0;
+    // test allocator support
+    SECTION("allocator support")
     {
-      [[maybe_unused]]
-      any::__any<any::__icopyable> a1(TestType{}, test_allocator<TestType>{bytes});
-      if (is_small)
+      std::size_t bytes = 0;
       {
-        REQUIRE(bytes == 0);  // small objects should not use the allocator
+        [[maybe_unused]]
+        any::__any<any::__icopyable> a1(TestType{}, test_allocator<TestType>{bytes});
+        if (is_small)
+        {
+          REQUIRE(bytes == 0);  // small objects should not use the allocator
+        }
+        else
+        {
+          REQUIRE(bytes > 0);
+        }
       }
-      else
-      {
-        REQUIRE(bytes > 0);
-      }
+      REQUIRE(bytes == 0);  // memory should be deallocated
     }
-    REQUIRE(bytes == 0);  // memory should be deallocated
+
+    test_deadly_diamond_of_death<TestType>();
   }
 
-  test_deadly_diamond_of_death<TestType>();
-}
+  TEST_CASE("can swap an in-situ any with an on-heap any", "[detail][any]")
+  {
+    any::__any<ibaz> a(foobar<Small>{});
+    any::__any<ibaz> b(foobar<Big>{});
+
+    REQUIRE(a.__in_situ_());
+    REQUIRE_FALSE(b.__in_situ_());
+
+    using std::swap;
+    swap(a, b);
+
+    REQUIRE_FALSE(a.__in_situ_());
+    REQUIRE(b.__in_situ_());
+  }
+}  // namespace
 
 // NOLINTEND(modernize-use-override)

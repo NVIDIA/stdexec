@@ -16,7 +16,7 @@
 
 // This sudoku code was originally taken from TBB examples/thread_group/sudoku.
 // The TBB example leaks: https://github.com/oneapi-src/oneTBB/issues/568
-// The code was modified by Kirk Schoop to use libunifex instead of TBB and to
+// The code was modified by Kirk Shoop to use libunifex instead of TBB and to
 // remove the leaks.  The code was later modified by David Olsen to use C++26
 // std::execution instead of libunifex, to be a test in the NVHPC test suite
 // for stdexec.
