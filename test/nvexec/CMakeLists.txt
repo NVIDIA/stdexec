@@ -70,3 +70,4 @@ icm_add_build_failure_test(
     LIBRARIES stdexec nvexec
     FOLDER test
 )
+set_target_properties(when_all_fail PROPERTIES LINKER_LANGUAGE CUDA)
