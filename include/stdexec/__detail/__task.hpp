@@ -394,10 +394,13 @@ namespace STDEXEC
 
     struct __opstate_base : private allocator_type
     {
-      template <class _Env>
-      constexpr explicit __opstate_base(task&& __task, _Env const & __env) noexcept
+      template <class _Env, class _OwnEnv>
+      constexpr explicit __opstate_base(task&&          __task,
+                                        _Env const &    __env,
+                                        _OwnEnv const & __own_env) noexcept
         : allocator_type(__mk_alloc(__env))
         , __sch_(__mk_sched(__env, __get_allocator()))
+        , __env_(__mk_env(__env, __own_env))
         , __task_(static_cast<task&&>(__task))
       {
         auto& __promise = __task_.__coro_.promise();
@@ -434,19 +437,26 @@ namespace STDEXEC
       }
 
       start_scheduler_type __sch_;
+      _TaskEnv             __env_;
       task                 __task_;
       __error_variant_t    __errors_{__no_init};
     };
 
+    template <class _Env>
+    struct __own_env_box
+    {
+      __own_env_t<_Env> __own_env_;
+    };
+
     template <class _ParentPromise>
     struct STDEXEC_ATTRIBUTE(empty_bases) __awaiter final
-      : __opstate_base
+      : __own_env_box<env_of_t<_ParentPromise>>
+      , __opstate_base
       , __stop_callback_box_t<env_of_t<_ParentPromise>>
     {
       constexpr explicit __awaiter(task&& __task, _ParentPromise& __parent) noexcept
-        : __opstate_base(static_cast<task&&>(__task), STDEXEC::get_env(__parent))
-        , __own_env_(__mk_own_env(STDEXEC::get_env(__parent)))
-        , __env_(__mk_env(STDEXEC::get_env(__parent), __own_env_))
+        : __awaiter::__own_env_box{__mk_own_env(STDEXEC::get_env(__parent))}
+        , __opstate_base(static_cast<task&&>(__task), STDEXEC::get_env(__parent), this->__own_env_)
         , __parent_(__parent)
       {}
 
@@ -501,10 +511,8 @@ namespace STDEXEC
         return __parent_.unhandled_stopped();
       }
 
-      __own_env_t<_ParentPromise> __own_env_;
-      _TaskEnv                    __env_;
-      __std::coroutine_handle<>   __continuation_;
-      _ParentPromise&             __parent_;
+      __std::coroutine_handle<> __continuation_;
+      _ParentPromise&           __parent_;
     };
 
     struct __attrs
@@ -542,21 +550,23 @@ namespace STDEXEC
 
   ////////////////////////////////////////////////////////////////////////////////////////
   // task<T,E>::__opstate
-  template <class _Ty, class _Env>
+  template <class _Ty, class _TaskEnv>
   template <class _Rcvr>
-  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate final
+  struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _TaskEnv>::__opstate final
     : __rcvr_box<_Rcvr>  // holds the receiver so that we can pass __opstate_base a reference to it
-    , __opstate_base
+    , __own_env_box<env_of_t<_Rcvr>>
     , __stop_callback_box_t<env_of_t<_Rcvr>>
+    , __opstate_base
   {
    public:
     using operation_state_concept = operation_state_tag;
 
     explicit __opstate(task&& __task, _Rcvr&& __rcvr) noexcept
       : __rcvr_box<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)}
-      , __opstate_base(static_cast<task&&>(__task), STDEXEC::get_env(this->__rcvr_))
-      , __own_env_(__mk_own_env(STDEXEC::get_env(this->__rcvr_)))
-      , __env_(__mk_env(STDEXEC::get_env(this->__rcvr_), __own_env_))
+      , __opstate::__own_env_box{__mk_own_env(STDEXEC::get_env(this->__rcvr_))}
+      , __opstate_base(static_cast<task&&>(__task),
+                       STDEXEC::get_env(this->__rcvr_),
+                       this->__own_env_)
     {}
 
     void start() & noexcept
@@ -634,15 +644,12 @@ namespace STDEXEC
       STDEXEC::set_stopped(static_cast<_Rcvr&&>(this->__rcvr_));
       return std::noop_coroutine();
     }
-
-    __own_env_t<_Rcvr> __own_env_;
-    _Env               __env_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
   // task<T,E>::promise_type
-  template <class _Ty, class _Env>
-  struct task<_Ty, _Env>::__promise : __task::__promise_base<_Ty>
+  template <class _Ty, class _TaskEnv>
+  struct task<_Ty, _TaskEnv>::__promise : __task::__promise_base<_Ty>
   {
     __promise() noexcept = default;
 
@@ -812,6 +819,16 @@ namespace STDEXEC
         {
           return __var::__get<1>(__promise_->__stop_);
         }
+      }
+
+      template <__forwarding_query _Query, class... _Args>
+        requires __queryable_with<_TaskEnv, _Query, _Args...>
+      [[nodiscard]]
+      constexpr auto query(_Query __tag, _Args&&... __args) const
+        noexcept(__nothrow_queryable_with<_TaskEnv, _Query, _Args...>)
+          -> __query_result_t<_TaskEnv, _Query, _Args...>
+      {
+        return __query<_Query>()(__promise_->__state_->__env_, static_cast<_Args&&>(__args)...);
       }
 
       __promise const * __promise_;

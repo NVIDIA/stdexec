@@ -79,7 +79,7 @@ namespace
     CHECK(i == 42);
   }
 
-  auto test_task_int_ref(int& i) -> ex::task<int&>
+  auto test_task_int_ref(int &i) -> ex::task<int &>
   {
     CHECK(get_id() == 0);
     co_await ex::schedule(ex::inline_scheduler{});
@@ -90,7 +90,7 @@ namespace
   TEST_CASE("test task<int&>", "[types][task]")
   {
     int  value = 42;
-    auto t     = test_task_int_ref(value) | ex::then([](int& i) { return std::ref(i); });
+    auto t     = test_task_int_ref(value) | ex::then([](int &i) { return std::ref(i); });
     auto [i]   = ex::sync_wait(std::move(t)).value();
     STATIC_REQUIRE(std::same_as<decltype(i), std::reference_wrapper<int>>);
     CHECK(&i.get() == &value);
@@ -207,7 +207,7 @@ namespace
 
     template <ex::__not_same_as<environment_type> _Env>
       requires ex::__callable<ex::get_scheduler_t, _Env const &>
-    explicit test_env2(_Env const & other) noexcept
+    explicit test_env2(_Env const &other) noexcept
       : sch(ex::get_scheduler(other))
     {}
 
@@ -276,6 +276,48 @@ namespace
     auto t   = test_task_awaits_inline_sndr_without_stack_overflow();
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
+  }
+
+  struct my_env
+  {
+    template <class>
+    using env_type = my_env;
+
+    template <class Env>
+      requires std::invocable<ex::get_delegation_scheduler_t, Env const &>
+            && std::same_as<std::invoke_result_t<ex::get_delegation_scheduler_t, Env const &>,
+                            ex::run_loop::scheduler>
+    explicit my_env(Env const &env) noexcept
+      : delegation_scheduler_(ex::get_delegation_scheduler(env))
+    {}
+
+    [[nodiscard]]
+    auto query(ex::get_delegation_scheduler_t) const noexcept
+    {
+      return delegation_scheduler_;
+    }
+
+    ex::run_loop::scheduler delegation_scheduler_;
+  };
+
+  auto
+  test_task_provides_additional_queries_with_a_custom_env(ex::run_loop::scheduler sync_wt_dlgtn_sch)
+    -> ex::task<int, my_env>
+  {
+    // Fetch sync_wait's run_loop scheduler from the environment.
+    ex::run_loop::scheduler tsk_dlgtn_sch = co_await ex::read_env(ex::get_delegation_scheduler);
+    CHECK(tsk_dlgtn_sch == sync_wt_dlgtn_sch);
+    co_return 13;
+  }
+
+  TEST_CASE("task can provide additional queries through a custom environment", "[types][task]")
+  {
+    ex::sync_wait(ex::let_value(ex::read_env(ex::get_delegation_scheduler),
+                                [](ex::run_loop::scheduler sync_wt_dlgtn_sch)
+                                {
+                                  return test_task_provides_additional_queries_with_a_custom_env(
+                                    sync_wt_dlgtn_sch);
+                                }));
   }
 
   // FUTURE TODO: add support so that `co_await sndr` can return a reference.
