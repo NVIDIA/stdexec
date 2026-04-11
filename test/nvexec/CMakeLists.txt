@@ -62,3 +62,11 @@ target_link_libraries(test.nvexec
 # endif()
 
 catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)
+
+icm_add_build_failure_test(
+    NAME when_all_fail
+    TARGET when_all_fail
+    SOURCES PARSE when_all_fail.cu
+    LIBRARIES stdexec nvexec
+    FOLDER test
+)
