@@ -472,12 +472,10 @@ namespace STDEXEC
         return __parent_.unhandled_stopped();
       }
 
-      // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __own_env_t<_ParentPromise> __own_env_;
-      // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _Env                      __env_;
-      __std::coroutine_handle<> __continuation_;
-      _ParentPromise&           __parent_;
+      _Env                        __env_;
+      __std::coroutine_handle<>   __continuation_;
+      _ParentPromise&             __parent_;
     };
 
     struct __attrs
@@ -507,22 +505,29 @@ namespace STDEXEC
     __std::coroutine_handle<promise_type> __coro_;
   };
 
+  template <class _Rcvr>
+  struct __rcvr_box
+  {
+    _Rcvr __rcvr_;
+  };
+
   ////////////////////////////////////////////////////////////////////////////////////////
   // task<T,E>::__opstate
   template <class _Ty, class _Env>
   template <class _Rcvr>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _Env>::__opstate final
-    : __opstate_base
+    : __rcvr_box<_Rcvr>  // holds the receiver so that we can pass __opstate_base a reference to it
+    , __opstate_base
     , __stop_callback_box_t<_Rcvr>
   {
    public:
     using operation_state_concept = operation_state_tag;
 
     explicit __opstate(task&& __task, _Rcvr&& __rcvr) noexcept
-      : __opstate_base(static_cast<task&&>(__task), __rcvr)
-      , __own_env_(__mk_own_env(__rcvr))
-      , __env_(__mk_env(__rcvr, __own_env_))
-      , __rcvr_(static_cast<_Rcvr&&>(__rcvr))
+      : __rcvr_box<_Rcvr>{static_cast<_Rcvr&&>(__rcvr)}
+      , __opstate_base(static_cast<task&&>(__task), this->__rcvr_)
+      , __own_env_(__mk_own_env(this->__rcvr_))
+      , __env_(__mk_env(this->__rcvr_, __own_env_))
     {}
 
     void start() & noexcept
@@ -530,7 +535,7 @@ namespace STDEXEC
       STDEXEC_TRY
       {
         // Register a stop callback if needed
-        this->__register_callback(__rcvr_, this->__handle().promise().__stop_);
+        this->__register_callback(this->__rcvr_, this->__handle().promise().__stop_);
         this->__handle().resume();
       }
       STDEXEC_CATCH_ALL
@@ -542,7 +547,7 @@ namespace STDEXEC
         else if constexpr (__mapply<__mcontains<set_error_t(std::exception_ptr)>,
                                     error_types>::value)
         {
-          STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
+          STDEXEC::set_error(static_cast<_Rcvr&&>(this->__rcvr_), std::current_exception());
         }
         else
         {
@@ -565,19 +570,19 @@ namespace STDEXEC
           // Move the errors out of the promise before destroying the coroutine.
           auto __errors = std::move(this->__errors_);
           __sink(static_cast<task&&>(this->__task_));
-          __visit(STDEXEC::set_error, std::move(__errors), static_cast<_Rcvr&&>(__rcvr_));
+          __visit(STDEXEC::set_error, std::move(__errors), static_cast<_Rcvr&&>(this->__rcvr_));
         }
         else if constexpr (__same_as<_Ty, void>)
         {
           __sink(static_cast<task&&>(this->__task_));
-          STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_));
+          STDEXEC::set_value(static_cast<_Rcvr&&>(this->__rcvr_));
         }
         else
         {
           // Move the result out of the promise before destroying the coroutine.
           _Ty __result = static_cast<_Ty&&>(*this->__handle().promise().__result_);
           __sink(static_cast<task&&>(this->__task_));
-          STDEXEC::set_value(static_cast<_Rcvr&&>(__rcvr_), static_cast<_Ty&&>(__result));
+          STDEXEC::set_value(static_cast<_Rcvr&&>(this->__rcvr_), static_cast<_Ty&&>(__result));
         }
       }
       STDEXEC_CATCH_ALL
@@ -586,7 +591,7 @@ namespace STDEXEC
                       || !__nothrow_move_constructible<__error_variant_t>)
         {
           __sink(static_cast<task&&>(this->__task_));
-          STDEXEC::set_error(static_cast<_Rcvr&&>(__rcvr_), std::current_exception());
+          STDEXEC::set_error(static_cast<_Rcvr&&>(this->__rcvr_), std::current_exception());
         }
       }
       return std::noop_coroutine();
@@ -596,15 +601,12 @@ namespace STDEXEC
     {
       this->__reset_callback();
       __sink(static_cast<task&&>(this->__task_));
-      STDEXEC::set_stopped(static_cast<_Rcvr&&>(__rcvr_));
+      STDEXEC::set_stopped(static_cast<_Rcvr&&>(this->__rcvr_));
       return std::noop_coroutine();
     }
 
-    // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
     __own_env_t<_Rcvr> __own_env_;
-    // STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-    _Env  __env_;
-    _Rcvr __rcvr_;
+    _Env               __env_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
