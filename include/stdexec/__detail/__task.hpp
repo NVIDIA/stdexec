@@ -324,9 +324,8 @@ namespace STDEXEC
       }
       else
       {
-        static_assert(
-          __task::__has_compatible_allocator<_Env, allocator_type>,
-          "Unable to construct the task's allocator. No suitable constructor found.");
+        static_assert(__task::__has_compatible_allocator<_Env, allocator_type>,
+                      "Unable to construct the task's allocator. No suitable constructor found.");
         __std::unreachable();
       }
     }
