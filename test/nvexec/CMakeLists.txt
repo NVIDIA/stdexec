@@ -66,8 +66,9 @@ catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)
 icm_add_build_failure_test(
     NAME when_all_fail
     TARGET when_all_fail
-    SOURCES PARSE when_all_fail.cu
+    SOURCES PARSE when_all_fail.cpp
     LIBRARIES stdexec nvexec
     FOLDER test
 )
+set_target_properties(when_all_fail PROPERTIES LANGUAGE CUDA)
 set_target_properties(when_all_fail PROPERTIES LINKER_LANGUAGE CUDA)
