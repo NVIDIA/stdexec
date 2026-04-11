@@ -56,7 +56,7 @@ namespace
       -> ex::completion_signatures_of_t<ex::__child_of<std::remove_cvref_t<Sender>>, Env...>
     {
       return {};
-    };
+    }
   };
 
   struct counting_resource : std::pmr::memory_resource
