@@ -246,22 +246,10 @@ namespace STDEXEC
     template <class _Alloc, scope_token _Token, sender _Sender, class _Env>
     struct __spawn_future_state final
       : __spawn_future_state_base<
-          // the spec says completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>> but
-          // that breaks with an inscrutable error for _Sender = starts_on(sched, just() | then(...))
-          //
-          // I managed to fix the break by adding an extra _Env to the query, like so:
-          //
-          //     completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, _Env>
-          //
-          // but that's hard to justify--the future-spawned-sender will be connected to a receiver
-          // with an empty environment after all. This code works; I don't understand why the extra
-          // env type changes the result, but this is a reasonably small change we can make to the
-          // spec to bring things into alignment.
+          // NOT TO SPEC: see https://github.com/cplusplus/sender-receiver/issues/356
           completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>>
     {
-      using __sigs_t =
-        // this is "wrong" in the same way as the above
-        completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>;
+      using __sigs_t = completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>;
 
       using __receiver_t = __spawn_future_receiver<__sigs_t>;
 
@@ -664,8 +652,8 @@ namespace STDEXEC
       template <sender _Sender, scope_token _Token, class _Env>
       auto __impl(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const
       {
-        using __alloc_t = decltype(__spawn_common::__choose_alloc(__env, get_env(__sndr)));
-        using __senv_t  = decltype(__spawn_common::__choose_senv(__env, get_env(__sndr)));
+        using __alloc_t = decltype(__spawn_common::__choose_alloc(__env, STDEXEC::get_env(__sndr)));
+        using __senv_t  = decltype(__spawn_common::__choose_senv(__env, STDEXEC::get_env(__sndr)));
 
         using __spawn_future_state_t =
           __spawn_future_state<__alloc_t, std::remove_cvref_t<_Token>, _Sender, __senv_t>;
@@ -673,7 +661,7 @@ namespace STDEXEC
         using __traits =
           std::allocator_traits<__alloc_t>::template rebind_traits<__spawn_future_state_t>;
         typename __traits::allocator_type __alloc(
-          __spawn_common::__choose_alloc(__env, get_env(__sndr)));
+          __spawn_common::__choose_alloc(__env, STDEXEC::get_env(__sndr)));
 
         auto* __op = __traits::allocate(__alloc, 1);
 
@@ -684,7 +672,7 @@ namespace STDEXEC
                             __alloc,
                             static_cast<_Sender&&>(__sndr),
                             static_cast<_Token&&>(__tkn),
-                            __spawn_common::__choose_senv(__env, get_env(__sndr)));
+                            __spawn_common::__choose_senv(__env, STDEXEC::get_env(__sndr)));
 
         __guard.__dismiss();
 

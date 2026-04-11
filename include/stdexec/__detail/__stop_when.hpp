@@ -68,11 +68,10 @@ namespace STDEXEC
     struct __stop_when_impl : __sexpr_defaults
     {
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __completion_signatures_of_t<__child_of<_Sender>, _Env...>
+      static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Sender, __stop_when_t>);
-        return {};
+        return get_completion_signatures<__child_of<_Sender>, _Env...>();
       };
 
       static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
