@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <iostream>
+#include <numeric>
 
 #include "nvexec/detail/memory.cuh"
 #include "tracer_resource.h"
