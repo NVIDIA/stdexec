@@ -784,11 +784,33 @@ namespace STDEXEC
         return false;
       }
 
+#if defined(_MSC_VER)
+      // MSVC does not implement symmetric transfer as a tail call.  When
+      // await_suspend returns coroutine_handle<>, MSVC writes the returned
+      // handle back into the suspended coroutine's frame before transferring
+      // to it.  If __completed() frees the coroutine frame (via __sink, or
+      // indirectly through the set_value/set_error/set_stopped completion
+      // chain), that write hits freed memory -- a use-after-free.
+      //
+      // Using the void-returning overload avoids the write entirely; we
+      // resume the continuation explicitly instead.
+      //
+      // Trade-off: this loses symmetric transfer on MSVC, so deeply nested
+      // co_await chains of task<T> within task<T> will grow the call stack
+      // O(N) instead of O(1).  MSVC already did not implement a true tail
+      // call here, so the practical regression is limited to stack depth.
+      static void await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
+      {
+        auto __h = __coro.promise().__state_->__completed();
+        __h.resume();
+      }
+#else
       static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept  //
         -> __std::coroutine_handle<>
       {
         return __coro.promise().__state_->__completed();
       }
+#endif
 
       static constexpr void await_resume() noexcept {}
     };

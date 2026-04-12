@@ -22,9 +22,11 @@
 #  include <stdexec/execution.hpp>
 
 #  include <exec/single_thread_context.hpp>
+#  include <exec/static_thread_pool.hpp>
 #  include <stdexec/__detail/__task.hpp>
 
 #  include <atomic>
+#  include <vector>
 
 #  include <catch2/catch.hpp>
 
@@ -271,12 +273,18 @@ namespace
     co_return result;
   }
 
+  // The MSVC workaround for the symmetric-transfer use-after-free (see
+  // __completed_awaiter) uses void-returning await_suspend, which loses
+  // O(1) stack depth for co_await task chains.  This test requires
+  // symmetric transfer and cannot pass on MSVC with the workaround.
+#if !defined(_MSC_VER)
   TEST_CASE("test task can await a just_int sender without stack overflow", "[types][task]")
   {
     auto t   = test_task_awaits_inline_sndr_without_stack_overflow();
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
+#endif
 
   struct my_env
   {
@@ -335,6 +343,112 @@ namespace
   // }
 
   // TODO: add tests for stop token support in task
+
+  // ---------------------------------------------------------------------------
+  // Regression tests for MSVC symmetric transfer use-after-free.
+  //
+  // When task<T>'s __completed_awaiter::await_suspend returns
+  // coroutine_handle<>, MSVC writes the returned handle back into the
+  // suspended coroutine's frame *after* await_suspend returns.  If
+  // __completed() freed the coroutine frame (via __sink(task)), that write
+  // hits freed memory.  With concurrent task completions across threads the
+  // freed memory can be reused before the stale write, corrupting live data.
+  //
+  // The fix is to use the void-returning await_suspend overload on MSVC and
+  // call resume() explicitly.  These tests exercise the completion path with
+  // enough concurrency to reliably crash without the fix.
+  // ---------------------------------------------------------------------------
+
+  auto leaf_task(int value) -> ex::task<int>
+  {
+    co_return value;
+  }
+
+  template <ex::scheduler Sched>
+  auto spawn_concurrent_tasks(Sched sched) -> ex::task<int>
+  {
+    ex::simple_counting_scope scope;
+    constexpr int             n = 100;
+
+    using future_t = decltype(ex::spawn_future(
+      ex::starts_on(sched, leaf_task(0)), scope.get_token()));
+    std::vector<future_t> futures;
+    futures.reserve(n);
+
+    for (int i = 0; i < n; ++i)
+    {
+      futures.push_back(
+        ex::spawn_future(ex::starts_on(sched, leaf_task(i)), scope.get_token()));
+    }
+
+    int sum = 0;
+    for (auto& future : futures)
+    {
+      sum += co_await std::move(future);
+    }
+
+    co_await scope.join();
+    co_return sum;
+  }
+
+  TEST_CASE(
+    "concurrent task completions do not use-after-free (MSVC symmetric transfer)",
+    "[types][task]")
+  {
+    exec::static_thread_pool pool(4);
+    auto                     sched    = pool.get_scheduler();
+    constexpr int            expected = 99 * 100 / 2;
+
+    for (int iter = 0; iter < 50; ++iter)
+    {
+      auto [result] = ex::sync_wait(spawn_concurrent_tasks(sched)).value();
+      REQUIRE(result == expected);
+    }
+  }
+
+  template <ex::scheduler Sched>
+  auto tree_task(Sched sched, int depth) -> ex::task<int>
+  {
+    if (depth == 0)
+    {
+      co_return 1;
+    }
+
+    ex::simple_counting_scope scope;
+    constexpr int             width = 10;
+
+    using future_t = decltype(ex::spawn_future(
+      ex::starts_on(sched, tree_task(sched, 0)), scope.get_token()));
+    std::vector<future_t> futures;
+    futures.reserve(width);
+
+    for (int i = 0; i < width; ++i)
+    {
+      futures.push_back(ex::spawn_future(
+        ex::starts_on(sched, tree_task(sched, depth - 1)), scope.get_token()));
+    }
+
+    int sum = 0;
+    for (auto& future : futures)
+    {
+      sum += co_await std::move(future);
+    }
+
+    co_await scope.join();
+    co_return sum;
+  }
+
+  TEST_CASE(
+    "recursive task tree does not use-after-free (MSVC symmetric transfer)",
+    "[types][task]")
+  {
+    exec::static_thread_pool pool(4);
+    auto                     sched = pool.get_scheduler();
+
+    // depth=3, width=10 -> 10^3 = 1000 leaf task completions
+    auto [result] = ex::sync_wait(tree_task(sched, 3)).value();
+    REQUIRE(result == 1000);
+  }
 
 }  // anonymous namespace
 
