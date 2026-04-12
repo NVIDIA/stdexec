@@ -18,6 +18,10 @@
 #include "exec/libdispatch_queue.hpp"
 #include "stdexec/execution.hpp"
 
+#include <numeric>
+#include <utility>
+#include <vector>
+
 namespace
 {
   TEST_CASE("libdispatch queue should be able to process tasks")

@@ -92,7 +92,10 @@ set_target_properties(common_test_settings PROPERTIES
     MSVC_DEBUG_INFORMATION_FORMAT Embedded
     )
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
-target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
+target_compile_definitions(common_test_settings INTERFACE
+    STDEXEC_NAMESPACE=std::execution
+    $<$<PLATFORM_ID:Windows>:NOMINMAX>
+    )
 target_compile_options(common_test_settings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
