@@ -142,7 +142,7 @@ namespace nv::execution
 {
   // The stream_domain is how the stream scheduler customizes the sender algorithms. All of the
   // algorithms use the current scheduler's domain to transform senders before starting them.
-  struct stream_domain : STDEXEC::default_domain
+  struct stream_domain
   {
     template <::exec::sender_for Sender, class Tag = STDEXEC::tag_of_t<Sender>, class Env>
       requires _strm::has_stream_transform<Sender, Env>

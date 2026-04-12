@@ -96,16 +96,10 @@ namespace STDEXEC
   //! @c default_domain when passed the same arguments. The concept is modeled when either
   //! of the following is
   template <class _Domain, class _OpTag, class _Sndr, class _Env>
-  concept __default_domain_like = __same_as<
-    __decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>,
-    __decay_t<__mcall<
-      __mtry_catch_q<
-        __detail::__transform_sender_result_t,
-        __mconst<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>>,
-      _Domain,
-      _OpTag,
-      _Sndr,
-      _Env>>>;
+  concept __default_domain_like =
+    (!__detail::__has_transform_sender<_Domain, _OpTag, _Sndr, _Env>)
+    || __same_as<__detail::__transform_sender_result_t<_Domain, _OpTag, _Sndr, _Env>,
+                 __detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>;
 
   template <class... _Domains>
   struct indeterminate_domain
@@ -127,15 +121,14 @@ namespace STDEXEC
     //! same arguments. If this check fails, the @c static_assert triggers with: "ERROR:
     //! indeterminate domains: cannot pick an algorithm customization"
     template <class _OpTag, class _Sndr, class _Env>
-      requires __detail::__has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
     [[nodiscard]]
     static constexpr auto transform_sender(_OpTag, _Sndr &&__sndr, _Env const &__env)
-      noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>)
-        -> __detail::__transform_sender_result_t<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>
+      noexcept(__detail::__has_nothrow_transform_sender<default_domain, _OpTag, _Sndr, _Env>)
+        -> __detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>
     {
       static_assert((__default_domain_like<_Domains, _OpTag, _Sndr, _Env> && ...),
                     "ERROR: indeterminate domains: cannot pick an algorithm customization");
-      return tag_of_t<_Sndr>{}.transform_sender(_OpTag{}, static_cast<_Sndr &&>(__sndr), __env);
+      return default_domain().transform_sender(_OpTag{}, static_cast<_Sndr &&>(__sndr), __env);
     }
   };
 
