@@ -171,10 +171,6 @@ namespace STDEXEC
   template <class... _Domains>
   using __common_domain_t = __t<__detail::__common_domain<_Domains...>>;
 
-  template <class... _Domains>
-  concept __has_common_domain =
-    __not_same_as<indeterminate_domain<>, __common_domain_t<_Domains...>>;
-
   template <class _Domain>
   using __ensure_valid_domain_t = __unless_one_of_t<_Domain, indeterminate_domain<>>;
 
