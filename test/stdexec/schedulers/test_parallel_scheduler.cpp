@@ -24,7 +24,7 @@
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <test_common/receivers.hpp>
 
 namespace ex  = STDEXEC;

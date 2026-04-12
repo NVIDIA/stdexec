@@ -21,7 +21,7 @@
 #if !STDEXEC_NO_STDCPP_RANGES()
 
 #  include <array>
-#  include <catch2/catch.hpp>
+#  include <catch2/catch_all.hpp>
 #  include <numeric>
 
 namespace

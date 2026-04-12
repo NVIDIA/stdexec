@@ -21,7 +21,7 @@
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <chrono>  // IWYU pragma: keep for std::chrono_literals
 

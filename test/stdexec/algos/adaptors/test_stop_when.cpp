@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <stdexec/__detail/__stop_when.hpp>
 #include <stdexec/execution.hpp>
 #include <stdexec/stop_token.hpp>

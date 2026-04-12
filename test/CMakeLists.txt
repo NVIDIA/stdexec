@@ -92,7 +92,10 @@ set_target_properties(common_test_settings PROPERTIES
     MSVC_DEBUG_INFORMATION_FORMAT Embedded
     )
 target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
-target_compile_definitions(common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution)
+target_compile_definitions(common_test_settings INTERFACE
+    STDEXEC_NAMESPACE=std::execution
+    $<$<PLATFORM_ID:Windows>:NOMINMAX>
+    )
 target_compile_options(common_test_settings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
@@ -108,7 +111,7 @@ target_link_libraries(test.stdexec
     PUBLIC
     STDEXEC::stdexec
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 
@@ -122,7 +125,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
       STDEXEC::stdexec
       STDEXEC::parallel_scheduler
       stdexec_executable_flags
-      Catch2::Catch2
+      Catch2::Catch2WithMain
       PRIVATE
       common_test_settings)
 endif()
@@ -134,12 +137,12 @@ target_link_libraries(test.scratch
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 
 # Discover the Catch2 test built by the application
-include(${Catch2_SOURCE_DIR}/contrib/Catch.cmake)
+include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
 
 # For testing that builds fail as expected
 include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)

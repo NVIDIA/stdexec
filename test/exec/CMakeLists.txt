@@ -73,7 +73,7 @@ target_link_libraries(test.exec
     PUBLIC
     STDEXEC::stdexec
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 

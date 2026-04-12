@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <exec/any_sender_of.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
@@ -453,7 +453,7 @@ namespace
     ex::start(op);
   }
 
-  TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all")
+  TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all]")
   {
     auto snd = ex::when_all(completes_if(false), completes_if(false));
 
@@ -463,7 +463,7 @@ namespace
     ex::sync_wait(scope.on_empty());
   }
 
-  TEST_CASE("regression test for #1988", "[adaptors][when_all")
+  TEST_CASE("regression test for #1988", "[adaptors][when_all]")
   {
     // just test that this compiles:
     using any_sender = exec::any_sender<

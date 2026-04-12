@@ -21,7 +21,7 @@
 #include <nvexec/stream_context.cuh>
 #include <stdexec/execution.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 namespace ex = STDEXEC;
 

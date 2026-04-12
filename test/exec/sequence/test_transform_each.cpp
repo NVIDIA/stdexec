@@ -21,7 +21,7 @@
 #include "exec/sequence/empty_sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
 #include "exec/sequence/iterate.hpp"
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>

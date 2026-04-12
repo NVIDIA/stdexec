@@ -17,7 +17,7 @@
 
 #include <exec/timed_thread_scheduler.hpp>
 
-#include "catch2/catch.hpp"
+#include "catch2/catch_all.hpp"
 
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>

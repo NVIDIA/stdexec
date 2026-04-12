@@ -18,7 +18,7 @@
 
 #include <cstdio>
 
-#include <catch2/catch.hpp>  // IWYU pragma: keep
+#include <catch2/catch_all.hpp>  // IWYU pragma: keep
 
 // NOLINTBEGIN(modernize-use-override)
 

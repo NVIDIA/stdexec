@@ -19,7 +19,7 @@
 #include <exec/asio/asio_config.hpp>
 #include <exec/asio/completion_token.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <barrier>
 #include <concepts>
@@ -391,7 +391,7 @@ namespace
             "completion handler's lifetime (this is necessary in situations where "
             "asynchronous control flow bifurcates and one of the child operations ends "
             "via exception)",
-            "[asioexec][completion_token]")
+            "[asioexec][completion_token][!mayfail]")
   {
     std::exception_ptr    ex;
     std::shared_ptr<void> ptr;

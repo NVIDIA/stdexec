@@ -25,7 +25,7 @@
 
 #  include <test_common/schedulers.hpp>
 
-#  include <catch2/catch.hpp>
+#  include <catch2/catch_all.hpp>
 
 #  include <string>
 

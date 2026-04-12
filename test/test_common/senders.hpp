@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <exec/completion_behavior.hpp>
 #include <memory>
 #include <stdexec/execution.hpp>

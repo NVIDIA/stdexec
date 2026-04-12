@@ -15,7 +15,7 @@
  */
 
 #include "stdexec/__detail/__sender_introspection.hpp"
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <exec/env.hpp>
 #include <exec/sender_for.hpp>
 #include <stdexec/execution.hpp>

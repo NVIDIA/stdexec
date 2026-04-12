@@ -28,7 +28,7 @@
 #  include "exec/start_detached.hpp"
 #  include "exec/when_any.hpp"
 
-#  include "catch2/catch.hpp"
+#  include "catch2/catch_all.hpp"
 
 using namespace STDEXEC;
 using namespace exec;

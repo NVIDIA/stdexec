@@ -14,7 +14,7 @@
 
 #include "exec/static_thread_pool.hpp"
 #include "stdexec/__detail/__meta.hpp"
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>

@@ -19,7 +19,7 @@
 
 #include "../test_common/retry.hpp"
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <memory>
 
 namespace ex = STDEXEC;

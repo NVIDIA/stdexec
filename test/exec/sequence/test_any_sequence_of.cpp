@@ -18,7 +18,7 @@
 #include "exec/sequence/any_sequence_of.hpp"
 #include "exec/sequence/empty_sequence.hpp"
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-function")
