@@ -151,10 +151,23 @@ namespace STDEXEC
 
     // Common domain for a set of domains
     template <class... _Domains>
-    struct __common_domain
+    constexpr auto __common_domain_fn() noexcept
     {
-      using __t = __minvoke<__mtry_catch_q<std::common_type_t, __qq<__make_domain_t>>, _Domains...>;
-    };
+      if constexpr (__minvocable_q<std::common_type_t, _Domains...>)
+      {
+        return std::common_type_t<_Domains...>{};
+      }
+      // NOT TO SPEC: If each domain in Domains... is convertible to default_domain, then
+      // the common domain is default_domain.
+      else if constexpr (__minvocable_q<std::common_type_t, default_domain, _Domains...>)
+      {
+        return std::common_type_t<default_domain, _Domains...>{};
+      }
+      else
+      {
+        return __make_domain_t<_Domains...>{};
+      }
+    }
   }  // namespace __detail
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +182,7 @@ namespace STDEXEC
   using __completion_domain_of_t = __completion_domain_t<_Tag, env_of_t<_Sender>, _Env const &...>;
 
   template <class... _Domains>
-  using __common_domain_t = __t<__detail::__common_domain<_Domains...>>;
+  using __common_domain_t = decltype(__detail::__common_domain_fn<_Domains...>());
 
   template <class... _Domains>
   concept __has_common_domain =
