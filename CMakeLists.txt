@@ -129,6 +129,7 @@ if (STDEXEC_BUILD_TESTS)
       BUILD_EXPORT_SET stdexec-exports
       CPM_ARGS
         URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip
+        OPTIONS "CMAKE_CXX_STANDARD 20"
     )
 endif()
 
