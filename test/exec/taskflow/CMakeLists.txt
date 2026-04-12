@@ -25,7 +25,7 @@ target_link_libraries(test.taskflowexec
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 

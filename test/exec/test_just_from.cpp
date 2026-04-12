@@ -18,7 +18,7 @@
 #include "test_common/tuple.hpp"
 #include "test_common/type_helpers.hpp"
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 TEST_CASE("just_from is a sender", "[just_from]")
 {

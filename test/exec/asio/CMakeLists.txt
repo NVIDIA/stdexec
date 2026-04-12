@@ -27,7 +27,7 @@ target_link_libraries(test.asioexec
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 

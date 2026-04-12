@@ -19,7 +19,7 @@
 #include <exec/asio/asio_config.hpp>
 #include <exec/asio/completion_token.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <barrier>
 #include <concepts>

@@ -31,7 +31,7 @@
 #include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__upon_error.hpp"
 #include <atomic>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <mutex>
 #include <test_common/receivers.hpp>

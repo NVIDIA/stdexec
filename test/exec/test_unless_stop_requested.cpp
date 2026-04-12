@@ -20,7 +20,7 @@
 
 #include <exception>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <stdexec/execution.hpp>
 
 #include "../test_common/receivers.hpp"

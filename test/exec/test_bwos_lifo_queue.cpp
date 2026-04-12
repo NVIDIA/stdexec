@@ -22,7 +22,7 @@
 #include <thread>
 #include <vector>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 TEST_CASE("exec::bwos::lifo_queue - ", "[bwos]")
 {

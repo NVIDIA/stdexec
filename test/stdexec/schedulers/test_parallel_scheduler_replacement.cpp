@@ -18,7 +18,7 @@
 #include <stdexec/__detail/__parallel_scheduler_default_impl.hpp>
 #include <stdexec/execution.hpp>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 #  error This should be testing replacement of the system context with weak linking.

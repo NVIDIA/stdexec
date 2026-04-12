@@ -121,11 +121,11 @@ rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
 
 if (STDEXEC_BUILD_TESTS)
     # Add Catch2
-    set(Catch2_VERSION 2.13.6)
+    set(Catch2_VERSION 3.14.0)
     # Always download it, don't attempt to do `find_package(Catch2)` first
     set(CPM_DOWNLOAD_Catch2 TRUE)
     rapids_cpm_find(Catch2 ${Catch2_VERSION}
-      GLOBAL_TARGETS Catch2::Catch2
+      GLOBAL_TARGETS Catch2::Catch2WithMain
       BUILD_EXPORT_SET stdexec-exports
       CPM_ARGS
         URL https://github.com/catchorg/Catch2/archive/refs/tags/v${Catch2_VERSION}.zip

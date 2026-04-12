@@ -25,7 +25,7 @@ target_link_libraries(test.tbbexec
     STDEXEC::stdexec
     $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
     stdexec_executable_flags
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     PRIVATE
     common_test_settings)
 

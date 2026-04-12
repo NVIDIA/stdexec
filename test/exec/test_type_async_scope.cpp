@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <exec/async_scope.hpp>
 #include <exec/static_thread_pool.hpp>

@@ -1,5 +1,5 @@
 #include "exec/static_thread_pool.hpp"
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <exec/async_scope.hpp>
 
 namespace ex = STDEXEC;
