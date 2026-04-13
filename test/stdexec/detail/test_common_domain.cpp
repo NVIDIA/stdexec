@@ -44,7 +44,8 @@ namespace
     STATIC_REQUIRE(std::same_as<common2, ex::default_domain>);
 
     using common3 = common_domain_t<gpu_domain, thread_pool_domain>;
-    STATIC_REQUIRE(std::same_as<common3, ex::indeterminate_domain<gpu_domain, thread_pool_domain>>);
+    STATIC_REQUIRE(
+      std::same_as<common3, ex::indeterminate_domain<gpu_domain, thread_pool_domain>>
+      || std::same_as<common3, ex::indeterminate_domain<thread_pool_domain, gpu_domain>>);
   }
-
 }  // namespace

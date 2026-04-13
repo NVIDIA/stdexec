@@ -100,6 +100,7 @@ target_compile_definitions(common_test_settings INTERFACE
 target_compile_options(common_test_settings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
     )
 target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
