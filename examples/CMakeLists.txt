@@ -29,7 +29,9 @@ function(def_example example)
     split(${example} target source)
     add_executable(${target} ${source})
     target_compile_options(${target} PUBLIC
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized>) # warnings being emitted from stdlib headers, why?
+        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
+    )
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags

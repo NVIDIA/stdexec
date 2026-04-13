@@ -70,6 +70,7 @@ set(stdexec_test_sources
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/detail/test_any.cpp
+    stdexec/detail/test_common_domain.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_demangle.cpp
     stdexec/detail/test_utility.cpp
@@ -99,6 +100,7 @@ target_compile_definitions(common_test_settings INTERFACE
 target_compile_options(common_test_settings INTERFACE
     $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
     )
 target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 # target_compile_definitions(
