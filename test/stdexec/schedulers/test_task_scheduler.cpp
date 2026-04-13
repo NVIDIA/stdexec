@@ -52,15 +52,34 @@ namespace
   static bool g_called = false;
 
   template <class Sndr>
-  struct opaque_sender : private Sndr
+  struct opaque_sender
   {
     using sender_concept = ex::sender_tag;
+
     explicit opaque_sender(Sndr sndr)
-      : Sndr{std::move(sndr)}
+      : sndr_{std::move(sndr)}
     {}
-    using Sndr::connect;
-    using Sndr::get_completion_signatures;
-    using Sndr::get_env;
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) &&
+    {
+      return std::move(sndr_).connect(std::move(rcvr));
+    }
+
+    template <std::same_as<opaque_sender>, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      return Sndr::template get_completion_signatures<Sndr, Env...>();
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> ex::env_of_t<Sndr>
+    {
+      return ex::get_env(sndr_);
+    }
+
+   private:
+    Sndr sndr_;
   };
 
   struct test_domain
