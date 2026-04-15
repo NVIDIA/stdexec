@@ -22,7 +22,7 @@
 
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
-    "WARNING: The header <asioexec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead.")
+    "WARNING: The header <asioexec/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead.")
 #else
 #  warning                                                                                         \
     "The header <asioexec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead."
