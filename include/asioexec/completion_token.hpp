@@ -22,10 +22,10 @@
 
 #if STDEXEC_MSVC()
 #  pragma message(                                                                                 \
-    "WARNING: The header <exec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead.")
+    "WARNING: The header <asioexec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead.")
 #else
 #  warning                                                                                         \
-    "The header <exec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead."
+    "The header <asioexec/asio/completion_token.hpp> is deprecated. Please include <exec/asio/completion_token.hpp> instead."
 #endif
 
 #include "../exec/asio/completion_token.hpp"  // IWYU pragma: export
