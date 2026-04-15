@@ -125,7 +125,7 @@ namespace experimental::execution
 
       template <class _Adaptor, class _Sequence>
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence)
-        noexcept(__nothrow_decay_copyable<_Adaptor> && __nothrow_decay_copyable<_Sequence>)
+        noexcept(__nothrow_decay_copyable<_Adaptor, _Sequence>)
           -> __operation<_Sequence, _Receiver, _Adaptor>
       {
         return {static_cast<_Sequence&&>(__sequence),
@@ -138,8 +138,8 @@ namespace experimental::execution
     {
       template <sender _Sequence, __sender_adaptor_closure _Adaptor>
       auto operator()(_Sequence&& __sndr, _Adaptor&& __adaptor) const
-        noexcept(__nothrow_decay_copyable<_Sequence> && __nothrow_decay_copyable<_Adaptor>)
-          -> __well_formed_sequence_sender auto
+        noexcept(__nothrow_decay_copyable<_Sequence, _Adaptor>)  //
+        -> __well_formed_sequence_sender auto
       {
         return make_sequence_expr<transform_each_t>(static_cast<_Adaptor&&>(__adaptor),
                                                     static_cast<_Sequence&&>(__sndr));

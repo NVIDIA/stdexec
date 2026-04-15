@@ -230,10 +230,10 @@ namespace experimental::execution
   template <class... _Senders>
   struct item_types
   {
-    template <class _Fn, class _Continuation = STDEXEC::__qq<STDEXEC::__mlist>>
-    static constexpr auto __transform(_Fn __fn, _Continuation __continuation = {})
+    template <class _Transform, class _Reduce>
+    static constexpr auto __transform([[maybe_unused]] _Transform _transform, _Reduce _reduce)
     {
-      return __continuation(__fn.template operator()<_Senders>()...);
+      return _reduce(_transform.template operator()<_Senders>()...);
     }
   };
 
@@ -252,42 +252,6 @@ namespace experimental::execution
 
   struct _FAILED_TO_COMPUTE_SEQUENCE_ITEM_TYPES_
   {};
-
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
-
-  template <class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __invalid_item_types(_Values...)
-  {
-    return STDEXEC::__mexception<_What...>();
-  }
-
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
-
-  // C++26, https://wg21.link/p3068
-  template <class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto __invalid_item_types([[maybe_unused]] _Values... __values) -> item_types<>
-  {
-    if constexpr (sizeof...(_Values) == 1)
-    {
-      throw __sequence_type_check_failure<_Values..., _What, _More...>(__values...);
-    }
-    else
-    {
-      throw __sequence_type_check_failure<STDEXEC::__tuple<_Values...>, _What, _More...>(
-        STDEXEC::__tuple{__values...});
-    }
-  }
-
-#endif  // ^^^ constexpr exceptions ^^^
-
-  template <class... _What>
-  [[nodiscard]]
-  consteval auto __invalid_item_types(STDEXEC::__mexception<_What...>)
-  {
-    return exec::__invalid_item_types<_What...>();
-  }
 
   template <class _Sequence, class... _Env>
   using __unrecognized_sequence_error_t =
@@ -376,11 +340,12 @@ namespace experimental::execution
       }
       else if constexpr (sizeof...(_Env) == 0)
       {
-        return STDEXEC::__dependent_sender<_Sequence>();
+        return STDEXEC::__dependent_sender_r<item_types<>, _Sequence>();
       }
       else
       {
-        return __unrecognized_sequence_error_t<_Sequence, _Env...>();
+        return STDEXEC::__throw_compile_time_error_r<item_types<>>(
+          __unrecognized_sequence_error_t<_Sequence, _Env...>());
       }
     }
 
@@ -590,6 +555,46 @@ namespace experimental::execution
 
     _Data __data_{};
   };
+
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+  template <class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __invalid_item_types(_Values...)
+  {
+    return STDEXEC::__mexception<_What...>();
+  }
+
+#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+  // C++26, https://wg21.link/p3068
+  template <class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __invalid_item_types([[maybe_unused]] _Values... __values) -> item_types<>
+  {
+    if constexpr (STDEXEC::__same_as<_What, STDEXEC::dependent_sender_error>)
+    {
+      throw STDEXEC::__mexception<STDEXEC::dependent_sender_error, _More...>();
+    }
+    else if constexpr (sizeof...(_Values) == 1)
+    {
+      throw __sequence_type_check_failure<_Values..., _What, _More...>(__values...);
+    }
+    else
+    {
+      throw __sequence_type_check_failure<STDEXEC::__tuple<_Values...>, _What, _More...>(
+        STDEXEC::__tuple<_Values...>{__values...});
+    }
+  }
+
+#endif  // ^^^ constexpr exceptions ^^^
+
+  template <class... _What>
+  [[nodiscard]]
+  consteval auto __invalid_item_types(STDEXEC::__mexception<_What...>)
+  {
+    return exec::__invalid_item_types<_What...>();
+  }
 
   struct _MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_
   {};

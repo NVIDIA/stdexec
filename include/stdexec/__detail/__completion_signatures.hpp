@@ -78,66 +78,6 @@ namespace STDEXEC
   using __completion_signature_ptrs_t = decltype(__cmplsigs::__repack_completions(
     static_cast<_SigPtrs>(nullptr)...));
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
-
-  template <class, class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
-  {
-    return {};
-  }
-
-  template <class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
-  {
-    return {};
-  }
-
-#else   // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
-
-  // C++26, https://wg21.link/p3068
-  template <class _Return, class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
-  {
-    if constexpr (__same_as<_What, dependent_sender_error>)
-    {
-      throw __mexception<dependent_sender_error, _More...>();
-    }
-    else if constexpr (sizeof...(_Values) == 1)
-    {
-      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
-    }
-    else
-    {
-      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
-    }
-  }
-
-  template <class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto
-  __throw_compile_time_error([[maybe_unused]] _Values... __values) -> completion_signatures<>
-  {
-    return;
-  }
-#endif  // ^^^ constexpr exceptions ^^^
-
-  template <class _Return, class... _What>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
-  {
-    return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
-  }
-
-  template <class... _What>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error(__mexception<_What...>)
-  {
-    return STDEXEC::__throw_compile_time_error<_What...>();
-  }
-
   namespace __cmplsigs
   {
     // __partitions is a cache of completion signatures for fast access. The
@@ -490,6 +430,67 @@ namespace STDEXEC
     }
   };
 
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+  template <class, class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+  template <class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+  // C++26, https://wg21.link/p3068
+  template <class _Return, class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
+  {
+    if constexpr (__same_as<_What, dependent_sender_error>)
+    {
+      throw __mexception<dependent_sender_error, _More...>();
+    }
+    else if constexpr (sizeof...(_Values) == 1)
+    {
+      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
+    }
+    else
+    {
+      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
+    }
+  }
+
+  template <class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error(_Values... __values) -> completion_signatures<>
+  {
+    (void) STDEXEC::__throw_compile_time_error_r<completion_signatures<>, _What, _More...>(
+      static_cast<_Values>(__values)...);
+  }
+
+#endif  // ^^^ constexpr exceptions ^^^
+
+  template <class _Return, class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
+  }
+
+  template <class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error<_What...>();
+  }
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // __gather_completion_signatures_t
   namespace __detail
@@ -569,11 +570,17 @@ namespace STDEXEC
 #if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
 #  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]]                                                                 \
-                  auto _ID = __VA_ARGS__;                                                          \
+    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__;                                         \
                   !STDEXEC::__valid_completion_signatures<decltype(_ID)>) {                        \
       return _ID;                                                                                  \
     } else
+
+  template <class, class _Sndr>
+  [[nodiscard]]
+  consteval auto __dependent_sender_r() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
+    return {};
+  }
 
   template <class _Sndr>
   [[nodiscard]]
@@ -585,10 +592,15 @@ namespace STDEXEC
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
 #  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]]                                                                 \
-                  auto _ID = __VA_ARGS__;                                                          \
-                  false) {                                                                         \
+    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__; false) {                                \
     } else
+
+  template <class _Result, class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __dependent_sender_r() -> _Result
+  {
+    throw __dependent_sender_error_t<_Sndr>{};
+  }
 
   template <class _Sndr>
   [[noreturn, nodiscard]]
