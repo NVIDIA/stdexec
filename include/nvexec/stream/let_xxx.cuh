@@ -334,7 +334,8 @@ namespace nv::execution::_strm
   {};
 
   template <>
-  struct transform_sender_for<STDEXEC::let_stopped_t> : _transform_let_sender<STDEXEC::let_stopped_t>
+  struct transform_sender_for<STDEXEC::let_stopped_t>
+    : _transform_let_sender<STDEXEC::let_stopped_t>
   {};
 }  // namespace nv::execution::_strm
 
