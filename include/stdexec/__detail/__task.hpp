@@ -824,7 +824,7 @@ namespace STDEXEC
       template <__forwarding_query _Query, class... _Args>
         requires __queryable_with<_TaskEnv, _Query, _Args...>
       [[nodiscard]]
-      constexpr auto query(_Query __tag, _Args&&... __args) const
+      constexpr auto query(_Query, _Args&&... __args) const
         noexcept(__nothrow_queryable_with<_TaskEnv, _Query, _Args...>)
           -> __query_result_t<_TaskEnv, _Query, _Args...>
       {

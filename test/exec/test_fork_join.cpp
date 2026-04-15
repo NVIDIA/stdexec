@@ -195,11 +195,7 @@ namespace
                                   ::STDEXEC::then([&witness](int const received) noexcept
                                                   { witness += received; }));
 
-    static_assert(requires {
-      {
-        ::STDEXEC::get_completion_signatures(sndr)
-      } -> std::derived_from<::STDEXEC::dependent_sender_error>;
-    });
+    static_assert(::STDEXEC::dependent_sender<decltype(sndr)>);
 
     ::STDEXEC::sync_wait(std::move(sndr));
 

@@ -369,7 +369,8 @@ namespace STDEXEC
         }
         else
         {
-          return __throw_compile_time_error(__unrecognized_sender_error_t<_Self, _Env...>());
+          return STDEXEC::__throw_compile_time_error(
+            __unrecognized_sender_error_t<_Self, _Env...>());
         }
       }
 

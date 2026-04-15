@@ -306,34 +306,36 @@ namespace nv::execution::_strm
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     let_sender(Sender, Fun, SetTag) -> let_sender<Sender, Fun, SetTag>;
 
-  template <class SetTag>
+  template <class LetTag>
   struct _transform_let_sender
   {
+    using _set_tag = __t<LetTag>;
+
     template <class Env, class Fun, class Sender>
     auto operator()(Env const &, __ignore, Fun fn, Sender&& sndr) const
     {
       if constexpr (stream_completing_sender<Sender, Env>)
       {
-        return let_sender{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn), SetTag{}};
+        return let_sender{static_cast<Sender&&>(sndr), static_cast<Fun&&>(fn), _set_tag{}};
       }
       else
       {
-        using _let_t = decltype(STDEXEC::__let::__let_from_set<SetTag>);
-        return _strm::_no_stream_scheduler_in_env<_let_t, Sender, Env>();
+        return _strm::_no_stream_scheduler_in_env<LetTag, Sender, Env>();
       }
     }
   };
 
   template <>
-  struct transform_sender_for<STDEXEC::let_value_t> : _transform_let_sender<set_value_t>
+  struct transform_sender_for<STDEXEC::let_value_t> : _transform_let_sender<STDEXEC::let_value_t>
   {};
 
   template <>
-  struct transform_sender_for<STDEXEC::let_error_t> : _transform_let_sender<set_error_t>
+  struct transform_sender_for<STDEXEC::let_error_t> : _transform_let_sender<STDEXEC::let_error_t>
   {};
 
   template <>
-  struct transform_sender_for<STDEXEC::let_stopped_t> : _transform_let_sender<set_stopped_t>
+  struct transform_sender_for<STDEXEC::let_stopped_t>
+    : _transform_let_sender<STDEXEC::let_stopped_t>
   {};
 }  // namespace nv::execution::_strm
 

@@ -22,6 +22,12 @@
 
 #include <memory>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // warning C4996: 'function': was declared deprecated
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
+
 namespace experimental::execution
 {
   namespace [[deprecated("Use the " STDEXEC_PP_STRINGIZE(STDEXEC)  //
@@ -47,11 +53,6 @@ namespace experimental::execution
       return STDEXEC::parallel_scheduler_replacement::query_parallel_scheduler_backend();
     }
 
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
-    STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // warning C4996: 'function': was declared deprecated
-    STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
-    STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
     /// Set a factory for the parallel scheduler backend.
     /// Can be used to replace the parallel scheduler at runtime.
     /// Out of spec.
@@ -63,7 +64,6 @@ namespace experimental::execution
     {
       return STDEXEC::parallel_scheduler_replacement::set_parallel_scheduler_backend(__new_factory);
     }
-    STDEXEC_PRAGMA_POP()
 
     /// Interface for completing a sender operation. Backend will call frontend though this interface
     /// for completing the `schedule` and `schedule_bulk` operations.
@@ -78,6 +78,8 @@ namespace experimental::execution
       STDEXEC::parallel_scheduler_replacement::bulk_item_receiver_proxy;
   }  // namespace system_context_replaceability
 }  // namespace experimental::execution
+
+STDEXEC_PRAGMA_POP()
 
 namespace exec = experimental::execution;
 
