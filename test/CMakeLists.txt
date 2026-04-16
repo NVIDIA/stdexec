@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #=============================================================================
+include(CheckCompilerFlag)
+check_compiler_flag(CXX -Wno-c2y-extensions HAVE_C2Y_EXTENSIONS_WARNING)
 
 function(add_compile_diagnostics TARGET)
     if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-c2y-extensions)
+        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror $<$<BOOL:HAVE_C2Y_EXTENSIONS_WARNING>:-Wno-c2y-extensions>)
     endif()
 endfunction()
 
