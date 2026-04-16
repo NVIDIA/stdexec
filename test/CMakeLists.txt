@@ -16,7 +16,7 @@
 
 function(add_compile_diagnostics TARGET)
     if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror -Wno-c2y-extensions)
     endif()
 endfunction()
 
