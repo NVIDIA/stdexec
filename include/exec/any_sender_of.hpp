@@ -81,7 +81,7 @@ namespace experimental::execution
 
     template <class QueryFn, class... Env>
     inline constexpr auto _check_query_v = std::conditional_t<sizeof...(Env) == 0,
-                                                              _ERROR_<dependent_sender_error>,
+                                                              __mexception<dependent_sender_error>,
                                                               _no_query_error_t<QueryFn, Env...>>{};
 
     template <class Result, class Query, class... Args, class... Env>
@@ -477,7 +477,7 @@ namespace experimental::execution
         using _base_t::_base_t;
 
         template <__std::derived_from<_interface_> Self, class... Env>
-        static consteval auto get_completion_signatures() noexcept
+        static consteval auto get_completion_signatures()
         {
           // throw if Env does not contain the queries needed to type-erase the receiver:
           using _check_queries_t = __mfind_error<_check_query_t<Queries, Env...>...>;

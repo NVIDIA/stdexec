@@ -54,14 +54,21 @@ namespace STDEXEC
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
   template <auto _Completions>
-  concept __constant_completion_signatures = __valid_completion_signatures<decltype(_Completions)>;
+  inline constexpr bool __constant_completion_signatures_v =
+    __valid_completion_signatures<std::remove_const_t<decltype(_Completions)>>;
+#else
+  template <auto _Completions>
+  inline constexpr bool __constant_completion_signatures_v =
+    __valid_completion_signatures<decltype(_Completions)>;
+#endif
 
   template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
     && sender<_Sender>      //
-    && __constant_completion_signatures<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
+    && __constant_completion_signatures_v<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
   template <class _Receiver, class _Sender>
   concept __receiver_from =

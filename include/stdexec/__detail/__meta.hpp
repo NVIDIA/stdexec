@@ -139,16 +139,24 @@ namespace STDEXEC
 #else
   namespace __pack
   {
-    template <std::size_t... _Is>
-    auto __mk_indices(__indices<0, _Is...>) -> __indices<_Is...>;
+    template <std::size_t _Np, class _Idx = __indices<>>
+    extern int __mk_indices;
 
-    template <std::size_t _Np, class = char[_Np], std::size_t... _Is>
-    auto __mk_indices(__indices<_Np, _Is...>)
-      -> decltype(__mk_indices(__indices<_Np - 1, 0, (_Is + 1)...>{}));
+    template <std::size_t... _Is>
+    extern __indices<_Is...> __mk_indices<0, __indices<_Is...>>;
+
+    template <std::size_t _Np, std::size_t... _Is>
+    extern decltype(__mk_indices<_Np - 1, __indices<0, (_Is + 1)...>>)
+      __mk_indices<_Np, __indices<_Is...>>;
+
+    template <std::size_t _Np, std::size_t... _Is>
+      requires(_Np >= 4)
+    extern decltype(__mk_indices<_Np - 4, __indices<0, 1, 2, 3, (_Is + 4)...>>)
+      __mk_indices<_Np, __indices<_Is...>>;
   }  // namespace __pack
 
   template <std::size_t _Np>
-  using __make_indices = decltype(__pack::__mk_indices(__indices<_Np>{}));
+  using __make_indices = decltype(__pack::__mk_indices<_Np>);
 #endif
 
   template <class... _Ts>
@@ -1062,7 +1070,7 @@ namespace STDEXEC
     auto operator+(__inherit<_Set...> &) -> __inherit<_Set...>;
 
     template <class... _Set, class _Ty>
-    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __inherit<_Ty, _Set...> &;
+    auto operator%(__inherit<_Set...> &, __mtype<_Ty> &) -> __inherit<_Set..., _Ty> &;
 
     template <class... _Set, class _Ty>
       requires __mset_contains<__inherit<_Set...>, _Ty>
@@ -1095,10 +1103,7 @@ namespace STDEXEC
   template <class _Continuation = __q<__mlist>>
   struct __munique
   {
-#if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack) && STDEXEC_HAS_BUILTIN(__builtin_sort_pack)
-    template <class... _Ts>
-    using __f = __minvoke<_Continuation, __builtin_sort_pack<__builtin_dedup_pack<_Ts...>...>...>;
-#elif STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
+#if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
     template <class... _Ts>
     using __f = __minvoke<_Continuation, __builtin_dedup_pack<_Ts...>...>;
 #else

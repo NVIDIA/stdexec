@@ -174,7 +174,7 @@ namespace experimental::execution
       }
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() noexcept
+      static consteval auto get_completion_signatures()
       {
         static_assert(sender_for<_Self, merge_t>);
         auto __items = STDEXEC::__children_of<_Self, STDEXEC::__qq<item_types>>();

@@ -21,6 +21,9 @@
 #include "../any_sender_of.hpp"
 #include "../sequence_senders.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Woverloaded-virtual")
+
 namespace experimental::execution
 {
   template <class _Sigs, class _Queries = queries<>>
@@ -224,5 +227,7 @@ namespace experimental::execution
     }
   };
 }  // namespace experimental::execution
+
+STDEXEC_PRAGMA_POP()
 
 namespace exec = experimental::execution;

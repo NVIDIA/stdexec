@@ -145,7 +145,7 @@ namespace STDEXEC
   template <class _Sender,
             class _Receiver,
             __submit_result_kind _Kind = __get_submit_result_kind<_Sender, _Receiver>()>
-  // requires sender_to<_Sender, _Receiver>
+    requires sender_to<_Sender, _Receiver>
   struct submit_result
   {
     using __result_t = connect_result_t<_Sender, _Receiver>;

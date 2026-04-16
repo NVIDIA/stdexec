@@ -527,15 +527,17 @@ namespace STDEXEC
   template <class... _SetTags>
   struct __mk_secondary_env_t
   {
+    template <class _Sender, class _Env>
+    using __impl_t =
+      __minvoke<__mremove_if<__mbind_back_q<__never_sends_t, _Sender, __fwd_env_t<_Env const &>>,
+                             __qq<__detail::__mk_secondary_env_impl>>,
+                _SetTags...>;
+
     template <class _CvFn, class _Sender, class _Env>
     constexpr auto operator()(_CvFn __cv, _Sender const &__sndr, _Env const &__env) const noexcept
+      -> __call_result_t<__impl_t<_Sender, _Env>, _CvFn, _Sender const &, _Env const &>
     {
-      using namespace __detail;
-      using __env_t          = __fwd_env_t<_Env const &>;
-      using __never_sends_fn = __mbind_back_q<__never_sends_t, _Sender, __env_t>;
-      using __make_env_fn    = __mremove_if<__never_sends_fn, __qq<__mk_secondary_env_impl>>;
-      using __impl_t         = __minvoke<__make_env_fn, _SetTags...>;
-      return __impl_t{}(__cv, __sndr, __env);
+      return __impl_t<_Sender, _Env>()(__cv, __sndr, __env);
     }
   };
 
