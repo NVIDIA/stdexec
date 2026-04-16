@@ -38,7 +38,7 @@ jobs:
           - { name: "CPU (gcc 14, Release, c++23)",  build: "Release", tag: gcc14-cuda12.9,  cxxstd: "23", cxxflags: "", }
     container:
       options: -u root
-      image: rapidsai/devcontainers:26.02-cpp-${{ matrix.tag }}
+      image: rapidsai/devcontainers:26.06-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
