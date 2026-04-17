@@ -781,7 +781,7 @@ namespace STDEXEC
 namespace STDEXEC
 {
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
-  constexpr struct __catch_any_lvalue_t
+  inline constexpr struct __catch_any_lvalue_t
   {
     template <class _Tp>
     STDEXEC_ATTRIBUTE(host, device)

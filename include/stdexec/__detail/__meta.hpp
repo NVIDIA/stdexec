@@ -899,8 +899,8 @@ namespace STDEXEC
       {};
     };
 
-    constexpr char __type_name_prefix[] = "__xyzzy<";
-    constexpr char __type_name_suffix[] = ">::__plugh";
+    inline constexpr char __type_name_prefix[] = "__xyzzy<";
+    inline constexpr char __type_name_suffix[] = ">::__plugh";
 
     [[nodiscard]]
     consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept
