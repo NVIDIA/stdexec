@@ -15,11 +15,11 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__completion_signatures.hpp"
-#include "../../stdexec/__detail/__concepts.hpp"
-#include "../../stdexec/__detail/__env.hpp"
-#include "../../stdexec/__detail/__receivers.hpp"
-#include "../../stdexec/__detail/__sender_concepts.hpp"
+#include "../stdexec/__detail/__completion_signatures.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__sender_concepts.hpp"
 
 #include <exception>
 #include <memory>
@@ -27,7 +27,7 @@
 #include <type_traits>
 #include <utility>
 
-// This file defines io_sender<ReturnType(Arguments...)>, which is a
+// This file defines function<ReturnType(Arguments...)>, which is a
 // type-erased sender that can complete with
 //  - set_value(ReturnType&&)
 //  - set_error(std::exception_ptr)
@@ -49,7 +49,7 @@ namespace experimental::execution
 
   // TODO: think about environment forwarding
   template <class T, class Env = STDEXEC::env<>>
-  struct io_sender;
+  struct function;
 
   template <class R>
   struct completer
@@ -82,7 +82,7 @@ namespace experimental::execution
   };
 
   template <class R>
-  struct io_receiver
+  struct function_receiver
   {
     using receiver_concept = STDEXEC::receiver_tag;
 
@@ -105,7 +105,7 @@ namespace experimental::execution
   };
 
   template <>
-  struct io_receiver<void>
+  struct function_receiver<void>
   {
     using receiver_concept = STDEXEC::receiver_tag;
 
@@ -128,7 +128,7 @@ namespace experimental::execution
   };
 
   template <class Return>
-  struct io_sender_completions
+  struct function_completions
   {
     template <class Sender, class /*Env*/>
     static consteval STDEXEC::completion_signatures<STDEXEC::set_value_t(Return),
@@ -141,7 +141,7 @@ namespace experimental::execution
   };
 
   template <>
-  struct io_sender_completions<void>
+  struct function_completions<void>
   {
     template <class Sender, class /*Env*/>
     static consteval STDEXEC::completion_signatures<STDEXEC::set_value_t(),
@@ -200,7 +200,7 @@ namespace experimental::execution
     template <class Factory>
     operation(Receiver rcvr, Factory factory)
       : operation_storage<R, Receiver>{std::move(rcvr)}
-      , op_(factory(io_receiver<R>(this)))
+      , op_(factory(function_receiver<R>(this)))
     {}
 
     void start() & noexcept
@@ -225,7 +225,7 @@ namespace experimental::execution
   // consider:
   //
   //   template <class R, class... Args>
-  //   struct io_sender<R(Args...) noexcept> {};
+  //   struct function<R(Args...) noexcept> {};
   //
   // to declare no error channel
   //
@@ -234,16 +234,17 @@ namespace experimental::execution
   // we successfully connect...
   template <class R, class... Args, class Env>
     requires((std::movable<Args> || std::is_reference_v<Args>) && ...)
-  struct io_sender<R(Args...), Env> : io_sender_completions<R>
+  struct function<R(Args...), Env> : function_completions<R>
   {
     using sender_concept = STDEXEC::sender_tag;
 
     template <STDEXEC::__callable<Args...> Factory>
-      requires STDEXEC::__not_decays_to<Factory, io_sender>  //
-            && std::constructible_from<Factory>              //
+      requires STDEXEC::__not_decays_to<Factory, function>  //
+            && std::constructible_from<Factory>             //
             && STDEXEC::__callable<Factory, Args...>
-            && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>, io_receiver<R>>
-    explicit(sizeof...(Args) == 0) io_sender(Args&&... args, Factory&& factory)
+            && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
+                                  function_receiver<R>>
+    explicit(sizeof...(Args) == 0) function(Args&&... args, Factory&& factory)
       noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
       : args_(std::forward<Args>(args)...)
     {
@@ -251,7 +252,7 @@ namespace experimental::execution
 
       struct derived_operation : base_operation
       {
-        explicit derived_operation(sender_t&& sndr, io_receiver<R> rcvr)  // TODO noexcept
+        explicit derived_operation(sender_t&& sndr, function_receiver<R> rcvr)  // TODO noexcept
           : op_(STDEXEC::connect(std::forward<sender_t>(sndr), std::move(rcvr)))
         {}
 
@@ -263,10 +264,10 @@ namespace experimental::execution
         }
 
        private:
-        STDEXEC::connect_result_t<sender_t, io_receiver<R>> op_;
+        STDEXEC::connect_result_t<sender_t, function_receiver<R>> op_;
       };
 
-      factory_ = [](io_receiver<R> rcvr, Args&&... args) -> base_operation*
+      factory_ = [](function_receiver<R> rcvr, Args&&... args) -> base_operation*
       {
         Factory factory;
         // TODO: query rcvr for a frame allocator and use it
@@ -278,7 +279,7 @@ namespace experimental::execution
     auto connect(this Self&& sender, Receiver receiver) -> operation<R, Receiver>
     {
       return operation<R, Receiver>(std::move(receiver),
-                                    [&](io_receiver<R> rcvr)
+                                    [&](function_receiver<R> rcvr)
                                     {
                                       return std::apply(
                                         [&](Args&&... args)
@@ -291,7 +292,7 @@ namespace experimental::execution
     }
 
    private:
-    base_operation* (*factory_)(io_receiver<R>, Args&&...);
+    base_operation* (*factory_)(function_receiver<R>, Args&&...);
     [[no_unique_address]]
     std::tuple<Args...> args_;
   };

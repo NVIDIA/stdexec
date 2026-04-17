@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include <exec/io/io_sender.hpp>
+#include <exec/function.hpp>
 
 #include <catch2/catch_all.hpp>
 
@@ -26,26 +26,25 @@ namespace ex = STDEXEC;
 namespace
 {
 
-  TEST_CASE("exec::io_sender is constructible", "[types][io_sender]")
+  TEST_CASE("exec::function is constructible", "[types][function]")
   {
-    exec::io_sender<void()> voidSndr([]() noexcept { return ex::just(); });
+    exec::function<void()> voidSndr([]() noexcept { return ex::just(); });
 
-    exec::io_sender<int()> intSndr([]() noexcept { return ex::just(42); });
+    exec::function<int()> intSndr([]() noexcept { return ex::just(42); });
 
-    double                              d = 4.;
-    exec::io_sender<void(int, double&)> binarySndr(5,
-                                                   d,
-                                                   [](int, double&) noexcept
-                                                   { return ex::just(); });
+    double                             d = 4.;
+    exec::function<void(int, double&)> binarySndr(5,
+                                                  d,
+                                                  [](int, double&) noexcept { return ex::just(); });
 
     STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(intSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(binarySndr)>);
   }
 
-  TEST_CASE("exec::io_sender is connectable", "[types][io_sender]")
+  TEST_CASE("exec::function is connectable", "[types][function]")
   {
-    exec::io_sender<int()> sndr([]() noexcept { return ex::just(42); });
+    exec::function<int()> sndr([]() noexcept { return ex::just(42); });
 
     auto [fortytwo] = ex::sync_wait(std::move(sndr)).value();
 
