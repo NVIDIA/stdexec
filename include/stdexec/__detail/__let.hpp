@@ -577,7 +577,7 @@ namespace STDEXEC
               __completion_info const __eptr_info(__signature<__eptr_sig_t>,
                                                   __info.__domain,
                                                   __info.__behavior);
-              return __cmpls + __static_vector{__eptr_info};
+              return __cmpls + STDEXEC::__make_static_vector(__eptr_info);
             }
             else
             {
@@ -591,7 +591,7 @@ namespace STDEXEC
       static constexpr auto __maybe_transform_cmplsig = [](auto __transform) -> decltype(auto)
       {
         if constexpr (_Info.__disposition != __set_t::__disposition)
-          return __static_vector{_Info};
+          return STDEXEC::__make_static_vector(_Info);
         else
           return __transform(__signature<__mtypeof<_Info.__signature>>, _Info);
       };

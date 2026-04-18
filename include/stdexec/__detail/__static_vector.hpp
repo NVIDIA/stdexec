@@ -197,4 +197,10 @@ namespace STDEXEC
   template <class _First, __same_as<_First>... _Rest>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __static_vector(_First, _Rest...) -> __static_vector<_First, 1 + sizeof...(_Rest)>;
+
+  template <class _First, __same_as<_First>... _Rest>
+  constexpr auto __make_static_vector(_First __first, _Rest... __rest) noexcept
+  {
+    return __static_vector<_First, 1 + sizeof...(_Rest)>{__first, __rest...};
+  }
 }  // namespace STDEXEC
