@@ -196,7 +196,7 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <nvexec::_strm::nvtx::kind Kind, class Sender>
-  extern __declfn_t<nvexec::_strm::nvtx::nvtx_sender<Kind, __demangle_t<Sender>>>
+  extern __mtype<nvexec::_strm::nvtx::nvtx_sender<Kind, __demangle_t<Sender>>>
     __demangle_v<nvexec::_strm::nvtx::nvtx_sender<Kind, Sender>>;
 }  // namespace STDEXEC::__detail
 

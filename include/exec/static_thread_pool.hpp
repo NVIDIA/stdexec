@@ -45,7 +45,6 @@
 #include "sequence/iterate.hpp"
 #include "sequence_senders.hpp"
 
-#include <algorithm>
 #include <compare>
 #include <condition_variable>
 #include <cstdint>

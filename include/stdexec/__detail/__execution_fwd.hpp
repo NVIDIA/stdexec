@@ -74,6 +74,15 @@ namespace STDEXEC
   extern set_error_t const   set_error;
   extern set_stopped_t const set_stopped;
 
+  enum class __disposition
+  {
+    __value,
+    __error,
+    __stopped
+  };
+
+  constexpr auto __invalid_disposition = static_cast<__disposition>(3);  // invalid value
+
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
@@ -135,6 +144,12 @@ namespace STDEXEC
   extern get_domain_t const                   get_domain;
   extern get_await_completion_adaptor_t const get_await_completion_adaptor;
 
+  template <class _Tag, class _Attrs, class... _Env>
+  using __completion_domain_t = __call_result_or_t<get_completion_domain_t<_Tag>,
+                                                   indeterminate_domain<>,
+                                                   _Attrs,
+                                                   _Env const &...>;
+
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
@@ -184,17 +199,20 @@ namespace STDEXEC
 #if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
+  [[nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
 
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
 
 #endif  // ^^^ constexpr exceptions ^^^
 
   template <class... _What>
+  [[nodiscard]]
   consteval auto __throw_compile_time_error(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////

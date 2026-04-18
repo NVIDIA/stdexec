@@ -412,7 +412,7 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <class Sender>
-  extern __declfn_t<nvexec::_strm::split_sender<__demangle_t<Sender>>>
+  extern __mtype<nvexec::_strm::split_sender<__demangle_t<Sender>>>
     __demangle_v<nvexec::_strm::split_sender<Sender>>;
 }  // namespace STDEXEC::__detail
 

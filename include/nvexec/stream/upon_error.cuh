@@ -216,7 +216,7 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <class Sender, class Fun>
-  extern __declfn_t<nvexec::_strm::upon_error_sender<__demangle_t<Sender>, Fun>>
+  extern __mtype<nvexec::_strm::upon_error_sender<__demangle_t<Sender>, Fun>>
     __demangle_v<nvexec::_strm::upon_error_sender<Sender, Fun>>;
 }  // namespace STDEXEC::__detail
 

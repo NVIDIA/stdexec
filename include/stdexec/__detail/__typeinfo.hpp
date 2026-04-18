@@ -97,8 +97,10 @@ namespace STDEXEC
   // __type_index
   struct __type_index
   {
-    constexpr __type_index(__type_info const &info) noexcept
-      : __info_(&info)
+    __type_index() = default;
+
+    constexpr __type_index(__type_info const &__info) noexcept
+      : __info_(&__info)
     {}
 
     [[nodiscard]]
@@ -108,15 +110,15 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
-    constexpr bool operator==(__type_index const &other) const noexcept
+    constexpr bool operator==(__type_index const &__other) const noexcept
     {
-      return *__info_ == *other.__info_;
+      return *__info_ == *__other.__info_;
     }
 
     [[nodiscard]]
-    constexpr std::strong_ordering operator<=>(__type_index const &other) const noexcept
+    constexpr std::strong_ordering operator<=>(__type_index const &__other) const noexcept
     {
-      return *__info_ <=> *other.__info_;
+      return *__info_ <=> *__other.__info_;
     }
 
 #if !STDEXEC_NO_STDCPP_TYPEID()
@@ -133,7 +135,7 @@ namespace STDEXEC
     }
 #endif
 
-    __type_info const *__info_;
+    __type_info const *__info_ = &__detail::__mtypeid_v<void>;
   };
 
   namespace __detail
@@ -167,8 +169,7 @@ namespace STDEXEC
     // This specialization is what makes __mtypeof< Id > return the type associated with Id.
     template <auto _Index>
       requires __same_as<decltype(_Index) const, __type_index const>
-    extern __fn_t<__t<decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))>>
-      *__mtypeof_v<_Index>;
+    extern decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>())) __mtypeof_v<_Index>;
   }  // namespace __detail
 
   // For a given type, return a __type_index object

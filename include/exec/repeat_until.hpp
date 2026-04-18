@@ -275,8 +275,8 @@ namespace experimental::execution
         using __eptr_completion_t        = set_error_t(std::exception_ptr);
         constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
 
-        STDEXEC_COMPLSIGS_LET(
-          __sigs,
+        STDEXEC_TRY_LET(
+          auto __sigs,
           exec::transform_completion_signatures(get_completion_signatures<__child_t, _Env...>(),
                                                 __transform_values<__child_t>,
                                                 __transform_errors))

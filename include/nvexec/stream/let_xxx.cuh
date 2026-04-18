@@ -344,7 +344,7 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <class Sender, class Fun, class SetTag>
-  extern __declfn_t<nvexec::_strm::let_sender<__demangle_t<Sender>, Fun, SetTag>>
+  extern __mtype<nvexec::_strm::let_sender<__demangle_t<Sender>, Fun, SetTag>>
     __demangle_v<nvexec::_strm::let_sender<Sender, Fun, SetTag>>;
 }  // namespace STDEXEC::__detail
 

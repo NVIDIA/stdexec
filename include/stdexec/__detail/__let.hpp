@@ -19,6 +19,7 @@
 
 // include these after __execution_fwd.hpp
 #include "__basic_sender.hpp"
+#include "__completion_info.hpp"
 #include "__diagnostics.hpp"
 #include "__domain.hpp"
 #include "__env.hpp"
@@ -27,7 +28,6 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__submit.hpp"
-#include "__transform_completion_signatures.hpp"
 #include "__utility.hpp"
 #include "__variant.hpp"
 
@@ -106,6 +106,12 @@ namespace STDEXEC
       __fn_t<_WITH_ENVIRONMENT_, _JoinEnv2>...,
       __mapply_q<_NESTED_ERROR_, __try_completion_signatures_of_t<_Sender, _JoinEnv2...>>>;
 
+    template <class _LetTag, class... _Args>
+    using __not_decay_copyable_error_t =
+      __mexception<_WHAT_(_SENDER_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                   _WHERE_(_IN_ALGORITHM_, _LetTag),
+                   _WITH_ARGUMENTS_(_Args...)>;
+
     template <class _Sender, class... _JoinEnv2>
     concept __potentially_valid_sender_in = sender_in<_Sender, _JoinEnv2...>
                                          || (sender<_Sender> && (sizeof...(_JoinEnv2) == 0));
@@ -132,7 +138,8 @@ namespace STDEXEC
       using __rcvr2_t = __receiver_archetype<_Env2>;
 
       template <class... _Ts>
-      using __f = __mbool<__nothrow_decay_copyable<_Ts...>
+      using __f = __mbool<__nothrow_decay_copyable<_Ts...>                 //
+                          && __nothrow_invocable<_Fn, __decay_t<_Ts>&...>  //
                           && __nothrow_connectable<__sndr2_t<_Ts...>, __rcvr2_t>>;
     };
 
@@ -514,23 +521,122 @@ namespace STDEXEC
     struct __impls : __sexpr_defaults
     {
      private:
-      using __set_t = __t<_LetTag>;
-      template <class _Sender>
-      using __fn_t = __decay_t<__data_of<_Sender>>;
+      using __set_t      = __t<_LetTag>;
+      using __cmpl_vec_t = std::vector<__completion_info>;
+      using __eptr_sig_t = set_error_t(std::exception_ptr);
 
-      template <class _Sender, class _Receiver>
+      template <class _CvSender>
+      using __fn_t = __decay_t<__data_of<_CvSender>>;
+
+      template <class _CvSender, class _Env>
+      using __env2_t = __let::__result_env_t<__set_t, _CvSender, _Env>;
+
+      template <class _CvSender, class _Env>
+      using __rcvr2_t = __receiver_archetype<__env2_t<_CvSender, _Env>>;
+
+      template <class _CvSender, class _Receiver>
       using __opstate_t = __gather_completions_of_t<
-        __t<_LetTag>,
-        __child_of<_Sender>,
+        __set_t,
+        __child_of<_CvSender>,
         __fwd_env_t<env_of_t<_Receiver>>,
         __q<__decayed_tuple>,
-        __mbind_front_q<__opstate, __t<_LetTag>, __child_of<_Sender>, __fn_t<_Sender>, _Receiver>>;
+        __mbind_front_q<__opstate, __set_t, __child_of<_CvSender>, __fn_t<_CvSender>, _Receiver>>;
 
-      template <class... _Args>
-      using __not_decay_copyable_error_t =
-        __mexception<_WHAT_(_SENDER_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                     _WHERE_(_IN_ALGORITHM_, _LetTag),
-                     _WITH_ARGUMENTS_(_Args...)>;
+      template <class _Fun, class _Child, class... _Env>
+      static constexpr auto __transform_cmplsig =                                             //
+        []<class... _As>(__set_t (*)(_As...), __completion_info __info, __cmpl_vec_t& __out)  //
+        -> decltype(auto)
+      {
+        if constexpr (!__decay_copyable<_As...>)
+        {
+          using __what_t = __not_decay_copyable_error_t<_LetTag, _As...>;
+          return STDEXEC::__throw_compile_time_error(__what_t());
+        }
+        else if constexpr (!__invocable<_Fun, __decay_t<_As>&...>)
+        {
+          using __what_t = __callable_error_t<_LetTag, _Fun, __decay_t<_As>&...>;
+          return STDEXEC::__throw_compile_time_error(__what_t());
+        }
+        else if constexpr (!__potentially_valid_sender_in<
+                             __invoke_result_t<_Fun, __decay_t<_As>&...>,
+                             __env2_t<_Child, _Env>...>)
+        {
+          using __sndr_t = __invoke_result_t<_Fun, __decay_t<_As>&...>;
+          using __what_t = __bad_result_sender<__sndr_t, _LetTag, __env2_t<_Child, _Env>...>;
+          return STDEXEC::__throw_compile_time_error(__what_t());
+        }
+        else
+        {
+          using __sndr2_t = __invoke_result_t<_Fun, __decay_t<_As>&...>;
+          STDEXEC_TRY_LET(constexpr auto __cmpls,
+                          STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>())
+          {
+            __cmplsigs::__append_range(__out, std::span{__cmpls});
+
+            if constexpr (!__nothrow_decay_copyable<_As...>
+                          || !__nothrow_invocable<_Fun, __decay_t<_As>&...>
+                          || (!__nothrow_connectable<__sndr2_t, __rcvr2_t<_Child, _Env>> || ...))
+            {
+              __out.emplace_back(__signature<__eptr_sig_t>, __info.__domain, __info.__behavior);
+            }
+
+            return (__out);
+          }
+        }
+      };
+
+      template <__completion_info _Info>
+      static constexpr auto __maybe_transform_cmplsig =
+        [](auto __transform, __cmpl_vec_t& __out) -> decltype(auto)
+      {
+        if constexpr (_Info.__disposition != __set_t::__disposition)
+        {
+          __out.push_back(_Info);
+          return (__out);
+        }
+        else
+        {
+          using __sig_t = __mtypeof<_Info.__signature>;
+          return __transform(__signature<__sig_t>, _Info, __out);
+        }
+      };
+
+      //! @tparam _Info A `__static_vector` of `__completion_info` objects representing
+      //! the completions of the predecessor sender.
+      template <auto _Info, auto _Transform>
+      static constexpr auto __get_cmpl_info_i = []<std::size_t... _Is>(__indices<_Is...>)
+      {
+        return []
+        {
+          std::vector<__completion_info> __result;
+          // NB: this fold uses an overloaded comma operator that propagates __mexception
+          // objects when constexpr exceptions are not available.
+          return (__maybe_transform_cmplsig<_Info[_Is]>(_Transform, __result), ..., __result);
+        };
+      };
+
+      template <class _Fun, class _Child, class... _Env>
+      static constexpr auto __get_cmpl_info = []
+      {
+        constexpr auto __transform   = __transform_cmplsig<_Fun, _Child, _Env...>;
+        constexpr auto __get_sig     = &__completion_info::__signature;
+        constexpr auto __eptr_sig_id = __mtypeid<__eptr_sig_t>;
+
+        STDEXEC_TRY_LET(constexpr auto __cmpls, STDEXEC::__get_completion_info<_Child, _Env...>())
+        {
+          constexpr auto __idx        = __make_indices<__cmpls.size()>();
+          constexpr auto __get_cmpls2 = __get_cmpl_info_i<__cmpls, __transform>(__idx);
+
+          STDEXEC_TRY_LET(constexpr auto __cmpls2, __cmplsigs::__completion_info_from(__get_cmpls2))
+          {
+            if constexpr (std::ranges::find(__cmpls2, __eptr_sig_id, __get_sig) == __cmpls2.end()
+                          && sizeof...(_Env) == 0)
+              return STDEXEC::__dependent_sender<_Child>();
+            else
+              return __cmpls2;
+          }
+        }
+      };
 
      public:
       static constexpr auto __get_attrs =
@@ -540,85 +646,18 @@ namespace STDEXEC
         return __fwd_env(STDEXEC::get_env(__child));
       };
 
-      template <class _CvSndr, class... _Env>
+      template <class _CvSender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(__sender_for<_CvSndr, _LetTag>);
-        using __fn_t        = __impls::__fn_t<_CvSndr>;
-        using __child_t     = __child_of<_CvSndr>;
-        auto __completions  = STDEXEC::get_completion_signatures<__child_t, _Env...>();
-        auto __transform_fn = []<class... _Args>()
-        {
-          if constexpr (!__invocable<__fn_t, __decay_t<_Args>&...>)
-          {
-            using __what_t = __callable_error_t<_LetTag, __fn_t, __decay_t<_Args>&...>;
-            return STDEXEC::__throw_compile_time_error(__what_t());
-          }
-          else if constexpr (!__decay_copyable<_Args...>)
-          {
-            using __what_t = __not_decay_copyable_error_t<_Args...>;
-            return STDEXEC::__throw_compile_time_error(__what_t());
-          }
-          else if constexpr (!__potentially_valid_sender_in<
-                               __invoke_result_t<__fn_t, __decay_t<_Args>&...>,
-                               __result_env_t<__set_t, __child_t, _Env>...>)
-          {
-            using __sndr_t = __invoke_result_t<__fn_t, __decay_t<_Args>&...>;
-            using __what_t =
-              __bad_result_sender<__sndr_t, _LetTag, __result_env_t<__set_t, __child_t, _Env>...>;
-            return STDEXEC::__throw_compile_time_error(__what_t());
-          }
-          else
-          {
-            using __sndr_t    = __invoke_result_t<__fn_t, __decay_t<_Args>&...>;
-            using __nothrow_t = __mbool<__nothrow_invocable<__fn_t, __decay_t<_Args>&...>
-                                        && __nothrow_decay_copyable<_Args...>>;
+        static_assert(__sender_for<_CvSender, _LetTag>);
+        constexpr auto __get_cmpl_info =
+          __impls::__get_cmpl_info<__fn_t<_CvSender>, __child_of<_CvSender>, _Env...>;
 
-            STDEXEC_COMPLSIGS_LET(
-              __sigs,
-              STDEXEC::__concat_completion_signatures(
-                STDEXEC::get_completion_signatures<__sndr_t,
-                                                   __result_env_t<__set_t, __child_t, _Env>...>(),
-                __eptr_completion_unless_t<__nothrow_t>()))
-            {
-              if constexpr (__sigs.template __contains<set_error_t(std::exception_ptr)>())
-              {
-                return __sigs;
-              }
-              else if constexpr (sizeof...(_Env) == 0)
-              {
-                return STDEXEC::__dependent_sender<__sndr_t>();
-              }
-              else
-              {
-                using __env_t     = __mfront<__result_env_t<__set_t, __child_t, _Env>...>;
-                using __rcvr_t    = __receiver_archetype<__env_t>;
-                using __nothrow_t = __mbool<__nothrow_connectable<__sndr_t, __rcvr_t>>;
-                using __eptr_t    = __eptr_completion_unless_t<__nothrow_t>;
-
-                return STDEXEC::__concat_completion_signatures(__sigs, __eptr_t());
-              }
-            }
-          }
-        };
-
-        if constexpr (!__decay_copyable<_CvSndr>)
-        {
+        if constexpr (!__decay_copyable<_CvSender>)
           return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                     _WITH_PRETTY_SENDER_<_CvSndr>>();
-        }
-        else if constexpr (__same_as<_LetTag, let_value_t>)
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, __transform_fn);
-        }
-        else if constexpr (__same_as<_LetTag, let_error_t>)
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, {}, __transform_fn);
-        }
+                                                     _WITH_PRETTY_SENDER_<_CvSender>>();
         else
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, {}, {}, __transform_fn);
-        }
+          return __cmplsigs::__completion_sigs_from(__get_cmpl_info);
       }
 
       static constexpr auto __connect =

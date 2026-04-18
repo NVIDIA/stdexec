@@ -267,15 +267,22 @@ namespace STDEXEC
                                "complete."}
     {}
 
-    STDEXEC_ATTRIBUTE(host, device) constexpr auto operator+() const -> _ERROR_;
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator+() const -> _ERROR_;
 
     template <class _Ty>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator,(_Ty const &) const -> _ERROR_;
+    constexpr auto operator,(_Ty const &) const -> _ERROR_
+    {
+      return *this;
+    }
 
     template <class... Other>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator,(const _ERROR_<Other...> &) const -> _ERROR_<Other...>;
+    constexpr auto operator,(const _ERROR_<Other...> &__other) const -> _ERROR_<Other...>
+    {
+      return __other;
+    }
   };
 
   // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that

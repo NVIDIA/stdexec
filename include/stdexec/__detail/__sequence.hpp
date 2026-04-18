@@ -499,7 +499,7 @@ namespace STDEXEC
   namespace __detail
   {
     template <class... _Senders>
-    extern __declfn_t<__seq::__sndr<__demangle_t<_Senders>...>>
+    extern __mtype<__seq::__sndr<__demangle_t<_Senders>...>>
       __demangle_v<__seq::__sndr<_Senders...>>;
   }  // namespace __detail
 }  // namespace STDEXEC

@@ -541,38 +541,50 @@ namespace STDEXEC
       __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
   }  // namespace __detail
 
-  // Below is the definition of the STDEXEC_COMPLSIGS_LET portability macro. It
-  // is used to check that an expression's type is a valid completion_signature
-  // specialization.
+  // Below is the definition of the STDEXEC_TRY_LET portability macro. It is used to check
+  // that an expression's type is not an __mexception type.
   //
   // USAGE:
   //
-  //   STDEXEC_COMPLSIGS_LET(__cs, <expression>)
+  //   STDEXEC_TRY_LET([constexpr]opt auto c, <expression>)
   //   {
-  //     // __cs is guaranteed to be a specialization of completion_signatures.
+  //     // c is guaranteed to not be an instantiation of __mexception.
   //   }
   //
-  // When constexpr exceptions are available (C++26), the macro simply expands to
-  // the moral equivalent of:
+  // When constexpr exceptions are available (C++26), the macro simply expands to the
+  // moral equivalent of:
   //
   //   // With constexpr exceptions:
-  //   auto __cs = <expression>; // throws if __cs is not a completion_signatures
+  //   auto c = <expression>; // throws if c is an __mexception type
   //
   // When constexpr exceptions are not available, the macro expands to:
   //
   //   // Without constexpr exceptions:
-  //   if constexpr (auto __cs = <expression>; !__valid_completion_signatures<decltype(__cs)>)
+  //   if constexpr (auto c = <expression>; __merror<decltype(c)>)
   //   {
-  //     return __cs;
+  //     return c;
   //   }
   //   else
 
 #if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
-#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__;                                         \
-                  !STDEXEC::__valid_completion_signatures<decltype(_ID)>) {                        \
-      return _ID;                                                                                  \
+#  define STDEXEC_EAT_AUTO_auto
+#  define STDEXEC_EAT_CONSTEXPR_constexpr
+#  define STDEXEC_EAT_CONSTEXPR(_ID) STDEXEC_EAT_CONSTEXPR_ ## _ID
+
+#  define STDEXEC_PROBE_CONSTEXPR_constexpr    STDEXEC_PP_PROBE(~, 1)
+#  define STDEXEC_TRY_LET_ID(_ID)                                                                  \
+    STDEXEC_PP_CAT(                                                                                \
+      STDEXEC_EAT_AUTO_,                                                                           \
+      STDEXEC_PP_IIF(                                                                              \
+        STDEXEC_PP_CHECK(STDEXEC_PROBE_CONSTEXPR_ ## _ID),                                         \
+        STDEXEC_EAT_CONSTEXPR,                                                                     \
+        STDEXEC_PP_EXPAND)(_ID))
+
+#  define STDEXEC_TRY_LET(_ID, ...)                                                                \
+    if constexpr ([[maybe_unused]] _ID = __VA_ARGS__; __merror<decltype(STDEXEC_TRY_LET_ID(_ID))>) \
+    {                                                                                              \
+      return STDEXEC_TRY_LET_ID(_ID);                                                              \
     } else
 
   template <class, class _Sndr>
@@ -591,8 +603,9 @@ namespace STDEXEC
 
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
-#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__; false) {                                \
+#  define STDEXEC_TRY_LET(_ID, ...)                                                                \
+    if constexpr ([[maybe_unused]] _ID = __VA_ARGS__; false)                                       \
+    {                                                                                              \
     } else
 
   template <class _Result, class _Sndr>

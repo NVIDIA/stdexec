@@ -127,6 +127,6 @@ namespace STDEXEC::__detail
   extern decltype(_DescriptorFn()) __desc_of_v<exec::__seqexpr<_DescriptorFn>>;
 
   template <auto _DescriptorFn>
-  extern __declfn_t<__minvoke<decltype(_DescriptorFn()), __q<exec::__basic_sequence_sender_t>>>
+  extern __mtype<__minvoke<decltype(_DescriptorFn()), __q<exec::__basic_sequence_sender_t>>>
     __demangle_v<exec::__seqexpr<_DescriptorFn>>;
 }  // namespace STDEXEC::__detail

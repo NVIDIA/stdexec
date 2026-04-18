@@ -66,8 +66,8 @@ namespace STDEXEC
       static constexpr auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, stopped_as_optional_t>);
-        STDEXEC_COMPLSIGS_LET(__completions,
-                              STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>())
+        STDEXEC_TRY_LET(auto __completions,
+                        STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>())
         {
           using _Completions = decltype(__completions);
           if constexpr (__single_value_sender<__child_of<_Self>, _Env...>)

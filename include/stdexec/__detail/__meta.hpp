@@ -51,12 +51,17 @@ namespace STDEXEC
   namespace __detail
   {
     // NB: This variable template is partially specialized for __type_index in __typeinfo.hpp:
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
     template <auto _Value>
-    extern __fn_ptr_t<decltype(_Value)> __mtypeof_v;
+    extern __mtype<std::remove_const_t<decltype(_Value)>> __mtypeof_v;
+#else
+    template <auto _Value>
+    extern __mtype<decltype(_Value)> __mtypeof_v;
+#endif
   }  // namespace __detail
 
   template <auto _Value>
-  using __mtypeof = decltype(__detail::__mtypeof_v<_Value>());
+  using __mtypeof = decltype(__detail::__mtypeof_v<_Value>)::__t;
 
   template <class...>
   struct __mlist;
@@ -203,7 +208,10 @@ namespace STDEXEC
     constexpr auto operator+() const -> _ERROR_;
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator,(__ignore) const -> _ERROR_;
+    constexpr auto operator,(__ignore) const -> _ERROR_
+    {
+      return *this;
+    }
   };
 
   template <class... _What>
@@ -869,19 +877,19 @@ namespace STDEXEC
   namespace __detail
   {
     template <class _Ty>
-    extern __declfn_t<_Ty> __demangle_v;
+    extern __mtype<_Ty> __demangle_v;
 
     template <class _Ty>
-    extern __declfn_t<_Ty &> __demangle_v<_Ty &>;
+    extern __mtype<_Ty &> __demangle_v<_Ty &>;
 
     template <class _Ty>
-    extern __declfn_t<_Ty &&> __demangle_v<_Ty &&>;
+    extern __mtype<_Ty &&> __demangle_v<_Ty &&>;
 
     template <class _Ty>
-    extern __declfn_t<_Ty const &> __demangle_v<_Ty const &>;
+    extern __mtype<_Ty const &> __demangle_v<_Ty const &>;
 
     template <class _Ty>
-    using __demangle_t = decltype(__demangle_v<_Ty>());
+    using __demangle_t = decltype(__demangle_v<_Ty>)::__t;
   }  // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics

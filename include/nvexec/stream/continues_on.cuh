@@ -284,7 +284,7 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <class Scheduler, class Sender>
-  extern __declfn_t<nvexec::_strm::continues_on_sender<Scheduler, __demangle_t<Sender>>>
+  extern __mtype<nvexec::_strm::continues_on_sender<Scheduler, __demangle_t<Sender>>>
     __demangle_v<nvexec::_strm::continues_on_sender<Scheduler, Sender>>;
 }  // namespace STDEXEC::__detail
 
