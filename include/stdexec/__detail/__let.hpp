@@ -593,7 +593,7 @@ namespace STDEXEC
         if constexpr (_Info.__disposition != __set_t::__disposition)
           return STDEXEC::__make_static_vector(_Info);
         else
-          return __transform(__signature<__mtypeof<_Info.__signature>>, _Info);
+          return __transform(__signature<__msplice<_Info.__signature>>, _Info);
       };
 
       //! @tparam _Info A `__static_vector` of `__completion_info` objects representing

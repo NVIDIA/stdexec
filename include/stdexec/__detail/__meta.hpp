@@ -48,20 +48,13 @@ namespace STDEXEC
   template <class...>
   concept __mnever = false;
 
-  namespace __detail
-  {
-    // NB: This variable template is partially specialized for __type_index in __typeinfo.hpp:
 #if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
-    template <auto _Value>
-    extern __mtype<std::remove_const_t<decltype(_Value)>> __mtypeof_v;
-#else
-    template <auto _Value>
-    extern __mtype<decltype(_Value)> __mtypeof_v;
-#endif
-  }  // namespace __detail
-
   template <auto _Value>
-  using __mtypeof = decltype(__detail::__mtypeof_v<_Value>)::__t;
+  using __mtypeof = std::remove_const_t<decltype(_Value)>;
+#else
+  template <auto _Value>
+  using __mtypeof = decltype(_Value);
+#endif
 
   template <class...>
   struct __mlist;

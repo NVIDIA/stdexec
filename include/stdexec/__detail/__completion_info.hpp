@@ -129,7 +129,7 @@ namespace STDEXEC
       {
         constexpr auto __fn = [=]<std::size_t... _Is>(__indices<_Is...>)
         {
-          return completion_signatures<__mtypeof<__sigs[_Is]>...>();
+          return completion_signatures<__msplice<__sigs[_Is]>...>();
         };
         return __fn(__make_indices<__sigs.size()>());
       }

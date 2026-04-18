@@ -27,7 +27,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// __type_info, __mtypeid, and __mtypeof
+// __type_info, __mtypeid, and __msplice
 
 namespace STDEXEC
 {
@@ -165,19 +165,17 @@ namespace STDEXEC
     };
 
     STDEXEC_PRAGMA_POP()
-
-    // This specialization is what makes __mtypeof< Id > return the type associated with Id.
-    template <auto _Index>
-      requires __same_as<decltype(_Index) const, __type_index const>
-    extern decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>())) __mtypeof_v<_Index>;
   }  // namespace __detail
 
   // For a given type, return a __type_index object
   template <class _Ty>
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 
+  template <__type_index _Index>
+  using __msplice = decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))::__t;
+
   // Sanity check:
-  static_assert(STDEXEC_IS_SAME(void, __mtypeof<__mtypeid<void>>));
+  static_assert(STDEXEC_IS_SAME(void, __msplice<__mtypeid<void>>));
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
