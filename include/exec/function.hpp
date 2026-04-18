@@ -46,257 +46,318 @@
 // the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
+  namespace _func
+  {
+    using namespace STDEXEC;
+
+    template <class Sig>
+    struct _virt_completion;
+
+    template <class Error>
+    struct _virt_completion<set_error_t(Error)>
+    {
+      _virt_completion() = default;
+
+      _virt_completion(_virt_completion&&) = delete;
+
+      virtual void set_error(Error&& err) noexcept = 0;
+
+     protected:
+      ~_virt_completion() = default;
+    };
+
+    template <>
+    struct _virt_completion<set_stopped_t()>
+    {
+      _virt_completion() = default;
+
+      _virt_completion(_virt_completion&&) = delete;
+
+      virtual void set_stopped() noexcept = 0;
+
+     protected:
+      ~_virt_completion() = default;
+    };
+
+    template <class... Values>
+    struct _virt_completion<set_value_t(Values...)>
+    {
+      _virt_completion() = default;
+
+      _virt_completion(_virt_completion&&) = delete;
+
+      virtual void set_value(Values&&... values) noexcept = 0;
+
+     protected:
+      ~_virt_completion() = default;
+    };
+
+    template <class Sigs>
+    struct _virt_completions;
+
+    template <class... Sigs>
+    struct _virt_completions<completion_signatures<Sigs...>> : virtual _virt_completion<Sigs>...
+    {
+      _virt_completions() = default;
+
+      _virt_completions(_virt_completions&&) = delete;
+
+     protected:
+      ~_virt_completions() = default;
+    };
+
+    template <class Sig, class Derived>
+    struct _func_rcvr_base;
+
+    template <class Error, class Derived>
+    struct _func_rcvr_base<set_error_t(Error), Derived>
+    {
+      void set_error(Error&& err) && noexcept
+      {
+        static_cast<Derived*>(this)->completer_->set_error(std::forward<Error>(err));
+      }
+    };
+
+    template <class Derived>
+    struct _func_rcvr_base<set_stopped_t(), Derived>
+    {
+      void set_stopped() && noexcept
+      {
+        static_cast<Derived*>(this)->completer_->set_stopped();
+      }
+    };
+
+    template <class... Value, class Derived>
+    struct _func_rcvr_base<set_value_t(Value...), Derived>
+    {
+      void set_value(Value&&... value) && noexcept
+      {
+        static_cast<Derived*>(this)->completer_->set_value(std::forward<Value>(value)...);
+      }
+    };
+
+    template <class Sigs>
+    class _func_rcvr;
+
+    template <class... Sigs>
+    class _func_rcvr<completion_signatures<Sigs...>>
+      : public _func_rcvr_base<Sigs, _func_rcvr<completion_signatures<Sigs...>>>...
+    {
+      friend _func_rcvr_base<Sigs, _func_rcvr>...;
+
+      using completer_t = _virt_completions<completion_signatures<Sigs...>>;
+
+      completer_t* completer_;
+
+     public:
+      using receiver_concept = receiver_tag;
+
+      explicit _func_rcvr(completer_t& completer) noexcept
+        : completer_(std::addressof(completer))
+      {}
+
+      // TODO: get_env
+    };
+
+    struct _base_op
+    {
+      _base_op() = default;
+
+      _base_op(_base_op&&) = delete;
+
+      virtual ~_base_op() = default;
+
+      virtual void start() & noexcept = 0;
+    };
+
+    template <class Sender, class Receiver>
+    struct _derived_op : _base_op
+    {
+      explicit _derived_op(Sender&& sndr, Receiver rcvr)
+        noexcept(std::is_nothrow_invocable_v<connect_t, Sender, Receiver>)
+        : op_(connect(std::forward<Sender>(sndr), std::move(rcvr)))
+      {}
+
+      _derived_op(_derived_op&&) = delete;
+
+      ~_derived_op() override = default;
+
+      void start() & noexcept override
+      {
+        ::STDEXEC::start(op_);
+      }
+
+     private:
+      connect_result_t<Sender, Receiver> op_;
+    };
+
+    template <class Sig, class Derived>
+    struct _func_op_completion;
+
+    template <class Error, class Derived>
+    struct _func_op_completion<set_error_t(Error), Derived>
+      : virtual _virt_completion<set_error_t(Error)>
+    {
+      void set_error(Error&& err) noexcept final
+      {
+        static_cast<Derived*>(this)->complete(set_error_t{}, std::forward<Error>(err));
+      }
+    };
+
+    template <class Derived>
+    struct _func_op_completion<set_stopped_t(), Derived> : virtual _virt_completion<set_stopped_t()>
+    {
+      void set_stopped() noexcept final
+      {
+        static_cast<Derived*>(this)->complete(set_stopped_t{});
+      }
+    };
+
+    template <class... Value, class Derived>
+    struct _func_op_completion<set_value_t(Value...), Derived>
+      : virtual _virt_completion<set_value_t(Value...)>
+    {
+      void set_value(Value&&... value) noexcept final
+      {
+        static_cast<Derived*>(this)->complete(set_value_t{}, std::forward<Value>(value)...);
+      }
+    };
+
+    template <class Receiver, class Sigs>
+    class _func_op;
+
+    template <class Receiver, class... Sigs>
+    class _func_op<Receiver, completion_signatures<Sigs...>>
+      : private _virt_completions<completion_signatures<Sigs...>>
+      , private _func_op_completion<Sigs, _func_op<Receiver, completion_signatures<Sigs...>>>...
+    {
+      // TODO: use get_frame_allocator(get_env(rcvr_)) to allocate and destroy this
+      std::unique_ptr<_base_op> op_;
+      [[no_unique_address]]
+      Receiver rcvr_;
+
+      friend _func_op_completion<Sigs, _func_op>...;
+
+      template <class CPO, class... Arg>
+      void complete(CPO cpo, Arg&&... arg) noexcept
+      {
+        std::move(cpo)(std::move(rcvr_), std::forward<Arg>(arg)...);
+      }
+
+     public:
+      using operation_state_concept = operation_state_tag;
+
+      template <class Factory>
+      _func_op(Receiver rcvr, Factory factory)
+        : rcvr_(std::move(rcvr))
+        , op_(factory(_func_rcvr<completion_signatures<Sigs...>>(*this))){};
+
+      _func_op(_func_op&&) = delete;
+
+      ~_func_op() = default;
+
+      void start() & noexcept
+      {
+        op_->start();
+      }
+    };
+
+    template <class Args, class Sigs, class Env>
+    class _func_impl;
+
+    template <class SndrCncpt, class... Args, class... Sigs, class Env>
+    class _func_impl<SndrCncpt(Args...), completion_signatures<Sigs...>, Env>
+    {
+      _base_op* (*factory_)(_func_rcvr<completion_signatures<Sigs...>>, Args&&...);
+      [[no_unique_address]]
+      std::tuple<Args...> args_;
+
+     public:
+      using sender_concept = SndrCncpt;
+
+      template <STDEXEC::__callable<Args...> Factory>
+        requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
+              && std::constructible_from<Factory>               //
+              && STDEXEC::__callable<Factory, Args...>
+      //&& STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
+      //_func_rcvr<completion_signatures<Sigs...>>>
+      explicit(sizeof...(Args) == 0) _func_impl(Args&&... args, Factory&& factory)
+        noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
+        : args_(std::forward<Args>(args)...)
+      {
+        using sender_t   = std::invoke_result_t<Factory, Args...>;
+        using receiver_t = _func_rcvr<completion_signatures<Sigs...>>;
+
+        using op_t = _derived_op<sender_t, receiver_t>;
+
+        factory_ = [](receiver_t rcvr, Args&&... args) -> _base_op*
+        {
+          Factory factory;
+          // TODO: query rcvr for a frame allocator and use it
+          return new op_t(factory(std::forward<Args>(args)...), std::move(rcvr));
+        };
+      }
+
+      template <class Sender, class /* Env */>
+      static consteval completion_signatures<Sigs...> get_completion_signatures() noexcept
+      {
+        // TODO: validate that the Env passed here is compatible with the class-level Env
+        return {};
+      }
+
+      template <class Receiver>
+      constexpr _func_op<Receiver, completion_signatures<Sigs...>> connect(Receiver rcvr)
+      {
+        return {std::move(rcvr),
+                [&, this](auto rcvr)
+                {
+                  return std::apply(
+                    [&](Args&&... args)
+                    { return factory_(std::move(rcvr), std::forward<Args>(args)...); },
+                    std::move(args_));
+                }};
+      }
+    };
+
+    template <class Sig>
+    struct _sigs_from;
+
+    template <class Return, class... Args>
+    struct _sigs_from<Return(Args...)>
+    {
+      using type = STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr),
+                                                  STDEXEC::set_stopped_t(),
+                                                  STDEXEC::set_value_t(Return)>;
+    };
+
+    template <class... Args>
+    struct _sigs_from<void(Args...)>
+    {
+      using type = STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr),
+                                                  STDEXEC::set_stopped_t(),
+                                                  STDEXEC::set_value_t()>;
+    };
+
+    template <class Sig>
+    using _sigs_from_t = _sigs_from<Sig>::type;
+  }  // namespace _func
 
   // TODO: think about environment forwarding
-  template <class T, class Env = STDEXEC::env<>>
-  struct function;
+  template <class...>
+  class function;
 
-  template <class R>
-  struct completer
+  template <class Return, class... Args>
+  class function<Return(Args...)>
+    : public _func::_func_impl<STDEXEC::sender_tag(Args...),
+                               _func::_sigs_from_t<Return(Args...)>,
+                               STDEXEC::env<>>
   {
-    completer() = default;
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
+                                   _func::_sigs_from_t<Return(Args...)>,
+                                   STDEXEC::env<>>;
 
-    virtual void set_value(R&& value) noexcept = 0;
-
-    virtual void set_error(std::exception_ptr err) noexcept = 0;
-
-    virtual void set_stopped() noexcept = 0;
-
-   protected:
-    ~completer() = default;
+    using base::base;
   };
-
-  template <>
-  struct completer<void>
-  {
-    completer() = default;
-
-    virtual void set_value() noexcept = 0;
-
-    virtual void set_error(std::exception_ptr err) noexcept = 0;
-
-    virtual void set_stopped() noexcept = 0;
-
-   protected:
-    ~completer() = default;
-  };
-
-  template <class R>
-  struct function_receiver
-  {
-    using receiver_concept = STDEXEC::receiver_tag;
-
-    void set_value(R&& value) noexcept
-    {
-      completer_->set_value(std::forward<R>(value));
-    }
-
-    void set_error(std::exception_ptr err) noexcept
-    {
-      completer_->set_error(std::move(err));
-    }
-
-    void set_stopped() noexcept
-    {
-      completer_->set_stopped();
-    }
-
-    completer<R>* completer_;
-  };
-
-  template <>
-  struct function_receiver<void>
-  {
-    using receiver_concept = STDEXEC::receiver_tag;
-
-    void set_value() noexcept
-    {
-      completer_->set_value();
-    }
-
-    void set_error(std::exception_ptr err) noexcept
-    {
-      completer_->set_error(std::move(err));
-    }
-
-    void set_stopped() noexcept
-    {
-      completer_->set_stopped();
-    }
-
-    completer<void>* completer_;
-  };
-
-  template <class Return>
-  struct function_completions
-  {
-    template <class Sender, class /*Env*/>
-    static consteval STDEXEC::completion_signatures<STDEXEC::set_value_t(Return),
-                                                    STDEXEC::set_error_t(std::exception_ptr),
-                                                    STDEXEC::set_stopped_t()>
-    get_completion_signatures()
-    {
-      return {};
-    }
-  };
-
-  template <>
-  struct function_completions<void>
-  {
-    template <class Sender, class /*Env*/>
-    static consteval STDEXEC::completion_signatures<STDEXEC::set_value_t(),
-                                                    STDEXEC::set_error_t(std::exception_ptr),
-                                                    STDEXEC::set_stopped_t()>
-    get_completion_signatures()
-    {
-      return {};
-    }
-  };
-
-  struct base_operation
-  {
-    base_operation()                 = default;
-    base_operation(base_operation&&) = delete;
-    virtual ~base_operation()        = default;
-
-    virtual void start() & noexcept = 0;
-  };
-
-  template <class R, class Receiver>
-  struct operation_storage : completer<R>
-  {
-    explicit operation_storage(Receiver rcvr) noexcept
-      : receiver_(std::move(rcvr))
-    {}
-
-    void set_value(R&& value) noexcept final
-    {
-      STDEXEC::set_value(std::move(receiver_), std::forward<R>(value));
-    }
-
-    Receiver receiver_;
-  };
-
-  template <class Receiver>
-  struct operation_storage<void, Receiver> : completer<void>
-  {
-    explicit operation_storage(Receiver rcvr) noexcept
-      : receiver_(std::move(rcvr))
-    {}
-
-    void set_value() noexcept final
-    {
-      STDEXEC::set_value(std::move(receiver_));
-    }
-
-    Receiver receiver_;
-  };
-
-  template <class R, class Receiver>
-  struct operation : operation_storage<R, Receiver>
-  {
-    using operation_state_concept = STDEXEC::operation_state_tag;
-
-    template <class Factory>
-    operation(Receiver rcvr, Factory factory)
-      : operation_storage<R, Receiver>{std::move(rcvr)}
-      , op_(factory(function_receiver<R>(this)))
-    {}
-
-    void start() & noexcept
-    {
-      op_->start();
-    }
-
-   private:
-    std::unique_ptr<base_operation> op_;
-
-    void set_error(std::exception_ptr err) noexcept final
-    {
-      STDEXEC::set_error(std::move(this->receiver_), std::move(err));
-    }
-
-    void set_stopped() noexcept final
-    {
-      STDEXEC::set_stopped(std::move(this->receiver_));
-    }
-  };
-
-  // consider:
-  //
-  //   template <class R, class... Args>
-  //   struct function<R(Args...) noexcept> {};
-  //
-  // to declare no error channel
-  //
-  // we allocate in connect, which could throw, but that just means connect
-  // can't be noexcept; it doesn't mean we have to have an error channel after
-  // we successfully connect...
-  template <class R, class... Args, class Env>
-    requires((std::movable<Args> || std::is_reference_v<Args>) && ...)
-  struct function<R(Args...), Env> : function_completions<R>
-  {
-    using sender_concept = STDEXEC::sender_tag;
-
-    template <STDEXEC::__callable<Args...> Factory>
-      requires STDEXEC::__not_decays_to<Factory, function>  //
-            && std::constructible_from<Factory>             //
-            && STDEXEC::__callable<Factory, Args...>
-            && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
-                                  function_receiver<R>>
-    explicit(sizeof...(Args) == 0) function(Args&&... args, Factory&& factory)
-      noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
-      : args_(std::forward<Args>(args)...)
-    {
-      using sender_t = std::invoke_result_t<Factory, Args...>;
-
-      struct derived_operation : base_operation
-      {
-        explicit derived_operation(sender_t&& sndr, function_receiver<R> rcvr)  // TODO noexcept
-          : op_(STDEXEC::connect(std::forward<sender_t>(sndr), std::move(rcvr)))
-        {}
-
-        ~derived_operation() override = default;
-
-        void start() & noexcept override
-        {
-          STDEXEC::start(op_);
-        }
-
-       private:
-        STDEXEC::connect_result_t<sender_t, function_receiver<R>> op_;
-      };
-
-      factory_ = [](function_receiver<R> rcvr, Args&&... args) -> base_operation*
-      {
-        Factory factory;
-        // TODO: query rcvr for a frame allocator and use it
-        return new derived_operation(factory(std::forward<Args>(args)...), std::move(rcvr));
-      };
-    }
-
-    template <class Self, STDEXEC::receiver Receiver>
-    auto connect(this Self&& sender, Receiver receiver) -> operation<R, Receiver>
-    {
-      return operation<R, Receiver>(std::move(receiver),
-                                    [&](function_receiver<R> rcvr)
-                                    {
-                                      return std::apply(
-                                        [&](Args&&... args)
-                                        {
-                                          return sender.factory_(std::move(rcvr),
-                                                                 std::forward<Args>(args)...);
-                                        },
-                                        std::forward<Self>(sender).args_);
-                                    });
-    }
-
-   private:
-    base_operation* (*factory_)(function_receiver<R>, Args&&...);
-    [[no_unique_address]]
-    std::tuple<Args...> args_;
-  };
-
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
