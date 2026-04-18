@@ -30,7 +30,6 @@
 #include <array>
 #include <compare>
 #include <span>
-#include <vector>
 // IWYU pragma: end_keep
 
 namespace STDEXEC
@@ -144,16 +143,6 @@ namespace STDEXEC
       auto __compls   = __array_t{__completion_info(__signature<_Sigs>)...};
       std::ranges::sort(__compls);
       return __compls;
-    }
-
-    template <class _Ty>
-    constexpr auto __append_range(std::vector<_Ty> &__dst, std::span<_Ty const> __src)
-    {
-#if __cpp_lib_containers_ranges >= 202202L
-      __dst.append_range(__src);
-#else
-      __dst.insert(__dst.end(), __src.begin(), __src.end());
-#endif
     }
   }  // namespace __cmplsigs
 }  // namespace STDEXEC

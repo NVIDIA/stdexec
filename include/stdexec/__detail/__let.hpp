@@ -522,7 +522,6 @@ namespace STDEXEC
     {
      private:
       using __set_t      = __t<_LetTag>;
-      using __cmpl_vec_t = std::vector<__completion_info>;
       using __eptr_sig_t = set_error_t(std::exception_ptr);
 
       template <class _CvSender>
@@ -543,8 +542,8 @@ namespace STDEXEC
         __mbind_front_q<__opstate, __set_t, __child_of<_CvSender>, __fn_t<_CvSender>, _Receiver>>;
 
       template <class _Fun, class _Child, class... _Env>
-      static constexpr auto __transform_cmplsig =                                             //
-        []<class... _As>(__set_t (*)(_As...), __completion_info __info, __cmpl_vec_t& __out)  //
+      static constexpr auto __transform_cmplsig =                        //
+        []<class... _As>(__set_t (*)(_As...), __completion_info __info)  //
         -> decltype(auto)
       {
         if constexpr (!__decay_copyable<_As...>)
@@ -571,34 +570,30 @@ namespace STDEXEC
           STDEXEC_TRY_LET(constexpr auto __cmpls,
                           STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>())
           {
-            __cmplsigs::__append_range(__out, std::span{__cmpls});
-
             if constexpr (!__nothrow_decay_copyable<_As...>
                           || !__nothrow_invocable<_Fun, __decay_t<_As>&...>
                           || (!__nothrow_connectable<__sndr2_t, __rcvr2_t<_Child, _Env>> || ...))
             {
-              __out.emplace_back(__signature<__eptr_sig_t>, __info.__domain, __info.__behavior);
+              __completion_info const __eptr_info(__signature<__eptr_sig_t>,
+                                                  __info.__domain,
+                                                  __info.__behavior);
+              return __cmpls + __static_vector{__eptr_info};
             }
-
-            return (__out);
+            else
+            {
+              return __cmpls;
+            }
           }
         }
       };
 
       template <__completion_info _Info>
-      static constexpr auto __maybe_transform_cmplsig =
-        [](auto __transform, __cmpl_vec_t& __out) -> decltype(auto)
+      static constexpr auto __maybe_transform_cmplsig = [](auto __transform) -> decltype(auto)
       {
         if constexpr (_Info.__disposition != __set_t::__disposition)
-        {
-          __out.push_back(_Info);
-          return (__out);
-        }
+          return __static_vector{_Info};
         else
-        {
-          using __sig_t = __mtypeof<_Info.__signature>;
-          return __transform(__signature<__sig_t>, _Info, __out);
-        }
+          return __transform(__signature<__mtypeof<_Info.__signature>>, _Info);
       };
 
       //! @tparam _Info A `__static_vector` of `__completion_info` objects representing
@@ -608,10 +603,10 @@ namespace STDEXEC
       {
         return []
         {
-          std::vector<__completion_info> __result;
-          // NB: this fold uses an overloaded comma operator that propagates __mexception
-          // objects when constexpr exceptions are not available.
-          return (__maybe_transform_cmplsig<_Info[_Is]>(_Transform, __result), ..., __result);
+          __static_vector<__completion_info, 0> __result;
+          // NB: this fold uses an overloaded addition operator that propagates
+          // __mexception objects when constexpr exceptions are not available.
+          return (__maybe_transform_cmplsig<_Info[_Is]>(_Transform) + ... + __result);
         };
       };
 

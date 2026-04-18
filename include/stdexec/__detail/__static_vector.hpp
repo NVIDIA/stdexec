@@ -25,8 +25,48 @@
 
 namespace STDEXEC
 {
-  template <class _Tp, std::size_t _Size>
-  struct __static_vector
+  template <class _Tp, std::size_t _Capacity>
+  struct __static_vector;
+
+  namespace __detail
+  {
+    struct __static_vector_base
+    {
+      template <class... _What, class _Tp, std::size_t _Capacity>
+      [[nodiscard]]
+      friend constexpr auto operator+(__mexception<_What...>,                            //
+                                      __static_vector<_Tp, _Capacity> const &) noexcept  //
+        -> __mexception<_What...>
+      {
+        return {};
+      }
+
+      template <class... _What, class _Tp, std::size_t _Capacity>
+      [[nodiscard]]
+      friend constexpr auto operator+(__static_vector<_Tp, _Capacity> const &,  //
+                                      __mexception<_What...>) noexcept          //
+        -> __mexception<_What...>
+      {
+        return {};
+      }
+
+      template <class _Ty, std::size_t _Capacity0, std::size_t _Capacity1>
+      [[nodiscard]]
+      friend constexpr auto operator+(__static_vector<_Ty, _Capacity0> const &__lhs,  //
+                                      __static_vector<_Ty, _Capacity1> const &__rhs)
+        noexcept(__nothrow_copy_constructible<_Ty>) -> __static_vector<_Ty, _Capacity0 + _Capacity1>
+      {
+        __static_vector<_Ty, _Capacity0 + _Capacity1> __result;
+        std::copy(__lhs.begin(), __lhs.end(), __result.begin());
+        std::copy(__rhs.begin(), __rhs.end(), __result.begin() + __lhs.size());
+        __result.resize(__lhs.size() + __rhs.size());
+        return __result;
+      }
+    };
+  }  // namespace __detail
+
+  template <class _Tp, std::size_t _Capacity>
+  struct __static_vector : __detail::__static_vector_base
   {
     using value_type     = _Tp;
     using iterator       = value_type *;
@@ -37,8 +77,9 @@ namespace STDEXEC
     constexpr __static_vector(std::initializer_list<value_type> __init)
       noexcept(__nothrow_copy_constructible<value_type>)
     {
-      auto const __end = std::copy_n(__init.begin(), (std::min) (__init.size(), _Size), __data_);
-      __size_          = __end - __data_;
+      auto const __count = (std::min) (__init.size(), _Capacity);
+      auto const __end   = std::ranges::copy_n(__init.begin(), __count, __data_).out;
+      __size_            = __end - __data_;
     }
 
     [[nodiscard]]
@@ -86,7 +127,7 @@ namespace STDEXEC
     [[nodiscard]]
     static constexpr auto capacity() noexcept -> std::size_t
     {
-      return _Size;
+      return _Capacity;
     }
 
     constexpr void resize(std::size_t __new_size) noexcept
@@ -102,19 +143,58 @@ namespace STDEXEC
     }
 
     std::size_t __size_ = 0;
-    value_type  __data_[_Size];
+    value_type  __data_[_Capacity];
   };
 
-  template <class _Tp, std::size_t _Size0, std::size_t _Size1>
-  [[nodiscard]]
-  constexpr auto __concat(__static_vector<_Tp, _Size0> const &__lhs,  //
-                          __static_vector<_Tp, _Size1> const &__rhs)
-    noexcept(__nothrow_copy_constructible<_Tp>) -> __static_vector<_Tp, _Size0 + _Size1>
+  // Specialization of __static_vector for zero capacity that doesn't require default
+  // constructibility of _Tp.
+  template <class _Tp>
+  struct __static_vector<_Tp, 0> : __detail::__static_vector_base
   {
-    __static_vector<_Tp, _Size0 + _Size1> __result;
-    std::copy(__lhs.begin(), __lhs.end(), __result.begin());
-    std::copy(__rhs.begin(), __rhs.end(), __result.begin() + __lhs.size());
-    __result.resize(__lhs.size() + __rhs.size());
-    return __result;
-  }
+    using value_type     = _Tp;
+    using iterator       = value_type *;
+    using const_iterator = value_type const *;
+
+    __static_vector() = default;
+
+    [[nodiscard]]
+    constexpr auto begin() noexcept -> iterator
+    {
+      return nullptr;
+    }
+
+    [[nodiscard]]
+    constexpr auto begin() const noexcept -> const_iterator
+    {
+      return nullptr;
+    }
+
+    [[nodiscard]]
+    constexpr auto end() noexcept -> iterator
+    {
+      return nullptr;
+    }
+
+    [[nodiscard]]
+    constexpr auto end() const noexcept -> const_iterator
+    {
+      return nullptr;
+    }
+
+    [[nodiscard]]
+    static constexpr auto size() noexcept -> std::size_t
+    {
+      return 0;
+    }
+
+    [[nodiscard]]
+    static constexpr auto capacity() noexcept -> std::size_t
+    {
+      return 0;
+    }
+  };
+
+  template <class _First, __same_as<_First>... _Rest>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+  __static_vector(_First, _Rest...) -> __static_vector<_First, 1 + sizeof...(_Rest)>;
 }  // namespace STDEXEC
