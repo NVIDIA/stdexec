@@ -21,6 +21,8 @@
 #include <catch2/catch_all.hpp>  // IWYU pragma: keep
 
 // NOLINTBEGIN(modernize-use-override)
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 
 namespace any = STDEXEC::__any;
 
@@ -340,4 +342,5 @@ namespace
   }
 }  // namespace
 
+STDEXEC_PRAGMA_POP()
 // NOLINTEND(modernize-use-override)
