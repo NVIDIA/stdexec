@@ -338,6 +338,19 @@ namespace experimental::execution
                                                   STDEXEC::set_value_t()>;
     };
 
+    template <class Return, class... Args>
+    struct _sigs_from<Return(Args...) noexcept>
+    {
+      using type =
+        STDEXEC::completion_signatures<STDEXEC::set_stopped_t(), STDEXEC::set_value_t(Return)>;
+    };
+
+    template <class... Args>
+    struct _sigs_from<void(Args...) noexcept>
+    {
+      using type = STDEXEC::completion_signatures<STDEXEC::set_stopped_t(), STDEXEC::set_value_t()>;
+    };
+
     template <class Sig>
     using _sigs_from_t = _sigs_from<Sig>::type;
   }  // namespace _func
@@ -346,14 +359,14 @@ namespace experimental::execution
   template <class...>
   class function;
 
-  template <class Return, class... Args>
-  class function<Return(Args...)>
+  template <class Return, class... Args, bool NoThrow>
+  class function<Return(Args...) noexcept(NoThrow)>
     : public _func::_func_impl<STDEXEC::sender_tag(Args...),
-                               _func::_sigs_from_t<Return(Args...)>,
+                               _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
                                STDEXEC::env<>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...)>,
+                                   _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
                                    STDEXEC::env<>>;
 
     using base::base;

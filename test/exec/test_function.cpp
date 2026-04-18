@@ -37,9 +37,14 @@ namespace
                                                   d,
                                                   [](int, double&) noexcept { return ex::just(); });
 
+    exec::function<void() noexcept> nothrowSndr([]() noexcept { return ex::just(); });
+    exec::function<int() noexcept>  nothrowIntSndr([]() noexcept { return ex::just(42); });
+
     STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(intSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(binarySndr)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowSndr)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowIntSndr)>);
   }
 
   TEST_CASE("exec::function is connectable", "[types][function]")
