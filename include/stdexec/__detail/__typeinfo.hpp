@@ -165,14 +165,23 @@ namespace STDEXEC
     };
 
     STDEXEC_PRAGMA_POP()
+
+    // Cache the result of the lookup:
+    template <auto _Id>
+    extern decltype(__typeid_lookup(__detail::__mtypeid_key<_Id>())) __msplice_v;
   }  // namespace __detail
 
   // For a given type, return a __type_index object
   template <class _Ty>
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 
-  template <__type_index _Index>
-  using __msplice = decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))::__t;
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+  template <auto _Id>
+  using __msplice = decltype(__detail::__msplice_v<_Id>)::__t;
+#else
+  template <__type_index _Id>
+  using __msplice = decltype(__detail::__msplice_v<_Id>)::__t;
+#endif
 
   // Sanity check:
   static_assert(STDEXEC_IS_SAME(void, __msplice<__mtypeid<void>>));
