@@ -541,38 +541,15 @@ namespace STDEXEC
       __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
   }  // namespace __detail
 
-  // Below is the definition of the STDEXEC_COMPLSIGS_LET portability macro. It
-  // is used to check that an expression's type is a valid completion_signature
-  // specialization.
-  //
-  // USAGE:
-  //
-  //   STDEXEC_COMPLSIGS_LET(__cs, <expression>)
-  //   {
-  //     // __cs is guaranteed to be a specialization of completion_signatures.
-  //   }
-  //
-  // When constexpr exceptions are available (C++26), the macro simply expands to
-  // the moral equivalent of:
-  //
-  //   // With constexpr exceptions:
-  //   auto __cs = <expression>; // throws if __cs is not a completion_signatures
-  //
-  // When constexpr exceptions are not available, the macro expands to:
-  //
-  //   // Without constexpr exceptions:
-  //   if constexpr (auto __cs = <expression>; !__valid_completion_signatures<decltype(__cs)>)
-  //   {
-  //     return __cs;
-  //   }
-  //   else
+  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used to check
+  // that an expression's type is not an __mexception type.
 
 #if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
-#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__;                                         \
-                  !STDEXEC::__valid_completion_signatures<decltype(_ID)>) {                        \
-      return _ID;                                                                                  \
+#  define STDEXEC_IF_OK(_ID)                        \
+    if constexpr (STDEXEC::__merror<decltype(_ID)>) \
+    {                                               \
+      return _ID;                                   \
     } else
 
   template <class, class _Sndr>
@@ -591,9 +568,7 @@ namespace STDEXEC
 
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
-#  define STDEXEC_COMPLSIGS_LET(_ID, ...)                                                          \
-    if constexpr ([[maybe_unused]] auto _ID = __VA_ARGS__; false) {                                \
-    } else
+#  define STDEXEC_IF_OK(_ID)
 
   template <class _Result, class _Sndr>
   [[noreturn, nodiscard]]

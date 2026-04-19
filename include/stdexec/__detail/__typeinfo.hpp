@@ -17,9 +17,9 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__meta.hpp"
 
 #include <compare>
+#include <source_location>
 #include <string_view>
 #include <typeinfo>
 
@@ -27,10 +27,90 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
 //////////////////////////////////////////////////////////////////////////////////////////
-// __type_info, __mtypeid, and __mtypeof
+// __type_info, __mtypeid, and __msplice
 
 namespace STDEXEC
 {
+  template <class _Ty>
+  struct __mtype
+  {
+    using __t = _Ty;
+  };
+
+  namespace __detail
+  {
+    template <class _Ty>
+    extern __mtype<_Ty> __demangle_v;
+  }  // namespace __detail
+
+  // A utility for pretty-printing type names in diagnostics
+  template <class _Ty>
+  using __demangle_t = decltype(__detail::__demangle_v<_Ty>)::__t;
+
+  namespace __detail
+  {
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> &> __demangle_v<_Ty &>;
+
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> &&> __demangle_v<_Ty &&>;
+
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> const &> __demangle_v<_Ty const &>;
+  }  // namespace __detail
+
+  namespace __detail
+  {
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // __get_pretty_name
+    template <class>
+    struct __xyzzy
+    {
+      struct __plugh
+      {};
+    };
+
+    inline constexpr char __type_name_prefix[] = "__xyzzy<";
+    inline constexpr char __type_name_suffix[] = ">::__plugh";
+
+    [[nodiscard]]
+    consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept
+    {
+      auto const __beg_pos = __sv.find(__type_name_prefix);
+      auto const __end_pos = __sv.rfind(__type_name_suffix);
+
+      auto const __start = __beg_pos + sizeof(__type_name_prefix) - 1;
+      auto const __len   = __end_pos - __start;
+
+      return __sv.substr(__start, __len);
+    }
+
+    template <class _Ty>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name_helper() noexcept
+    {
+#if STDEXEC_EDG()
+      return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
+#else
+      return __detail::__find_pretty_name(std::source_location::current().function_name());
+#endif
+    }
+
+    template <class _Ty>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name() noexcept
+    {
+      return __detail::__get_pretty_name_helper<typename __xyzzy<_Ty>::__plugh>();
+    }
+  }  // namespace __detail
+
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // __mnameof: get the pretty name of a type _Ty as a string_view at compile time
+  template <class _Ty>
+  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
+
+  static_assert(__mnameof<void> == "void");
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_info
   struct __type_info
@@ -97,8 +177,10 @@ namespace STDEXEC
   // __type_index
   struct __type_index
   {
-    constexpr __type_index(__type_info const &info) noexcept
-      : __info_(&info)
+    __type_index() = default;
+
+    constexpr __type_index(__type_info const &__info) noexcept
+      : __info_(&__info)
     {}
 
     [[nodiscard]]
@@ -108,15 +190,15 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
-    constexpr bool operator==(__type_index const &other) const noexcept
+    constexpr bool operator==(__type_index const &__other) const noexcept
     {
-      return *__info_ == *other.__info_;
+      return *__info_ == *__other.__info_;
     }
 
     [[nodiscard]]
-    constexpr std::strong_ordering operator<=>(__type_index const &other) const noexcept
+    constexpr std::strong_ordering operator<=>(__type_index const &__other) const noexcept
     {
-      return *__info_ <=> *other.__info_;
+      return *__info_ <=> *__other.__info_;
     }
 
 #if !STDEXEC_NO_STDCPP_TYPEID()
@@ -133,7 +215,7 @@ namespace STDEXEC
     }
 #endif
 
-    __type_info const *__info_;
+    __type_info const *__info_ = &__detail::__mtypeid_v<void>;
   };
 
   namespace __detail
@@ -164,19 +246,33 @@ namespace STDEXEC
 
     STDEXEC_PRAGMA_POP()
 
-    // This specialization is what makes __mtypeof< Id > return the type associated with Id.
-    template <auto _Index>
-      requires __same_as<decltype(_Index) const, __type_index const>
-    extern __fn_t<__t<decltype(__typeid_lookup(__detail::__mtypeid_key<_Index>()))>>
-      *__mtypeof_v<_Index>;
+#if STDEXEC_MSVC()
+    template <auto _Id>
+    struct __msplice_helper : decltype(__typeid_lookup(__mtypeid_key<_Id>())){};
+#else
+    // Cache the result of the lookup:
+    template <auto _Id>
+    extern decltype(__typeid_lookup(__mtypeid_key<_Id>())) __msplice_v;
+#endif
   }  // namespace __detail
 
   // For a given type, return a __type_index object
   template <class _Ty>
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 
+#if STDEXEC_MSVC()
+  template <__type_index _Id>
+  using __msplice = __detail::__msplice_helper<_Id>::__t;
+#elif STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+  template <auto _Id>
+  using __msplice = decltype(__detail::__msplice_v<_Id>)::__t;
+#else
+  template <__type_index _Id>
+  using __msplice = decltype(__detail::__msplice_v<_Id>)::__t;
+#endif
+
   // Sanity check:
-  static_assert(STDEXEC_IS_SAME(void, __mtypeof<__mtypeid<void>>));
+  static_assert(STDEXEC_IS_SAME(void, __msplice<__mtypeid<void>>));
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()

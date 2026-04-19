@@ -65,21 +65,18 @@ namespace STDEXEC
 
   struct __move_only
   {
-    __move_only() = default;
-
+    __move_only()                                          = default;
     __move_only(__move_only&&) noexcept                    = default;
+    __move_only(__move_only const &)                       = delete;
     auto operator=(__move_only&&) noexcept -> __move_only& = default;
-
-    __move_only(__move_only const &)                    = delete;
-    auto operator=(__move_only const &) -> __move_only& = delete;
+    auto operator=(__move_only const &) -> __move_only&    = delete;
   };
 
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 
   template <class _Fun, class _Default, class... _As>
-  using __call_result_or_t =
-    __mcall<__mtry_catch_q<__call_result_t, __mconst<_Default>>, _Fun, _As...>;
+  using __call_result_or_t = __minvoke_or_q<__call_result_t, _Default, _Fun, _As...>;
 
 // BUGBUG TODO file this bug with nvc++
 #if STDEXEC_EDG()

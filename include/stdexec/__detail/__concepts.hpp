@@ -252,6 +252,16 @@ namespace STDEXEC
 
   }  // namespace __std
 
+  template <class _Ty, class... _As>
+  concept __initializable_from = requires(__declfn_t<_As &&>... __as) {
+    { _Ty{__as()...} };
+  };
+
+  template <class _Ty, class... _As>
+  concept __nothrow_initializable_from = requires(__declfn_t<_As &&>... __as) {
+    { _Ty{__as()...} } noexcept;
+  };
+
   template <class _Ty>
   concept __movable_value = __std::move_constructible<__decay_t<_Ty>>
                          && __std::constructible_from<__decay_t<_Ty>, _Ty>;

@@ -307,13 +307,13 @@ namespace STDEXEC
     template <class _CvInitialSender, class _CvFinalSender, class... _Env>
     consteval auto __get_completion_signatures()
     {
-      STDEXEC_COMPLSIGS_LET(__initial_completions,
-                            get_completion_signatures<_CvInitialSender, _Env...>())
+      auto __initial_completions = get_completion_signatures<_CvInitialSender, _Env...>();
+      STDEXEC_IF_OK(__initial_completions)
       {
         using __initial_completions_t = decltype(__initial_completions);
-        STDEXEC_COMPLSIGS_LET(
-          __final_completions,
-          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>())
+        auto __final_completions =
+          get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>();
+        STDEXEC_IF_OK(__final_completions)
         {
           if constexpr (__never_sends<set_value_t,
                                       _CvFinalSender,

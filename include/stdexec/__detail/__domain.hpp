@@ -18,10 +18,8 @@
 #include "__execution_fwd.hpp"
 
 #include "__completion_behavior.hpp"
-#include "__completion_signatures_of.hpp"
 #include "__concepts.hpp"
 #include "__config.hpp"
-#include "__execution_fwd.hpp"
 #include "__meta.hpp"
 #include "__sender_introspection.hpp"
 #include "__utility.hpp"
@@ -171,12 +169,6 @@ namespace STDEXEC
   }  // namespace __detail
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  template <class _Tag, class _Attrs, class... _Env>
-  using __completion_domain_t = __call_result_or_t<get_completion_domain_t<_Tag>,
-                                                   indeterminate_domain<>,
-                                                   _Attrs,
-                                                   _Env const &...>;
-
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_domain_of_t = __completion_domain_t<_Tag, env_of_t<_Sender>, _Env const &...>;

@@ -28,13 +28,6 @@
 
 namespace STDEXEC
 {
-  enum class __disposition
-  {
-    __value,
-    __error,
-    __stopped
-  };
-
   namespace __detail
   {
     template <__disposition _Disposition>

@@ -267,12 +267,12 @@ namespace STDEXEC
   struct __construct_from
   {
     template <class... _As>
-      requires __std::constructible_from<_Ty, _As...>
+      requires __initializable_from<_Ty, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_As &&...__as) const noexcept(  //
-      __nothrow_constructible_from<_Ty, _As...>) -> _Ty
+    constexpr auto
+    operator()(_As &&...__as) const noexcept(__nothrow_initializable_from<_Ty, _As...>) -> _Ty
     {
-      return _Ty(static_cast<_As &&>(__as)...);
+      return _Ty{static_cast<_As &&>(__as)...};
     }
   };
 
@@ -363,8 +363,7 @@ namespace STDEXEC
   constexpr auto __bind_back(_Fn &&__fn, _BoundArgs... __bound_args)
     noexcept(__nothrow_move_constructible<_BoundArgs...> && __nothrow_decay_copyable<_Fn>)
   {
-    return __back_binder<__decay_t<_Fn>, _BoundArgs...>{static_cast<_Fn &&>(__fn),
-                                                        static_cast<_BoundArgs &&>(
-                                                          __bound_args)...};
+    using __binder_t = __back_binder<__decay_t<_Fn>, _BoundArgs...>;
+    return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
 }  // namespace STDEXEC

@@ -318,8 +318,9 @@ namespace STDEXEC
       template <class _Child, class... _Env>
       static consteval auto __get_child_completions()
       {
-        STDEXEC_COMPLSIGS_LET(__child_completions,
-                              STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>())
+        auto __child_completions =
+          STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>();
+        STDEXEC_IF_OK(__child_completions)
         {
           // continues_on has the completions of the child sender, but with value and
           // error result types decayed.
@@ -334,8 +335,9 @@ namespace STDEXEC
       static consteval auto __get_scheduler_completions()
       {
         using __sndr_t = schedule_result_t<_Scheduler>;
-        STDEXEC_COMPLSIGS_LET(__sched_completions,
-                              STDEXEC::get_completion_signatures<__sndr_t, __fwd_env_t<_Env>...>())
+        auto __sched_completions =
+          STDEXEC::get_completion_signatures<__sndr_t, __fwd_env_t<_Env>...>();
+        STDEXEC_IF_OK(__sched_completions)
         {
           // The scheduler contributes only error and stopped completions; we ignore value
           // completions here

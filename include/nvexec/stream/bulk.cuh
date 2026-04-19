@@ -440,12 +440,11 @@ namespace nvexec = nv::execution;
 namespace STDEXEC::__detail
 {
   template <class Sender, class Shape, class Fun>
-  inline constexpr __declfn_t<nvexec::_strm::bulk_sender<__demangle_t<Sender>, Shape, Fun>>
+  inline constexpr __mtype<nvexec::_strm::bulk_sender<__demangle_t<Sender>, Shape, Fun>>
     __demangle_v<nvexec::_strm::bulk_sender<Sender, Shape, Fun>>{};
 
   template <class Sender, class Shape, class Fun>
-  inline constexpr __declfn_t<
-    nvexec::_strm::multi_gpu_bulk_sender<__demangle_t<Sender>, Shape, Fun>>
+  inline constexpr __mtype<nvexec::_strm::multi_gpu_bulk_sender<__demangle_t<Sender>, Shape, Fun>>
     __demangle_v<nvexec::_strm::multi_gpu_bulk_sender<Sender, Shape, Fun>>{};
 }  // namespace STDEXEC::__detail
 
