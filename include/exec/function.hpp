@@ -169,7 +169,8 @@ namespace experimental::execution
     {
       void complete(CPO, Args&&... args) noexcept final
       {
-        static_cast<Derived*>(this)->complete(CPO{}, std::forward<Args>(args)...);
+        auto& rcvr = static_cast<Derived*>(this)->rcvr_;
+        CPO{}(std::move(rcvr), std::forward<Args>(args)...);
       }
     };
 
@@ -189,12 +190,6 @@ namespace experimental::execution
 
       template <class B, class D, class... S>
       friend struct _func_op_completion;
-
-      template <class CPO, class... Arg>
-      void complete(CPO cpo, Arg&&... arg) noexcept
-      {
-        std::move(cpo)(std::move(rcvr_), std::forward<Arg>(arg)...);
-      }
 
      public:
       using operation_state_concept = operation_state_tag;
