@@ -567,8 +567,7 @@ namespace STDEXEC
         else
         {
           using __sndr2_t = __invoke_result_t<_Fun, __decay_t<_As>&...>;
-          constexpr auto __cmpls =
-            STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>();
+          auto __cmpls    = STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>();
           STDEXEC_IF_OK(__cmpls)
           {
             if constexpr (!__nothrow_decay_copyable<_As...>
