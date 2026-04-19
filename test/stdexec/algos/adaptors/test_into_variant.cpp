@@ -78,8 +78,10 @@ namespace
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(in_snd));
 
     ex::sender auto snd = std::move(in_snd) | ex::into_variant();
-    wait_for_value(std::move(snd),
-                   std::variant<std::tuple<int>, std::tuple<std::string>>{std::make_tuple(13)});
+
+    using variant_t =
+      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+    wait_for_value(std::move(snd), variant_t{std::make_tuple(13)});
   }
 
   TEST_CASE("into_variant can be used with just_error", "[adaptors][into_variant]")
@@ -124,7 +126,9 @@ namespace
     check_val_types<ex::__mset<pack<std::variant<std::tuple<int, double>>>>>(ex::just(3, 0.1415)
                                                                              | ex::into_variant());
 
-    check_val_types<ex::__mset<pack<std::variant<std::tuple<int>, std::tuple<std::string>>>>>(
+    using variant_t =
+      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+    check_val_types<ex::__mset<pack<variant_t>>>(
       fallible_just{13}
       | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); })
       // sender here can send either `int` or `std::string`

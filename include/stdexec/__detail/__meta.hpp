@@ -18,18 +18,18 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__type_traits.hpp"
+#include "__typeinfo.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstddef>
-#include <source_location>  // IWYU pragma: keep for std::source_location::current
-#include <string_view>
 #include <type_traits>
 
 namespace STDEXEC
 {
-  //! Convenience metafunction getting the dependant type `__t` out of `_Tp`.
+  //! Convenience metafunction getting the dependent type `__t` out of `_Tp`.
   //! That is, `typename _Tp::__t`.
-  //! See MAINTAINERS.md#class-template-parameters for details.
   template <class _Tp>
   using __t = _Tp::__t;
 
@@ -38,12 +38,6 @@ namespace STDEXEC
 
   template <class _Ret, class... _Args>
   using __fn_ptr_t = _Ret (*)(_Args...);
-
-  template <class _Ty>
-  struct __mtype
-  {
-    using __t = _Ty;
-  };
 
   template <class...>
   concept __mnever = false;
@@ -867,80 +861,6 @@ namespace STDEXEC
     using __f = __mfront<_As..., _Default>;
   };
 
-  namespace __detail
-  {
-    template <class _Ty>
-    extern __mtype<_Ty> __demangle_v;
-
-    template <class _Ty>
-    extern __mtype<_Ty &> __demangle_v<_Ty &>;
-
-    template <class _Ty>
-    extern __mtype<_Ty &&> __demangle_v<_Ty &&>;
-
-    template <class _Ty>
-    extern __mtype<_Ty const &> __demangle_v<_Ty const &>;
-
-    template <class _Ty>
-    using __demangle_t = decltype(__demangle_v<_Ty>)::__t;
-  }  // namespace __detail
-
-  // A utility for pretty-printing type names in diagnostics
-  template <class _Ty>
-  using __demangle_t = __copy_cvref_t<_Ty, __detail::__demangle_t<std::remove_cvref_t<_Ty>>>;
-
-  namespace __detail
-  {
-    //////////////////////////////////////////////////////////////////////////////////////////
-    // __get_pretty_name
-    template <class>
-    struct __xyzzy
-    {
-      struct __plugh
-      {};
-    };
-
-    inline constexpr char __type_name_prefix[] = "__xyzzy<";
-    inline constexpr char __type_name_suffix[] = ">::__plugh";
-
-    [[nodiscard]]
-    consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept
-    {
-      auto const __beg_pos = __sv.find(__type_name_prefix);
-      auto const __end_pos = __sv.rfind(__type_name_suffix);
-
-      auto const __start = __beg_pos + sizeof(__type_name_prefix) - 1;
-      auto const __len   = __end_pos - __start;
-
-      return __sv.substr(__start, __len);
-    }
-
-    template <class _Ty>
-    [[nodiscard]]
-    consteval std::string_view __get_pretty_name_helper() noexcept
-    {
-#if STDEXEC_EDG()
-      return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
-#else
-      return __detail::__find_pretty_name(std::source_location::current().function_name());
-#endif
-    }
-
-    template <class _Ty>
-    [[nodiscard]]
-    consteval std::string_view __get_pretty_name() noexcept
-    {
-      return __detail::__get_pretty_name_helper<typename __xyzzy<_Ty>::__plugh>();
-    }
-  }  // namespace __detail
-
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // __mnameof: get the pretty name of a type _Ty as a string_view at compile time
-  template <class _Ty>
-  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
-
-  static_assert(__mnameof<void> == "void");
-
   template <class _List1, class _List2>
   struct __mzip_with2_ : __mzip_with2_<__mapply_q<__mlist, _List1>, __mapply_q<__mlist, _List2>>
   {};
@@ -1111,5 +1031,32 @@ namespace STDEXEC
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
 #endif
+  };
+
+  namespace __detail
+  {
+    template <std::size_t _Ny>
+    consteval auto __msort_impl(std::array<__type_index, _Ny> __arr) noexcept
+    {
+      std::ranges::sort(__arr);
+      return __arr;
+    }
+
+    template <class _Continuation, auto _Ids, class = __make_indices<_Ids.size()>>
+    struct __msort_apply;
+
+    template <class _Continuation, auto _Ids, std::size_t... _Is>
+    struct __msort_apply<_Continuation, _Ids, __indices<_Is...>>
+    {
+      using __t = __minvoke<_Continuation, __msplice<_Ids[_Is]>...>;
+    };
+  }  // namespace __detail
+
+  template <class _Continuation = __q<__mlist>>
+  struct __msort
+  {
+    template <class... _Ts>
+    using __f = __detail::__msort_apply<_Continuation,
+                                        __detail::__msort_impl(std::array{__mtypeid<_Ts>...})>::__t;
   };
 }  // namespace STDEXEC

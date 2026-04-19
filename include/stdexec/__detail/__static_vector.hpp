@@ -137,7 +137,7 @@ namespace STDEXEC
 
     constexpr auto erase(const_iterator __first, const_iterator __last) noexcept -> iterator
     {
-      std::move(__last, end(), const_cast<iterator>(__first));
+      std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
       resize(size() - (__last - __first));
       return end();
     }

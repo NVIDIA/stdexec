@@ -17,9 +17,9 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__meta.hpp"
 
 #include <compare>
+#include <source_location>
 #include <string_view>
 #include <typeinfo>
 
@@ -31,6 +31,86 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
 namespace STDEXEC
 {
+  template <class _Ty>
+  struct __mtype
+  {
+    using __t = _Ty;
+  };
+
+  namespace __detail
+  {
+    template <class _Ty>
+    extern __mtype<_Ty> __demangle_v;
+  }  // namespace __detail
+
+  // A utility for pretty-printing type names in diagnostics
+  template <class _Ty>
+  using __demangle_t = decltype(__detail::__demangle_v<_Ty>)::__t;
+
+  namespace __detail
+  {
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> &> __demangle_v<_Ty &>;
+
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> &&> __demangle_v<_Ty &&>;
+
+    template <class _Ty>
+    extern __mtype<__demangle_t<_Ty> const &> __demangle_v<_Ty const &>;
+  }  // namespace __detail
+
+  namespace __detail
+  {
+    //////////////////////////////////////////////////////////////////////////////////////////
+    // __get_pretty_name
+    template <class>
+    struct __xyzzy
+    {
+      struct __plugh
+      {};
+    };
+
+    inline constexpr char __type_name_prefix[] = "__xyzzy<";
+    inline constexpr char __type_name_suffix[] = ">::__plugh";
+
+    [[nodiscard]]
+    consteval std::string_view __find_pretty_name(std::string_view __sv) noexcept
+    {
+      auto const __beg_pos = __sv.find(__type_name_prefix);
+      auto const __end_pos = __sv.rfind(__type_name_suffix);
+
+      auto const __start = __beg_pos + sizeof(__type_name_prefix) - 1;
+      auto const __len   = __end_pos - __start;
+
+      return __sv.substr(__start, __len);
+    }
+
+    template <class _Ty>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name_helper() noexcept
+    {
+#if STDEXEC_EDG()
+      return __detail::__find_pretty_name(std::string_view{STDEXEC_PRETTY_FUNCTION()});
+#else
+      return __detail::__find_pretty_name(std::source_location::current().function_name());
+#endif
+    }
+
+    template <class _Ty>
+    [[nodiscard]]
+    consteval std::string_view __get_pretty_name() noexcept
+    {
+      return __detail::__get_pretty_name_helper<typename __xyzzy<_Ty>::__plugh>();
+    }
+  }  // namespace __detail
+
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // __mnameof: get the pretty name of a type _Ty as a string_view at compile time
+  template <class _Ty>
+  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
+
+  static_assert(__mnameof<void> == "void");
+
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_info
   struct __type_info

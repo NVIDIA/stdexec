@@ -157,11 +157,12 @@ namespace
     check_val_types<ex::__mset<pack<int>, pack<std::string>>>(std::move(snd));
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
 
-    std::optional<std::tuple<std::variant<std::tuple<int>, std::tuple<std::string>>>> res =
-      ex::sync_wait_with_variant(std::move(snd));
+    using variant_t =
+      ex::__minvoke<ex::__msort<ex::__qq<std::variant>>, std::tuple<int>, std::tuple<std::string>>;
+    std::optional<variant_t> res = ex::sync_wait_with_variant(std::move(snd));
 
     CHECK(res.has_value());
-    CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
+    CHECK(std::get<0>(std::get<std::tuple<int>>(res.value())) == 13);
   }
 
   TEST_CASE("sync_wait_with_variant accepts single-value senders",
@@ -171,10 +172,10 @@ namespace
     check_val_types<ex::__mset<pack<int>>>(snd);
     static_assert(std::invocable<ex::sync_wait_with_variant_t, decltype(snd)>);
 
-    std::optional<std::tuple<std::variant<std::tuple<int>>>> res = ex::sync_wait_with_variant(snd);
+    std::optional<std::variant<std::tuple<int>>> res = ex::sync_wait_with_variant(snd);
 
     CHECK(res.has_value());
-    CHECK_TUPLE(std::get<0>(std::get<0>(res.value())) == std::make_tuple(13));
+    CHECK(std::get<0>(std::get<std::tuple<int>>(res.value())) == 13);
   }
 
   TEST_CASE("sync_wait works if signaled from a different thread", "[consumers][sync_wait]")

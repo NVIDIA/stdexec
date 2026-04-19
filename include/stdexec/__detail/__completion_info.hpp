@@ -118,8 +118,9 @@ namespace STDEXEC
         std::ranges::transform(__completions,
                                __signatures.begin(),
                                &__completion_info::__signature);
+        std::ranges::sort(__signatures);
         auto const __end = std::ranges::unique(__signatures).begin();
-        __signatures.resize(__end - __signatures.begin());
+        __signatures.erase(__end, __signatures.end());
         return __signatures;
       }
     }();
