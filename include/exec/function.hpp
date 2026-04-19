@@ -18,6 +18,7 @@
 #include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__env.hpp"
+#include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__scope.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
@@ -48,6 +49,31 @@
 // the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
+  struct get_frame_allocator_t : STDEXEC::__query<get_frame_allocator_t>
+  {
+    using STDEXEC::__query<get_frame_allocator_t>::operator();
+
+    constexpr auto operator()() const noexcept
+    {
+      return STDEXEC::read_env(get_frame_allocator_t{});
+    }
+
+    template <class Env>
+    static constexpr void __validate() noexcept
+    {
+      static_assert(STDEXEC::__nothrow_callable<get_frame_allocator_t, Env const &>);
+      using __alloc_t = STDEXEC::__call_result_t<get_frame_allocator_t, Env const &>;
+      static_assert(STDEXEC::__simple_allocator<STDEXEC::__decay_t<__alloc_t>>);
+    }
+
+    static consteval auto query(STDEXEC::forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  inline constexpr get_frame_allocator_t get_frame_allocator{};
+
   namespace _func
   {
     using namespace STDEXEC;
@@ -197,7 +223,6 @@ namespace experimental::execution
                                     _func_op<Receiver, completion_signatures<Sigs...>>,
                                     Sigs...>
     {
-      // TODO: use get_frame_allocator(get_env(rcvr_)) to allocate and destroy this
       std::unique_ptr<_base_op> op_;
       [[no_unique_address]]
       Receiver rcvr_;
@@ -222,6 +247,23 @@ namespace experimental::execution
         op_->start();
       }
     };
+
+    template <class Env>
+    constexpr auto choose_frame_allocator(Env const & env) noexcept
+    {
+      if constexpr (requires { get_frame_allocator(env); })
+      {
+        return get_frame_allocator(env);
+      }
+      else if constexpr (requires { get_allocator(env); })
+      {
+        return get_allocator(env);
+      }
+      else
+      {
+        return std::allocator<std::byte>();
+      }
+    }
 
     template <class Args, class Sigs, class Env>
     class _func_impl;
@@ -253,12 +295,12 @@ namespace experimental::execution
 
         factory_ = [](receiver_t rcvr, Args&&... args) -> std::unique_ptr<_base_op>
         {
-          using traits = std::allocator_traits<std::allocator<op_t>>;
+          using traits = std::allocator_traits<decltype(choose_frame_allocator(
+            get_env(rcvr)))>::template rebind_traits<op_t>;
 
           Factory factory;
 
-          // TODO: query rcvr for a frame allocator and use it
-          typename traits::allocator_type alloc;
+          typename traits::allocator_type alloc(choose_frame_allocator(get_env(rcvr)));
 
           auto* op = traits::allocate(alloc, 1);
 
