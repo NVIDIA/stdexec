@@ -253,7 +253,7 @@ namespace STDEXEC
       return STDEXEC::__invoke(static_cast<_Fun&&>(__fn), __args...);
     };
 
-    constexpr auto __start_next_fn =
+    inline constexpr auto __start_next_fn =
       []<class _Fun, class _Receiver, class _Env2, class _Storage, class _Tuple>(
         _Fun&      __fn,
         _Receiver& __rcvr,

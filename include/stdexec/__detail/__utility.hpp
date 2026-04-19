@@ -31,7 +31,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wduplicate-decl-specifier")
 
 namespace STDEXEC
 {
-  constexpr std::size_t __npos = ~0UL;
+  inline constexpr std::size_t __npos = ~0UL;
 
   template <class...>
   struct __undefined;

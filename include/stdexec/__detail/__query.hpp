@@ -51,7 +51,7 @@ namespace STDEXEC
   using __member_query_result_t = decltype(__declval<_Env const &>().query(__declval<_Qy const &>(),
                                                                            __declval<_Args>()...));
 
-  constexpr __none_such __no_default{};
+  inline constexpr __none_such __no_default{};
 
   template <class _Query, class _Env, class... _Args>
   concept __has_validation = requires { _Query::template __validate<_Env, _Args...>(); };

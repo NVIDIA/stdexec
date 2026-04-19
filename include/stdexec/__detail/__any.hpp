@@ -141,8 +141,8 @@ namespace STDEXEC::__any
   //!   4. @c Interface<...Bases...<__value_proxy_root<Interface>>...>
   //!   5. @c Interface<...Bases...<__reference_proxy_root<Interface>>...>
 
-  constexpr size_t      __default_buffer_size = 3 * sizeof(void *);
-  constexpr char const *__pure_virt_msg       = "internal error: pure virtual %s() called\n";
+  inline constexpr size_t      __default_buffer_size = 3 * sizeof(void *);
+  inline constexpr char const *__pure_virt_msg       = "internal error: pure virtual %s() called\n";
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // forward declarations

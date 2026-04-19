@@ -33,7 +33,7 @@ STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-extern void _mm_pause();
+extern "C" void _mm_pause();
 #endif
 
 namespace STDEXEC::__stok
