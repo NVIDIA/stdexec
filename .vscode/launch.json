@@ -85,6 +85,17 @@
             "environment": [{"CUDA_LAUNCH_BLOCKING": "1"}],
             "args": ["--iterations=1000", "--N=512", "--run-stream-scheduler"],
         },
+        {
+            "name": "(Windows) Launch",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "console": "externalTerminal"
+        },
     ],
     "inputs": [
         // These require the Tasks Shell Input extension:

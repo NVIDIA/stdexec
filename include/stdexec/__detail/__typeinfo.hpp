@@ -168,9 +168,7 @@ namespace STDEXEC
 
 #if STDEXEC_MSVC()
     template <auto _Id>
-    struct __msplice_helper
-      : decltype(__typeid_lookup(__mtypeid_key<_Id>()))
-    {};
+    struct __msplice_helper : decltype(__typeid_lookup(__mtypeid_key<_Id>())){};
 #else
     // Cache the result of the lookup:
     template <auto _Id>
