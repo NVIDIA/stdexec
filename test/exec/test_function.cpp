@@ -39,11 +39,18 @@ namespace
     exec::function<void() noexcept> nothrowSndr([]() noexcept { return ex::just(); });
     exec::function<int() noexcept>  nothrowIntSndr([]() noexcept { return ex::just(42); });
 
+    exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t(int)>> unstoppable(
+      []() noexcept { return ex::just(42); });
+    exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> onlystopped(
+      []() noexcept { return ex::just_stopped(); });
+
     STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(intSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(binarySndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowIntSndr)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(unstoppable)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(onlystopped)>);
   }
 
   TEST_CASE("exec::function is connectable", "[types][function]")
@@ -63,7 +70,7 @@ namespace
     auto op = ex::connect(std::move(sndr), rcvr{});
 
     auto [fortytwo] = ex::sync_wait(std::move(sndr)).value();
-    
+
     REQUIRE(fortytwo == 42);
   }
 }  // namespace
