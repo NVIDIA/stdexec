@@ -19,10 +19,12 @@
 #include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
+#include "../stdexec/__detail/__scope.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
 
 #include <exception>
 #include <memory>
+#include <new>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -135,12 +137,13 @@ namespace experimental::execution
       virtual void start() & noexcept = 0;
     };
 
-    template <class Sender, class Receiver>
+    template <class Sender, class Receiver, class Allocator>
     struct _derived_op : _base_op
     {
-      explicit _derived_op(Sender&& sndr, Receiver rcvr)
+      explicit _derived_op(Sender&& sndr, Receiver rcvr, Allocator const & alloc)
         noexcept(std::is_nothrow_invocable_v<connect_t, Sender, Receiver>)
         : op_(connect(std::forward<Sender>(sndr), std::move(rcvr)))
+        , alloc_(alloc)
       {}
 
       _derived_op(_derived_op&&) = delete;
@@ -152,8 +155,19 @@ namespace experimental::execution
         ::STDEXEC::start(op_);
       }
 
+      static constexpr void operator delete(_derived_op* p, std::destroying_delete_t)
+      {
+        using traits = std::allocator_traits<Allocator>::template rebind_traits<_derived_op>;
+
+        typename traits::allocator_type alloc = std::move(p->alloc_);
+        traits::destroy(alloc, p);
+        traits::deallocate(alloc, p, 1);
+      }
+
      private:
       connect_result_t<Sender, Receiver> op_;
+      [[no_unique_address]]
+      Allocator alloc_;
     };
 
     template <class Base, class Derived, class... Sigs>
@@ -215,7 +229,7 @@ namespace experimental::execution
     template <class SndrCncpt, class... Args, class... Sigs, class Env>
     class _func_impl<SndrCncpt(Args...), completion_signatures<Sigs...>, Env>
     {
-      _base_op* (*factory_)(_func_rcvr<completion_signatures<Sigs...>>, Args&&...);
+      std::unique_ptr<_base_op> (*factory_)(_func_rcvr<completion_signatures<Sigs...>>, Args&&...);
       [[no_unique_address]]
       std::tuple<Args...> args_;
 
@@ -235,13 +249,30 @@ namespace experimental::execution
         using sender_t   = std::invoke_result_t<Factory, Args...>;
         using receiver_t = _func_rcvr<completion_signatures<Sigs...>>;
 
-        using op_t = _derived_op<sender_t, receiver_t>;
+        using op_t = _derived_op<sender_t, receiver_t, std::allocator<std::byte>>;
 
-        factory_ = [](receiver_t rcvr, Args&&... args) -> _base_op*
+        factory_ = [](receiver_t rcvr, Args&&... args) -> std::unique_ptr<_base_op>
         {
+          using traits = std::allocator_traits<std::allocator<op_t>>;
+
           Factory factory;
+
           // TODO: query rcvr for a frame allocator and use it
-          return new op_t(factory(std::forward<Args>(args)...), std::move(rcvr));
+          typename traits::allocator_type alloc;
+
+          auto* op = traits::allocate(alloc, 1);
+
+          __scope_guard guard{[&]() noexcept { traits::deallocate(alloc, op, 1); }};
+
+          traits::construct(alloc,
+                            op,
+                            factory(std::forward<Args>(args)...),
+                            std::move(rcvr),
+                            alloc);
+
+          guard.__dismiss();
+
+          return std::unique_ptr<_base_op>(op);
         };
       }
 
