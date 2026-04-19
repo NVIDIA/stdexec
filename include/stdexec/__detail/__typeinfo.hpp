@@ -175,7 +175,7 @@ namespace STDEXEC
   template <class _Ty>
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 
-#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#if (STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300) || STDEXEC_MSVC()
   template <auto _Id>
   using __msplice = decltype(__detail::__msplice_v<_Id>)::__t;
 #else
