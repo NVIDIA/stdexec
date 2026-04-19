@@ -611,26 +611,29 @@ namespace STDEXEC
       };
 
       template <class _Fun, class _Child, class... _Env>
-      static constexpr auto __get_cmpl_info = []
+      struct __get_cmpl_info
       {
-        constexpr auto __transform   = __transform_cmplsig<_Fun, _Child, _Env...>;
-        constexpr auto __get_sig     = &__completion_info::__signature;
-        constexpr auto __eptr_sig_id = __mtypeid<__eptr_sig_t>;
-        constexpr auto __cmpls       = STDEXEC::__get_completion_info<_Child, _Env...>();
-
-        STDEXEC_IF_OK(__cmpls)
+        constexpr auto operator()() const
         {
-          constexpr auto __idx        = __make_indices<__cmpls.size()>();
-          constexpr auto __get_cmpls2 = __get_cmpl_info_i<__cmpls, __transform>(__idx);
-          constexpr auto __cmpls2     = __cmplsigs::__completion_info_from(__get_cmpls2);
+          constexpr auto __transform   = __transform_cmplsig<_Fun, _Child, _Env...>;
+          constexpr auto __get_sig     = &__completion_info::__signature;
+          constexpr auto __eptr_sig_id = __mtypeid<__eptr_sig_t>;
+          constexpr auto __cmpls       = STDEXEC::__get_completion_info<_Child, _Env...>();
 
-          STDEXEC_IF_OK(__cmpls2)
+          STDEXEC_IF_OK(__cmpls)
           {
-            if constexpr (std::ranges::find(__cmpls2, __eptr_sig_id, __get_sig) == __cmpls2.end()
-                          && sizeof...(_Env) == 0)
-              return STDEXEC::__dependent_sender<_Child>();
-            else
-              return __cmpls2;
+            constexpr auto __idx        = __make_indices<__cmpls.size()>();
+            constexpr auto __get_cmpls2 = __get_cmpl_info_i<__cmpls, __transform>(__idx);
+            constexpr auto __cmpls2     = __cmplsigs::__completion_info_from(__get_cmpls2);
+
+            STDEXEC_IF_OK(__cmpls2)
+            {
+              if constexpr (std::ranges::find(__cmpls2, __eptr_sig_id, __get_sig) == __cmpls2.end()
+                            && sizeof...(_Env) == 0)
+                return STDEXEC::__dependent_sender<_Child>();
+              else
+                return __cmpls2;
+            }
           }
         }
       };
@@ -648,7 +651,7 @@ namespace STDEXEC
       {
         static_assert(__sender_for<_CvSender, _LetTag>);
         constexpr auto __get_cmpl_info =
-          __impls::__get_cmpl_info<__fn_t<_CvSender>, __child_of<_CvSender>, _Env...>;
+          __impls::__get_cmpl_info<__fn_t<_CvSender>, __child_of<_CvSender>, _Env...>();
 
         if constexpr (!__decay_copyable<_CvSender>)
           return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
