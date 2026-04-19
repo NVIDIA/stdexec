@@ -44,6 +44,11 @@ namespace
     exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> onlystopped(
       []() noexcept { return ex::just_stopped(); });
 
+    exec::function<void(), ex::env<>> trivialCustomEnv([]() noexcept { return ex::just(); });
+
+    exec::function<ex::sender_tag(int), ex::completion_signatures<ex::set_value_t()>, ex::env<>>
+      totalControl(5, [](int) noexcept { return ex::just(); });
+
     STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(intSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(binarySndr)>);
@@ -51,6 +56,8 @@ namespace
     STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowIntSndr)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(unstoppable)>);
     STATIC_REQUIRE(STDEXEC::sender<decltype(onlystopped)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(trivialCustomEnv)>);
+    STATIC_REQUIRE(STDEXEC::sender<decltype(totalControl)>);
   }
 
   TEST_CASE("exec::function is connectable", "[types][function]")
