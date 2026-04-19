@@ -397,10 +397,10 @@ namespace experimental::execution::bwos
 
   template <class Tp, class Allocator>
   lifo_queue<Tp, Allocator>::block_type::block_type(std::size_t block_size, Allocator allocator)
-    : head_{0xFFFFFFFF00000000 | block_size}
+    : head_{0xFFFF'FFFF'0000'0000 | block_size}
     , tail_{block_size}
     , steal_count_{block_size}
-    , steal_tail_{0xFFFFFFFF00000000 | block_size}
+    , steal_tail_{0xFFFF'FFFF'0000'0000 | block_size}
     , ring_buffer_(block_size, allocator)
   {}
 

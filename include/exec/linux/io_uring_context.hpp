@@ -1112,7 +1112,7 @@ namespace experimental::execution
         secs = (std::max) (secs, std::chrono::seconds{0});
         dur  = STDEXEC::__clamp(dur,
                                std::chrono::nanoseconds{0},
-                               std::chrono::nanoseconds{999999999});
+                               std::chrono::nanoseconds{999'999'999});
         return __kernel_timespec{secs.count(), dur.count()};
       }
 #    else
@@ -1130,11 +1130,11 @@ namespace experimental::execution
         __nsec -= __sec;
         __nsec = STDEXEC::__clamp(__nsec,
                                   std::chrono::nanoseconds{0},
-                                  std::chrono::nanoseconds{999999999});
+                                  std::chrono::nanoseconds{999'999'999});
         __timerspec.it_value.tv_sec += __sec.count();
         __timerspec.it_value.tv_nsec = __nsec.count();
         STDEXEC_ASSERT(0 <= __timerspec.it_value.tv_nsec
-                       && __timerspec.it_value.tv_nsec < 1000000000);
+                       && __timerspec.it_value.tv_nsec < 1'000'000'000);
         return __timerspec;
       }
 #    endif
