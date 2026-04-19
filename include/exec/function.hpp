@@ -53,40 +53,14 @@ namespace experimental::execution
     template <class Sig>
     struct _virt_completion;
 
-    template <class Error>
-    struct _virt_completion<set_error_t(Error)>
+    template <class CPO, class... Args>
+    struct _virt_completion<CPO(Args...)>
     {
       _virt_completion() = default;
 
       _virt_completion(_virt_completion&&) = delete;
 
-      virtual void set_error(Error&& err) noexcept = 0;
-
-     protected:
-      ~_virt_completion() = default;
-    };
-
-    template <>
-    struct _virt_completion<set_stopped_t()>
-    {
-      _virt_completion() = default;
-
-      _virt_completion(_virt_completion&&) = delete;
-
-      virtual void set_stopped() noexcept = 0;
-
-     protected:
-      ~_virt_completion() = default;
-    };
-
-    template <class... Values>
-    struct _virt_completion<set_value_t(Values...)>
-    {
-      _virt_completion() = default;
-
-      _virt_completion(_virt_completion&&) = delete;
-
-      virtual void set_value(Values&&... values) noexcept = 0;
+      virtual void complete(CPO, Args&&...) noexcept = 0;
 
      protected:
       ~_virt_completion() = default;
@@ -96,44 +70,16 @@ namespace experimental::execution
     struct _virt_completions;
 
     template <class... Sigs>
-    struct _virt_completions<completion_signatures<Sigs...>> : virtual _virt_completion<Sigs>...
+    struct _virt_completions<completion_signatures<Sigs...>> : _virt_completion<Sigs>...
     {
       _virt_completions() = default;
 
       _virt_completions(_virt_completions&&) = delete;
 
+      using _virt_completion<Sigs>::complete...;
+
      protected:
       ~_virt_completions() = default;
-    };
-
-    template <class Sig, class Derived>
-    struct _func_rcvr_base;
-
-    template <class Error, class Derived>
-    struct _func_rcvr_base<set_error_t(Error), Derived>
-    {
-      void set_error(Error&& err) && noexcept
-      {
-        static_cast<Derived*>(this)->completer_->set_error(std::forward<Error>(err));
-      }
-    };
-
-    template <class Derived>
-    struct _func_rcvr_base<set_stopped_t(), Derived>
-    {
-      void set_stopped() && noexcept
-      {
-        static_cast<Derived*>(this)->completer_->set_stopped();
-      }
-    };
-
-    template <class... Value, class Derived>
-    struct _func_rcvr_base<set_value_t(Value...), Derived>
-    {
-      void set_value(Value&&... value) && noexcept
-      {
-        static_cast<Derived*>(this)->completer_->set_value(std::forward<Value>(value)...);
-      }
     };
 
     template <class Sigs>
@@ -141,10 +87,7 @@ namespace experimental::execution
 
     template <class... Sigs>
     class _func_rcvr<completion_signatures<Sigs...>>
-      : public _func_rcvr_base<Sigs, _func_rcvr<completion_signatures<Sigs...>>>...
     {
-      friend _func_rcvr_base<Sigs, _func_rcvr>...;
-
       using completer_t = _virt_completions<completion_signatures<Sigs...>>;
 
       completer_t* completer_;
@@ -155,6 +98,28 @@ namespace experimental::execution
       explicit _func_rcvr(completer_t& completer) noexcept
         : completer_(std::addressof(completer))
       {}
+
+      template <class Error>
+      void set_error(Error&& err) && noexcept
+        requires requires { this->completer_->complete(set_error_t{}, std::forward<Error>(err)); }
+      {
+        this->completer_->complete(set_error_t{}, std::forward<Error>(err));
+      }
+
+      void set_stopped() && noexcept
+        requires requires { this->completer_->complete(set_stopped_t{}); }
+      {
+        this->completer_->complete(set_stopped_t{});
+      }
+
+      template <class... Values>
+      void set_value(Values&&... values) && noexcept
+        requires requires {
+          this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
+        }
+      {
+        this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
+      }
 
       // TODO: get_env
     };
@@ -180,9 +145,9 @@ namespace experimental::execution
 
       _derived_op(_derived_op&&) = delete;
 
-      ~_derived_op() override = default;
+      ~_derived_op() final = default;
 
-      void start() & noexcept override
+      void start() & noexcept final
       {
         ::STDEXEC::start(op_);
       }
@@ -191,35 +156,20 @@ namespace experimental::execution
       connect_result_t<Sender, Receiver> op_;
     };
 
-    template <class Sig, class Derived>
+    template <class Base, class Derived, class... Sigs>
     struct _func_op_completion;
 
-    template <class Error, class Derived>
-    struct _func_op_completion<set_error_t(Error), Derived>
-      : virtual _virt_completion<set_error_t(Error)>
-    {
-      void set_error(Error&& err) noexcept final
-      {
-        static_cast<Derived*>(this)->complete(set_error_t{}, std::forward<Error>(err));
-      }
-    };
+    template <class Base, class Derived>
+    struct _func_op_completion<Base, Derived> : Base
+    {};
 
-    template <class Derived>
-    struct _func_op_completion<set_stopped_t(), Derived> : virtual _virt_completion<set_stopped_t()>
+    template <class Base, class Derived, class CPO, class... Args, class... Sigs>
+    struct _func_op_completion<Base, Derived, CPO(Args...), Sigs...>
+      : _func_op_completion<Base, Derived, Sigs...>
     {
-      void set_stopped() noexcept final
+      void complete(CPO, Args&&... args) noexcept final
       {
-        static_cast<Derived*>(this)->complete(set_stopped_t{});
-      }
-    };
-
-    template <class... Value, class Derived>
-    struct _func_op_completion<set_value_t(Value...), Derived>
-      : virtual _virt_completion<set_value_t(Value...)>
-    {
-      void set_value(Value&&... value) noexcept final
-      {
-        static_cast<Derived*>(this)->complete(set_value_t{}, std::forward<Value>(value)...);
+        static_cast<Derived*>(this)->complete(CPO{}, std::forward<Args>(args)...);
       }
     };
 
@@ -228,15 +178,17 @@ namespace experimental::execution
 
     template <class Receiver, class... Sigs>
     class _func_op<Receiver, completion_signatures<Sigs...>>
-      : private _virt_completions<completion_signatures<Sigs...>>
-      , private _func_op_completion<Sigs, _func_op<Receiver, completion_signatures<Sigs...>>>...
+      : private _func_op_completion<_virt_completions<completion_signatures<Sigs...>>,
+                                    _func_op<Receiver, completion_signatures<Sigs...>>,
+                                    Sigs...>
     {
       // TODO: use get_frame_allocator(get_env(rcvr_)) to allocate and destroy this
       std::unique_ptr<_base_op> op_;
       [[no_unique_address]]
       Receiver rcvr_;
 
-      friend _func_op_completion<Sigs, _func_op>...;
+      template <class B, class D, class... S>
+      friend struct _func_op_completion;
 
       template <class CPO, class... Arg>
       void complete(CPO cpo, Arg&&... arg) noexcept
@@ -279,8 +231,8 @@ namespace experimental::execution
         requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
               && std::constructible_from<Factory>               //
               && STDEXEC::__callable<Factory, Args...>
-      //&& STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
-      //_func_rcvr<completion_signatures<Sigs...>>>
+              && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
+                                    _func_rcvr<completion_signatures<Sigs...>>>
       explicit(sizeof...(Args) == 0) _func_impl(Args&&... args, Factory&& factory)
         noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
         : args_(std::forward<Args>(args)...)

@@ -25,7 +25,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-
   TEST_CASE("exec::function is constructible", "[types][function]")
   {
     exec::function<void()> voidSndr([]() noexcept { return ex::just(); });
@@ -49,10 +48,22 @@ namespace
 
   TEST_CASE("exec::function is connectable", "[types][function]")
   {
-    exec::function<int()> sndr([]() noexcept { return ex::just(42); });
+    exec::function<int() noexcept> sndr([]() noexcept { return ex::just(42); });
+
+    struct rcvr
+    {
+      using receiver_concept = ex::receiver_tag;
+
+      void set_value(int) && noexcept {}
+      void set_stopped() && noexcept {}
+    };
+
+    STATIC_REQUIRE(ex::receiver<rcvr>);
+
+    auto op = ex::connect(std::move(sndr), rcvr{});
 
     auto [fortytwo] = ex::sync_wait(std::move(sndr)).value();
-
+    
     REQUIRE(fortytwo == 42);
   }
 }  // namespace
