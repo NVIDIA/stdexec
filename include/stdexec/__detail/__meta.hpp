@@ -296,46 +296,6 @@ namespace STDEXEC
     using __f = __mfind_error<_Args...>;
   };
 
-#if STDEXEC_EDG()
-  // Most compilers memoize alias template specializations, but
-  // nvc++ does not. So we memoize the type computations by
-  // indirecting through a class template specialization.
-  template <template <class...> class _Fn, class... _Args>
-  using __minvoke_q__ = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
-
-  template <template <class...> class _Fn, class... _Args>
-  struct __minvoke_q_
-  {};
-
-  template <template <class...> class _Fn, class... _Args>
-    requires __typename<__minvoke_q__<_Fn, _Args...>>
-  struct __minvoke_q_<_Fn, _Args...>
-  {
-    using __t = __minvoke_q__<_Fn, _Args...>;
-  };
-
-  template <template <class...> class _Fn, class... _Args>
-  using __minvoke_q = __t<__minvoke_q_<_Fn, _Args...>>;
-
-  template <class _Fn, class... _Args>
-  using __minvoke__ = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
-
-  template <class _Fn, class... _Args>
-  struct __minvoke_
-  {};
-
-  template <class _Fn, class... _Args>
-    requires __typename<__minvoke__<_Fn, _Args...>>
-  struct __minvoke_<_Fn, _Args...>
-  {
-    using __t = __minvoke__<_Fn, _Args...>;
-  };
-
-  template <class _Fn, class... _Args>
-  using __minvoke = __t<__minvoke_<_Fn, _Args...>>;
-
-#else
-
   template <template <class...> class _Fn, class... _Args>
   using __minvoke_q = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
@@ -344,8 +304,6 @@ namespace STDEXEC
   //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
   template <class _Fn, class... _Args>
   using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
-
-#endif
 
   template <template <class...> class _Fn>
   struct __qq

@@ -26,7 +26,6 @@ namespace ex = STDEXEC;
 
 namespace
 {
-
   TEST_CASE("into_variant returns a sender", "[adaptors][into_variant]")
   {
     auto snd = ex::into_variant(ex::just(11));

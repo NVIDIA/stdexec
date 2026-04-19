@@ -29,7 +29,6 @@
 #include <algorithm>
 #include <array>
 #include <compare>
-#include <span>
 // IWYU pragma: end_keep
 
 namespace STDEXEC
@@ -80,8 +79,8 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
-    constexpr auto
-    operator<=>(__completion_info const &) const noexcept -> std::strong_ordering = default;
+    constexpr auto operator<=>(__completion_info const &) const noexcept  //
+      -> std::strong_ordering = default;
   };
 
   namespace __cmplsigs
