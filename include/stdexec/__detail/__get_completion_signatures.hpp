@@ -388,7 +388,8 @@ namespace STDEXEC
   template <class _Sender, class... _Env>
   consteval auto __get_completion_info()
   {
-    STDEXEC_TRY_LET(auto __cmplsigs, STDEXEC::get_completion_signatures<_Sender, _Env...>())
+    auto __cmplsigs = STDEXEC::get_completion_signatures<_Sender, _Env...>();
+    STDEXEC_IF_OK(__cmplsigs)
     {
       auto __cmplinfo = STDEXEC::__cmplsigs::__to_array(__cmplsigs);
       std::ranges::for_each(__cmplinfo, &__completion_info::__populate<_Sender, _Env...>);

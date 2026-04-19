@@ -275,11 +275,11 @@ namespace experimental::execution
         using __eptr_completion_t        = set_error_t(std::exception_ptr);
         constexpr auto __eptr_completion = (__eptr_completion_t *) nullptr;
 
-        STDEXEC_TRY_LET(
-          auto __sigs,
+        auto __sigs =
           exec::transform_completion_signatures(get_completion_signatures<__child_t, _Env...>(),
                                                 __transform_values<__child_t>,
-                                                __transform_errors))
+                                                __transform_errors);
+        STDEXEC_IF_OK(__sigs)
         {
           // The repeat_until sender is a dependent sender if one of the following is
           // true:

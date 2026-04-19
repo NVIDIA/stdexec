@@ -89,7 +89,8 @@ namespace STDEXEC
     template <auto _GetComplInfo>
     constexpr auto __completion_info_from_v = []() noexcept
     {
-      STDEXEC_TRY_LET(auto __cmpl_info, _GetComplInfo())
+      auto __cmpl_info = _GetComplInfo();
+      STDEXEC_IF_OK(__cmpl_info)
       {
         constexpr auto __size = _GetComplInfo().size();
         auto           __arr  = __static_vector<__completion_info, __size>();
@@ -109,7 +110,8 @@ namespace STDEXEC
     template <auto _GetComplInfo>
     constexpr auto __completion_sigs_from_v = []() noexcept
     {
-      STDEXEC_TRY_LET(constexpr auto __completions, __completion_info_from_v<_GetComplInfo>)
+      constexpr auto __completions = __completion_info_from_v<_GetComplInfo>;
+      STDEXEC_IF_OK(__completions)
       {
         auto __signatures = __static_vector<__type_index, __completions.size()>();
         __signatures.resize(__completions.size());
@@ -125,7 +127,8 @@ namespace STDEXEC
     template <class _GetComplInfo>
     consteval auto __completion_sigs_from(_GetComplInfo) noexcept
     {
-      STDEXEC_TRY_LET(constexpr auto __sigs, __completion_sigs_from_v<(_GetComplInfo())>)
+      constexpr auto __sigs = __completion_sigs_from_v<(_GetComplInfo())>;
+      STDEXEC_IF_OK(__sigs)
       {
         constexpr auto __fn = [=]<std::size_t... _Is>(__indices<_Is...>)
         {

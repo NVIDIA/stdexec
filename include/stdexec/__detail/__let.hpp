@@ -567,8 +567,9 @@ namespace STDEXEC
         else
         {
           using __sndr2_t = __invoke_result_t<_Fun, __decay_t<_As>&...>;
-          STDEXEC_TRY_LET(constexpr auto __cmpls,
-                          STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>())
+          constexpr auto __cmpls =
+            STDEXEC::__get_completion_info<__sndr2_t, __env2_t<_Child, _Env>...>();
+          STDEXEC_IF_OK(__cmpls)
           {
             if constexpr (!__nothrow_decay_copyable<_As...>
                           || !__nothrow_invocable<_Fun, __decay_t<_As>&...>
@@ -616,13 +617,15 @@ namespace STDEXEC
         constexpr auto __transform   = __transform_cmplsig<_Fun, _Child, _Env...>;
         constexpr auto __get_sig     = &__completion_info::__signature;
         constexpr auto __eptr_sig_id = __mtypeid<__eptr_sig_t>;
+        constexpr auto __cmpls       = STDEXEC::__get_completion_info<_Child, _Env...>();
 
-        STDEXEC_TRY_LET(constexpr auto __cmpls, STDEXEC::__get_completion_info<_Child, _Env...>())
+        STDEXEC_IF_OK(__cmpls)
         {
           constexpr auto __idx        = __make_indices<__cmpls.size()>();
           constexpr auto __get_cmpls2 = __get_cmpl_info_i<__cmpls, __transform>(__idx);
+          constexpr auto __cmpls2     = __cmplsigs::__completion_info_from(__get_cmpls2);
 
-          STDEXEC_TRY_LET(constexpr auto __cmpls2, __cmplsigs::__completion_info_from(__get_cmpls2))
+          STDEXEC_IF_OK(__cmpls2)
           {
             if constexpr (std::ranges::find(__cmpls2, __eptr_sig_id, __get_sig) == __cmpls2.end()
                           && sizeof...(_Env) == 0)

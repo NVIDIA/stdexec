@@ -575,9 +575,11 @@ namespace STDEXEC
                                                    _StoppedFn __stopped_fn = {},
                                                    _ExtraSigs              = {})
   {
-    STDEXEC_TRY_LET(auto __completions, _Completions{})
+    auto __completions = _Completions{};
+    STDEXEC_IF_OK(__completions)
     {
-      STDEXEC_TRY_LET(auto __extra_sigs, _ExtraSigs{})
+      auto __extra_sigs = _ExtraSigs{};
+      STDEXEC_IF_OK(__extra_sigs)
       {
         __cmplsigs::__transform_one __tfx1{__value_fn, __error_fn, __stopped_fn};
         return __concat_completion_signatures(__completions.__apply(
