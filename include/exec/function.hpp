@@ -312,6 +312,13 @@ namespace experimental::execution
   struct function;
 
   template <class Return, class... Args, bool NoThrow>
+  // should this require STDEXEC::__not_same_as<Return, STDEXEC::sender_tag>?
+  //
+  // you *could* write STDEXEC::just(STDEXEC::sender_tag{}), but it seems more likely
+  // that invokign this specialization with Return set to sender_tag is a bug...
+  //
+  // the same question applies to all the specializations below that take explicit
+  // completion signatures
   struct function<Return(Args...) noexcept(NoThrow)>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
@@ -324,11 +331,37 @@ namespace experimental::execution
     using base::base;
   };
 
-  template <class... Args, STDEXEC::__is_instance_of<STDEXEC::completion_signatures> Sigs>
+  template <class... Args, class Sigs>
+    requires STDEXEC::__is_instance_of<Sigs, STDEXEC::completion_signatures>
   struct function<STDEXEC::sender_tag(Args...), Sigs>
     : _func::_func_impl<STDEXEC::sender_tag(Args...), Sigs, STDEXEC::env<>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...), Sigs, STDEXEC::env<>>;
+
+    using base::base;
+  };
+
+  template <class Return, class... Args, bool NoThrow, class Env>
+    requires STDEXEC::__is_not_instance_of<Env, STDEXEC::completion_signatures>
+  struct function<Return(Args...) noexcept(NoThrow), Env>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...),
+                        _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                        Env>
+  {
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
+                                   _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                                   Env>;
+
+    using base::base;
+  };
+
+  template <class... Args, class... Sigs, class Env>
+    requires STDEXEC::__is_not_instance_of<Env, STDEXEC::completion_signatures>
+  struct function<STDEXEC::sender_tag(Args...), STDEXEC::completion_signatures<Sigs...>, Env>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...), STDEXEC::completion_signatures<Sigs...>, Env>
+  {
+    using base =
+      _func::_func_impl<STDEXEC::sender_tag(Args...), STDEXEC::completion_signatures<Sigs...>, Env>;
 
     using base::base;
   };
