@@ -309,17 +309,26 @@ namespace experimental::execution
 
   // TODO: think about environment forwarding
   template <class...>
-  class function;
+  struct function;
 
   template <class Return, class... Args, bool NoThrow>
-  class function<Return(Args...) noexcept(NoThrow)>
-    : public _func::_func_impl<STDEXEC::sender_tag(Args...),
-                               _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
-                               STDEXEC::env<>>
+  struct function<Return(Args...) noexcept(NoThrow)>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...),
+                        _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                        STDEXEC::env<>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
                                    STDEXEC::env<>>;
+
+    using base::base;
+  };
+
+  template <class... Args, STDEXEC::__is_instance_of<STDEXEC::completion_signatures> Sigs>
+  struct function<STDEXEC::sender_tag(Args...), Sigs>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...), Sigs, STDEXEC::env<>>
+  {
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...), Sigs, STDEXEC::env<>>;
 
     using base::base;
   };
