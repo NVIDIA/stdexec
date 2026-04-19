@@ -27,7 +27,7 @@ namespace experimental::execution::__win32
   {
    public:
     using rep      = std::int64_t;
-    using ratio    = std::ratio<1, 10'000'000>;  // 100ns
+    using ratio    = std::ratio<1, 10000000>;  // 100ns
     using duration = std::chrono::duration<rep, ratio>;
 
     static constexpr bool is_steady = false;
