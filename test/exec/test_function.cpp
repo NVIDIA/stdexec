@@ -62,22 +62,41 @@ namespace
 
   TEST_CASE("exec::function is connectable", "[types][function]")
   {
-    exec::function<int() noexcept> sndr([]() noexcept { return ex::just(42); });
-
-    struct rcvr
     {
-      using receiver_concept = ex::receiver_tag;
+      exec::function<int() noexcept> sndr([]() noexcept { return ex::just(42); });
 
-      void set_value(int) && noexcept {}
-      void set_stopped() && noexcept {}
-    };
+      auto [fortytwo] = ex::sync_wait(std::move(sndr)).value();
 
-    STATIC_REQUIRE(ex::receiver<rcvr>);
+      REQUIRE(fortytwo == 42);
+    }
 
-    auto op = ex::connect(std::move(sndr), rcvr{});
+    {
+      exec::function<void()> sndr([]() -> decltype(ex::just()) { throw "oops"; });
 
-    auto [fortytwo] = ex::sync_wait(std::move(sndr)).value();
+      REQUIRE_THROWS(ex::sync_wait(std::move(sndr)));
+    }
 
-    REQUIRE(fortytwo == 42);
+    {
+      exec::function<void()> sndr([]() noexcept
+                                  { return ex::just() | ex::then([] { throw "oops"; }); });
+
+      REQUIRE_THROWS(ex::sync_wait(std::move(sndr)));
+    }
+
+    {
+      exec::function<void()> sndr([]() noexcept { return ex::just_stopped(); });
+
+      auto ret = ex::sync_wait(std::move(sndr));
+
+      REQUIRE_FALSE(ret.has_value());
+    }
+
+    {
+      exec::function<ex::sender_tag(),
+                     ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>>
+        sndr([]() noexcept { return ex::just_error(42); });
+
+      REQUIRE_THROWS_AS(ex::sync_wait(std::move(sndr)), int);
+    }
   }
 }  // namespace
