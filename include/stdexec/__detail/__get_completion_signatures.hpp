@@ -210,7 +210,7 @@ namespace STDEXEC
       }
       else
       {
-        return STDEXEC::__dependent_sender<_Sender>();
+        return STDEXEC::__throw_dependent_sender_error<_Sender>();
       }
     }
 

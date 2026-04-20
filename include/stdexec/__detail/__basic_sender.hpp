@@ -365,7 +365,7 @@ namespace STDEXEC
         }
         else if constexpr (sizeof...(_Env) == 0)
         {
-          return __dependent_sender<_Self>();
+          return __throw_dependent_sender_error<_Self>();
         }
         else
         {

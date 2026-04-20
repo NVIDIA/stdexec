@@ -554,14 +554,14 @@ namespace STDEXEC
 
   template <class, class _Sndr>
   [[nodiscard]]
-  consteval auto __dependent_sender_r() noexcept -> __dependent_sender_error_t<_Sndr>
+  consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
   {
     return {};
   }
 
   template <class _Sndr>
   [[nodiscard]]
-  consteval auto __dependent_sender() noexcept -> __dependent_sender_error_t<_Sndr>
+  consteval auto __throw_dependent_sender_error() noexcept -> __dependent_sender_error_t<_Sndr>
   {
     return {};
   }
@@ -572,14 +572,14 @@ namespace STDEXEC
 
   template <class _Result, class _Sndr>
   [[noreturn, nodiscard]]
-  consteval auto __dependent_sender_r() -> _Result
+  consteval auto __throw_dependent_sender_error_r() -> _Result
   {
     throw __dependent_sender_error_t<_Sndr>{};
   }
 
   template <class _Sndr>
   [[noreturn, nodiscard]]
-  consteval auto __dependent_sender() -> completion_signatures<>
+  consteval auto __throw_dependent_sender_error() -> completion_signatures<>
   {
     throw __dependent_sender_error_t<_Sndr>{};
   }
