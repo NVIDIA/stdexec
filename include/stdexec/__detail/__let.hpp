@@ -630,7 +630,7 @@ namespace STDEXEC
             {
               if constexpr (std::ranges::find(__cmpls2, __eptr_sig_id, __get_sig) == __cmpls2.end()
                             && sizeof...(_Env) == 0)
-                return STDEXEC::__dependent_sender<_Child>();
+                return STDEXEC::__throw_dependent_sender_error<_Child>();
               else
                 return __cmpls2;
             }

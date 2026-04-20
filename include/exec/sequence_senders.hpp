@@ -340,7 +340,7 @@ namespace experimental::execution
       }
       else if constexpr (sizeof...(_Env) == 0)
       {
-        return STDEXEC::__dependent_sender_r<item_types<>, _Sequence>();
+        return STDEXEC::__throw_dependent_sender_error_r<item_types<>, _Sequence>();
       }
       else
       {

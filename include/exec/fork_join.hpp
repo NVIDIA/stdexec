@@ -310,7 +310,7 @@ namespace experimental::execution::__fork_join
       }
       else if constexpr (sizeof...(Env) == 0)
       {
-        return STDEXEC::__dependent_sender<Self>();
+        return STDEXEC::__throw_dependent_sender_error<Self>();
       }
       else
       {
