@@ -213,7 +213,7 @@ namespace experimental::execution
         // This seems like it ought to be true, but it fails...
         //
         // Some testing shows it's being evaluated when Derive is incomplete
-	// during constraint satisfaction testing.
+        // during constraint satisfaction testing.
         //
         // static_assert(std::derived_from<_func_op_completion, Derived>);
         auto& rcvr = static_cast<Derived*>(this)->rcvr_;
@@ -336,10 +336,10 @@ namespace experimental::execution
       constexpr _func_op<Receiver, completion_signatures<Sigs...>> connect(Receiver rcvr)
       {
         return {std::move(rcvr),
-                [&, this](auto rcvr)
+                [this](auto rcvr)
                 {
                   return std::apply(
-                    [&](Args&&... args)
+                    [&rcvr, this](Args&&... args)
                     { return factory_(std::move(rcvr), std::forward<Args>(args)...); },
                     std::move(args_));
                 }};
