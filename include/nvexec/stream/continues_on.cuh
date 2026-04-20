@@ -172,15 +172,13 @@ namespace nv::execution::_strm
     template <class Sender>
     struct source_sender : stream_sender_base
     {
-      using schedule_from_sender_t = __result_of<schedule_from, Sender>;
-
       explicit source_sender(Sender sndr)
-        : sndr_(schedule_from(static_cast<Sender&&>(sndr)))
+        : sndr_(static_cast<Sender&&>(sndr))
       {}
 
       template <__decay_copyable Self, STDEXEC::receiver Receiver>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-        -> connect_result_t<__copy_cvref_t<Self, schedule_from_sender_t>, Receiver>
+        -> connect_result_t<__copy_cvref_t<Self, Sender>, Receiver>
       {
         return STDEXEC::connect(static_cast<Self&&>(self).sndr_, static_cast<Receiver&&>(rcvr));
       }
@@ -201,7 +199,7 @@ namespace nv::execution::_strm
       }
 
      private:
-      __result_of<schedule_from, Sender> sndr_;
+      Sender sndr_;
     };
 
     template <class... Ty>
