@@ -599,7 +599,7 @@ namespace STDEXEC
 #endif
 
 #if __has_include(<memory_resource>) && \
-  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 2016'03L)
+  (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
 #  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 0
 #else
 #  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 1
