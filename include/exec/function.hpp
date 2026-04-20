@@ -22,6 +22,7 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__scope.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
+#include "../stdexec/execution.hpp"
 
 #include <exception>
 #include <memory>
@@ -84,14 +85,14 @@ namespace experimental::execution
     template <class CPO, class... Args>
     struct _virt_completion<CPO(Args...)>
     {
-      _virt_completion() = default;
+      constexpr _virt_completion() = default;
 
       _virt_completion(_virt_completion&&) = delete;
 
-      virtual void complete(CPO, Args&&...) noexcept = 0;
+      constexpr virtual void complete(CPO, Args&&...) noexcept = 0;
 
      protected:
-      ~_virt_completion() = default;
+      constexpr ~_virt_completion() = default;
     };
 
     template <class Sigs>
@@ -100,14 +101,14 @@ namespace experimental::execution
     template <class... Sigs>
     struct _virt_completions<completion_signatures<Sigs...>> : _virt_completion<Sigs>...
     {
-      _virt_completions() = default;
+      constexpr _virt_completions() = default;
 
       _virt_completions(_virt_completions&&) = delete;
 
       using _virt_completion<Sigs>::complete...;
 
      protected:
-      ~_virt_completions() = default;
+      constexpr ~_virt_completions() = default;
     };
 
     template <class Sigs>
@@ -123,25 +124,25 @@ namespace experimental::execution
      public:
       using receiver_concept = receiver_tag;
 
-      explicit _func_rcvr(completer_t& completer) noexcept
+      constexpr explicit _func_rcvr(completer_t& completer) noexcept
         : completer_(std::addressof(completer))
       {}
 
       template <class Error>
-      void set_error(Error&& err) && noexcept
+      constexpr void set_error(Error&& err) && noexcept
         requires requires { this->completer_->complete(set_error_t{}, std::forward<Error>(err)); }
       {
         this->completer_->complete(set_error_t{}, std::forward<Error>(err));
       }
 
-      void set_stopped() && noexcept
+      constexpr void set_stopped() && noexcept
         requires requires { this->completer_->complete(set_stopped_t{}); }
       {
         this->completer_->complete(set_stopped_t{});
       }
 
       template <class... Values>
-      void set_value(Values&&... values) && noexcept
+      constexpr void set_value(Values&&... values) && noexcept
         requires requires {
           this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
         }
@@ -154,19 +155,19 @@ namespace experimental::execution
 
     struct _base_op
     {
-      _base_op() = default;
+      constexpr _base_op() = default;
 
       _base_op(_base_op&&) = delete;
 
-      virtual ~_base_op() = default;
+      constexpr virtual ~_base_op() = default;
 
-      virtual void start() & noexcept = 0;
+      constexpr virtual void start() & noexcept = 0;
     };
 
     template <class Sender, class Receiver, class Allocator>
     struct _derived_op : _base_op
     {
-      explicit _derived_op(Sender&& sndr, Receiver rcvr, Allocator const & alloc)
+      constexpr explicit _derived_op(Sender&& sndr, Receiver rcvr, Allocator const & alloc)
         noexcept(std::is_nothrow_invocable_v<connect_t, Sender, Receiver>)
         : op_(connect(std::forward<Sender>(sndr), std::move(rcvr)))
         , alloc_(alloc)
@@ -174,9 +175,9 @@ namespace experimental::execution
 
       _derived_op(_derived_op&&) = delete;
 
-      ~_derived_op() final = default;
+      constexpr ~_derived_op() final = default;
 
-      void start() & noexcept final
+      constexpr void start() & noexcept final
       {
         ::STDEXEC::start(op_);
       }
@@ -209,6 +210,12 @@ namespace experimental::execution
     {
       void complete(CPO, Args&&... args) noexcept final
       {
+        // This seems like it ought to be true, but it fails...
+        //
+        // Some testing shows it's being evaluated when Derive is incomplete
+	// during constraint satisfaction testing.
+        //
+        // static_assert(std::derived_from<_func_op_completion, Derived>);
         auto& rcvr = static_cast<Derived*>(this)->rcvr_;
         CPO{}(std::move(rcvr), std::forward<Args>(args)...);
       }
@@ -234,15 +241,15 @@ namespace experimental::execution
       using operation_state_concept = operation_state_tag;
 
       template <class Factory>
-      _func_op(Receiver rcvr, Factory factory)
+      constexpr _func_op(Receiver rcvr, Factory factory)
         : rcvr_(std::move(rcvr))
         , op_(factory(_func_rcvr<completion_signatures<Sigs...>>(*this))){};
 
       _func_op(_func_op&&) = delete;
 
-      ~_func_op() = default;
+      constexpr ~_func_op() = default;
 
-      void start() & noexcept
+      constexpr void start() & noexcept
       {
         op_->start();
       }
@@ -284,7 +291,7 @@ namespace experimental::execution
               && STDEXEC::__callable<Factory, Args...>
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
                                     _func_rcvr<completion_signatures<Sigs...>>>
-      explicit(sizeof...(Args) == 0) _func_impl(Args&&... args, Factory&& factory)
+      constexpr explicit(sizeof...(Args) == 0) _func_impl(Args&&... args, Factory&& factory)
         noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
         : args_(std::forward<Args>(args)...)
       {
