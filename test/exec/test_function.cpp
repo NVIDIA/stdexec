@@ -21,6 +21,8 @@
 
 #include <stdexec/execution.hpp>
 
+#include <memory>
+
 namespace ex = STDEXEC;
 
 namespace
@@ -98,5 +100,31 @@ namespace
 
       REQUIRE_THROWS_AS(ex::sync_wait(std::move(sndr)), int);
     }
+  }
+
+  TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
+  {
+    // TODO: you probably shouldn't have to specify the frame allocator query like this
+    using Env =
+      ex::env<ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>>;
+
+    exec::function<bool() noexcept, Env> sndr(
+      []() noexcept
+      {
+        return ex::read_env(exec::get_frame_allocator)
+             | ex::then(
+                 [](auto alloc) noexcept
+                 {
+                   return std::same_as<std::pmr::polymorphic_allocator<std::byte>, decltype(alloc)>;
+                 });
+      });
+
+    std::pmr::polymorphic_allocator<std::byte> alloc;
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))
+                   .value();
+
+    REQUIRE(ret);
   }
 }  // namespace

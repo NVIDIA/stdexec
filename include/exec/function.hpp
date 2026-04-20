@@ -95,11 +95,11 @@ namespace experimental::execution
       constexpr ~_virt_completion() = default;
     };
 
-    template <class Sigs>
+    template <class Sigs, class Env>
     struct _virt_completions;
 
-    template <class... Sigs>
-    struct _virt_completions<completion_signatures<Sigs...>> : _virt_completion<Sigs>...
+    template <class... Sigs, class Env>
+    struct _virt_completions<completion_signatures<Sigs...>, Env> : _virt_completion<Sigs>...
     {
       constexpr _virt_completions() = default;
 
@@ -107,17 +107,19 @@ namespace experimental::execution
 
       using _virt_completion<Sigs>::complete...;
 
+      virtual Env get_env() const noexcept = 0;
+
      protected:
       constexpr ~_virt_completions() = default;
     };
 
-    template <class Sigs>
+    template <class Sigs, class Env>
     class _func_rcvr;
 
-    template <class... Sigs>
-    class _func_rcvr<completion_signatures<Sigs...>>
+    template <class... Sigs, class Env>
+    class _func_rcvr<completion_signatures<Sigs...>, Env>
     {
-      using completer_t = _virt_completions<completion_signatures<Sigs...>>;
+      using completer_t = _virt_completions<completion_signatures<Sigs...>, Env>;
 
       completer_t* completer_;
 
@@ -150,7 +152,10 @@ namespace experimental::execution
         this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
       }
 
-      // TODO: get_env
+      constexpr auto get_env() const noexcept -> env_of_t<completer_t>
+      {
+        return STDEXEC::get_env(*completer_);
+      }
     };
 
     struct _base_op
@@ -221,13 +226,13 @@ namespace experimental::execution
       }
     };
 
-    template <class Receiver, class Sigs>
+    template <class Receiver, class Sigs, class Env>
     class _func_op;
 
-    template <class Receiver, class... Sigs>
-    class _func_op<Receiver, completion_signatures<Sigs...>>
-      : private _func_op_completion<_virt_completions<completion_signatures<Sigs...>>,
-                                    _func_op<Receiver, completion_signatures<Sigs...>>,
+    template <class Receiver, class... Sigs, class Env>
+    class _func_op<Receiver, completion_signatures<Sigs...>, Env>
+      : private _func_op_completion<_virt_completions<completion_signatures<Sigs...>, Env>,
+                                    _func_op<Receiver, completion_signatures<Sigs...>, Env>,
                                     Sigs...>
     {
       std::unique_ptr<_base_op> op_;
@@ -237,13 +242,27 @@ namespace experimental::execution
       template <class B, class D, class... S>
       friend struct _func_op_completion;
 
+      constexpr Env get_env() const noexcept final
+      {
+        using RcvrEnv = env_of_t<Receiver>;
+
+        if constexpr (std::constructible_from<Env, RcvrEnv>)
+        {
+          return Env(::STDEXEC::get_env(rcvr_));
+        }
+        else
+        {
+          return {};
+        }
+      }
+
      public:
       using operation_state_concept = operation_state_tag;
 
       template <class Factory>
       constexpr _func_op(Receiver rcvr, Factory factory)
         : rcvr_(std::move(rcvr))
-        , op_(factory(_func_rcvr<completion_signatures<Sigs...>>(*this))){};
+        , op_(factory(_func_rcvr<completion_signatures<Sigs...>, Env>(*this))){};
 
       _func_op(_func_op&&) = delete;
 
@@ -278,7 +297,8 @@ namespace experimental::execution
     template <class SndrCncpt, class... Args, class... Sigs, class Env>
     class _func_impl<SndrCncpt(Args...), completion_signatures<Sigs...>, Env>
     {
-      std::unique_ptr<_base_op> (*factory_)(_func_rcvr<completion_signatures<Sigs...>>, Args&&...);
+      std::unique_ptr<_base_op> (*factory_)(_func_rcvr<completion_signatures<Sigs...>, Env>,
+                                            Args&&...);
       [[no_unique_address]]
       std::tuple<Args...> args_;
 
@@ -290,28 +310,37 @@ namespace experimental::execution
               && std::constructible_from<Factory>               //
               && STDEXEC::__callable<Factory, Args...>
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
-                                    _func_rcvr<completion_signatures<Sigs...>>>
+                                    _func_rcvr<completion_signatures<Sigs...>, Env>>
       constexpr explicit(sizeof...(Args) == 0) _func_impl(Args&&... args, Factory&& factory)
         noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
         : args_(std::forward<Args>(args)...)
       {
         using sender_t   = std::invoke_result_t<Factory, Args...>;
-        using receiver_t = _func_rcvr<completion_signatures<Sigs...>>;
-
-        using op_t = _derived_op<sender_t, receiver_t, std::allocator<std::byte>>;
+        using receiver_t = _func_rcvr<completion_signatures<Sigs...>, Env>;
 
         factory_ = [](receiver_t rcvr, Args&&... args) -> std::unique_ptr<_base_op>
         {
-          using traits = std::allocator_traits<decltype(choose_frame_allocator(
-            get_env(rcvr)))>::template rebind_traits<op_t>;
+          // the type of the allocator provided by the receiver's environment
+          using alloc_t = decltype(choose_frame_allocator(get_env(rcvr)));
+          // the traits for that allocator, but normalized to std::byte to minimize
+          // template instantiations
+          using traits_t = std::allocator_traits<alloc_t>::template rebind_traits<std::byte>;
 
-          Factory factory;
+          // the type of operation we'll ultimately allocate, which depends on the type of
+          // the allocator we're using
+          using op_t = _derived_op<sender_t, receiver_t, typename traits_t::allocator_type>;
 
+          // finally, the allocator traits for an allocator that can allocate an op_t
+          using traits = traits_t::template rebind_traits<op_t>;
+
+	  // ...and the allocator itself
           typename traits::allocator_type alloc(choose_frame_allocator(get_env(rcvr)));
 
           auto* op = traits::allocate(alloc, 1);
 
           __scope_guard guard{[&]() noexcept { traits::deallocate(alloc, op, 1); }};
+
+          Factory factory;
 
           traits::construct(alloc,
                             op,
@@ -333,7 +362,7 @@ namespace experimental::execution
       }
 
       template <class Receiver>
-      constexpr _func_op<Receiver, completion_signatures<Sigs...>> connect(Receiver rcvr)
+      constexpr _func_op<Receiver, completion_signatures<Sigs...>, Env> connect(Receiver rcvr)
       {
         return {std::move(rcvr),
                 [this](auto rcvr)
