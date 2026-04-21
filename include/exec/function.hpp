@@ -49,6 +49,8 @@
 // the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
+  // A forwarding query for a "frame allocator", to be used for dynamically allocating
+  // the operation states of senders type-erased by exec::function.
   struct get_frame_allocator_t : STDEXEC::__query<get_frame_allocator_t>
   {
     using STDEXEC::__query<get_frame_allocator_t>::operator();
@@ -76,72 +78,51 @@ namespace experimental::execution
 
   namespace _qry_detail
   {
-    using namespace STDEXEC;
-
-    template <bool NoThrow, class Env, class Query, class... Args>
-    concept _conditionally_nothrow_queryable_with =
-      (!NoThrow && __queryable_with<Env const &, Query, Args...>)
-      || __nothrow_queryable_with<Env const &, Query, Args...>;
-
-    template <class Expected, bool NoThrow, class Env, class Query, class... Args>
-    concept _query_result_convertible_to =
-      (!NoThrow && std::is_convertible_v<__query_result_t<Env const &, Query, Args...>, Expected>)
-      || std::is_nothrow_convertible_v<__query_result_t<Env const &, Query, Args...>, Expected>;
-
     template <class Sig>
-    struct query;
+    inline constexpr bool is_query_function_v = false;
 
     template <class Return, class Query, class... Args, bool NoThrow>
-    struct query<Return(Query, Args...) noexcept(NoThrow)>
-    {
-     protected:
-      template <class Env>
-        requires _conditionally_nothrow_queryable_with<NoThrow, Env, Query, Args...>
-              && _query_result_convertible_to<Return, NoThrow, Env, Query, Args...>
-      static Return query_delegate(Env const &env, Query query, Args &&...args) noexcept(NoThrow)
-      {
-        return __query<Query>()(env, std::forward<Args>(args)...);
-      }
-    };
+    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept(NoThrow)> = true;
   }  // namespace _qry_detail
 
+  // a "type list" for bundling together function type representing queries to support in
+  // a type-erased environment. All of the types in Queries... must be (possibly noexcept)
+  // function types. For example:
+  //
+  //   queries<
+  //     std::execution::inline_stop_token(std::execution::get_stop_token_t) noexcept,
+  //     std::pmr::polymorphic_allocator<std::byte>(std::execution::get_allocator_t)
+  //   >
   template <class... Queries>
-  struct queries : _qry_detail::query<Queries>...
+    requires(_qry_detail::is_query_function_v<Queries> && ...)
+  struct queries
   {};
 
   namespace _func
   {
     using namespace STDEXEC;
 
-    template <class Sig>
-    struct _virt_completion;
-
-    template <class CPO, class... Args>
-    struct _virt_completion<CPO(Args...)>
-    {
-      constexpr _virt_completion() = default;
-
-      _virt_completion(_virt_completion &&) = delete;
-
-      constexpr virtual void complete(CPO, Args &&...) noexcept = 0;
-
-     protected:
-      constexpr ~_virt_completion() = default;
-    };
-
+    // a recursively-defined type with a vtable containing one virtual function for
+    // each query in Queries...
+    //
+    // the base template is an empty class, representing the empty set of queries.
     template <class... Queries>
     struct _env_of_queries
     {};
 
+    // a special case in the recursion: when there is only one query in the pack, there's
+    // no base implementation of query to put in the using statement
     template <class Return, class Query, class... Args, bool NoThrow>
     struct _env_of_queries<Return(Query, Args...) noexcept(NoThrow)>
     {
       virtual Return query(Query query, Args &&...args) const noexcept(NoThrow) = 0;
     };
 
+    // the recursive case that declares the named query as a pure virtual member function
+    // and inherits the rest of the required queries through inheritance
     template <class Return, class Query, class... Args, bool NoThrow, class... Queries>
     struct _env_of_queries<Return(Query, Args...) noexcept(NoThrow), Queries...>
-      : _env_of_queries<Queries...>
+      : private _env_of_queries<Queries...>
     {
       _env_of_queries() = default;
 
@@ -155,62 +136,10 @@ namespace experimental::execution
       ~_env_of_queries() = default;
     };
 
-    template <class Base, class Derived, class... Queries>
-    struct _delegate_env_base;
-
-    template <class Base, class Derived>
-    struct _delegate_env_base<Base, Derived> : public Base
-    {};
-
-    template <class Base,
-              class Derived,
-              class Return,
-              class Query,
-              class... Args,
-              bool NoThrow,
-              class... Queries>
-    struct _delegate_env_base<Base, Derived, Return(Query, Args...) noexcept(NoThrow), Queries...>
-      : _delegate_env_base<Base, Derived, Queries...>
-    {
-      using query_base = _qry_detail::query<Return(Query, Args...) noexcept>;
-
-      Return query(Query qry, Args &&...args) const noexcept(NoThrow) final
-      {
-        auto &delegate = **static_cast<Derived const *>(this);
-        return __query<Query>()(delegate, std::forward<Args>(args)...);
-      }
-    };
-
-    template <class Queries>
-    struct _delegate_env;
-
-    template <>
-    struct _delegate_env<queries<>>
-      : _delegate_env_base<_env_of_queries<>, _delegate_env<queries<>>>
-    {
-      using delegate_t = _env_of_queries<>;
-
-      explicit _delegate_env(delegate_t const &delegate) noexcept
-        : delegate_(std::addressof(delegate))
-      {}
-
-     private:
-      delegate_t const *delegate_;
-
-      template <class, class, class...>
-      friend class _delegte_env_base;
-
-      delegate_t const &operator*() const noexcept
-      {
-        return *delegate_;
-      }
-    };
-
+    // an environment type that delegates query to an _env_of_queries<Queries...> so that the
+    // environment type that we traffic in is cheaply copyable
     template <class... Queries>
-    struct _delegate_env<queries<Queries...>>
-      : _delegate_env_base<_env_of_queries<Queries...>,
-                           _delegate_env<queries<Queries...>>,
-                           Queries...>
+    struct _delegate_env
     {
       using delegate_t = _env_of_queries<Queries...>;
 
@@ -218,24 +147,53 @@ namespace experimental::execution
         : delegate_(std::addressof(delegate))
       {}
 
-      //using _delegate_env_base<_env_of_queries<queries
+      template <class Query, class... Args>
+        requires __queryable_with<delegate_t, Query, Args...>
+      constexpr auto query(Query, Args &&...args) const
+        noexcept(__nothrow_queryable_with<delegate_t, Query, Args...>)
+          -> __query_result_t<delegate_t, Query, Args...>
+      {
+        return __query<Query>()(*delegate_, std::forward<Args>(args)...);
+      }
+
      private:
       delegate_t const *delegate_;
-
-      template <class, class, class...>
-      friend class _delegate_env_base;
-
-      delegate_t const &operator*() const noexcept
-      {
-        return *delegate_;
-      }
     };
 
-    template <class Sigs, class Queries>
+    // in the base case, there's no need to store a pointer
+    template <>
+    struct _delegate_env<>
+    {
+      using delegate_t = _env_of_queries<>;
+
+      explicit _delegate_env(delegate_t const &) noexcept {}
+    };
+
+    template <class Sig>
+    struct _virt_completion;
+
+    // a vtable entry representing a receiver completion function; CPO should be a completion
+    // function (e.g. set_Value_t), and Args... is the expected argument list.
+    template <class CPO, class... Args>
+    struct _virt_completion<CPO(Args...)>
+    {
+      constexpr _virt_completion() = default;
+
+      _virt_completion(_virt_completion &&) = delete;
+
+      constexpr virtual void complete(CPO, Args &&...) noexcept = 0;
+
+     protected:
+      constexpr ~_virt_completion() = default;
+    };
+
+    template <class Sigs, class... Queries>
     struct _virt_completions;
 
+    // a class template that bundles together a pure virtual completion function for each
+    // of the specified completion functions, and provides an implementation of get_env
     template <class... Sigs, class... Queries>
-    struct _virt_completions<completion_signatures<Sigs...>, queries<Queries...>>
+    struct _virt_completions<completion_signatures<Sigs...>, Queries...>
       : _virt_completion<Sigs>...
       , _env_of_queries<Queries...>
     {
@@ -243,24 +201,33 @@ namespace experimental::execution
 
       _virt_completions(_virt_completions &&) = delete;
 
+      // this will complain if sizeof...(Sigs) == 0, but a sender with no completions
+      // isn't super useful...
       using _virt_completion<Sigs>::complete...;
 
-      constexpr _delegate_env<queries<Queries...>> get_env() const noexcept
+      constexpr _delegate_env<Queries...> get_env() const noexcept
       {
-        return _delegate_env<queries<Queries...>>(*this);
+        return _delegate_env<Queries...>(*this);
       }
 
      protected:
       constexpr ~_virt_completions() = default;
     };
 
-    template <class Sigs, class Queries>
+    template <class Sigs, class... Queries>
     class _func_rcvr;
 
-    template <class... Sigs, class Queries>
-    class _func_rcvr<completion_signatures<Sigs...>, Queries>
+    // a type-erased receiver expecting to be completed by one of the completions specified
+    // in Sigs..., and providing an environment that supports the queries specified in
+    // Queries...
+    //
+    // this is the receiver type that is passed into the sender being type-erased by a
+    // function<...>, and it forwards completions to the concrete receiver through the
+    // internal completer_ pointer
+    template <class... Sigs, class... Queries>
+    class _func_rcvr<completion_signatures<Sigs...>, Queries...>
     {
-      using completer_t = _virt_completions<completion_signatures<Sigs...>, Queries>;
+      using completer_t = _virt_completions<completion_signatures<Sigs...>, Queries...>;
 
       completer_t *completer_;
 
@@ -273,32 +240,31 @@ namespace experimental::execution
 
       template <class Error>
       constexpr void set_error(Error &&err) && noexcept
-        requires requires { this->completer_->complete(set_error_t{}, std::forward<Error>(err)); }
+        requires requires { completer_->complete(set_error_t{}, std::forward<Error>(err)); }
       {
-        this->completer_->complete(set_error_t{}, std::forward<Error>(err));
+        completer_->complete(set_error_t{}, std::forward<Error>(err));
       }
 
       constexpr void set_stopped() && noexcept
-        requires requires { this->completer_->complete(set_stopped_t{}); }
+        requires requires { completer_->complete(set_stopped_t{}); }
       {
-        this->completer_->complete(set_stopped_t{});
+        completer_->complete(set_stopped_t{});
       }
 
       template <class... Values>
       constexpr void set_value(Values &&...values) && noexcept
-        requires requires {
-          this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
-        }
+        requires requires { completer_->complete(set_value_t{}, std::forward<Values>(values)...); }
       {
-        this->completer_->complete(set_value_t{}, std::forward<Values>(values)...);
+        completer_->complete(set_value_t{}, std::forward<Values>(values)...);
       }
 
-      constexpr auto get_env() const noexcept -> _delegate_env<Queries>
+      constexpr auto get_env() const noexcept -> _delegate_env<Queries...>
       {
         return STDEXEC::get_env(*completer_);
       }
     };
 
+    // the type-erased operation state type that supports starting and destruction
     struct _base_op
     {
       constexpr _base_op() = default;
@@ -310,6 +276,9 @@ namespace experimental::execution
       constexpr virtual void start() & noexcept = 0;
     };
 
+    // the operation state resulting from connecting a sender being erased by a function<...>
+    // with a _func_rcvr<...>; inherits from _base_op, and provides a class-specific override
+    // of operator delete that invokes the allocator deallocation protocol
     template <class Sender, class Receiver, class Allocator>
     struct _derived_op : _base_op
     {
@@ -328,6 +297,10 @@ namespace experimental::execution
         ::STDEXEC::start(op_);
       }
 
+      // objects of this type are allocated with an allocator of type Allocator so they need
+      // to be deallocated using the same allocator; providing a class-specific overload of
+      // a destroying operator delete allows us to store the relevant allocator inside the
+      // to-be-destroyed object and retrieve it before running the destructor
       static constexpr void operator delete(_derived_op *p, std::destroying_delete_t)
       {
         using traits = std::allocator_traits<Allocator>::template rebind_traits<_derived_op>;
@@ -343,13 +316,20 @@ namespace experimental::execution
       Allocator alloc_;
     };
 
+    // a recursive implementation of Base, which is expected to inherit from
+    // _virt_completions
     template <class Base, class Derived, class... Sigs>
     struct _func_op_completion;
 
+    // the base case of the recursive implementation; all subclasses of this type have,
+    // together, overridden all the virtual functions in Base so now we just need to
+    // inherit from Base to ensure those virtual functions exist to be overridden
     template <class Base, class Derived>
     struct _func_op_completion<Base, Derived> : Base
     {};
 
+    // the recursive case, which implements a single overload of complete and delegates
+    // the implementation of all remaining overloads to the base class
     template <class Base, class Derived, class CPO, class... Args, class... Sigs>
     struct _func_op_completion<Base, Derived, CPO(Args...), Sigs...>
       : _func_op_completion<Base, Derived, Sigs...>
@@ -358,22 +338,31 @@ namespace experimental::execution
       {
         // This seems like it ought to be true, but it fails...
         //
-        // Some testing shows it's being evaluated when Derive is incomplete
+        // Some testing shows it's being evaluated when Derived is incomplete
         // during constraint satisfaction testing.
         //
         // static_assert(std::derived_from<_func_op_completion, Derived>);
+        //
+        // Consider: what if _func_op_completion<Base, Derived> (i.e. the base case of
+        //           this recursive class hierarchy) owned the receiver? We could avoid
+        //           CRTP and just use this->rcvr_, maybe.
         auto &rcvr = static_cast<Derived *>(this)->rcvr_;
         CPO{}(std::move(rcvr), std::forward<Args>(args)...);
       }
     };
 
-    template <class Base, class Derived, class Queries>
+    // a recursive implementation of all the queries in Queries...
+    template <class Base, class Derived, class... Queries>
     struct _func_op_queries;
 
+    // the base case of the recursive implementation; there are no more queries to
+    // implement so just inherit from Base
     template <class Base, class Derived>
-    struct _func_op_queries<Base, Derived, queries<>> : Base
+    struct _func_op_queries<Base, Derived> : Base
     {};
 
+    // the recursive case, which implements a single query overload and delegates the
+    // implementation of the remaining overloads to the base class
     template <class Base,
               class Derived,
               class Return,
@@ -381,40 +370,49 @@ namespace experimental::execution
               class... Args,
               bool NoThrow,
               class... Queries>
-    struct _func_op_queries<Base,
-                            Derived,
-                            queries<Return(Query, Args...) noexcept(NoThrow), Queries...>>
-      : _func_op_queries<Base, Derived, queries<Queries...>>
+    struct _func_op_queries<Base, Derived, Return(Query, Args...) noexcept(NoThrow), Queries...>
+      : _func_op_queries<Base, Derived, Queries...>
     {
       Return query(Query, Args &&...args) const noexcept(NoThrow) final
       {
-        using delegate_t = _qry_detail::query<Return(Args...) noexcept(NoThrow)>;
-
+        // the idea of storing the receiver in the base class could help here, too, but
+        // we'd need to be careful about which class template is actually the base class
         auto const &rcvr = static_cast<Derived const *>(this)->rcvr_;
         return __query<Query>()(STDEXEC::get_env(rcvr), std::forward<Args>(args)...);
       }
     };
 
-    template <class Receiver, class Sigs, class Queries>
+    template <class Receiver, class Sigs, class... Queries>
     class _func_op;
 
-    template <class Receiver, class... Sigs, class Queries>
-    class _func_op<Receiver, completion_signatures<Sigs...>, Queries>
+    // the concrete operation state resulting from connecting a function<...> to a concrete
+    // receiver of type Receiver. this type manages a dynamically-allocated _derived_op instance,
+    // which is the type-erased operation state resulting from connecting the type-erased sender
+    // to a _func_rcvr
+    template <class Receiver, class... Sigs, class... Queries>
+    class _func_op<Receiver, completion_signatures<Sigs...>, Queries...>
       : _func_op_completion<
-          _func_op_queries<_virt_completions<completion_signatures<Sigs...>, Queries>,
-                           _func_op<Receiver, completion_signatures<Sigs...>, Queries>,
-                           Queries>,
-          _func_op<Receiver, completion_signatures<Sigs...>, Queries>,
+          _func_op_queries<_virt_completions<completion_signatures<Sigs...>, Queries...>,
+                           _func_op<Receiver, completion_signatures<Sigs...>, Queries...>,
+                           Queries...>,
+          _func_op<Receiver, completion_signatures<Sigs...>, Queries...>,
           Sigs...>
     {
+      // rcvr_ has to be initialized before op_ because our implementation of get_env
+      // is empirically accessed during our constructor and depends on rcvr_ being initialized
       [[no_unique_address]]
-      Receiver                  rcvr_;
+      Receiver rcvr_;
+      // the default deleter is OK because we've virtualized operator delete to invoke
+      // the allocator-based deallocation logic that's necessary to properly support
+      // a user-provided frame allocator
       std::unique_ptr<_base_op> op_;
 
-      template <class B, class D, class... S>
+      // these friend declaratiosn allow our CRTP base classes to access rcvr_; they could
+      // disappear if we moved ownership of rcvr_ into the base class object
+      template <class, class, class...>
       friend struct _func_op_completion;
 
-      template <class, class, class>
+      template <class, class, class...>
       friend struct _func_op_queries;
 
      public:
@@ -423,7 +421,7 @@ namespace experimental::execution
       template <class Factory>
       constexpr _func_op(Receiver rcvr, Factory factory)
         : rcvr_(std::move(rcvr))
-        , op_(factory(_func_rcvr<completion_signatures<Sigs...>, Queries>(*this)))
+        , op_(factory(_func_rcvr<completion_signatures<Sigs...>, Queries...>(*this)))
       {}
 
       _func_op(_func_op &&) = delete;
@@ -436,6 +434,9 @@ namespace experimental::execution
       }
     };
 
+    // given the concrete receiver's environment, choose the frame allocator; first choice
+    // is the result of get_frame_allocator(env), second choice is get_allocator(env), and
+    // the default is std::allocator
     template <class Env>
     constexpr auto choose_frame_allocator(Env const &env) noexcept
     {
@@ -456,29 +457,43 @@ namespace experimental::execution
     template <class Args, class Sigs, class Queries>
     class _func_impl;
 
+    // the main implementation of the type-erasing sender function<...>
+    //
+    // SndrCncpt should be std::execution::sender_concept
+    // Args... is the argument types used to construct the erased sender
+    // Sigs... is the supported completion signatures
+    // Queries... is the list of environment queries that must be supported by the eventual
+    //            receiver; it's a pack of function type like Return(Query, Args...) or
+    //            Return(Query, Args...) noexcept. The named query, when given the specified
+    //            arguments, must return a value convertible to Return, and it must be noexcept,
+    //            or not, as appropriate
     template <class SndrCncpt, class... Args, class... Sigs, class... Queries>
     class _func_impl<SndrCncpt(Args...), completion_signatures<Sigs...>, queries<Queries...>>
     {
-      std::unique_ptr<_base_op> (
-        *factory_)(_func_rcvr<completion_signatures<Sigs...>, queries<Queries...>>, Args &&...);
+      // the type-erased sender factory that, when called, constructs the erased sender from
+      // args_ and connects the resulting sender to the provided receiver
+      std::unique_ptr<_base_op> (*factory_)(_func_rcvr<completion_signatures<Sigs...>, Queries...>,
+                                            Args &&...);
       [[no_unique_address]]
       std::tuple<Args...> args_;
 
      public:
       using sender_concept = SndrCncpt;
 
+      // TODO: I only know this works for empty lambdas; figure out whether function pointers
+      //       and/or pointer-to-member functions can be made to work
       template <STDEXEC::__callable<Args...> Factory>
         requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
               && std::constructible_from<Factory>               //
               && STDEXEC::__callable<Factory, Args...>
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
-                                    _func_rcvr<completion_signatures<Sigs...>, queries<Queries...>>>
+                                    _func_rcvr<completion_signatures<Sigs...>, Queries...>>
       constexpr explicit(sizeof...(Args) == 0) _func_impl(Args &&...args, Factory &&factory)
         noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
         : args_(std::forward<Args>(args)...)
       {
         using sender_t   = std::invoke_result_t<Factory, Args...>;
-        using receiver_t = _func_rcvr<completion_signatures<Sigs...>, queries<Queries...>>;
+        using receiver_t = _func_rcvr<completion_signatures<Sigs...>, Queries...>;
 
         factory_ = [](receiver_t rcvr, Args &&...args) -> std::unique_ptr<_base_op>
         {
@@ -502,6 +517,9 @@ namespace experimental::execution
 
           __scope_guard guard{[&]() noexcept { traits::deallocate(alloc, op, 1); }};
 
+          // TODO: as mentioned above, Factory must be a stateless lambda, which makes it
+          //       default-constructible like this; this obviously doesn't work if Factory
+          //       is a pointer type
           Factory factory;
 
           traits::construct(alloc,
@@ -516,14 +534,13 @@ namespace experimental::execution
         };
       }
 
-      template <class Sender, class RcvrEnv>
+      template <class Sender, class Env>
       static consteval auto get_completion_signatures() noexcept
       {
         static_assert(STDEXEC_IS_BASE_OF(_func_impl, __decay_t<Sender>));
-        //static_assert(std::constructible_from<Env, RcvrEnv const &>);
 
-        //Env env{RcvrEnv{}};
-
+        // TODO: validate that Env supports all the required queries
+        //
         //if constexpr (std::constructible_from<Env, RcvrEnv const &>)
         {
           return completion_signatures<Sigs...>{};
@@ -535,8 +552,9 @@ namespace experimental::execution
         //}
       }
 
+      // TODO: this assumes rvalue connection; lvalue connection requires thought and tests
       template <class Receiver>
-      constexpr _func_op<Receiver, completion_signatures<Sigs...>, queries<Queries...>>
+      constexpr _func_op<Receiver, completion_signatures<Sigs...>, Queries...>
       connect(Receiver rcvr)
       {
         return {std::move(rcvr),
@@ -550,6 +568,10 @@ namespace experimental::execution
       }
     };
 
+    // given a possibly-noexcept function type like Return(Args...), compute the appropriate
+    // completion_signatures. The result is a set_value overload taking either Return&& or
+    // no args when Return is void, set_stopped, and, when the function type is not noexcept,
+    // set_error(std::exception_ptr)
     template <class Sig>
     struct _sigs_from;
 
@@ -586,7 +608,26 @@ namespace experimental::execution
     using _sigs_from_t = _sigs_from<Sig>::type;
   }  // namespace _func
 
-  // TODO: think about environment forwarding
+  // the user-facing interface to exec::function that supports several different declaration
+  // styles, including:
+  //  - function<int(bar, baz)>: a fallible function from (bar, baz) to int
+  //  - function<int(bar, baz) noexcept>: an infallible function from (bar, baz) to int
+  //  - function<sender_tag(bar, baz), completion_signatures<...>>: a function from (bar, baz)
+  //    that completes in the ways specified by the given specialization of completion_signatures
+  //  - function<int(bar, baz), queries<Return(Query, Args...), ...>: a function from (bar, baz)
+  //    to int that requires the final receiver to have an environment that supports the
+  //    Query query, taking arguments Args..., and returning an object convertible to Return; queries
+  //    may be required to be no-throw by delcaring the function type noexcept
+  //  - function<
+  //        sender_tag(bar, baz),
+  //        completion_signatures<...>,
+  //        queries<Return(Query, Args...)>>: a fully-specified async function that maps (bar, baz)
+  //    to the specified completions, requiring the specified queries in the ultimate receiver's
+  //    environment
+  //
+  // Future: support C-style ellipsis arguments in the function signature to permit type-erased
+  //         arguments as well, like function<int(bar, baz, ...)> (a fallible function from
+  //         (bar, baz) plus unspecified, erased additional arguments to int)
   template <class...>
   struct function;
 
