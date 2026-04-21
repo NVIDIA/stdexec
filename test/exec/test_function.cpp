@@ -46,9 +46,11 @@ namespace
     exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> onlystopped(
       []() noexcept { return ex::just_stopped(); });
 
-    exec::function<void(), ex::env<>> trivialCustomEnv([]() noexcept { return ex::just(); });
+    exec::function<void(), exec::queries<>> trivialCustomEnv([]() noexcept { return ex::just(); });
 
-    exec::function<ex::sender_tag(int), ex::completion_signatures<ex::set_value_t()>, ex::env<>>
+    exec::function<ex::sender_tag(int),
+                   ex::completion_signatures<ex::set_value_t()>,
+                   exec::queries<>>
       totalControl(5, [](int) noexcept { return ex::just(); });
 
     STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
@@ -105,10 +107,12 @@ namespace
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
     // TODO: you probably shouldn't have to specify the frame allocator query like this
-    using Env =
-      ex::env<ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>>;
+    //using Env =
+      //ex::env<ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>>;
+    using Queries = exec::queries<std::pmr::polymorphic_allocator<std::byte>(
+      exec::get_frame_allocator_t) noexcept>;
 
-    exec::function<bool() noexcept, Env> sndr(
+    exec::function<bool() noexcept, Queries> sndr(
       []() noexcept
       {
         return ex::read_env(exec::get_frame_allocator)
