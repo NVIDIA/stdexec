@@ -50,7 +50,7 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
+      constexpr auto unhandled_stopped() const noexcept -> __std::coroutine_handle<>
       {
         return __continuation_.unhandled_stopped();
       }

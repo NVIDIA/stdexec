@@ -22,6 +22,7 @@
 #  include <stdexec/execution.hpp>
 
 #  include <exec/single_thread_context.hpp>
+#  include <exec/static_thread_pool.hpp>
 #  include <stdexec/__detail/__task.hpp>
 
 #  include <atomic>
@@ -244,6 +245,10 @@ namespace
     CHECK(i == 42);
   }
 
+  // In debug GCC builds, this test can cause a stack overflow due to
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
+  // transfer failing to be a tail call.
+#  if !STDEXEC_GCC() || defined(__OPTIMIZE__)
   auto sync() -> ex::task<int>
   {
     co_return 42;
@@ -277,6 +282,7 @@ namespace
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
+#  endif
 
   struct my_env
   {
@@ -384,6 +390,22 @@ namespace
         co_return 42;
       }());
     CHECK(!res.has_value());
+  }
+
+  TEST_CASE("repro for NVIDIA/stdexec#2041", "[types][task]")
+  {
+    auto task = []() -> ex::task<void>
+    {
+      co_return;
+    };
+    auto pool  = exec::static_thread_pool(1);
+    auto scope = ex::counting_scope();
+    for (int i = 0; i < 1000; ++i)
+    {
+      ex::spawn(ex::starts_on(pool.get_scheduler(), task()) | ex::upon_error([](auto) noexcept {}),
+                scope.get_token());
+    }
+    ex::sync_wait(scope.join());
   }
 
   // TODO: add tests for stop token support in task

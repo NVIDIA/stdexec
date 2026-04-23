@@ -145,7 +145,7 @@ namespace STDEXEC
     template <class _Value>
     struct __sender_awaiter_base<_Value, false> : __sender_awaiter_base<_Value, true>
     {
-      std::atomic<int>      __refcount_{2};
+      __std::atomic<int>    __refcount_{2};
       std::thread::id const __starting_thread_{std::this_thread::get_id()};
     };
 
@@ -263,7 +263,7 @@ namespace STDEXEC
           // We get here if `await_suspend` has already decremented the refcount, which
           // means that this operation is completing asynchronously. We need to resume the
           // continuation from here because `await_suspend` will not.
-          __awaiter.__get_continuation().resume();
+          STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
         }
       }
     };
@@ -291,7 +291,7 @@ namespace STDEXEC
 
       constexpr auto
       await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation) noexcept
-        -> STDEXEC_PP_IF(STDEXEC_GCC(), bool, __std::coroutine_handle<>)
+        -> __std::coroutine_handle<>
       {
         STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
 
@@ -307,15 +307,14 @@ namespace STDEXEC
           // completed (either synchronously or asynchronously) and we are responsible for
           // resuming the continuation. Otherwise, we can let the receiver resume the
           // continuation when the operation completes.
-          __continuation = this->__get_continuation();
-          return STDEXEC_PP_IF(STDEXEC_GCC(), (__continuation.resume(), false), __continuation);
+          return this->__get_continuation();
         }
         else
         {
           // Otherwise, the operation has not completed yet, so we need to suspend the
           // current coroutine. The continuation will be resumed when the operation
           // completes.
-          return STDEXEC_PP_IF(STDEXEC_GCC(), true, std::noop_coroutine());
+          return std::noop_coroutine();
         }
       }
 
@@ -341,7 +340,7 @@ namespace STDEXEC
       {}
 
       auto await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation)
-        -> STDEXEC_PP_IF(STDEXEC_GCC(), bool, __std::coroutine_handle<>)
+        -> __std::coroutine_handle<>
       {
         STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
         {
@@ -351,8 +350,7 @@ namespace STDEXEC
           STDEXEC::start(__opstate);
         }
 
-        __continuation = this->__get_continuation();
-        return STDEXEC_PP_IF(STDEXEC_GCC(), (__continuation.resume(), false), __continuation);
+        return this->__get_continuation();
       }
 
      private:

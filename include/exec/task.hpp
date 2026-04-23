@@ -23,6 +23,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/__detail/__variant.hpp"
+#include "../stdexec/coroutine.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/functional.hpp"
 
@@ -358,13 +359,13 @@ namespace experimental::execution
       {
         // Resuming the continuation of the parent coroutine will cause it to continue
         // executing on the new scheduler.
-        __parent_.resume();
+        STDEXEC::__coroutine_resume_nothrow(__parent_);
       }
 
       void set_error(std::exception_ptr __eptr) noexcept
       {
         __eptr_ = std::move(__eptr);
-        __parent_.resume();
+        STDEXEC::__coroutine_resume_nothrow(__parent_);
       }
 
       void set_stopped() noexcept
@@ -373,7 +374,7 @@ namespace experimental::execution
         // a promise that can handle the stopped signal. The coroutine referred to by
         // __continuation_ will never be resumed.
         __std::coroutine_handle<> __unwind = __parent_.promise().unhandled_stopped();
-        __unwind.resume();
+        STDEXEC::__coroutine_resume_nothrow(__unwind);
       }
 
       [[nodiscard]]

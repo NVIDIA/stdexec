@@ -444,17 +444,7 @@ namespace STDEXEC
             {
               static_assert(__std::convertible_to<__suspend_result_t, __std::coroutine_handle<>>);
               auto __resume_target = __awaiter_.await_suspend(__coro);
-              STDEXEC_TRY
-              {
-                __resume_target.resume();
-              }
-              STDEXEC_CATCH_ALL
-              {
-                STDEXEC_ASSERT(false
-                               && "about to deliberately commit UB in response to a misbehaving "
-                                  "awaitable");
-                __std::unreachable();
-              }
+              STDEXEC::__coroutine_resume_nothrow(__resume_target);
               return;
             }
           }

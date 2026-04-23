@@ -18,6 +18,7 @@
 #include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #include "__detail/__concepts.hpp"
 #include "__detail/__config.hpp"
+#include "__detail/__utility.hpp"
 
 #include <exception>
 
@@ -30,6 +31,21 @@ namespace STDEXEC
     -> __std::coroutine_handle<_Tp>
   {
     return __std::coroutine_handle<_Tp>::from_address(__h.address());
+  }
+
+  STDEXEC_ATTRIBUTE(always_inline)
+  void __coroutine_resume_nothrow(__std::coroutine_handle<> __h) noexcept  //
+  {
+    STDEXEC_TRY
+    {
+      STDEXEC_ASSERT(__h);
+      __h.resume();
+    }
+    STDEXEC_CATCH(...)
+    {
+      STDEXEC_ASSERT(!"Coroutine resume threw an exception!");
+      __std::unreachable();
+    }
   }
 
   // A coroutine handle that also supports unhandled_stopped() for propagating stop
