@@ -248,7 +248,8 @@ namespace
   // In debug GCC builds, this test can cause a stack overflow due to
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
   // transfer failing to be a tail call.
-#  if !STDEXEC_GCC() || defined(__OPTIMIZE__)
+#  if !STDEXEC_GCC()                                                                               \
+    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
   auto sync() -> ex::task<int>
   {
     co_return 42;
