@@ -334,6 +334,58 @@ namespace
   //   ex::sync_wait(std::move(t));
   // }
 
+  struct inline_affine_stopped_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_stopped_t()>;
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_stopped(std::move(rcvr_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && -> operation<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_stopped_t>) noexcept
+      {
+        return ex::__completion_behavior::__inline_completion
+             | ex::__completion_behavior::__asynchronous_affine;
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("task co_awaiting inline|async_affine stopped sender does not deadlock",
+            "[types][task]")
+  {
+    auto res = ex::sync_wait(
+      []() -> ex::task<int>
+      {
+        co_await inline_affine_stopped_sender{};
+        FAIL("Expected co_awaiting inline_affine_stopped_sender to stop the task");
+        co_return 42;
+      }());
+    CHECK(!res.has_value());
+  }
+
   // TODO: add tests for stop token support in task
 
 }  // anonymous namespace

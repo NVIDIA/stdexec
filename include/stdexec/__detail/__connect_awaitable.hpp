@@ -22,7 +22,9 @@
 #include "__concepts.hpp"
 #include "__config.hpp"
 #include "__env.hpp"
+#include "__manual_lifetime.hpp"
 #include "__receivers.hpp"
+#include "__scope.hpp"
 
 #include <exception>
 
@@ -99,7 +101,8 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
+      // constexpr
+      auto get_env() const noexcept -> env_of_t<_Receiver>
       {
         return STDEXEC::get_env(__get_opstate().__rcvr_);
       }
@@ -132,7 +135,7 @@ namespace STDEXEC
     {
       constexpr auto& __awaiter() noexcept
       {
-        return static_cast<_Derived*>(this)->__awaiter_;
+        return static_cast<_Derived*>(this)->__awaiter_.__get();
       }
 
       constexpr auto await_ready() noexcept(noexcept(__awaiter().await_ready())) -> bool
@@ -181,40 +184,36 @@ namespace STDEXEC
           // clause when the result of __get_awaitable or __get_awaiter is immovable; it *seems*
           // like direct initialization of a member with the result of a function ought to trigger
           // C++17's mandatory copy elision, and both Clang and MSVC accept that code, but using
-          // a union with in-place new works around the issue.
-          new (static_cast<void*>(std::addressof(__awaitable_)))
-            __awaitable_t(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()));
-          new (static_cast<void*>(std::addressof(__awaiter_)))
-            __awaiter_t(__get_awaiter(static_cast<__awaitable_t&&>(__awaitable_)));
+          // __manual_lifetime works around the issue.
+          __awaitable_.__construct_from(__get_awaitable,
+                                        static_cast<_Awaitable&&>(__source),
+                                        __coro.promise());
+          auto __guard = __scope_guard{[&]() noexcept { __awaitable_.__destroy(); }};
+
+          __awaiter_.__construct_from(__get_awaiter,
+                                      static_cast<__awaitable_t&&>(__awaitable_.__get()));
+          __guard.__dismiss();
         }
 
         ~__state()
         {
           // make sure to destroy in the reverse order of construction
-          std::destroy_at(std::addressof(__awaiter_));
-          std::destroy_at(std::addressof(__awaitable_));
+          __awaiter_.__destroy();
+          __awaitable_.__destroy();
         }
 
-        union
-        {
-          STDEXEC_ATTRIBUTE(no_unique_address)
-          __awaitable_t __awaitable_;
-        };
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        __manual_lifetime<__awaitable_t> __awaitable_;
 
-        union
-        {
-          STDEXEC_ATTRIBUTE(no_unique_address)
-          __awaiter_t __awaiter_;
-        };
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        __manual_lifetime<__awaiter_t> __awaiter_;
       };
 
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
-      union
-      {
-        STDEXEC_ATTRIBUTE(no_unique_address)
-        __state __awaiter_;
-      };
+
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __manual_lifetime<__state> __awaiter_;
 
       template <__not_decays_to<__awaitable_state> _Awaitable2>
       explicit __awaitable_state(_Awaitable2&& __awaitable)
@@ -222,16 +221,14 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      ~__awaitable_state() {}
-
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
-        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+        __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
       constexpr void destroy() noexcept
       {
-        std::destroy_at(&__awaiter_);
+        __awaiter_.__destroy();
       }
     };
 
@@ -250,43 +247,30 @@ namespace STDEXEC
 
       struct __state : __awaitable_wrapper<__state>
       {
-        __state(_Awaitable&& __source, __std::coroutine_handle<_Promise> __coro)
-          noexcept(__is_nothrow)
+        __state(_Awaitable&& __source, __std::coroutine_handle<_Promise>) noexcept(__is_nothrow)
         {
           // GCC doesn't like initializing __awaiter_ in the member initializer clause when the
           // result of __get_awaiter is immovable; it *seems* like direct initialization of a
           // member with the result of a function ought to trigger C++17's mandatory copy elision,
           // and both Clang and MSVC accept that code, but using a union with in-place new works
           // around the issue.
-          new (static_cast<void*>(std::addressof(__awaiter_)))
-            __awaiter_t(__get_awaiter(static_cast<_Awaitable&&>(__source)));
-
-          [[maybe_unused]]
-          auto&& __awaitable = __get_awaitable(static_cast<_Awaitable&&>(__source),
-                                               __coro.promise());
-
-          STDEXEC_ASSERT(std::addressof(__awaitable) == std::addressof(__source));
+          __awaiter_.__construct_from(__get_awaiter, static_cast<_Awaitable&&>(__source));
         }
 
         ~__state()
         {
-          std::destroy_at(std::addressof(__awaiter_));
+          __awaiter_.__destroy();
         }
 
-        union
-        {
-          STDEXEC_ATTRIBUTE(no_unique_address)
-          __awaiter_t __awaiter_;
-        };
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        __manual_lifetime<__awaiter_t> __awaiter_;
       };
 
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
-      union
-      {
-        STDEXEC_ATTRIBUTE(no_unique_address)
-        __state __awaiter_;
-      };
+
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __manual_lifetime<__state> __awaiter_;
 
       template <__not_decays_to<__awaitable_state> _Awaitable2>
       explicit __awaitable_state(_Awaitable2&& __awaitable)
@@ -294,16 +278,14 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      ~__awaitable_state() {}
-
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
-        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+        __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
       constexpr void destroy() noexcept
       {
-        std::destroy_at(&__awaiter_);
+        __awaiter_.__destroy();
       }
     };
 
@@ -330,34 +312,30 @@ namespace STDEXEC
           // member with the result of a function ought to trigger C++17's mandatory copy elision,
           // and both Clang and MSVC accept that code, but using a union with in-place new works
           // around the issue.
-          new (static_cast<void*>(std::addressof(__awaiter_)))
-            __awaiter_t(__get_awaitable(static_cast<_Awaitable&&>(__source), __coro.promise()));
+          __awaiter_.__construct_from(__get_awaitable,
+                                      static_cast<_Awaitable&&>(__source),
+                                      __coro.promise());
 
           [[maybe_unused]]
-          auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_));
+          auto&& __awaiter = __get_awaiter(static_cast<__awaiter_t&&>(__awaiter_.__get()));
 
-          STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_));
+          STDEXEC_ASSERT(std::addressof(__awaiter) == std::addressof(__awaiter_.__get()));
         }
 
         ~__state()
         {
-          std::destroy_at(std::addressof(__awaiter_));
+          __awaiter_.__destroy();
         }
 
-        union
-        {
-          STDEXEC_ATTRIBUTE(no_unique_address)
-          __awaiter_t __awaiter_;
-        };
+        STDEXEC_ATTRIBUTE(no_unique_address)
+        __manual_lifetime<__awaiter_t> __awaiter_;
       };
 
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Awaitable __source_awaitable_;
-      union
-      {
-        STDEXEC_ATTRIBUTE(no_unique_address)
-        __state __awaiter_;
-      };
+
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __manual_lifetime<__state> __awaiter_;
 
       template <__not_decays_to<__awaitable_state> _Awaitable2>
       explicit __awaitable_state(_Awaitable2&& __awaitable)
@@ -365,16 +343,14 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      ~__awaitable_state() {}
-
       constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
-        std::construct_at(&__awaiter_, static_cast<_Awaitable&&>(__source_awaitable_), __coro);
+        __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
       constexpr void destroy() noexcept
       {
-        std::destroy_at(&__awaiter_);
+        __awaiter_.__destroy();
       }
     };
 
@@ -388,13 +364,19 @@ namespace STDEXEC
       // _Awaitable has neither a distinct awaiter, nor a distinct awaitable
       // so we don't need separate storage for either
       STDEXEC_ATTRIBUTE(no_unique_address)
-      _Awaitable __awaiter_;
+      __manual_lifetime<_Awaitable> __awaiter_;
 
       template <__not_decays_to<__awaitable_state> _Awaitable2>
       explicit __awaitable_state(_Awaitable2&& __awaitable)
         noexcept(__nothrow_constructible_from<_Awaitable, _Awaitable2>)
-        : __awaiter_(static_cast<_Awaitable2&&>(__awaitable))
-      {}
+      {
+        __awaiter_.__construct(static_cast<_Awaitable2&&>(__awaitable));
+      }
+
+      ~__awaitable_state()
+      {
+        __awaiter_.__destroy();
+      }
 
       static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
       {
@@ -492,10 +474,7 @@ namespace STDEXEC
       }
 
      private:
-      using __promise_t   = __promise<_Awaitable, _Receiver>;
-      using __awaitable_t = __result_of<__get_awaitable, _Awaitable, __promise_t&>;
-      using __awaiter_t   = __awaiter_of_t<__awaitable_t>;
-
+      using __promise_t = __promise<_Awaitable, _Receiver>;
       friend __promise_t;
 
       static auto __co_impl(__opstate& __op) noexcept -> __std::coroutine_handle<__promise_t>

@@ -100,10 +100,10 @@ namespace STDEXEC
                               && __completes_inline_for<set_stopped_t, _Sender, _Env...>;
 
     template <class _Value, bool _Inline>
-    struct __sender_awaitable_base;
+    struct __sender_awaiter_base;
 
     template <class _Value>
-    struct __sender_awaitable_base<_Value, true>
+    struct __sender_awaiter_base<_Value, true>
     {
       static constexpr auto await_ready() noexcept -> bool
       {
@@ -126,16 +126,26 @@ namespace STDEXEC
         return static_cast<__reference_t>(__var::__get<0>(__result_));
       }
 
-      __std::coroutine_handle<> __continuation_;
-      __expected_t<_Value>      __result_{__no_init};
+      [[nodiscard]]
+      constexpr auto __get_continuation() const noexcept -> __std::coroutine_handle<>
+      {
+        // If the operation was stopped, so there is no result. We should not be resuming
+        // the __continuation_; rather, we should use the unhandled_stopped()
+        // continuation. Otherwise, so we should resume the __continuation_ as normal.
+        return __result_.__is_valueless() ? __continuation_.unhandled_stopped()
+                                          : __continuation_.handle();
+      }
+
+      __coroutine_handle<> __continuation_;
+      __expected_t<_Value> __result_{__no_init};
     };
 
     // When the sender is not statically known to complete inline, we need to use atomic
     // state to guard against too many inline completions causing a stack overflow.
     template <class _Value>
-    struct __sender_awaitable_base<_Value, false> : __sender_awaitable_base<_Value, true>
+    struct __sender_awaiter_base<_Value, false> : __sender_awaiter_base<_Value, true>
     {
-      __std::atomic<bool>   __ready_{true};
+      std::atomic<int>      __refcount_{2};
       std::thread::id const __starting_thread_{std::this_thread::get_id()};
     };
 
@@ -170,13 +180,13 @@ namespace STDEXEC
             std::make_exception_ptr(static_cast<_Error&&>(__err)));
       }
 
-      __sender_awaitable_base<_Value, true>& __awaiter_;
+      __sender_awaiter_base<_Value, true>& __awaiter_;
     };
 
     template <class _Promise, class _Value>
     struct __sync_receiver : __receiver_base<_Value>
     {
-      using __awaiter_t = __sender_awaitable_base<_Value, true>;
+      using __awaiter_t = __sender_awaiter_base<_Value, true>;
 
       constexpr explicit __sync_receiver(__awaiter_t& __awaiter) noexcept
         : __receiver_base<_Value>{__awaiter}
@@ -184,15 +194,16 @@ namespace STDEXEC
 
       void set_stopped() noexcept
       {
-        // no-op: the __result_ variant will remain engaged with the monostate
-        // alternative, which signals that the operation was stopped.
+        // no-op: the __result_ variant will remain valueless, which signals that the
+        // operation was stopped.
       }
 
       // Forward get_env query to the coroutine promise
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> env_of_t<_Promise&>
       {
-        auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(this->__awaiter_.__continuation_);
+        auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(
+          this->__awaiter_.__continuation_.handle());
         return STDEXEC::get_env(__hcoro.promise());
       }
     };
@@ -201,7 +212,7 @@ namespace STDEXEC
     template <class _Promise, class _Value>
     struct __async_receiver : __sync_receiver<_Promise, _Value>
     {
-      using __awaiter_t = __sender_awaitable_base<_Value, false>;
+      using __awaiter_t = __sender_awaiter_base<_Value, false>;
 
       constexpr explicit __async_receiver(__awaiter_t& __awaiter) noexcept
         : __sync_receiver<_Promise, _Value>{__awaiter}
@@ -223,54 +234,36 @@ namespace STDEXEC
 
       constexpr void set_stopped() noexcept
       {
-        STDEXEC_TRY
-        {
-          // Resuming the stopped continuation unwinds the coroutine stack until we reach
-          // a promise that can handle the stopped signal. The coroutine referred to by
-          // __continuation_ will never be resumed.
-          auto __hcoro = STDEXEC::__coroutine_handle_cast<_Promise>(
-            this->__awaiter_.__continuation_);
-          __std::coroutine_handle<> __unwind = __hcoro.promise().unhandled_stopped();
-          __unwind.resume();
-        }
-        STDEXEC_CATCH_ALL
-        {
-          this->__awaiter_.__result_.template emplace<1>(std::current_exception());
-          this->__awaiter_.__continuation_.resume();
-        }
+        __done();
       }
 
      private:
       void __done() noexcept
       {
-        // If __ready_ is still false when executing the CAS it means the started
-        // operation completed before await_suspend checked whether the operation
-        // completed. In this case resuming execution is handled by await_suspend.
-        // Otherwise, the execution needs to be resumed from here.
-        auto& __awaiter = static_cast<__awaiter_t&>(this->__awaiter_);
+        auto&      __awaiter         = static_cast<__awaiter_t&>(this->__awaiter_);
+        bool const __on_other_thread = std::this_thread::get_id() != __awaiter.__starting_thread_;
+        // It is possible that `await_suspend` hasn't even returned yet. `await_suspend`
+        // wants to read state from the awaitable after calling `start` on the opstate, so
+        // we need to wait until `start` has returned before completing the operation.
+        // Otherwise, `await_suspend` might be reading from the awaiter after it has been
+        // destroyed.
+        int const __old_refs = __awaiter.__refcount_.fetch_sub(1, __std::memory_order_acq_rel);
 
-        if (std::this_thread::get_id() != __awaiter.__starting_thread_)
+        if (__on_other_thread)
         {
-          // If we're completing on a different thread than the one that started the
-          // operation, we know we are completing asynchronously, so we need to resume
-          // the continuation from here.
-          __awaiter.__continuation_.resume();
-          return;
+          // If we are completing on a different thread than the one that started the
+          // operation, we must wait until `await_suspend` has decremented the refcount
+          // and is no longer accessing the awaiter before we can safely resume the
+          // continuation.
+          __awaiter.__refcount_.wait(1, __std::memory_order_acquire);
         }
 
-        bool       __expected = false;
-        bool const __was_ready =
-          !__awaiter.__ready_.compare_exchange_strong(__expected,
-                                                      true,
-                                                      __std::memory_order_release,
-                                                      __std::memory_order_acquire);
-        if (__was_ready)
+        if (__old_refs == 1)
         {
-          // We get here if __ready_ was true when the CAS was executed. It got set to
-          // true in await_suspend() immediately after the operation was started, which
-          // implies that this completion is happening asynchronously, so we need to
-          // resume the continuation from here.
-          __awaiter.__continuation_.resume();
+          // We get here if `await_suspend` has already decremented the refcount, which
+          // means that this operation is completing asynchronously. We need to resume the
+          // continuation from here because `await_suspend` will not.
+          __awaiter.__get_continuation().resume();
         }
       }
     };
@@ -282,60 +275,47 @@ namespace STDEXEC
     using __async_receiver_t = __async_receiver<_Promise, __value_t<_Sender, _Promise>>;
 
     //////////////////////////////////////////////////////////////////////////////////////
-    // __sender_awaitable: awaitable type returned by as_awaitable when given a sender
+    // __sender_awaiter: awaitable type returned by as_awaitable when given a sender
     // that does not have an as_awaitable member function
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
-    struct __sender_awaitable : __sender_awaitable_base<__value_t<_Sender, _Promise>, false>
+    struct __sender_awaiter : __sender_awaiter_base<__value_t<_Sender, _Promise>, false>
     {
       using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
-      constexpr explicit __sender_awaitable(_Sender&&                         __sndr,
-                                            __std::coroutine_handle<_Promise> __hcoro)
+      constexpr explicit __sender_awaiter(_Sender&&                         __sndr,
+                                          __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_connectable<_Sender, __receiver_t>)
-        : __sender_awaitable_base<__value_t, false>{__hcoro}
+        : __sender_awaiter_base<__value_t, false>{__hcoro}
         , __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(*this)))
       {}
 
-      ~__sender_awaitable()
-      {
-        // TODO: This wait here is only needed because of the existence of
-        // exec::at_coroutine_exit, which can cause the destructor of the sender_awaitable
-        // to run while start() is still executing. We should consider removing
-        // exec::at_coroutine_exit or fixing it.
-        this->__ready_.wait(false, __std::memory_order_acquire);
-      }
-
       constexpr auto
-      await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro) noexcept -> bool
+      await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation) noexcept
+        -> STDEXEC_PP_IF(STDEXEC_GCC(), bool, __std::coroutine_handle<>)
       {
-        STDEXEC_ASSERT(this->__continuation_ == __hcoro);
-
-        this->__ready_.store(false, __std::memory_order_release);
+        STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
 
         // Start the operation.
         STDEXEC::start(__opstate_);
 
-        auto       __expected = false;
-        bool const __was_ready =
-          !this->__ready_.compare_exchange_strong(__expected,
-                                                  true,
-                                                  __std::memory_order_release,
-                                                  __std::memory_order_acquire);
-        this->__ready_.notify_one();
+        int const __old_refcount = this->__refcount_.fetch_sub(1, __std::memory_order_acq_rel);
+        this->__refcount_.notify_one();
 
-        if (__was_ready)
+        if (__old_refcount == 1)
         {
-          // The operation completed inline with set_value or set_error, so we can just
-          // resume the current coroutine. await_resume will either return the value or
-          // throw as appropriate.
-          return false;
+          // If the refcount was 1 before the decrement, then the operation has already
+          // completed (either synchronously or asynchronously) and we are responsible for
+          // resuming the continuation. Otherwise, we can let the receiver resume the
+          // continuation when the operation completes.
+          __continuation = this->__get_continuation();
+          return STDEXEC_PP_IF(STDEXEC_GCC(), (__continuation.resume(), false), __continuation);
         }
         else
         {
-          // If __ready_ was still false when executing the CAS, then the operation did not
-          // complete inline. The continuation will be resumed when the operation
-          // completes, so we return a noop_coroutine to suspend the current coroutine.
-          return true;
+          // Otherwise, the operation has not completed yet, so we need to suspend the
+          // current coroutine. The continuation will be resumed when the operation
+          // completes.
+          return STDEXEC_PP_IF(STDEXEC_GCC(), true, std::noop_coroutine());
         }
       }
 
@@ -348,22 +328,22 @@ namespace STDEXEC
     // in await_suspend.
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
       requires __completes_inline<_Sender, env_of_t<_Promise&>>
-    struct __sender_awaitable<_Promise, _Sender>
-      : __sender_awaitable_base<__value_t<_Sender, _Promise>, true>
+    struct __sender_awaiter<_Promise, _Sender>
+      : __sender_awaiter_base<__value_t<_Sender, _Promise>, true>
     {
       using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
-      constexpr explicit __sender_awaitable(_Sender&&                         sndr,
-                                            __std::coroutine_handle<_Promise> __hcoro)
+      constexpr explicit __sender_awaiter(_Sender&&                         __sndr,
+                                          __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_move_constructible<_Sender>)
-        : __sender_awaitable_base<__value_t, true>{__hcoro}
-        , __sndr_(static_cast<_Sender&&>(sndr))
+        : __sender_awaiter_base<__value_t, true>{__hcoro}
+        , __sndr_(static_cast<_Sender&&>(__sndr))
       {}
 
-      auto await_suspend([[maybe_unused]] __std::coroutine_handle<_Promise> __hcoro)
+      auto await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation)
         -> STDEXEC_PP_IF(STDEXEC_GCC(), bool, __std::coroutine_handle<>)
       {
-        STDEXEC_ASSERT(this->__continuation_ == __hcoro);
+        STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
         {
           auto __opstate = STDEXEC::connect(static_cast<_Sender&&>(__sndr_), __receiver_t(*this));
           // The following call to start will complete synchronously, writing its result
@@ -371,23 +351,8 @@ namespace STDEXEC
           STDEXEC::start(__opstate);
         }
 
-        if (this->__result_.__is_valueless())
-        {
-          // The operation completed with set_stopped, so we need to call
-          // unhandled_stopped() on the promise to propagate the stop signal. That will
-          // result in the coroutine being torn down, so beware. We then resume the
-          // returned coroutine handle (which may be a noop_coroutine).
-          return STDEXEC_PP_IF(STDEXEC_GCC(),
-                               (__hcoro.promise().unhandled_stopped().resume(), true),
-                               __hcoro.promise().unhandled_stopped());
-        }
-        else
-        {
-          // The operation completed with set_value or set_error, so we can just resume
-          // the current coroutine. await_resume will either return the value or throw as
-          // appropriate.
-          return STDEXEC_PP_IF(STDEXEC_GCC(), false, __hcoro);
-        }
+        __continuation = this->__get_continuation();
+        return STDEXEC_PP_IF(STDEXEC_GCC(), (__continuation.resume(), false), __continuation);
       }
 
      private:
@@ -397,8 +362,8 @@ namespace STDEXEC
 
     template <class _Sender, class _Promise>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    __sender_awaitable(_Sender&&, __std::coroutine_handle<_Promise>)
-      -> __sender_awaitable<_Promise, _Sender>;
+    __sender_awaiter(_Sender&&, __std::coroutine_handle<_Promise>)
+      -> __sender_awaiter<_Promise, _Sender>;
 
     template <class _Sender, class _Promise>
     concept __awaitable_adapted_sender = sender_in<_Sender, env_of_t<_Promise&>>
@@ -450,7 +415,7 @@ namespace STDEXEC
 
     inline constexpr auto __with_sender =  //
       []<class _Promise, __awaitable_transform_sender<_Promise> _Tp>(_Tp&& __t, _Promise& __promise)
-        STDEXEC_AUTO_RETURN(__sender_awaitable{
+        STDEXEC_AUTO_RETURN(__sender_awaiter{
           __as_awaitable::__adapt_sender_for_await(
             STDEXEC::transform_sender(static_cast<_Tp&&>(__t), STDEXEC::get_env(__promise))),
           __std::coroutine_handle<_Promise>::from_promise(__promise)});
