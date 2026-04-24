@@ -240,7 +240,7 @@ namespace STDEXEC
 
   ////////////////////////////////////////////////////////////////////////////////
   // STDEXEC::task
-  template <class _Ty, class _TaskEnv = env<>>
+  template <class _Ty = void, class _TaskEnv = env<>>
   class [[nodiscard]] task
   {
     struct __promise;
