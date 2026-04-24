@@ -254,7 +254,7 @@ namespace STDEXEC
           // We decremented first on a different thread. await_suspend will observe
           // old==0 and return noop_coroutine; it will call notify_one to signal us.
           // Wait until await_suspend has decremented, then resume the continuation.
-          __awaiter.__refcount_.wait(0, __std::memory_order_relaxed);
+          __awaiter.__refcount_.wait(0, __std::memory_order_acquire);
           STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
         }
         else if (__old_refs == 1)
