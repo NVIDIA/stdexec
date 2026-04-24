@@ -122,6 +122,8 @@ namespace
 
   TEST_CASE("Test stickiness with two single threads", "[types][sticky][task]")
   {
+    [[maybe_unused]] // repeat this test 1000 times because it can expose race conditions
+    int                         i = GENERATE(repeat(1000, values({1})));
     exec::single_thread_context context1;
     exec::single_thread_context context2;
     ex::scheduler auto          scheduler1 = context1.get_scheduler();
@@ -136,6 +138,8 @@ namespace
 
   TEST_CASE("Test stickiness with two single threads with on", "[types][sticky][task]")
   {
+    [[maybe_unused]] // repeat this test 1000 times because it can expose race conditions
+    int                         i = GENERATE(repeat(1000, values({1})));
     exec::single_thread_context context1;
     exec::single_thread_context context2;
     ex::scheduler auto          scheduler1 = context1.get_scheduler();
@@ -152,6 +156,8 @@ namespace
 
   TEST_CASE("Test stickiness with two single threads with sender", "[types][sticky][task]")
   {
+    [[maybe_unused]] // repeat this test 1000 times because it can expose race conditions
+    int                         i = GENERATE(repeat(1000, values({1})));
     exec::single_thread_context context1;
     exec::single_thread_context context2;
     ex::scheduler auto          scheduler1 = context1.get_scheduler();
@@ -168,6 +174,8 @@ namespace
   TEST_CASE("Test stickiness with two single threads with sender with starts_on",
             "[types][sticky][task]")
   {
+    [[maybe_unused]] // repeat this test 1000 times because it can expose race conditions
+    int                         i = GENERATE(repeat(1000, values({1})));
     exec::single_thread_context context1;
     exec::single_thread_context context2;
     ex::scheduler auto          scheduler1 = context1.get_scheduler();
@@ -186,6 +194,8 @@ namespace
 
   TEST_CASE("Use two inline schedulers", "[types][sticky][task]")
   {
+    [[maybe_unused]] // repeat this test 1000 times because it can expose race conditions
+    int                         i = GENERATE(repeat(1000, values({1})));
     ex::scheduler auto scheduler1 = STDEXEC::inline_scheduler{};
     ex::scheduler auto scheduler2 = STDEXEC::inline_scheduler{};
     ex::sync_wait(ex::when_all(ex::schedule(scheduler1) | ex::then([] { thread_id = 0; }),
