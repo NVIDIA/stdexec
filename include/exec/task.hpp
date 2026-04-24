@@ -49,13 +49,22 @@ namespace experimental::execution
     using __any_scheduler_impl_t =
       any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>>;
 
+    // A scheduler concept that does not check for copyability since that creates a cycle
+    // in the type system.
+    template <class _Scheduler>
+    concept __semi_scheduler = requires(_Scheduler& __sched) {
+      typename _Scheduler::scheduler_concept;
+      requires __std::derived_from<typename _Scheduler::scheduler_concept, scheduler_tag>;
+      { schedule(__sched) } -> sender;
+    };
+
     struct __any_scheduler
     {
       using scheduler_concept = scheduler_t;
 
-      template <__not_decays_to<__any_scheduler> _Scheduler>
-        requires __std::constructible_from<__any_scheduler_impl_t, _Scheduler>
-      constexpr __any_scheduler(_Scheduler&& __sched) noexcept
+      template <__not_same_as<__any_scheduler> _Scheduler>
+        requires __semi_scheduler<_Scheduler>
+      constexpr __any_scheduler(_Scheduler __sched) noexcept
         : __impl_(std::forward<_Scheduler>(__sched))
       {}
 
@@ -68,7 +77,7 @@ namespace experimental::execution
       }
 
      private:
-      any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>> __impl_;
+      __any_scheduler_impl_t __impl_;
     };
 
     static_assert(scheduler<__any_scheduler>);

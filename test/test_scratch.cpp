@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-#include <stdexec/coroutine.hpp>
-
-#include <exec/single_thread_context.hpp>
-#include <exec/task.hpp>
+#include <stdexec/execution.hpp>
 
 #include <catch2/catch_all.hpp>
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
+
+#include <exec/single_thread_context.hpp>
+#include <exec/task.hpp>
 
 namespace ex = STDEXEC;
 
