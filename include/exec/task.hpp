@@ -43,10 +43,33 @@ namespace experimental::execution
 
     // The required set_value_t() scheduler-sender completion signature is added in
     // any_receiver_ref::any_sender::any_scheduler.
-    using __any_scheduler_completions =
+    using __any_scheduler_completions_t =
       completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-    using __any_scheduler = any_scheduler<any_sender<any_receiver<__any_scheduler_completions>>>;
+    using __any_scheduler_impl_t =
+      any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>>;
+
+    struct __any_scheduler
+    {
+      using scheduler_concept = scheduler_t;
+
+      template <__not_decays_to<__any_scheduler> _Scheduler>
+        requires __std::constructible_from<__any_scheduler_impl_t, _Scheduler>
+      constexpr __any_scheduler(_Scheduler&& __sched) noexcept
+        : __impl_(std::forward<_Scheduler>(__sched))
+      {}
+
+      bool operator==(__any_scheduler const & __other) const noexcept = default;
+
+      [[nodiscard]]
+      auto schedule() const
+      {
+        return __impl_.schedule();
+      }
+
+     private:
+      any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>> __impl_;
+    };
 
     static_assert(scheduler<__any_scheduler>);
 
@@ -506,7 +529,7 @@ namespace experimental::execution
       using __scheduler_t =
         __call_result_or_t<get_start_scheduler_t, STDEXEC::inline_scheduler, _Context>;
 
-      struct __final_awaitable
+      struct __final_awaiter
       {
         static constexpr auto await_ready() noexcept -> bool
         {
@@ -536,7 +559,7 @@ namespace experimental::execution
           return {};
         }
 
-        constexpr auto final_suspend() noexcept -> __final_awaitable
+        constexpr auto final_suspend() noexcept -> __final_awaiter
         {
           return {};
         }

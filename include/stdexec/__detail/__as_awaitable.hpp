@@ -242,12 +242,13 @@ namespace STDEXEC
       {
         auto&      __awaiter         = static_cast<__awaiter_t&>(this->__awaiter_);
         bool const __on_other_thread = std::this_thread::get_id() != __awaiter.__starting_thread_;
-        // It is possible that `await_suspend` hasn't even returned yet. `await_suspend`
-        // wants to read state from the awaitable after calling `start` on the opstate, so
-        // we need to wait until `start` has returned before completing the operation.
+        // Although we are completing the operation started in `await_suspend`, it is
+        // possible that `await_suspend` hasn't even returned yet. `await_suspend` wants
+        // to read state from the awaitable after calling `start` on the opstate, so we
+        // need to wait until after `start` has returned before completing the operation.
         // Otherwise, `await_suspend` might be reading from the awaiter after it has been
         // destroyed.
-        int const __old_refs = __awaiter.__refcount_.fetch_sub(1, __std::memory_order_acq_rel);
+        int const __old_refs = __awaiter.__refcount_.fetch_sub(1);//, __std::memory_order_acq_rel);
 
         if (__on_other_thread)
         {
@@ -255,7 +256,7 @@ namespace STDEXEC
           // operation, we must wait until `await_suspend` has decremented the refcount
           // and is no longer accessing the awaiter before we can safely resume the
           // continuation.
-          __awaiter.__refcount_.wait(1, __std::memory_order_acquire);
+          __awaiter.__refcount_.wait(1); //, __std::memory_order_acquire);
         }
 
         if (__old_refs == 1)
@@ -289,6 +290,11 @@ namespace STDEXEC
         , __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(*this)))
       {}
 
+      ~__sender_awaiter()
+      {
+        STDEXEC_ASSERT(this->__refcount_.load() == 0);
+      }
+
       constexpr auto
       await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation) noexcept
         -> __std::coroutine_handle<>
@@ -298,7 +304,7 @@ namespace STDEXEC
         // Start the operation.
         STDEXEC::start(__opstate_);
 
-        int const __old_refcount = this->__refcount_.fetch_sub(1, __std::memory_order_acq_rel);
+        int const __old_refcount = this->__refcount_.fetch_sub(1); //, __std::memory_order_acq_rel);
         this->__refcount_.notify_one();
 
         if (__old_refcount == 1)

@@ -41,7 +41,7 @@ namespace STDEXEC
       STDEXEC_ASSERT(__h);
       __h.resume();
     }
-    STDEXEC_CATCH(...)
+    STDEXEC_CATCH_ALL
     {
       STDEXEC_ASSERT(!"Coroutine resume threw an exception!");
       __std::unreachable();

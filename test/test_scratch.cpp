@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022 Lucian Radu Teodorescu
- * Copyright (c) 2022 NVIDIA Corporation
+ * Copyright (c) MAikel Nadolski
+ * Copyright (c) 2021-2023 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -15,17 +15,29 @@
  * limitations under the License.
  */
 
+#include <stdexec/coroutine.hpp>
+
+#include <exec/single_thread_context.hpp>
+#include <exec/task.hpp>
+
 #include <catch2/catch_all.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/schedulers.hpp>
 
 namespace ex = STDEXEC;
 
-namespace
+auto test_stickiness(auto scheduler1, auto id1) -> exec::task<void>
 {
-  TEST_CASE("a scratch test case for minimal repro of a bug", "[scratch]")
-  {
-    CHECK(true);
-  }
-}  // namespace
+  co_await exec::reschedule_coroutine_on(scheduler1);
+  CHECK(std::this_thread::get_id() == id1);
+}
+
+TEST_CASE("stress test for stickiness and coroutine rescheduling", "[types][task][reschedule_coroutine_on]")
+{
+  [[maybe_unused]]
+  int                         i = GENERATE(repeat(10000, values({1})));
+  exec::single_thread_context context1;
+  ex::scheduler auto          scheduler1 = context1.get_scheduler();
+
+  auto id1 = context1.get_thread_id();
+  auto t   = test_stickiness(scheduler1, id1);
+  ex::sync_wait(std::move(t));
+}
