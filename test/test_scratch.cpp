@@ -21,8 +21,8 @@
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 
-#include <exec/single_thread_context.hpp>
-#include <exec/task.hpp>
+#  include <exec/single_thread_context.hpp>
+#  include <exec/task.hpp>
 
 namespace ex = STDEXEC;
 
@@ -41,11 +41,9 @@ TEST_CASE("stress test for stickiness and coroutine rescheduling",
   ex::scheduler auto          scheduler1 = context1.get_scheduler();
 
   auto main_id = std::this_thread::get_id();
-  auto id1 = context1.get_thread_id();
-  auto t   = test_stickiness(scheduler1, id1);
-  ex::sync_wait(
-    std::move(t)
-    | ex::then([=] { CHECK(std::this_thread::get_id() == main_id); }));
+  auto id1     = context1.get_thread_id();
+  auto t       = test_stickiness(scheduler1, id1);
+  ex::sync_wait(std::move(t) | ex::then([=] { CHECK(std::this_thread::get_id() == main_id); }));
 }
 
 #else

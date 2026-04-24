@@ -247,13 +247,13 @@ namespace STDEXEC
         // await_suspend can determine the correct action from a single fetch_sub without
         // any secondary reads that could race with frame destruction.
         int const __decrement = __on_other_thread ? 2 : 1;
-        int const __old_refs  = __awaiter.__refcount_.fetch_sub(__decrement);//, seq_cst);
+        int const __old_refs  = __awaiter.__refcount_.fetch_sub(__decrement);  //, seq_cst);
         if (__on_other_thread && __old_refs == 2)
         {
           // We decremented first on a different thread. await_suspend will observe
           // old==0 and return noop_coroutine; it will call notify_one to signal us.
           // Wait until await_suspend has decremented, then resume the continuation.
-          __awaiter.__refcount_.wait(0); //, __std::memory_order_acquire);
+          __awaiter.__refcount_.wait(0);  //, __std::memory_order_acquire);
           STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
         }
         else if (__old_refs == 1)
@@ -303,7 +303,8 @@ namespace STDEXEC
         // Start the operation.
         STDEXEC::start(__opstate_);
 
-        int const __old_refcount = this->__refcount_.fetch_sub(1); //, __std::memory_order_acq_rel);
+        int const __old_refcount = this->__refcount_.fetch_sub(
+          1);  //, __std::memory_order_acq_rel);
 
         if (__old_refcount == 1)
         {
@@ -316,7 +317,7 @@ namespace STDEXEC
         else if (__old_refcount == 0)
         {
           // The receiver already decremented by 2 on another thread.
-          // It will resume the continuation on the correct (other) thread. 
+          // It will resume the continuation on the correct (other) thread.
           // Return noop_coroutine so we do not resume here.
           this->__refcount_.notify_one();
           return std::noop_coroutine();
