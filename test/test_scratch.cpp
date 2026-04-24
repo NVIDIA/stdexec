@@ -22,6 +22,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#if !STDEXEC_NO_STDCPP_COROUTINES()
+
 namespace ex = STDEXEC;
 
 auto test_stickiness(auto scheduler1, auto id1) -> exec::task<void>
@@ -30,14 +32,27 @@ auto test_stickiness(auto scheduler1, auto id1) -> exec::task<void>
   CHECK(std::this_thread::get_id() == id1);
 }
 
-TEST_CASE("stress test for stickiness and coroutine rescheduling", "[types][task][reschedule_coroutine_on]")
+TEST_CASE("stress test for stickiness and coroutine rescheduling",
+          "[types][task][reschedule_coroutine_on]")
 {
   [[maybe_unused]]
   int                         i = GENERATE(repeat(10000, values({1})));
   exec::single_thread_context context1;
   ex::scheduler auto          scheduler1 = context1.get_scheduler();
 
+  auto main_id = std::this_thread::get_id();
   auto id1 = context1.get_thread_id();
   auto t   = test_stickiness(scheduler1, id1);
-  ex::sync_wait(std::move(t));
+  ex::sync_wait(
+    std::move(t)
+    | ex::then([=] { CHECK(std::this_thread::get_id() == main_id); }));
 }
+
+#else
+
+TEST_CASE("dummy test", "[types][task]")
+{
+  CHECK(true);
+}
+
+#endif
