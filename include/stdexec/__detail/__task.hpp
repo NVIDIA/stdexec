@@ -205,18 +205,25 @@ namespace STDEXEC
     template <class _Env, class _StopSource>
     using __stop_callback_box_t = __stop_callback_box<stop_token_of_t<_Env>, _StopSource>;
 
-    STDEXEC_PRAGMA_PUSH()
-    STDEXEC_PRAGMA_IGNORE_GNU("-Wc++23-lambda-attributes")
-
-    inline constexpr auto __throw_error =
-      __overload{[] [[noreturn]] ([[maybe_unused]] auto&& __error)
-                 { STDEXEC_THROW((decltype(__error)&&) __error); },
-                 [] [[noreturn]] ([[maybe_unused]] std::error_code __ec)
-                 { STDEXEC_THROW(std::system_error(__ec)); },
-                 [] [[noreturn]] ([[maybe_unused]] std::exception_ptr __eptr)
-                 { std::rethrow_exception(__eptr); }};
-
-    STDEXEC_PRAGMA_POP()
+    inline constexpr struct __throw_error_t
+    {
+      template <class _Error>
+      [[noreturn]]
+      void operator()([[maybe_unused]] _Error&& __error) const
+      {
+        STDEXEC_THROW(static_cast<_Error&&>(__error));
+      }
+      [[noreturn]]
+      void operator()([[maybe_unused]] std::error_code __ec) const
+      {
+        STDEXEC_THROW(std::system_error(__ec));
+      }
+      [[noreturn]]
+      void operator()([[maybe_unused]] std::exception_ptr __eptr) const
+      {
+        std::rethrow_exception(__eptr);
+      }
+    } __throw_error{};
   }  // namespace __task
 
   ////////////////////////////////////////////////////////////////////////////////
