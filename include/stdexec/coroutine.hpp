@@ -18,6 +18,7 @@
 #include "__detail/__awaitable.hpp"  // IWYU pragma: export
 #include "__detail/__concepts.hpp"
 #include "__detail/__config.hpp"
+#include "__detail/__utility.hpp"
 
 #include <exception>
 
@@ -30,6 +31,21 @@ namespace STDEXEC
     -> __std::coroutine_handle<_Tp>
   {
     return __std::coroutine_handle<_Tp>::from_address(__h.address());
+  }
+
+  STDEXEC_ATTRIBUTE(always_inline)
+  void __coroutine_resume_nothrow(__std::coroutine_handle<> __h) noexcept  //
+  {
+    STDEXEC_TRY
+    {
+      STDEXEC_ASSERT(__h);
+      __h.resume();
+    }
+    STDEXEC_CATCH_ALL
+    {
+      STDEXEC_ASSERT(!"Coroutine resume threw an exception!");
+      __std::unreachable();
+    }
   }
 
   // A coroutine handle that also supports unhandled_stopped() for propagating stop
@@ -47,7 +63,11 @@ namespace STDEXEC
     constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __std::coroutine_handle<>(__coro)
     {
-      if constexpr (requires(_Promise& __promise) { __promise.unhandled_stopped(); })
+      constexpr bool __has_unhandled_stopped = requires { __coro.promise().unhandled_stopped(); };
+      static_assert(__has_unhandled_stopped,
+                    "Coroutine promises used with senders must implement unhandled_stopped()");
+
+      if constexpr (__has_unhandled_stopped)
       {
         __stopped_callback_ = [](void* __address) noexcept -> __std::coroutine_handle<>
         {
@@ -104,13 +124,13 @@ namespace STDEXEC
     [[nodiscard]]
     constexpr auto promise() const noexcept -> _Promise&
     {
-      return __std::coroutine_handle<_Promise>::from_address(address()).promise();
+      return STDEXEC::__coroutine_handle_cast<_Promise>(*this).promise();
     }
 
     [[nodiscard]]
     constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise>
     {
-      return __std::coroutine_handle<_Promise>::from_address(address());
+      return STDEXEC::__coroutine_handle_cast<_Promise>(*this);
     }
 
     [[nodiscard]]

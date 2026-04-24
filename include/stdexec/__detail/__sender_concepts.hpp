@@ -142,7 +142,7 @@ namespace STDEXEC
         static_assert(__std::move_constructible<__decay_t<_Sender>>,
                       "The sender type is not move-constructible.");
       }
-      else if constexpr (!__std::constructible_from<__decay_t<_Sender>, _Sender>)
+      else if constexpr (!__decay_copyable<_Sender>)
       {
         static_assert(__decay_copyable<_Sender>,
                       "The sender cannot be decay-copied. Did you forget a std::move?");

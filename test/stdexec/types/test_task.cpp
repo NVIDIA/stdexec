@@ -22,6 +22,7 @@
 #  include <stdexec/execution.hpp>
 
 #  include <exec/single_thread_context.hpp>
+#  include <exec/static_thread_pool.hpp>
 #  include <stdexec/__detail/__task.hpp>
 
 #  include <atomic>
@@ -244,6 +245,11 @@ namespace
     CHECK(i == 42);
   }
 
+  // In debug GCC builds, this test can cause a stack overflow due to
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
+  // transfer failing to be a tail call.
+#  if !STDEXEC_GCC()                                                                               \
+    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
   auto sync() -> ex::task<int>
   {
     co_return 42;
@@ -277,6 +283,7 @@ namespace
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
+#  endif
 
   struct my_env
   {
@@ -333,6 +340,74 @@ namespace
   //   auto t = test_task_awaits_just_ref_sender();
   //   ex::sync_wait(std::move(t));
   // }
+
+  struct inline_affine_stopped_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_stopped_t()>;
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_stopped(std::move(rcvr_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && -> operation<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_stopped_t>) noexcept
+      {
+        return ex::__completion_behavior::__inline_completion
+             | ex::__completion_behavior::__asynchronous_affine;
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("task co_awaiting inline|async_affine stopped sender does not deadlock",
+            "[types][task]")
+  {
+    auto res = ex::sync_wait(
+      []() -> ex::task<int>
+      {
+        co_await inline_affine_stopped_sender{};
+        FAIL("Expected co_awaiting inline_affine_stopped_sender to stop the task");
+        co_return 42;
+      }());
+    CHECK(!res.has_value());
+  }
+
+  TEST_CASE("repro for NVIDIA/stdexec#2041", "[types][task]")
+  {
+    auto task = []() -> ex::task<void>
+    {
+      co_return;
+    };
+    auto pool  = exec::static_thread_pool(1);
+    auto scope = ex::counting_scope();
+    for (int i = 0; i < 1000; ++i)
+    {
+      ex::spawn(ex::starts_on(pool.get_scheduler(), task()) | ex::upon_error([](auto) noexcept {}),
+                scope.get_token());
+    }
+    ex::sync_wait(scope.join());
+  }
 
   // TODO: add tests for stop token support in task
 

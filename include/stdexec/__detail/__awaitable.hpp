@@ -45,7 +45,7 @@ namespace STDEXEC
                                                                    _Promise    &__promise)
       -> decltype(auto)
     { return __promise.await_transform(static_cast<_Awaitable &&>(__awaitable)); },
-    []<class _Awaitable>(_Awaitable &&__awaitable, __ignore = {}) -> decltype(auto)
+    []<class _Awaitable>(_Awaitable &&__awaitable, __ignore = {}) noexcept -> decltype(auto)
     { return static_cast<_Awaitable &&>(__awaitable); }};
 
   template <class _Awaitable, class _Promise>

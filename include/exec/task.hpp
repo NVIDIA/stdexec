@@ -23,6 +23,7 @@
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/__detail/__variant.hpp"
+#include "../stdexec/coroutine.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/functional.hpp"
 
@@ -42,10 +43,42 @@ namespace experimental::execution
 
     // The required set_value_t() scheduler-sender completion signature is added in
     // any_receiver_ref::any_sender::any_scheduler.
-    using __any_scheduler_completions =
+    using __any_scheduler_completions_t =
       completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
-    using __any_scheduler = any_scheduler<any_sender<any_receiver<__any_scheduler_completions>>>;
+    using __any_scheduler_impl_t =
+      any_scheduler<any_sender<any_receiver<__any_scheduler_completions_t>>>;
+
+    // A scheduler concept that does not check for copyability since that creates a cycle
+    // in the type system.
+    template <class _Scheduler>
+    concept __semi_scheduler = requires(_Scheduler& __sched) {
+      typename _Scheduler::scheduler_concept;
+      requires __std::derived_from<typename _Scheduler::scheduler_concept, scheduler_tag>;
+      { schedule(__sched) } -> sender;
+    };
+
+    struct __any_scheduler
+    {
+      using scheduler_concept = scheduler_t;
+
+      template <__not_same_as<__any_scheduler> _Scheduler>
+        requires __semi_scheduler<_Scheduler>
+      constexpr __any_scheduler(_Scheduler __sched) noexcept
+        : __impl_(std::forward<_Scheduler>(__sched))
+      {}
+
+      bool operator==(__any_scheduler const & __other) const noexcept = default;
+
+      [[nodiscard]]
+      auto schedule() const
+      {
+        return __impl_.schedule();
+      }
+
+     private:
+      __any_scheduler_impl_t __impl_;
+    };
 
     static_assert(scheduler<__any_scheduler>);
 
@@ -358,13 +391,13 @@ namespace experimental::execution
       {
         // Resuming the continuation of the parent coroutine will cause it to continue
         // executing on the new scheduler.
-        __parent_.resume();
+        STDEXEC::__coroutine_resume_nothrow(__parent_);
       }
 
       void set_error(std::exception_ptr __eptr) noexcept
       {
         __eptr_ = std::move(__eptr);
-        __parent_.resume();
+        STDEXEC::__coroutine_resume_nothrow(__parent_);
       }
 
       void set_stopped() noexcept
@@ -373,7 +406,7 @@ namespace experimental::execution
         // a promise that can handle the stopped signal. The coroutine referred to by
         // __continuation_ will never be resumed.
         __std::coroutine_handle<> __unwind = __parent_.promise().unhandled_stopped();
-        __unwind.resume();
+        STDEXEC::__coroutine_resume_nothrow(__unwind);
       }
 
       [[nodiscard]]
@@ -505,7 +538,7 @@ namespace experimental::execution
       using __scheduler_t =
         __call_result_or_t<get_start_scheduler_t, STDEXEC::inline_scheduler, _Context>;
 
-      struct __final_awaitable
+      struct __final_awaiter
       {
         static constexpr auto await_ready() noexcept -> bool
         {
@@ -535,7 +568,7 @@ namespace experimental::execution
           return {};
         }
 
-        constexpr auto final_suspend() noexcept -> __final_awaitable
+        constexpr auto final_suspend() noexcept -> __final_awaiter
         {
           return {};
         }

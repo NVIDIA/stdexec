@@ -18,11 +18,12 @@
 
 // The original idea is taken from libunifex and adapted to stdexec.
 
-#include <exception>
-
 #include "../stdexec/execution.hpp"
 
 #include "any_sender_of.hpp"
+
+#include <exception>
+#include <tuple>
 
 namespace experimental::execution
 {
@@ -79,8 +80,8 @@ namespace experimental::execution
 
         template <receiver _Receiver>
           requires sender_to<_Sender, __receiver<_Receiver>>
-        auto
-        connect(_Receiver __rcvr) && noexcept -> connect_result_t<_Sender, __receiver<_Receiver>>
+        auto connect(_Receiver __rcvr) && noexcept  //
+          -> connect_result_t<_Sender, __receiver<_Receiver>>
         {
           return STDEXEC::connect(static_cast<_Sender&&>(__sender_),
                                   __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
@@ -137,6 +138,12 @@ namespace experimental::execution
         : __coro_(std::exchange(__that.__coro_, {}))
       {}
 
+      ~__task()
+      {
+        if (__coro_)
+          __coro_.destroy();
+      }
+
       [[nodiscard]]
       static constexpr auto await_ready() noexcept -> bool
       {
@@ -148,7 +155,7 @@ namespace experimental::execution
       //! coroutine exit; i.e., the coroutine that is co_await-ing the result of calling
       //! at_coroutine_exit.
       template <__has_continuation _Promise>
-      auto await_suspend(__std::coroutine_handle<_Promise> __parent) noexcept -> bool
+      auto await_suspend(__std::coroutine_handle<_Promise> __parent) -> bool
       {
         // Set the cleanup task's scheduler to the parent coroutine's scheduler.
         __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
@@ -163,11 +170,13 @@ namespace experimental::execution
 
       auto await_resume() noexcept -> std::tuple<_Ts&...>
       {
+        // Release the cleanup coroutine. It is now responsible for destroying itself in
+        // its final suspend.
         return std::exchange(__coro_, {}).promise().__args_;
       }
 
      private:
-      struct __final_awaitable
+      struct __final_awaiter
       {
         static constexpr auto await_ready() noexcept -> bool
         {
@@ -183,7 +192,7 @@ namespace experimental::execution
           return STDEXEC_CORO_DESTROY_AND_CONTINUE(__h, __coro);
         }
 
-        void await_resume() const noexcept {}
+        static constexpr void await_resume() noexcept {}
       };
 
       struct __env
@@ -211,7 +220,7 @@ namespace experimental::execution
         }
 
         [[nodiscard]]
-        auto final_suspend() noexcept -> __final_awaitable
+        auto final_suspend() noexcept -> __final_awaiter
         {
           return {};
         }

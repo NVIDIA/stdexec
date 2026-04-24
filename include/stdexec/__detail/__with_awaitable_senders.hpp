@@ -31,13 +31,13 @@ namespace STDEXEC
   {
     struct __with_awaitable_senders
     {
-      template <class _OtherPromise>
+      template <__not_same_as<void> _OtherPromise>
       constexpr void set_continuation(__std::coroutine_handle<_OtherPromise> __hcoro) noexcept
       {
-        static_assert(!__same_as<_OtherPromise, void>);
         __continuation_ = __hcoro;
       }
 
+      // NOT TO SPEC:
       constexpr void set_continuation(__coroutine_handle<> __continuation) noexcept
       {
         __continuation_ = __continuation;
@@ -50,7 +50,7 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto unhandled_stopped() noexcept -> __std::coroutine_handle<>
+      constexpr auto unhandled_stopped() const noexcept -> __std::coroutine_handle<>
       {
         return __continuation_.unhandled_stopped();
       }
