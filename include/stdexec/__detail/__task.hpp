@@ -244,8 +244,6 @@ namespace STDEXEC
   class [[nodiscard]] task
   {
     struct __promise;
-    // template <class _Rcvr>
-    // struct __opstate;
     template <class _Env>
     using __own_env_t = __minvoke_or_q<__task::__environment_type, env<>, _TaskEnv, _Env>;
    public:

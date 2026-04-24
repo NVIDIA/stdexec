@@ -129,9 +129,9 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto __get_continuation() const noexcept -> __std::coroutine_handle<>
       {
-        // If the operation was stopped, so there is no result. We should not be resuming
-        // the __continuation_; rather, we should use the unhandled_stopped()
-        // continuation. Otherwise, so we should resume the __continuation_ as normal.
+        // If the operation was stopped (__result_ is valueless), we should use the
+        // unhandled_stopped() continuation. Otherwise, should resume the __continuation_
+        // as normal.
         return __result_.__is_valueless() ? __continuation_.unhandled_stopped()
                                           : __continuation_.handle();
       }
