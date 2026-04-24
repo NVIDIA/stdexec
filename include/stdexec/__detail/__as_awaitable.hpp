@@ -242,30 +242,28 @@ namespace STDEXEC
       {
         auto&      __awaiter         = static_cast<__awaiter_t&>(this->__awaiter_);
         bool const __on_other_thread = std::this_thread::get_id() != __awaiter.__starting_thread_;
-        // Although we are completing the operation started in `await_suspend`, it is
-        // possible that `await_suspend` hasn't even returned yet. `await_suspend` wants
-        // to read state from the awaitable after calling `start` on the opstate, so we
-        // need to wait until after `start` has returned before completing the operation.
-        // Otherwise, `await_suspend` might be reading from the awaiter after it has been
-        // destroyed.
-        int const __old_refs = __awaiter.__refcount_.fetch_sub(1);//, __std::memory_order_acq_rel);
-
-        if (__on_other_thread)
+        // Cross-thread receiver decrements by 2; same-thread receiver decrements by 1.
+        // This encodes the cross-thread information directly in the refcount so that
+        // await_suspend can determine the correct action from a single fetch_sub without
+        // any secondary reads that could race with frame destruction.
+        int const __decrement = __on_other_thread ? 2 : 1;
+        int const __old_refs  = __awaiter.__refcount_.fetch_sub(__decrement);//, seq_cst);
+        if (__on_other_thread && __old_refs == 2)
         {
-          // If we are completing on a different thread than the one that started the
-          // operation, we must wait until `await_suspend` has decremented the refcount
-          // and is no longer accessing the awaiter before we can safely resume the
-          // continuation.
-          __awaiter.__refcount_.wait(1); //, __std::memory_order_acquire);
-        }
-
-        if (__old_refs == 1)
-        {
-          // We get here if `await_suspend` has already decremented the refcount, which
-          // means that this operation is completing asynchronously. We need to resume the
-          // continuation from here because `await_suspend` will not.
+          // We decremented first on a different thread. await_suspend will observe
+          // old==0 and return noop_coroutine; it will call notify_one to signal us.
+          // Wait until await_suspend has decremented, then resume the continuation.
+          __awaiter.__refcount_.wait(0); //, __std::memory_order_acquire);
           STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
         }
+        else if (__old_refs == 1)
+        {
+          // await_suspend already decremented first (refcount was 1 when we decremented,
+          // meaning await_suspend had already brought it from 2 to 1). Resume now.
+          STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
+        }
+        // else __old_refs == 2 and !__on_other_thread (same-thread receiver went first):
+        //   await_suspend will see old_refcount==1 and resume inline.
       }
     };
 
@@ -292,7 +290,8 @@ namespace STDEXEC
 
       ~__sender_awaiter()
       {
-        STDEXEC_ASSERT(this->__refcount_.load() == 0);
+        // Refcount ends at 0 (same-thread completion) or -1 (cross-thread completion).
+        STDEXEC_ASSERT(this->__refcount_.load() <= 0);
       }
 
       constexpr auto
@@ -305,21 +304,27 @@ namespace STDEXEC
         STDEXEC::start(__opstate_);
 
         int const __old_refcount = this->__refcount_.fetch_sub(1); //, __std::memory_order_acq_rel);
-        this->__refcount_.notify_one();
 
         if (__old_refcount == 1)
         {
           // If the refcount was 1 before the decrement, then the operation has already
-          // completed (either synchronously or asynchronously) and we are responsible for
+          // completed on the same thread and we are responsible for
           // resuming the continuation. Otherwise, we can let the receiver resume the
           // continuation when the operation completes.
           return this->__get_continuation();
         }
+        else if (__old_refcount == 0)
+        {
+          // The receiver already decremented by 2 on another thread.
+          // It will resume the continuation on the correct (other) thread. 
+          // Return noop_coroutine so we do not resume here.
+          this->__refcount_.notify_one();
+          return std::noop_coroutine();
+        }
         else
         {
-          // Otherwise, the operation has not completed yet, so we need to suspend the
-          // current coroutine. The continuation will be resumed when the operation
-          // completes.
+          // Receiver hasn't completed yet (old == 2). Suspend and let the receiver
+          // resume the continuation when the operation completes.
           return std::noop_coroutine();
         }
       }
