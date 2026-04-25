@@ -105,7 +105,7 @@ namespace STDEXEC
 
       template <class _Fn, class... _Us>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr void visit(_Fn &&, _Us &&...) const noexcept
+      constexpr void __visit(_Fn &&, _Us &&...) const noexcept
       {
         STDEXEC_ASSERT(false);
       }
