@@ -409,6 +409,18 @@ namespace
     ex::sync_wait(scope.join());
   }
 
+  struct sink
+  {
+    using receiver_concept = ex::receiver_tag;
+    void set_value() noexcept {}
+    void set_error(std::exception_ptr) noexcept {}
+    void set_stopped() noexcept {}
+  };
+
+  static_assert(!ex::sender_in<ex::task<void>, ex::env<>>);
+  static_assert(!ex::sender_to<ex::task<void>, sink>);
+  static_assert(ex::sender_in<ex::task<void>, ex::__sync_wait::__env>);
+
   // TODO: add tests for stop token support in task
 
 }  // anonymous namespace

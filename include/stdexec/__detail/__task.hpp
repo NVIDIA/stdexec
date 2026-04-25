@@ -120,48 +120,73 @@ namespace STDEXEC
       _PAlloc __alloc_;
     };
 
-    template <class _TaskEnv>
-    using __allocator_type = _TaskEnv::allocator_type;
-
-    template <class _TaskEnv>
-    using __start_scheduler_type = _TaskEnv::start_scheduler_type;
-
-    template <class _TaskEnv>
-    using __stop_source_type = _TaskEnv::stop_source_type;
-
-    template <class _TaskEnv>
-    using __error_types = _TaskEnv::error_types;
-
-    template <class _TaskEnv, class _Env>
-    using __environment_type = _TaskEnv::template env_type<_Env>;
-
-    template <class _Env, class _Alloc>
-    concept __has_allocator_compatible_with = requires(_Env const & __env) {
-      _Alloc(STDEXEC::get_allocator(__env));
-    };
-
-    template <class _Env, class _Alloc>
-    concept __has_compatible_allocator = __has_allocator_compatible_with<_Env, _Alloc>
-                                      || std::default_initializable<_Alloc>;
-
-    template <class _Env, class _Scheduler, class... _Alloc>
-    concept __has_scheduler_compatible_with = requires(_Env const & __env,
-                                                       _Alloc const &... __alloc) {
-      _Scheduler(STDEXEC::get_start_scheduler(__env), __alloc...);
-    };
-
-    template <class _Env, class _Scheduler, class _Alloc>
-    concept __has_compatible_scheduler =                           //
-      requires(_Env const & __env, _Alloc const & __alloc) {       //
-        _Scheduler(STDEXEC::get_start_scheduler(__env), __alloc);  //
-      } ||                                                         //
-      requires(_Env const & __env) {                               //
-        _Scheduler(STDEXEC::get_start_scheduler(__env));           //
-      } ||                                                         //
-      requires { _Scheduler{}; };
-
     template <class _StopSource>
     using __stop_source_token_t = decltype(__declval<_StopSource>().get_token());
+
+    template <class _TaskEnv>
+    using __allocator_t = _TaskEnv::allocator_type;
+
+    template <class _TaskEnv>
+    using __start_scheduler_t = _TaskEnv::start_scheduler_type;
+
+    template <class _TaskEnv>
+    using __stop_source_t = _TaskEnv::stop_source_type;
+
+    template <class _TaskEnv>
+    using __error_t = _TaskEnv::error_types;
+
+    template <class _TaskEnv, class _ParentEnv>
+    using __environment_t = _TaskEnv::template env_type<_ParentEnv>;
+
+    template <class _TaskEnv>
+    using __allocator_type = __minvoke_or_q<__allocator_t, std::allocator<std::byte>, _TaskEnv>;
+
+    template <class _TaskEnv>
+    using __start_scheduler_type = __minvoke_or_q<__start_scheduler_t, task_scheduler, _TaskEnv>;
+
+    template <class _TaskEnv>
+    using __stop_source_type = __minvoke_or_q<__stop_source_t, inplace_stop_source, _TaskEnv>;
+
+    template <class _TaskEnv>
+    using __stop_token_type = __stop_source_token_t<__stop_source_type<_TaskEnv>>;
+
+    template <class _TaskEnv>
+    using __error_types = __minvoke_or_q<__error_t, __eptr_completion_t, _TaskEnv>;
+
+    template <class _TaskEnv, class _ParentEnv>
+    using __environment_type = __minvoke_or_q<__environment_t, env<>, _TaskEnv, _ParentEnv>;
+
+    template <class _ParentEnv, class _Alloc>
+    concept __has_allocator_compatible_with = requires(_ParentEnv const & __parent_env) {
+      _Alloc(STDEXEC::get_allocator(__parent_env));
+    };
+
+    template <class _ParentEnv, class _Alloc>
+    concept __has_compatible_allocator = __has_allocator_compatible_with<_ParentEnv, _Alloc>
+                                      || std::default_initializable<_Alloc>;
+
+    template <class _ParentEnv, class _Scheduler, class... _Alloc>
+    concept __has_scheduler_compatible_with = requires(_ParentEnv const & __parent_env,
+                                                       _Alloc const &... __alloc) {
+      _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc...);
+    };
+
+    template <class _ParentEnv, class _Scheduler, class _Alloc>
+    concept __has_compatible_scheduler =                                   //
+      requires(_ParentEnv const & __parent_env, _Alloc const & __alloc) {  //
+        _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc);   //
+      } ||                                                                 //
+      requires(_ParentEnv const & __parent_env) {                          //
+        _Scheduler(STDEXEC::get_start_scheduler(__parent_env));            //
+      } ||                                                                 //
+      requires { _Scheduler{}; };
+
+    template <class _ParentEnv, class _TaskEnv>
+    concept __has_compatible_environment_with =
+      __has_compatible_allocator<_ParentEnv, __allocator_type<_TaskEnv>>
+      && __has_compatible_scheduler<_ParentEnv,
+                                    __start_scheduler_type<_TaskEnv>,
+                                    __allocator_type<_TaskEnv>>;
 
     template <class _StopToken, class _StopSource>
     struct __stop_callback_box
@@ -245,19 +270,15 @@ namespace STDEXEC
   {
     struct __promise;
     template <class _Env>
-    using __own_env_t = __minvoke_or_q<__task::__environment_type, env<>, _TaskEnv, _Env>;
+    using __own_env_t = __task::__environment_type<_TaskEnv, _Env>;
    public:
-    using sender_concept = sender_tag;
-    using promise_type   = __promise;
-
-    using allocator_type =
-      __minvoke_or_q<__task::__allocator_type, std::allocator<std::byte>, _TaskEnv>;
-    using start_scheduler_type =
-      __minvoke_or_q<__task::__start_scheduler_type, task_scheduler, _TaskEnv>;
-    using stop_source_type =
-      __minvoke_or_q<__task::__stop_source_type, inplace_stop_source, _TaskEnv>;
-    using stop_token_type = __task::__stop_source_token_t<stop_source_type>;
-    using error_types     = __minvoke_or_q<__task::__error_types, __eptr_completion_t, _TaskEnv>;
+    using sender_concept       = sender_tag;
+    using promise_type         = __promise;
+    using allocator_type       = __task::__allocator_type<_TaskEnv>;
+    using start_scheduler_type = __task::__start_scheduler_type<_TaskEnv>;
+    using stop_source_type     = __task::__stop_source_type<_TaskEnv>;
+    using stop_token_type      = __task::__stop_source_token_t<stop_source_type>;
+    using error_types          = __task::__error_types<_TaskEnv>;
 
     constexpr task(task&& __that) noexcept
       : __coro_(std::exchange(__that.__coro_, {}))
@@ -278,6 +299,8 @@ namespace STDEXEC
     // This transforms a task into an __awaiter that can perform symmetric transfer when
     // co_awaited.
     template <class _ParentPromise>
+      requires __task::__has_compatible_environment_with<env_of_t<_ParentPromise&>, _TaskEnv>
+    [[nodiscard]]
     constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept
     {
       return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
@@ -392,13 +415,13 @@ namespace STDEXEC
 
     struct __awaiter_base : private allocator_type
     {
-      template <class _Env, class _OwnEnv>
-      constexpr explicit __awaiter_base(task&&          __task,
-                                        _Env const &    __env,
-                                        _OwnEnv const & __own_env) noexcept
-        : allocator_type(__mk_alloc(__env))
-        , __sch_(__mk_sched(__env, __get_allocator()))
-        , __env_(__mk_env(__env, __own_env))
+      template <class _ParentEnv, class _OwnEnv>
+      constexpr explicit __awaiter_base(task&&             __task,
+                                        _ParentEnv const & __parent_env,
+                                        _OwnEnv const &    __own_env) noexcept
+        : allocator_type(__mk_alloc(__parent_env))
+        , __sch_(__mk_sched(__parent_env, __get_allocator()))
+        , __env_(__mk_env(__parent_env, __own_env))
         , __task_(static_cast<task&&>(__task))
       {
         auto& __promise = __task_.__coro_.promise();
@@ -408,13 +431,13 @@ namespace STDEXEC
 
         // Initialize the promise's stop source if translation is needed between the
         // receiver's stop token and the task's stop token:
-        if constexpr (__needs_stop_callback<_Env>)
+        if constexpr (__needs_stop_callback<_ParentEnv>)
         {
           __promise.__stop_.template emplace<0>();
         }
         else
         {
-          __promise.__stop_.template emplace<1>(get_stop_token(__env));
+          __promise.__stop_.template emplace<1>(get_stop_token(__parent_env));
         }
       }
 
