@@ -659,19 +659,40 @@ namespace STDEXEC
     } else
 #endif
 
-#ifdef STDEXEC_ASSERT
-#  error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
-#endif
-
-#define STDEXEC_ASSERT(_XP)                                                                        \
-  do {                                                                                             \
-    /*static_assert(noexcept(_XP));*/                                                              \
-    STDEXEC_ASSERT_FN(_XP);                                                                        \
+#if defined(STDEXEC_ASSERT)
+// nothing to do, user has provided their own assertion macro
+#elif defined(STDEXEC_ASSERT_FN)
+// legacy way to customize assertions, still supported for backward compatibility
+#  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
+#else
+#  define STDEXEC_ASSERT(_XP)                                                                      \
+  do                                                                                               \
+  {                                                                                                \
+    STDEXEC_PRAGMA_PUSH()                                                                          \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wtautological-compare")                                            \
+    STDEXEC_IF_CONSTEVAL                                                                           \
+    {                                                                                              \
+      if (!(_XP))                                                                                  \
+        STDEXEC::__throw_assertion_failure();                                                      \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      assert(_XP);                                                                                 \
+    }                                                                                              \
+    STDEXEC_PRAGMA_POP()                                                                           \
   } while (false)
-
-#ifndef STDEXEC_ASSERT_FN
-#  define STDEXEC_ASSERT_FN assert
 #endif
+
+namespace STDEXEC
+{
+  struct __assertion_failure
+  {};
+
+  inline void __throw_assertion_failure()
+  {
+    throw __assertion_failure{};
+  }
+}  // namespace STDEXEC
 
 #define STDEXEC_AUTO_RETURN(...)                                                                   \
   noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                                         \
