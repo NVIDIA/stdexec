@@ -678,13 +678,6 @@ namespace STDEXEC
     return __VA_ARGS__;                                                                            \
   }
 
-// GCC 13 implements lexical friendship, but it is incomplete. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=111018
-#if STDEXEC_CLANG()  // || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1300)
-#  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 1
-#else
-#  define STDEXEC_FRIENDSHIP_IS_LEXICAL() 0
-#endif
-
 #if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING == 0
 #  undef STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
 #  define STDEXEC_ENABLE_EXTRA_TYPE_CHECKING() 0
