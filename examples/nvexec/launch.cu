@@ -20,6 +20,7 @@
 
 #include <cub/cub.cuh>
 #include <numeric>
+#include <iostream>
 
 #include <thrust/device_vector.h>
 
