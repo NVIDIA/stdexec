@@ -20,75 +20,95 @@
 
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("just_from is a sender", "[just_from]")
+namespace
 {
-  SECTION("potentially throwing")
+  constinit int global_int = 0;
+
+  TEST_CASE("just_from is a sender", "[just_from]")
   {
-    auto s  = exec::just_from([](auto sink) { return sink(42); });
-    using S = decltype(s);
-    STATIC_REQUIRE(ex::sender<S>);
-    STATIC_REQUIRE(ex::sender_in<S>);
-    ::check_val_types<ex::__mset<pack<int>>>(s);
-    ::check_err_types<ex::__mset<std::exception_ptr>>(s);
-    ::check_sends_stopped<false>(s);
+    SECTION("potentially throwing")
+    {
+      auto s  = exec::just_from([](auto sink) { return sink(42); });
+      using S = decltype(s);
+      STATIC_REQUIRE(ex::sender<S>);
+      STATIC_REQUIRE(ex::sender_in<S>);
+      ::check_val_types<ex::__mset<pack<int>>>(s);
+      ::check_err_types<ex::__mset<std::exception_ptr>>(s);
+      ::check_sends_stopped<false>(s);
+    }
+
+    SECTION("not potentially throwing")
+    {
+      auto s  = exec::just_from([](auto sink) noexcept { return sink(42); });
+      using S = decltype(s);
+      STATIC_REQUIRE(ex::sender<S>);
+      STATIC_REQUIRE(ex::sender_in<S>);
+      ::check_val_types<ex::__mset<pack<int>>>(s);
+      ::check_err_types<ex::__mset<>>(s);
+      ::check_sends_stopped<false>(s);
+    }
   }
 
-  SECTION("not potentially throwing")
+  TEST_CASE("just_from basically works", "[just_from]")
   {
-    auto s  = exec::just_from([](auto sink) noexcept { return sink(42); });
-    using S = decltype(s);
-    STATIC_REQUIRE(ex::sender<S>);
-    STATIC_REQUIRE(ex::sender_in<S>);
-    ::check_val_types<ex::__mset<pack<int>>>(s);
+    auto s = exec::just_from([](auto sink) noexcept { return sink(42, 43, 44); });
+    ::check_val_types<ex::__mset<pack<int, int, int>>>(s);
     ::check_err_types<ex::__mset<>>(s);
     ::check_sends_stopped<false>(s);
+
+    auto [a, b, c] = ex::sync_wait(s).value();
+    CHECK(a == 42);
+    CHECK(b == 43);
+    CHECK(c == 44);
   }
-}
 
-TEST_CASE("just_from basically works", "[just_from]")
-{
-  auto s = exec::just_from([](auto sink) noexcept { return sink(42, 43, 44); });
-  ::check_val_types<ex::__mset<pack<int, int, int>>>(s);
-  ::check_err_types<ex::__mset<>>(s);
-  ::check_sends_stopped<false>(s);
-
-  auto [a, b, c] = ex::sync_wait(s).value();
-  CHECK(a == 42);
-  CHECK(b == 43);
-  CHECK(c == 44);
-}
-
-TEST_CASE("just_from with multiple completions", "[just_from]")
-{
-  auto fn = [](auto sink) noexcept
+  TEST_CASE("just_from with multiple completions", "[just_from]")
   {
-    if (sizeof(sink) == ~0ul)
+    auto fn = [](auto sink) noexcept
     {
-      std::puts("sink(42)");
-      sink(42);
-    }
-    else
-    {
-      std::puts("sink(43, 44)");
-      sink(43, 44);
-    }
-    return ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(int, int)>{};
-  };
-  auto s = exec::just_from(fn);
-  ::check_val_types<ex::__mset<pack<int>, pack<int, int>>>(s);
-  ::check_err_types<ex::__mset<>>(s);
-  ::check_sends_stopped<false>(s);
-
-  auto var = ex::sync_wait_with_variant(s).value();
-  std::visit(
-    []<class Tupl>(Tupl tupl)
-    {
-      constexpr auto N = std::tuple_size_v<Tupl>;
-      CHECK(N == 2);
-      if constexpr (N == 2)
+      if (sizeof(sink) == ~0ul)
       {
-        CHECK_TUPLE(tupl == std::tuple{43, 44});
+        std::puts("sink(42)");
+        sink(42);
       }
-    },
-    var);
-}
+      else
+      {
+        std::puts("sink(43, 44)");
+        sink(43, 44);
+      }
+      return ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(int, int)>{};
+    };
+    auto s = exec::just_from(fn);
+    ::check_val_types<ex::__mset<pack<int>, pack<int, int>>>(s);
+    ::check_err_types<ex::__mset<>>(s);
+    ::check_sends_stopped<false>(s);
+
+    auto var = ex::sync_wait_with_variant(s).value();
+    std::visit(
+      []<class Tupl>(Tupl tupl)
+      {
+        constexpr auto N = std::tuple_size_v<Tupl>;
+        CHECK(N == 2);
+        if constexpr (N == 2)
+        {
+          CHECK_TUPLE(tupl == std::tuple{43, 44});
+        }
+      },
+      var);
+  }
+
+  TEST_CASE("just_from can send references", "[just_from]")
+  {
+    global_int = 42;
+    auto s     = exec::just_from([](auto sink) noexcept { return sink(global_int); })
+           | ex::then(
+               [](int& i) noexcept
+               {
+                 CHECK(&i == &global_int);
+                 return std::ref(i);
+               });
+    ::check_val_types<ex::__mset<pack<std::reference_wrapper<int>>>>(s);
+    auto [iref] = ex::sync_wait(s).value();
+    CHECK(&iref.get() == &global_int);
+  }
+}  // anonymous namespace

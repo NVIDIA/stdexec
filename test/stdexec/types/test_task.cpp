@@ -21,9 +21,9 @@
 
 #  include <stdexec/execution.hpp>
 
+#  include <exec/just_from.hpp>
 #  include <exec/single_thread_context.hpp>
 #  include <exec/static_thread_pool.hpp>
-#  include <stdexec/__detail/__task.hpp>
 
 #  include <atomic>
 
@@ -328,18 +328,42 @@ namespace
   }
 
   // FUTURE TODO: add support so that `co_await sndr` can return a reference.
-  // auto test_task_awaits_just_ref_sender() -> ex::task<void> {
-  //   int value = 42;
-  //   decltype(auto) value_ref = co_await just_ref(value);
-  //   STATIC_REQUIRE(std::same_as<decltype(value_ref), int&>);
-  //   CHECK(&value_ref == &value);
-  //   co_return;
-  // }
 
-  // TEST_CASE("test task can await a just_ref sender", "[types][task]") {
-  //   auto t = test_task_awaits_just_ref_sender();
-  //   ex::sync_wait(std::move(t));
-  // }
+  constinit int global_int = 0;
+
+  constexpr auto wrap_ref = ex::then([](auto &i) noexcept { return std::ref(i); });
+
+  auto test_task_of_reference_type() -> ex::task<int &>
+  {
+    int &i = co_await []() -> ex::task<int &>
+    {
+      co_return global_int;
+    }();
+    CHECK(&i == &global_int);
+    co_return i;
+  }
+
+  TEST_CASE("task supports reference types", "[types][task]")
+  {
+    global_int = 42;
+    auto t     = test_task_of_reference_type();
+    auto [i]   = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42);
+  }
+
+  TEST_CASE("task can co_await a sender of reference type", "[types][task]")
+  {
+    global_int = 42;
+    auto t     = []() -> ex::task<int &>
+    {
+      int &i = co_await wrap_ref(
+        exec::just_from([](auto sink) noexcept { return sink(global_int); }));
+      CHECK(&i == &global_int);
+      co_return i;
+    }();
+    auto [i] = ex::sync_wait(std::move(t)).value();
+    CHECK(i == 42);
+  }
 
   struct inline_affine_stopped_sender
   {
