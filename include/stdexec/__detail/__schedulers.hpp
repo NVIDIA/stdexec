@@ -248,7 +248,7 @@ namespace STDEXEC
                                    env_of_t<schedule_result_t<_Sch>>,
                                    _Env const &...>)
           {
-            STDEXEC_ASSERT_FN(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
+            STDEXEC_ASSERT(__sch == __read_query_t{}(get_env(__sch.schedule()), __env...));
           }
           return __sch;
         }
@@ -265,8 +265,7 @@ namespace STDEXEC
           __call_result_t<get_completion_domain_t<_Tag>, _Attrs const &, _Env const &...>;
         static_assert(__same_as<__domain_t, __detail::__scheduler_domain_t<_Sch, _Env const &...>>,
                       "the sender claims to complete on a domain that is not the domain of its "
-                      "completion "
-                      "scheduler");
+                      "completion scheduler");
       }
       return __sch;
     }

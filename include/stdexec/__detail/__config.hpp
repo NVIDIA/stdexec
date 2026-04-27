@@ -379,7 +379,8 @@ namespace STDEXEC::__std
 #elif STDEXEC_EDG()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
     STDEXEC_PRAGMA(diagnostic push)                                                                \
-    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number) STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
+    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)                                                \
+    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
 #  define STDEXEC_PRAGMA_POP()           STDEXEC_PRAGMA(diagnostic pop)
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...) STDEXEC_PRAGMA(diag_suppress __VA_ARGS__)
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
@@ -652,26 +653,49 @@ namespace STDEXEC
 #if defined(__cpp_if_consteval) && __cpp_if_consteval >= 202106L
 #  define STDEXEC_IF_CONSTEVAL     if consteval
 #  define STDEXEC_IF_NOT_CONSTEVAL if !consteval
+#elif STDEXEC_GCC()
+#  define STDEXEC_IF_CONSTEVAL                                                                     \
+    STDEXEC_PRAGMA_PUSH()                                                                          \
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wtautological-compare")                                            \
+    if (std::is_constant_evaluated())                                                              \
+    STDEXEC_PRAGMA_POP()
+#  define STDEXEC_IF_NOT_CONSTEVAL STDEXEC_IF_CONSTEVAL {} else
 #else
-#  define STDEXEC_IF_CONSTEVAL if (std::is_constant_evaluated())
-#  define STDEXEC_IF_NOT_CONSTEVAL                                                                 \
-    if (std::is_constant_evaluated()) {                                                            \
-    } else
+#  define STDEXEC_IF_CONSTEVAL     if (std::is_constant_evaluated())
+#  define STDEXEC_IF_NOT_CONSTEVAL STDEXEC_IF_CONSTEVAL {} else
 #endif
 
-#ifdef STDEXEC_ASSERT
-#  error "Redefinition of STDEXEC_ASSERT is not permitted. Define STDEXEC_ASSERT_FN instead."
-#endif
-
-#define STDEXEC_ASSERT(_XP)                                                                        \
-  do {                                                                                             \
-    /*static_assert(noexcept(_XP));*/                                                              \
-    STDEXEC_ASSERT_FN(_XP);                                                                        \
+#if defined(STDEXEC_ASSERT)
+// nothing to do, user has provided their own assertion macro
+#elif defined(STDEXEC_ASSERT_FN)
+// legacy way to customize assertions, still supported for backward compatibility
+#  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
+#else
+#  define STDEXEC_ASSERT(_XP)                                                                      \
+  do                                                                                               \
+  {                                                                                                \
+    STDEXEC_IF_CONSTEVAL                                                                           \
+    {                                                                                              \
+      if (!(_XP))                                                                                  \
+        STDEXEC::__throw_assertion_failure();                                                      \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      assert(_XP);                                                                                 \
+    }                                                                                              \
   } while (false)
-
-#ifndef STDEXEC_ASSERT_FN
-#  define STDEXEC_ASSERT_FN assert
 #endif
+
+namespace STDEXEC
+{
+  struct __assertion_failure
+  {};
+
+  inline void __throw_assertion_failure()
+  {
+    throw __assertion_failure{};
+  }
+}  // namespace STDEXEC
 
 #define STDEXEC_AUTO_RETURN(...)                                                                   \
   noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                                         \
