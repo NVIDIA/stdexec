@@ -19,8 +19,8 @@
 #include <stdexec/execution.hpp>
 
 #include <cub/cub.cuh>
-#include <numeric>
 #include <iostream>
+#include <numeric>
 
 #include <thrust/device_vector.h>
 
