@@ -379,7 +379,8 @@ namespace STDEXEC::__std
 #elif STDEXEC_EDG()
 #  define STDEXEC_PRAGMA_PUSH()                                                                    \
     STDEXEC_PRAGMA(diagnostic push)                                                                \
-    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number) STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
+    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_number)                                                \
+    STDEXEC_PRAGMA_IGNORE_EDG(invalid_error_tag)
 #  define STDEXEC_PRAGMA_POP()           STDEXEC_PRAGMA(diagnostic pop)
 #  define STDEXEC_PRAGMA_IGNORE_EDG(...) STDEXEC_PRAGMA(diag_suppress __VA_ARGS__)
 #elif STDEXEC_CLANG() || STDEXEC_GCC()
@@ -664,6 +665,8 @@ namespace STDEXEC
 #elif defined(STDEXEC_ASSERT_FN)
 // legacy way to customize assertions, still supported for backward compatibility
 #  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
+#elif defined(NDEBUG)
+#  define STDEXEC_ASSERT(_XP) ((void)0)
 #else
 #  define STDEXEC_ASSERT(_XP)                                                                      \
   do                                                                                               \
