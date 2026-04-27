@@ -26,6 +26,7 @@
 #include "__connect.hpp"
 #include "__meta.hpp"
 #include "__queries.hpp"
+#include "__spin_loop_pause.hpp"
 #include "__type_traits.hpp"
 #include "__variant.hpp"
 
@@ -145,8 +146,24 @@ namespace STDEXEC
     template <class _Value>
     struct __sender_awaiter_base<_Value, false> : __sender_awaiter_base<_Value, true>
     {
-      __std::atomic<int>    __refcount_{2};
-      std::thread::id const __starting_thread_{std::this_thread::get_id()};
+      // This is used to coordinate between await_suspend (T1) and the receiver (T2).
+      // It can hold three different values:
+      //
+      //  T1_id  - await_suspend stored the awaiting thread's id before calling start().
+      //           The receiver has not completed yet.
+      //
+      //  {}     - The empty/cleared state. Two cases depending on who wrote it:
+      //           (a) The receiver completed on the same thread: await_suspend should
+      //               resume the continuation directly.
+      //           (b) await_suspend wrote it after start() returned (its last frame
+      //               write): a cross-thread receiver that is spinning will observe
+      //               this and proceed to call resume().
+      //
+      //  T2_id  - A cross-thread receiver (T2 != T1) wrote its own id here before
+      //           await_suspend did its exchange. T2 is spinning on load() until it
+      //           observes {} (written by T1's exchange). No notify_one is used;
+      //           the value change itself is the signal.
+      __std::atomic<std::thread::id> __thread_id_{std::this_thread::get_id()};
     };
 
     template <class _Value>
@@ -240,31 +257,34 @@ namespace STDEXEC
      private:
       void __done() noexcept
       {
-        auto&      __awaiter         = static_cast<__awaiter_t&>(this->__awaiter_);
-        bool const __on_other_thread = std::this_thread::get_id() != __awaiter.__starting_thread_;
-        // Cross-thread receiver decrements by 2; same-thread receiver decrements by 1.
-        // This encodes the cross-thread information directly in the refcount so that
-        // await_suspend can determine the correct action from a single fetch_sub without
-        // any secondary reads that could race with frame destruction.
-        int const __decrement = __on_other_thread ? 2 : 1;
-        int const __old_refs  = __awaiter.__refcount_.fetch_sub(__decrement,
-                                                               __std::memory_order_acq_rel);
-        if (__on_other_thread && __old_refs == 2)
+        auto&                 __awaiter     = static_cast<__awaiter_t&>(this->__awaiter_);
+        std::thread::id const __current_id  = std::this_thread::get_id();
+        std::thread::id const __awaiting_id = __awaiter.__thread_id_.load(
+          __std::memory_order_relaxed);
+        if (__current_id == __awaiting_id)
         {
-          // We decremented first on a different thread. await_suspend will observe
-          // old==0 and return noop_coroutine; it will call notify_one to signal us.
-          // Wait until await_suspend has decremented, then resume the continuation.
-          __awaiter.__refcount_.wait(0, __std::memory_order_acquire);
-          STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
+          // Completed on the same thread as the awaiter. Clear __thread_id_ so that
+          // await_suspend sees {} after start() returns and resumes the continuation.
+          // This cannot race with await_suspend because await_suspend is still on the same thread.
+          __awaiter.__thread_id_.store(std::thread::id{}, __std::memory_order_relaxed);
+          return;
         }
-        else if (__old_refs == 1)
+        // Completing on a different thread. Write our id so await_suspend knows we already ran.
+        std::thread::id const __old_id =
+          __awaiter.__thread_id_.exchange(__current_id, __std::memory_order_acquire);
+        if (__old_id != std::thread::id{})
         {
-          // await_suspend already decremented first (refcount was 1 when we decremented,
-          // meaning await_suspend had already brought it from 2 to 1). Resume now.
-          STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
+          // await_suspend is between start() returning and its own exchange({}).
+          // That exchange is T1's last write to the frame. Spin until we observe
+          // it so that we don't call resume() while T1 is still touching the frame.
+          // The window is just a few instructions, so a yield-spin is fine.
+          while (__awaiter.__thread_id_.load(__std::memory_order_acquire) != std::thread::id{})
+          {
+            STDEXEC::__spin_loop_pause();
+          }
         }
-        // else __old_refs == 2 and !__on_other_thread (same-thread receiver went first):
-        //   await_suspend will see old_refcount==1 and resume inline.
+        // T1's exchange({}) has happened; it will not touch the frame again.
+        STDEXEC::__coroutine_resume_nothrow(__awaiter.__get_continuation());
       }
     };
 
@@ -289,13 +309,7 @@ namespace STDEXEC
         , __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(*this)))
       {}
 
-      ~__sender_awaiter()
-      {
-        // Refcount ends at 0 (same-thread completion) or -1 (cross-thread completion).
-        STDEXEC_ASSERT(this->__refcount_.load() <= 0);
-      }
-
-      constexpr auto
+      STDEXEC_CONSTEXPR_CXX23 auto
       await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation) noexcept
         -> __std::coroutine_handle<>
       {
@@ -304,30 +318,20 @@ namespace STDEXEC
         // Start the operation.
         STDEXEC::start(__opstate_);
 
-        int const __old_refcount = this->__refcount_.fetch_sub(1, __std::memory_order_acq_rel);
-
-        if (__old_refcount == 1)
+        // This exchange({}) is T1's last write to the frame. After this point:
+        //  - If T2 is spinning waiting for our exchange, it will observe {} and
+        //    proceed to resume().
+        //  - If T2 hasn't run yet, it will see {} from its load in __done() and
+        //    skip the spin entirely
+        std::thread::id const __old_id = this->__thread_id_.exchange(std::thread::id{},
+                                                                     __std::memory_order_release);
+        if (__old_id == std::thread::id{})
         {
-          // If the refcount was 1 before the decrement, then the operation has already
-          // completed on the same thread and we are responsible for resuming the
-          // continuation. Otherwise, we can let the receiver resume the continuation when
-          // the operation completes.
+          // The receiver already cleared __thread_id_, so it completed on the same
+          // thread. Resume the continuation directly.
           return this->__get_continuation();
         }
-        else if (__old_refcount == 0)
-        {
-          // The receiver already decremented by 2 on another thread. It will resume the
-          // continuation on the correct (other) thread. Return noop_coroutine so we do
-          // not resume here.
-          this->__refcount_.notify_one();
-          return std::noop_coroutine();
-        }
-        else
-        {
-          // Receiver hasn't completed yet (old == 2). Suspend and let the receiver resume
-          // the continuation when the operation completes.
-          return std::noop_coroutine();
-        }
+        return __std::noop_coroutine();
       }
 
      private:
