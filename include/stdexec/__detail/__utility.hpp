@@ -237,11 +237,16 @@ namespace STDEXEC
     };
   };
 
-  template <class _Ty>
-  constexpr auto __decay_copy(_Ty __arg) noexcept -> _Ty
+  struct __decay_copy_t
   {
-    return __arg;
-  }
+    template <class _Ty>
+    constexpr auto operator()(_Ty __arg) const noexcept -> _Ty
+    {
+      return __arg;
+    }
+  };
+
+  inline constexpr auto __decay_copy = __decay_copy_t{};
 
 #if defined(__cpp_auto_cast) && (__cpp_auto_cast >= 202110L)
 #  define STDEXEC_DECAY_COPY(...) auto(__VA_ARGS__)
