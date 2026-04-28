@@ -484,12 +484,12 @@ namespace experimental::execution
       //       and/or pointer-to-member functions can be made to work
       template <STDEXEC::__callable<Args...> Factory>
         requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
-              && std::constructible_from<Factory>               //
+              && STDEXEC::__std::constructible_from<Factory>    //
               && STDEXEC::__callable<Factory, Args...>
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>,
                                     _func_rcvr<completion_signatures<Sigs...>, Queries...>>
-      constexpr explicit(sizeof...(Args) == 0) _func_impl(Args &&...args, Factory &&factory)
-        noexcept((std::is_nothrow_constructible_v<Args, Args> && ...))
+      constexpr explicit _func_impl(Args &&...args, Factory &&factory)
+        noexcept(STDEXEC::__nothrow_move_constructible<Args...>)
         : args_(std::forward<Args>(args)...)
       {
         using sender_t   = std::invoke_result_t<Factory, Args...>;
