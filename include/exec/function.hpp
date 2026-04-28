@@ -312,7 +312,7 @@ namespace experimental::execution
 
      private:
       connect_result_t<Sender, Receiver> op_;
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       Allocator alloc_;
     };
 
@@ -400,7 +400,7 @@ namespace experimental::execution
     {
       // rcvr_ has to be initialized before op_ because our implementation of get_env
       // is empirically accessed during our constructor and depends on rcvr_ being initialized
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       Receiver rcvr_;
       // the default deleter is OK because we've virtualized operator delete to invoke
       // the allocator-based deallocation logic that's necessary to properly support
@@ -474,7 +474,7 @@ namespace experimental::execution
       // args_ and connects the resulting sender to the provided receiver
       std::unique_ptr<_base_op> (*factory_)(_func_rcvr<completion_signatures<Sigs...>, Queries...>,
                                             Args &&...);
-      [[no_unique_address]]
+      STDEXEC_ATTRIBUTE(no_unique_address)
       std::tuple<Args...> args_;
 
      public:
