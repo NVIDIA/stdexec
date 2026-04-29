@@ -162,10 +162,12 @@ namespace STDEXEC
       // address of a no-op function rather than nullptr in case some rogue awaitable
       // *does* invoke destroy on the synthesized handle that it receives in its
       // await_suspend function
-      void (*__destroy_)(void*) noexcept = [](void*) noexcept -> void
+      void (*__destroy_)(void*) noexcept = &__noop_destroy;
+
+      static void __noop_destroy(void*) noexcept
       {
         STDEXEC_ASSERT(!"Attempt to destroy a synthetic coroutine!");
-      };
+      }
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(
