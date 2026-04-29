@@ -107,8 +107,8 @@ namespace experimental::execution
     };
 
     // the operation state resulting from connecting a sender being erased by a function<...>
-    // with a _func_rcvr<...>; inherits from _base_op, and provides a class-specific override
-    // of operator delete that invokes the allocator deallocation protocol
+    // with an _any::_any_receiver_ref<...>; inherits from _base_op, and provides a
+    // class-specific override of operator delete that invokes the allocator deallocation protocol
     template <class Sender, class Receiver, class Allocator>
     struct _derived_op : _base_op
     {
@@ -149,10 +149,10 @@ namespace experimental::execution
     template <class Receiver, class Sigs, class... Queries>
     class _func_op;
 
-    // the concrete operation state resulting from connecting a function<...> to a concrete
-    // receiver of type Receiver. this type manages a dynamically-allocated _derived_op instance,
+    // The concrete operation state resulting from connecting a function<...> to a concrete
+    // receiver of type Receiver. This type manages a dynamically-allocated _derived_op instance,
     // which is the type-erased operation state resulting from connecting the type-erased sender
-    // to a _func_rcvr
+    // to an _any::_any_receiver_ref with the given completion signatures and queries.
     template <class Receiver, class... Sigs, class... Queries>
     class _func_op<Receiver, completion_signatures<Sigs...>, Queries...>
     {
@@ -388,7 +388,7 @@ namespace experimental::execution
   // should this require STDEXEC::__not_same_as<Return, STDEXEC::sender_tag>?
   //
   // you *could* write STDEXEC::just(STDEXEC::sender_tag{}), but it seems more likely
-  // that invokign this specialization with Return set to sender_tag is a bug...
+  // that invoking this specialization with Return set to sender_tag is a bug...
   //
   // the same question applies to all the specializations below that take explicit
   // completion signatures
