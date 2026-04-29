@@ -97,58 +97,6 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    // the type-erased operation state type that supports starting and destruction
-    struct _base_op
-    {
-      constexpr _base_op() = default;
-
-      _base_op(_base_op &&) = delete;
-
-      constexpr virtual ~_base_op() = default;
-
-      constexpr virtual void start() & noexcept = 0;
-    };
-
-    // the operation state resulting from connecting a sender being erased by a function<...>
-    // with an _any::_any_receiver_ref<...>; inherits from _base_op, and provides a
-    // class-specific override of operator delete that invokes the allocator deallocation protocol
-    template <class Sender, class Receiver, class Allocator>
-    struct _derived_op : _base_op
-    {
-      constexpr explicit _derived_op(Sender &&sndr, Receiver rcvr, Allocator const &alloc)
-        noexcept(std::is_nothrow_invocable_v<connect_t, Sender, Receiver>)
-        : op_(connect(std::forward<Sender>(sndr), std::move(rcvr)))
-        , alloc_(alloc)
-      {}
-
-      _derived_op(_derived_op &&) = delete;
-
-      constexpr ~_derived_op() final = default;
-
-      constexpr void start() & noexcept final
-      {
-        ::STDEXEC::start(op_);
-      }
-
-      // objects of this type are allocated with an allocator of type Allocator so they need
-      // to be deallocated using the same allocator; providing a class-specific overload of
-      // a destroying operator delete allows us to store the relevant allocator inside the
-      // to-be-destroyed object and retrieve it before running the destructor
-      static constexpr void operator delete(_derived_op *p, std::destroying_delete_t)
-      {
-        using traits = std::allocator_traits<Allocator>::template rebind_traits<_derived_op>;
-
-        typename traits::allocator_type alloc = std::move(p->alloc_);
-        traits::destroy(alloc, p);
-        traits::deallocate(alloc, p, 1);
-      }
-
-     private:
-      connect_result_t<Sender, Receiver> op_;
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      Allocator alloc_;
-    };
-
     template <class Receiver, class Sigs, class... Queries>
     class _func_op;
 
@@ -162,11 +110,8 @@ namespace experimental::execution
       // rcvr_ has to be initialized before op_ because our implementation of get_env
       // is empirically accessed during our constructor and depends on rcvr_ being initialized
       STDEXEC_ATTRIBUTE(no_unique_address)
-      Receiver rcvr_;
-      // the default deleter is OK because we've virtualized operator delete to invoke
-      // the allocator-based deallocation logic that's necessary to properly support
-      // a user-provided frame allocator
-      std::unique_ptr<_base_op> op_;
+      Receiver                      rcvr_;
+      __any::__any<_any::_iopstate> op_;
 
       using _receiver_t =
         ::exec::_any::_any_receiver_ref<completion_signatures<Sigs...>, queries<Queries...>>;
@@ -186,7 +131,7 @@ namespace experimental::execution
 
       constexpr void start() & noexcept
       {
-        op_->start();
+        op_.start();
       }
     };
 
@@ -231,7 +176,7 @@ namespace experimental::execution
 
       // the type-erased sender factory that, when called, constructs the erased sender from
       // args_ and connects the resulting sender to the provided receiver
-      std::unique_ptr<_base_op> (*factory_)(_receiver_t, Args &&...);
+      __any::__any<_any::_iopstate> (*factory_)(_receiver_t, Args &&...);
       STDEXEC_ATTRIBUTE(no_unique_address)
       std::tuple<Args...> args_;
 
@@ -251,42 +196,21 @@ namespace experimental::execution
       {
         using sender_t = std::invoke_result_t<Factory, Args...>;
 
-        factory_ = [](_receiver_t rcvr, Args &&...args) -> std::unique_ptr<_base_op>
+        factory_ = [](_receiver_t rcvr, Args &&...args) -> __any::__any<_any::_iopstate>
         {
-          // the type of the allocator provided by the receiver's environment
-          using alloc_t = decltype(choose_frame_allocator(get_env(rcvr)));
-          // the traits for that allocator, but normalized to std::byte to minimize
-          // template instantiations
-          using traits_t = std::allocator_traits<alloc_t>::template rebind_traits<std::byte>;
-
-          // the type of operation we'll ultimately allocate, which depends on the type of
-          // the allocator we're using
-          using op_t = _derived_op<sender_t, _receiver_t, typename traits_t::allocator_type>;
-
-          // finally, the allocator traits for an allocator that can allocate an op_t
-          using traits = traits_t::template rebind_traits<op_t>;
-
-          // ...and the allocator itself
-          typename traits::allocator_type alloc(choose_frame_allocator(get_env(rcvr)));
-
-          auto *op = traits::allocate(alloc, 1);
-
-          __scope_guard guard{[&]() noexcept { traits::deallocate(alloc, op, 1); }};
-
           // TODO: as mentioned above, Factory must be a stateless lambda, which makes it
           //       default-constructible like this; this obviously doesn't work if Factory
           //       is a pointer type
           Factory factory;
 
-          traits::construct(alloc,
-                            op,
-                            factory(std::forward<Args>(args)...),
-                            std::move(rcvr),
-                            alloc);
+          auto alloc = choose_frame_allocator(get_env(rcvr));
 
-          guard.__dismiss();
-
-          return std::unique_ptr<_base_op>(op);
+          return __any::__any<_any::_iopstate>(__in_place_from,
+                                               std::allocator_arg,
+                                               alloc,
+                                               STDEXEC::connect,
+                                               factory(std::forward<Args>(args)...),
+                                               std::move(rcvr));
         };
       }
 
