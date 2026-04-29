@@ -251,44 +251,15 @@ namespace experimental::execution
       }
     };
 
-    // given a possibly-noexcept function type like Return(Args...), compute the appropriate
-    // completion_signatures. The result is a set_value overload taking either Return&& or
-    // no args when Return is void, set_stopped, and, when the function type is not noexcept,
-    // set_error(std::exception_ptr)
-    template <class Sig>
-    struct _sigs_from;
-
-    template <class Return, class... Args>
-    struct _sigs_from<Return(Args...)>
-    {
-      using type = STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr),
-                                                  STDEXEC::set_stopped_t(),
-                                                  STDEXEC::set_value_t(Return)>;
-    };
-
-    template <class... Args>
-    struct _sigs_from<void(Args...)>
-    {
-      using type = STDEXEC::completion_signatures<STDEXEC::set_error_t(std::exception_ptr),
-                                                  STDEXEC::set_stopped_t(),
-                                                  STDEXEC::set_value_t()>;
-    };
-
-    template <class Return, class... Args>
-    struct _sigs_from<Return(Args...) noexcept>
-    {
-      using type =
-        STDEXEC::completion_signatures<STDEXEC::set_stopped_t(), STDEXEC::set_value_t(Return)>;
-    };
-
-    template <class... Args>
-    struct _sigs_from<void(Args...) noexcept>
-    {
-      using type = STDEXEC::completion_signatures<STDEXEC::set_stopped_t(), STDEXEC::set_value_t()>;
-    };
-
-    template <class Sig>
-    using _sigs_from_t = _sigs_from<Sig>::type;
+    // Given a return type and a bool indicating whether the functino is noexcept,
+    // compute the appropriate completion_signatures. The result is a set_value
+    // overload taking either Return&& or no args when Return is void, set_stopped,
+    // and, when the function type is not noexcept, set_error(std::exception_ptr)
+    template <class Return, bool NoExcept>
+    using _sigs_from_t = STDEXEC::__concat_completion_signatures_t<
+      STDEXEC::completion_signatures<STDEXEC::__single_value_sig_t<Return>,
+                                     STDEXEC::set_stopped_t()>,
+      STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<NoExcept>>>;
   }  // namespace _func
 
   // the user-facing interface to exec::function that supports several different declaration
@@ -323,12 +294,10 @@ namespace experimental::execution
   // the same question applies to all the specializations below that take explicit
   // completion signatures
   struct function<Return(Args...)>
-    : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...)>,
-                        queries<>>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, false>, queries<>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...)>,
+                                   _func::_sigs_from_t<Return, false>,
                                    queries<>>;
 
     using base::base;
@@ -336,13 +305,10 @@ namespace experimental::execution
 
   template <class Return, class... Args>
   struct function<Return(Args...) noexcept>
-    : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...) noexcept>,
-                        queries<>>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>
   {
-    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...) noexcept>,
-                                   queries<>>;
+    using base =
+      _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>;
 
     using base::base;
   };
@@ -360,11 +326,11 @@ namespace experimental::execution
   template <class Return, class... Args, class... Queries>
   struct function<Return(Args...), queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...)>,
+                        _func::_sigs_from_t<Return, false>,
                         queries<Queries...>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...)>,
+                                   _func::_sigs_from_t<Return, false>,
                                    queries<Queries...>>;
 
     using base::base;
@@ -373,11 +339,11 @@ namespace experimental::execution
   template <class Return, class... Args, class... Queries>
   struct function<Return(Args...) noexcept, queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...) noexcept>,
+                        _func::_sigs_from_t<Return, true>,
                         queries<Queries...>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...) noexcept>,
+                                   _func::_sigs_from_t<Return, true>,
                                    queries<Queries...>>;
 
     using base::base;
