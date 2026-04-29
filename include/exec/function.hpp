@@ -85,8 +85,11 @@ namespace experimental::execution
     template <class Sig>
     inline constexpr bool is_query_function_v = false;
 
-    template <class Return, class Query, class... Args, bool NoThrow>
-    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept(NoThrow)> = true;
+    template <class Return, class Query, class... Args>
+    inline constexpr bool is_query_function_v<Return(Query, Args...)> = true;
+
+    template <class Return, class Query, class... Args>
+    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept> = true;
   }  // namespace _qry_detail
 #endif
 
@@ -384,7 +387,7 @@ namespace experimental::execution
   template <class...>
   struct function;
 
-  template <class Return, class... Args, bool NoThrow>
+  template <class Return, class... Args>
   // should this require STDEXEC::__not_same_as<Return, STDEXEC::sender_tag>?
   //
   // you *could* write STDEXEC::just(STDEXEC::sender_tag{}), but it seems more likely
@@ -392,13 +395,26 @@ namespace experimental::execution
   //
   // the same question applies to all the specializations below that take explicit
   // completion signatures
-  struct function<Return(Args...) noexcept(NoThrow)>
+  struct function<Return(Args...)>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                        _func::_sigs_from_t<Return(Args...)>,
                         queries<>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                                   _func::_sigs_from_t<Return(Args...)>,
+                                   queries<>>;
+
+    using base::base;
+  };
+
+  template <class Return, class... Args>
+  struct function<Return(Args...) noexcept>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...),
+                        _func::_sigs_from_t<Return(Args...) noexcept>,
+                        queries<>>
+  {
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
+                                   _func::_sigs_from_t<Return(Args...) noexcept>,
                                    queries<>>;
 
     using base::base;
@@ -414,14 +430,27 @@ namespace experimental::execution
     using base::base;
   };
 
-  template <class Return, class... Args, bool NoThrow, class... Queries>
-  struct function<Return(Args...) noexcept(NoThrow), queries<Queries...>>
+  template <class Return, class... Args, class... Queries>
+  struct function<Return(Args...), queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                        _func::_sigs_from_t<Return(Args...)>,
                         queries<Queries...>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
-                                   _func::_sigs_from_t<Return(Args...) noexcept(NoThrow)>,
+                                   _func::_sigs_from_t<Return(Args...)>,
+                                   queries<Queries...>>;
+
+    using base::base;
+  };
+
+  template <class Return, class... Args, class... Queries>
+  struct function<Return(Args...) noexcept, queries<Queries...>>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...),
+                        _func::_sigs_from_t<Return(Args...) noexcept>,
+                        queries<Queries...>>
+  {
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
+                                   _func::_sigs_from_t<Return(Args...) noexcept>,
                                    queries<Queries...>>;
 
     using base::base;
