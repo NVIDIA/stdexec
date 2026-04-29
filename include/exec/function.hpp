@@ -109,18 +109,19 @@ namespace experimental::execution
     {
       // rcvr_ has to be initialized before op_ because our implementation of get_env
       // is empirically accessed during our constructor and depends on rcvr_ being initialized
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      Receiver                      rcvr_;
-      __any::__any<_any::_iopstate> op_;
-
       using _receiver_t =
         ::exec::_any::_any_receiver_ref<completion_signatures<Sigs...>, queries<Queries...>>;
+
+      using _stop_token_t = stop_token_of_t<env_of_t<_receiver_t>>;
+
+      _any::_state<Receiver, _stop_token_t> rcvr_;
+      _any::_any_opstate_base               op_;
 
      public:
       using operation_state_concept = operation_state_tag;
 
       template <class Factory>
-      constexpr _func_op(Receiver rcvr, Factory factory)
+      explicit constexpr _func_op(Receiver rcvr, Factory factory)
         : rcvr_(std::move(rcvr))
         , op_(factory(_receiver_t(rcvr_)))
       {}
@@ -174,9 +175,12 @@ namespace experimental::execution
       using _receiver_t =
         ::exec::_any::_any_receiver_ref<completion_signatures<Sigs...>, queries<Queries...>>;
 
+      template <class Receiver>
+      using _func_op_t = _func_op<Receiver, completion_signatures<Sigs...>, Queries...>;
+
       // the type-erased sender factory that, when called, constructs the erased sender from
       // args_ and connects the resulting sender to the provided receiver
-      __any::__any<_any::_iopstate> (*factory_)(_receiver_t, Args &&...);
+      _any::_any_opstate_base (*factory_)(_receiver_t, Args &&...);
       STDEXEC_ATTRIBUTE(no_unique_address)
       std::tuple<Args...> args_;
 
@@ -196,7 +200,7 @@ namespace experimental::execution
       {
         using sender_t = std::invoke_result_t<Factory, Args...>;
 
-        factory_ = [](_receiver_t rcvr, Args &&...args) -> __any::__any<_any::_iopstate>
+        factory_ = [](_receiver_t rcvr, Args &&...args) -> _any::_any_opstate_base
         {
           // TODO: as mentioned above, Factory must be a stateless lambda, which makes it
           //       default-constructible like this; this obviously doesn't work if Factory
@@ -205,12 +209,12 @@ namespace experimental::execution
 
           auto alloc = choose_frame_allocator(get_env(rcvr));
 
-          return __any::__any<_any::_iopstate>(__in_place_from,
-                                               std::allocator_arg,
-                                               alloc,
-                                               STDEXEC::connect,
-                                               factory(std::forward<Args>(args)...),
-                                               std::move(rcvr));
+          return _any::_any_opstate_base(__in_place_from,
+                                         std::allocator_arg,
+                                         alloc,
+                                         STDEXEC::connect,
+                                         factory(std::forward<Args>(args)...),
+                                         std::move(rcvr));
         };
       }
 
@@ -234,17 +238,16 @@ namespace experimental::execution
 
       // TODO: this assumes rvalue connection; lvalue connection requires thought and tests
       template <class Receiver>
-      constexpr _func_op<Receiver, completion_signatures<Sigs...>, Queries...>
-      connect(Receiver rcvr)
+      constexpr _func_op_t<Receiver> connect(Receiver rcvr)
       {
-        return {std::move(rcvr),
-                [this](auto rcvr)
-                {
-                  return std::apply(
-                    [&rcvr, this](Args &&...args)
-                    { return factory_(std::move(rcvr), std::forward<Args>(args)...); },
-                    std::move(args_));
-                }};
+        return _func_op_t<Receiver>{
+          std::move(rcvr),
+          [this](auto rcvr)
+          {
+            return std::apply([&rcvr, this](Args &&...args)
+                              { return factory_(std::move(rcvr), std::forward<Args>(args)...); },
+                              std::move(args_));
+          }};
       }
     };
 
