@@ -61,6 +61,7 @@ set(exec_test_sources
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:sequence/test_merge_each_threaded.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_LIBDISPATCH}>:test_libdispatch.cpp>
     test_unless_stop_requested.cpp
+    test_function.cpp
     )
 
 set_source_files_properties(test_any_sender.cpp
