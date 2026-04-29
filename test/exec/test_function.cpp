@@ -107,8 +107,6 @@ namespace
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
     // TODO: you probably shouldn't have to specify the frame allocator query like this
-    //using Env =
-      //ex::env<ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>>;
     using Queries = exec::queries<std::pmr::polymorphic_allocator<std::byte>(
       exec::get_frame_allocator_t) noexcept>;
 
@@ -130,5 +128,14 @@ namespace
                    .value();
 
     REQUIRE(ret);
+  }
+
+  TEST_CASE("exec::function is conditionally lvalue connectable", "[types][function]")
+  {
+    exec::function<int()> sndr([]() noexcept { return ex::just(42); });
+
+    auto [ret] = ex::sync_wait(sndr).value();
+
+    REQUIRE(ret == 42);
   }
 }  // namespace

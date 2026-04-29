@@ -22,6 +22,7 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__scope.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
+#include "../stdexec/__detail/__tuple.hpp"
 
 // TODO: split this header into pieces
 #include "any_sender_of.hpp"
@@ -29,7 +30,6 @@
 #include <exception>
 #include <memory>
 #include <new>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -182,7 +182,7 @@ namespace experimental::execution
       // args_ and connects the resulting sender to the provided receiver
       _any::_any_opstate_base (*factory_)(_receiver_t, Args &&...);
       STDEXEC_ATTRIBUTE(no_unique_address)
-      std::tuple<Args...> args_;
+      STDEXEC::__tuple<Args...> args_;
 
      public:
       using sender_concept = SndrCncpt;
@@ -236,18 +236,20 @@ namespace experimental::execution
         //}
       }
 
-      // TODO: this assumes rvalue connection; lvalue connection requires thought and tests
       template <class Receiver>
-      constexpr _func_op_t<Receiver> connect(Receiver rcvr)
+      constexpr _func_op_t<Receiver> connect(Receiver rcvr) &&
       {
         return _func_op_t<Receiver>{
           std::move(rcvr),
           [this](auto rcvr)
-          {
-            return std::apply([&rcvr, this](Args &&...args)
-                              { return factory_(std::move(rcvr), std::forward<Args>(args)...); },
-                              std::move(args_));
-          }};
+          { return STDEXEC::__apply(factory_, std::move(args_), std::move(rcvr)); }};
+      }
+
+      template <class Receiver>
+        requires STDEXEC::__std::copy_constructible<_func_impl>
+      constexpr _func_op_t<Receiver> connect(Receiver rcvr) const &
+      {
+        return auto(*this).connect(std::move(rcvr));
       }
     };
 
