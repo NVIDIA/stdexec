@@ -71,21 +71,6 @@ namespace STDEXEC
       __with_await_transform() = default;
     };
 
-    struct __synthetic_coro_frame
-    {
-      void (*__resume_)(void*) noexcept;
-      // we never invoke __destroy_ so a no-op implementation is fine; we've chosen
-      // the address of a no-op function rather than nullptr in case some rogue awaitable
-      // *does* invoke destroy on the synthesized handle that it receives in its
-      // await_suspend function
-      void (*__destroy_)(void*) noexcept = &__noop_destroy;
-
-     private:
-      static void __noop_destroy(void*) noexcept {}
-    };
-
-    static constexpr std::ptrdiff_t __promise_offset = sizeof(__synthetic_coro_frame);
-
     template <class _Awaiter, class _Receiver>
     struct __opstate;
 
@@ -120,13 +105,13 @@ namespace STDEXEC
       __opstate_t& __get_opstate() noexcept
       {
         return *reinterpret_cast<__opstate_t*>(reinterpret_cast<std::byte*>(this)
-                                               - __promise_offset);
+                                               - __detail::__coro_promise_offset);
       }
 
       __opstate_t const & __get_opstate() const noexcept
       {
         return *reinterpret_cast<__opstate_t const *>(reinterpret_cast<std::byte const *>(this)
-                                                      - __promise_offset);
+                                                      - __detail::__coro_promise_offset);
       }
     };
 
@@ -500,7 +485,7 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
-      __synthetic_coro_frame                     __synthetic_frame_{&__promise_t::__resume};
+      __detail::__synthetic_coro_frame           __synthetic_frame_{&__promise_t::__resume};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver                                  __rcvr_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
