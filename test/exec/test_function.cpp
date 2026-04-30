@@ -29,43 +29,72 @@ namespace
 {
   TEST_CASE("exec::function is constructible", "[types][function]")
   {
-    exec::function<void()> voidSndr([]() noexcept { return ex::just(); });
+    SECTION("void()")
+    {
+      exec::function<void()> sndr([]() noexcept { return ex::just(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    exec::function<int()> intSndr([]() noexcept { return ex::just(42); });
+    SECTION("int()")
+    {
+      exec::function<int()> sndr([]() noexcept { return ex::just(42); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    double                             d = 4.;
-    exec::function<void(int, double&)> binarySndr(5,
-                                                  d,
-                                                  [](int, double&) noexcept { return ex::just(); });
+    SECTION("void(int, double&)")
+    {
+      double                             d = 4.;
+      exec::function<void(int, double&)> sndr(5,
+                                              d,
+                                              [](int, double&) noexcept { return ex::just(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    exec::function<void() noexcept> nothrowSndr([]() noexcept { return ex::just(); });
-    exec::function<int() noexcept>  nothrowIntSndr([]() noexcept { return ex::just(42); });
+    SECTION("void() noexcept")
+    {
+      exec::function<void() noexcept> sndr([]() noexcept { return ex::just(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t(int)>> unstoppable(
-      []() noexcept { return ex::just(42); });
-    exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> onlystopped(
-      []() noexcept { return ex::just_stopped(); });
+    SECTION("int() noexcept")
+    {
+      exec::function<int() noexcept> sndr([]() noexcept { return ex::just(42); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    exec::function<void(), exec::queries<>> trivialCustomEnv([]() noexcept { return ex::just(); });
+    SECTION("sender_tag() with only set_value_t(int)")
+    {
+      exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t(int)>> sndr(
+        []() noexcept { return ex::just(42); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    exec::function<ex::sender_tag(int),
-                   ex::completion_signatures<ex::set_value_t()>,
-                   exec::queries<>>
-      totalControl(5, [](int) noexcept { return ex::just(); });
+    SECTION("sender_tag() with only set_stopped_t()")
+    {
+      exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> sndr(
+        []() noexcept { return ex::just_stopped(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
 
-    STATIC_REQUIRE(STDEXEC::sender<decltype(voidSndr)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(intSndr)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(binarySndr)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowSndr)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(nothrowIntSndr)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(unstoppable)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(onlystopped)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(trivialCustomEnv)>);
-    STATIC_REQUIRE(STDEXEC::sender<decltype(totalControl)>);
+    SECTION("void() with trivial custom environment")
+    {
+      exec::function<void(), exec::queries<>> sndr([]() noexcept { return ex::just(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
+
+    SECTION("sender_tag(int) with only set_value_t() and trivial environment")
+    {
+      exec::function<ex::sender_tag(int),
+                     ex::completion_signatures<ex::set_value_t()>,
+                     exec::queries<>>
+        sndr(5, [](int) noexcept { return ex::just(); });
+      STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
   }
 
   TEST_CASE("exec::function is connectable", "[types][function]")
   {
+    SECTION("int() noexcept from just(42)")
     {
       exec::function<int() noexcept> sndr([]() noexcept { return ex::just(42); });
 
@@ -74,12 +103,14 @@ namespace
       REQUIRE(fortytwo == 42);
     }
 
+    SECTION("void() from throwing factory")
     {
       exec::function<void()> sndr([]() -> decltype(ex::just()) { throw "oops"; });
 
       REQUIRE_THROWS(ex::sync_wait(std::move(sndr)));
     }
 
+    SECTION("void() from throwing then")
     {
       exec::function<void()> sndr([]() noexcept
                                   { return ex::just() | ex::then([] { throw "oops"; }); });
@@ -87,6 +118,7 @@ namespace
       REQUIRE_THROWS(ex::sync_wait(std::move(sndr)));
     }
 
+    SECTION("void() from just_stopped()")
     {
       exec::function<void()> sndr([]() noexcept { return ex::just_stopped(); });
 
@@ -95,6 +127,7 @@ namespace
       REQUIRE_FALSE(ret.has_value());
     }
 
+    SECTION("custom completions from just_error(42)")
     {
       exec::function<ex::sender_tag(),
                      ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>>
