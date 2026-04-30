@@ -282,4 +282,113 @@ namespace
       REQUIRE(ret == 42);
     }
   }
+
+  TEST_CASE("completion_signature specification is order-independent", "[types][function]")
+  {
+    // by specifying the completions with a function signature, it's up to the library what
+    // order the completion signatures are specified in
+    using func1_t = exec::function<int(int) noexcept>;
+    // this declaration chooses value before stopped
+    using func2_t =
+      exec::function<ex::sender_tag(int),
+                     ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>;
+    // this declaration chooses stopped before value
+    using func3_t =
+      exec::function<ex::sender_tag(int),
+                     ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(int)>>;
+
+    SECTION("the function types are not the same as each other...")
+    {
+      STATIC_REQUIRE(!std::same_as<func1_t, func2_t>);
+      STATIC_REQUIRE(!std::same_as<func1_t, func3_t>);
+      STATIC_REQUIRE(!std::same_as<func2_t, func3_t>);
+    }
+
+    SECTION("...but they all inherit from the same _func_impl base")
+    {
+      STATIC_REQUIRE(std::same_as<func1_t::base, func2_t::base>);
+      STATIC_REQUIRE(std::same_as<func1_t::base, func3_t::base>);
+      STATIC_REQUIRE(std::same_as<func2_t::base, func3_t::base>);
+    }
+
+    SECTION("move-construction works in every direction between all three types")
+    {
+      STATIC_REQUIRE(std::constructible_from<func1_t, func1_t>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func2_t>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func3_t>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func1_t>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func2_t>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func3_t>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func1_t>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func2_t>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func3_t>);
+    }
+
+    SECTION("copy-construction works in every direction between all three types")
+    {
+      STATIC_REQUIRE(std::constructible_from<func1_t, func1_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func2_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func3_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func1_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func2_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func3_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func1_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func2_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func3_t, func3_t const &>);
+    }
+
+    SECTION("move-assignment works in every direction between all three types")
+    {
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func1_t>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func2_t>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func3_t>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func1_t>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func2_t>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func3_t>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func1_t>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func2_t>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func3_t>);
+    }
+
+    SECTION("copy-assignment works in every direction between all three types")
+    {
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func1_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func2_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func3_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func1_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func2_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func3_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func1_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func2_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func3_t &, func3_t const &>);
+    }
+
+    SECTION("instances are mutually comparable with ==")
+    {
+      // identical copies in slightly different types
+      func1_t f1(42, ex::just);
+      func2_t f2(f1);
+      func3_t f3(f1);
+
+      // differing curried arguments from above
+      func2_t f4(45, ex::just);
+      func3_t f5(45, ex::just);
+
+      REQUIRE(f1 == f1);
+      REQUIRE(f1 == f2);
+      REQUIRE(f1 == f3);
+      REQUIRE(f2 == f1);
+      REQUIRE(f2 == f2);
+      REQUIRE(f2 == f3);
+      REQUIRE(f3 == f1);
+      REQUIRE(f3 == f2);
+      REQUIRE(f3 == f3);
+
+      REQUIRE(f1 != f4);
+      REQUIRE(f2 != f4);
+      REQUIRE(f3 != f4);
+
+      REQUIRE(f4 == f5);
+    }
+  }
 }  // namespace
