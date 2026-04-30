@@ -194,7 +194,7 @@ namespace experimental::execution
               && STDEXEC::__std::constructible_from<Factory>    //
               && STDEXEC::__callable<Factory, Args...>
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>, _receiver_t>
-      constexpr explicit _func_impl(Args &&...args, Factory &&factory)
+      constexpr explicit _func_impl(Args &&...args, Factory factory)
         noexcept(STDEXEC::__nothrow_move_constructible<Args...>)
         : args_(std::forward<Args>(args)...)
       {

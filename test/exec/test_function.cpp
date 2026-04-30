@@ -171,4 +171,13 @@ namespace
 
     REQUIRE(ret == 42);
   }
+
+  TEST_CASE("exec::function accepts lvalue callables", "[types][function]")
+  {
+    exec::function<int(int) noexcept> sndr(42, ex::just);
+
+    auto [ret] = ex::sync_wait(sndr).value();
+
+    REQUIRE(ret == 42);
+  }
 }  // namespace
