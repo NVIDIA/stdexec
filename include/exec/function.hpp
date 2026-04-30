@@ -79,20 +79,6 @@ namespace experimental::execution
 
   inline constexpr get_frame_allocator_t get_frame_allocator{};
 
-#if 0
-  namespace _qry_detail
-  {
-    template <class Sig>
-    inline constexpr bool is_query_function_v = false;
-
-    template <class Return, class Query, class... Args>
-    inline constexpr bool is_query_function_v<Return(Query, Args...)> = true;
-
-    template <class Return, class Query, class... Args>
-    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept> = true;
-  }  // namespace _qry_detail
-#endif
-
   namespace _func
   {
     using namespace STDEXEC;
