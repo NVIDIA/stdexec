@@ -17,21 +17,17 @@
 
 #include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__env.hpp"
 #include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
-#include "../stdexec/__detail/__scope.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
+#include "../stdexec/functional.hpp"
 
 // TODO: split this header into pieces
 #include "any_sender_of.hpp"
 
-#include <exception>
+#include <cstddef>
 #include <memory>
-#include <new>
-#include <type_traits>
-#include <utility>
 
 // This file defines function<ReturnType(Arguments...)>, which is a
 // type-erased sender that can complete with
@@ -108,7 +104,7 @@ namespace experimental::execution
 
       template <class Factory>
       explicit constexpr _func_op(Receiver rcvr, Factory factory)
-        : rcvr_(std::move(rcvr))
+        : rcvr_(static_cast<Receiver &&>(rcvr))
         , op_(factory(_receiver_t(rcvr_)))
       {}
 
@@ -182,9 +178,9 @@ namespace experimental::execution
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>, _receiver_t>
       constexpr explicit _func_impl(Args &&...args, Factory factory)
         noexcept(STDEXEC::__nothrow_move_constructible<Args...>)
-        : args_(std::forward<Args>(args)...)
+        : args_(static_cast<Args &&>(args)...)
       {
-        using sender_t = std::invoke_result_t<Factory, Args...>;
+        using sender_t = __invoke_result_t<Factory, Args...>;
 
         factory_ = [](_receiver_t rcvr, Args &&...args) -> _any::_any_opstate_base
         {
@@ -199,8 +195,8 @@ namespace experimental::execution
                                          std::allocator_arg,
                                          alloc,
                                          STDEXEC::connect,
-                                         factory(std::forward<Args>(args)...),
-                                         std::move(rcvr));
+                                         factory(static_cast<Args &&>(args)...),
+                                         static_cast<_receiver_t &&>(rcvr));
         };
       }
 
@@ -225,17 +221,21 @@ namespace experimental::execution
       template <class Receiver>
       constexpr _func_op_t<Receiver> connect(Receiver rcvr) &&
       {
-        return _func_op_t<Receiver>{
-          std::move(rcvr),
-          [this](auto rcvr)
-          { return STDEXEC::__apply(factory_, std::move(args_), std::move(rcvr)); }};
+        return _func_op_t<Receiver>{static_cast<Receiver &&>(rcvr),
+                                    [this]<class RcvrRef>(RcvrRef rcvr)
+                                    {
+                                      return STDEXEC::__apply(factory_,
+                                                              static_cast<__tuple<Args...> &&>(
+                                                                args_),
+                                                              static_cast<RcvrRef &&>(rcvr));
+                                    }};
       }
 
       template <class Receiver>
         requires STDEXEC::__std::copy_constructible<_func_impl>
       constexpr _func_op_t<Receiver> connect(Receiver rcvr) const &
       {
-        return _func_impl(*this).connect(std::move(rcvr));
+        return _func_impl(*this).connect(static_cast<Receiver &&>(rcvr));
       }
     };
 
