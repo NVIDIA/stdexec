@@ -249,7 +249,7 @@ namespace experimental::execution
         requires STDEXEC::__std::copy_constructible<_func_impl>
       constexpr _func_op_t<Receiver> connect(Receiver rcvr) const &
       {
-        return auto(*this).connect(std::move(rcvr));
+        return _func_impl(*this).connect(std::move(rcvr));
       }
     };
 
