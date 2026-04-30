@@ -155,17 +155,12 @@ namespace STDEXEC
   {
     struct __synthetic_coro_frame
     {
-      void (*__resume_)(void*) noexcept;
-      // we never invoke __destroy_ so a no-op implementation is fine; we've chosen the
-      // address of a no-op function rather than nullptr in case some rogue awaitable
-      // *does* invoke destroy on the synthesized handle that it receives in its
-      // await_suspend function
-      void (*__destroy_)(void*) noexcept = &__noop_destroy;
+      using __callback_fn_t = void(void*) noexcept;
 
-      static void __noop_destroy(void*) noexcept
-      {
-        STDEXEC_ASSERT(!"Attempt to destroy a synthetic coroutine!");
-      }
+      __callback_fn_t* __resume_  = &__noop_fn;
+      __callback_fn_t* __destroy_ = &__noop_fn;
+
+      static void __noop_fn(void*) noexcept {}
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(
@@ -190,10 +185,6 @@ namespace STDEXEC
 
   struct __destroy_and_continue_frame : __detail::__synthetic_coro_frame
   {
-    constexpr __destroy_and_continue_frame() noexcept
-      : __detail::__synthetic_coro_frame{&__destroy_and_continue_frame::__resume}
-    {}
-
     static void __resume(void* __address) noexcept
     {
       // Make a local copy of the promise to ensure we can safely destroy the suspended
@@ -208,14 +199,15 @@ namespace STDEXEC
       __std::coroutine_handle<> __destroy_{};
       __std::coroutine_handle<> __continue_{};
     } __promise_;
+
+    static thread_local __destroy_and_continue_frame value;
   };
+
+  constinit inline thread_local __destroy_and_continue_frame __destroy_and_continue_frame::value{
+    {&__destroy_and_continue_frame::__resume}, {}};
 
   struct __symmetric_transfer_frame : __detail::__synthetic_coro_frame
   {
-    constexpr __symmetric_transfer_frame() noexcept
-      : __detail::__synthetic_coro_frame{&__symmetric_transfer_frame::__resume}
-    {}
-
     static void __resume(void* __address) noexcept
     {
       // Make a local copy of the promise to ensure we can safely destroy the suspended
@@ -228,24 +220,27 @@ namespace STDEXEC
     {
       __std::coroutine_handle<> __continue_{};
     } __promise_;
+
+    static thread_local __symmetric_transfer_frame value;
   };
+
+  constinit inline thread_local __symmetric_transfer_frame __symmetric_transfer_frame::value{
+    {&__symmetric_transfer_frame::__resume}, {}};
 
   inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __destroy,            //
                                                __std::coroutine_handle<> __continue) noexcept  //
     -> __std::coroutine_handle<>
   {
-    static constinit thread_local __destroy_and_continue_frame __fr;
-    __fr.__promise_.__destroy_  = __destroy;
-    __fr.__promise_.__continue_ = __continue;
-    return __std::coroutine_handle<>::from_address(&__fr);
+    __destroy_and_continue_frame::value.__promise_.__destroy_  = __destroy;
+    __destroy_and_continue_frame::value.__promise_.__continue_ = __continue;
+    return __std::coroutine_handle<>::from_address(&__destroy_and_continue_frame::value);
   }
 
   inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __continue) noexcept  //
     -> __std::coroutine_handle<>
   {
-    static constinit thread_local __symmetric_transfer_frame __fr;
-    __fr.__promise_.__continue_ = __continue;
-    return __std::coroutine_handle<>::from_address(&__fr);
+    __symmetric_transfer_frame::value.__promise_.__continue_ = __continue;
+    return __std::coroutine_handle<>::from_address(&__symmetric_transfer_frame::value);
   }
 
 #  else
