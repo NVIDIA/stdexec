@@ -21,12 +21,14 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
+#include "../stdexec/__detail/__utility.hpp"
 #include "../stdexec/functional.hpp"
 
 // TODO: split this header into pieces
 #include "any_sender_of.hpp"
 
 #include <cstddef>
+#include <cstring>
 #include <memory>
 
 // This file defines function<ReturnType(Arguments...)>, which is a
@@ -160,21 +162,29 @@ namespace experimental::execution
       template <class Receiver>
       using _func_op_t = _func_op<Receiver, completion_signatures<Sigs...>, Queries...>;
 
-      // the type-erased sender factory that, when called, constructs the erased sender from
-      // args_ and connects the resulting sender to the provided receiver
-      _any::_any_opstate_base (*factory_)(_receiver_t, Args &&...);
+      // The type-erased operation state factory; it points to a function that knows the concrete
+      // type of the sender factory stored in make_sender_ so that it can construct the desired
+      // sender on demand and connect it to the given receiver. The expected arguments are the
+      // address of make_sender_, the _any_receiver_ref to connect the sender to, and the arguments
+      // to pass to make_sender_ to construct the sender.
+      _any::_any_opstate_base (*make_op_)(void *, _receiver_t, Args &&...);
+      // Storage for the sender factory passed to our constructor template; make_op_ will
+      // reconstitute the actual factory from this bag-of-bytes with start_lifetime_as
+      // because it internally knows the concrete type of the user-provided sender factory.
+      // We're reserving 2 * sizeof(void *) bytes to permit the factory to be a pointer to
+      // member function, which usually requires two pointers.
+      std::byte make_sender_[2 * sizeof(void *)];
+      // The curried arguments that will be passed to make_sender_ from inside make_op_.
       STDEXEC_ATTRIBUTE(no_unique_address)
       STDEXEC::__tuple<Args...> args_;
 
      public:
       using sender_concept = SndrCncpt;
 
-      // TODO: I only know this works for empty lambdas; figure out whether function pointers
-      //       and/or pointer-to-member functions can be made to work
-      template <STDEXEC::__callable<Args...> Factory>
+      template <std::invocable<Args...> Factory>
         requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
-              && STDEXEC::__std::constructible_from<Factory>    //
-              && STDEXEC::__callable<Factory, Args...>
+              && (STDEXEC_IS_TRIVIALLY_COPYABLE(Factory))       //
+              && (sizeof(Factory) <= sizeof(make_sender_))      //
               && STDEXEC::sender_to<STDEXEC::__invoke_result_t<Factory, Args...>, _receiver_t>
       constexpr explicit _func_impl(Args &&...args, Factory factory)
         noexcept(STDEXEC::__nothrow_move_constructible<Args...>)
@@ -182,12 +192,11 @@ namespace experimental::execution
       {
         using sender_t = __invoke_result_t<Factory, Args...>;
 
-        factory_ = [](_receiver_t rcvr, Args &&...args) -> _any::_any_opstate_base
+        std::memcpy(make_sender_, std::addressof(factory), sizeof(Factory));
+
+        make_op_ = [](void *storage, _receiver_t rcvr, Args &&...args) -> _any::_any_opstate_base
         {
-          // TODO: as mentioned above, Factory must be a stateless lambda, which makes it
-          //       default-constructible like this; this obviously doesn't work if Factory
-          //       is a pointer type
-          Factory factory;
+          auto &make_sender = *__std::start_lifetime_as<Factory>(storage);
 
           auto alloc = choose_frame_allocator(get_env(rcvr));
 
@@ -195,7 +204,7 @@ namespace experimental::execution
                                          std::allocator_arg,
                                          alloc,
                                          STDEXEC::connect,
-                                         factory(static_cast<Args &&>(args)...),
+                                         std::invoke(make_sender, static_cast<Args &&>(args)...),
                                          static_cast<_receiver_t &&>(rcvr));
         };
       }
@@ -224,9 +233,10 @@ namespace experimental::execution
         return _func_op_t<Receiver>{static_cast<Receiver &&>(rcvr),
                                     [this]<class RcvrRef>(RcvrRef rcvr)
                                     {
-                                      return STDEXEC::__apply(factory_,
+                                      return STDEXEC::__apply(make_op_,
                                                               static_cast<__tuple<Args...> &&>(
                                                                 args_),
+                                                              make_sender_,
                                                               static_cast<RcvrRef &&>(rcvr));
                                     }};
       }
