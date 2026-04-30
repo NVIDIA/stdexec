@@ -182,7 +182,7 @@ namespace STDEXEC
 
         ~__state()
         {
-          // make sure to destroy in the reverse order of construction
+          // make sure to __destroy in the reverse order of construction
           __awaiter_.__destroy();
           __awaitable_.__destroy();
         }
@@ -206,12 +206,12 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      constexpr void __construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
         __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
-      constexpr void destroy() noexcept
+      constexpr void __destroy() noexcept
       {
         __awaiter_.__destroy();
       }
@@ -263,12 +263,12 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      constexpr void __construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
         __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
-      constexpr void destroy() noexcept
+      constexpr void __destroy() noexcept
       {
         __awaiter_.__destroy();
       }
@@ -328,12 +328,12 @@ namespace STDEXEC
         : __source_awaitable_(static_cast<_Awaitable2&&>(__awaitable))
       {}
 
-      constexpr void construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
+      constexpr void __construct(__std::coroutine_handle<_Promise> __coro) noexcept(__is_nothrow)
       {
         __awaiter_.__construct(static_cast<_Awaitable&&>(__source_awaitable_), __coro);
       }
 
-      constexpr void destroy() noexcept
+      constexpr void __destroy() noexcept
       {
         __awaiter_.__destroy();
       }
@@ -363,12 +363,12 @@ namespace STDEXEC
         __awaiter_.__destroy();
       }
 
-      static constexpr void construct(__std::coroutine_handle<_Promise>) noexcept
+      static constexpr void __construct(__std::coroutine_handle<_Promise>) noexcept
       {
         // no-op
       }
 
-      static constexpr void destroy() noexcept
+      static constexpr void __destroy() noexcept
       {
         // no-op
       }
@@ -389,7 +389,7 @@ namespace STDEXEC
       {
         if (__started_)
         {
-          __awaiter_.destroy();
+          __awaiter_.__destroy();
         }
       }
 
@@ -399,7 +399,7 @@ namespace STDEXEC
 
         STDEXEC_TRY
         {
-          __awaiter_.construct(__coro);
+          __awaiter_.__construct(__coro);
           __started_ = true;
 
           if (!__awaiter_.await_ready())
@@ -439,7 +439,7 @@ namespace STDEXEC
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!noexcept(__awaiter_.construct(__coro))
+          if constexpr (!noexcept(__awaiter_.__construct(__coro))
                         || !noexcept(__awaiter_.await_ready())
                         || !noexcept(__awaiter_.await_suspend(__coro)))
           {

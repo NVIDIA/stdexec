@@ -287,7 +287,7 @@ namespace STDEXEC
     constexpr ~task()
     {
       if (__coro_)
-        __coro_.destroy();
+        STDEXEC::__coroutine_destroy_nothrow(__coro_);
     }
 
     [[nodiscard]]

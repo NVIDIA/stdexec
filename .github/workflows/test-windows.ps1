@@ -21,16 +21,12 @@ New-Item -ItemType Directory $BuildDirectory | Out-Null
 
 Invoke-NativeCommand cmake -B $BuildDirectory -G Ninja `
 	"-DCMAKE_BUILD_TYPE=$Config" `
+	"-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON" `
 	"-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT:STRING=Embedded" `
+	"-DCMAKE_CXX_FLAGS:STRING=/fsanitize=address" `
 	"-DSTDEXEC_ENABLE_ASIO:BOOL=TRUE" `
 	"-DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost" `
-	"-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON" `
 	"-DSTDEXEC_BUILD_TESTS:BOOL=TRUE" .
 Invoke-NativeCommand cmake --build $BuildDirectory
-
-# Enable AppVerifier for the test executables
-Invoke-NativeCommand appverif /verify test.stdexec.exe
-Invoke-NativeCommand appverif /verify test.exec.exe
-
 Invoke-NativeCommand ctest --test-dir $BuildDirectory --output-on-failure --verbose --timeout 60
 

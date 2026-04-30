@@ -531,7 +531,7 @@ namespace experimental::execution
       constexpr ~basic_task()
       {
         if (__coro_)
-          __coro_.destroy();
+          STDEXEC::__coroutine_destroy_nothrow(__coro_);
       }
 
      private:
@@ -653,7 +653,7 @@ namespace experimental::execution
         constexpr ~__task_awaiter()
         {
           if (__coro_)
-            __coro_.destroy();
+            STDEXEC::__coroutine_destroy_nothrow(__coro_);
         }
 
         static constexpr auto await_ready() noexcept -> bool
@@ -672,7 +672,8 @@ namespace experimental::execution
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; })
           {
             if (__coro_.promise().stop_requested())
-              return __parent.promise().unhandled_stopped();
+              return STDEXEC::__coroutine_destroy_and_continue(
+                __parent.promise().unhandled_stopped());
           }
           return __coro_;
         }

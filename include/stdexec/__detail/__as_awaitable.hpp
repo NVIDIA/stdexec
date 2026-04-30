@@ -133,8 +133,14 @@ namespace STDEXEC
         // If the operation was stopped (__result_ is valueless), we should use the
         // unhandled_stopped() continuation. Otherwise, should resume the __continuation_
         // as normal.
-        return __result_.__is_valueless() ? __continuation_.unhandled_stopped()
-                                          : __continuation_.handle();
+        if (__result_.__is_valueless())
+        {
+          return STDEXEC::__coroutine_destroy_and_continue(__continuation_.unhandled_stopped());
+        }
+        else
+        {
+          return __continuation_.handle();
+        }
       }
 
       __coroutine_handle<> __continuation_;
