@@ -91,13 +91,13 @@ namespace experimental::execution
     template <class Receiver, class... Sigs, class... Queries>
     class _func_op<Receiver, completion_signatures<Sigs...>, Queries...>
     {
-      // rcvr_ has to be initialized before op_ because our implementation of get_env
-      // is empirically accessed during our constructor and depends on rcvr_ being initialized
       using _receiver_t =
         ::exec::_any::_any_receiver_ref<completion_signatures<Sigs...>, queries<Queries...>>;
 
       using _stop_token_t = stop_token_of_t<env_of_t<_receiver_t>>;
 
+      // rcvr_ has to be initialized before op_ because our implementation of get_env
+      // is empirically accessed during our constructor and depends on rcvr_ being initialized
       _any::_state<Receiver, _stop_token_t> rcvr_;
       _any::_any_opstate_base               op_;
 
@@ -209,22 +209,23 @@ namespace experimental::execution
         };
       }
 
-      template <class Sender, class Env>
-      static consteval auto get_completion_signatures() noexcept
+      // this implementation of get_completion_signatures is taken directly from
+      // the equivalent function on any_sender_of
+      template <class Self, class... Env>
+      static consteval auto get_completion_signatures()
       {
-        static_assert(STDEXEC_IS_BASE_OF(_func_impl, __decay_t<Sender>));
+        static_assert(__std::derived_from<std::remove_cvref_t<Self>, _func_impl>);
 
-        // TODO: validate that Env supports all the required queries
-        //
-        //if constexpr (std::constructible_from<Env, RcvrEnv const &>)
+        // throw if Env does not contain the queries needed to type-erase the receiver:
+        using _check_queries_t = __mfind_error<_any::_check_query_t<Queries, Env...>...>;
+        if constexpr (__merror<_check_queries_t>)
+        {
+          return STDEXEC::__throw_compile_time_error(_check_queries_t{});
+        }
+        else
         {
           return completion_signatures<Sigs...>{};
         }
-        //else
-        //{
-        // TODO: make this error accurate
-        //return __throw_compile_time_error(__unrecognized_sender_error_t<Sender, RcvrEnv>());
-        //}
       }
 
       template <class Receiver>
@@ -249,7 +250,7 @@ namespace experimental::execution
       }
     };
 
-    // Given a return type and a bool indicating whether the functino is noexcept,
+    // Given a return type and a bool indicating whether the function is noexcept,
     // compute the appropriate completion_signatures. The result is a set_value
     // overload taking either Return&& or no args when Return is void, set_stopped,
     // and, when the function type is not noexcept, set_error(std::exception_ptr)
