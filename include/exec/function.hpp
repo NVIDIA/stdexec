@@ -300,8 +300,8 @@ namespace experimental::execution
         };
 
         return __cmplsigs::__completion_sigs_from(make_sigs);
-      }  // namespace _func
-    };  // namespace experimental::execution
+      }
+    };
 
     template <class Sigs>
     inline constexpr _canonical_t<Sigs> _canonical{};
