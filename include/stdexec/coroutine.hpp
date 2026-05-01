@@ -34,11 +34,30 @@ namespace STDEXEC
   }
 
   STDEXEC_ATTRIBUTE(always_inline)
-  void __coroutine_resume_nothrow(__std::coroutine_handle<> __h) noexcept
+  void __coroutine_resume_nothrow(void* __address) noexcept
   {
     STDEXEC_TRY
     {
-      __builtin_coro_resume(__h.address());
+      __builtin_coro_resume(__address);
+    }
+    STDEXEC_CATCH_ALL
+    {
+      __std::unreachable();
+    }
+  }
+
+  STDEXEC_ATTRIBUTE(always_inline)
+  void __coroutine_resume_nothrow(__std::coroutine_handle<> __h) noexcept
+  {
+    STDEXEC::__coroutine_resume_nothrow(__h.address());
+  }
+
+  STDEXEC_ATTRIBUTE(always_inline)
+  void __coroutine_destroy_nothrow(void* __address) noexcept
+  {
+    STDEXEC_TRY
+    {
+      __builtin_coro_destroy(__address);
     }
     STDEXEC_CATCH_ALL
     {
@@ -49,14 +68,7 @@ namespace STDEXEC
   STDEXEC_ATTRIBUTE(always_inline)
   void __coroutine_destroy_nothrow(__std::coroutine_handle<> __h) noexcept
   {
-    STDEXEC_TRY
-    {
-      __builtin_coro_destroy(__h.address());
-    }
-    STDEXEC_CATCH_ALL
-    {
-      __std::unreachable();
-    }
+    STDEXEC::__coroutine_destroy_nothrow(__h.address());
   }
 
   // A coroutine handle that also supports unhandled_stopped() for propagating stop
@@ -191,7 +203,8 @@ namespace STDEXEC
       // coroutine after resuming the continuation.
       auto __promise = static_cast<__destroy_and_continue_frame*>(__address)->__promise_;
       STDEXEC::__coroutine_resume_nothrow(__promise.__continue_);
-      STDEXEC::__coroutine_destroy_nothrow(__promise.__destroy_);
+      STDEXEC_ATTRIBUTE(musttail)
+      return STDEXEC::__coroutine_destroy_nothrow(__promise.__destroy_.address());
     }
 
     struct __promise
@@ -203,8 +216,9 @@ namespace STDEXEC
     static thread_local __destroy_and_continue_frame value;
   };
 
-  constinit inline thread_local __destroy_and_continue_frame __destroy_and_continue_frame::value{
-    {&__destroy_and_continue_frame::__resume}, {}};
+  inline thread_local __destroy_and_continue_frame __destroy_and_continue_frame::value{
+    {&__destroy_and_continue_frame::__resume},
+    {}};
 
   struct __symmetric_transfer_frame : __detail::__synthetic_coro_frame
   {
@@ -213,7 +227,8 @@ namespace STDEXEC
       // Make a local copy of the promise to ensure we can safely destroy the suspended
       // coroutine after resuming the continuation.
       auto __promise = static_cast<__symmetric_transfer_frame*>(__address)->__promise_;
-      STDEXEC::__coroutine_resume_nothrow(__promise.__continue_);
+      STDEXEC_ATTRIBUTE(musttail)
+      return STDEXEC::__coroutine_resume_nothrow(__promise.__continue_.address());
     }
 
     struct __promise
@@ -224,8 +239,9 @@ namespace STDEXEC
     static thread_local __symmetric_transfer_frame value;
   };
 
-  constinit inline thread_local __symmetric_transfer_frame __symmetric_transfer_frame::value{
-    {&__symmetric_transfer_frame::__resume}, {}};
+  inline thread_local __symmetric_transfer_frame __symmetric_transfer_frame::value{
+    {&__symmetric_transfer_frame::__resume},
+    {}};
 
   inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __destroy,            //
                                                __std::coroutine_handle<> __continue) noexcept  //
