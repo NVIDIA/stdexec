@@ -672,8 +672,7 @@ namespace experimental::execution
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; })
           {
             if (__coro_.promise().stop_requested())
-              return STDEXEC::__coroutine_destroy_and_continue(
-                __parent.promise().unhandled_stopped());
+              return STDEXEC::__coroutine_unhandled_stopped(__parent);
           }
           return __coro_;
         }
@@ -681,7 +680,9 @@ namespace experimental::execution
         constexpr auto await_resume() -> _Ty
         {
           __context_.reset();
-          scope_guard __on_exit{[this]() noexcept { std::exchange(__coro_, {}).destroy(); }};
+          scope_guard __on_exit{
+            [this]() noexcept
+            { STDEXEC::__coroutine_destroy_nothrow(std::exchange(__coro_, {})); }};
 
           if (__coro_.promise().__data_.index() == 1)
             std::rethrow_exception(std::move(__var::__get<1>(__coro_.promise().__data_)));

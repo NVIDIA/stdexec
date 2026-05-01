@@ -220,27 +220,27 @@ namespace STDEXEC
     {&__destroy_and_continue_frame::__resume},
     {}};
 
-  struct __symmetric_transfer_frame : __detail::__synthetic_coro_frame
+  struct __unhandled_stopped_frame : __detail::__synthetic_coro_frame
   {
     static void __resume(void* __address) noexcept
     {
-      // Make a local copy of the promise to ensure we can safely destroy the suspended
-      // coroutine after resuming the continuation.
-      auto __promise = static_cast<__symmetric_transfer_frame*>(__address)->__promise_;
+      // Make a local copy of the promise since it will go away once we call through
+      // the __unhandled_stopped_fn_ function pointer.
+      auto __promise = static_cast<__unhandled_stopped_frame*>(__address)->__promise_;
       STDEXEC_ATTRIBUTE(musttail)
-      return STDEXEC::__coroutine_resume_nothrow(__promise.__continue_.address());
+      return STDEXEC::__coroutine_resume_nothrow(__promise.__coro_.unhandled_stopped().address());
     }
 
     struct __promise
     {
-      __std::coroutine_handle<> __continue_{};
+      __coroutine_handle<> __coro_;
     } __promise_;
 
-    static thread_local __symmetric_transfer_frame value;
+    static thread_local __unhandled_stopped_frame value;
   };
 
-  inline thread_local __symmetric_transfer_frame __symmetric_transfer_frame::value{
-    {&__symmetric_transfer_frame::__resume},
+  inline thread_local __unhandled_stopped_frame __unhandled_stopped_frame::value{
+    {&__unhandled_stopped_frame::__resume},
     {}};
 
   inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __destroy,            //
@@ -252,11 +252,11 @@ namespace STDEXEC
     return __std::coroutine_handle<>::from_address(&__destroy_and_continue_frame::value);
   }
 
-  inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __continue) noexcept  //
+  inline auto __coroutine_unhandled_stopped(__coroutine_handle<> __coro) noexcept  //
     -> __std::coroutine_handle<>
   {
-    __symmetric_transfer_frame::value.__promise_.__continue_ = __continue;
-    return __std::coroutine_handle<>::from_address(&__symmetric_transfer_frame::value);
+    __unhandled_stopped_frame::value.__promise_.__coro_ = __coro;
+    return __std::coroutine_handle<>::from_address(&__unhandled_stopped_frame::value);
   }
 
 #  else
@@ -271,10 +271,10 @@ namespace STDEXEC
   }
 
   STDEXEC_ATTRIBUTE(always_inline)
-  auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __continue) noexcept  //
+  auto __coroutine_unhandled_stopped(__coroutine_handle<> __coro) noexcept  //
     -> __std::coroutine_handle<>
   {
-    return __continue;
+    return __coro.unhandled_stopped();
   }
 
 #  endif  // STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1950

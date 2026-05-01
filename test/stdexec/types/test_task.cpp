@@ -327,8 +327,6 @@ namespace
                                 }));
   }
 
-  // FUTURE TODO: add support so that `co_await sndr` can return a reference.
-
   constinit int global_int = 0;
 
   constexpr auto wrap_ref = ex::then([](auto &i) noexcept { return std::ref(i); });
@@ -374,17 +372,28 @@ namespace
     struct operation
     {
       Receiver rcvr_;
+      bool     complete_inline_ = true;
 
       void start() & noexcept
       {
-        ex::set_stopped(std::move(rcvr_));
+        if (complete_inline_)
+        {
+          ex::set_stopped(std::move(rcvr_));
+        }
+        else
+        {
+          std::thread([rcvr = std::move(rcvr_)]() mutable noexcept
+                      { ex::set_stopped(std::move(rcvr)); })
+            .detach();
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
       }
     };
 
     template <class Receiver>
     auto connect(Receiver rcvr) && -> operation<Receiver>
     {
-      return {std::move(rcvr)};
+      return {std::move(rcvr), complete_inline_};
     }
 
     struct attrs
@@ -402,6 +411,8 @@ namespace
     {
       return {};
     }
+
+    bool complete_inline_ = true;
   };
 
   TEST_CASE("task co_awaiting inline|async_affine stopped sender does not deadlock",
@@ -444,6 +455,39 @@ namespace
   static_assert(!ex::sender_in<ex::task<void>, ex::env<>>);
   static_assert(!ex::sender_to<ex::task<void>, sink>);
   static_assert(ex::sender_in<ex::task<void>, ex::__sync_wait::__env>);
+
+  auto await_stopped_sender(bool complete_inline) -> ex::task<void>
+  {
+    co_await inline_affine_stopped_sender{complete_inline};
+  }
+
+  TEST_CASE("repro for NVIDIA/stdexec#2047", "[types][task]")
+  {
+    [[maybe_unused]]
+    // repeat this test 1000 times because it can expose race conditions
+    int  i    = GENERATE(repeat(1000, values({1})));
+    auto pool = exec::static_thread_pool(1);
+
+    auto scope = ex::counting_scope();
+    ex::spawn(ex::starts_on(pool.get_scheduler(), await_stopped_sender(true))
+                | ex::upon_error([](auto) noexcept { std::terminate(); }),
+              scope.get_token());
+    ex::sync_wait(scope.join());
+  }
+
+  TEST_CASE("repro for NVIDIA/stdexec#2047 async completion from another thread", "[types][task]")
+  {
+    [[maybe_unused]]
+    // repeat this test 1000 times because it can expose race conditions
+    int  i    = GENERATE(repeat(1000, values({1})));
+    auto pool = exec::static_thread_pool(1);
+
+    auto scope = ex::counting_scope();
+    ex::spawn(ex::starts_on(pool.get_scheduler(), await_stopped_sender(false))
+                | ex::upon_error([](auto) noexcept { std::terminate(); }),
+              scope.get_token());
+    ex::sync_wait(scope.join());
+  }
 
   // TODO: add tests for stop token support in task
 
