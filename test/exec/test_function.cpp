@@ -391,4 +391,91 @@ namespace
       REQUIRE(f4 == f5);
     }
   }
+
+  TEST_CASE("queries specification is order-independent", "[types][function]")
+  {
+    constexpr auto query1 = [](auto const &) noexcept
+    {
+      return 0;
+    };
+
+    constexpr auto query2 = [](auto const &, int i)
+    {
+      return (double) i;
+    };
+
+    using query1_t = decltype(query1);
+    using query2_t = decltype(query2);
+
+    using func1_t =
+      exec::function<int(int), exec::queries<int(query1_t) noexcept, double(query2_t, int)>>;
+
+    using func2_t =
+      exec::function<int(int), exec::queries<double(query2_t, int), int(query1_t) noexcept>>;
+
+    SECTION("the function types are not the same as each other...")
+    {
+      STATIC_REQUIRE(!std::same_as<func1_t, func2_t>);
+    }
+
+    SECTION("...but they both inherit from the same _func_impl base")
+    {
+      STATIC_REQUIRE(std::same_as<func1_t::base, func2_t::base>);
+    }
+
+    SECTION("move construction works in all directions with both types")
+    {
+      STATIC_REQUIRE(std::constructible_from<func1_t, func1_t>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func2_t>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func1_t>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func2_t>);
+    }
+
+    SECTION("copy construction works in all directions with both types")
+    {
+      STATIC_REQUIRE(std::constructible_from<func1_t, func1_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func1_t, func2_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func1_t const &>);
+      STATIC_REQUIRE(std::constructible_from<func2_t, func2_t const &>);
+    }
+
+    SECTION("move-assignment works in every direction with both types")
+    {
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func1_t>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func2_t>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func1_t>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func2_t>);
+    }
+
+    SECTION("copy-assignment works in every direction with both types")
+    {
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func1_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func1_t &, func2_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func1_t const &>);
+      STATIC_REQUIRE(std::assignable_from<func2_t &, func2_t const &>);
+    }
+
+    SECTION("instances are mutually comparable with ==")
+    {
+      // identical copies in slightly different types
+      func1_t f1(42, ex::just);
+      func2_t f2(f1);
+
+      // differing curried arguments from above
+      func1_t f3(45, ex::just);
+      func2_t f4(45, ex::just);
+
+      REQUIRE(f1 == f1);
+      REQUIRE(f1 == f2);
+      REQUIRE(f2 == f1);
+      REQUIRE(f2 == f2);
+
+      REQUIRE(f1 != f3);
+      REQUIRE(f3 != f1);
+      REQUIRE(f2 != f3);
+      REQUIRE(f3 != f2);
+
+      REQUIRE(f3 == f4);
+    }
+  }
 }  // namespace

@@ -17,10 +17,13 @@
 
 #include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
+#include "../stdexec/__detail/__static_vector.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
+#include "../stdexec/__detail/__typeinfo.hpp"
 #include "../stdexec/__detail/__utility.hpp"
 #include "../stdexec/functional.hpp"
 
@@ -287,10 +290,10 @@ namespace experimental::execution
     };
 
     template <class Sigs>
-    struct _canonical_t;
+    struct _canonical_fn;
 
     template <class... Sigs>
-    struct _canonical_t<completion_signatures<Sigs...>>
+    struct _canonical_fn<completion_signatures<Sigs...>>
     {
       consteval auto operator()() const noexcept
       {
@@ -303,18 +306,59 @@ namespace experimental::execution
       }
     };
 
-    template <class Sigs>
-    inline constexpr _canonical_t<Sigs> _canonical{};
+    template <class... Queries>
+    struct _canonical_fn<queries<Queries...>>
+    {
+     private:
+      // sort and unique the function types in Queries... into an array of __mtypeids
+      static consteval auto get_sigs() noexcept
+      {
+        using sig_array_t = __static_vector<__type_index, sizeof...(Queries)>;
+        auto sigs         = sig_array_t{__mtypeid<Queries>...};
+
+        std::ranges::sort(sigs);
+
+        auto const end = std::ranges::unique(sigs).begin();
+        sigs.erase(end, sigs.end());
+
+        return sigs;
+      }
+
+     public:
+      consteval auto operator()() const noexcept
+      {
+        constexpr auto sigs = get_sigs();
+
+        constexpr auto fn = [=]<std::size_t... Is>(__indices<Is...>)
+        {
+          return queries<__msplice<sigs[Is]>...>();
+        };
+
+        return fn(__make_indices<sigs.size()>());
+      }
+    };
+
+    template <>
+    struct _canonical_fn<queries<>>
+    {
+      consteval auto operator()() const noexcept
+      {
+        return queries<>();
+      }
+    };
 
     template <class Sigs>
-    using _canonical_sigs_t = decltype(_canonical<Sigs>());
+    inline constexpr _canonical_fn<Sigs> _canonical{};
+
+    template <class Sigs>
+    using _canonical_t = decltype(_canonical<Sigs>());
 
     // Given a return type and a bool indicating whether the function is noexcept,
     // compute the appropriate completion_signatures. The result is a set_value
     // overload taking either Return&& or no args when Return is void, set_stopped,
     // and, when the function type is not noexcept, set_error(std::exception_ptr)
     template <class Return, bool NoExcept>
-    using _sigs_from_t = _canonical_sigs_t<STDEXEC::__concat_completion_signatures_t<
+    using _sigs_from_t = _canonical_t<STDEXEC::__concat_completion_signatures_t<
       STDEXEC::completion_signatures<STDEXEC::__single_value_sig_t<Return>,
                                      STDEXEC::set_stopped_t()>,
       STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<NoExcept>>>>;
@@ -416,10 +460,10 @@ namespace experimental::execution
   template <class... Args, class Sigs>
     requires STDEXEC::__is_instance_of<Sigs, STDEXEC::completion_signatures>
   struct function<STDEXEC::sender_tag(Args...), Sigs>
-    : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_sigs_t<Sigs>, queries<>>
+    : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>
   {
     using base =
-      _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_sigs_t<Sigs>, queries<>>;
+      _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>;
 
     using base::base;
 
@@ -449,11 +493,11 @@ namespace experimental::execution
   struct function<Return(Args...), queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_sigs_from_t<Return, false>,
-                        queries<Queries...>>
+                        _func::_canonical_t<queries<Queries...>>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, false>,
-                                   queries<Queries...>>;
+                                   _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
 
@@ -483,11 +527,11 @@ namespace experimental::execution
   struct function<Return(Args...) noexcept, queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_sigs_from_t<Return, true>,
-                        queries<Queries...>>
+                        _func::_canonical_t<queries<Queries...>>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, true>,
-                                   queries<Queries...>>;
+                                   _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
 
@@ -518,13 +562,12 @@ namespace experimental::execution
                   STDEXEC::completion_signatures<Sigs...>,
                   queries<Queries...>>
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_canonical_sigs_t<STDEXEC::completion_signatures<Sigs...>>,
-                        queries<Queries...>>
+                        _func::_canonical_t<STDEXEC::completion_signatures<Sigs...>>,
+                        _func::_canonical_t<queries<Queries...>>>
   {
-    using base =
-      _func::_func_impl<STDEXEC::sender_tag(Args...),
-                        _func::_canonical_sigs_t<STDEXEC::completion_signatures<Sigs...>>,
-                        queries<Queries...>>;
+    using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
+                                   _func::_canonical_t<STDEXEC::completion_signatures<Sigs...>>,
+                                   _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
 

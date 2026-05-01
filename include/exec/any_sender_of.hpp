@@ -56,7 +56,8 @@ namespace experimental::execution
 
   template <class... Sigs>
     requires(_qry_detail::is_query_function_v<Sigs> && ...)
-  struct queries;
+  struct queries
+  {};
 
   template <class Sigs, class Queries = queries<>>
   struct any_receiver;
