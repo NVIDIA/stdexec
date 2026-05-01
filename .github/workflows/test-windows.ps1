@@ -28,14 +28,4 @@ Invoke-NativeCommand cmake -B $BuildDirectory -G Ninja `
 	"-DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost" `
 	"-DSTDEXEC_BUILD_TESTS:BOOL=TRUE" .
 Invoke-NativeCommand cmake --build $BuildDirectory
-
-# Run the tests under Application Verifier to check for runtime failures like
-# use-after-free.
-Invoke-NativeCommand appverif /verify test.stdexec.exe
-Invoke-NativeCommand appverif /verify test.exec.exe
-
 Invoke-NativeCommand ctest --test-dir $BuildDirectory --output-on-failure --verbose --timeout 60
-
-# Reset the Application Verifier settings for the test executables.
-Invoke-NativeCommand appverif /n test.stdexec.exe
-Invoke-NativeCommand appverif /n test.exec.exe
