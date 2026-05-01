@@ -307,6 +307,9 @@ namespace STDEXEC
   concept __nothrow_assignable_from = STDEXEC_IS_NOTHROW_ASSIGNABLE(_Ty, _A);
 
   template <class... _Ts>
+  concept __move_assignable = (__assignable_from<_Ts, _Ts> && ...);
+
+  template <class... _Ts>
   concept __nothrow_move_assignable = (__nothrow_assignable_from<_Ts, _Ts> && ...);
 
   template <class... _Ts>

@@ -468,9 +468,39 @@ namespace STDEXEC::__any
     template <class _Fn, class... _Args>
     constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       noexcept(__nothrow_callable<_Fn, _Args...>)
-      : __val_(static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...))
     {
       static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
+      new ((void *) std::addressof(__val_))
+        _Value(static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...));
+    }
+
+    constexpr __box(__box &&__other) noexcept(__nothrow_move_constructible<_Value>)
+      requires __std::move_constructible<_Value>
+      : __val_(static_cast<_Value &&>(__other).__val_)
+    {}
+
+    constexpr __box(__box const &__other) noexcept(__nothrow_copy_constructible<_Value>)
+      requires __std::copy_constructible<_Value>
+      : __val_(__other.__val_)
+    {}
+
+    constexpr ~__box()
+    {
+      __val_.~_Value();
+    }
+
+    constexpr __box &operator=(__box &&__rhs) noexcept(__nothrow_move_assignable<_Value>)
+      requires __move_assignable<_Value>
+    {
+      __val_ = static_cast<__box &&>(__rhs).__val_;
+      return *this;
+    }
+
+    constexpr __box &operator=(__box const &__rhs) noexcept(__nothrow_copy_assignable<_Value>)
+      requires __copy_assignable<_Value>
+    {
+      __val_ = __rhs.__val_;
+      return *this;
     }
 
     template <class _Self>
@@ -482,7 +512,10 @@ namespace STDEXEC::__any
 
    private:
     STDEXEC_ATTRIBUTE(no_unique_address)
-    _Value __val_;
+    union
+    {
+      _Value __val_;
+    };
   };
 
   template <class _Interface, __box_kind _BoxKind>
