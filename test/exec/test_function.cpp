@@ -181,60 +181,60 @@ namespace
     REQUIRE(ret == 42);
   }
 
+  struct iface
+  {
+    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+  };
+
+  struct iface2
+  {
+    exec::function<int(iface2 const *) noexcept> get_i_from_base() const noexcept
+    {
+      return exec::function<int(iface2 const *) noexcept>(this, &iface2::get_i_virtually);
+    }
+
+    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+  };
+
+  struct impl
+    : iface
+    , iface2
+  {
+    explicit impl(int i) noexcept
+      : i_(i)
+    {}
+
+    auto just_i() const noexcept
+    {
+      return ex::just(i_);
+    }
+
+    static auto static_just_i(impl const *self) noexcept
+    {
+      return self->just_i();
+    }
+
+    exec::function<int() noexcept> get_i_with_capture() const noexcept
+    {
+      return exec::function<int() noexcept>([this]() noexcept { return just_i(); });
+    }
+
+    exec::function<int(impl const *) noexcept> get_i_with_pmfn() const noexcept
+    {
+      return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
+    }
+
+    exec::function<int() noexcept> get_i_virtually() const noexcept override
+    {
+      return get_i_with_capture();
+    }
+
+   private:
+    int i_;
+  };
+
   TEST_CASE("exec::function accepts small trivially-copyable callables", "[types][function]")
   {
-    struct iface
-    {
-      virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
-    };
-
-    struct iface2
-    {
-      exec::function<int(iface2 const *) noexcept> get_i_from_base() const noexcept
-      {
-        return exec::function<int(iface2 const *) noexcept>(this, &iface2::get_i_virtually);
-      }
-
-      virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
-    };
-
-    struct impl
-      : iface
-      , iface2
-    {
-      explicit impl(int i) noexcept
-        : i_(i)
-      {}
-
-      auto just_i() const noexcept
-      {
-        return ex::just(i_);
-      }
-
-      static auto static_just_i(impl const *self) noexcept
-      {
-        return self->just_i();
-      }
-
-      exec::function<int() noexcept> get_i_with_capture() const noexcept
-      {
-        return exec::function<int() noexcept>([this]() noexcept { return just_i(); });
-      }
-
-      exec::function<int(impl const *) noexcept> get_i_with_pmfn() const noexcept
-      {
-        return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
-      }
-
-      exec::function<int() noexcept> get_i_virtually() const noexcept override
-      {
-        return get_i_with_capture();
-      }
-
-     private:
-      int i_;
-    };
-
     SECTION("function<int() noexcept> accepts a lambda capturing this")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_with_capture()).value();
