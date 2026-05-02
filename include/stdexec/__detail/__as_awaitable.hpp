@@ -317,7 +317,6 @@ namespace STDEXEC
 
       STDEXEC_CONSTEXPR_CXX23 auto
       await_suspend([[maybe_unused]] __std::coroutine_handle<> __continuation) noexcept
-        -> STDEXEC_PP_IIF(STDEXEC_MSVC(), void, __std::coroutine_handle<>)
       {
         STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
 
@@ -329,25 +328,17 @@ namespace STDEXEC
         //    proceed to resume().
         //  - If T2 hasn't run yet, it will see {} from its load in __done() and
         //    skip the spin entirely
-        std::thread::id const __old_id = this->__thread_id_.exchange(std::thread::id{},
-                                                                     __std::memory_order_release);
+        bool const __done =  //
+          this->__thread_id_.exchange(std::thread::id{}, __std::memory_order_release)
+          == std::thread::id{};
 
-#  if !STDEXEC_MSVC()
-        if (__old_id == std::thread::id{})
-        {
-          // The receiver already cleared __thread_id_, so it completed on the same
-          // thread. Resume the continuation directly.
-          return this->__get_continuation();
-        }
-        return __std::noop_coroutine();
+        // If the receiver already cleared __thread_id_, it completed on the same thread.
+        // Resume the continuation directly.
+#  if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
+        return __done ? this->__get_continuation() : __std::noop_coroutine();
 #  else
-        if (__old_id == std::thread::id{})
-        {
-          // The receiver already cleared __thread_id_, so it completed on the same
-          // thread. Resume the continuation directly.
-          STDEXEC_ATTRIBUTE(musttail)
-          return STDEXEC::__coroutine_resume_nothrow(this->__get_continuation());
-        }
+        if (__done)
+          STDEXEC::__coroutine_resume_nothrow(this->__get_continuation());
 #  endif
       }
 

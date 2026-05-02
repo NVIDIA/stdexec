@@ -24,6 +24,10 @@
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 
+#  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1950
+#    define STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+#  endif
+
 namespace STDEXEC
 {
   template <class _Tp, __one_of<_Tp, void> _Up>
@@ -179,7 +183,7 @@ namespace STDEXEC
       sizeof(__synthetic_coro_frame));
   }  // namespace __detail
 
-#  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1950
+#  if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates
@@ -189,8 +193,8 @@ namespace STDEXEC
   // implementation when NRVO is in play.
 
   // This workaround delays the destruction of the suspended coroutine by wrapping the
-  // continuation in another "synthetic" coroutine the resumes the continuation and *then*
-  // destroys the suspended coroutine.
+  // continuation in another "synthetic" coroutine that resumes the continuation and
+  // *then* destroys the suspended coroutine.
 
   // The wrapping coroutine frame is thread-local and reused within the thread for each
   // destroy-and-continue sequence.
@@ -201,10 +205,10 @@ namespace STDEXEC
     {
       // Make a local copy of the promise to ensure we can safely destroy the suspended
       // coroutine after resuming the continuation.
-      auto __promise = static_cast<__destroy_and_continue_frame*>(__address)->__promise_;
-      STDEXEC::__coroutine_resume_nothrow(__promise.__continue_);
-      STDEXEC_ATTRIBUTE(musttail)
-      return STDEXEC::__coroutine_destroy_nothrow(__promise.__destroy_.address());
+      auto& __self = *static_cast<__destroy_and_continue_frame*>(__address);
+      auto __destroy = __self.__promise_.__destroy_;
+      STDEXEC::__coroutine_resume_nothrow(__self.__promise_.__continue_);
+      STDEXEC::__coroutine_destroy_nothrow(__destroy);
     }
 
     struct __promise
@@ -226,9 +230,8 @@ namespace STDEXEC
     {
       // Make a local copy of the promise since it will go away once we call through
       // the __unhandled_stopped_fn_ function pointer.
-      auto __promise = static_cast<__unhandled_stopped_frame*>(__address)->__promise_;
-      STDEXEC_ATTRIBUTE(musttail)
-      return STDEXEC::__coroutine_resume_nothrow(__promise.__coro_.unhandled_stopped().address());
+      auto& __self = *static_cast<__unhandled_stopped_frame*>(__address);
+      STDEXEC::__coroutine_resume_nothrow(__self.__promise_.__coro_.unhandled_stopped());
     }
 
     struct __promise

@@ -379,6 +379,8 @@ namespace STDEXEC::__std
 
 #if STDEXEC_MSVC() && !STDEXEC_CLANG_CL() && STDEXEC_MSVC_VERSION >= 1950
 #  define STDEXEC_ATTR_WHICH_10(_ATTR) [[msvc::musttail]]
+#elif STDEXEC_HAS_CPP_ATTRIBUTE(clang::musttail)
+#  define STDEXEC_ATTR_WHICH_10(_ATTR) [[clang::musttail]]
 #elif STDEXEC_HAS_CPP_ATTRIBUTE(gnu::musttail)
 #  define STDEXEC_ATTR_WHICH_10(_ATTR) [[gnu::musttail]]
 #else
