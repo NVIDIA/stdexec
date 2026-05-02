@@ -224,28 +224,6 @@ namespace STDEXEC
     {&__destroy_and_continue_frame::__resume},
     {}};
 
-  // struct __unhandled_stopped_frame : __detail::__synthetic_coro_frame
-  // {
-  //   static void __resume(void* __address) noexcept
-  //   {
-  //     // Make a local copy of the promise since it will go away once we call through
-  //     // the __unhandled_stopped_fn_ function pointer.
-  //     auto& __self = *static_cast<__unhandled_stopped_frame*>(__address);
-  //     STDEXEC::__coroutine_resume_nothrow(__self.__promise_.__coro_.unhandled_stopped());
-  //   }
-
-  //   struct __promise
-  //   {
-  //     __coroutine_handle<> __coro_;
-  //   } __promise_;
-
-  //   static thread_local __unhandled_stopped_frame value;
-  // };
-
-  // inline thread_local __unhandled_stopped_frame __unhandled_stopped_frame::value{
-  //   {&__unhandled_stopped_frame::__resume},
-  //   {}};
-
   inline auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __destroy,            //
                                                __std::coroutine_handle<> __continue) noexcept  //
     -> __std::coroutine_handle<>
@@ -254,13 +232,6 @@ namespace STDEXEC
     __destroy_and_continue_frame::value.__promise_.__continue_ = __continue;
     return __std::coroutine_handle<>::from_address(&__destroy_and_continue_frame::value);
   }
-
-  // inline auto __coroutine_unhandled_stopped(__coroutine_handle<> __coro) noexcept  //
-  //   -> __std::coroutine_handle<>
-  // {
-  //   __unhandled_stopped_frame::value.__promise_.__coro_ = __coro;
-  //   return __std::coroutine_handle<>::from_address(&__unhandled_stopped_frame::value);
-  // }
 
 #  else
 
@@ -273,21 +244,7 @@ namespace STDEXEC
     return __continue;
   }
 
-  // STDEXEC_ATTRIBUTE(always_inline)
-  // auto __coroutine_unhandled_stopped(__coroutine_handle<> __coro) noexcept  //
-  //   -> __std::coroutine_handle<>
-  // {
-  //   return __coro.unhandled_stopped();
-  // }
-
 #  endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
-
-  STDEXEC_ATTRIBUTE(always_inline)
-  auto __coroutine_unhandled_stopped(__coroutine_handle<> __coro) noexcept  //
-    -> __std::coroutine_handle<>
-  {
-    return __coro.unhandled_stopped();
-  }
 
 }  // namespace STDEXEC
 

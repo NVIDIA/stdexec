@@ -672,7 +672,7 @@ namespace experimental::execution
           if constexpr (requires { __coro_.promise().stop_requested() ? 0 : 1; })
           {
             if (__coro_.promise().stop_requested())
-              return STDEXEC::__coroutine_unhandled_stopped(__parent);
+              return __parent.unhandled_stopped();
           }
           return __coro_;
         }

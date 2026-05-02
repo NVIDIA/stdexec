@@ -135,7 +135,7 @@ namespace STDEXEC
         // as normal.
         if (__result_.__is_valueless())
         {
-          return STDEXEC::__coroutine_unhandled_stopped(__continuation_);
+          return __continuation_.unhandled_stopped();
         }
         else
         {
