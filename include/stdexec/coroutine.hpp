@@ -205,8 +205,8 @@ namespace STDEXEC
     {
       // Make a local copy of the promise to ensure we can safely destroy the suspended
       // coroutine after resuming the continuation.
-      auto& __self = *static_cast<__destroy_and_continue_frame*>(__address);
-      auto __destroy = __self.__promise_.__destroy_;
+      auto& __self    = *static_cast<__destroy_and_continue_frame*>(__address);
+      auto  __destroy = __self.__promise_.__destroy_;
       STDEXEC::__coroutine_resume_nothrow(__self.__promise_.__continue_);
       STDEXEC::__coroutine_destroy_nothrow(__destroy);
     }
