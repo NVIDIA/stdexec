@@ -126,22 +126,10 @@ namespace experimental::execution
     // given the concrete receiver's environment, choose the frame allocator; first choice
     // is the result of get_frame_allocator(env), second choice is get_allocator(env), and
     // the default is std::allocator
-    template <class Env>
-    constexpr auto choose_frame_allocator(Env const &env) noexcept
-    {
-      if constexpr (requires { get_frame_allocator(env); })
-      {
-        return get_frame_allocator(env);
-      }
-      else if constexpr (requires { get_allocator(env); })
-      {
-        return get_allocator(env);
-      }
-      else
-      {
-        return std::allocator<std::byte>();
-      }
-    }
+    inline constexpr auto choose_frame_allocator =
+      STDEXEC::__first_callable{get_frame_allocator,
+                                get_allocator,
+                                STDEXEC::__always{std::allocator<std::byte>()}};
 
     template <class... Args, size_t... I>
     bool _equal(std::index_sequence<I...>, __tuple<Args...> const &lhs, __tuple<Args...> const &rhs)
