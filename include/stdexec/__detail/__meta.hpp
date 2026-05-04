@@ -414,9 +414,9 @@ namespace STDEXEC
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
-#if STDEXEC_GCC()
-  // GCC can not mangle builtins. __mangle_t introduces an
-  // indirection that hides the builtin from the mangler.
+#if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1800)
+  // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an indirection
+  // that hides the builtin from the mangler.
   template <template <class...> class _Fn, class... _Args>
   using __mmangle_t = __mmemoize_q<_Fn, _Args...>;
 #else
