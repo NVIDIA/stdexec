@@ -36,7 +36,7 @@
 
 // This file defines function<ReturnType(Arguments...)>, which is a
 // type-erased sender that can complete with
-//  - set_value(ReturnType&&)
+//  - set_value(ReturnType)
 //  - set_error(std::exception_ptr)
 //  - set_stopped()
 //
