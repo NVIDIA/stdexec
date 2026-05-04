@@ -376,10 +376,15 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, false>, queries<>>
     , _func::_func_ops_crtp<function<Return(Args...)>>
   {
+   private:
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, false>,
                                    queries<>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 
@@ -388,9 +393,14 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>
     , _func::_func_ops_crtp<function<Return(Args...) noexcept>>
   {
+   private:
     using base =
       _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 
@@ -400,9 +410,14 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>
     , _func::_func_ops_crtp<function<STDEXEC::sender_tag(Args...), Sigs>>
   {
+   private:
     using base =
       _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 
@@ -413,10 +428,15 @@ namespace experimental::execution
                         _func::_canonical_t<queries<Queries...>>>
     , _func::_func_ops_crtp<function<Return(Args...), queries<Queries...>>>
   {
+   private:
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, false>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 
@@ -427,10 +447,15 @@ namespace experimental::execution
                         _func::_canonical_t<queries<Queries...>>>
     , _func::_func_ops_crtp<function<Return(Args...) noexcept, queries<Queries...>>>
   {
+   private:
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, true>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 
@@ -445,10 +470,15 @@ namespace experimental::execution
                                      STDEXEC::completion_signatures<Sigs...>,
                                      queries<Queries...>>>
   {
+   private:
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_canonical_t<STDEXEC::completion_signatures<Sigs...>>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
+    template <class, class, template <class> class, template <class> class>
+    friend struct std::basic_common_reference;
+
+   public:
     using base::base;
   };
 }  // namespace experimental::execution
