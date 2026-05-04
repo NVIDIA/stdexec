@@ -304,15 +304,6 @@ namespace experimental::execution
       }
     };
 
-    template <>
-    struct _canonical_fn<queries<>>
-    {
-      consteval auto operator()() const noexcept
-      {
-        return queries<>();
-      }
-    };
-
     template <class Sigs>
     inline constexpr _canonical_fn<Sigs> _canonical{};
 
