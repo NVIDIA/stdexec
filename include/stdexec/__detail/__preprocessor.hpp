@@ -49,12 +49,24 @@
   STDEXEC_PP_EXPAND(STDEXEC_PP_COUNT_I(__VA_ARGS__, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 #define STDEXEC_PP_COUNT_I(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _NP, ...) _NP
 
+#define STDEXEC_PP_FRONT_I(_A1, ...) _A1
+#define STDEXEC_PP_FRONT(...)        __VA_OPT__(STDEXEC_PP_FRONT_I(__VA_ARGS__))
+
 // Used to check various properties of arguments
 #define STDEXEC_PP_CHECK_EXPAND(...)      __VA_ARGS__
 #define STDEXEC_PP_CHECK_I(_XP, _NP, ...) _NP
 #define STDEXEC_PP_CHECK(...)             STDEXEC_PP_CHECK_EXPAND(STDEXEC_PP_CHECK_I(__VA_ARGS__, 0, ))
 #define STDEXEC_PP_PROBE_I(_XP, _NP, ...) _XP, _NP,
 #define STDEXEC_PP_PROBE(...)             STDEXEC_PP_PROBE_I(__VA_ARGS__, 1)
+
+// PP switch statement
+#define STDEXEC_PP_CASE_LABEL_(_PREFIX, ...) \
+  STDEXEC_PP_EVAL(STDEXEC_PP_CHECK, \
+                  STDEXEC_PP_CAT(_PREFIX##_SWITCH_, STDEXEC_PP_FRONT(__VA_ARGS__)), \
+                  DEFAULT(STDEXEC_PP_FRONT(__VA_ARGS__)), )
+#define STDEXEC_PP_CASE(_ARG) STDEXEC_PP_PROBE(~, _ARG)
+#define STDEXEC_PP_SWITCH(_PREFIX, ...) \
+  STDEXEC_PP_CAT(_PREFIX##_CASE_, STDEXEC_PP_CASE_LABEL_(_PREFIX, __VA_ARGS__))
 
 // Boolean logic
 #define STDEXEC_PP_NOT(_XP)          STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_PP_NOT_, _XP))
@@ -89,8 +101,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define STDEXEC_PP_FRONT_I(_A1, ...) _A1
-#define STDEXEC_PP_FRONT(...)        __VA_OPT__(STDEXEC_PP_FRONT_I(__VA_ARGS__))
 #define STDEXEC_PP_BACK_AGAIN()      STDEXEC_PP_BACK_I
 #define STDEXEC_PP_BACK_I(_A1, ...)                                                                \
   STDEXEC_PP_FRONT(__VA_OPT__(, ) _A1, )                                                           \
