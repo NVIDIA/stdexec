@@ -362,34 +362,6 @@ namespace
       STATIC_REQUIRE(std::assignable_from<func3_t &, func2_t const &>);
       STATIC_REQUIRE(std::assignable_from<func3_t &, func3_t const &>);
     }
-
-    SECTION("instances are mutually comparable with ==")
-    {
-      // identical copies in slightly different types
-      func1_t f1(42, ex::just);
-      func2_t f2(f1);
-      func3_t f3(f1);
-
-      // differing curried arguments from above
-      func2_t f4(45, ex::just);
-      func3_t f5(45, ex::just);
-
-      REQUIRE(f1 == f1);
-      REQUIRE(f1 == f2);
-      REQUIRE(f1 == f3);
-      REQUIRE(f2 == f1);
-      REQUIRE(f2 == f2);
-      REQUIRE(f2 == f3);
-      REQUIRE(f3 == f1);
-      REQUIRE(f3 == f2);
-      REQUIRE(f3 == f3);
-
-      REQUIRE(f1 != f4);
-      REQUIRE(f2 != f4);
-      REQUIRE(f3 != f4);
-
-      REQUIRE(f4 == f5);
-    }
   }
 
   TEST_CASE("queries specification is order-independent", "[types][function]")
@@ -453,29 +425,6 @@ namespace
       STATIC_REQUIRE(std::assignable_from<func1_t &, func2_t const &>);
       STATIC_REQUIRE(std::assignable_from<func2_t &, func1_t const &>);
       STATIC_REQUIRE(std::assignable_from<func2_t &, func2_t const &>);
-    }
-
-    SECTION("instances are mutually comparable with ==")
-    {
-      // identical copies in slightly different types
-      func1_t f1(42, ex::just);
-      func2_t f2(f1);
-
-      // differing curried arguments from above
-      func1_t f3(45, ex::just);
-      func2_t f4(45, ex::just);
-
-      REQUIRE(f1 == f1);
-      REQUIRE(f1 == f2);
-      REQUIRE(f2 == f1);
-      REQUIRE(f2 == f2);
-
-      REQUIRE(f1 != f3);
-      REQUIRE(f3 != f1);
-      REQUIRE(f2 != f3);
-      REQUIRE(f3 != f2);
-
-      REQUIRE(f3 == f4);
     }
   }
 }  // namespace

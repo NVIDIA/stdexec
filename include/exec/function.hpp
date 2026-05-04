@@ -131,20 +131,6 @@ namespace experimental::execution
                                 get_allocator,
                                 STDEXEC::__always{std::allocator<std::byte>()}};
 
-    template <class... Args, size_t... I>
-    bool _equal(std::index_sequence<I...>, __tuple<Args...> const &lhs, __tuple<Args...> const &rhs)
-      noexcept(noexcept(((__get<I>(lhs) == __get<I>(rhs)) && ...)))
-    {
-      return ((__get<I>(lhs) == __get<I>(rhs)) && ...);
-    }
-
-    template <class... Args>
-    bool _equal(__tuple<Args...> const &lhs, __tuple<Args...> const &rhs)
-      noexcept(noexcept(_equal(std::index_sequence_for<Args...>{}, lhs, rhs)))
-    {
-      return _equal(std::index_sequence_for<Args...>{}, lhs, rhs);
-    }
-
     template <class Args, class Sigs, class Queries>
     class _func_impl;
 
@@ -182,15 +168,6 @@ namespace experimental::execution
       // The curried arguments that will be passed to make_sender_ from inside make_op_.
       STDEXEC_ATTRIBUTE(no_unique_address)
       STDEXEC::__tuple<Args...> args_;
-
-      // equal args and equal pointers-to-factories are equal
-      friend constexpr bool operator==(_func_impl const &lhs, _func_impl const &rhs)
-        noexcept(noexcept(_equal(lhs.args_, rhs.args_)))
-      {
-        return lhs.make_op_ == rhs.make_op_
-            && std::ranges::equal(lhs.make_sender_, rhs.make_sender_)
-            && _equal(lhs.args_, rhs.args_);
-      }
 
      public:
       using sender_concept = SndrCncpt;
