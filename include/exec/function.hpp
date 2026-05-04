@@ -351,6 +351,26 @@ namespace experimental::execution
       STDEXEC::completion_signatures<STDEXEC::__single_value_sig_t<Return>,
                                      STDEXEC::set_stopped_t()>,
       STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<NoExcept>>>>;
+
+    template <class Derived>
+    struct _func_ops_crtp
+    {
+      template <class Base>
+        requires std::same_as<Base, typename Derived::base>
+      Derived &operator=(Base &&other) noexcept(STDEXEC::__nothrow_move_assignable<Base>)
+      {
+        Base::operator=(static_cast<Base &&>(other));
+        return *static_cast<Derived *>(this);
+      }
+
+      template <class Base>
+        requires std::same_as<Base, typename Derived::base> && STDEXEC::__copy_assignable<Base>
+      Derived &operator=(Base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<Base>)
+      {
+        Base::operator=(other);
+        return *static_cast<Derived *>(this);
+      }
+    };
   }  // namespace _func
 
   // the user-facing interface to exec::function that supports several different declaration
@@ -386,96 +406,36 @@ namespace experimental::execution
   // completion signatures
   struct function<Return(Args...)>
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, false>, queries<>>
+    , _func::_func_ops_crtp<function<Return(Args...)>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, false>,
                                    queries<>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 
   template <class Return, class... Args>
   struct function<Return(Args...) noexcept>
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>
+    , _func::_func_ops_crtp<function<Return(Args...) noexcept>>
   {
     using base =
       _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_sigs_from_t<Return, true>, queries<>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 
   template <class... Args, class Sigs>
     requires STDEXEC::__is_instance_of<Sigs, STDEXEC::completion_signatures>
   struct function<STDEXEC::sender_tag(Args...), Sigs>
     : _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>
+    , _func::_func_ops_crtp<function<STDEXEC::sender_tag(Args...), Sigs>>
   {
     using base =
       _func::_func_impl<STDEXEC::sender_tag(Args...), _func::_canonical_t<Sigs>, queries<>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 
   template <class Return, class... Args, class... Queries>
@@ -483,33 +443,13 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_sigs_from_t<Return, false>,
                         _func::_canonical_t<queries<Queries...>>>
+    , _func::_func_ops_crtp<function<Return(Args...), queries<Queries...>>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, false>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 
   template <class Return, class... Args, class... Queries>
@@ -517,33 +457,13 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_sigs_from_t<Return, true>,
                         _func::_canonical_t<queries<Queries...>>>
+    , _func::_func_ops_crtp<function<Return(Args...) noexcept, queries<Queries...>>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_sigs_from_t<Return, true>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 
   template <class... Args, class... Sigs, class... Queries>
@@ -553,33 +473,15 @@ namespace experimental::execution
     : _func::_func_impl<STDEXEC::sender_tag(Args...),
                         _func::_canonical_t<STDEXEC::completion_signatures<Sigs...>>,
                         _func::_canonical_t<queries<Queries...>>>
+    , _func::_func_ops_crtp<function<STDEXEC::sender_tag(Args...),
+                                     STDEXEC::completion_signatures<Sigs...>,
+                                     queries<Queries...>>>
   {
     using base = _func::_func_impl<STDEXEC::sender_tag(Args...),
                                    _func::_canonical_t<STDEXEC::completion_signatures<Sigs...>>,
                                    _func::_canonical_t<queries<Queries...>>>;
 
     using base::base;
-
-    function(function &&)      = default;
-    function(function const &) = default;
-
-    ~function() = default;
-
-    function &operator=(function &&)      = default;
-    function &operator=(function const &) = default;
-
-    function &operator=(base &&other) noexcept(STDEXEC::__nothrow_move_assignable<base>)
-    {
-      base::operator=(static_cast<base &&>(other));
-      return *this;
-    };
-
-    function &operator=(base const &other) noexcept(STDEXEC::__nothrow_copy_assignable<base>)
-      requires STDEXEC::__copy_assignable<base>
-    {
-      base::operator=(other);
-      return *this;
-    }
   };
 }  // namespace experimental::execution
 
