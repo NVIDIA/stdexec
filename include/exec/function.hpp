@@ -600,6 +600,19 @@ namespace std
     using type = common_reference_t<TQual<base>, UQual<base>>;
   };
 
+  template <class... FuncArgs, template <class> class TQual, template <class> class UQual>
+  struct basic_common_reference<typename exec::function<FuncArgs...>::base,
+                                exec::function<FuncArgs...>,
+                                TQual,
+                                UQual>
+  {
+   private:
+    using base = exec::function<FuncArgs...>::base;
+
+   public:
+    using type = common_reference_t<TQual<base>, UQual<base>>;
+  };
+
   template <class... TArgs,
             class... UArgs,
             template <class> class TQual,
