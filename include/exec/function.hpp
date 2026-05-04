@@ -195,7 +195,7 @@ namespace experimental::execution
      public:
       using sender_concept = SndrCncpt;
 
-      template <std::invocable<Args...> Factory>
+      template <STDEXEC::__invocable<Args...> Factory>
         requires STDEXEC::__not_decays_to<Factory, _func_impl>  //
               && (STDEXEC_IS_TRIVIALLY_COPYABLE(Factory))       //
               && (sizeof(Factory) <= sizeof(make_sender_))      //
@@ -218,7 +218,8 @@ namespace experimental::execution
                                          std::allocator_arg,
                                          alloc,
                                          STDEXEC::connect,
-                                         std::invoke(make_sender, static_cast<Args &&>(args)...),
+                                         STDEXEC::__invoke(make_sender,
+                                                           static_cast<Args &&>(args)...),
                                          static_cast<_receiver_t &&>(rcvr));
         };
       }
