@@ -88,7 +88,7 @@ namespace experimental::execution
     class _func_op;
 
     // The concrete operation state resulting from connecting a function<...> to a concrete
-    // receiver of type Receiver. This type manages a dynamically-allocated _derived_op instance,
+    // receiver of type Receiver. This type manages an _any::_any_opstate_base instance,
     // which is the type-erased operation state resulting from connecting the type-erased sender
     // to an _any::_any_receiver_ref with the given completion signatures and queries.
     template <class Receiver, class... Sigs, class... Queries>
