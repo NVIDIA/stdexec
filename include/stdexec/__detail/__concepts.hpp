@@ -301,10 +301,22 @@ namespace STDEXEC
   concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, _Ts const &> && ...);
 
   template <class _Ty, class _A>
+  concept __assignable_from = STDEXEC_IS_ASSIGNABLE(_Ty, _A);
+
+  template <class _Ty, class _A>
   concept __nothrow_assignable_from = STDEXEC_IS_NOTHROW_ASSIGNABLE(_Ty, _A);
 
   template <class... _Ts>
+  concept __move_assignable = (__assignable_from<_Ts, _Ts> && ...);
+
+  template <class... _Ts>
   concept __nothrow_move_assignable = (__nothrow_assignable_from<_Ts, _Ts> && ...);
+
+  template <class... _Ts>
+  concept __copy_assignable = (__assignable_from<_Ts, _Ts const &> && ...);
+
+  template <class... _Ts>
+  concept __nothrow_copy_assignable = (__nothrow_assignable_from<_Ts, _Ts const &> && ...);
 
   template <class... _Ts>
   concept __decay_copyable = (__std::constructible_from<__decay_t<_Ts>, _Ts> && ...);

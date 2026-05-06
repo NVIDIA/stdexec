@@ -465,6 +465,7 @@ namespace STDEXEC::__any
       : __val_(static_cast<_Args &&>(__args)...)
     {}
 
+#if !STDEXEC_GCC()
     template <class _Fn, class... _Args>
     constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       noexcept(__nothrow_callable<_Fn, _Args...>)
@@ -472,6 +473,50 @@ namespace STDEXEC::__any
     {
       static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
     }
+#else
+    template <class _Fn, class... _Args>
+    constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
+      noexcept(__nothrow_callable<_Fn, _Args...>)
+    {
+      // for unknown reasons, GCC (sometimes) doesn't like initializing __val_ with the
+      // result of this function call in the member initialization clause when _Value
+      // is immovable even though the conditions should be right to trigger C++17's
+      // mandatory copy elision, but this in-place new into an uninitialized anonymous
+      // union member works just fine
+      static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
+      new ((void *) std::addressof(__val_))
+        _Value(static_cast<_Fn &&>(__fn)(static_cast<_Args &&>(__args)...));
+    }
+
+    constexpr __box(__box &&__other) noexcept(__nothrow_move_constructible<_Value>)
+      requires __std::move_constructible<_Value>
+      : __val_(static_cast<_Value &&>(__other).__val_)
+    {}
+
+    constexpr __box(__box const &__other) noexcept(__nothrow_copy_constructible<_Value>)
+      requires __std::copy_constructible<_Value>
+      : __val_(__other.__val_)
+    {}
+
+    constexpr ~__box()
+    {
+      __val_.~_Value();
+    }
+
+    constexpr __box &operator=(__box &&__rhs) noexcept(__nothrow_move_assignable<_Value>)
+      requires __move_assignable<_Value>
+    {
+      __val_ = static_cast<__box &&>(__rhs).__val_;
+      return *this;
+    }
+
+    constexpr __box &operator=(__box const &__rhs) noexcept(__nothrow_copy_assignable<_Value>)
+      requires __copy_assignable<_Value>
+    {
+      __val_ = __rhs.__val_;
+      return *this;
+    }
+#endif
 
     template <class _Self>
     [[nodiscard]]
@@ -481,8 +526,16 @@ namespace STDEXEC::__any
     }
 
    private:
+#if !STDEXEC_GCC()
     STDEXEC_ATTRIBUTE(no_unique_address)
     _Value __val_;
+#else
+    union
+    {
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      _Value __val_;
+    };
+#endif
   };
 
   template <class _Interface, __box_kind _BoxKind>

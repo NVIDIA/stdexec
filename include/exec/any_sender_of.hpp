@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../stdexec/__detail/__any.hpp"
+#include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 
@@ -28,8 +29,35 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Woverloaded-virtual")
 
 namespace experimental::execution
 {
+  namespace _qry_detail
+  {
+    template <class Sig, bool Nothrow>
+    struct _env_archetype;
+
+    template <class Return, class Query, class... Args, bool Nothrow>
+    struct _env_archetype<Return(Query, Args...), Nothrow>
+    {
+      Return query(Query, Args &&...) const noexcept(Nothrow);
+    };
+
+    using namespace STDEXEC;
+
+    template <class Sig>
+    inline constexpr bool is_query_function_v = false;
+
+    template <class Return, class Query, class... Args>
+    inline constexpr bool is_query_function_v<Return(Query, Args...)> =
+      __callable<Query, _env_archetype<Return(Query, Args...), false> const &, Args...>;
+
+    template <class Return, class Query, class... Args>
+    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept> =
+      __nothrow_callable<Query, _env_archetype<Return(Query, Args...), true> const &, Args...>;
+  }  // namespace _qry_detail
+
   template <class... Sigs>
-  struct queries;
+    requires(_qry_detail::is_query_function_v<Sigs> && ...)
+  struct queries
+  {};
 
   template <class Sigs, class Queries = queries<>>
   struct any_receiver;

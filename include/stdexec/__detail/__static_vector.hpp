@@ -160,6 +160,18 @@ namespace STDEXEC
     __static_vector() = default;
 
     [[nodiscard]]
+    constexpr auto operator[](std::size_t) noexcept -> value_type &
+    {
+      STDEXEC_ASSERT(false);
+    }
+
+    [[nodiscard]]
+    constexpr auto operator[](std::size_t) const noexcept -> value_type const &
+    {
+      STDEXEC_ASSERT(false);
+    }
+
+    [[nodiscard]]
     constexpr auto begin() noexcept -> iterator
     {
       return nullptr;
@@ -193,6 +205,14 @@ namespace STDEXEC
     static constexpr auto capacity() noexcept -> std::size_t
     {
       return 0;
+    }
+
+    constexpr auto erase(const_iterator __first, const_iterator __last) noexcept -> iterator
+    {
+      STDEXEC_ASSERT(__first == __last);
+      STDEXEC_ASSERT(__first == nullptr);
+
+      return end();
     }
   };
 
