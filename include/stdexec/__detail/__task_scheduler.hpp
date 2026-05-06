@@ -420,28 +420,21 @@ namespace STDEXEC
     {
       return [=, &__fn](auto& __args)
       {
-        constexpr bool __valid_args = !__same_as<decltype(__args), __monostate&>;
-        // runtime assert that we never take this path without valid args from the predecessor:
-        STDEXEC_ASSERT(__valid_args);
-
-        if constexpr (__valid_args)
-        {
-          // If we are not parallelizing, we need to run all the iterations sequentially.
-          size_t const __increments = _Parallelize ? 1 : __shape;
-          // Precompose the function with the arguments so we don't have to do it every iteration.
-          auto __precomposed_fn = __apply(
-            [&](auto&... __as)
-            {
-              return [&](size_t __i) -> void
-              {
-                __fn(__i, __as...);
-              };
-            },
-            __args);
-          for (size_t __i = __begin; __i < __begin + __increments; ++__i)
+        // If we are not parallelizing, we need to run all the iterations sequentially.
+        size_t const __increments = _Parallelize ? 1 : __shape;
+        // Precompose the function with the arguments so we don't have to do it every iteration.
+        auto __precomposed_fn = __apply(
+          [&](auto&... __as)
           {
-            __precomposed_fn(__i);
-          }
+            return [&](size_t __i) -> void
+            {
+              __fn(__i, __as...);
+            };
+          },
+          __args);
+        for (size_t __i = __begin; __i < __begin + __increments; ++__i)
+        {
+          __precomposed_fn(__i);
         }
       };
     }
@@ -480,13 +473,7 @@ namespace STDEXEC
     {
       return [=, &__fn](auto& __args)
       {
-        constexpr bool __valid_args = !__same_as<decltype(__args), __monostate&>;
-        STDEXEC_ASSERT(__valid_args);
-
-        if constexpr (__valid_args)
-        {
-          __apply(__apply_bulk_execute<_Parallelize, _Fn>{__begin, __end, __shape, __fn}, __args);
-        }
+        __apply(__apply_bulk_execute<_Parallelize, _Fn>{__begin, __end, __shape, __fn}, __args);
       };
     }
 
@@ -513,19 +500,10 @@ namespace STDEXEC
       constexpr void set_value() noexcept final
       {
         // Send the stored values to the downstream receiver.
-        __visit(
-          [this](auto& __tupl)
-          {
-            constexpr bool __valid_args = __not_same_as<decltype(__tupl), __monostate&>;
-            // runtime assert that we never take this path without valid args from the predecessor:
-            STDEXEC_ASSERT(__valid_args);
-
-            if constexpr (__valid_args)
-            {
-              __apply(STDEXEC::set_value, std::move(__tupl), std::move(this->__rcvr_));
-            }
-          },
-          __values_);
+        __visit([](auto& __rcvr, auto& __tupl)
+                { __apply(STDEXEC::set_value, std::move(__tupl), std::move(__rcvr)); },
+                __values_,
+                this->__rcvr_);
       }
 
       //! Actually runs the bulk operation over the specified range.
@@ -584,10 +562,8 @@ namespace STDEXEC
       }
 
      private:
-      using __values_t   = value_types_of_t<_Sndr,
-                                            __fwd_env_t<env_of_t<_Rcvr>>,
-                                            __decayed_tuple,
-                                            __mbind_front_q<__variant, __monostate>::__f>;
+      using __values_t =
+        value_types_of_t<_Sndr, __fwd_env_t<env_of_t<_Rcvr>>, __decayed_tuple, __uniqued_variant>;
       using __rcvr_t     = __bulk_receiver<_BulkTag, _Policy, _Fn, _Rcvr, __values_t>;
       using __opstate1_t = connect_result_t<_Sndr, __rcvr_t>;
 

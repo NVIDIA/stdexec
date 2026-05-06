@@ -24,10 +24,10 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
+#include "__storage.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__utility.hpp"
-#include "__variant.hpp"
 
 #include "__prologue.hpp"
 
@@ -77,17 +77,14 @@ namespace STDEXEC
     struct __result_variant_fn
     {
       template <class _InitialSender, class _Receiver>
-      using __f = __for_each_completion_signature_t<
-        completion_signatures_of_t<_InitialSender, env_of_t<_Receiver>>,
-        __decayed_tuple,
-        __variant>;
+      using __f = __storage_for_t<_InitialSender, env_of_t<_Receiver>>;
     };
 
     template <>
     struct __result_variant_fn<false>
     {
       template <class, class>
-      using __f = __variant<>;
+      using __f = __results_storage<>;
     };
 
     // If the final sender has no value completions, then we don't need to store the
@@ -98,31 +95,13 @@ namespace STDEXEC
       _CvInitialSender,
       _Receiver>;
 
-    template <class _ResultType, class _Receiver, class _Env2>
+    template <class _Storage, class _Receiver, class _Env2>
     struct __opstate_base
     {
       _Receiver __rcvr_{};
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Env2 const __env2_{};
-      _ResultType __result_{__no_init};  // __variant<__tuple<set_tag, args...>, ...>
-    };
-
-    struct __applier
-    {
-      template <class _Receiver, class _Tag, class... _Args>
-      constexpr void operator()(_Receiver& __rcvr, _Tag, _Args&&... __args) noexcept
-      {
-        _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-      }
-    };
-
-    struct __visitor
-    {
-      template <class _Receiver, class _Tuple>
-      constexpr void operator()(_Receiver& __rcvr, _Tuple&& __tuple) noexcept
-      {
-        __apply(__applier{}, static_cast<_Tuple&&>(__tuple), __rcvr);
-      }
+      _Storage    __result_;  // __variant<__tuple<set_tag, args...>, ...>
     };
 
     using __mk_secondary_env_t =
@@ -135,7 +114,7 @@ namespace STDEXEC
     template <class _Env2, class _ReceiverEnv>
     using __final_env_t = __join_env_t<_Env2 const &, __fwd_env_t<_ReceiverEnv>>;
 
-    template <class _ResultType, class _Receiver, class _Env2>
+    template <class _Storage, class _Receiver, class _Env2>
     struct __final_receiver
     {
       using receiver_concept = receiver_tag;
@@ -143,7 +122,7 @@ namespace STDEXEC
 
       constexpr void set_value() noexcept
       {
-        __visit(__visitor{}, std::move(__opstate_->__result_), __opstate_->__rcvr_);
+        std::move(__opstate_->__result_).__complete(__opstate_->__rcvr_);
       }
 
       template <class _Error>
@@ -164,23 +143,23 @@ namespace STDEXEC
         return __env::__join(__opstate_->__env2_, __fwd_env(STDEXEC::get_env(__opstate_->__rcvr_)));
       }
 
-      __opstate_base<_ResultType, _Receiver, _Env2>* __opstate_;
+      __opstate_base<_Storage, _Receiver, _Env2>* __opstate_;
     };
 
-    template <class _CvFinalSender, class _ResultType, class _Receiver, class _Env2>
-    struct __final_opstate : __opstate_base<_ResultType, _Receiver, _Env2>
+    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
+    struct __final_opstate : __opstate_base<_Storage, _Receiver, _Env2>
     {
-      using __results_t          = _ResultType;
+      using __results_t          = _Storage;
       using __cleanup_callback_t = void(__final_opstate*) noexcept;
-      using __final_receiver_t   = __final_receiver<_ResultType, _Receiver, _Env2>;
+      using __final_receiver_t   = __final_receiver<_Storage, _Receiver, _Env2>;
       using __final_opstate_t    = connect_result_t<_CvFinalSender, __final_receiver_t>;
 
       constexpr explicit __final_opstate(__cleanup_callback_t* __cleanup_callback,
                                          _CvFinalSender&&      __final,
                                          _Receiver&&           __rcvr,
                                          _Env2                 __env2) noexcept
-        : __opstate_base<_ResultType, _Receiver, _Env2>{static_cast<_Receiver&&>(__rcvr),
-                                                        static_cast<_Env2&&>(__env2)}
+        : __opstate_base<_Storage, _Receiver, _Env2>{static_cast<_Receiver&&>(__rcvr),
+                                                     static_cast<_Env2&&>(__env2)}
         , __cleanup_callback_{__cleanup_callback}
         , __final_opstate_(
             STDEXEC::connect(static_cast<_CvFinalSender&&>(__final), __final_receiver_t{this}))
@@ -220,7 +199,7 @@ namespace STDEXEC
       __final_opstate_t     __final_opstate_;
     };
 
-    template <class _CvFinalSender, class _ResultType, class _Receiver, class _Env2>
+    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
     struct __initial_receiver;
 
     template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
@@ -270,7 +249,7 @@ namespace STDEXEC
       __optional<__initial_opstate_t> __initial_opstate_{};
     };
 
-    template <class _CvFinalSender, class _ResultType, class _Receiver, class _Env2>
+    template <class _CvFinalSender, class _Storage, class _Receiver, class _Env2>
     struct __initial_receiver
     {
       using receiver_concept = receiver_tag;
@@ -300,7 +279,7 @@ namespace STDEXEC
         return STDEXEC::get_env(__opstate_->__rcvr_);
       }
 
-      __final_opstate<_CvFinalSender, _ResultType, _Receiver, _Env2>* __opstate_;
+      __final_opstate<_CvFinalSender, _Storage, _Receiver, _Env2>* __opstate_;
     };
 
     template <class _CvInitialSender, class _Env>

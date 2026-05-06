@@ -27,9 +27,9 @@
 #include "__scope_concepts.hpp"
 #include "__senders.hpp"
 #include "__spawn_common.hpp"
+#include "__storage.hpp"
 #include "__tuple.hpp"
 #include "__type_traits.hpp"
-#include "__variant.hpp"
 
 #include <memory>
 #include <type_traits>
@@ -39,54 +39,17 @@
 
 namespace STDEXEC
 {
+  template <class _Signature>
+  using __decayed_signature_t = __mapply<__mtransform<__q1<__decay_t>, __q<__fn_t>>, _Signature>;
+
+  template <class _Signature>
+  inline constexpr bool __nothrow_storable_signature =
+    __mapply<__qq<__nothrow_decay_copyable_t>, _Signature>::value;
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.spawn.future]
   namespace __spawn_future
   {
-
-    template <class _Sig>
-    struct __future_sig_fns;
-
-    template <class _Tag, class... _Args>
-    struct __future_sig_fns<_Tag(_Args...)>
-    {
-      static constexpr bool __is_nothrow_storable = __nothrow_decay_copyable<_Args...>;
-
-      using __decayed_sig = _Tag(__decay_t<_Args>...);
-    };
-
-    // [exec.spawn.future] paragraph 4
-    template <class _Sig>
-    using __as_tuple = __mapply_q<__decayed_tuple, _Sig>;
-
-    template <class _Sig>
-    using __decayed_sig = __future_sig_fns<_Sig>::__decayed_sig;
-
-    template <class... _Sigs>
-    inline constexpr bool __sigs_are_nothrow_storable =
-      (__future_sig_fns<_Sigs>::__is_nothrow_storable && ...);
-
-    template <bool _NothrowStorable, class... _Sigs>
-    struct __future_variant
-    {
-      // this case handles _NothrowStorable == true
-      using type = __uniqued_variant<__decayed_tuple<set_stopped_t>, __as_tuple<_Sigs>...>;
-    };
-
-    template <class... _Sigs>
-    struct __future_variant<false, _Sigs...>
-    {
-      using type = __uniqued_variant<__decayed_tuple<set_stopped_t>,
-                                     __decayed_tuple<set_error_t, std::exception_ptr>,
-                                     __as_tuple<_Sigs>...>;
-    };
-
-    template <class... _Sigs>
-    using __future_variant_t =
-      // [exec.spawn.future] paragraphs 4.1 and 4.2
-      __future_variant<__sigs_are_nothrow_storable<_Sigs...>, _Sigs...>::type;
-
     struct __try_cancelable
     {
       explicit __try_cancelable(void (*__try_cancel)(__try_cancelable*) noexcept) noexcept
@@ -129,8 +92,9 @@ namespace STDEXEC
       //    stores the results for later consumption by the future; and
       //  - the stop token provided by the future's receiver can no-throw-construct a stop callback
       //    in the future's operation state
-      using type =
-        __mcall<__munique<__qq<completion_signatures>>, set_stopped_t(), __decayed_sig<_Sigs>...>;
+      using type = __mcall<__munique<__qq<completion_signatures>>,
+                           set_stopped_t(),
+                           __decayed_signature_t<_Sigs>...>;
     };
 
     template <class... _Sigs>
@@ -139,7 +103,7 @@ namespace STDEXEC
       using type = __mcall<__munique<__qq<completion_signatures>>,
                            set_stopped_t(),
                            set_error_t(std::exception_ptr),
-                           __decayed_sig<_Sigs>...>;
+                           __decayed_signature_t<_Sigs>...>;
     };
 
     template <class _Env>
@@ -149,9 +113,10 @@ namespace STDEXEC
       __future_stop_callback>;
 
     template <class _Env, class... _Sigs>
-    using __future_completions_t = __future_completions<
-      __stop_callback_is_nothrow_constructible<_Env> && __sigs_are_nothrow_storable<_Sigs...>,
-      _Sigs...>::type;
+    using __future_completions_t =
+      __future_completions<__stop_callback_is_nothrow_constructible<_Env>
+                             && (__nothrow_storable_signature<_Sigs> && ...),
+                           _Sigs...>::type;
 
     // [exec.spawn.future] paragraph 3
     template <class _Completions>
@@ -160,11 +125,11 @@ namespace STDEXEC
     template <class... _Sigs>
     struct __spawn_future_state_base<completion_signatures<_Sigs...>> : __try_cancelable
     {
-      using __variant_t = __future_variant_t<_Sigs...>;
+      using __variant_t = __results_storage<set_stopped_t(), _Sigs...>;
       template <class _Env>
       using __completions_t = __future_completions_t<_Env, _Sigs...>;
 
-      __variant_t __result_{__no_init};
+      __variant_t __result_;
 
       explicit __spawn_future_state_base(
         void (*__try_cancel)(__try_cancelable*) noexcept,
@@ -195,10 +160,10 @@ namespace STDEXEC
 
       __spawn_future_state_base<_Completions>* __state_;
 
-      template <class... _T>
-      void set_value(_T&&... __t) && noexcept
+      template <class... _Ts>
+      void set_value(_Ts&&... __ts) && noexcept
       {
-        __set_complete<set_value_t>(static_cast<_T&&>(__t)...);
+        __set_complete<set_value_t>(static_cast<_Ts&&>(__ts)...);
       }
 
       template <class _E>
@@ -213,20 +178,17 @@ namespace STDEXEC
       }
 
      private:
-      template <class _CPO, class... _T>
-      void __set_complete(_T&&... __t) noexcept
+      template <class _Tag, class... _Ts>
+      void __set_complete(_Ts&&... __ts) noexcept
       {
-        constexpr bool __non_throwing = (__nothrow_constructible_from<__decay_t<_T>, _T> && ...);
-
         STDEXEC_TRY
         {
-          __state_->__result_.template emplace<__decayed_tuple<_CPO, _T...>>(_CPO{},
-                                                                             static_cast<_T&&>(
-                                                                               __t)...);
+          using __tuple_t = __decayed_tuple<_Tag, _Ts...>;
+          __state_->__result_.template emplace<__tuple_t>(_Tag{}, static_cast<_Ts&&>(__ts)...);
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!__non_throwing)
+          if constexpr (!__nothrow_decay_copyable<_Ts...>)
           {
             using tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
             __state_->__result_.template emplace<tuple_t>(set_error_t{}, std::current_exception());
@@ -419,14 +381,7 @@ namespace STDEXEC
       // NOTE: __rcvr's type is unconstrained because the thing we pass doesn't satisfy receiver
       void __do_consume(auto& __rcvr) noexcept
       {
-        __visit(
-          [&__rcvr](auto&& __tuple) noexcept
-          {
-            __apply([&__rcvr](auto cpo, auto&&... __vals)
-                    { cpo(std::move(__rcvr), std::move(__vals)...); },
-                    std::move(__tuple));  // NOLINT(bugprone-move-forwarding-reference)
-          },
-          std::move(this->__result_));
+        std::move(this->__result_).__complete(__rcvr);
       }
 
       static void __do_complete(__base* __base_ptr) noexcept
@@ -765,11 +720,11 @@ namespace STDEXEC
           __callback_;
       };
 
-      template <class _CPO, class... _Ts>
+      template <class _Tag, class... _Ts>
       void __complete(_Ts&&... __ts) noexcept
       {
         std::destroy_at(std::addressof(__callback_));
-        _CPO{}(std::move(__rcvr_), static_cast<_Ts&&>(__ts)...);
+        _Tag{}(std::move(__rcvr_), static_cast<_Ts&&>(__ts)...);
       }
     };
 

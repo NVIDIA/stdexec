@@ -19,8 +19,8 @@
 #include "../../stdexec/execution.hpp"
 
 // include these after execution.hpp
+#include "../../stdexec/__detail/__senders.hpp"
 #include "../../stdexec/__detail/__tuple.hpp"
-#include "../../stdexec/__detail/__variant.hpp"
 #include "../sender_for.hpp"
 #include "../sequence_senders.hpp"
 
@@ -58,7 +58,7 @@ namespace experimental::execution
                        static_cast<_Receiver&&>(__rcvr));
     };
 
-    template <class _ResultVariant>
+    template <class _ResultsStorage>
     struct __result_type
     {
       template <class... _Args>
@@ -83,31 +83,28 @@ namespace experimental::execution
         {
           STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr));
         }
-        else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultVariant>::value != 0)
+        else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultsStorage>::value != 0)
         {
-          STDEXEC_ASSERT(__result_.index() != __variant_npos);
-          STDEXEC::__visit(__visit_fn,
-                           static_cast<_ResultVariant&&>(__result_),
-                           static_cast<_Receiver&&>(__rcvr));
+          static_cast<_ResultsStorage&&>(__result_).__complete(__rcvr);
         }
       }
 
-      _ResultVariant     __result_{STDEXEC::__no_init};
+      _ResultsStorage    __result_;
       __std::atomic<int> __emplaced_{0};
     };
 
-    template <class _ItemReceiver, class _ResultVariant>
+    template <class _ItemReceiver, class _ResultsStorage>
     struct __item_operation_base
     {
       STDEXEC_ATTRIBUTE(no_unique_address) _ItemReceiver __rcvr_;
-      __result_type<_ResultVariant>* __result_;
+      __result_type<_ResultsStorage>* __result_;
     };
 
-    template <class _ItemReceiver, class _ResultVariant>
+    template <class _ItemReceiver, class _ResultsStorage>
     struct __item_receiver
     {
       using receiver_concept = STDEXEC::receiver_tag;
-      __item_operation_base<_ItemReceiver, _ResultVariant>* __op_;
+      __item_operation_base<_ItemReceiver, _ResultsStorage>* __op_;
 
       template <class... _Args>
       void set_value([[maybe_unused]] _Args&&... __args) noexcept
@@ -117,7 +114,7 @@ namespace experimental::execution
       }
 
       template <class _Error>
-        requires __variant_emplaceable<_ResultVariant,
+        requires __variant_emplaceable<_ResultsStorage,
                                        __decayed_tuple<set_error_t, _Error>,
                                        set_error_t,
                                        _Error>
@@ -130,7 +127,9 @@ namespace experimental::execution
       }
 
       void set_stopped() noexcept
-        requires __variant_emplaceable<_ResultVariant, __decayed_tuple<set_stopped_t>, set_stopped_t>
+        requires __variant_emplaceable<_ResultsStorage,
+                                       __decayed_tuple<set_stopped_t>,
+                                       set_stopped_t>
               && __callable<set_stopped_t, _ItemReceiver>
       {
         // stop without error
@@ -144,15 +143,15 @@ namespace experimental::execution
       }
     };
 
-    template <class _Sender, class _ItemReceiver, class _ResultVariant>
-    struct __item_operation : __item_operation_base<_ItemReceiver, _ResultVariant>
+    template <class _Sender, class _ItemReceiver, class _ResultsStorage>
+    struct __item_operation : __item_operation_base<_ItemReceiver, _ResultsStorage>
     {
-      using __base_t          = __item_operation_base<_ItemReceiver, _ResultVariant>;
-      using __item_receiver_t = __item_receiver<_ItemReceiver, _ResultVariant>;
+      using __base_t          = __item_operation_base<_ItemReceiver, _ResultsStorage>;
+      using __item_receiver_t = __item_receiver<_ItemReceiver, _ResultsStorage>;
 
-      __item_operation(__result_type<_ResultVariant>* __parent,
-                       _Sender&&                      __sndr,
-                       _ItemReceiver                  __rcvr)
+      __item_operation(__result_type<_ResultsStorage>* __parent,
+                       _Sender&&                       __sndr,
+                       _ItemReceiver                   __rcvr)
         noexcept(__nothrow_decay_copyable<_ItemReceiver>
                  && __nothrow_connectable<_Sender, __item_receiver_t>)
         : __base_t{static_cast<_ItemReceiver&&>(__rcvr), __parent}
@@ -167,7 +166,7 @@ namespace experimental::execution
       connect_result_t<_Sender, __item_receiver_t> __op_;
     };
 
-    template <class _Sender, class _ResultVariant>
+    template <class _Sender, class _ResultsStorage>
     struct __item_sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -175,10 +174,10 @@ namespace experimental::execution
 
       template <class _Self, class _Receiver>
       using __operation_t =
-        __item_operation<__copy_cvref_t<_Self, _Sender>, _Receiver, _ResultVariant>;
+        __item_operation<__copy_cvref_t<_Self, _Sender>, _Receiver, _ResultsStorage>;
 
       template <class _Receiver>
-      using __item_receiver_t = __item_receiver<_Receiver, _ResultVariant>;
+      using __item_receiver_t = __item_receiver<_Receiver, _ResultsStorage>;
 
       template <__decays_to<__item_sender>                  _Self,
                 STDEXEC::receiver_of<completion_signatures> _Receiver>
@@ -192,23 +191,23 @@ namespace experimental::execution
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
-      _Sender                        __sender_;
-      __result_type<_ResultVariant>* __parent_;
+      _Sender                         __sender_;
+      __result_type<_ResultsStorage>* __parent_;
     };
 
-    template <class _Receiver, class _ResultVariant>
-    struct __operation_base : __result_type<_ResultVariant>
+    template <class _Receiver, class _ResultsStorage>
+    struct __operation_base : __result_type<_ResultsStorage>
     {
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Receiver __rcvr_;
     };
 
-    template <class _Receiver, class _ResultVariant>
+    template <class _Receiver, class _ResultsStorage>
     struct __receiver
     {
       using receiver_concept = STDEXEC::receiver_tag;
 
-      constexpr explicit __receiver(__operation_base<_Receiver, _ResultVariant>* __op) noexcept
+      constexpr explicit __receiver(__operation_base<_Receiver, _ResultsStorage>* __op) noexcept
         : __op_{__op}
       {}
 
@@ -218,7 +217,7 @@ namespace experimental::execution
       template <sender _Item>
       [[nodiscard]]
       auto set_next(_Item&& __item) & noexcept(__nothrow_decay_copyable<_Item>)
-        -> __item_sender<__decay_t<_Item>, _ResultVariant>
+        -> __item_sender<__decay_t<_Item>, _ResultsStorage>
       {
         return {static_cast<_Item&&>(__item), __op_};
       }
@@ -245,32 +244,30 @@ namespace experimental::execution
       }
 
      private:
-      __operation_base<_Receiver, _ResultVariant>* __op_;
+      __operation_base<_Receiver, _ResultsStorage>* __op_;
     };
 
-    template <class _Sigs>
-    using __result_variant_ = __transform_reduce_completion_signatures_t<
-      _Sigs,
-      __mconst<__mlist<>>::__f,
-      __mcompose_q<__mlist, __mbind_front_q<__decayed_tuple, set_error_t>::__f>::__f,
-      __mlist<__tuple<set_stopped_t>>,
-      __mconcat<__qq<__variant>>::__f>;
+    template <class _Signature>
+    using __is_set_value_signature_t =
+      __mbool<__same_as<set_value_t, __signature_tag_t<_Signature>>>;
 
+    // Storage for the non-set_value completions
     template <class _Sender, class _Env>
     using __result_variant_t =
-      __result_variant_<__sequence_completion_signatures_of_t<_Sender, _Env>>;
+      __mapply<__mremove_if<__q1<__is_set_value_signature_t>, __qq<__results_storage>>,
+               __sequence_completion_signatures_of_t<_Sender, _Env>>;
 
     template <class _Sender, class _Receiver>
     struct __operation
       : __operation_base<_Receiver, __result_variant_t<_Sender, env_of_t<_Receiver>>>
     {
-      using _ResultVariant = __result_variant_t<_Sender, env_of_t<_Receiver>>;
-      using __base_type    = __operation_base<_Receiver, _ResultVariant>;
-      using __receiver_t   = __receiver<_Receiver, _ResultVariant>;
+      using __variant_t  = __result_variant_t<_Sender, env_of_t<_Receiver>>;
+      using __base_t     = __operation_base<_Receiver, __variant_t>;
+      using __receiver_t = __receiver<_Receiver, __variant_t>;
 
       explicit __operation(_Sender&& __sndr, _Receiver __rcvr)
         noexcept(__nothrow_subscribable<_Sender, __receiver_t>)
-        : __base_type{{}, static_cast<_Receiver&&>(__rcvr)}
+        : __base_t{{}, static_cast<_Receiver&&>(__rcvr)}
         , __op_{exec::subscribe(static_cast<_Sender&&>(__sndr), __receiver_t{this})}
       {}
 

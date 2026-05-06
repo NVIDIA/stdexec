@@ -16,6 +16,7 @@
 #pragma once
 
 #include "../stdexec/__detail/__receiver_ref.hpp"
+#include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 
 #include <exception>
@@ -27,26 +28,6 @@ namespace experimental::execution
 
   struct fork_join_impl_t
   {
-    struct _dematerialize_fn
-    {
-      struct _impl_fn
-      {
-        template <class Rcvr, class Tag, class... Args>
-        STDEXEC_ATTRIBUTE(always_inline, host, device)
-        constexpr void operator()(Rcvr& rcvr, Tag, Args const &... args) const noexcept
-        {
-          Tag{}(static_cast<Rcvr&&>(rcvr), args...);
-        }
-      };
-
-      template <class Rcvr, class Tuple>
-      STDEXEC_ATTRIBUTE(always_inline, host, device)
-      constexpr void operator()(Rcvr& rcvr, Tuple const & tupl) const noexcept
-      {
-        STDEXEC::__apply(_impl_fn{}, tupl, rcvr);
-      }
-    };
-
     struct _mk_when_all_fn
     {
       template <class CacheSndr, class... Closures>
@@ -58,17 +39,7 @@ namespace experimental::execution
     };
 
     template <class Completions>
-    using _maybe_eptr_completion_t =
-      STDEXEC::__if_c<STDEXEC::__nothrow_decay_copyable_results_t<Completions>::value,
-                      STDEXEC::__mset_nil,
-                      STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>>;
-
-    template <class Completions>
-    using _variant_t = STDEXEC::__mset_insert<
-      STDEXEC::__for_each_completion_signature_t<Completions,
-                                                 STDEXEC::__decayed_tuple,
-                                                 STDEXEC::__mset>,
-      _maybe_eptr_completion_t<Completions>>::template rebind<STDEXEC::__variant>;
+    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage, Completions>;
 
     template <class Domain>
     struct _env_t
@@ -102,7 +73,7 @@ namespace experimental::execution
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept
         {
-          STDEXEC::__visit(_dematerialize_fn{}, *_results_, _rcvr_);
+          std::as_const(*_results_).__complete(_rcvr_);
         }
 
         Rcvr            _rcvr_;
@@ -230,7 +201,7 @@ namespace experimental::execution
       }
 
       Rcvr                                         _rcvr_;
-      _variant_t<_child_completions_t>             _cache_{STDEXEC::__no_init};
+      _variant_t<_child_completions_t>             _cache_;
       STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
       _fork_opstate_t                              _fork_opstate_;
     };

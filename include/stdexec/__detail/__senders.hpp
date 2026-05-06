@@ -31,31 +31,30 @@ namespace STDEXEC
   namespace __detail
   {
     template <class _Sig>
-    extern __undefined<_Sig> __tag_of_sig_v;
+    extern __undefined<_Sig> __signature_tag_v;
 
     template <class _Tag, class... _Args>
-    extern _Tag __tag_of_sig_v<_Tag(_Args...)>;
+    extern _Tag __signature_tag_v<_Tag(_Args...)>;
 
     template <class _Tag, class... _Args>
-    extern _Tag __tag_of_sig_v<_Tag (*)(_Args...)>;
-
-    template <class _Sig>
-    using __tag_of_sig_t = decltype(__tag_of_sig_v<_Sig>);
+    extern _Tag __signature_tag_v<_Tag (*)(_Args...)>;
 
     template <class _Error>
       requires false
     using __nofail_t = _Error;
   }  // namespace __detail
 
+  template <class _Sig>
+  using __signature_tag_t = decltype(__detail::__signature_tag_v<_Sig>);
+
   template <class _Sender, class _SetSig, class... _Env>
   concept sender_of =
     sender_in<_Sender, _Env...>
-    && __same_as<
-      __mlist<_SetSig>,
-      __gather_completions_t<__detail::__tag_of_sig_t<_SetSig>,
-                             __completion_signatures_of_t<_Sender, _Env...>,
-                             __mcompose<__qq<__mlist>, __qf<__detail::__tag_of_sig_t<_SetSig>>>,
-                             __mconcat<__qq<__mlist>>>>;
+    && __same_as<__mlist<_SetSig>,
+                 __gather_completions_t<__signature_tag_t<_SetSig>,
+                                        __completion_signatures_of_t<_Sender, _Env...>,
+                                        __mcompose<__qq<__mlist>, __qf<__signature_tag_t<_SetSig>>>,
+                                        __mconcat<__qq<__mlist>>>>;
 
   template <class _Sender, class... _Env>
   concept __nofail_sender = __never_sends<set_error_t, _Sender, _Env...>;

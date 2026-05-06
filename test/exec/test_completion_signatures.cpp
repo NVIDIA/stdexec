@@ -129,8 +129,7 @@ namespace
     template <class Sig>
     constexpr bool operator()(Sig*) const noexcept
     {
-      return STDEXEC::__detail::__tag_of_sig_t<Sig>::__disposition
-          == STDEXEC::__disposition::__value;
+      return STDEXEC::__signature_tag_t<Sig>::__disposition == STDEXEC::__disposition::__value;
     }
   };
 

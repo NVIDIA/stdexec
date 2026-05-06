@@ -238,13 +238,8 @@ namespace experimental::execution
       void start() & noexcept
       {
         // emit delayed error into the sequence
-        STDEXEC::__visit(
-          [this](auto&& __error) noexcept
-          {
-            STDEXEC::set_error(static_cast<_ErrorReceiver&&>(__rcvr_),
-                               static_cast<decltype(__error)&&>(__error));
-          },
-          static_cast<_ErrorStorage&&>(*__op_->__error_storage_));
+        STDEXEC::__visit(STDEXEC::__mk_completion_fn(STDEXEC::set_error, __rcvr_),
+                         static_cast<_ErrorStorage&&>(*__op_->__error_storage_));
       }
 
       _ErrorReceiver                __rcvr_;

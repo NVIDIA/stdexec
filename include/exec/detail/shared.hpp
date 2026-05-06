@@ -27,6 +27,7 @@
 #include "../../stdexec/__detail/__optional.hpp"
 #include "../../stdexec/__detail/__queries.hpp"
 #include "../../stdexec/__detail/__receivers.hpp"
+#include "../../stdexec/__detail/__storage.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__tuple.hpp"
 #include "../../stdexec/__detail/__variant.hpp"  // IWYU pragma: keep
@@ -77,24 +78,6 @@ namespace experimental::execution::__shared
   template <class _Env>
   using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
-  struct __notify_fn
-  {
-    template <class _Receiver, class _Tag, class... _Args>
-    constexpr void operator()(_Receiver& __rcvr, _Tag, _Args&&... __args) const noexcept
-    {
-      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-    }
-  };
-
-  struct __notify_visitor
-  {
-    template <class _Receiver, class _Tuple>
-    constexpr void operator()(_Receiver& __rcvr, _Tuple&& __tupl) const noexcept
-    {
-      STDEXEC::__apply(__notify_fn(), static_cast<_Tuple&&>(__tupl), __rcvr);
-    };
-  };
-
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _Env, class _Variant>
   struct __receiver
@@ -133,13 +116,8 @@ namespace experimental::execution::__shared
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvSender, class _Env>
   using __result_variant_t =
-    __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_CvSender, _Env>,
-                                               __mbind_front_q<__decayed_tuple, set_value_t>::__f,
-                                               __mbind_front_q<__decayed_tuple, set_error_t>::__f,
-                                               __tuple<set_stopped_t>,
-                                               __munique<__qq<__variant>>::__f,
-                                               __tuple<set_error_t, std::exception_ptr>,
-                                               __tuple<set_stopped_t>>;
+    __mapply<__mbind_front_q<__results_storage, set_stopped_t(), set_error_t(std::exception_ptr)>,
+             __completion_signatures_of_t<_CvSender, _Env>>;
 
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvChild, class _Env>
@@ -269,10 +247,7 @@ namespace experimental::execution::__shared
       using __cv_variant_t      = __if_c<__is_split, __variant_t const &, __variant_t>;
 
       __on_stop_.reset();
-
-      STDEXEC::__visit(__notify_visitor(),
-                       static_cast<__cv_variant_t&&>(__sh_state_->__results_),
-                       __rcvr_);
+      static_cast<__cv_variant_t&&>(__sh_state_->__results_).__complete(__rcvr_);
     }
 
     _Receiver                                                 __rcvr_;
@@ -353,7 +328,7 @@ namespace experimental::execution::__shared
     __waiters_list_t    __waiters_{};
     inplace_stop_source __stop_source_{};
     __env_t<_Env>       __env_;
-    _Variant __results_{__no_init};  // Initialized to the "set_stopped" state in the ctor.
+    _Variant            __results_;  // Initialized to the "set_stopped" state in the ctor.
   };
 
   template <class _Env, class _Variant>
