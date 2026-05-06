@@ -165,7 +165,7 @@ namespace experimental::execution
       {
         // Extract the tags from the completion signatures and use them to construct the attributes.
         return STDEXEC::__mapply<
-          STDEXEC::__mtransform<STDEXEC::__q1<STDEXEC::__detail::__tag_of_sig_t>,
+          STDEXEC::__mtransform<STDEXEC::__q1<STDEXEC::__signature_tag_t>,
                                 STDEXEC::__munique<STDEXEC::__qq<_just_from::_attrs>>>,
           completion_signatures>();
       }

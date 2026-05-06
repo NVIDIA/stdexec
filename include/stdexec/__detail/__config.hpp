@@ -273,121 +273,98 @@ namespace STDEXEC::__std
 //
 //   STDEXEC_ATTRIBUTE(attr1, attr2, ...)
 //   void foo() { ... }
-#define STDEXEC_ATTRIBUTE_I(_ATTR)                                                                 \
-  STDEXEC_PP_CAT(STDEXEC_ATTR_WHICH_, STDEXEC_PP_CHECK(STDEXEC_PP_CAT(STDEXEC_ATTR_, _ATTR)))(_ATTR)
-#define STDEXEC_ATTRIBUTE(...) STDEXEC_PP_FOR_EACH(STDEXEC_ATTRIBUTE_I, __VA_ARGS__)
+#define STDEXEC_ATTRIBUTE_I(_ATTR)                       STDEXEC_PP_SWITCH(STDEXEC_ATTRIBUTE, _ATTR)
+#define STDEXEC_ATTRIBUTE(...)                           STDEXEC_PP_FOR_EACH(STDEXEC_ATTRIBUTE_I, __VA_ARGS__)
 
-// unknown attributes are treated like C++-style attributes
-#define STDEXEC_ATTR_WHICH_0(_ATTR) [[_ATTR]]
+#define STDEXEC_ATTRIBUTE_SWITCH_no_unique_address       STDEXEC_PP_CASE(NO_UNIQUE_ADDRESS)
+#define STDEXEC_ATTRIBUTE_SWITCH_always_inline           STDEXEC_PP_CASE(ALWAYS_INLINE)
+#define STDEXEC_ATTRIBUTE_SWITCH_empty_bases             STDEXEC_PP_CASE(EMPTY_BASES)
+#define STDEXEC_ATTRIBUTE_SWITCH_noinline                STDEXEC_PP_CASE(NOINLINE)
+#define STDEXEC_ATTRIBUTE_SWITCH_weak                    STDEXEC_PP_CASE(WEAK)
+#define STDEXEC_ATTRIBUTE_SWITCH_preferred_name          STDEXEC_PP_CASE(PREFERRED_NAME)
+#define STDEXEC_ATTRIBUTE_SWITCH_musttail                STDEXEC_PP_CASE(MUSTTAIL)
+#define STDEXEC_ATTRIBUTE_SWITCH___musttail__            STDEXEC_PP_CASE(MUSTTAIL)
+#define STDEXEC_ATTRIBUTE_SWITCH_host                    STDEXEC_PP_CASE(HOST)
+#define STDEXEC_ATTRIBUTE_SWITCH___host__                STDEXEC_PP_CASE(HOST)
+#define STDEXEC_ATTRIBUTE_SWITCH_device                  STDEXEC_PP_CASE(DEVICE)
+#define STDEXEC_ATTRIBUTE_SWITCH___device__              STDEXEC_PP_CASE(DEVICE)
+#define STDEXEC_ATTRIBUTE_SWITCH_launch_bounds(...)      STDEXEC_PP_CASE(LAUNCH_BOUNDS(__VA_ARGS__))
+#define STDEXEC_ATTRIBUTE_SWITCH___launch_bounds__(...)  STDEXEC_PP_CASE(LAUNCH_BOUNDS(__VA_ARGS__))
 
-// custom handling for specific attribute types
-#if defined(__CUDACC__) && !STDEXEC_NVHPC()
-#  define STDEXEC_ATTR_WHICH_1(_ATTR) __host__
+// By default, assume the attribute is a C++11-style attribute that can be used as-is.
+#define STDEXEC_ATTRIBUTE_CASE_DEFAULT(...)              [[__VA_ARGS__]]
+
+// [[no_unique_address]]
+#if (STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 2305)                                              \
+  || (STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1943)                                               \
+  || (STDEXEC_CLANG_CL() && STDEXEC_CLANG_VERSION < 1801)
+#  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS
+#elif STDEXEC_CLANG_CL() || STDEXEC_MSVC()
+#  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS       [[msvc::no_unique_address]]
 #else
-#  define STDEXEC_ATTR_WHICH_1(_ATTR)
+#  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS       [[no_unique_address]]
 #endif
-#define STDEXEC_ATTR_host     STDEXEC_PP_PROBE(~, 1)
-#define STDEXEC_ATTR___host__ STDEXEC_PP_PROBE(~, 1)
 
-#if defined(__CUDACC__) && !STDEXEC_NVHPC()
-#  define STDEXEC_ATTR_WHICH_2(_ATTR) __device__
-#else
-#  define STDEXEC_ATTR_WHICH_2(_ATTR)
-#endif
-#define STDEXEC_ATTR_device     STDEXEC_PP_PROBE(~, 2)
-#define STDEXEC_ATTR___device__ STDEXEC_PP_PROBE(~, 2)
-
-#if STDEXEC_NVHPC()
-// NVBUG #4067067: NVHPC does not fully support [[no_unique_address]]
-#  if STDEXEC_NVHPC_VERSION < 2305
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
-#  else
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
-#  endif
-#elif STDEXEC_CLANG_CL()
-// clang-cl does not support [[no_unique_address]]: https://reviews.llvm.org/D110485
-// TODO: Find the version that started supporting [[msvc::no_unique_address]]
-#  if STDEXEC_CLANG_VERSION < 1801
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
-#  else
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
-#  endif
-#elif STDEXEC_MSVC()
-// MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
-#  if STDEXEC_MSVC_VERSION < 1943
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) /*nothing*/
-#  else
-#    define STDEXEC_ATTR_WHICH_3(_ATTR) [[msvc::no_unique_address]]
-#  endif
-#else
-#  define STDEXEC_ATTR_WHICH_3(_ATTR) [[no_unique_address]]
-#endif
-#define STDEXEC_ATTR_no_unique_address STDEXEC_PP_PROBE(~, 3)
-
+// __attribute__((__always_inline__)) and __forceinline
 #if STDEXEC_MSVC()
-#  define STDEXEC_ATTR_WHICH_4(_ATTR) __forceinline
+#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           __forceinline
 #elif STDEXEC_CLANG()
-#  define STDEXEC_ATTR_WHICH_4(_ATTR)                                                              \
-    __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
+#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           __attribute__((__always_inline__, __artificial__, __nodebug__)) inline
 #elif STDEXEC_GCC()
-#  define STDEXEC_ATTR_WHICH_4(_ATTR) __attribute__((__always_inline__, __artificial__)) inline
+#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           __attribute__((__always_inline__, __artificial__)) inline
 #else
-#  define STDEXEC_ATTR_WHICH_4(_ATTR) /*nothing*/
+#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE
 #endif
-#define STDEXEC_ATTR_always_inline STDEXEC_PP_PROBE(~, 4)
 
+// __attribute__((__weak__))
 #if STDEXEC_CLANG() || STDEXEC_GCC()
-#  define STDEXEC_ATTR_WHICH_5(_ATTR) __attribute__((__weak__))
+#  define STDEXEC_ATTRIBUTE_CASE_WEAK                    __attribute__((__weak__))
 #else
-#  define STDEXEC_ATTR_WHICH_5(_ATTR) /*nothing*/
+#  define STDEXEC_ATTRIBUTE_CASE_WEAK
 #endif
-#define STDEXEC_ATTR_weak     STDEXEC_PP_PROBE(~, 5)
-#define STDEXEC_ATTR___weak__ STDEXEC_PP_PROBE(~, 5)
 
+// __declspec(empty_bases) and __declspec(noinline)
+#if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
+#  define STDEXEC_ATTRIBUTE_CASE_EMPTY_BASES             __declspec(empty_bases)
+#  define STDEXEC_ATTRIBUTE_CASE_NOINLINE                __declspec(noinline)
+#else
+#  define STDEXEC_ATTRIBUTE_CASE_EMPTY_BASES
+#  define STDEXEC_ATTRIBUTE_CASE_NOINLINE
+#endif
+
+// __attribute__((__preferred_name__))
 #if STDEXEC_HAS_ATTRIBUTE(__preferred_name__)
-#  define STDEXEC_ATTR_WHICH_6(_ATTR) __attribute__((_ATTR))
+#  define STDEXEC_ATTRIBUTE_CASE_PREFERRED_NAME          __attribute__((__preferred_name__))
 #else
-#  define STDEXEC_ATTR_WHICH_6(_ATTR) /*nothing*/
+#  define STDEXEC_ATTRIBUTE_CASE_PREFERRED_NAME
 #endif
-#define STDEXEC_ATTR_preferred_name     STDEXEC_PP_PROBE(~, 6)
-#define STDEXEC_ATTR___preferred_name__ STDEXEC_PP_PROBE(~, 6)
 
-#if defined(__launch_bounds__) && !STDEXEC_NVHPC()
-#  define STDEXEC_ATTR_WHICH_7(_ATTR) STDEXEC_PP_CAT(STDEXEC_ATTR_NORMALIZE_, _ATTR)
-#else
-#  define STDEXEC_ATTR_WHICH_7(_ATTR)
-#endif
-#define STDEXEC_ATTR_NORMALIZE_launch_bounds(...)     __launch_bounds__(__VA_ARGS__)
-#define STDEXEC_ATTR_NORMALIZE___launch_bounds__(...) __launch_bounds__(__VA_ARGS__)
-#define STDEXEC_ATTR_launch_bounds(...)               STDEXEC_PP_PROBE(~, 7)
-#define STDEXEC_ATTR___launch_bounds__(...)           STDEXEC_PP_PROBE(~, 7)
-
-#if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
-#  define STDEXEC_ATTR_WHICH_8(_ATTR) __declspec(_ATTR)
-#else
-#  define STDEXEC_ATTR_WHICH_8(_ATTR) /*nothing*/
-#endif
-#define STDEXEC_ATTR_empty_bases STDEXEC_PP_PROBE(~, 8)
-
-#if STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
-#  define STDEXEC_ATTR_WHICH_9(_ATTR) __declspec(noinline)
-#else
-#  define STDEXEC_ATTR_WHICH_9(_ATTR) __attribute__((_ATTR))
-#endif
-#define STDEXEC_ATTR_noinline     STDEXEC_PP_PROBE(~, 9)
-#define STDEXEC_ATTR___noinline__ STDEXEC_PP_PROBE(~, 9)
-
+// [[musttail]]
 #if STDEXEC_MSVC() && !STDEXEC_CLANG_CL() && STDEXEC_MSVC_VERSION >= 1950
-#  define STDEXEC_ATTR_WHICH_10(_ATTR) [[msvc::musttail]]
+#  define STDEXEC_ATTRIBUTE_CASE_MUSTTAIL                [[msvc::musttail]]
 #elif STDEXEC_HAS_CPP_ATTRIBUTE(clang::musttail)
-#  define STDEXEC_ATTR_WHICH_10(_ATTR) [[clang::musttail]]
+#  define STDEXEC_ATTRIBUTE_CASE_MUSTTAIL                [[clang::musttail]]
 #elif STDEXEC_HAS_CPP_ATTRIBUTE(gnu::musttail)
-#  define STDEXEC_ATTR_WHICH_10(_ATTR) [[gnu::musttail]]
+#  define STDEXEC_ATTRIBUTE_CASE_MUSTTAIL                [[gnu::musttail]]
 #else
-#  define STDEXEC_ATTR_WHICH_10(_ATTR) /*nothing*/
+#  define STDEXEC_ATTRIBUTE_CASE_MUSTTAIL
 #endif
-#define STDEXEC_ATTR_musttail     STDEXEC_PP_PROBE(~, 10)
-#define STDEXEC_ATTR___musttail__ STDEXEC_PP_PROBE(~, 10)
+
+// __host__ and __device__
+#if STDEXEC_CUDA_COMPILATION() && !STDEXEC_NVHPC()
+#  define STDEXEC_ATTRIBUTE_CASE_HOST                    __host__
+#  define STDEXEC_ATTRIBUTE_CASE_DEVICE                  __device__
+#else
+#  define STDEXEC_ATTRIBUTE_CASE_HOST
+#  define STDEXEC_ATTRIBUTE_CASE_DEVICE
+#endif
+
+// __launch_bounds__(...)
+#if defined(__launch_bounds__) && !STDEXEC_NVHPC()
+#  define STDEXEC_ATTRIBUTE_CASE_LAUNCH_BOUNDS(...)      __launch_bounds__(__VA_ARGS__)
+#else
+#  define STDEXEC_ATTRIBUTE_CASE_LAUNCH_BOUNDS(...)
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros

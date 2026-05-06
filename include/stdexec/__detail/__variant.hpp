@@ -341,10 +341,11 @@ namespace STDEXEC
       }
 
       template <class _Fn, class _Self, class... _Us>
+        requires(__callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...)
       STDEXEC_ATTRIBUTE(host, device)
       static constexpr auto __visit(_Fn &&__fn, _Self &&__self, _Us &&...__us)
         noexcept((__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>> && ...))
-          -> __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>
+          -> decltype(auto)
       {
         using __result_t   = __call_result_t<_Fn, _Us..., __copy_cvref_t<_Self, __at_t<0>>>;
         using __visit_fn_t = decltype(&__var::__visit_alt<0, __result_t, _Fn, _Self, _Us...>);
