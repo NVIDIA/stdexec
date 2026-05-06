@@ -199,4 +199,9 @@ namespace
     }
   }
 
+  TEST_CASE("repeat_n forwards the environment", "[adaptors][repeat_n]")
+  {
+    ex::sync_wait(
+      exec::repeat_n(ex::then(ex::read_env(ex::get_start_scheduler), [](auto) noexcept {}), 1));
+  }
 }  // namespace

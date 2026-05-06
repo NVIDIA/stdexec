@@ -225,11 +225,19 @@ namespace experimental::execution
         return {STDEXEC::schedule(trampoline_scheduler{}), const_cast<_Child &>(__child)};
       };
 
-      template <class _Sender, class... _Env>
+      template <class _Sender>
+        requires(!STDEXEC::dependent_sender<__child_of<_Sender>>)
       static consteval auto __get_completion_signatures()
       {
         // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Sender>, _Env...>{};
+        return __completions_t<__child_of<_Sender>>{};
+      }
+
+      template <class _Sender, class _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        // TODO: port this to use constant evaluation
+        return __completions_t<__child_of<_Sender>, _Env>{};
       }
 
       static constexpr auto __connect =  //
