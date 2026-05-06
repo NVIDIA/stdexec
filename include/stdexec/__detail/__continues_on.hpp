@@ -27,10 +27,10 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
+#include "__storage.hpp"
 #include "__transform_completion_signatures.hpp"
 #include "__tuple.hpp"
 #include "__utility.hpp"
-#include "__variant.hpp"  // IWYU pragma: keep for __variant
 
 #include "__prologue.hpp"
 
@@ -40,24 +40,6 @@ namespace STDEXEC
   // [execution.senders.adaptors.continues_on]
   namespace __trnsfr
   {
-    // Compute a variant type that is capable of storing the results of the
-    // input sender when it completes. The variant has type:
-    //   variant<
-    //     monostate,
-    //     tuple<set_stopped_t>,
-    //     tuple<set_value_t, __decay_t<_Values1>...>,
-    //     tuple<set_value_t, __decay_t<_Values2>...>,
-    //        ...
-    //     tuple<set_error_t, __decay_t<_Error1>>,
-    //     tuple<set_error_t, __decay_t<_Error2>>,
-    //        ...
-    //   >
-    template <class _CvSender, class _Env>
-    using __results_of_t =
-      __for_each_completion_signature_t<__completion_signatures_of_t<_CvSender, _Env>,
-                                        __decayed_tuple,
-                                        __munique<__qq<STDEXEC::__variant>>::__f>;
-
     template <class... _Values>
     using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);
 
@@ -80,26 +62,13 @@ namespace STDEXEC
     using __completions_t =
       __completions_impl_t<_Scheduler, __completion_signatures_of_t<_CvSender, _Env...>, _Env...>;
 
-    template <class _State>
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto __make_visitor_fn(_State* __state) noexcept
-    {
-      return [__state]<class _Tup>(_Tup& __tupl) noexcept -> void
-      {
-        STDEXEC::__apply(
-          [&]<class _Tag, class... _Args>(_Tag, _Args&... __args) noexcept -> void
-          { _Tag()(static_cast<_State&&>(*__state).__rcvr_, static_cast<_Args&&>(__args)...); },
-          __tupl);
-      };
-    }
-
     template <class _Sexpr, class _Receiver>
     struct __state_base
     {
-      using __variant_t = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __storage_t = __storage_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver   __rcvr_;
-      __variant_t __data_{__no_init};
+      __storage_t __data_;
     };
 
     // This receiver is to be completed on the execution context associated with the scheduler. When
@@ -113,7 +82,7 @@ namespace STDEXEC
 
       constexpr void set_value() noexcept
       {
-        STDEXEC::__visit(__trnsfr::__make_visitor_fn(__state_), __state_->__data_);
+        std::move(__state_->__data_).__complete(__state_->__rcvr_);
       }
 
       template <class _Error>
@@ -140,7 +109,6 @@ namespace STDEXEC
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state : __state_base<_Sexpr, _Receiver>
     {
-      using __variant_t   = __results_of_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
       using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)

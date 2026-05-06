@@ -16,6 +16,7 @@
  */
 #pragma once
 
+#include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 
@@ -69,22 +70,8 @@ namespace experimental::execution
     };
 
     template <class _Env, class... _CvSenders>
-    using __result_type_t =
-      __for_each_completion_signature_t<__minvoke<__completions_fn<_Env>, _CvSenders...>,
-                                        __decayed_tuple,
-                                        __uniqued_variant>;
-
-    template <class _Receiver>
-    auto __make_visitor_fn(_Receiver& __rcvr) noexcept
-    {
-      return [&__rcvr]<class _Tuple>(_Tuple&& __result) noexcept
-      {
-        STDEXEC::__apply(
-          [&__rcvr]<class... _As>(auto __tag, _As&... __args) noexcept
-          { __tag(static_cast<_Receiver&&>(__rcvr), static_cast<_As&&>(__args)...); },
-          __result);
-      };
-    }
+    using __results_storage_t =
+      __mapply_q<__results_storage, __minvoke<__completions_fn<_Env>, _CvSenders...>>;
 
     template <class _Receiver, class _ResultVariant>
     struct __opstate_base
@@ -108,7 +95,7 @@ namespace experimental::execution
       __std::atomic<std::size_t> __count_{};
 
       _Receiver      __rcvr_;
-      _ResultVariant __result_{__no_init};
+      _ResultVariant __result_;
 
       template <class _Tag, class... _Args>
       void notify(_Tag, _Args&&... __args) noexcept
@@ -151,9 +138,7 @@ namespace experimental::execution
             STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             return;
           }
-          STDEXEC_ASSERT(!__result_.__is_valueless());
-          STDEXEC::__visit(__when_any::__make_visitor_fn(__rcvr_),
-                           static_cast<_ResultVariant&&>(__result_));
+          std::move(__result_).__complete(__rcvr_);
         }
       }
     };
@@ -197,11 +182,11 @@ namespace experimental::execution
 
     template <class _Receiver, class... _CvSenders>
     struct __opstate
-      : __opstate_base<_Receiver, __result_type_t<env_of_t<_Receiver>, _CvSenders...>>
+      : __opstate_base<_Receiver, __results_storage_t<env_of_t<_Receiver>, _CvSenders...>>
     {
-      using __result_t   = __result_type_t<env_of_t<_Receiver>, _CvSenders...>;
-      using __receiver_t = __receiver<_Receiver, __result_t>;
-      using __op_base_t  = __opstate_base<_Receiver, __result_t>;
+      using __storage_t  = __results_storage_t<env_of_t<_Receiver>, _CvSenders...>;
+      using __receiver_t = __receiver<_Receiver, __storage_t>;
+      using __op_base_t  = __opstate_base<_Receiver, __storage_t>;
       using __opstates_t = __tuple<connect_result_t<_CvSenders, __receiver_t>...>;
 
       static constexpr bool __nothrow_construct = (__nothrow_connectable<_CvSenders, __receiver_t>
@@ -236,12 +221,6 @@ namespace experimental::execution
     template <class... _Senders>
     struct __sender
     {
-      template <class _Self, class _Env>
-      using __result_t = __result_type_t<_Env, __copy_cvref_t<_Self, _Senders>...>;
-
-      template <class _Self, class _Receiver>
-      using __receiver_t = __receiver<_Receiver, __result_t<_Self, env_of_t<_Receiver>>>;
-
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<_Receiver, __copy_cvref_t<_Self, _Senders>...>;
 
