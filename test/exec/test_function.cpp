@@ -297,11 +297,11 @@ namespace
       exec::function<ex::sender_tag(int),
                      ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(int)>>;
 
-    SECTION("the function types are not the same as each other")
+    SECTION("the function types are the same as each other")
     {
-      STATIC_REQUIRE(!std::same_as<func1_t, func2_t>);
-      STATIC_REQUIRE(!std::same_as<func1_t, func3_t>);
-      STATIC_REQUIRE(!std::same_as<func2_t, func3_t>);
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
+      STATIC_REQUIRE(std::same_as<func1_t, func3_t>);
+      STATIC_REQUIRE(std::same_as<func2_t, func3_t>);
     }
 
     SECTION("move-construction works in every direction between all three types")
@@ -378,9 +378,9 @@ namespace
     using func2_t =
       exec::function<int(int), exec::queries<double(query2_t, int), int(query1_t) noexcept>>;
 
-    SECTION("the function types are not the same as each other")
+    SECTION("the function types are the same as each other")
     {
-      STATIC_REQUIRE(!std::same_as<func1_t, func2_t>);
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
     }
 
     SECTION("move construction works in all directions with both types")
