@@ -14,25 +14,22 @@
     Copyright 2026 NVIDIA Corp.
 */
 
-// This sudoku code was originally taken from TBB examples/thread_group/sudoku.
-// The TBB example leaks: https://github.com/oneapi-src/oneTBB/issues/568
-// The code was modified by Kirk Shoop to use libunifex instead of TBB and to
-// remove the leaks.  The code was later modified by David Olsen to use C++26
-// std::execution instead of libunifex, to be a test in the NVHPC test suite
-// for stdexec.
+// This sudoku code was originally taken from TBB examples/thread_group/sudoku. The TBB
+// example leaks: https://github.com/oneapi-src/oneTBB/issues/568. The code was modified
+// by Kirk Shoop to use libunifex instead of TBB and to remove the leaks. The code was
+// later modified by David Olsen to use stdexec instead of libunifex to be a test in the
+// NVHPC test suite for stdexec.
 
 #include <cstdio>
 #include <cstdlib>
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
-#include <execution>
-#include <string>
 #include <string_view>
 #include <tuple>
 #include <vector>
 
-#define STDEXEC_NAMESPACE std::execution
 #include <stdexec/execution.hpp>
 
 unsigned const        BOARD_SIZE = 81;
@@ -280,23 +277,28 @@ bool examine_potentials(board_element *b, bool *progress)
       singletons          = true;
       break;
     }
+    default:
+    {
+      assert(!"potential set is not a power of 2");
+      break;
+    }
     }
   }
   *progress = singletons;
   return valid_board(b);
 }
 
-void spawn_partial_solve(std::execution::parallel_scheduler     sch,
-                         std::execution::simple_counting_scope &scope,
-                         std::inplace_stop_source              &stop,
-                         std::unique_ptr<board_element[]>       board,
-                         unsigned                               first_potential_set);
+void spawn_partial_solve(stdexec::parallel_scheduler      sch,
+                         stdexec::simple_counting_scope  &scope,
+                         stdexec::inplace_stop_source    &stop,
+                         std::unique_ptr<board_element[]> board,
+                         unsigned                         first_potential_set);
 
-void partial_solve(std::execution::parallel_scheduler     sch,
-                   std::execution::simple_counting_scope &scope,
-                   std::inplace_stop_source              &stop,
-                   std::unique_ptr<board_element[]>       board,
-                   unsigned                               first_potential_set)
+void partial_solve(stdexec::parallel_scheduler      sch,
+                   stdexec::simple_counting_scope  &scope,
+                   stdexec::inplace_stop_source    &stop,
+                   std::unique_ptr<board_element[]> board,
+                   unsigned                         first_potential_set)
 {
   if (stop.stop_requested())
   {
@@ -347,46 +349,45 @@ void partial_solve(std::execution::parallel_scheduler     sch,
   }
 }
 
-void spawn_partial_solve(std::execution::parallel_scheduler     sch,
-                         std::execution::simple_counting_scope &scope,
-                         std::inplace_stop_source              &stop,
-                         std::unique_ptr<board_element[]>       board,
-                         unsigned                               first_potential_set)
+void spawn_partial_solve(stdexec::parallel_scheduler      sch,
+                         stdexec::simple_counting_scope  &scope,
+                         stdexec::inplace_stop_source    &stop,
+                         std::unique_ptr<board_element[]> board,
+                         unsigned                         first_potential_set)
 {
-  std::execution::spawn(
-    std::execution::schedule(sch)
-      | std::execution::then(
-        [=, &scope, &stop, board = std::move(board)]() mutable noexcept
-        {
-          ++nTasks;
-          partial_solve(sch, scope, stop, std::move(board), first_potential_set);
-        })
-      | std::execution::upon_error([](auto) noexcept {}),  // no-op, just swallow errors
-    scope.get_token());
+  stdexec::spawn(stdexec::schedule(sch)
+                   | stdexec::then(
+                     [=, &scope, &stop, board = std::move(board)]() mutable noexcept
+                     {
+                       ++nTasks;
+                       partial_solve(sch, scope, stop, std::move(board), first_potential_set);
+                     })
+                   | stdexec::upon_error([](auto) noexcept {}),  // no-op, just swallow errors
+                 scope.get_token());
 }
 
 std::tuple<unsigned, unsigned, unsigned, std::chrono::steady_clock::duration>
-solve(std::execution::parallel_scheduler sch, unsigned short const *init_values)
+solve(stdexec::parallel_scheduler sch, unsigned short const *init_values)
 {
   nSols  = 0;
   nTasks = 0;
   nRaces = 0;
   std::unique_ptr<board_element[]> start_board{new board_element[BOARD_SIZE]};
   init_board(start_board.get(), init_values);
-  auto                     start = std::chrono::steady_clock::now();
-  std::inplace_stop_source stop;
-  auto                     canceled = []()
+  auto                         start = std::chrono::steady_clock::now();
+  stdexec::inplace_stop_source stop;
+  auto                         canceled = []()
   {
     if (verbose)
     {
       printf("\ncanceled \n\n");
     }
   };
-  std::inplace_stop_token::template callback_type<decltype(canceled)> callback(stop.get_token(),
-                                                                               canceled);
-  std::execution::simple_counting_scope                               scope;
+  stdexec::inplace_stop_token::template callback_type<decltype(canceled)> callback(stop.get_token(),
+                                                                                   canceled);
+  stdexec::simple_counting_scope                                          scope;
   spawn_partial_solve(sch, scope, stop, std::move(start_board), 0);
-  std::this_thread::sync_wait(scope.join());
+  stdexec::sync_wait(scope.join());
   return std::make_tuple((unsigned) nSols,
                          (unsigned) nTasks,
                          (unsigned) nRaces,
@@ -416,7 +417,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-      printf("unrecognized argument: -> %s", arg.data());
+      printf("unrecognized argument: -> %.*s", (int) arg.size(), arg.data());
     }
   }
 
@@ -425,8 +426,7 @@ int main(int argc, char *argv[])
 
   auto one_solve = [&](unsigned short const *init_values)
   {
-    auto [number, tasks, races, solve_time] = solve(std::execution::get_parallel_scheduler(),
-                                                    init_values);
+    auto [number, tasks, races, solve_time] = solve(stdexec::get_parallel_scheduler(), init_values);
     if (!silent)
     {
       if (find_one)
