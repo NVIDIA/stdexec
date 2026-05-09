@@ -43,16 +43,6 @@ namespace experimental::execution
       detail::normalize(static_cast<Sigs*>(nullptr))...));
   }  // namespace detail
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
-  // get_child_completion_signatures
-  template <STDEXEC::sender _Parent, STDEXEC::sender _Child, class... _Env>
-  [[nodiscard]]
-  consteval auto get_child_completion_signatures()
-  {
-    return STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<_Parent, _Child>,
-                                              STDEXEC::__fwd_env_t<_Env>...>();
-  }
-
   //! Creates a compile-time completion signatures type from explicit and deduced signature types.
   //!
   //! This function is a compile-time helper that constructs a completion signatures type
@@ -84,6 +74,16 @@ namespace experimental::execution
     -> detail::make_completion_signatures_t<ExplicitSigs..., DeducedSigs...>
   {
     return {};
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  // get_child_completion_signatures
+  template <STDEXEC::sender _Parent, STDEXEC::sender _Child, class... _Env>
+  [[nodiscard]]
+  consteval auto get_child_completion_signatures()
+  {
+    return STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<_Parent, _Child>,
+                                              STDEXEC::__fwd_env_t<_Env>...>();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////

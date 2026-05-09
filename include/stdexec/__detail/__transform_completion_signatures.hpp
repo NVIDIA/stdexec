@@ -26,8 +26,6 @@
 #include "__get_completion_signatures.hpp"
 #include "__meta.hpp"
 
-#include <exception>
-
 #include "__prologue.hpp"
 
 namespace STDEXEC
@@ -444,7 +442,9 @@ namespace STDEXEC
     {
       if constexpr (__decay_copyable<_Args...>)
       {
-        return completion_signatures<_SetTag(__decay_t<_Args>...)>();
+        return __concat_completion_signatures(
+          completion_signatures<_SetTag(__decay_t<_Args>...)>(),
+          __eptr_completion_unless_t<__nothrow_decay_copyable_t<_Args...>>());
       }
       else
       {
@@ -590,11 +590,6 @@ namespace STDEXEC
       }
     }
   }
-
-  using __eptr_completion_t = completion_signatures<set_error_t(std::exception_ptr)>;
-
-  template <class _NoExcept>
-  using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion_t>;
 
   // The following utilities are needed fairly often:
   template <class _Fun, class... _Args>
