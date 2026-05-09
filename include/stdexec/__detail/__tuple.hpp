@@ -397,7 +397,10 @@ namespace STDEXEC
     {
       return static_cast<_Tuple&&>(__tupl).__val7;
     }
-    STDEXEC_UNREACHABLE();
+    else
+    {
+      STDEXEC_UNREACHABLE();
+    }
   }
 
   //
