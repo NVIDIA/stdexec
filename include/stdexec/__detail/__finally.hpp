@@ -324,7 +324,6 @@ namespace STDEXEC
           }
           else
           {
-            using __is_nothrow_t = __nothrow_decay_copyable_results_t<__initial_completions_t>;
             // The finally sender's completion signatures are ...
             return STDEXEC::__concat_completion_signatures(
               // ... the initial sender's completions with value types decayed ...
@@ -333,9 +332,7 @@ namespace STDEXEC
                 __decay_arguments<set_value_t, __finally_t>()),
               // ... and the final sender's error and stopped completions ...
               STDEXEC::__transform_completion_signatures(__final_completions,
-                                                         __ignore_completion()),
-              // ... and possibly a set_error(exception_ptr) completion.
-              __eptr_completion_unless_t<__is_nothrow_t>());
+                                                         __ignore_completion()));
           }
         }
       }

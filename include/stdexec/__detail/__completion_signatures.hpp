@@ -24,6 +24,7 @@
 #include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 #include "__utility.hpp"
 
+#include <exception>
 #include <type_traits>
 
 #include "__prologue.hpp"
@@ -431,6 +432,11 @@ namespace STDEXEC
       return __mset_eq<__t<__type_set>, __other_set>;
     }
   };
+
+  using __eptr_completion_t = completion_signatures<set_error_t(std::exception_ptr)>;
+
+  template <class _NoExcept>
+  using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion_t>;
 
 #if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 

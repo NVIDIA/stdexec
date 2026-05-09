@@ -21,6 +21,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 
+#include "completion_signatures.hpp"
 #include "sequence.hpp"
 #include "trampoline_scheduler.hpp"
 
@@ -105,21 +106,24 @@ namespace experimental::execution
       __opstate_base<_Receiver> *__state_;
     };
 
+    template <class _Child>
+    using __bouncy_sndr_t =
+      __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
+
+    template <class _Child, class _Receiver>
+    constexpr bool __nothrow_connect =
+      __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler>
+      && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
+      && __nothrow_connectable<__bouncy_sndr_t<_Child>, _Receiver>;
+
     template <class _Child, class _Receiver>
     struct __opstate final : __opstate_base<_Receiver>
     {
       using __receiver_t = __receiver<_Receiver>;
-      using __bouncy_sndr_t =
-        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, _Child &>;
-      using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t, __receiver_t>;
-
-      static constexpr bool __nothrow_connect =
-        __nothrow_invocable<STDEXEC::schedule_t, trampoline_scheduler>
-        && __nothrow_invocable<sequence_t, schedule_result_t<trampoline_scheduler>, _Child &>
-        && __nothrow_connectable<__bouncy_sndr_t, __receiver_t>;
+      using __child_op_t = STDEXEC::connect_result_t<__bouncy_sndr_t<_Child>, __receiver_t>;
 
       constexpr explicit __opstate(std::size_t __count, _Child __child, _Receiver __rcvr)
-        noexcept(__nothrow_move_constructible<_Child> && __nothrow_connect)
+        noexcept(__nothrow_move_constructible<_Child> && __nothrow_connect<_Child, _Receiver>)
         : __opstate_base<_Receiver>{static_cast<_Receiver &&>(__rcvr), __count}
         , __child_(std::move(__child))
       {
@@ -141,7 +145,7 @@ namespace experimental::execution
         }
       }
 
-      constexpr auto __connect() noexcept(__nothrow_connect) -> __child_op_t &
+      constexpr auto __connect() noexcept(__nothrow_connect<_Child, _Receiver>) -> __child_op_t &
       {
         return __child_op_.__emplace_from(STDEXEC::connect,
                                           exec::sequence(STDEXEC::schedule(trampoline_scheduler{}),
@@ -171,7 +175,7 @@ namespace experimental::execution
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!__nothrow_connect)
+          if constexpr (!__nothrow_connect<_Child, _Receiver>)
           {
             STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
           }
@@ -186,36 +190,6 @@ namespace experimental::execution
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __opstate(std::size_t, _Child, _Receiver) -> __opstate<_Child, _Receiver>;
 
-    template <class _Child, class... _Args>
-    using __values_t =
-      // There's something funny going on with __if_c here. Use std::conditional_t instead. :-(
-      std::conditional_t<(sizeof...(_Args) == 0),
-                         completion_signatures<>,
-                         __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                                      _WHERE_(_IN_ALGORITHM_, repeat_n_t),
-                                      _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
-                                      _WITH_PRETTY_SENDER_<_Child>>>;
-
-    template <class _Error>
-    using __error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
-
-    template <typename _Sender, typename... _Env>
-    using __with_eptr_completion_t = __eptr_completion_unless_t<__mbool<
-      __cmplsigs::__partitions_of_t<
-        __completion_signatures_of_t<_Sender, _Env...>>::__nothrow_decay_copyable::__errors::value
-      && (__nothrow_connectable<_Sender, __receiver_archetype<_Env>> && ...)>>;
-
-    template <class _Child, class... _Env>
-    using __completions_t = STDEXEC::__transform_completion_signatures_t<
-      __completion_signatures_of_t<_Child &, _Env...>,
-      STDEXEC::__transform_completion_signatures_t<
-        __completion_signatures_of_t<STDEXEC::schedule_result_t<trampoline_scheduler>, _Env...>,
-        __with_eptr_completion_t<_Child, _Env...>,
-        __cmplsigs::__default_set_value,
-        __error_t>,
-      __mbind_front_q<__values_t, _Child>::template __f,
-      __error_t>;
-
     struct __impls : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
@@ -225,19 +199,40 @@ namespace experimental::execution
         return {STDEXEC::schedule(trampoline_scheduler{}), const_cast<_Child &>(__child)};
       };
 
-      template <class _Sender>
-        requires(!STDEXEC::dependent_sender<__child_of<_Sender>>)
+      template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Sender>>{};
-      }
+        using __child_t = __child_of<_Sender>;
 
-      template <class _Sender, class _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Sender>, _Env>{};
+        auto __completions = transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__bouncy_sndr_t<__child_t>, _Env...>(),
+          // transform for set_value completions:
+          []<class... _Args>()
+          {
+            if constexpr (sizeof...(_Args) == 0)
+              return completion_signatures<set_value_t()>();
+            else
+              return STDEXEC::__throw_compile_time_error<
+                _WHAT_(_INVALID_ARGUMENT_),
+                _WHERE_(_IN_ALGORITHM_, repeat_n_t),
+                _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
+                _WITH_PRETTY_SENDER_<__child_t &>>();
+          },
+          // transform for set_error completions:
+          decay_arguments<set_error_t, repeat_n_t>());
+
+        STDEXEC_IF_OK(__completions)
+        {
+          // Conditionally add set_error(std::exception_ptr) when appropriate
+          if constexpr (__completions.template __contains<set_error_t(std::exception_ptr)>())
+            return __completions;  // NOLINT(bugprone-branch-clone)
+          else if constexpr (sizeof...(_Env) == 0)
+            return STDEXEC::__throw_dependent_sender_error<__child_t>();
+          else if constexpr ((__nothrow_connect<__child_t, __receiver_archetype<_Env>> || ...))
+            return __completions;
+          else
+            return concat_completion_signatures(__completions, __eptr_completion_t());
+        }
       }
 
       static constexpr auto __connect =  //
