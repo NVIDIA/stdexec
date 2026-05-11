@@ -198,8 +198,6 @@ namespace
              });
   };
 
-#if !STDEXEC_NO_STDCPP_RANGES()
-
   // a sequence of numbers from itoa()
   [[maybe_unused]]
   static constexpr auto range = [](auto from, auto to)
@@ -405,7 +403,5 @@ namespace
     CAPTURE(count < 40, count > 4);
     CHECK(v.has_value() == false);
   }
-
-#endif  // !STDEXEC_NO_STDCPP_RANGES()
 
 }  // namespace

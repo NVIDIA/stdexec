@@ -592,15 +592,6 @@ namespace STDEXEC
 #  define STDEXEC_TSAN() 0
 #endif
 
-// Before clang-16, clang did not like libstdc++'s ranges implementation
-#if __has_include(<ranges>) && \
-  (defined(__cpp_lib_ranges) && __cpp_lib_ranges >= 201911L) && \
-  (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 1600 || defined(_LIBCPP_VERSION))
-#  define STDEXEC_NO_STDCPP_RANGES() 0
-#else
-#  define STDEXEC_NO_STDCPP_RANGES() 1
-#endif
-
 #if __has_include(<memory_resource>) && \
   (defined(__cpp_lib_memory_resource) && __cpp_lib_memory_resource >= 201603L)
 #  define STDEXEC_NO_STDCPP_MEMORY_RESOURCE() 0

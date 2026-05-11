@@ -336,6 +336,7 @@ void partial_solve(stdexec::parallel_scheduler      sch,
     {
       if (1 << (potential - 1) & board.get()[first_potential_set].potential_set)
       {
+        // NOLINTNEXTLINE(bugprone-unhandled-exception-at-new)
         std::unique_ptr<board_element[]> new_board(new board_element[BOARD_SIZE]);
         copy_board(board.get(), new_board.get());
         new_board.get()[first_potential_set].solved_element = potential;

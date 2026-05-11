@@ -28,12 +28,9 @@
 #include "exec/trampoline_scheduler.hpp"
 #include "stdexec/__detail/__continues_on.hpp"
 #include "stdexec/__detail/__just.hpp"
-#include "stdexec/__detail/__meta.hpp"
 #include "stdexec/__detail/__upon_error.hpp"
-#include <atomic>
 #include <catch2/catch_all.hpp>
 
-#include <mutex>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
@@ -141,7 +138,6 @@ namespace
     CHECK(count == 2);
   }
 
-#if !STDEXEC_NO_STDCPP_RANGES()
   TEST_CASE("merge - merge sender merges all items", "[sequence_senders][merge][iterate]")
   {
     auto range = [](auto from, auto to)
@@ -231,7 +227,6 @@ namespace
     CHECK(total == 12570);
     CHECK(count == 60);
   }
-#endif
 
   struct my_domain
   {

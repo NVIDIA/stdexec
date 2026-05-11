@@ -104,13 +104,11 @@ namespace experimental::execution
       return std::make_pair(static_cast<Shape>(begin), static_cast<Shape>(end));
     }
 
-#if !STDEXEC_NO_STDCPP_RANGES()
     namespace schedule_all_
     {
       template <class Range>
       class sequence;
     }  // namespace schedule_all_
-#endif
 
     struct task_base
     {
@@ -267,7 +265,6 @@ namespace experimental::execution
         _static_thread_pool& pool_;
       };
 
-#if !STDEXEC_NO_STDCPP_RANGES()
       struct _transform_iterate
       {
         template <class Range>
@@ -278,7 +275,6 @@ namespace experimental::execution
 
         _static_thread_pool& pool_;
       };
-#endif
 
       static auto _hardware_concurrency() noexcept -> unsigned int
       {
@@ -316,7 +312,6 @@ namespace experimental::execution
           }
         }
 
-#if !STDEXEC_NO_STDCPP_RANGES()
         template <sender_for<exec::iterate_t> Sender, class Env>
         constexpr auto
         transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env) const noexcept
@@ -340,7 +335,6 @@ namespace experimental::execution
               STDEXEC::_WITH_ENVIRONMENT_(Env)>();
           }
         }
-#endif
       };
 
      public:
@@ -1578,7 +1572,6 @@ namespace experimental::execution
       {}
     };
 
-#if !STDEXEC_NO_STDCPP_RANGES()
     namespace schedule_all_
     {
       template <class Rcvr>
@@ -1832,14 +1825,11 @@ namespace experimental::execution
     }  // namespace schedule_all_
 
     struct schedule_all_t;
-#endif
   }  // namespace _pool_
 
   struct static_thread_pool : private _pool_::_static_thread_pool
   {
-#if !STDEXEC_NO_STDCPP_RANGES()
     friend struct _pool_::schedule_all_t;
-#endif
     using task_base = _pool_::task_base;
 
     static_thread_pool() = default;
@@ -1872,7 +1862,6 @@ namespace experimental::execution
     using _pool_::_static_thread_pool::params;
   };
 
-#if !STDEXEC_NO_STDCPP_RANGES()
   namespace _pool_
   {
     struct schedule_all_t
@@ -1887,7 +1876,6 @@ namespace experimental::execution
   }  // namespace _pool_
 
   inline constexpr _pool_::schedule_all_t schedule_all{};
-#endif
 
 }  // namespace experimental::execution
 

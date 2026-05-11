@@ -18,11 +18,9 @@
 #include "exec/sequence/iterate.hpp"
 #include "stdexec/execution.hpp"
 
-#if !STDEXEC_NO_STDCPP_RANGES()
-
-#  include <array>
-#  include <catch2/catch_all.hpp>
-#  include <numeric>
+#include <array>
+#include <catch2/catch_all.hpp>
+#include <numeric>
 
 namespace
 {
@@ -143,5 +141,3 @@ namespace
   }
 
 }  // namespace
-
-#endif  // !STDEXEC_NO_STDCPP_RANGES()
