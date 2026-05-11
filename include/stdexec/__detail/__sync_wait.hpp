@@ -305,8 +305,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
       STDEXEC::__sync_wait::__state                                       __local_state{};
       std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>> __result{};
 
-      // Launch the sender with a continuation that will fill in the __result optional or set the
-      // exception_ptr in __local_state.
+      // Launch the sender with a continuation that will fill in the __result optional or
+      // set the exception_ptr in __local_state.
       [[maybe_unused]]
       auto __op = STDEXEC::connect(static_cast<_CvSender&&>(__sndr),
                                    STDEXEC::__sync_wait::__receiver_t<_CvSender>{&__local_state,

@@ -75,7 +75,7 @@ namespace
   TEST_CASE("let_value returning void can we waited on", "[adaptors][let_value]")
   {
     ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
   }
 
   TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]")
@@ -164,9 +164,9 @@ namespace
     };
     auto snd = ex::just(13) | ex::let_value(invocable{});
     static_assert(
-      set_equivalent<::STDEXEC::completion_signatures<::STDEXEC::set_value_t(int),
-                                                      ::STDEXEC::set_error_t(std::exception_ptr)>,
-                     ::STDEXEC::completion_signatures_of_t<decltype(snd), ::STDEXEC::env<>>>);
+      set_equivalent<
+        ::ex::completion_signatures<::ex::set_value_t(int), ::ex::set_error_t(std::exception_ptr)>,
+        ::ex::completion_signatures_of_t<decltype(snd), ::ex::env<>>>);
     auto op = ex::connect(std::move(snd), expect_error_receiver{});
     ex::start(op);
   }
@@ -363,7 +363,7 @@ namespace
   struct let_value_test_domain
   {
     template <exec::sender_for<ex::let_value_t> Sender>
-    static auto transform_sender(STDEXEC::set_value_t, Sender&&, auto&&...)
+    static auto transform_sender(ex::set_value_t, Sender&&, auto&&...)
     {
       return ex::just(std::string{"hallo"});
     }
@@ -416,17 +416,16 @@ namespace
 
   struct throws_on_connect
   {
-    using sender_concept = ::STDEXEC::sender_tag;
+    using sender_concept = ::ex::sender_tag;
 
     template <class>
     static consteval auto get_completion_signatures() noexcept
     {
-      return ::STDEXEC::completion_signatures<::STDEXEC::set_value_t()>{};
+      return ::ex::completion_signatures<::ex::set_value_t()>{};
     }
 
     template <class Receiver>
-    auto
-    connect(Receiver) const -> ::STDEXEC::connect_result_t<decltype(::STDEXEC::just()), Receiver>
+    auto connect(Receiver) const -> ::ex::connect_result_t<decltype(::ex::just()), Receiver>
     {
       throw std::logic_error("TEST");
     }
@@ -439,7 +438,7 @@ namespace
   {
     struct receiver
     {
-      using receiver_concept = ::STDEXEC::receiver_tag;
+      using receiver_concept = ::ex::receiver_tag;
       std::shared_ptr<int> ptr;
       void                 set_value() noexcept
       {
@@ -452,9 +451,9 @@ namespace
         *ptr = 5;
       }
     };
-    auto const ptr = std::make_shared<int>(0);
-    auto sender = ex::let_value(::STDEXEC::just(), []() noexcept { return throws_on_connect{}; });
-    auto op     = ex::connect(std::move(sender), receiver{ptr});
+    auto const ptr    = std::make_shared<int>(0);
+    auto       sender = ex::let_value(::ex::just(), []() noexcept { return throws_on_connect{}; });
+    auto       op     = ex::connect(std::move(sender), receiver{ptr});
     ex::start(op);
     CHECK(*ptr == 5);
   }
@@ -481,18 +480,18 @@ namespace
 
   struct immovable_sender
   {
-    using sender_concept = ::STDEXEC::sender_tag;
+    using sender_concept = ::ex::sender_tag;
 
     template <class, class... Env>
     static consteval auto get_completion_signatures() noexcept
     {
-      return ::STDEXEC::completion_signatures_of_t<decltype(::STDEXEC::just()), Env...>{};
+      return ::ex::completion_signatures_of_t<decltype(::ex::just()), Env...>{};
     }
 
     template <class Receiver>
     auto connect(Receiver r) const & noexcept
     {
-      return ::STDEXEC::connect(::STDEXEC::just(), std::move(r));
+      return ::ex::connect(::ex::just(), std::move(r));
     }
 
     immovable_sender() = default;
@@ -501,10 +500,10 @@ namespace
       throw std::logic_error("Unexpected copy");
     }
   };
-  static_assert(::STDEXEC::sender<immovable_sender>);
-  static_assert(::STDEXEC::sender<immovable_sender const &>);
-  static_assert(::STDEXEC::sender_in<immovable_sender, ::STDEXEC::env<>>);
-  static_assert(::STDEXEC::sender_in<immovable_sender const &, ::STDEXEC::env<>>);
+  static_assert(::ex::sender<immovable_sender>);
+  static_assert(::ex::sender<immovable_sender const &>);
+  static_assert(::ex::sender_in<immovable_sender, ::ex::env<>>);
+  static_assert(::ex::sender_in<immovable_sender const &, ::ex::env<>>);
 
   TEST_CASE("If the sender factory returns a reference to a sender that reference is passed to "
             "connect",
@@ -515,5 +514,21 @@ namespace
     auto                   sender = ex::let_value(just, [&]() -> decltype(auto) { return (s); });
     auto                   op     = ex::connect(sender, expect_void_receiver{});
     ex::start(op);
+  }
+
+  TEST_CASE("let_value does not complete inline if the secondary sender doesn't complete inline",
+            "[adaptors][let_value]")
+  {
+    auto sndr = ex::read_env(ex::get_scheduler)
+              | ex::let_value(
+                  [](auto sched) noexcept
+                  {
+                    return ex::schedule(std::move(sched)) | ex::then([]() noexcept { return 0; });
+                  });
+
+    using sender_t = decltype(sndr);
+    using env_t    = ex::prop<ex::get_scheduler_t, ex::run_loop::scheduler>;
+
+    STATIC_REQUIRE_FALSE(ex::__completes_inline<ex::set_value_t, sender_t, env_t>);
   }
 }  // namespace

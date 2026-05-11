@@ -26,6 +26,7 @@
 #include <stdexec/__detail/__config.hpp>
 
 STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
 
 // Windows.h macros:
 

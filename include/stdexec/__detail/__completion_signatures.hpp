@@ -390,7 +390,7 @@ namespace STDEXEC
     //! tag.
     template <__completion_tag _Tag>
     [[nodiscard]]
-    static consteval auto __select(_Tag) noexcept
+    static consteval auto __select(_Tag = _Tag()) noexcept
     {
       if constexpr (_Tag{} == set_value)
       {
@@ -560,6 +560,12 @@ namespace STDEXEC
       return _ID;                                   \
     } else
 
+#  define STDEXEC_IF_OK_OR(_ID, ...)                \
+    if constexpr (STDEXEC::__merror<decltype(_ID)>) \
+    {                                               \
+      return __VA_ARGS__;                           \
+    } else
+
   template <class, class _Sndr>
   [[nodiscard]]
   consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
@@ -577,6 +583,7 @@ namespace STDEXEC
 #else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
 #  define STDEXEC_IF_OK(_ID)
+#  define STDEXEC_IF_OK_OR(_ID, ...)
 
   template <class _Result, class _Sndr>
   [[noreturn, nodiscard]]

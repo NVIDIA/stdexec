@@ -34,7 +34,6 @@ STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
 
 namespace nv::execution::_strm
 {
-
   namespace _then
   {
     template <class... Args, class Fun>
@@ -157,7 +156,7 @@ namespace nv::execution::_strm
                                         set_value_t,
                                         Fun,
                                         __copy_cvref_t<Self, Sender>,
-                                        Env...>,
+                                        stream_env_t<Env>...>,
                   completion_signatures<set_error_t(cudaError_t)>>;
 
     template <class... Args>
@@ -165,7 +164,7 @@ namespace nv::execution::_strm
 
     template <class Self, class... Env>
     using _completions_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
+      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, stream_env_t<Env>...>,
       __error_completions_t<Self, Env...>,
       _set_value_t,
       _set_error_t>;
