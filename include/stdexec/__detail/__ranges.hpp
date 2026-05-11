@@ -21,15 +21,18 @@
 
 #include "__prologue.hpp"
 
-namespace STDEXEC::ranges
+namespace STDEXEC
 {
-  using std::ranges::begin;
-  using std::ranges::end;
+  namespace [[deprecated("use std::ranges directly")]] ranges
+  {
+    using std::ranges::begin;
+    using std::ranges::end;
 
-  using std::ranges::range_value_t;
-  using std::ranges::range_reference_t;
-  using std::ranges::iterator_t;
-  using std::ranges::sentinel_t;
-}  // namespace STDEXEC::ranges
+    using std::ranges::range_value_t;
+    using std::ranges::range_reference_t;
+    using std::ranges::iterator_t;
+    using std::ranges::sentinel_t;
+  }  // namespace ranges
+}  // namespace STDEXEC
 
 #include "__epilogue.hpp"

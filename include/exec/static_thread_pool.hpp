@@ -759,8 +759,7 @@ namespace experimental::execution
                                     .thread_index = index});
       }
 
-      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
-      std::sort(thread_index_by_numa_node_.begin(), thread_index_by_numa_node_.end());
+      std::ranges::sort(thread_index_by_numa_node_);
       std::vector<workstealing_victim> victims{};
       for (auto& state: thread_states_)
       {
@@ -836,15 +835,12 @@ namespace experimental::execution
     inline auto _static_thread_pool::num_threads(int numa) const noexcept -> std::size_t
     {
       thread_index_by_numa_node key{.numa_node = numa, .thread_index = 0};
-      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
-      auto it = std::lower_bound(thread_index_by_numa_node_.begin(),
-                                 thread_index_by_numa_node_.end(),
-                                 key);
+      auto                      it = std::ranges::lower_bound(thread_index_by_numa_node_, key);
       if (it == thread_index_by_numa_node_.end())
       {
         return 0;
       }
-      auto it_end = std::upper_bound(it, thread_index_by_numa_node_.end(), key);
+      auto it_end = std::ranges::upper_bound(it, thread_index_by_numa_node_.end(), key);
       return static_cast<std::size_t>(std::distance(it, it_end));
     }
 
@@ -870,10 +866,7 @@ namespace experimental::execution
       -> std::size_t
     {
       thread_index_by_numa_node key{.numa_node = node_index, .thread_index = 0};
-      // NOLINTNEXTLINE(modernize-use-ranges) we still support platforms without the std::ranges algorithms
-      auto it = std::lower_bound(thread_index_by_numa_node_.begin(),
-                                 thread_index_by_numa_node_.end(),
-                                 key);
+      auto                      it = std::ranges::lower_bound(thread_index_by_numa_node_, key);
       STDEXEC_ASSERT(it != thread_index_by_numa_node_.end());
       std::advance(it, thread_index);
       return it->thread_index;
