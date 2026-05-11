@@ -18,9 +18,10 @@
 
 #pragma once
 
-#include "../../stdexec/__detail/__ranges.hpp"
 #include "../../stdexec/execution.hpp"
+
 #include <cstddef>
+#include <ranges>
 
 #include <cuda/std/type_traits>
 
@@ -32,7 +33,7 @@ namespace nv::execution::_strm::__algo_range_init_fun
 {
   template <class Range, class InitT, class Fun>
   using binary_invoke_result_t = ::cuda::std::decay_t<
-    ::cuda::std::invoke_result_t<Fun, STDEXEC::ranges::range_reference_t<Range>, InitT>>;
+    ::cuda::std::invoke_result_t<Fun, std::ranges::range_reference_t<Range>, InitT>>;
 
   template <class Sender, class Receiver, class InitT, class Fun, class DerivedReceiver>
   struct receiver : public stream_receiver_base

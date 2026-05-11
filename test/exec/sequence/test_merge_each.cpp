@@ -194,8 +194,6 @@ namespace
              });
   };
 
-#if !STDEXEC_NO_STDCPP_RANGES()
-
   // a sequence of numbers from itoa()
   [[maybe_unused]]
   static constexpr auto range = [](auto from, auto to)
@@ -356,7 +354,7 @@ namespace
   }
 
 // TODO - fix problem with stopping
-#  if 0
+#if 0
   TEST_CASE(
     "merge_each - merge_each sender stops when a nested sequence fails",
     "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
@@ -380,8 +378,6 @@ namespace
     CHECK(count == 20);
     CHECK(v.has_value() == false);
   }
-#  endif  // 0
-
-#endif  // !STDEXEC_NO_STDCPP_RANGES()
+#endif  // 0
 
 }  // namespace

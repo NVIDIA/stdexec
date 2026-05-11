@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__execution_fwd.hpp"
+#include "__ranges.hpp"  // IWYU pragma: keep
 
 #include "__prologue.hpp"
 
@@ -27,8 +28,8 @@ namespace STDEXEC
   inline constexpr __execute_may_block_caller_t const & execute_may_block_caller =
     __execute_may_block_caller;
 
-  using empty_env [[deprecated(
-    "STDEXEC::empty_env is now spelled " STDEXEC_PP_STRINGIZE(STDEXEC) "::env<>")]] = env<>;
+  using empty_env
+    [[deprecated("empty_env is now spelled " STDEXEC_PP_STRINGIZE(STDEXEC) "::env<>")]] = env<>;
 
   using dependent_completions [[deprecated("use dependent_sender_error instead of "
                                            "dependent_completions")]] = dependent_sender_error;
@@ -86,6 +87,9 @@ namespace STDEXEC
 
   [[deprecated]]
   inline constexpr exec::__execute_t const & execute = exec::__execute;
+
+  namespace [[deprecated("Use std::ranges directly")]] ranges
+  {}
 }  // namespace STDEXEC
 
 #include "__epilogue.hpp"
