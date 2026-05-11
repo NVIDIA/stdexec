@@ -497,9 +497,6 @@ namespace nv::execution
     }
 
     template <class BaseEnv>
-    using make_stream_env_t = stream_env_t<BaseEnv>;
-
-    template <class BaseEnv>
     using make_terminal_stream_env_t = terminal_stream_env_t<BaseEnv>;
 
     template <class Sender, class E>
@@ -657,7 +654,7 @@ namespace nv::execution
     {
       using operation_state_concept = STDEXEC::operation_state_tag;
       using outer_env_t             = env_of_t<OuterReceiver>;
-      using env_t                   = make_stream_env_t<outer_env_t>;
+      using env_t                   = stream_env_t<outer_env_t>;
 
       static constexpr bool borrows_stream = borrows_stream_h<outer_env_t>();
 
@@ -670,19 +667,11 @@ namespace nv::execution
       [[nodiscard]]
       auto get_stream_provider() const -> stream_provider*
       {
-        stream_provider* provider{};
-
         if constexpr (borrows_stream)
         {
-          outer_env_t const & env = get_env(rcvr_);
-          provider                = ::nvexec::_strm::get_stream_provider(env);
+          return _strm::get_stream_provider(get_env(rcvr_));
         }
-        else
-        {
-          provider = &const_cast<stream_provider&>(stream_provider_);
-        }
-
-        return provider;
+        return &stream_provider_;
       }
 
       [[nodiscard]]
@@ -771,10 +760,10 @@ namespace nv::execution
         }
       }
 
-      context         ctx_;
-      void*           temp_storage_{nullptr};
-      OuterReceiver   rcvr_;
-      stream_provider stream_provider_;
+      context                 ctx_;
+      void*                   temp_storage_{nullptr};
+      OuterReceiver           rcvr_;
+      mutable stream_provider stream_provider_;
     };
 
     template <class OpState, class Env = decltype(__declval<OpState&>().make_env())>
@@ -804,6 +793,8 @@ namespace nv::execution
       [[nodiscard]]
       auto get_env() const noexcept -> Env
       {
+        static_assert(__same_as<Env, decltype(opstate_.make_env())>,
+                      "Env must be the type returned by OpState::make_env()");
         return opstate_.make_env();
       }
 

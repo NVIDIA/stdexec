@@ -319,8 +319,8 @@ namespace STDEXEC
       {
         using __domain_t = __call_result_t<__read_query_t, _Attrs const &, _Env const &...>;
         return __check_domain<_Attrs, _Env...>(__domain_t{});
-        // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion domain:
       }
+      // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion domain:
       else if constexpr (__same_as<_Tag, void>)
       {
         if constexpr (__callable<get_completion_domain_t<set_value_t>,
@@ -344,7 +344,7 @@ namespace STDEXEC
       {
         using __sch_t =
           __call_result_t<get_completion_scheduler_t<_Tag>, _Attrs const &, _Env const &...>;
-        using __read_query_t = typename get_completion_domain_t<set_value_t>::__read_query_t;
+        using __read_query_t = get_completion_domain_t<set_value_t>::__read_query_t;
 
         if constexpr (__callable<__read_query_t, __sch_t, _Env const &...>)
         {

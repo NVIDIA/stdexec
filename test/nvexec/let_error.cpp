@@ -82,7 +82,8 @@ namespace
   TEST_CASE("nvexec let_error can succeed a sender", "[cuda][stream][adaptors][let_error]")
   {
     nvexec::stream_context   stream_ctx{};
-    nvexec::stream_scheduler sch = stream_ctx.get_scheduler();
+    nvexec::stream_scheduler sch   = stream_ctx.get_scheduler();
+    auto                     attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
@@ -97,7 +98,8 @@ namespace
                    }
 
                    return ex::schedule(sch);
-                 });
+                 })
+             | exec::write_attrs(attrs);
     STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
