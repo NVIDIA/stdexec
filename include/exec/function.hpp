@@ -29,6 +29,7 @@
 
 // TODO: split this header into pieces
 #include "any_sender_of.hpp"
+#include "get_frame_allocator.hpp"
 
 #include <cstddef>
 #include <cstring>
@@ -52,33 +53,6 @@
 // queries to pick the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
-  //! A forwarding query for a "frame allocator", to be used for dynamically allocating
-  //! the operation states of senders type-erased by exec::function.
-  struct get_frame_allocator_t : STDEXEC::__query<get_frame_allocator_t>
-  {
-    using STDEXEC::__query<get_frame_allocator_t>::operator();
-
-    constexpr auto operator()() const noexcept
-    {
-      return STDEXEC::read_env(get_frame_allocator_t{});
-    }
-
-    template <class Env>
-    static constexpr void __validate() noexcept
-    {
-      static_assert(STDEXEC::__nothrow_callable<get_frame_allocator_t, Env const &>);
-      using __alloc_t = STDEXEC::__call_result_t<get_frame_allocator_t, Env const &>;
-      static_assert(STDEXEC::__simple_allocator<STDEXEC::__decay_t<__alloc_t>>);
-    }
-
-    static consteval auto query(STDEXEC::forwarding_query_t) noexcept -> bool
-    {
-      return true;
-    }
-  };
-
-  inline constexpr get_frame_allocator_t get_frame_allocator{};
-
   namespace _func
   {
     using namespace STDEXEC;
