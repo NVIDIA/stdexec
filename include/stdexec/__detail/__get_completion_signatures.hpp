@@ -289,8 +289,16 @@ namespace STDEXEC
   consteval auto get_completion_signatures()
   {
     using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
-    static_assert(!__merror<__new_sndr_t>);
-    return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
+    if constexpr (__merror<__new_sndr_t>)
+    {
+      return STDEXEC::__throw_compile_time_error(__new_sndr_t());
+    }
+    else
+    {
+      auto __cs = __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
+      static_assert(!__std::derived_from<decltype(__cs), dependent_sender_error>);
+      return __cs;
+    }
   }
 
   // Legacy interface:
@@ -426,14 +434,26 @@ namespace STDEXEC
     __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
 
   template <class _Sender, class... _Env>
+  concept __has_get_completion_info_mbr = requires {
+    STDEXEC_REMOVE_REFERENCE(_Sender)::template __get_completion_info<_Sender, _Env...>();
+  };
+
+  template <class _Sender, class... _Env>
   consteval auto __get_completion_info()
   {
-    auto __cmplsigs = STDEXEC::get_completion_signatures<_Sender, _Env...>();
-    STDEXEC_IF_OK(__cmplsigs)
+    if constexpr (__has_get_completion_info_mbr<_Sender, _Env...>)
     {
-      auto __cmplinfo = STDEXEC::__cmplsigs::__to_array(__cmplsigs);
-      std::ranges::for_each(__cmplinfo, &__completion_info::__populate<_Sender, _Env...>);
-      return __cmplinfo;
+      return STDEXEC_REMOVE_REFERENCE(_Sender)::template __get_completion_info<_Sender, _Env...>();
+    }
+    else
+    {
+      auto __cmplsigs = STDEXEC::get_completion_signatures<_Sender, _Env...>();
+      STDEXEC_IF_OK(__cmplsigs)
+      {
+        auto __cmplinfo = STDEXEC::__cmplsigs::__reflect(__cmplsigs);
+        std::ranges::for_each(__cmplinfo, &__completion_info::__populate<_Sender, _Env...>);
+        return __cmplinfo;
+      }
     }
   }
 }  // namespace STDEXEC

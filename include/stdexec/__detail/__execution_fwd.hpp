@@ -174,6 +174,8 @@ namespace STDEXEC
   using scheduler_t       = scheduler_tag;
   using receiver_t        = receiver_tag;
 
+  struct __completion_info;
+
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto __get_completion_behavior() noexcept;

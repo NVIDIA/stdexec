@@ -34,9 +34,10 @@ namespace STDEXEC
   // __get_completion_behavior
   struct __completion_behavior
   {
-    //private:
+    // private:
     template <__completion_tag _Tag>
     friend struct __get_completion_behavior_t;
+    friend struct __completion_info;
 
     enum __flag : std::uint8_t
     {
@@ -63,6 +64,50 @@ namespace STDEXEC
       __unknown = __not_affine_ | __async_ | __inline_
     };
 
+    // For use when computing the completion behavior of two senders when run in parallel.
+    //
+    // __asynchronous        | __asynchronous_affine   => __async_                            (aka __asynchronous)
+    // __asynchronous        | __inline_completion     => __async_ | __inline_ | __not_affine (aka __unknown)
+    // __asynchronous_affine | __inline_completion     => __async_ | __inline_
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    friend constexpr auto operator|(__behavior __left, __behavior __right) noexcept  //
+      -> __behavior
+    {
+      return __behavior(std::uint8_t(__left) | std::uint8_t(__right));
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    friend constexpr auto operator|=(__behavior &__left, __behavior __right) noexcept  //
+      -> __behavior &
+    {
+      return (__left = (__left | __right));
+    }
+
+    // For use when computing the completion behavior of two senders when run in sequence.
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    friend constexpr auto operator&(__behavior __left, __behavior __right) noexcept  //
+      -> __behavior
+    {
+      // Two senders in sequence can only complete inline if both senders can complete
+      // inline.
+      auto const __possibly_inline = std::uint8_t(__left) & std::uint8_t(__right) & __inline_;
+      // Two senders in sequence can complete in a different context if either sender can
+      // complete in a different context.
+      auto const __not_affine = (std::uint8_t(__left) | std::uint8_t(__right)) & __not_affine_;
+      // Two senders in sequence can complete asynchronously if either sender can complete
+      // asynchronously.
+      auto const __possibly_async = (std::uint8_t(__left) | std::uint8_t(__right)) & __async_;
+
+      return __behavior(__possibly_inline | __not_affine | __possibly_async);
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    friend constexpr auto operator&=(__behavior &__left, __behavior __right) noexcept  //
+      -> __behavior &
+    {
+      return (__left = (__left & __right));
+    }
+
     template <__behavior _CB>
     using __constant_t = std::integral_constant<__behavior, _CB>;
 
@@ -81,15 +126,37 @@ namespace STDEXEC
     static constexpr __asynchronous_affine_t __asynchronous_affine{};
     static constexpr __inline_completion_t   __inline_completion{};
 
-    // __asynchronous        | __asynchronous_affine   => __async_                            (aka __asynchronous)
-    // __asynchronous        | __inline_completion     => __async_ | __inline_ | __not_affine (aka __unknown)
-    // __asynchronous_affine | __inline_completion     => __async_ | __inline_
+    //private:
+    template <__behavior _CB>
+    static constexpr auto __reify() noexcept
+    {
+      if constexpr (_CB == __behavior::__asynchronous)
+        return __asynchronous;
+      else if constexpr (_CB == __behavior::__asynchronous_affine)
+        return __asynchronous_affine;
+      else if constexpr (_CB == __behavior::__inline_completion)
+        return __inline_completion;
+      else if constexpr (_CB == __behavior::__unknown)
+        return __unknown;
+      else
+        return __constant_t<_CB>{};
+    }
+
+   public:
+    // For use when computing the completion behavior of two senders when run in parallel.
     template <__behavior _Left, __behavior _Right>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     friend constexpr auto operator|(__constant_t<_Left>, __constant_t<_Right>) noexcept
     {
-      return __constant_t<static_cast<__behavior>(static_cast<std::uint8_t>(_Left)
-                                                  | static_cast<std::uint8_t>(_Right))>();
+      return __reify<_Left | _Right>();
+    }
+
+    // For use when computing the completion behavior of two senders when run in sequence.
+    template <__behavior _Left, __behavior _Right>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+    friend constexpr auto operator&(__constant_t<_Left>, __constant_t<_Right>) noexcept
+    {
+      return __reify<_Left & _Right>();
     }
 
     template <__behavior _Left, __behavior _Right>
@@ -123,11 +190,10 @@ namespace STDEXEC
     struct __common_t
     {
       template <__behavior... _CSs>
-        requires(sizeof...(_CSs) > 0)
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       constexpr auto operator()(__constant_t<_CSs>... __cbs) const noexcept
       {
-        return (__cbs | ...);
+        return (__cbs | ... | __constant_t<__behavior(0)>());
       }
     };
 

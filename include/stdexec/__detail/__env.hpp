@@ -35,11 +35,11 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
   namespace __env
   {
-    //////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////
     // cprop
     template <class _Query, auto _Value>
     struct cprop
@@ -155,6 +155,33 @@ namespace STDEXEC
         return __join(__root_env{}, static_cast<std::unwrap_reference_t<_Env> &&>(__env));
       }
     };
+
+    // A query result is valid if it is not void and does not indicate a failure.
+    template <class _Ty>
+    concept __valid_query_result = __not_same_as<_Ty, void> && __ok<_Ty>;
+
+    template <class _Env, class _Query, class... _Args>
+    concept __valid_queryable_with = requires(_Env const &__env, _Args &&...__args) {
+      { __env.__query(_Query(), static_cast<_Args &&>(__args)...) } -> __valid_query_result;
+    };
+
+    //////////////////////////////////////////////////////////////////////////////////////
+    // A CRTP base for an environment whose derived class provides (possibly
+    // void-returning) __query member functions, and that implements query() by forwarding
+    // to those member functions that do not return void.
+    template <__class _Derived>
+    struct __facade
+    {
+      // clang-format off
+      template <class _Env = _Derived, class _Query, class... _Args>
+        requires __valid_queryable_with<_Env, _Query, _Args...>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(_Query, _Args &&...__args) const STDEXEC_AUTO_RETURN
+      (
+        static_cast<_Env const &>(*this).__query(_Query(), static_cast<_Args &&>(__args)...)
+      )
+      // clang-format on
+    };
   }  // namespace __env
 
   using __env::__join_env_t;
@@ -170,7 +197,7 @@ namespace STDEXEC
 
   template <class _Env>
   concept __is_root_env = requires(_Env &&__env) {
-    { __root_t{}(__env) } -> __std::same_as<bool>;
+    { __root_t()(__env) } -> __same_as<bool>;
   };
 
   //////////////////////////////////////////////////////////////////////

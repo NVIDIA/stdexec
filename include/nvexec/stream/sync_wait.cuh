@@ -222,14 +222,27 @@ namespace nv::execution::_strm
     };
   }  // namespace _sync_wait
 
+  struct BECAUSE_THE_SENDER_IS_NOT_ABLE_TO_PROVIDE_A_COMPLETION_STREAM_SCHEDULER;
+
   template <>
   struct apply_sender_for<sync_wait_t>
   {
-    template <stream_completing_sender<STDEXEC::env<>> Sender>
+    template <class Sender>
     auto operator()(Sender&& sndr) const
     {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), STDEXEC::env{});
-      return _sync_wait::sync_wait_t{}(sched.ctx_, static_cast<Sender&&>(sndr));
+      if constexpr (!stream_completing_sender<Sender, STDEXEC::env<>>)
+      {
+        static_assert(__ok<STDEXEC::__mexception<
+          STDEXEC::_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
+          STDEXEC::_WHY_(BECAUSE_THE_SENDER_IS_NOT_ABLE_TO_PROVIDE_A_COMPLETION_STREAM_SCHEDULER),
+          STDEXEC::_WHERE_(_IN_ALGORITHM_, STDEXEC::sync_wait_t),
+          STDEXEC::_WITH_PRETTY_SENDER_<Sender>>>);
+      }
+      else
+      {
+        auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), STDEXEC::env{});
+        return _sync_wait::sync_wait_t{}(sched.ctx_, static_cast<Sender&&>(sndr));
+      }
     }
   };
 }  // namespace nv::execution::_strm

@@ -49,8 +49,8 @@ namespace nv::execution
     struct stream_scheduler;
 
     template <class StreamScheduler>
-    struct stream_scheduler_env
-    {  // NOLINT(bugprone-crtp-constructor-accessibility)
+    struct stream_scheduler_env  // NOLINT(bugprone-crtp-constructor-accessibility)
+    {
       STDEXEC_ATTRIBUTE(nodiscard)
       static auto query(get_forward_progress_guarantee_t) noexcept -> forward_progress_guarantee
       {
@@ -125,7 +125,7 @@ namespace nv::execution
           }
         };
 
-        attrs env_;
+        attrs attrs_;
 
        public:
         using completion_signatures =
@@ -133,19 +133,19 @@ namespace nv::execution
 
         STDEXEC_ATTRIBUTE(host, device)
         explicit sender(context ctx) noexcept
-          : env_{ctx}
+          : attrs_{ctx}
         {}
 
         template <class Receiver>
         auto connect(Receiver rcvr) const & noexcept -> opstate<Receiver>
         {
-          return opstate<Receiver>(static_cast<Receiver&&>(rcvr), env_.ctx_);
+          return opstate<Receiver>(static_cast<Receiver&&>(rcvr), attrs_.ctx_);
         }
 
         STDEXEC_ATTRIBUTE(nodiscard)
         auto get_env() const noexcept -> attrs const &
         {
-          return (env_);
+          return attrs_;
         }
       };
 

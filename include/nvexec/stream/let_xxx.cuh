@@ -70,14 +70,18 @@ namespace nv::execution::_strm
     // correctly report the scheduler and domain on which the sender's operation will be
     // started.
     inline constexpr auto _mk_sch_env =
-      []<class CvSender, class Receiver, class SetTag>(CvSender&& sndr, Receiver&& rcvr, SetTag)
+      []<class SetTag, class CvSender, class Env>(SetTag, CvSender&& sndr, Env&& env)
     {
-      using cv_fn = __copy_cvref_fn<CvSender>;
-      return __mk_secondary_env_t<SetTag>()(cv_fn{}, sndr, STDEXEC::get_env(rcvr));
+      using cv_fn_t = __copy_cvref_fn<CvSender>;
+      return __mk_secondary_env_t<SetTag>()(cv_fn_t{}, sndr, env);
     };
 
-    template <class CvSender, class Receiver, class SetTag>
-    using _sch_env_t = __result_of<_mk_sch_env, CvSender, Receiver, SetTag>;
+    template <class SetTag, class CvSender, class Env>
+    using _sch_env_t = __result_of<_mk_sch_env, SetTag, CvSender, Env>;
+
+    // The environment of the propagate_receiver used to connect the secondary sender.
+    template <class SetTag, class CvSender, class _Env>
+    using _env2_t = __join_env_t<_sch_env_t<SetTag, CvSender, _Env> const &, stream_env_t<_Env>>;
 
     inline constexpr auto _mk_env2 =
       []<class SchEnv, class Receiver>(SchEnv const &                        sch_env,
@@ -86,38 +90,34 @@ namespace nv::execution::_strm
       return __env::__join(sch_env, opstate.make_env());
     };
 
-    template <class CvSender, class Receiver, class SetTag>
-    using _env2_t = __result_of<_mk_env2,
-                                _sch_env_t<CvSender, Receiver, SetTag> const &,
-                                _strm::opstate_base<Receiver> const &>;
-
     template <class CvSender, class Receiver, class Fun, class SetTag>
     using _propagate_receiver_t = propagate_receiver<_opstate<CvSender, Receiver, Fun, SetTag>,
-                                                     _env2_t<CvSender, Receiver, SetTag>>;
+                                                     _env2_t<SetTag, CvSender, env_of_t<Receiver>>>;
 
-    template <class Sender, class Receiver, class Fun, class SetTag>
+    template <class CvSender, class Receiver, class Fun, class SetTag>
     using _mk_opstate_fn = __mcompose<
-      __mbind_back_q<connect_result_t, _propagate_receiver_t<Sender, Receiver, Fun, SetTag>>,
+      __mbind_back_q<connect_result_t, _propagate_receiver_t<CvSender, Receiver, Fun, SetTag>>,
       _mk_result_sender_fn<Fun>>;
 
-    template <class SetTag, class Sig>
+    template <class Sig, class SetTag>
     struct _tfx_signal_fn
     {
-      template <class, class...>
+      template <class, class, class...>
       using __f = completion_signatures<Sig>;
     };
 
-    template <class SetTag, class... Args>
-    struct _tfx_signal_fn<SetTag, SetTag(Args...)>
+    template <class... Args, class SetTag>
+    struct _tfx_signal_fn<SetTag(Args...), SetTag>
     {
-      template <class Fun, class... StreamEnv>
+      template <class Fun, class SchEnv, class... Env>
       using __f = __transform_completion_signatures_t<
-        __completion_signatures_of_t<__minvoke<_mk_result_sender_fn<Fun>, Args...>, StreamEnv...>,
+        __completion_signatures_of_t<__minvoke<_mk_result_sender_fn<Fun>, Args...>,
+                                     __join_env_t<SchEnv const &, stream_env_t<Env>>...>,
         completion_signatures<set_error_t(cudaError_t)>>;
     };
 
-    template <class Sig, class Fun, class SetTag, class... StreamEnv>
-    using _tfx_signal_t = __minvoke<_tfx_signal_fn<SetTag, Sig>, Fun, StreamEnv...>;
+    template <class Sig, class SetTag, class Fun, class SchEnv, class... Env>
+    using _tfx_signal_t = __minvoke<_tfx_signal_fn<Sig, SetTag>, Fun, SchEnv, Env...>;
 
     template <class Sender, class Receiver, class Fun, class SetTag, class... Tuples>
     struct _receiver : public stream_receiver_base
@@ -201,7 +201,7 @@ namespace nv::execution::_strm
     template <class CvSender, class Receiver, class Fun, class SetTag>
     struct _opstate : _opstate_base_t<CvSender, Receiver, Fun, SetTag>
     {
-      using _env2_t                = _sch_env_t<CvSender, Receiver, SetTag>;
+      using _env2_t                = _sch_env_t<SetTag, CvSender, env_of_t<Receiver>>;
       using _receiver_t            = _let::_receiver_t<CvSender, Receiver, Fun, SetTag>;
       using _result_tuples_t       = _receiver_t::_result_tuples_t;
       using _mk_opstate_fn_t       = _mk_opstate_fn<CvSender, Receiver, Fun, SetTag>;
@@ -216,7 +216,7 @@ namespace nv::execution::_strm
                    static_cast<Receiver&&>(rcvr),
                    static_cast<Fun&&>(fun),
                    get_completion_scheduler<set_value_t>(get_env(sndr), get_env(rcvr)),
-                   _mk_sch_env(sndr, rcvr, SetTag{}))
+                   _mk_sch_env(SetTag(), sndr, STDEXEC::get_env(rcvr)))
       {}
 
       explicit _opstate(CvSender&& sndr, Receiver&& rcvr, Fun fun, _sch_t sch, _env2_t env2)
@@ -232,7 +232,7 @@ namespace nv::execution::_strm
       STDEXEC_IMMOVABLE(_opstate);
 
       [[nodiscard]]
-      auto make_env() const noexcept -> _let::_env2_t<CvSender, Receiver, SetTag>
+      auto make_env() const noexcept -> _let::_env2_t<SetTag, CvSender, env_of_t<Receiver>>
       {
         return _let::_mk_env2(env2_, *this);
       }
@@ -262,11 +262,15 @@ namespace nv::execution::_strm
     template <class Self, class Receiver>
     using _receiver_t = _let::_receiver_t<__copy_cvref_t<Self, Sender>, Receiver, Fun, SetTag>;
 
-    template <class CvSender, class... StreamEnv>
+    template <class CvSender, class Env>
     using _completions_t =
-      __mapply<__mtransform<__mbind_back_q<_let::_tfx_signal_t, Fun, SetTag, StreamEnv...>,
+      __mapply<__mtransform<__mbind_back_q<_let::_tfx_signal_t,
+                                           SetTag,
+                                           Fun,
+                                           _let::_sch_env_t<SetTag, CvSender, Env>,
+                                           Env>,
                             __mtry_q<__concat_completion_signatures_t>>,
-               __completion_signatures_of_t<CvSender, StreamEnv...>>;
+               __completion_signatures_of_t<CvSender, stream_env_t<Env>>>;
 
    public:
     explicit let_sender(Sender sndr, Fun fun, SetTag)
@@ -281,10 +285,10 @@ namespace nv::execution::_strm
       return {&sndr_};
     }
 
-    template <class Self, class... Env>
+    template <class Self, class Env>
     static consteval auto get_completion_signatures()
     {
-      return _completions_t<__copy_cvref_t<Self, Sender>, stream_env_t<Env>...>{};
+      return _completions_t<__copy_cvref_t<Self, Sender>, stream_env_t<Env>>{};
     }
 
     template <class Self, receiver Receiver>

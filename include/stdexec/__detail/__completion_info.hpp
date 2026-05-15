@@ -21,6 +21,7 @@
 #include "__completion_behavior.hpp"
 #include "__completion_signatures.hpp"
 #include "__meta.hpp"
+#include "__ranges.hpp"
 #include "__static_vector.hpp"
 #include "__typeinfo.hpp"
 
@@ -45,14 +46,14 @@ namespace STDEXEC
     STDEXEC::__disposition __disposition = __invalid_disposition;
     __type_index           __signature   = __mtypeid<void>;
     __type_index           __domain      = __mtypeid<void>;
-    __behavior_t           __behavior    = __completion_behavior::__unknown;
+    __behavior_t           __behavior    = __behavior_t(0);
 
     __completion_info() = default;
 
     template <__completion_tag _Tag, class... _Args>
     constexpr __completion_info(_Tag (*)(_Args...),
                                 __type_index __domain   = __mtypeid<void>,
-                                __behavior_t __behavior = __completion_behavior::__unknown) noexcept
+                                __behavior_t __behavior = __behavior_t(0)) noexcept
       : __disposition(_Tag::__disposition)
       , __signature(__mtypeid<_Tag(_Args...)>)
       , __domain(__domain)
@@ -126,6 +127,17 @@ namespace STDEXEC
       }
     }();
 
+    template <std::ranges::forward_range auto _Range, class _Fn, class... _Args>
+    constexpr auto __range_apply(_Fn &&__fn, _Args &&...args) noexcept
+    {
+      auto __impl = [&]<std::size_t... _Is>(__indices<_Is...>)
+      {
+        return static_cast<_Fn &&>(__fn).template
+        operator()<(*std::ranges::next(_Range.begin(), _Is))...>(std::forward<_Args>(args)...);
+      };
+      return __impl(__make_indices<std::ranges::size(_Range)>());
+    }
+
     template <class _GetComplInfo>
     consteval auto __completion_sigs_from(_GetComplInfo) noexcept
     {
@@ -142,13 +154,31 @@ namespace STDEXEC
 
     template <class... _Sigs>
     [[nodiscard]]
-    consteval auto __to_array(completion_signatures<_Sigs...>) noexcept
+    consteval auto __reflect(completion_signatures<_Sigs...>) noexcept
     {
       using __array_t = __static_vector<__completion_info, sizeof...(_Sigs)>;
       auto __compls   = __array_t{__completion_info(__signature<_Sigs>)...};
       std::ranges::sort(__compls);
       return __compls;
     }
+
+    template <auto>
+    extern int __splice_v;
+
+    template <auto _Info>
+    using __splice_t = decltype(__splice_v<_Info>);
+
+    template <__same_as<__completion_info> auto _Info>
+    extern __fn_ptr_t<__tuple<__msplice<_Info.__signature>,
+                              __msplice<_Info.__domain>,
+                              __mconstant<_Info.__behavior>>>
+      __splice_v<_Info>;
+
+    template <std::ranges::forward_range auto _Info>
+      requires __same_as<std::ranges::range_value_t<decltype(_Info)>, __completion_info>
+    constexpr auto __splice_v<_Info> = __with_indices<_Info.size()>()(
+      []<std::size_t... _Is>() { return __fn_ptr_t<__tuple<__splice_t<_Info[_Is]>...>>(); });
+
   }  // namespace __cmplsigs
 }  // namespace STDEXEC
 

@@ -76,23 +76,38 @@ namespace STDEXEC
 
     __static_vector() = default;
 
+#if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 2000
+    // Before Clang 20, CTAD with initializer lists was broken in constant evaluation.
+    template <__same_as<_Tp>... _Values>
+      requires(sizeof...(_Values) <= _Capacity)
+    constexpr __static_vector(_Values... __values)
+      : __size_(sizeof...(_Values))
+      , __data_{__values...}
+    {}
+#else
     constexpr __static_vector(std::initializer_list<value_type> __init)
-      noexcept(__nothrow_copy_constructible<value_type>)
-    {
-      auto const __count = (std::min) (__init.size(), _Capacity);
-      auto const __end   = std::ranges::copy_n(__init.begin(), __count, __data_).out;
-      __size_            = __end - __data_;
-    }
+      : __static_vector(__init.begin(), __init.size(), __make_indices<_Capacity>())
+    {}
+#endif
+
+    template <std::ranges::forward_range _Range>
+    constexpr __static_vector(_Range &&__rng)
+      : __static_vector(std::ranges::begin(__rng),
+                        std::size_t(std::ranges::distance(__rng)),
+                        __make_indices<_Capacity>())
+    {}
 
     [[nodiscard]]
     constexpr auto operator[](std::size_t __i) noexcept -> value_type &
     {
+      STDEXEC_ASSERT(__i < size());
       return __data_[__i];
     }
 
     [[nodiscard]]
     constexpr auto operator[](std::size_t __i) const noexcept -> value_type const &
     {
+      STDEXEC_ASSERT(__i < size());
       return __data_[__i];
     }
 
@@ -127,6 +142,12 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
+    constexpr auto empty() const noexcept -> bool
+    {
+      return __size_ == 0;
+    }
+
+    [[nodiscard]]
     static constexpr auto capacity() noexcept -> std::size_t
     {
       return _Capacity;
@@ -134,6 +155,7 @@ namespace STDEXEC
 
     constexpr void resize(std::size_t __new_size) noexcept
     {
+      STDEXEC_ASSERT(__new_size <= capacity());
       __size_ = __new_size;
     }
 
@@ -144,8 +166,18 @@ namespace STDEXEC
       return end();
     }
 
+    // These must be public so that __static_vector is a structual type.
     std::size_t __size_ = 0;
     value_type  __data_[_Capacity];
+
+   private:
+    template <class _Iterator, std::size_t... _Is>
+    constexpr explicit __static_vector(_Iterator __it, std::size_t const __size, __indices<_Is...>)
+      : __size_(std::min(__size, _Capacity))
+      , __data_{(_Is < __size_ ? *__it++ : value_type{})...}
+    {
+      STDEXEC_ASSERT(__size <= _Capacity);
+    }
   };
 
   // Specialization of __static_vector for zero capacity that doesn't require default
@@ -158,6 +190,13 @@ namespace STDEXEC
     using const_iterator = value_type const *;
 
     __static_vector() = default;
+
+    template <std::ranges::forward_range _Range>
+      requires __std::constructible_from<value_type, std::ranges::range_reference_t<_Range>>
+    constexpr __static_vector(_Range &&__rng)
+    {
+      STDEXEC_ASSERT(std::ranges::distance(__rng) == 0);
+    }
 
     [[nodiscard]]
     constexpr auto operator[](std::size_t) noexcept -> value_type &
@@ -202,6 +241,12 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
+    static constexpr auto empty() noexcept -> bool
+    {
+      return true;
+    }
+
+    [[nodiscard]]
     static constexpr auto capacity() noexcept -> std::size_t
     {
       return 0;
@@ -219,12 +264,6 @@ namespace STDEXEC
   template <class _First, __same_as<_First>... _Rest>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __static_vector(_First, _Rest...) -> __static_vector<_First, 1 + sizeof...(_Rest)>;
-
-  template <class _First, __same_as<_First>... _Rest>
-  constexpr auto __make_static_vector(_First __first, _Rest... __rest) noexcept
-  {
-    return __static_vector<_First, 1 + sizeof...(_Rest)>{__first, __rest...};
-  }
 }  // namespace STDEXEC
 
 #include "__epilogue.hpp"

@@ -272,4 +272,11 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+namespace STDEXEC::__detail
+{
+  template <class Sender, class Attrs>
+  extern __mtype<exec::__write_attrs::__sender<__demangle_t<Sender>, Attrs>>
+    __demangle_v<exec::__write_attrs::__sender<Sender, Attrs>>;
+}
+
 STDEXEC_PRAGMA_POP()

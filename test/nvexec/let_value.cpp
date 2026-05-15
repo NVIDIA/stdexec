@@ -161,23 +161,27 @@ namespace
   TEST_CASE("nvexec let_value can read a property", "[cuda][stream][adaptors][let_value]")
   {
     nvexec::stream_context   stream_ctx{};
-    nvexec::stream_scheduler sch = stream_ctx.get_scheduler();
+    nvexec::stream_scheduler sch   = stream_ctx.get_scheduler();
+    auto                     attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
-    auto snd = ex::schedule(sch) | ex::let_value([] { return nvexec::get_stream(); })
+    auto snd = ex::schedule(sch)  //
+             | ex::let_value([] { return ex::get_scheduler(); })
              | ex::then(
-                 [flags](cudaStream_t stream)
+                 [flags](nvexec::stream_scheduler sch2)
                  {
                    if (is_on_gpu())
                    {
                      flags.set();
                    }
-                   return stream;
-                 });
-    auto [stream] = STDEXEC::sync_wait(std::move(snd)).value();
-    static_assert(std::same_as<decltype(+stream), cudaStream_t>);
+                   return sch2;
+                 })
+             | exec::write_attrs(attrs);
+    auto [sch2] = STDEXEC::sync_wait(std::move(snd)).value();
+    STATIC_REQUIRE(std::same_as<decltype(sch2), nvexec::stream_scheduler>);
 
+    REQUIRE(sch == sch2);
     REQUIRE(flags_storage.all_set_once());
   }
 }  // namespace

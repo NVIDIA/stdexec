@@ -40,28 +40,6 @@ namespace STDEXEC
   // [execution.senders.adaptors.continues_on]
   namespace __trnsfr
   {
-    template <class... _Values>
-    using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);
-
-    template <class _Error>
-    using __decay_error_sig = set_error_t (*)(__decay_t<_Error>);
-
-    template <class _Scheduler, class _Completions, class... _Env>
-    using __completions_impl_t = __mtry_q<__concat_completion_signatures_t>::__f<
-      __transform_reduce_completion_signatures_t<_Completions,
-                                                 __decay_value_sig,
-                                                 __decay_error_sig,
-                                                 set_stopped_t (*)(),
-                                                 __completion_signature_ptrs_t>,
-      __transform_completion_signatures_t<
-        __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
-        __eptr_completion_unless_t<__nothrow_decay_copyable_results_t<_Completions>>,
-        __mconst<completion_signatures<>>::__f>>;
-
-    template <class _Scheduler, class _CvSender, class... _Env>
-    using __completions_t =
-      __completions_impl_t<_Scheduler, __completion_signatures_of_t<_CvSender, _Env...>, _Env...>;
-
     template <class _Sexpr, class _Receiver>
     struct __state_base
     {
@@ -71,10 +49,11 @@ namespace STDEXEC
       __storage_t __data_;
     };
 
-    // This receiver is to be completed on the execution context associated with the scheduler. When
-    // the source sender completes, the completion information is saved off in the operation state
-    // so that when this receiver completes, it can read the completion out of the operation state
-    // and forward it to the output receiver after transitioning to the scheduler's context.
+    // This receiver is to be completed on the execution context associated with the
+    // scheduler. When the source sender completes, the completion information is saved
+    // off in the operation state so that when this receiver completes, it can read the
+    // completion out of the operation state and forward it to the output receiver after
+    // transitioning to the scheduler's context.
     template <class _Sexpr, class _Receiver>
     struct __receiver2
     {
