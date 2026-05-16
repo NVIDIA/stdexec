@@ -27,6 +27,7 @@
 #include "../stdexec/__detail/__utility.hpp"
 #include "../stdexec/functional.hpp"
 
+#include "__frame_allocator.hpp"
 // TODO: split this header into pieces
 #include "any_sender_of.hpp"
 #include "get_frame_allocator.hpp"
@@ -122,7 +123,8 @@ namespace experimental::execution
         -> _any::_any_opstate_base
       {
         auto &make_sender = *__std::start_lifetime_as<Factory>(storage);
-        auto  alloc       = choose_frame_allocator(get_env(rcvr));
+        using alloc_t     = decltype(choose_frame_allocator(get_env(rcvr)));
+        auto alloc = __fa::__frame_allocator_t<alloc_t>(choose_frame_allocator(get_env(rcvr)));
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
                                        alloc,
