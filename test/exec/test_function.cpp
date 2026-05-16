@@ -139,11 +139,7 @@ namespace
 
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
-    // TODO: you probably shouldn't have to specify the frame allocator query like this
-    using Queries = exec::queries<std::pmr::polymorphic_allocator<std::byte>(
-      exec::get_frame_allocator_t) noexcept>;
-
-    exec::function<bool() noexcept, Queries> sndr(
+    exec::function<bool() noexcept> sndr(
       []() noexcept
       {
         return ex::read_env(exec::get_frame_allocator)

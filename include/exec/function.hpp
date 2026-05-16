@@ -64,30 +64,157 @@ namespace experimental::execution
     inline constexpr auto choose_frame_allocator =
       __first_callable{get_frame_allocator, get_allocator, __always{std::allocator<std::byte>()}};
 
+    template <class Receiver>
+    struct _choose_receiver
+    {
+      struct type : Receiver
+      {
+        template <class Opstate>
+        constexpr explicit type(Opstate *opstate)
+          : Receiver(opstate->rcvr_)
+        {}
+      };
+    };
+
+    template <class Receiver>
+      requires(!__queryable_with<env_of_t<Receiver>, get_frame_allocator_t>)
+    struct _choose_receiver<Receiver>
+    {
+      class type : public Receiver
+      {
+        using _prop_t = prop<get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>;
+        _prop_t *env_;
+
+       public:
+        template <class Opstate>
+        constexpr explicit type(Opstate *opstate)
+          : Receiver(opstate->rcvr_)
+          , env_(&opstate->env_)
+        {}
+
+        constexpr auto get_env() const noexcept -> __join_env_t<_prop_t, env_of_t<Receiver>>
+        {
+          return __env::__join(*env_, STDEXEC::get_env(*static_cast<Receiver const*>(this)));
+        }
+      };
+    };
+
+    template <class Sigs, class Queries>
+    using _any_receiver_ref = ::exec::_any::_any_receiver_ref<Sigs, Queries>;
+
+    template <class Receiver>
+    using _choose_receiver_t = _choose_receiver<Receiver>::type;
+
+    template <class Receiver, class Sigs, class Queries>
+    struct _opstate_base
+    {
+      using _receiver_t   = _choose_receiver_t<_any_receiver_ref<Sigs, Queries>>;
+      using _stop_token_t = stop_token_of_t<env_of_t<_receiver_t>>;
+
+      _any::_state<Receiver, _stop_token_t> rcvr_;
+    };
+
+    template <class Adaptee>
+    struct _memory_resource_adaptor;
+
+    template <class Adaptee>
+      requires __simple_allocator<Adaptee>
+            && __same_as<std::byte, typename std::allocator_traits<Adaptee>::value_type>
+    struct _memory_resource_adaptor<Adaptee>
+    {
+      class type : public std::pmr::memory_resource
+      {
+        using traits = std::allocator_traits<Adaptee>;
+        static_assert(__same_as<std::byte, typename traits::value_type>);
+        typename traits::allocator_type alloc_;
+
+       public:
+        template <class Alloc>
+          requires __same_as<
+            traits,
+            typename std::allocator_traits<Alloc>::template rebind_traits<std::byte>>
+        explicit type(Alloc const &alloc) noexcept
+          : alloc_(alloc)
+        {}
+
+        constexpr void *do_allocate(std::size_t __bytes, std::size_t __align) override
+        {
+          return traits::allocate(alloc_, __bytes);
+        }
+
+        constexpr void do_deallocate(void *__p, std::size_t __bytes, std::size_t __align) override
+        {
+          traits::deallocate(alloc_, new (__p) std::byte[__bytes], __bytes);
+        }
+
+        constexpr bool do_is_equal(std::pmr::memory_resource const &__other) const noexcept override
+        {
+          if (auto *ptr = dynamic_cast<type const *>(&__other))
+          {
+            return alloc_ == ptr->alloc_;
+          }
+
+          return false;
+        }
+      };
+    };
+
+    template <class Adaptee>
+      requires __simple_allocator<Adaptee>
+    struct _memory_resource_adaptor<Adaptee>
+      : _memory_resource_adaptor<
+          typename std::allocator_traits<Adaptee>::template rebind_alloc<std::byte>>
+    {};
+
+    template <class Adaptee>
+      requires __std::constructible_from<std::pmr::polymorphic_allocator<std::byte>, Adaptee>
+    struct _memory_resource_adaptor<Adaptee>
+    {
+      using type = Adaptee;
+    };
+
+    template <class Adaptee>
+    using _memory_resource_adaptor_t = _memory_resource_adaptor<std::remove_cvref_t<Adaptee>>::type;
+
+    template <class Receiver, class Sigs, class Queries>
+      requires(!__queryable_with<env_of_t<_any_receiver_ref<Sigs, Queries>>, get_frame_allocator_t>)
+    struct _opstate_base<Receiver, Sigs, Queries>
+    {
+      using _receiver_t   = _choose_receiver_t<_any_receiver_ref<Sigs, Queries>>;
+      using _stop_token_t = stop_token_of_t<env_of_t<_receiver_t>>;
+      using _adaptee_t    = decltype(choose_frame_allocator(__declval<Receiver const &>()));
+
+      _memory_resource_adaptor_t<_adaptee_t>                                  resource_;
+      _any::_state<Receiver, _stop_token_t>                                   rcvr_;
+      prop<get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>> env_;
+
+      constexpr explicit _opstate_base(Receiver &&rcvr)
+        : resource_(choose_frame_allocator(rcvr))
+        , rcvr_(static_cast<Receiver &&>(rcvr))
+        , env_{get_frame_allocator, &resource_}
+      {}
+    };
+
     //! The concrete operation state resulting from connecting a function<...> to a
     //! concrete receiver of type Receiver. This type manages an _any::_any_opstate_base
     //! instance, which is the type-erased operation state resulting from connecting the
     //! type-erased sender to an _any::_any_receiver_ref with the given completion
     //! signatures and queries.
     template <class Receiver, class Sigs, class Queries>
-    class _opstate
+    class _opstate : public _opstate_base<Receiver, Sigs, Queries>
     {
-      using _receiver_t   = ::exec::_any::_any_receiver_ref<Sigs, Queries>;
-      using _stop_token_t = stop_token_of_t<env_of_t<_receiver_t>>;
+      using _base = _opstate_base<Receiver, Sigs, Queries>;
+      using typename _base::_receiver_t;
 
-      //! rcvr_ has to be initialized before op_ because our implementation of get_env is
-      //! empirically accessed during our constructor and depends on rcvr_ being
-      //! initialized
-      _any::_state<Receiver, _stop_token_t> rcvr_;
-      _any::_any_opstate_base               op_;
+      _any::_any_opstate_base op_;
 
      public:
       using operation_state_concept = operation_state_tag;
 
       template <class Factory>
       explicit constexpr _opstate(Receiver rcvr, Factory factory)
-        : rcvr_(static_cast<Receiver &&>(rcvr))
-        , op_(factory(_receiver_t(rcvr_)))
+        : _base(static_cast<Receiver &&>(rcvr))
+        , op_(factory(_receiver_t(this)))
       {}
 
       constexpr void start() & noexcept
@@ -113,7 +240,7 @@ namespace experimental::execution
     template <class Sigs, class... Queries, class... Args>
     class _function<Sigs, queries<Queries...>, Args...>
     {
-      using _receiver_t = ::exec::_any::_any_receiver_ref<Sigs, queries<Queries...>>;
+      using _receiver_t = _choose_receiver_t<_any_receiver_ref<Sigs, queries<Queries...>>>;
 
       template <class Receiver>
       using _opstate_t = _opstate<Receiver, Sigs, queries<Queries...>>;
