@@ -89,6 +89,17 @@ namespace STDEXEC
     constexpr __coroutine_handle() = default;
 
     template <class _Promise>
+    static constexpr auto __stopped_callback(void* __address) noexcept -> __std::coroutine_handle<>
+    {
+      // This causes the rest of the coroutine (the part after the co_await
+      // of the sender) to be skipped and invokes the calling coroutine's
+      // stopped handler.
+      return __std::coroutine_handle<_Promise>::from_address(__address)
+        .promise()
+        .unhandled_stopped();
+    }
+
+    template <class _Promise>
     constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __std::coroutine_handle<>(__coro)
     {
@@ -98,15 +109,7 @@ namespace STDEXEC
 
       if constexpr (__has_unhandled_stopped)
       {
-        __stopped_callback_ = [](void* __address) noexcept -> __std::coroutine_handle<>
-        {
-          // This causes the rest of the coroutine (the part after the co_await
-          // of the sender) to be skipped and invokes the calling coroutine's
-          // stopped handler.
-          return __std::coroutine_handle<_Promise>::from_address(__address)
-            .promise()
-            .unhandled_stopped();
-        };
+        __stopped_callback_ = &__stopped_callback<_Promise>;
       }
       // If _Promise doesn't implement unhandled_stopped(), then if a "stopped" unwind
       // reaches this point, it's considered an unhandled exception and terminate()
@@ -142,7 +145,7 @@ namespace STDEXEC
 
     constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __coroutine_handle<>{__coro}
-    {}
+    { }
 
     [[nodiscard]]
     static constexpr auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle
@@ -178,7 +181,7 @@ namespace STDEXEC
       __callback_fn_t* __resume_  = &__noop_fn;
       __callback_fn_t* __destroy_ = &__noop_fn;
 
-      static void __noop_fn(void*) noexcept {}
+      static void __noop_fn(void*) noexcept { }
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(
