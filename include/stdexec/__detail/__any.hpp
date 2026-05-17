@@ -585,6 +585,27 @@ namespace STDEXEC::__any
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __emplace_into
+  template <class _Alloc2>
+  struct __dealloc_guard
+  {
+    _Alloc2                                         &__alloc;
+    typename std::allocator_traits<_Alloc2>::pointer __ptr;
+    bool                                             __dismissed = false;
+
+    void __dismiss() noexcept
+    {
+      __dismissed = true;
+    }
+
+    ~__dealloc_guard() noexcept
+    {
+      if (!__dismissed)
+      {
+        std::allocator_traits<_Alloc2>::deallocate(__alloc, __ptr, 1);
+      }
+    }
+  };
+
   template <class _Model, class _Allocator, class... _Args>
   constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const    &__alloc,
                                    [[maybe_unused]] __iroot            *&__root_ptr,
@@ -606,10 +627,10 @@ namespace STDEXEC::__any
       }
       else
       {
-        auto __alloc2         = STDEXEC::__rebind_allocator<_Model>(__alloc);
-        using __traits_t      = std::allocator_traits<decltype(__alloc2)>;
-        auto *const   __model = __traits_t::allocate(__alloc2, 1);
-        __scope_guard __guard{[&]() noexcept { __traits_t::deallocate(__alloc2, __model, 1); }};
+        auto __alloc2                               = STDEXEC::__rebind_allocator<_Model>(__alloc);
+        using __traits_t                            = std::allocator_traits<decltype(__alloc2)>;
+        auto *const                         __model = __traits_t::allocate(__alloc2, 1);
+        __dealloc_guard<decltype(__alloc2)> __guard{__alloc2, __model};
         __traits_t::construct(__alloc2, __model, static_cast<_Args &&>(__args)...);
         __guard.__dismiss();
         *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(__model);
