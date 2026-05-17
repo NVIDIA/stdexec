@@ -656,6 +656,19 @@ namespace STDEXEC
       return {__sched_};
     }
 
+    template <class _Op>
+    struct __connect_fn
+    {
+      _Previous                 __previous;
+      __detail::__backend_ptr_t __sched;
+
+      auto operator()(_Op& __op) && noexcept
+      {
+        using __receiver_t = _Op::__intermediate_receiver_t;
+        return STDEXEC::connect(std::move(__previous), __receiver_t{__op, std::move(__sched)});
+      }
+    };
+
     /// Connects `__self` to `__rcvr`, returning the operation state containing the work to be done.
     template <receiver _Rcvr>
     auto connect(_Rcvr __rcvr) && noexcept(__nothrow_move_constructible<_Rcvr>)
@@ -664,14 +677,11 @@ namespace STDEXEC
       using __res_t =
         __detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize>;
       using __receiver_t = __res_t::__intermediate_receiver_t;
-      return {std::move(*this),
-              std::move(__rcvr),
-              [this](auto& __op)
-              {
-                // Connect bulk input receiver with the previous operation and store in the operating state.
-                return STDEXEC::connect(std::move(this->__previous_),
-                                        __receiver_t{__op, std::move(this->__sched_)});
-              }};
+      return {
+        std::move(*this),
+        std::move(__rcvr),
+        __connect_fn<__res_t>{std::move(__previous_), std::move(__sched_)}
+      };
     }
 
     /// Gets the completion signatures for this sender.
