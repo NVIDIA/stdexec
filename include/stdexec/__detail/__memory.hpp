@@ -94,14 +94,24 @@ namespace STDEXEC
   /////////////////////////////////////////////////////////////////////////////////////////
   // __allocator_aware_forward: https://eel.is/c++draft/exec#snd.expos-49
   template <class _Alloc>
+  struct __obj_using_alloc_fn
+  {
+    _Alloc const &__alloc_;
+
+    template <class... _Args>
+    constexpr auto operator()([[maybe_unused]] _Args &&...__args) const
+    {
+      return __tuple{
+        std::make_obj_using_allocator<__decay_t<_Args>>(__alloc_,
+                                                        static_cast<_Args &&>(__args))...};
+    }
+  };
+
+  template <class _Alloc>
   [[nodiscard]]
   constexpr auto __mk_obj_using_alloc_fn(_Alloc const &__alloc) noexcept
   {
-    return [&__alloc]<class... _Args>(_Args &&...__args)
-    {
-      return __tuple{
-        std::make_obj_using_allocator<__decay_t<_Args>>(__alloc, static_cast<_Args &&>(__args))...};
-    };
+    return __obj_using_alloc_fn<_Alloc>{__alloc};
   }
 
   template <class _Ty, class _Context>
