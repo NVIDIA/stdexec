@@ -598,19 +598,30 @@ namespace STDEXEC
           return __transform(__signature<__msplice<_Info.__signature>>, _Info);
       };
 
+      template <auto _Info, auto _Transform, std::size_t... _Is>
+      struct __cmpl_info_inner_fn
+      {
+        constexpr auto operator()() const
+        {
+          __static_vector<__completion_info, 0> __result;
+          return (__maybe_transform_cmplsig<_Info[_Is]>(_Transform) + ... + __result);
+        }
+      };
+
+      template <auto _Info, auto _Transform>
+      struct __cmpl_info_outer_fn
+      {
+        template <std::size_t... _Is>
+        constexpr auto operator()(__indices<_Is...>) const
+        {
+          return __cmpl_info_inner_fn<_Info, _Transform, _Is...>{};
+        }
+      };
+
       //! @tparam _Info A `__static_vector` of `__completion_info` objects representing
       //! the completions of the predecessor sender.
       template <auto _Info, auto _Transform>
-      static constexpr auto __get_cmpl_info_i = []<std::size_t... _Is>(__indices<_Is...>)
-      {
-        return []
-        {
-          __static_vector<__completion_info, 0> __result;
-          // NB: this fold uses an overloaded addition operator that propagates
-          // __mexception objects when constexpr exceptions are not available.
-          return (__maybe_transform_cmplsig<_Info[_Is]>(_Transform) + ... + __result);
-        };
-      };
+      static constexpr auto __get_cmpl_info_i = __cmpl_info_outer_fn<_Info, _Transform>{};
 
       template <class _Fun, class _Child, class... _Env>
       struct __get_cmpl_info
