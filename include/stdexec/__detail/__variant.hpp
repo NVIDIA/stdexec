@@ -48,7 +48,7 @@ namespace STDEXEC
 #endif
 
   struct __monostate
-  {};
+  { };
 
   struct __visit_t
   {
@@ -102,7 +102,7 @@ namespace STDEXEC
     {
      public:
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr __variant(__no_init_t) noexcept {}
+      constexpr __variant(__no_init_t) noexcept { }
 
       template <class _Fn, class... _Us>
       STDEXEC_ATTRIBUTE(host, device)
@@ -169,7 +169,7 @@ namespace STDEXEC
 
       // Construct into the valueless state:
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr explicit __variant(__no_init_t) noexcept {}
+      constexpr explicit __variant(__no_init_t) noexcept { }
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>)
@@ -298,6 +298,27 @@ namespace STDEXEC
         return *std::launder(__ptr);
       }
 
+      template <class _Fn, class... _As>
+      struct __emplace_from_fn
+      {
+        _Fn                 &__fn_;
+        std::tuple<_As &...> __as_;
+
+        static constexpr bool __is_nothrow = __nothrow_callable<_Fn, _As...>;
+
+        template <std::size_t... _Size>
+        constexpr auto
+        __call(std::index_sequence<_Size...>) const noexcept(__is_nothrow) -> decltype(auto)
+        {
+          return static_cast<_Fn &&>(__fn_)(static_cast<_As &&>(std::get<_Size>(__as_))...);
+        }
+
+        constexpr auto operator()() const noexcept(__is_nothrow) -> decltype(auto)
+        {
+          return __call(std::index_sequence_for<_As...>{});
+        }
+      };
+
       template <std::size_t _Ny, class _Fn, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto __emplace_from(_Fn &&__fn, _As &&...__as)
@@ -314,9 +335,7 @@ namespace STDEXEC
         {
           auto *__ptr = std::construct_at<__value_t>(
             static_cast<__value_t *>(__data()),
-            STDEXEC::__emplace_from(
-              [&]() noexcept(__is_nothrow) -> decltype(auto)
-              { return static_cast<_Fn &&>(__fn)(static_cast<_As &&>(__as)...); }));
+            STDEXEC::__emplace_from(__emplace_from_fn<_Fn, _As...>{__fn, {__as...}}));
           __sg.__dismiss();
           return *std::launder(__ptr);
         }
