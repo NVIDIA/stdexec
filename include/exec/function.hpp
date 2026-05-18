@@ -64,6 +64,12 @@ namespace experimental::execution
     inline constexpr auto __choose_frame_allocator =
       __first_callable{get_frame_allocator, get_allocator, __always{std::allocator<std::byte>()}};
 
+    //! Wrap _Receiver, which is a type-erased receiver, in a type that can extract the
+    //! concrete, to-be-erased receiver from the operation state that contains it.
+    //!
+    //! This wrapper exists primarily as a hook for injecting a defaulted frame allocator
+    //! when _Receiver *doesn't* have get_frame_allocator in its environment. That
+    //! injection happens in the partial specialization, below.
     template <class _Receiver>
     struct __receiver_wrapper : public _Receiver
     {
@@ -73,10 +79,23 @@ namespace experimental::execution
       {}
     };
 
+    //! Wrap _Receiver, which is a type-erased receiver, in a type that can extract the
+    //! concrete, to-be-erased receiver from the operation state that contains it, and
+    //! inject an environment that contains a defaulted frame allocator.
+    //!
+    //! This partial specialization handles the case that _Receiver doesn't have a frame
+    //! allocator in its environment, in which case we need to provide a type-erasing
+    //! frame allocator in the injected environment because we won't know the concrete
+    //! type of the allocator that's actually used as our frame allocator until we're
+    //! connected to a concrete receiver. We could provide either
+    //! std::pmr::memory_resource*, or std::pmr::polymorphic_allocator<> with basically
+    //! the same tradeoffs so we provide an allocator rather than a memory resource to
+    //! better match the name of the injected query.
     template <class _Receiver>
       requires(!__queryable_with<env_of_t<_Receiver>, get_frame_allocator_t>)
     struct __receiver_wrapper<_Receiver> : public _Receiver
     {
+      //! the injected query response for the frame allocator
       using __prop_t = prop<get_frame_allocator_t, std::pmr::polymorphic_allocator<std::byte>>;
 
       template <class _Opstate>
@@ -95,12 +114,21 @@ namespace experimental::execution
       __prop_t *__env_;
     };
 
-    template <class _Sigs, class _Queries>
-    using __any_receiver_ref = ::exec::_any::_any_receiver_ref<_Sigs, _Queries>;
-
+    //! Adapt _Adaptee to be a std::pmr::memory_resource
+    //!
+    //! The alias __memory_resource_adaptor_t<_Adaptee> is the identity when _Adaptee is
+    //! a pointer to a type that derives from std::pmr::memory_resource. When _Adaptee
+    //! is an allocator type, __memory_resource_adaptor_t<_Adaptee> is a type that
+    //! derives from std::pmr::memory_resource and implements its pure-virtual member
+    //! functions in terms of that allocator type rebound to std::byte.
     template <class _Adaptee>
     struct __memory_resource_adaptor;
 
+    //! Handle the case that _Adaptee is an allocator of std::bytes
+    //!
+    //! Implement do_allocate and do_deallocate in terms of _Adaptee's allocate and
+    //! deallocate, respectively. Implement do_is_equal in terms of _Adaptee's
+    //! operator==.
     template <class _Adaptee>
       requires __simple_allocator<_Adaptee>
             && __same_as<std::byte, typename std::allocator_traits<_Adaptee>::value_type>
@@ -145,27 +173,36 @@ namespace experimental::execution
       };
     };
 
+    //! Handle the case that _Adaptee is an allocator of some type other than std::byte
+    //!
+    //! We just rebind _Adaptee to be an allocator of std::bytes and inherit our nested
+    //! alias from the adaptor for that type. This strategy ensures that there's only one
+    //! adaptor for an entire family of adapted allocator types, reducing template bloat
+    //! and making the do_is_equals implementation sensible.
     template <class _Adaptee>
       requires __simple_allocator<_Adaptee>
     struct __memory_resource_adaptor<_Adaptee>
-      //! for an arbitrary allocator, inherit from the adaptor that's implemented
-      //! in terms of that allocator rebound to std::byte to minimize template
-      //! instantiations, and to make the dynamic_cast in do_is_equal work
       : __memory_resource_adaptor<
           typename std::allocator_traits<_Adaptee>::template rebind_alloc<std::byte>>
     {};
 
+    //! Handle the case that _Adaptee is a pointer to a type that derives from
+    //! std::pmr::memory_resource
+    //!
+    //! In this case, there's nothing to "adapt" so we just alias _Adaptee.
     template <class _Adaptee>
       requires __std::constructible_from<std::pmr::polymorphic_allocator<std::byte>, _Adaptee>
     struct __memory_resource_adaptor<_Adaptee>
     {
-      //! no need to "adapt" a memory_resource
       using type = _Adaptee;
     };
 
     template <class _Adaptee>
     using __memory_resource_adaptor_t =
       __memory_resource_adaptor<std::remove_cvref_t<_Adaptee>>::type;
+
+    template <class _Sigs, class _Queries>
+    using __any_receiver_ref = ::exec::_any::_any_receiver_ref<_Sigs, _Queries>;
 
     template <class _Receiver, class _Sigs, class _Queries>
     struct __opstate_base
@@ -263,21 +300,23 @@ namespace experimental::execution
                                        static_cast<__receiver_t &&>(__rcvr));
       }
 
-      //! The curried arguments that will be passed to make_sender_ from inside make_opstate_.
+      //! The curried arguments that will be passed to __make_sender_ from inside
+      //! __make_opstate_.
       STDEXEC_ATTRIBUTE(no_unique_address)
       __tuple<_Args...> __args_;
       //! The type-erased operation state factory; it points to a function that knows the
-      //! concrete type of the sender factory stored in make_sender_ so that it can
+      //! concrete type of the sender factory stored in __make_sender_ so that it can
       //! construct the desired sender on demand and connect it to the given receiver. The
-      //! expected arguments are the address of make_sender_, the _any_receiver_ref to
-      //! connect the sender to, and the arguments to pass to make_sender_ to construct
+      //! expected arguments are the address of __make_sender_, the __any_receiver_ref to
+      //! connect the sender to, and the arguments to pass to __make_sender_ to construct
       //! the sender.
       _any::_any_opstate_base (*__make_opstate_)(void *, __receiver_t, _Args &&...);
-      //! Storage for the sender factory passed to our constructor template; make_opstate_ will
-      //! reconstitute the actual factory from this bag-of-bytes with start_lifetime_as
-      //! because it internally knows the concrete type of the user-provided sender
-      //! factory. We're reserving 2 * sizeof(void *) bytes to permit the factory to be a
-      //! pointer to member function, which usually requires two pointers.
+      //! Storage for the sender factory passed to our constructor template;
+      //! __make_opstate_ will reconstitute the actual factory from this bag-of-bytes with
+      //! start_lifetime_as because it internally knows the concrete type of the
+      //! user-provided sender factory. We're reserving 2 * sizeof(void *) bytes to permit
+      //! the factory to be a pointer to member function, which usually requires two
+      //! pointers.
       std::byte __make_sender_[2 * sizeof(void *)]{};
 
      public:
@@ -302,7 +341,7 @@ namespace experimental::execution
       static consteval auto get_completion_signatures()
       {
         static_assert(__decays_to_derived_from<_Self, __function>);
-        //! throw if Env does not contain the queries needed to type-erase the receiver:
+        //! throw if _Env does not contain the queries needed to type-erase the receiver:
         using __check_queries_t = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
         if constexpr (__merror<__check_queries_t>)
           return __throw_compile_time_error(__check_queries_t());
@@ -356,6 +395,11 @@ namespace experimental::execution
       return __func::__canonicalize_splice<__types, _List>(__make_indices<__types.size()>());
     }
 
+    //! Map the type-list _Sigs to a canonical form, which sorts and uniques the contained
+    //! elements to ensure user-specified type-lists are not order-dependent.
+    //!
+    //! \tparam _Sigs a type-list of types to be sorted and uniqued; expected to be a
+    //!         specialization of completion_signatures or queries.
     template <class _Sigs>
     using __canonical_t = decltype(__func::__canonicalize(static_cast<_Sigs *>(nullptr)));
 
@@ -368,6 +412,25 @@ namespace experimental::execution
       completion_signatures<__single_value_sig_t<_Return>, set_stopped_t()>,
       __eptr_completion_unless_t<__mbool<_NoExcept>>>>;
 
+    //! Map a variety of function<...> specifications into the canonical type-erased
+    //! contract represented by the user-provided specification.
+    //!
+    //! The canonical specification looks like this:
+    //!
+    //!   function<
+    //!       sender_tag(Args...),
+    //!       completion_signatures<Sigs...>,
+    //!       queries<Queries...>>
+    //!
+    //! where:
+    //!  - Args... is the type-erased sender factory's parameter list
+    //!  - Sigs... is the set of completion signatures that the erased sender is allowed
+    //!            to advertise
+    //!  - Queries... is the set of queries that the eventual receiver's environment must
+    //!               support
+    //!
+    //! The order of Args... is obviously important, but Sigs... and Queries... are both
+    //! canonicalized into a sorted and uniqued list to ensure order is irrelevant.
     template <class...>
     struct __make_function;
 
