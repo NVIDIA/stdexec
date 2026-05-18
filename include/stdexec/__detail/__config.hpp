@@ -711,16 +711,19 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_EXCEPTIONS() (__EXCEPTIONS == 0)
 #endif
 
-#if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
-#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-// https://wg21.link/p3068
-#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
-#  else
-#    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
-#  endif
-#else
-#  define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
-#endif
+// BUGBUG fix support for constexpr exceptions
+#define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
+
+// #if defined(__cpp_constexpr_exceptions) && __cpp_constexpr_exceptions >= 202411L
+// #  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+// // https://wg21.link/p3068
+// #    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 0
+// #  else
+// #    define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
+// #  endif
+// #else
+// #  define STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS() 1
+// #endif
 
 // We need to treat host and device separately
 #if STDEXEC_CUDA_COMPILATION() && defined(__CUDA_ARCH__) && !STDEXEC_NVHPC()
