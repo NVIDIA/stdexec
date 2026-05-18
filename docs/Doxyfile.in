@@ -2370,7 +2370,7 @@ PREDEFINED             =  "__cplusplus=202302L" \
                           "STDEXEC=stdexec" \
                           "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY=1" \
                           "STDEXEC_PARALLEL_SCHEDULER_INLINE=inline" \
-                          "STDEXEC_ATTRIBUTE(X)= " \
+                          "STDEXEC_ATTRIBUTE(...)= " \
                           "STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS= " \
                           "STDEXEC_AUTO_RETURN(...)=->decltype(auto){ return __VA_ARGS__; }" \
                           "STDEXEC_EXPLICIT_THIS_BEGIN(...)=__VA_ARGS__" \
@@ -2379,7 +2379,12 @@ PREDEFINED             =  "__cplusplus=202302L" \
                           "STDEXEC_MSVC()=0" \
                           "STDEXEC_GCC()=0" \
                           "STDEXEC_NVHPC()=0" \
-                          "STDEXEC_EDG()=0"
+                          "STDEXEC_EDG()=0" \
+                          "STDEXEC_PRAGMA_PUSH()= " \
+                          "STDEXEC_PRAGMA_POP()= " \
+                          "STDEXEC_PRAGMA_IGNORE_GNU(X)= " \
+                          "STDEXEC_PRAGMA_IGNORE_EDG(X)= " \
+                          "STDEXEC_PRAGMA_IGNORE_MSVC(X)= "
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

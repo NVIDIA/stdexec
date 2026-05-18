@@ -73,6 +73,75 @@ namespace STDEXEC
     }
   };
 
+  //! @brief A pipeable sender adaptor that augments the environment seen by
+  //!        a predecessor sender with additional queries.
+  //!
+  //! @c write_env is the inverse of @ref read_env. Where @c read_env *reads*
+  //! a value from the receiver's environment and exposes it on the value
+  //! channel, @c write_env *injects* values into the environment a child
+  //! sender sees — overriding or augmenting what the eventual receiver
+  //! exposes.
+  //!
+  //! You give it a sender and an environment (typically built with
+  //! @c stdexec::env and @c stdexec::prop); you get back a sender that,
+  //! when connected, presents the *union* of the supplied environment and
+  //! the connected receiver's environment to its predecessor. Anything the
+  //! predecessor reaches for via @c get_env / @c read_env sees the merged
+  //! view.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::write_env(sndr, env);
+  //! auto s2 = sndr | stdexec::write_env(env);
+  //! @endcode
+  //!
+  //! The supplied environment shadows the receiver's environment for any
+  //! query the supplied environment can answer; queries it cannot answer
+  //! fall through to the receiver's environment unchanged.
+  //!
+  //! **Common uses.**
+  //!
+  //! - Injecting a stop token: <tt>sndr | write_env(prop{get_stop_token, my_token})</tt>
+  //!   so a sub-pipeline observes a different cancellation signal than the
+  //!   outer pipeline.
+  //! - Supplying an allocator: <tt>sndr | write_env(prop{get_allocator, my_alloc})</tt>
+  //!   so child operations allocate via @c my_alloc.
+  //! - Hooking domain customization: a custom scheduler may inject its
+  //!   domain into the environment for senders that don't have a scheduler
+  //!   in their chain.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! @c write_env preserves the predecessor's completion signatures
+  //! unchanged. (The predecessor may compute different signatures
+  //! depending on what's in its environment — so the supplied env may
+  //! influence which signatures the framework computes — but
+  //! @c write_env does not itself add or remove any.)
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! using namespace stdexec;
+  //!
+  //! auto inner_sndr = read_env(get_stop_token)
+  //!                 | then([](auto tok) { return tok.stop_requested(); });
+  //!
+  //! stop_source src;
+  //! auto pipeline = inner_sndr
+  //!               | write_env(prop{get_stop_token, src.get_token()});
+  //!
+  //! auto [requested] = sync_wait(std::move(pipeline)).value();
+  //! // requested == src.stop_requested(), regardless of the outer
+  //! // pipeline's stop token.
+  //! @endcode
+  //!
+  //! @see stdexec::read_env  — read a value from the environment
+  //! @see stdexec::env       — construct an environment from properties
+  //! @see stdexec::prop      — bind a query CPO to a value
+  //! @see stdexec::get_env   — the CPO that exposes the merged environment
+  //!
+  //! @hideinitializer
   inline constexpr __write_env_t write_env{};
 
   template <>

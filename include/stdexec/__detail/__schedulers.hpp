@@ -43,8 +43,94 @@ namespace STDEXEC
     static_cast<_Scheduler &&>(__sched).schedule();
   };
 
+  //! @brief A sender factory that obtains a sender from a scheduler.
+  //!
+  //! @c schedule is the bridge between a *scheduler* (a lightweight handle
+  //! to an execution context) and the *sender* world: it produces a sender
+  //! that, when connected and started, eventually completes with @c set_value
+  //! to the connected receiver *from the context of the scheduler*. It is
+  //! the canonical way to begin a sender pipeline that needs to run on a
+  //! specific execution context (a thread pool, a GPU stream, an event loop,
+  //! …).
+  //!
+  //! @code{.cpp}
+  //! auto sched = stdexec::get_parallel_scheduler();
+  //! auto sndr  = stdexec::schedule(sched);
+  //! @endcode
+  //!
+  //! The sender returned by @c schedule(sched) is informally called a
+  //! "schedule-sender" or "schedule sender". The expression
+  //! <tt>schedule(sch)</tt> is *expression-equivalent* to
+  //! <tt>sch.schedule()</tt>, which is the customization point that
+  //! scheduler authors implement.
+  //!
+  //! @c schedule also drives the @c stdexec::scheduler concept: a type @c S
+  //! satisfies @c scheduler if (and roughly only if) @c schedule(s) is a
+  //! valid expression returning a sender, and @c S is equality-comparable
+  //! and nothrow-move-constructible.
+  //!
+  //! See [exec.schedule] in the C++26 working draft for the normative
+  //! specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! The exact signatures are determined by the scheduler's implementation,
+  //! but every conforming schedule-sender includes:
+  //!
+  //! @code{.cpp}
+  //! set_value_t()                   // delivered on the scheduler's context
+  //! set_stopped_t()                 // typical: stop-token observed during scheduling
+  //! set_error_t(...)                // implementation-defined; some schedulers can fail
+  //! @endcode
+  //!
+  //! @c set_value carries no datums. The point of @c schedule is the
+  //! *context transition*, not the value — downstream adaptors (@c then,
+  //! @c let_value, etc.) chained onto the schedule-sender therefore run on
+  //! the scheduler's context.
+  //!
+  //! **Cancellation.**
+  //!
+  //! A schedule-sender that has not yet started executing on the scheduler's
+  //! context typically observes the receiver's stop token and may complete
+  //! with @c set_stopped instead. Once it has begun running on the
+  //! scheduler's context, the value completion is delivered.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!   auto sched = get_parallel_scheduler();
+  //!
+  //!   auto sndr =
+  //!     schedule(sched)                                // hop onto sched
+  //!     | then([] { return 42; });                     // ... and compute on it
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   (void)v;
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::starts_on     — start a sender on a given scheduler
+  //! @see stdexec::continues_on  — transfer execution to a scheduler mid-pipeline
+  //! @see stdexec::on            — execute a sender on a scheduler then return
   struct schedule_t
   {
+    //! @brief Obtain a schedule-sender by calling @c __sched.schedule().
+    //!
+    //! @tparam _Scheduler A type whose lvalue has a member function
+    //!                    @c .schedule() returning a sender.
+    //!
+    //! @param __sched     The scheduler to obtain a sender from.
+    //!
+    //! @returns The sender produced by <tt>__sched.schedule()</tt> — a
+    //!          sender that, when connected and started, value-completes
+    //!          (with no datums) on @c __sched's execution context.
+    //!
+    //! @pre <tt>decltype(__sched.schedule())</tt> must satisfy the
+    //!      @c stdexec::sender concept (statically checked).
     template <class _Scheduler>
       requires __has_schedule_member<_Scheduler>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
@@ -57,6 +143,13 @@ namespace STDEXEC
       return static_cast<_Scheduler &&>(__sched).schedule();
     }
 
+    //! @brief Deprecated overload: obtain a schedule-sender via @c tag_invoke.
+    //!
+    //! @deprecated The @c tag_invoke-based customization of @c schedule is
+    //!             deprecated in favor of the <tt>sched.schedule()</tt>
+    //!             member-function form. New scheduler types should provide
+    //!             a member @c .schedule() instead of a @c tag_invoke
+    //!             overload for @c schedule_t.
     template <class _Scheduler>
       requires __has_schedule_member<_Scheduler> || __tag_invocable<schedule_t, _Scheduler>
     [[deprecated("the use of tag_invoke for schedule is deprecated")]]
@@ -70,10 +163,46 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for the @c schedule sender factory.
+  //!
+  //! @c schedule is an instance of @ref schedule_t. See @ref schedule_t for
+  //! the full description, completion signatures, scheduler-concept
+  //! relationship, and a usage example.
+  //!
+  //! @hideinitializer
   inline constexpr schedule_t schedule{};
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.sched]
+
+  //! @brief A lightweight handle to an *execution context* — the
+  //!        abstraction over things that can run sender pipelines.
+  //!
+  //! A *scheduler* is a small, value-like handle to a (potentially heavy
+  //! and immovable) *execution resource*: a thread pool, a GPU stream, an
+  //! event loop, an inline run-loop, etc. The only operation a scheduler
+  //! must support is @c stdexec::schedule, which obtains a sender that, when
+  //! connected and started, eventually value-completes on that resource.
+  //!
+  //! Concretely, a type @c S satisfies @c scheduler if:
+  //!
+  //! 1. @c schedule(s) is well-formed and returns a @c sender. This is
+  //!    the *defining* operation; everything else is value-semantics
+  //!    plumbing.
+  //! 2. @c S's decayed type is equality-comparable (two schedulers compare
+  //!    equal iff they refer to the same execution resource — used for
+  //!    optimization decisions such as elision of redundant
+  //!    @c continues_on hops).
+  //! 3. @c S's decayed type is copy-constructible and
+  //!    @em nothrow move-constructible — schedulers are cheap to pass
+  //!    around.
+  //!
+  //! See [exec.sched] in the C++26 working draft.
+  //!
+  //! @see stdexec::schedule       — the customization point that defines this concept
+  //! @see stdexec::starts_on      — adaptor that runs a sender on a scheduler
+  //! @see stdexec::continues_on   — adaptor that transfers to a scheduler mid-pipeline
+  //! @see stdexec::schedule_result_t — the sender type returned by @c schedule(s)
   template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
                    && __std::equality_comparable<__decay_t<_Scheduler>>

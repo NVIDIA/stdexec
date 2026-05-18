@@ -32,6 +32,39 @@ namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.scope.concepts]
+
+  //! @brief A movable handle representing successful (or failed)
+  //!        registration of an operation with an async scope.
+  //!
+  //! Implementations of @c stdexec::scope_token return a
+  //! @c scope_association from <tt>try_associate()</tt>. It is a small,
+  //! movable value that:
+  //!
+  //! - Contextually converts to @c bool to indicate whether the
+  //!   association succeeded (the scope is still open and the operation
+  //!   was registered) or failed (the scope is shutting down and the
+  //!   operation must not start).
+  //! - Holds onto whatever state the scope needs to track the operation
+  //!   so that the operation can be deregistered at completion.
+  //! - Can produce a fresh, equivalent association via
+  //!   <tt>try_associate()</tt> — used to model "re-associate with the
+  //!   same scope".
+  //!
+  //! Concretely, @c scope_association requires the type to be movable,
+  //! nothrow move-constructible and assignable, default-initializable,
+  //! and to support both the @c bool conversion and the
+  //! @c try_associate() member.
+  //!
+  //! User code typically does not interact with @c scope_association
+  //! directly — it is the *return type* of @c scope_token::try_associate
+  //! and is used internally by @c stdexec::spawn and
+  //! @c stdexec::spawn_future.
+  //!
+  //! See [exec.scope.concepts] in the C++26 working draft.
+  //!
+  //! @see stdexec::scope_token
+  //! @see stdexec::spawn
+  //! @see stdexec::spawn_future
   template <class _Assoc>
   concept scope_association = __std::movable<_Assoc> && __nothrow_move_constructible<_Assoc>
                            && __nothrow_move_assignable<_Assoc>
@@ -70,6 +103,35 @@ namespace STDEXEC
     };
   }  // namespace __scope_concepts
 
+  //! @brief A copyable handle to an *async scope* — the owner of lifetime
+  //!        for spawned operations.
+  //!
+  //! An async scope is a logical container for fire-and-forget operations
+  //! launched via @c stdexec::spawn or @c stdexec::spawn_future. It tracks
+  //! every operation associated with it so that, at shutdown, it can
+  //! block until every spawned operation has completed (typically via a
+  //! @c .join() member that returns a sender).
+  //!
+  //! A @c scope_token is a small, copyable handle to such a scope. User
+  //! code typically obtains a token from an @c exec::async_scope via
+  //! <tt>scope.get_token()</tt> and passes it into @c spawn or
+  //! @c spawn_future.
+  //!
+  //! Concretely, a type @c T satisfies @c scope_token if it is copyable
+  //! and provides two members:
+  //!
+  //! 1. <tt>token.try_associate()</tt> — attempts to register a new
+  //!    operation with the scope, returning a @c scope_association whose
+  //!    boolean conversion indicates success. Fails (returns "false")
+  //!    when the scope has already begun shutting down.
+  //! 2. <tt>token.wrap(sndr)</tt> — wraps a sender so that, when started
+  //!    via @c spawn, its lifetime is tied to the scope.
+  //!
+  //! See [exec.scope.concepts] in the C++26 working draft.
+  //!
+  //! @see stdexec::scope_association  — the return type of @c try_associate
+  //! @see stdexec::spawn              — fire-and-forget into a scope
+  //! @see stdexec::spawn_future       — spawn into a scope and observe via a sender
   template <class _Token>
   concept scope_token = __std::copyable<_Token> && requires(_Token const __token) {
     { __token.try_associate() } -> scope_association;
