@@ -288,7 +288,7 @@ namespace STDEXEC
   //! for the full description and customization rules.
   //!
   //! @hideinitializer
-  inline constexpr set_value_t   set_value{};
+  inline constexpr set_value_t set_value{};
 
   //! @brief The customization point object for delivering an error completion.
   //!
@@ -296,7 +296,7 @@ namespace STDEXEC
   //! for the full description and customization rules.
   //!
   //! @hideinitializer
-  inline constexpr set_error_t   set_error{};
+  inline constexpr set_error_t set_error{};
 
   //! @brief The customization point object for delivering a stopped completion.
   //!

@@ -545,7 +545,7 @@ namespace STDEXEC
   //! description, the lowering to @c bulk_chunked, and a usage example.
   //!
   //! @hideinitializer
-  inline constexpr bulk_t           bulk{};
+  inline constexpr bulk_t bulk{};
 
   //! @brief The customization point object for the @c bulk_chunked sender adaptor.
   //!
@@ -553,7 +553,7 @@ namespace STDEXEC
   //! @ref bulk_chunked_t for the full description.
   //!
   //! @hideinitializer
-  inline constexpr bulk_chunked_t   bulk_chunked{};
+  inline constexpr bulk_chunked_t bulk_chunked{};
 
   //! @brief The customization point object for the @c bulk_unchunked sender adaptor.
   //!

@@ -349,7 +349,7 @@ namespace STDEXEC
   //! a usage example.
   //!
   //! @hideinitializer
-  inline constexpr when_all_t                       when_all{};
+  inline constexpr when_all_t when_all{};
 
   //! @brief The customization point object for the @c when_all_with_variant
   //!        sender factory.
@@ -358,7 +358,7 @@ namespace STDEXEC
   //! See @ref when_all_with_variant_t for the full description.
   //!
   //! @hideinitializer
-  inline constexpr when_all_with_variant_t          when_all_with_variant{};
+  inline constexpr when_all_with_variant_t when_all_with_variant{};
 
   //! @brief The customization point object for the @c transfer_when_all
   //!        sender factory.
@@ -367,7 +367,7 @@ namespace STDEXEC
   //!             <tt>when_all(...) | continues_on(sch)</tt> instead.
   //!
   //! @hideinitializer
-  inline constexpr transfer_when_all_t              transfer_when_all{};
+  inline constexpr transfer_when_all_t transfer_when_all{};
 
   //! @brief The customization point object for the
   //!        @c transfer_when_all_with_variant sender factory.

@@ -500,7 +500,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! for the full description, completion-behavior table, and a usage example.
   //!
   //! @hideinitializer
-  inline constexpr sync_wait_t              sync_wait{};
+  inline constexpr sync_wait_t sync_wait{};
 
   //! @brief The customization point object for the @c sync_wait_with_variant
   //!        sender consumer.

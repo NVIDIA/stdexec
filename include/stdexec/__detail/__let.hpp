@@ -965,7 +965,7 @@ namespace STDEXEC
   //! exception and cancellation behavior, and a usage example.
   //!
   //! @hideinitializer
-  inline constexpr let_value_t   let_value{};
+  inline constexpr let_value_t let_value{};
 
   //! @brief The customization point object for the @c let_error sender adaptor.
   //!
@@ -973,7 +973,7 @@ namespace STDEXEC
   //! for the full description and example.
   //!
   //! @hideinitializer
-  inline constexpr let_error_t   let_error{};
+  inline constexpr let_error_t let_error{};
 
   //! @brief The customization point object for the @c let_stopped sender adaptor.
   //!
