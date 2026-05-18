@@ -592,12 +592,12 @@ namespace STDEXEC::__any
     typename std::allocator_traits<_Alloc2>::pointer __ptr;
     bool                                             __dismissed = false;
 
-    void __dismiss() noexcept
+    constexpr void __dismiss() noexcept
     {
       __dismissed = true;
     }
 
-    ~__dealloc_guard() noexcept
+    constexpr ~__dealloc_guard() noexcept
     {
       if (!__dismissed)
       {
