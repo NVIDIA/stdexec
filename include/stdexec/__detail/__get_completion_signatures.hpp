@@ -278,12 +278,90 @@ namespace STDEXEC
 
   STDEXEC_PRAGMA_POP()
 
+  //! @brief Compute the completion signatures of a sender at compile time.
+  //!
+  //! `get_completion_signatures<Sndr>()` is a @c consteval function
+  //! template that returns the @c stdexec::completion_signatures of
+  //! @c Sndr — a pack-of-signatures type describing every way @c Sndr
+  //! can complete (every @c set_value_t, @c set_error_t, and
+  //! @c set_stopped_t signal it may invoke on its receiver).
+  //!
+  //! This is the *type-system half* of the sender protocol — every
+  //! generic adaptor (@c then, @c when_all, @c sync_wait, …) consults
+  //! @c get_completion_signatures to know what it has to handle.
+  //!
+  //! See [exec.getcomplsigs] in the C++26 working draft.
+  //!
+  //! **Two flavors.**
+  //!
+  //! @c get_completion_signatures has two forms:
+  //!
+  //! - `get_completion_signatures<Sndr>()` — for *environment-independent*
+  //!   senders, which have a single completion-signatures shape no
+  //!   matter what receiver they are connected to. Most senders in
+  //!   practice are environment-independent.
+  //! - `get_completion_signatures<Sndr, Env>()` — for senders
+  //!   whose completion signatures depend on the receiver's environment.
+  //!   E.g. a scheduler-dependent sender may produce different error
+  //!   completions depending on the actual scheduler queried from
+  //!   @c Env.
+  //!
+  //! For convenience, the related concept `sender_in<Sndr, Env>`
+  //! captures "@c Sndr is a sender whose signatures can be computed in
+  //! @c Env" — that's the constraint sender adaptors actually use.
+  //!
+  //! **Customization.**
+  //!
+  //! A sender author provides a @c static @c consteval member template:
+  //!
+  //! @code{.cpp}
+  //! struct my_sender {
+  //!   using sender_concept = stdexec::sender_tag;
+  //!
+  //!   template <class Self, class... Env>
+  //!   static consteval auto get_completion_signatures() noexcept {
+  //!     return stdexec::completion_signatures<
+  //!       stdexec::set_value_t(int),
+  //!       stdexec::set_error_t(std::exception_ptr)>{};
+  //!   }
+  //!   // ... plus connect()
+  //! };
+  //! @endcode
+  //!
+  //! Alternatively, a sender may expose a non-template alias
+  //! @c completion_signatures (a type alias to a
+  //! @c stdexec::completion_signatures specialization) — that is the form
+  //! used by simple senders whose signatures don't depend on the
+  //! environment.
+  //!
+  //! Awaitable types (coroutine-style awaitables) get their completion
+  //! signatures synthesized automatically: @c set_value_t with the
+  //! @c co_await result type, @c set_error_t(std::exception_ptr) for
+  //! any exceptions, and @c set_stopped_t for stop-token cancellation.
+  //!
+  //! @see stdexec::completion_signatures   — the pack-of-signatures container
+  //! @see stdexec::completion_signatures_of_t — convenience type alias around this
+  //! @see stdexec::sender_in               — the concept built on top of this
+  //! @see stdexec::transform_sender        — domain-customization run before signature computation
   template <class _Sender>
   consteval auto get_completion_signatures()
   {
     return __cmplsigs::__get_completion_signatures_helper<_Sender>();
   }
 
+  //! @brief Overload of @ref get_completion_signatures that takes an
+  //!        environment, for senders whose signatures depend on it.
+  //!
+  //! @tparam _Sender The sender type.
+  //! @tparam _Env    The receiver's environment type. Must be such that
+  //!                 the sender provides a @c get_completion_signatures
+  //!                 customization that accepts @c _Env.
+  //!
+  //! @returns A @c stdexec::completion_signatures specialization
+  //!          describing every way @c _Sender can complete when
+  //!          connected to a receiver with environment @c _Env.
+  //!
+  //! See @ref get_completion_signatures() for the full description.
   template <class _Sender, class _Env>
     requires __has_get_completion_signatures<_Sender, _Env>
   consteval auto get_completion_signatures()

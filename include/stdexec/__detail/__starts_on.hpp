@@ -106,8 +106,104 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.starts.on]
+
+  //! @brief A sender adaptor that runs a sender starting on the execution
+  //!        resource associated with a given scheduler.
+  //!
+  //! @c starts_on takes a scheduler @c sched and a sender @c sndr and produces
+  //! a sender that, when connected and started, first hops onto @c sched's
+  //! execution resource and then runs @c sndr there. The completions of the
+  //! produced sender are delivered to the connected receiver from @c sched's
+  //! resource — there is no "round trip" back to whatever scheduler started
+  //! the operation (compare @ref on_t).
+  //!
+  //! Unlike most sender adaptors in stdexec, @c starts_on has no *pipe form*:
+  //! it is always called as <tt>starts_on(sched, sndr)</tt>, never
+  //! <tt>sndr | starts_on(sched)</tt>. This reflects the spec: @c starts_on
+  //! takes the scheduler *first*, mirroring the order of operations
+  //! (schedule, then run).
+  //!
+  //! @code{.cpp}
+  //! auto s = stdexec::starts_on(some_sched, sndr);
+  //! @endcode
+  //!
+  //! See [exec.starts.on] in the C++26 working draft for the normative
+  //! specification.
+  //!
+  //! **Equivalence.**
+  //!
+  //! Semantically, <tt>starts_on(sch, sndr)</tt> is equivalent to
+  //!
+  //! @code{.cpp}
+  //! schedule(sch) | let_value([sndr = std::forward<Sndr>(sndr)] {
+  //!   return std::move(sndr);
+  //! })
+  //! @endcode
+  //!
+  //! stdexec's implementation is structured differently for efficiency on
+  //! GPU contexts (it avoids making @c sndr dependent on the
+  //! schedule-completion), but the observable semantics match.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! The resulting sender's completion signatures are essentially those of
+  //! @c sndr, augmented with any error completion that the scheduling step
+  //! itself can produce:
+  //!
+  //! @code{.cpp}
+  //! // (signatures of sndr) ...
+  //! set_error_t(/* scheduler error type, if scheduling may fail */)
+  //! set_stopped_t()                  // if not already present
+  //! @endcode
+  //!
+  //! If scheduling onto @c sch fails, an error completion is delivered to
+  //! the receiver on an *unspecified* execution agent.
+  //!
+  //! **Cancellation.**
+  //!
+  //! If the receiver requests stop before scheduling has produced its
+  //! value-completion, the resulting sender typically completes via
+  //! @c set_stopped rather than starting @c sndr at all — the precise
+  //! behavior depends on the scheduler.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto sched = get_parallel_scheduler();
+  //!
+  //!   // Run the entire chain on `sched`:
+  //!   auto sndr =
+  //!     starts_on(sched, just(21) | then([](int x) { return x * 2; }));
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   (void)v;  // == 42, computed on `sched`
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::schedule       — the primitive that produces a schedule-sender
+  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender completes
+  //! @see stdexec::on             — run on a scheduler then transfer back to the original
   struct starts_on_t
   {
+    //! @brief Construct a sender that runs @c __sndr on @c __sched's
+    //!        execution resource.
+    //!
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @tparam _Sender    A type satisfying the @c stdexec::sender concept.
+    //!
+    //! @param __sched     The scheduler whose execution resource will host
+    //!                    @c __sndr.
+    //! @param __sndr      The sender to run on @c __sched.
+    //!
+    //! @returns A sender that, when connected to a receiver and started,
+    //!          first schedules onto @c __sched, then connects and starts
+    //!          @c __sndr there, and forwards @c __sndr's completion to the
+    //!          receiver.
     template <scheduler _Scheduler, sender _Sender>
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
@@ -136,6 +232,12 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for the @c starts_on sender adaptor.
+  //!
+  //! @c starts_on is an instance of @ref starts_on_t. See @ref starts_on_t
+  //! for the full description, completion signatures, and a usage example.
+  //!
+  //! @hideinitializer
   inline constexpr starts_on_t starts_on{};
 
   template <>

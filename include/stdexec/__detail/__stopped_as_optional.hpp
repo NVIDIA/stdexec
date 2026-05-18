@@ -136,14 +136,115 @@ namespace STDEXEC
     };
   }  // namespace __sao
 
+  //! @brief A pipeable sender adaptor that converts a predecessor's stopped
+  //!        completion into a value-channel @c std::nullopt, wrapping the
+  //!        value-completion datum in a @c std::optional.
+  //!
+  //! @c stopped_as_optional is the value-channel mirror of
+  //! @ref stopped_as_error_t. Where @c stopped_as_error turns cancellation
+  //! into an error, @c stopped_as_optional turns cancellation into a
+  //! "no value" signal *on the value channel*. The resulting sender
+  //! value-completes with a @c std::optional<T>: engaged if the
+  //! predecessor produced a value, disengaged if the predecessor was
+  //! stopped.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::stopped_as_optional(sndr);
+  //! auto s2 = sndr | stdexec::stopped_as_optional();
+  //! @endcode
+  //!
+  //! Use this when downstream code prefers branching on a @c std::optional
+  //! (a familiar idiom) over branching on an empty
+  //! <tt>std::optional<std::tuple<...>></tt> from @c sync_wait or
+  //! handling the @c set_stopped channel via an adaptor.
+  //!
+  //! **Single value-completion requirement.**
+  //!
+  //! @c stopped_as_optional requires the predecessor to have exactly one
+  //! value-completion signature with exactly one argument. (How would we
+  //! wrap multiple values in a *single* @c std::optional?) If the
+  //! predecessor has multiple value completions, or zero/multiple value
+  //! arguments, the program is ill-formed with a focused diagnostic
+  //! ("the sender must have exactly one value completion with one
+  //! argument").
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given a predecessor sender @c sndr with completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(T)        // exactly one value-completion with one argument
+  //! set_error_t(Es)...    // zero or more
+  //! set_stopped_t()       // consumed
+  //! @endcode
+  //!
+  //! the sender produced by <tt>stopped_as_optional(sndr)</tt> has
+  //! completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(std::optional<std::decay_t<T>>)
+  //! set_error_t(Es)...                  // forwarded unchanged
+  //! set_error_t(std::exception_ptr)     // added if wrapping may throw
+  //!                                     // (no set_stopped_t in the output)
+  //! @endcode
+  //!
+  //! The original @c set_stopped_t completion is consumed: the resulting
+  //! sender will never deliver @c set_stopped.
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If constructing the @c std::optional from the predecessor's value
+  //! throws (e.g., the value type's copy constructor throws), the
+  //! exception is delivered through
+  //! @c set_error_t(std::exception_ptr).
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! using namespace stdexec;
+  //!
+  //! auto sndr = just(42) | stopped_as_optional();
+  //! auto [opt] = sync_wait(std::move(sndr)).value();
+  //! // opt == std::optional<int>{42}
+  //!
+  //! auto sndr2 = just_stopped() | stopped_as_optional();
+  //! // ...but to make stopped_as_optional well-formed here we need to give
+  //! // the predecessor a value-shape; in practice you compose it on a
+  //! // sender that may either succeed or be stopped:
+  //! auto pipeline =
+  //!   /* some sender that produces an int or is stopped */
+  //!   | stopped_as_optional();
+  //! @endcode
+  //!
+  //! @see stdexec::stopped_as_error    — convert stopped into an error
+  //! @see stdexec::upon_stopped         — handle stopped synchronously
+  //! @see stdexec::let_stopped          — handle stopped with a sender-returning callback
+  //! @see stdexec::sync_wait            — also uses an outer @c std::optional to signal stop
   struct stopped_as_optional_t
   {
+    //! @brief Construct a sender that wraps @c __sndr's value completion in
+    //!        a @c std::optional and reroutes @c set_stopped to a disengaged
+    //!        optional on the value channel.
+    //!
+    //! @tparam _Sender A type satisfying @c stdexec::sender whose
+    //!                 completion signatures include exactly one
+    //!                 @c set_value_t(T) signature.
+    //!
+    //! @param __sndr   The predecessor sender. Forwarded into the result.
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
       return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
     }
 
+    //! @brief Construct a sender-adaptor closure for the pipe form.
+    //!
+    //! <tt>sndr | stopped_as_optional()</tt> is equivalent to
+    //! <tt>stopped_as_optional(sndr)</tt>. The empty parentheses are
+    //! required by the pipe-closure convention; there are no captured
+    //! arguments.
     STDEXEC_ATTRIBUTE(always_inline)
     auto operator()() const noexcept
     {
@@ -151,6 +252,13 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for the @c stopped_as_optional sender adaptor.
+  //!
+  //! @c stopped_as_optional is an instance of @ref stopped_as_optional_t.
+  //! See @ref stopped_as_optional_t for the full description and a usage
+  //! example.
+  //!
+  //! @hideinitializer
   inline constexpr stopped_as_optional_t stopped_as_optional{};
 
   template <>

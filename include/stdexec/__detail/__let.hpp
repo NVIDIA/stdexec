@@ -678,24 +678,309 @@ namespace STDEXEC
     };
   }  // namespace __let
 
+  //! @brief A pipeable sender adaptor that chains a *sender-returning*
+  //!        function onto a predecessor's value completion.
+  //!
+  //! @c let_value is the way to launch another asynchronous operation based on
+  //! the values produced by a predecessor sender. Where @ref then_t "then"
+  //! takes a function returning a *value*, @c let_value takes a function
+  //! returning a *sender*, which is then connected and started, becoming the
+  //! tail of the pipeline.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::let_value(sndr, f);   // direct invocation
+  //! auto s2 = sndr | stdexec::let_value(f);  // pipe syntax
+  //! @endcode
+  //!
+  //! The signature of the operator overloads (inherited from a detail base) is:
+  //!
+  //! @code{.cpp}
+  //! template <sender Sender, movable-value Fun>
+  //!   auto operator()(Sender&& sndr, Fun fun) const -> sender auto;   // direct
+  //!
+  //! template <class Fun>
+  //!   auto operator()(Fun fun) const;                                 // closure
+  //! @endcode
+  //!
+  //! The two forms are expression-equivalent. See [exec.let] in the
+  //! C++26 working draft for the normative specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given a predecessor sender @c sndr with completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(Vs...)               // one or more value completions
+  //! set_error_t(Es)...               // forwarded unchanged
+  //! set_stopped_t()                  // forwarded unchanged (if present)
+  //! @endcode
+  //!
+  //! the sender produced by <tt>let_value(sndr, f)</tt> has completion
+  //! signatures equal to the *union* of:
+  //!
+  //! - the completion signatures of every sender returned by an invocation
+  //!   <tt>std::invoke(f, vs...)</tt> for each value-completion argument pack
+  //!   @c (vs...) of @c sndr, *plus*
+  //! - the @c set_error_t completions of @c sndr (forwarded unchanged),
+  //! - the @c set_stopped_t completion of @c sndr (forwarded unchanged), and
+  //! - @c set_error_t(std::exception_ptr) if invoking @c f or connecting its
+  //!   returned sender may throw.
+  //!
+  //! @c f must be invocable with every value-completion argument pack of
+  //! @c sndr, and every such invocation must return a type satisfying the
+  //! @c sender concept. Otherwise the program is ill-formed at the point
+  //! where the resulting sender is connected to a receiver.
+  //!
+  //! **Use** @ref then_t "then" **vs.** @c let_value: choose @c then when the
+  //! callable returns a *value*; choose @c let_value when the callable returns
+  //! a *sender* (i.e. when the next step is itself asynchronous). Passing a
+  //! sender-returning function to @c then would forward the sender as a
+  //! value — almost never what you want.
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If invoking @c f throws, or if connecting the sender returned by @c f
+  //! throws, the exception is delivered through
+  //! @c set_error_t(std::exception_ptr) on the resulting sender. When both
+  //! steps are @c noexcept, no @c std::exception_ptr error completion is added.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c let_value does not introduce stop-token interaction of its own. If
+  //! @c sndr completes with @c set_stopped, @c f is not invoked and the
+  //! stopped completion is forwarded.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //! #include <cassert>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto fetch_async = [](int id) {
+  //!     return just(id * 10);  // pretend this is a non-trivial async op
+  //!   };
+  //!
+  //!   auto sndr = just(7)
+  //!             | let_value(fetch_async);
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   assert(v == 70);
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::then          — adapt the value channel with a value-returning function
+  //! @see stdexec::let_error     — adapt the error channel with a sender-returning function
+  //! @see stdexec::let_stopped   — adapt the stopped channel with a sender-returning function
   struct let_value_t : __let::__let_t<let_value_t>
   {
     using __t     = set_value_t;
     let_value_t() = default;
   };
+
+  //! @brief A pipeable sender adaptor that chains a *sender-returning*
+  //!        function onto a predecessor's error completion.
+  //!
+  //! @c let_error is to @ref upon_error_t "upon_error" what @ref let_value_t
+  //! "let_value" is to @ref then_t "then": it lets the recovery step be
+  //! *another asynchronous operation*. When the predecessor completes with
+  //! @c set_error_t(e), @c f is invoked with @c e and is expected to return a
+  //! sender; that sender is connected and started, and its completions become
+  //! the completions of the overall pipeline.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::let_error(sndr, f);   // direct invocation
+  //! auto s2 = sndr | stdexec::let_error(f);  // pipe syntax
+  //! @endcode
+  //!
+  //! See [exec.let] in the C++26 working draft for the normative specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given a predecessor sender @c sndr with completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(Vs...)               // forwarded unchanged
+  //! set_error_t(Es)...               // one or more error completions
+  //! set_stopped_t()                  // forwarded unchanged (if present)
+  //! @endcode
+  //!
+  //! the sender produced by <tt>let_error(sndr, f)</tt> has completion
+  //! signatures equal to the *union* of:
+  //!
+  //! - the @c set_value_t completions of @c sndr (forwarded unchanged),
+  //! - the completion signatures of every sender returned by an invocation
+  //!   <tt>std::invoke(f, e)</tt> for each error type @c e of @c sndr,
+  //! - the @c set_stopped_t completion of @c sndr (forwarded unchanged), and
+  //! - @c set_error_t(std::exception_ptr) if invoking @c f or connecting its
+  //!   returned sender may throw.
+  //!
+  //! All original @c set_error_t completions are *consumed*: only errors
+  //! produced by the senders that @c f returns (or thrown by @c f itself)
+  //! survive on the error channel.
+  //!
+  //! **Use** @ref upon_error_t "upon_error" **vs.** @c let_error: choose
+  //! @c upon_error when the recovery is synchronous (returns a value); choose
+  //! @c let_error when the recovery is itself asynchronous (returns a sender).
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If invoking @c f throws, or if connecting the sender returned by @c f
+  //! throws, the exception is delivered through
+  //! @c set_error_t(std::exception_ptr) on the resulting sender.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c let_error does not introduce stop-token interaction of its own. A
+  //! @c set_stopped completion of @c sndr is forwarded without invoking @c f.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //! #include <cassert>
+  //! #include <system_error>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto retry_async = [](std::error_code) { return just(7); };
+  //!
+  //!   auto sndr = just_error(std::error_code{ENOENT, std::system_category()})
+  //!             | let_error(retry_async);
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   assert(v == 7);
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::upon_error   — adapt the error channel with a value-returning function
+  //! @see stdexec::let_value    — adapt the value channel with a sender-returning function
+  //! @see stdexec::let_stopped  — adapt the stopped channel with a sender-returning function
   struct let_error_t : __let::__let_t<let_error_t>
   {
     using __t     = set_error_t;
     let_error_t() = default;
   };
+
+  //! @brief A pipeable sender adaptor that chains a *sender-returning*
+  //!        nullary function onto a predecessor's stopped completion.
+  //!
+  //! @c let_stopped is to @ref upon_stopped_t "upon_stopped" what
+  //! @ref let_value_t "let_value" is to @ref then_t "then": it lets the
+  //! recovery from cancellation be *another asynchronous operation*. When the
+  //! predecessor completes with @c set_stopped, @c f is invoked with no
+  //! arguments and is expected to return a sender; that sender is connected
+  //! and started, and its completions become the completions of the overall
+  //! pipeline.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::let_stopped(sndr, f);   // direct invocation
+  //! auto s2 = sndr | stdexec::let_stopped(f);  // pipe syntax
+  //! @endcode
+  //!
+  //! See [exec.let] in the C++26 working draft for the normative specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given a predecessor sender @c sndr with completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(Vs...)               // forwarded unchanged
+  //! set_error_t(Es)...               // forwarded unchanged
+  //! set_stopped_t()                  // (must be present)
+  //! @endcode
+  //!
+  //! the sender produced by <tt>let_stopped(sndr, f)</tt> has completion
+  //! signatures equal to the *union* of:
+  //!
+  //! - the @c set_value_t completions of @c sndr (forwarded unchanged),
+  //! - the @c set_error_t completions of @c sndr (forwarded unchanged),
+  //! - the completion signatures of the sender returned by
+  //!   <tt>std::invoke(f)</tt>, and
+  //! - @c set_error_t(std::exception_ptr) if invoking @c f or connecting its
+  //!   returned sender may throw.
+  //!
+  //! The original @c set_stopped_t completion is *consumed*: it appears on
+  //! the resulting sender only if the sender returned by @c f itself
+  //! completes via @c set_stopped.
+  //!
+  //! **Use** @ref upon_stopped_t "upon_stopped" **vs.** @c let_stopped: choose
+  //! @c upon_stopped when the recovery is synchronous (returns a value);
+  //! choose @c let_stopped when the recovery is itself asynchronous
+  //! (returns a sender).
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If invoking @c f throws, or if connecting the sender returned by @c f
+  //! throws, the exception is delivered through
+  //! @c set_error_t(std::exception_ptr) on the resulting sender.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c let_stopped reacts to the predecessor's @c set_stopped; it does not
+  //! initiate cancellation. The sender returned by @c f sees the receiver's
+  //! stop token as normal.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //! #include <cassert>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto fallback_async = [] { return just(42); };
+  //!
+  //!   auto sndr = just_stopped()
+  //!             | let_stopped(fallback_async);
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   assert(v == 42);
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::upon_stopped — adapt the stopped channel with a value-returning function
+  //! @see stdexec::let_value    — adapt the value channel with a sender-returning function
+  //! @see stdexec::let_error    — adapt the error channel with a sender-returning function
   struct let_stopped_t : __let::__let_t<let_stopped_t>
   {
     using __t       = set_stopped_t;
     let_stopped_t() = default;
   };
 
-  inline constexpr let_value_t   let_value{};
-  inline constexpr let_error_t   let_error{};
+  //! @brief The customization point object for the @c let_value sender adaptor.
+  //!
+  //! @c let_value is an instance of @ref let_value_t. See @ref let_value_t
+  //! for the full description, completion-signature transformation rules,
+  //! exception and cancellation behavior, and a usage example.
+  //!
+  //! @hideinitializer
+  inline constexpr let_value_t let_value{};
+
+  //! @brief The customization point object for the @c let_error sender adaptor.
+  //!
+  //! @c let_error is an instance of @ref let_error_t. See @ref let_error_t
+  //! for the full description and example.
+  //!
+  //! @hideinitializer
+  inline constexpr let_error_t let_error{};
+
+  //! @brief The customization point object for the @c let_stopped sender adaptor.
+  //!
+  //! @c let_stopped is an instance of @ref let_stopped_t. See @ref let_stopped_t
+  //! for the full description and example.
+  //!
+  //! @hideinitializer
   inline constexpr let_stopped_t let_stopped{};
 
   template <>

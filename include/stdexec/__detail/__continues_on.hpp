@@ -383,8 +383,103 @@ namespace STDEXEC
     };
   }  // namespace __trnsfr
 
+  //! @brief A pipeable sender adaptor that transfers a predecessor sender's
+  //!        completion to a different scheduler's execution resource.
+  //!
+  //! @c continues_on lets a sender pipeline *change execution context* in the
+  //! middle. Given a predecessor sender @c sndr and a scheduler @c sched,
+  //! @c continues_on produces a sender that, when connected and started,
+  //! runs @c sndr to completion on whatever context @c sndr ran on, then
+  //! transfers execution to @c sched's resource, and only *then* forwards
+  //! @c sndr's completion (value, error, or stopped) to the connected
+  //! receiver. Anything chained after @c continues_on therefore runs on
+  //! @c sched.
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::continues_on(sndr, sched);   // direct invocation
+  //! auto s2 = sndr | stdexec::continues_on(sched);  // pipe syntax
+  //! @endcode
+  //!
+  //! The two forms are expression-equivalent. See [exec.continues.on] in
+  //! the C++26 working draft for the normative specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given a predecessor sender @c sndr with completion signatures
+  //!
+  //! @code{.cpp}
+  //! set_value_t(Vs...)    // forwarded — but delivered on `sched`'s resource
+  //! set_error_t(Es)...    // forwarded — but delivered on `sched`'s resource
+  //! set_stopped_t()       // forwarded — but delivered on `sched`'s resource
+  //! @endcode
+  //!
+  //! the sender produced by <tt>continues_on(sndr, sched)</tt> has the same
+  //! completion signatures as @c sndr, except that a
+  //! @c set_error_t(std::exception_ptr) completion may be added if any of
+  //! @c sndr's completion datums are not @c nothrow decay-copyable (the
+  //! datums must be stored across the scheduling hop).
+  //!
+  //! @c continues_on does *not* alter @c sndr's values or errors; it only
+  //! changes the execution context on which the completion is delivered.
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If decay-copying a completion datum across the scheduling hop throws,
+  //! the exception is delivered through @c set_error_t(std::exception_ptr).
+  //! If scheduling onto @c sched fails, an error completion is delivered on
+  //! an unspecified execution agent.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c continues_on respects the receiver's stop token while waiting to
+  //! be scheduled onto @c sched: if cancellation is requested after @c sndr
+  //! completes but before the hop finishes, the resulting sender typically
+  //! completes via @c set_stopped.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto io_sched   = get_parallel_scheduler();   // pretend: I/O
+  //!   auto cpu_sched  = get_parallel_scheduler();   // pretend: compute
+  //!
+  //!   auto sndr =
+  //!     starts_on(io_sched, just(42))               // produce on io_sched
+  //!     | continues_on(cpu_sched)                   // hop to cpu_sched
+  //!     | then([](int x) { return x * 2; });        // then() runs on cpu_sched
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   (void)v;  // == 84
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::schedule     — the primitive that produces a schedule-sender
+  //! @see stdexec::starts_on    — *begin* execution on a given scheduler
+  //! @see stdexec::on           — run on a different scheduler, then transfer back
   struct continues_on_t
   {
+    //! @brief Construct a sender that runs @c __sndr to completion, then
+    //!        transfers execution to @c __sched before forwarding the
+    //!        completion downstream.
+    //!
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @tparam _Sender    A type satisfying the @c stdexec::sender concept.
+    //!
+    //! @param __sndr      The predecessor sender. Forwarded into the
+    //!                    resulting sender.
+    //! @param __sched     The scheduler whose execution resource will host
+    //!                    the delivery of @c __sndr's completion.
+    //!
+    //! @returns A sender with the same completion signatures as @c __sndr
+    //!          (plus a possible @c set_error_t(std::exception_ptr) for
+    //!          decay-copy failures during the hop). The completions are
+    //!          delivered on @c __sched's execution resource.
     template <scheduler _Scheduler, sender _Sender>
     constexpr auto
     operator()(_Sender&& __sndr, _Scheduler __sched) const -> __well_formed_sender auto
@@ -393,6 +488,18 @@ namespace STDEXEC
                                           schedule_from(static_cast<_Sender&&>(__sndr)));
     }
 
+    //! @brief Construct a sender-adaptor closure that, when applied to a
+    //!        sender, produces <tt>continues_on(sndr, __sched)</tt>.
+    //!
+    //! This overload enables the pipe syntax:
+    //! <tt>sndr | continues_on(__sched)</tt> is equivalent to
+    //! <tt>continues_on(sndr, __sched)</tt>.
+    //!
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @param __sched     The scheduler to transfer execution to when the
+    //!                    closure is later applied to a sender.
+    //!
+    //! @returns A sender-adaptor closure object capturing @c __sched.
     template <scheduler _Scheduler>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Scheduler __sched) const noexcept
@@ -401,6 +508,13 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for the @c continues_on sender adaptor.
+  //!
+  //! @c continues_on is an instance of @ref continues_on_t. See
+  //! @ref continues_on_t for the full description, completion signatures,
+  //! and a usage example.
+  //!
+  //! @hideinitializer
   inline constexpr continues_on_t continues_on{};
 
   template <>

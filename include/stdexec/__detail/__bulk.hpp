@@ -374,6 +374,76 @@ namespace STDEXEC
     };
   }  // namespace __bulk
 
+  //! @brief A pipeable sender adaptor that applies a function to each index
+  //!        in @c [0, shape) under a given execution policy.
+  //!
+  //! @c bulk is the parallel-loop primitive of the sender model. You give
+  //! it a sender, an execution policy (e.g. @c stdexec::par), an integral
+  //! shape, and a callable; you get back a sender that, when started,
+  //! invokes <tt>f(i, vs...)</tt> for every @c i in @c [0, shape) — where
+  //! @c vs... are the predecessor's value-completion datums. The
+  //! execution policy controls whether the invocations may run in
+  //! parallel.
+  //!
+  //! See [exec.bulk] in the C++26 working draft.
+  //!
+  //! The signature of the operator overloads (inherited from a detail
+  //! base) is:
+  //!
+  //! @code{.cpp}
+  //! template <sender Sender, /* execution_policy */ Policy,
+  //!           integral Shape, copy_constructible Fun>
+  //!   auto operator()(Sender&& sndr, Policy&& pol,
+  //!                   Shape shape, Fun fun) const -> sender auto;   // direct
+  //!
+  //! template <class Policy, integral Shape, copy_constructible Fun>
+  //!   auto operator()(Policy&& pol, Shape shape, Fun fun) const;    // closure
+  //! @endcode
+  //!
+  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //!
+  //! @code{.cpp}
+  //! auto s1 = stdexec::bulk(sndr, stdexec::par, 1024, fn);
+  //! auto s2 = sndr | stdexec::bulk(stdexec::par, 1024, fn);
+  //! @endcode
+  //!
+  //! **Completion signatures.**
+  //!
+  //! @c bulk forwards the predecessor's completion signatures, optionally
+  //! adding @c set_error_t(std::exception_ptr) if invoking @c fn may throw
+  //! (or if internal allocation may throw):
+  //!
+  //! @code{.cpp}
+  //! set_value_t(Vs...)               // forwarded unchanged from sndr
+  //! set_error_t(Es)...               // forwarded unchanged from sndr
+  //! set_error_t(std::exception_ptr)  // added if fn may throw
+  //! set_stopped_t()                  // forwarded unchanged (if present)
+  //! @endcode
+  //!
+  //! @c fn is invoked with the *value-completion datums* of @c sndr
+  //! preserved across all invocations — every iteration sees the same
+  //! @c vs...
+  //!
+  //! **Execution policy.**
+  //!
+  //! The policy argument follows the @c <execution> conventions:
+  //! @c stdexec::seq for sequenced execution, @c stdexec::par for
+  //! permitted-parallel, @c stdexec::par_unseq for permitted parallel and
+  //! vectorized. A custom scheduler's domain may interpret these
+  //! differently — e.g. a GPU domain may lower @c par to a CUDA kernel
+  //! launch.
+  //!
+  //! **Implementation note: lowering to** @c bulk_chunked **.**
+  //!
+  //! Internally, @c bulk is implemented in terms of
+  //! @ref bulk_chunked_t — its @c transform_sender member rewrites
+  //! <tt>bulk(sndr, pol, n, f)</tt> into a @c bulk_chunked over the same
+  //! shape with @c f wrapped in a per-chunk loop. If a domain customizes
+  //! @c bulk_chunked, @c bulk picks up that customization automatically.
+  //!
+  //! @see stdexec::bulk_chunked    — explicit-chunk variant
+  //! @see stdexec::bulk_unchunked  — strict per-index variant (no chunking allowed)
+  //! @see stdexec::when_all        — concurrent composition without an index space
   struct bulk_t : __bulk::__generic_bulk_t<bulk_t>
   {
     template <class _Sender>
@@ -389,14 +459,109 @@ namespace STDEXEC
     }
   };
 
+  //! @brief A pipeable sender adaptor that invokes a function with chunked
+  //!        sub-ranges of an integer index space.
+  //!
+  //! Where @ref bulk_t passes a *single index* to its callable,
+  //! @c bulk_chunked passes a *half-open range* @c [begin, end) covering
+  //! some subset of @c [0, shape). The implementation may split @c [0,
+  //! shape) into any number of chunks (including one chunk equal to the
+  //! whole range, or @c shape chunks of one element each) — the only
+  //! guarantee is that every index in @c [0, shape) is covered by exactly
+  //! one chunk.
+  //!
+  //! See [exec.bulk] in the C++26 working draft.
+  //!
+  //! The signature of the operator overloads (inherited from a detail
+  //! base) is:
+  //!
+  //! @code{.cpp}
+  //! template <sender Sender, /* execution_policy */ Policy,
+  //!           integral Shape, copy_constructible Fun>
+  //!   auto operator()(Sender&& sndr, Policy&& pol,
+  //!                   Shape shape, Fun fun) const -> sender auto;   // direct
+  //!
+  //! template <class Policy, integral Shape, copy_constructible Fun>
+  //!   auto operator()(Policy&& pol, Shape shape, Fun fun) const;    // closure
+  //! @endcode
+  //!
+  //! The callable is invoked as <tt>fun(begin, end, vs...)</tt>, where
+  //! @c vs... are the predecessor's value-completion datums (shared across
+  //! all chunks).
+  //!
+  //! **When to use** @c bulk_chunked **vs.** @c bulk **:**
+  //!
+  //! Use @c bulk when the per-iteration body is small and the loop is the
+  //! payload — @c bulk's lowering to @c bulk_chunked will let the runtime
+  //! pick chunk sizes for you. Use @c bulk_chunked directly when the body
+  //! benefits from per-chunk amortization (allocations, accumulators,
+  //! vectorization setup) that you want to do once per chunk rather than
+  //! once per index.
+  //!
+  //! @see stdexec::bulk            — index-at-a-time variant (lowers to this)
+  //! @see stdexec::bulk_unchunked  — strict per-index variant (no chunking)
   struct bulk_chunked_t : __bulk::__generic_bulk_t<bulk_chunked_t>
   {};
 
+  //! @brief A pipeable sender adaptor that invokes a function once per index
+  //!        in @c [0, shape), *without* permission to chunk.
+  //!
+  //! @c bulk_unchunked has the same per-index invocation pattern as
+  //! @ref bulk_t — <tt>fun(i, vs...)</tt> for every @c i — but explicitly
+  //! forbids the implementation from combining multiple indices into a
+  //! single call. Spec-recommended (but not required) practice is for
+  //! each iteration to run on a *distinct* execution agent.
+  //!
+  //! Use this only when the body of the loop has per-iteration state or
+  //! synchronization that *cannot* be batched — e.g., per-thread-local
+  //! accumulators, per-index hardware resources, observable side effects
+  //! that must be one-per-index. For ordinary parallel loops, prefer
+  //! @ref bulk_t (which lowers to @c bulk_chunked and lets the runtime
+  //! make chunk-size decisions).
+  //!
+  //! See [exec.bulk] in the C++26 working draft.
+  //!
+  //! The signature of the operator overloads (inherited from a detail
+  //! base) is:
+  //!
+  //! @code{.cpp}
+  //! template <sender Sender, /* execution_policy */ Policy,
+  //!           integral Shape, copy_constructible Fun>
+  //!   auto operator()(Sender&& sndr, Policy&& pol,
+  //!                   Shape shape, Fun fun) const -> sender auto;   // direct
+  //!
+  //! template <class Policy, integral Shape, copy_constructible Fun>
+  //!   auto operator()(Policy&& pol, Shape shape, Fun fun) const;    // closure
+  //! @endcode
+  //!
+  //! @see stdexec::bulk            — chunking-permitted index-at-a-time variant
+  //! @see stdexec::bulk_chunked    — explicit-chunk variant
   struct bulk_unchunked_t : __bulk::__generic_bulk_t<bulk_unchunked_t>
   {};
 
-  inline constexpr bulk_t           bulk{};
-  inline constexpr bulk_chunked_t   bulk_chunked{};
+  //! @brief The customization point object for the @c bulk sender adaptor.
+  //!
+  //! @c bulk is an instance of @ref bulk_t. See @ref bulk_t for the full
+  //! description, the lowering to @c bulk_chunked, and a usage example.
+  //!
+  //! @hideinitializer
+  inline constexpr bulk_t bulk{};
+
+  //! @brief The customization point object for the @c bulk_chunked sender adaptor.
+  //!
+  //! @c bulk_chunked is an instance of @ref bulk_chunked_t. See
+  //! @ref bulk_chunked_t for the full description.
+  //!
+  //! @hideinitializer
+  inline constexpr bulk_chunked_t bulk_chunked{};
+
+  //! @brief The customization point object for the @c bulk_unchunked sender adaptor.
+  //!
+  //! @c bulk_unchunked is an instance of @ref bulk_unchunked_t. See
+  //! @ref bulk_unchunked_t for the full description and when to reach for
+  //! it.
+  //!
+  //! @hideinitializer
   inline constexpr bulk_unchunked_t bulk_unchunked{};
 
   template <>

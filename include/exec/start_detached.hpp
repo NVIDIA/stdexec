@@ -145,6 +145,61 @@ namespace experimental::execution
       && STDEXEC::__same_as<void, STDEXEC::__submit_result_t<_Sender, __submit_receiver>>;
   }  // namespace __start_detached
 
+  //! @brief A sender consumer that eagerly starts a sender and forgets it.
+  //!
+  //! @c start_detached connects its argument sender to a built-in receiver
+  //! and starts the resulting operation immediately, allocating the
+  //! operation state on the heap (using an allocator from the optional
+  //! environment) so it can outlive the call. The completion of the sender
+  //! deallocates the operation state and discards the result; nothing is
+  //! returned to the caller.
+  //!
+  //! Use @c start_detached for top-level fire-and-forget work that has no
+  //! caller waiting on its result and no enclosing async scope — for
+  //! example, kicking off a logging or telemetry pipeline from @c main(),
+  //! or a one-shot background task at program startup. For fire-and-forget
+  //! work that should be *tracked* by a scope (so the scope can be joined
+  //! at shutdown), prefer @c stdexec::spawn. For top-level *waiting*, use
+  //! @c stdexec::sync_wait.
+  //!
+  //! @note @c start_detached is an @b stdexec @b extension. It is not part
+  //!       of the C++26 working draft. The standardized way to spawn
+  //!       fire-and-forget work is @c stdexec::spawn (see [exec.spawn]),
+  //!       which requires an async scope to take ownership of the
+  //!       operation.
+  //!
+  //! @code{.cpp}
+  //! exec::start_detached(stdexec::just(42) | stdexec::then([](int x) {
+  //!   std::println("background work produced {}", x);
+  //! }));
+  //! @endcode
+  //!
+  //! **Completion behavior.**
+  //!
+  //! The sender must complete via @c set_value or @c set_stopped — both
+  //! are accepted and the result is discarded. The sender *must not*
+  //! complete via @c set_error: there is no caller to deliver the error
+  //! to, and an error completion is therefore considered a contract
+  //! violation. The implementation enforces this with a static assertion
+  //! when possible; if the sender's completion signatures include
+  //! @c set_error_t the program is ill-formed.
+  //!
+  //! **Allocator support.**
+  //!
+  //! The two-argument overload accepts an environment from which an
+  //! allocator can be queried (via @c stdexec::get_allocator). That
+  //! allocator is used to allocate the operation state, so callers can
+  //! avoid the default global @c new for hot paths.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c start_detached does not arrange for cancellation of the spawned
+  //! work. If the operation observes a stop token via the environment,
+  //! it can self-cancel; otherwise the work runs to natural completion.
+  //!
+  //! @see stdexec::sync_wait  — top-level synchronous wait that returns the result
+  //! @see stdexec::spawn      — fire-and-forget into a scope (standardized in C++26)
+  //! @see stdexec::spawn_future — spawn into a scope and observe via a sender
   struct start_detached_t
   {
     template <class _Sender, class _Env>
@@ -155,6 +210,14 @@ namespace experimental::execution
                        _Sender,
                        STDEXEC::__as_root_env_t<_Env>>;
 
+    //! @brief Eagerly start @c __sndr; allocate its operation state on the
+    //!        heap with the default allocator.
+    //!
+    //! @tparam _Sender A sender type with no @c set_error_t completions.
+    //! @param __sndr   The sender to launch. Forwarded into the heap-allocated
+    //!                 operation state.
+    //!
+    //! @pre @c __sndr must not be able to complete with @c set_error.
     template <STDEXEC::sender_in<STDEXEC::__root_env> _Sender>
       requires STDEXEC::__callable<STDEXEC::apply_sender_t,
                                    __compl_domain_t<_Sender, STDEXEC::__root_env>,
@@ -166,6 +229,19 @@ namespace experimental::execution
       STDEXEC::apply_sender(__domain_t{}, *this, static_cast<_Sender&&>(__sndr));
     }
 
+    //! @brief Eagerly start @c __sndr; use the allocator from @c __env to
+    //!        allocate the operation state.
+    //!
+    //! @tparam _Env    An environment type. Queried with
+    //!                 @c stdexec::get_allocator for an allocator;
+    //!                 falls back to @c std::allocator if absent.
+    //! @tparam _Sender A sender type with no @c set_error_t completions.
+    //!
+    //! @param __sndr   The sender to launch.
+    //! @param __env    The environment used both for the allocator query
+    //!                 and for the receiver's environment.
+    //!
+    //! @pre @c __sndr must not be able to complete with @c set_error.
     template <class _Env, STDEXEC::sender_in<STDEXEC::__as_root_env_t<_Env>> _Sender>
       requires STDEXEC::__callable<STDEXEC::apply_sender_t,
                                    __compl_domain_t<_Sender, STDEXEC::__as_root_env_t<_Env>>,
@@ -226,6 +302,12 @@ namespace experimental::execution
     }
   };
 
+  //! @brief The customization point object for the @c start_detached sender consumer.
+  //!
+  //! @c start_detached is an instance of @ref start_detached_t. See
+  //! @ref start_detached_t for the full description and a usage example.
+  //!
+  //! @hideinitializer
   inline constexpr start_detached_t start_detached{};
 }  // namespace experimental::execution
 

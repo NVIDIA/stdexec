@@ -176,8 +176,117 @@ namespace STDEXEC
   }  // namespace __on
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
+  //! @brief A sender adaptor that runs work on a different scheduler and then
+  //!        transfers execution *back* to the original scheduler.
+  //!
+  //! @c on is the "go there, do work, come back" scheduling adaptor. It has
+  //! two distinct shapes:
+  //!
+  //! 1. **Whole-sender form:** <tt>on(sched, sndr)</tt> — runs the entirety
+  //!    of @c sndr on @c sched's execution resource. When @c sndr completes,
+  //!    execution transfers back to the scheduler that started the operation
+  //!    (the "start scheduler"), and the completion is delivered there.
+  //!
+  //!    This is the principal difference between @c on and
+  //!    @ref starts_on_t — @c starts_on stays on @c sched; @c on returns home.
+  //!
+  //! 2. **Closure-insertion form:** <tt>on(sndr, sched, closure)</tt> — runs
+  //!    @c sndr on its *current* scheduler, then transfers to @c sched,
+  //!    applies @c closure (a sender-adaptor closure) to the result, runs
+  //!    *that* on @c sched, and finally transfers back to the original
+  //!    completion scheduler. Useful for inserting a CPU-bound transform
+  //!    into an otherwise I/O-bound pipeline (or vice versa) without
+  //!    permanently changing context.
+  //!
+  //!    This form also has a pipe shorthand:
+  //!    <tt>sndr | on(sched, closure)</tt>.
+  //!
+  //! @code{.cpp}
+  //! // Form 1: run sndr on sched, return to start scheduler.
+  //! auto s1 = stdexec::on(sched, sndr);
+  //!
+  //! // Form 2: run sndr in place, hop to sched for closure, hop back.
+  //! auto s2 = stdexec::on(sndr, sched, stdexec::then([](int x){ return x*2; }));
+  //! auto s3 = sndr | stdexec::on(sched, stdexec::then([](int x){ return x*2; }));
+  //! @endcode
+  //!
+  //! See [exec.on] in the C++26 working draft for the normative specification.
+  //!
+  //! **The round trip.**
+  //!
+  //! What distinguishes @c on from @c starts_on and @c continues_on is the
+  //! restoration of the original scheduler:
+  //!
+  //! | Adaptor                | Where work runs | Where completion is delivered  |
+  //! | ---------------------- | --------------- | ------------------------------ |
+  //! | @c starts_on(sch,s)    | on @c sch       | on @c sch                      |
+  //! | @c continues_on(s,sch) | on @c s's sched | on @c sch                      |
+  //! | @c on(sch,s)           | on @c sch       | on the *start scheduler*       |
+  //! | @c on(s,sch,closure)   | mixed (see above) | on the *start scheduler*     |
+  //!
+  //! The "start scheduler" is read from the receiver's environment via
+  //! @c get_start_scheduler (form 1) or @c get_completion_scheduler<set_value_t>
+  //! of @c sndr's environment (form 2).
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Form 1 (<tt>on(sched, sndr)</tt>): essentially @c sndr's completion
+  //! signatures, with possible additional @c set_error_t completions from
+  //! the two scheduling hops.
+  //!
+  //! Form 2 (<tt>on(sndr, sched, closure)</tt>): the completion signatures
+  //! of <tt>closure(continues_on(sndr, sched))</tt> after the final transfer
+  //! back, again with possible additional @c set_error_t completions from
+  //! the scheduling hops.
+  //!
+  //! If scheduling onto @c sched (or back) fails, an error completion is
+  //! delivered on an unspecified execution agent.
+  //!
+  //! **Cancellation.**
+  //!
+  //! Cancellation flows through the scheduling hops normally; a stop
+  //! request observed between hops typically results in @c set_stopped.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //!
+  //! int main() {
+  //!   using namespace stdexec;
+  //!
+  //!   auto gpu = get_parallel_scheduler();   // pretend: GPU
+  //!
+  //!   // Compute on the GPU, but stay on the start scheduler afterwards:
+  //!   auto sndr =
+  //!     just(21)
+  //!     | on(gpu, then([](int x) { return x * 2; }));
+  //!
+  //!   auto [v] = sync_wait(std::move(sndr)).value();
+  //!   (void)v;  // == 42; sync_wait sees the result on its starting context
+  //! }
+  //! @endcode
+  //!
+  //! @see stdexec::schedule       — the primitive that produces a schedule-sender
+  //! @see stdexec::starts_on      — begin on a scheduler and *stay* there
+  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender completes
   struct on_t
   {
+    //! @brief Form 1: run @c __sndr on @c __sched, then return to the start
+    //!        scheduler.
+    //!
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @tparam _Sender    A type satisfying the @c stdexec::sender concept.
+    //!
+    //! @param __sched     The scheduler whose execution resource will host
+    //!                    @c __sndr.
+    //! @param __sndr      The sender to run on @c __sched.
+    //!
+    //! @returns A sender that, when connected and started, runs @c __sndr on
+    //!          @c __sched then transfers execution back to the start
+    //!          scheduler (taken from the receiver's environment via
+    //!          @c get_start_scheduler) before forwarding @c __sndr's
+    //!          completion to the receiver.
     template <scheduler _Scheduler, sender _Sender>
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
@@ -185,6 +294,23 @@ namespace STDEXEC
       return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
     }
 
+    //! @brief Form 2: run @c __sndr in place, hop to @c __sched, apply
+    //!        @c __clsur there, then hop back.
+    //!
+    //! @tparam _Sender    A type satisfying the @c stdexec::sender concept.
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @tparam _Closure   A sender-adaptor closure suitable for chaining
+    //!                    onto @c _Sender.
+    //!
+    //! @param __sndr      The predecessor sender (runs on its own scheduler).
+    //! @param __sched     The scheduler to transition to before applying
+    //!                    @c __clsur.
+    //! @param __clsur     The adaptor closure (e.g. <tt>then(...)</tt>,
+    //!                    <tt>bulk(...)</tt>) to apply on @c __sched.
+    //!
+    //! @returns A sender that completes on the *original* completion
+    //!          scheduler of @c __sndr, with the result of
+    //!          <tt>__clsur(continues_on(__sndr, __sched))</tt>.
     template <sender _Sender, scheduler _Scheduler, __sender_adaptor_closure_for<_Sender> _Closure>
     constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
       -> __well_formed_sender auto
@@ -194,6 +320,17 @@ namespace STDEXEC
                                 static_cast<_Sender&&>(__sndr));
     }
 
+    //! @brief Pipe form of Form 2: construct a sender-adaptor closure that,
+    //!        when applied to a sender, produces
+    //!        <tt>on(sndr, __sched, __clsur)</tt>.
+    //!
+    //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
+    //! @tparam _Closure   A sender-adaptor closure.
+    //!
+    //! @param __sched     The scheduler to transition to.
+    //! @param __clsur     The adaptor closure to apply on @c __sched.
+    //!
+    //! @returns A sender-adaptor closure capturing @c __sched and @c __clsur.
     template <scheduler _Scheduler, __sender_adaptor_closure _Closure>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Scheduler&& __sched, _Closure&& __clsur) const
@@ -220,6 +357,13 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for the @c on sender adaptor.
+  //!
+  //! @c on is an instance of @ref on_t. See @ref on_t for the full
+  //! description, the distinction between @c on, @c starts_on, and
+  //! @c continues_on, and usage examples.
+  //!
+  //! @hideinitializer
   inline constexpr on_t on{};
 
   template <>
