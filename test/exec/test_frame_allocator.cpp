@@ -30,7 +30,7 @@ namespace
 {
   TEST_CASE("exec::__frame_allocator is constructible", "[types][frame_allocator]")
   {
-    using namespace exec::__fa;
+    using namespace exec;
 
     SECTION("with a memory_resource*")
     {

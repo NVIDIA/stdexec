@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2026 Ian Petersen
  * Copyright (c) 2026 NVIDIA Corporation
  *
@@ -18,9 +17,33 @@
 
 #include "../stdexec/__detail/__concepts.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <memory_resource>
+#include <type_traits>
 
+#include "../stdexec/__detail/__prologue.hpp"
+
+//! Defines template <class _Delegate> exec::__frame_allocator_t
+//!
+//! The intended use for __frame_allocator_t is the dynamic allocation of operation
+//! states and/or coroutine frames. __frame_allocator_t models the Allocator named
+//! requirement in terms of its type parameter, _Delegate.
+//!
+//! _Delegate may be one of:
+//!  - Another allocator, in which case __frame_allocator_t<_Delegate> is just _Delegate
+//!    rebound to std::byte;
+//!  - std::pmr::memory_resource*, in which case __frame_allocator_t<_Delegate> is just
+//!    std::pmr::polymorphic_allocator<std::byte>; or
+//!  - T* for some T that inherits from std::pmr::memor_resource, in which case
+//!    __frame_allocator_t is an allocator that behaves like
+//!    std::pmr::polymorphic_allocator<std::byte>, but knows the concrete type of its
+//!    memory_resource and so therefore may be able to avoid virtual dispatch.
+//!
+//! Given that __frame_allocator_t<_Delegate> is just an alias to _Delegate when _Delegate
+//! is an allocator type, it's up to that type whether its construct member function does
+//! "uses-allocator construction". When _Delegate is a pointer to a memory_resource,
+//! __frame_allocator_t<_Delegate>::construct does "uses-allocator construction".
 namespace experimental::execution
 {
   namespace __fa
@@ -30,6 +53,10 @@ namespace experimental::execution
     template <class _Delegate>
     struct __frame_allocator;
 
+    //! Handle the case that _Delegate is an allocator already
+    //!
+    //! In this case, __frame_allocator_t<Delegate> is just an alias to _Delegate but
+    //! rebound to std::byte.
     template <class _Delegate>
       requires __simple_allocator<_Delegate>
     struct __frame_allocator<_Delegate>
@@ -38,6 +65,10 @@ namespace experimental::execution
       using type = std::allocator_traits<_Delegate>::template rebind_alloc<_Ty>;
     };
 
+    //! Handle the case that _Delegate is exactly std::pmr::memory_resource *
+    //!
+    //! In this case, __frame_allocator_t<_Delegate> is exactly
+    //! std::pmr::polymorphic_allocator<std::byte>.
     template <>
     struct __frame_allocator<std::pmr::memory_resource *>
     {
@@ -45,6 +76,13 @@ namespace experimental::execution
       using type = std::pmr::polymorphic_allocator<_Ty>;
     };
 
+    //! Handle the case that _Delegate is a pointer to a type that derives from
+    //! std::pmr::memory_resource
+    //!
+    //! In this case, __frame_allocator_t<_Delegate> is an allocator that behaves like
+    //! std::pmr::polymorphic_allocator<std::byte> except that it knows the concrete type
+    //! of its memory resource. In other words, allocation and deallocation are delegated
+    //! to the given resource, construct does uses-allocator construction, etc.
     template <class _Delegate>
       requires __std::derived_from<_Delegate, std::pmr::memory_resource>
     struct __frame_allocator<_Delegate *>
@@ -55,6 +93,9 @@ namespace experimental::execution
         using value_type = _Ty;
         using pointer    = value_type *;
 
+        // polymorphic_allocator's default constructor grabs the default memory resource,
+        // which we can't do because there's no default for _Delegate
+
         /*implicit*/ constexpr type(_Delegate *__resource) noexcept
           : __resource_(__resource)
         {}
@@ -62,13 +103,13 @@ namespace experimental::execution
         constexpr type(type const &) noexcept = default;
 
         template <class _Uy>
-        constexpr type(type<_Uy> const &other) noexcept
+        /*implicit*/ constexpr type(type<_Uy> const &other) noexcept
           : __resource_(other.__resource_)
         {}
 
-        constexpr type &operator=(type &) noexcept = default;
-
         constexpr ~type() = default;
+
+        constexpr type &operator=(type const &) noexcept = default;
 
         constexpr pointer allocator(std::size_t __n)
         {
@@ -76,20 +117,24 @@ namespace experimental::execution
             __resource_->allocate(__n * sizeof(value_type), alignof(value_type)));
         }
 
-        constexpr void delegate(void *__p, std::size_t __n) noexcept
+        constexpr void deallocate(void *__p, std::size_t __n) noexcept
         {
           __resource_->deallocate(__p, __n * sizeof(value_type), alignof(value_type));
         }
+
+        // TODO: perform uses-allocator construction in construct
 
        private:
         _Delegate *__resource_;
       };
     };
-
-    template <class _Alloc>
-    using __frame_allocator_t =
-      __frame_allocator<std::remove_cvref_t<_Alloc>>::template type<std::byte>;
   }  // namespace __fa
+
+  template <class _Delegate>
+  using __frame_allocator_t =
+    __fa::__frame_allocator<std::remove_cvref_t<_Delegate>>::template type<std::byte>;
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+
+#include "../stdexec/__detail/__epilogue.hpp"

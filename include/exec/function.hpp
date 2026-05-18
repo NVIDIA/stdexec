@@ -251,7 +251,7 @@ namespace experimental::execution
       {
         auto &make_sender = *__std::start_lifetime_as<Factory>(storage);
         using alloc_t     = decltype(choose_frame_allocator(get_env(rcvr)));
-        auto alloc = __fa::__frame_allocator_t<alloc_t>(choose_frame_allocator(get_env(rcvr)));
+        auto alloc        = __frame_allocator_t<alloc_t>(choose_frame_allocator(get_env(rcvr)));
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
                                        alloc,
