@@ -164,7 +164,8 @@ namespace STDEXEC
 
       static constexpr auto __get_state =  //
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
-          __nothrow_decay_copyable<__data_of<_Sender>>) -> decltype(auto)
+          __nothrow_decay_copyable<__data_of<_Sender>>)
+        -> __state<std::remove_cvref_t<_Receiver>, std::remove_cvref_t<__data_of<_Sender>>>
       {
         return __state{static_cast<_Receiver&&>(__rcvr),
                        STDEXEC::__get<1>(static_cast<_Sender&&>(__sndr))};
