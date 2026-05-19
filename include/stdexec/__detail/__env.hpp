@@ -259,9 +259,75 @@ namespace STDEXEC
     concept __has_get_env_member = requires { typename __get_env_member_result_t<_EnvProvider>; };
   }  // namespace __detail
 
-  // For getting an execution environment from a receiver or the attributes from a sender.
+  //! @brief Customization point object that obtains the *environment* of a
+  //!        sender or receiver.
+  //!
+  //! Every sender and every receiver has an associated *environment* — an
+  //! unordered, type-keyed bag of properties such as the stop token, the
+  //! allocator, the preferred scheduler, the start scheduler, and any
+  //! domain-specific properties a sender adaptor wants to expose. The
+  //! environment is what makes the sender model *contextual*: a sender
+  //! adapts its behavior based on the environment of the receiver it is
+  //! connected to.
+  //!
+  //! @c get_env(provider) returns the environment of @c provider, where
+  //! @c provider is either a receiver (yielding its environment, which
+  //! the sender will introspect via queries) or a sender (yielding its
+  //! *attributes*, which the framework consults to determine things like
+  //! the sender's completion scheduler).
+  //!
+  //! See [exec.queries.get_env] in the C++26 working draft.
+  //!
+  //! **Customization.**
+  //!
+  //! Most receivers and senders simply expose a @c noexcept,
+  //! const-callable `.get_env()` member returning their environment:
+  //!
+  //! @code{.cpp}
+  //! struct my_receiver {
+  //!   using receiver_concept = stdexec::receiver_tag;
+  //!
+  //!   auto get_env() const noexcept {
+  //!     return stdexec::env{stdexec::prop{stdexec::get_stop_token, my_stop_token_}};
+  //!   }
+  //! };
+  //! @endcode
+  //!
+  //! Many receivers don't have any properties to expose — for those, the
+  //! @c get_env member can simply return an empty @c stdexec::env<> (or
+  //! the @c get_env CPO will return one automatically via its @c __ignore
+  //! overload).
+  //!
+  //! @c tag_invoke-based customization is supported via a deprecated
+  //! overload, retained for backwards compatibility.
+  //!
+  //! **Environment queries.**
+  //!
+  //! Once you have an environment, you query it by calling the appropriate
+  //! query CPO on it: <tt>get_stop_token(env)</tt>,
+  //! <tt>get_allocator(env)</tt>, <tt>get_scheduler(env)</tt>, etc. Each
+  //! query is a separate CPO; the environment dispatches based on the
+  //! query's type. Inside a sender pipeline you almost always reach for
+  //! @c stdexec::read_env (or its helpers like @c get_stop_token() with
+  //! no argument) rather than calling @c get_env directly.
+  //!
+  //! @see stdexec::env             — the environment container type
+  //! @see stdexec::read_env        — the sender factory that exposes env values to pipelines
+  //! @see stdexec::get_stop_token  — example of an environment query CPO
+  //! @see stdexec::get_allocator
+  //! @see stdexec::get_scheduler
   struct get_env_t
   {
+    //! @brief Obtain the environment of @c __env_provider.
+    //!
+    //! Dispatches to <tt>__env_provider.get_env()</tt>, statically
+    //! asserting that the member is @c noexcept.
+    //!
+    //! @tparam _EnvProvider A type whose const-lvalue has a
+    //!                      `.get_env() const` member.
+    //! @param __env_provider The receiver or sender whose environment to
+    //!                       retrieve.
+    //! @returns The environment object (typed as defined by the provider).
     template <class _EnvProvider>
       requires __detail::__has_get_env_member<_EnvProvider const &>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -292,6 +358,13 @@ namespace STDEXEC
     }
   };
 
+  //! @brief The customization point object for obtaining a sender's or
+  //!        receiver's environment.
+  //!
+  //! @c get_env is an instance of @ref get_env_t. See @ref get_env_t for
+  //! the full description and customization examples.
+  //!
+  //! @hideinitializer
   inline constexpr get_env_t get_env{};
 
   template <class _EnvProvider>

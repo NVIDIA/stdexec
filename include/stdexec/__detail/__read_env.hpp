@@ -151,6 +151,81 @@ namespace STDEXEC
     }
   };
 
+  //! @brief A sender factory that produces a sender whose value completion is
+  //!        the result of querying the receiver's environment.
+  //!
+  //! @c read_env reaches *into* the receiver to read a value associated with
+  //! a *query CPO* — things like the receiver's stop token, its associated
+  //! allocator, or its preferred scheduler. The resulting sender, when
+  //! connected and started, evaluates @c q(get_env(rcvr)) and delivers the
+  //! result via @c set_value to the connected receiver.
+  //!
+  //! It is the primitive used by the standard environment-query helpers
+  //! such as @c get_stop_token(), @c get_allocator(), @c get_scheduler(),
+  //! and @c get_delegation_scheduler() — each of those is simply
+  //! @c read_env applied to the corresponding query CPO.
+  //!
+  //! The call form takes a *query CPO* (not a value):
+  //!
+  //! @code{.cpp}
+  //! auto sndr = stdexec::read_env(stdexec::get_stop_token);
+  //! @endcode
+  //!
+  //! See [exec.read.env] in the C++26 working draft for the normative
+  //! specification.
+  //!
+  //! **Completion signatures.**
+  //!
+  //! Given <tt>read_env(q)</tt> and an environment type @c Env (taken from
+  //! the connected receiver), the resulting sender has completion signatures:
+  //!
+  //! @code{.cpp}
+  //! set_value_t(decltype(q(declval<Env>())))    // always present
+  //! set_error_t(std::exception_ptr)             // present iff q(env) may throw
+  //! @endcode
+  //!
+  //! The query result type is taken from the *actual* environment at
+  //! connect time, so the same @c read_env sender may have different
+  //! concrete completion signatures depending on which receiver it is
+  //! connected to.
+  //!
+  //! If the environment does not provide a value for @c q (i.e.
+  //! <tt>q(env)</tt> is ill-formed or returns @c void), the program is
+  //! ill-formed at the point where the sender is connected, with a
+  //! diagnostic that names the offending query.
+  //!
+  //! **Exception behavior.**
+  //!
+  //! If invoking @c q on the receiver's environment throws, the exception
+  //! is delivered through @c set_error_t(std::exception_ptr). If @c q is
+  //! @c noexcept (typical for query CPOs), no @c std::exception_ptr error
+  //! completion is added.
+  //!
+  //! **Cancellation.**
+  //!
+  //! @c read_env does not consult the receiver's stop token; it completes
+  //! synchronously in its @c start.
+  //!
+  //! **Example.**
+  //!
+  //! @code{.cpp}
+  //! #include <stdexec/execution.hpp>
+  //! using namespace stdexec;
+  //!
+  //! // Lift the current stop token into the pipeline so a downstream
+  //! // algorithm can inspect it:
+  //! auto sndr =
+  //!   read_env(get_stop_token)
+  //!   | then([](auto tok) {
+  //!       return tok.stop_requested();
+  //!     });
+  //! @endcode
+  //!
+  //! @see stdexec::just          — synchronously complete with literal values
+  //! @see stdexec::get_stop_token  — equivalent to <tt>read_env(get_stop_token)</tt>
+  //! @see stdexec::get_scheduler   — equivalent to <tt>read_env(get_scheduler)</tt>
+  //!
+  //! @hideinitializer
   inline constexpr __read_env_t read_env{};
 
   template <>

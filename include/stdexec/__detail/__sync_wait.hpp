@@ -193,8 +193,93 @@ namespace STDEXEC::__sync_wait
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait]
+
+  //! @brief A sender consumer that synchronously blocks the calling thread
+  //!        until a sender completes and returns its result.
+  //!
+  //! @c sync_wait is the bridge from the asynchronous sender world back into
+  //! synchronous code. You give it a sender; it connects the sender to a
+  //! built-in receiver, starts the resulting operation, then drives an
+  //! internal @c run_loop on the calling thread until the operation
+  //! completes. The result is returned as a <tt>std::optional</tt> of a
+  //! tuple of the value-completion datums.
+  //!
+  //! This is the most common way to "run" a sender in a top-level program or
+  //! a test — it's what you reach for in a @c main() or when synchronously
+  //! waiting on a single sub-pipeline. For fire-and-forget execution, prefer
+  //! @c exec::start_detached or @c stdexec::spawn.
+  //!
+  //! @code{.cpp}
+  //! auto [v] = stdexec::sync_wait(stdexec::just(42)).value();
+  //! // v == 42
+  //! @endcode
+  //!
+  //! See [exec.sync.wait] in the C++26 working draft for the normative
+  //! specification.
+  //!
+  //! **Completion behavior.**
+  //!
+  //! Given an input sender @c sndr that, in some environment, completes with
+  //! exactly one of:
+  //!
+  //! | Sender completion             | What @c sync_wait does                                          |
+  //! | ----------------------------- | --------------------------------------------------------------- |
+  //! | @c set_value_t(Vs...)         | Returns @c std::optional<std::tuple<Vs...>> engaged.            |
+  //! | @c set_error_t(std::exception_ptr) | Rethrows the exception via @c std::rethrow_exception.     |
+  //! | @c set_error_t(std::error_code)    | Throws @c std::system_error(error_code).                  |
+  //! | @c set_error_t(E)             | Throws @c E directly.                                           |
+  //! | @c set_stopped_t()            | Returns an empty (disengaged) @c std::optional.                 |
+  //!
+  //! **Single-value-completion requirement.**
+  //!
+  //! @c sync_wait *mandates* that its argument sender have exactly one
+  //! @c set_value_t completion signature. A sender that can succeed in more
+  //! than one way (e.g. <tt>just(1) | when_all(just(std::string{"x"}))</tt>
+  //! yielding two distinct tuples) requires @c sync_wait_with_variant
+  //! instead. The static assertion in @c sync_wait will point this out at
+  //! compile time, with a hint to use the variant form.
+  //!
+  //! **Delegation scheduler.**
+  //!
+  //! The internal @c run_loop is exposed via @c get_delegation_scheduler on
+  //! the receiver's environment, so senders that need to enqueue work back
+  //! onto the waiting thread (e.g. continuations after an I/O wait) can do
+  //! so safely. This is what enables algorithms like @c continues_on to
+  //! return execution to the calling thread of @c sync_wait.
+  //!
+  //! **When *not* to use** @c sync_wait **:**
+  //! - On any thread that participates in an event loop or executor — you
+  //!   will block it. @c sync_wait is for top-level synchronization
+  //!   (main, tests, leaf utilities), not pipeline composition.
+  //! - When you don't need the result. Use @c exec::start_detached or
+  //!   @c stdexec::spawn for fire-and-forget.
+  //!
+  //! @see stdexec::sync_wait_with_variant  — sync_wait for multi-completion senders
+  //! @see exec::start_detached             — fire-and-forget consumer (no result)
+  //! @see stdexec::spawn                   — fire-and-forget into a scope
+  //! @see stdexec::spawn_future            — spawn into a scope and observe via a sender
   struct sync_wait_t
   {
+    //! @brief Connect @c __sndr to an internal receiver, start the operation,
+    //!        and drive a @c run_loop until completion.
+    //!
+    //! @tparam _CvSender A type satisfying @c stdexec::sender_in for the
+    //!                   built-in @c sync_wait environment.
+    //! @param __sndr     The sender to drive to completion. Must have
+    //!                   exactly one @c set_value_t completion signature.
+    //!
+    //! @returns @c std::optional<std::tuple<Vs...>> where @c Vs... are the
+    //!          value-completion datum types of @c __sndr. The optional is
+    //!          engaged on @c set_value, disengaged on @c set_stopped.
+    //!
+    //! @throws The error datum, if @c __sndr completes with @c set_error
+    //!         (rethrown via @c std::rethrow_exception for
+    //!         @c std::exception_ptr, via @c std::system_error for
+    //!         @c std::error_code, or directly otherwise).
+    //!
+    //! @pre @c __sndr must have exactly one @c set_value_t completion
+    //!      signature, otherwise the program is ill-formed with a
+    //!      diagnostic pointing at @c sync_wait_with_variant.
     template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
     auto operator()(_CvSender&& __sndr) const
     {
@@ -274,30 +359,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
       return std::optional<std::tuple<int>>{};
     }
 
-    /// @brief Synchronously wait for the result of a sender, blocking the
-    ///         current thread.
-    ///
-    /// `sync_wait` connects and starts the given sender, and then drives a
-    ///         `run_loop` instance until the sender completes. Additional work
-    ///         can be delegated to the `run_loop` by scheduling work on the
-    ///         scheduler returned by calling `get_delegation_scheduler` on the
-    ///         receiver's environment.
-    ///
-    /// @pre The sender must have a exactly one value completion signature. That
-    ///         is, it can only complete successfully in one way, with a single
-    ///         set of values.
-    ///
-    /// @retval success Returns an engaged `std::optional` containing the result
-    ///         values in a `std::tuple`.
-    /// @retval canceled Returns an empty `std::optional`.
-    /// @retval error Throws the error.
-    ///
-    /// @throws std::rethrow_exception(error) if the error has type
-    ///         `std::exception_ptr`.
-    /// @throws std::system_error(error) if the error has type
-    ///         `std::error_code`.
-    /// @throws error otherwise
-
+    //! @internal
+    //! @brief Default-domain implementation of @c sync_wait. Connects
+    //! @c __sndr, starts the operation, drives an internal @c run_loop, and
+    //! returns/throws per @ref sync_wait_t. Not normally called by users.
     template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
     STDEXEC_CONSTEXPR_CXX23 auto apply_sender(_CvSender&& __sndr) const  //
       -> std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>>
@@ -327,8 +392,67 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
 
   ////////////////////////////////////////////////////////////////////////////
   // [execution.senders.consumers.sync_wait_with_variant]
+
+  //! @brief A sender consumer that synchronously blocks the calling thread
+  //!        until a multi-value-completion sender completes, returning the
+  //!        result as a variant of tuples.
+  //!
+  //! @c sync_wait_with_variant is the multi-completion sibling of
+  //! @ref sync_wait_t. A sender that can succeed in more than one way — for
+  //! example, an algorithm that may complete with either an @c int or a
+  //! @c std::string — cannot be passed to @c sync_wait, because the latter
+  //! returns a single fixed tuple type. @c sync_wait_with_variant accepts
+  //! such senders and returns the result as a @c std::variant of all the
+  //! possible value-tuple shapes.
+  //!
+  //! @code{.cpp}
+  //! // sndr completes with either set_value_t(int) or set_value_t(std::string).
+  //! auto opt = stdexec::sync_wait_with_variant(std::move(sndr));
+  //! if (opt) {
+  //!   std::visit([](auto&& tup) {
+  //!     // tup is either std::tuple<int> or std::tuple<std::string>.
+  //!   }, *opt);
+  //! }
+  //! @endcode
+  //!
+  //! See [exec.sync.wait.var] in the C++26 working draft for the normative
+  //! specification.
+  //!
+  //! **Completion behavior.**
+  //!
+  //! Given an input sender @c sndr with value-completion signatures
+  //! <tt>set_value_t(Vs1...), set_value_t(Vs2...), ...</tt>, the return type is
+  //!
+  //! @code{.cpp}
+  //! std::optional<std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>>
+  //! @endcode
+  //!
+  //! The handling of @c set_error_t and @c set_stopped_t matches
+  //! @ref sync_wait_t: errors are thrown, @c set_stopped yields a disengaged
+  //! optional.
+  //!
+  //! **When to use** @c sync_wait_with_variant **vs.** @c sync_wait **:**
+  //! Use @c sync_wait when the sender has *exactly one* value-completion
+  //! shape; use @c sync_wait_with_variant otherwise. @c sync_wait's static
+  //! assertion will steer you here if needed.
+  //!
+  //! @see stdexec::sync_wait          — for single-value-completion senders
+  //! @see stdexec::into_variant       — adaptor that collapses multi-completion senders into a variant
   struct sync_wait_with_variant_t
   {
+    //! @brief Connect @c __sndr, start the operation, drive a @c run_loop
+    //!        until completion, and return the result as a variant of tuples.
+    //!
+    //! @tparam _CvSender A type satisfying @c stdexec::sender_in for the
+    //!                   @c sync_wait environment.
+    //! @param __sndr     The sender to drive to completion. May have any
+    //!                   number of @c set_value_t completion signatures.
+    //!
+    //! @returns @c std::optional<std::variant<std::tuple<Vs1...>, ...>>
+    //!          engaged on @c set_value, disengaged on @c set_stopped.
+    //!
+    //! @throws The error datum, if @c __sndr completes with @c set_error,
+    //!         using the same rules as @ref sync_wait_t.
     template <STDEXEC::sender_in<STDEXEC::__sync_wait::__env> _CvSender>
       requires STDEXEC::__callable<STDEXEC::apply_sender_t,
                                    STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t,
@@ -370,7 +494,22 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
     }
   };
 
-  inline constexpr sync_wait_t              sync_wait{};
+  //! @brief The customization point object for the @c sync_wait sender consumer.
+  //!
+  //! @c sync_wait is an instance of @ref sync_wait_t. See @ref sync_wait_t
+  //! for the full description, completion-behavior table, and a usage example.
+  //!
+  //! @hideinitializer
+  inline constexpr sync_wait_t sync_wait{};
+
+  //! @brief The customization point object for the @c sync_wait_with_variant
+  //!        sender consumer.
+  //!
+  //! @c sync_wait_with_variant is an instance of @ref sync_wait_with_variant_t.
+  //! See @ref sync_wait_with_variant_t for the full description and a usage
+  //! example.
+  //!
+  //! @hideinitializer
   inline constexpr sync_wait_with_variant_t sync_wait_with_variant{};
 
 STDEXEC_P2300_NAMESPACE_END(this_thread)
