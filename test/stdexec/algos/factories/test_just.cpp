@@ -15,8 +15,10 @@
  */
 
 #include <catch2/catch_all.hpp>
+#include <exec/completion_behavior.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <cstddef>
@@ -223,5 +225,30 @@ namespace
     CHECK(invoked == 0);
     ::STDEXEC::start(op);
     CHECK(invoked == 1);
+  }
+
+  TEST_CASE("just completes inline and has no completion domain", "[factories][just]")
+  {
+    using sndr_t = decltype(STDEXEC::just(42));
+
+    REQUIRE(STDEXEC::__completes_inline<STDEXEC::set_value_t, STDEXEC::env_of_t<sndr_t>>);
+    REQUIRE(!STDEXEC::__has_completion_domain_for<STDEXEC::set_value_t, sndr_t>);
+  }
+
+  struct identifiable_domain : public STDEXEC::default_domain
+  {};
+
+  TEST_CASE("just completes inline where it is started", "[factories][just]")
+  {
+    using sndr_t = decltype(STDEXEC::just(42));
+
+    using rcvr_env_t = STDEXEC::prop<STDEXEC::get_domain_t, identifiable_domain>;
+
+    REQUIRE(
+      STDEXEC::__completes_inline<STDEXEC::set_value_t, STDEXEC::env_of_t<sndr_t>, rcvr_env_t>);
+    REQUIRE(STDEXEC::__has_completion_domain_for<STDEXEC::set_value_t, sndr_t, rcvr_env_t>);
+    REQUIRE(
+      std::same_as<STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, sndr_t, rcvr_env_t>,
+                   identifiable_domain>);
   }
 }  // namespace
