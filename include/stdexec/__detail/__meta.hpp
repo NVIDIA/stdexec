@@ -55,6 +55,9 @@ namespace STDEXEC
   template <class...>
   struct __mlist;
 
+  template <class... _Ts>
+  using __mlist_ptr = __mlist<_Ts...> *;
+
   template <class _Tp>
   using __midentity = _Tp;
 
@@ -601,8 +604,23 @@ namespace STDEXEC
   template <class _Ny, class _Ty, class _Continuation = __qq<__mlist>>
   using __mfill = __mfill_c<_Ny::value, _Ty, _Continuation>;
 
-  template <bool>
-  struct __mconcat_
+  template <bool _Empty>
+  struct __mconcat_;
+
+  template <class _List = __mlist<>, class... _Tail>
+  using __mconcat_result_t =
+    decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(static_cast<_List *>(nullptr),
+                                                      static_cast<_Tail *>(nullptr)...));
+
+  template <>
+  struct __mconcat_<true>
+  {
+    template <class... _As>
+    static auto __f(__mlist_ptr<_As...>) -> __mlist<_As...>;
+  };
+
+  template <>
+  struct __mconcat_<false>
   {
     template <class... _Ts,
               template <class...> class _Ap = __mlist,
@@ -614,31 +632,20 @@ namespace STDEXEC
               template <class...> class _Dp = __mlist,
               class... _Ds,
               class... _Tail>
-    static auto __f(__mlist<_Ts...> *,
+    static auto __f(__mlist_ptr<_Ts...>,
                     _Ap<_As...> *,
                     _Bp<_Bs...> * = nullptr,
                     _Cp<_Cs...> * = nullptr,
                     _Dp<_Ds...> * = nullptr,
                     _Tail *...__tail)
-      -> __midentity<decltype(__mconcat_<(sizeof...(_Tail) == 0)>::__f(
-        static_cast<__mlist<_Ts..., _As..., _Bs..., _Cs..., _Ds...> *>(nullptr),
-        __tail...))>;
-  };
-
-  template <>
-  struct __mconcat_<true>
-  {
-    template <class... _As>
-    static auto __f(__mlist<_As...> *) -> __mlist<_As...>;
+      -> __mconcat_result_t<__mlist<_Ts..., _As..., _Bs..., _Cs..., _Ds...>, _Tail...>;
   };
 
   template <class _Continuation = __qq<__mlist>>
   struct __mconcat
   {
     template <class... _Args>
-    using __f = __mapply<
-      _Continuation,
-      decltype(__mconcat_<(sizeof...(_Args) == 0)>::__f({}, static_cast<_Args *>(nullptr)...))>;
+    using __f = __mapply<_Continuation, __mconcat_result_t<__mlist<>, _Args...>>;
   };
 
   struct __msize

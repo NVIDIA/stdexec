@@ -52,7 +52,7 @@ namespace experimental::execution::asio
     }
 
    private:
-    friend exec::thread_pool_base<asio_thread_pool>;
+    friend struct ::exec::thread_pool_base<asio_thread_pool>;
 
     template <class PoolType, class Receiver>
     friend struct exec::_pool_::opstate;

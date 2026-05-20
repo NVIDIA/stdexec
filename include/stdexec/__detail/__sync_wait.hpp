@@ -391,7 +391,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   };
 
   ////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.consumers.sync_wait_with_variant]
+  // [exec.sync.wait.var]
 
   //! @brief A sender consumer that synchronously blocks the calling thread
   //!        until a multi-value-completion sender completes, returning the
@@ -428,7 +428,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! @endcode
   //!
   //! The handling of @c set_error_t and @c set_stopped_t matches
-  //! @ref sync_wait_t: errors are thrown, @c set_stopped yields a disengaged
+  //! @ref sync_wait_t : errors are thrown, @c set_stopped yields a disengaged
   //! optional.
   //!
   //! **When to use** @c sync_wait_with_variant **vs.** @c sync_wait **:**

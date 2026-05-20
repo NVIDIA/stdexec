@@ -17,19 +17,26 @@
 find_package(Doxygen REQUIRED)
 find_package(Sphinx REQUIRED)
 
-include(../cmake/Modules/ConfigureASIO.cmake)
-
 # Find all the public headers
 set(STDEXEC_PUBLIC_HEADER_DIR ${CMAKE_SOURCE_DIR}/include)
 file(GLOB_RECURSE STDEXEC_PUBLIC_HEADERS ${STDEXEC_PUBLIC_HEADER_DIR}/*.hpp)
 
-set(DOXYGEN_INPUT_DIR ${PROJECT_SOURCE_DIR}/include)
+# Doxygen's INPUT tag accepts whitespace-separated, individually-quoted
+# paths. CMake serializes lists with ';', which Doxygen would treat as
+# part of a single path, so we explicitly quote each entry and join
+# with a space here. (The corresponding line in Doxyfile.in must NOT
+# wrap @DOXYGEN_INPUT_DIR@ in another layer of quotes.)
+string(JOIN " " DOXYGEN_INPUT_DIR
+       "\"${PROJECT_SOURCE_DIR}/include\""
+       "\"${CMAKE_CURRENT_BINARY_DIR}\"")
+string(JOIN " " DOXYGEN_EXCLUDE_DIR
+       "\"${PROJECT_SOURCE_DIR}/include/execpools\""
+       "\"${PROJECT_SOURCE_DIR}/include/tbbexec\""
+       "\"${PROJECT_SOURCE_DIR}/include/asioexec\"")
 set(DOXYGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/build/doxygen)
-set(DOXYGEN_EXCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/execpools)
 set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
-set(COMPILATION_DB_PATH ${PROJECT_SOURCE_DIR})
 
 # Find the location of stddef.h
 execute_process(COMMAND echo "#include <stddef.h>"

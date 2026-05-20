@@ -426,7 +426,7 @@ namespace STDEXEC
   //!
   //! **Execution policy.**
   //!
-  //! The policy argument follows the @c <execution> conventions:
+  //! The policy argument follows the `<execution>` conventions:
   //! @c stdexec::seq for sequenced execution, @c stdexec::par for
   //! permitted-parallel, @c stdexec::par_unseq for permitted parallel and
   //! vectorized. A custom scheduler's domain may interpret these

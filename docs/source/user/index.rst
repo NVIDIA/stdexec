@@ -31,7 +31,7 @@ From the perspective of the user, the core concepts of the Sender model are the
 **sender** abstraction, the **scheduler** abstraction, and **sender algorithms**.
 
 1. Scheduler
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 
 A **scheduler** is an object that provides a way to schedule work. They are lightweight
 handles to what is often a heavy-weight and immovable **execution context**. Execution
@@ -56,16 +56,13 @@ is executed on a context by chaining continuations to one of these senders, and 
 it to one of the algorithms that starts work, like ``stdexec::sync_wait``.
 
 2. Sender
-^^^^^^^^^
+~~~~~~~~~
 
 A **sender** is an object that describes an asynchronous computation that may happen
 later. It can do nothing on its own, but when connected to a receiver, it returns an
 **operation state** that can start the work described by the sender.
 
-``stdexec`` provides a set of generic **sender algorithms** that can be used to chain
-operations together. There are also algorithms, like ``stdexec::sync_wait``, that can
-be used to launch the sender. The sender algorithms take care of connecting the sender
-to a receiver and managing the lifetime the operation state.
+A sender:
 
 - Produces values (or errors) asynchronously.
 
@@ -74,6 +71,14 @@ to a receiver and managing the lifetime the operation state.
 - Supports composition.
 
 - Is lazy (does nothing until connected and started).
+
+3. Sender algorithms
+~~~~~~~~~~~~~~~~~~~~
+
+``stdexec`` provides a set of generic **sender algorithms** that can be used to chain
+operations together. There are also algorithms, like ``stdexec::sync_wait``, that can
+be used to launch the sender. The sender algorithms take care of connecting the sender
+to a receiver and managing the lifetime the operation state.
 
 .. code-block:: cpp
 

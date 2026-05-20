@@ -129,7 +129,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
    private:
     friend inplace_stop_token;
-    friend STDEXEC::__stok::__inplace_stop_callback_base;
+    friend struct STDEXEC::__stok::__inplace_stop_callback_base;
     template <class>
     friend class inplace_stop_callback;
 

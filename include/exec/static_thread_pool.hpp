@@ -1196,7 +1196,7 @@ namespace experimental::execution
     struct _static_thread_pool::_opstate : task_base
     {
      private:
-      friend _static_thread_pool::scheduler::_sender;
+      friend struct ::exec::_pool_::_static_thread_pool::scheduler::_sender;
 
       explicit _opstate(_static_thread_pool& pool,
                         remote_queue*        queue,

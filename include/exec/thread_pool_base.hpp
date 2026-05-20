@@ -158,7 +158,8 @@ namespace experimental::execution
         }
 
        private:
-        friend struct DerivedPoolType::scheduler;
+        using derived_pool_type = DerivedPoolType;
+        friend struct derived_pool_type::scheduler;
 
         explicit sender(DerivedPoolType& pool) noexcept
           : pool_(pool)

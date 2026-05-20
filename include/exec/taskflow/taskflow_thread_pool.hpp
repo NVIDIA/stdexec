@@ -45,7 +45,7 @@ namespace experimental::execution::taskflow
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    friend exec::thread_pool_base<taskflow_thread_pool>;
+    friend struct ::exec::thread_pool_base<taskflow_thread_pool>;
 
     template <class PoolType, class Receiver>
     friend struct exec::_pool_::opstate;

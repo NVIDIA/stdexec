@@ -29,8 +29,10 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Woverloaded-virtual")
 
 namespace experimental::execution
 {
-  namespace _qry_detail
+  namespace _query
   {
+    using namespace STDEXEC;
+
     template <class Sig, bool Nothrow>
     struct _env_archetype;
 
@@ -40,22 +42,22 @@ namespace experimental::execution
       Return query(Query, Args &&...) const noexcept(Nothrow);
     };
 
-    using namespace STDEXEC;
-
     template <class Sig>
-    inline constexpr bool is_query_function_v = false;
+    inline constexpr bool _is_query_signature_v = false;
 
     template <class Return, class Query, class... Args>
-    inline constexpr bool is_query_function_v<Return(Query, Args...)> =
+    inline constexpr bool _is_query_signature_v<Return(Query, Args...)> =
       __callable<Query, _env_archetype<Return(Query, Args...), false> const &, Args...>;
 
     template <class Return, class Query, class... Args>
-    inline constexpr bool is_query_function_v<Return(Query, Args...) noexcept> =
+    inline constexpr bool _is_query_signature_v<Return(Query, Args...) noexcept> =
       __nothrow_callable<Query, _env_archetype<Return(Query, Args...), true> const &, Args...>;
-  }  // namespace _qry_detail
 
-  template <class... Sigs>
-    requires(_qry_detail::is_query_function_v<Sigs> && ...)
+    template <class Sig>
+    concept _query_signature = _is_query_signature_v<Sig>;
+  }  // namespace _query
+
+  template <_query::_query_signature... Sigs>
   struct queries
   {};
 
@@ -142,7 +144,8 @@ namespace experimental::execution
     {
       using _has_query_memfn_t = void;
       using Base::Base;
-      auto query(__none_such) const noexcept -> __none_such = delete;
+      auto query(__none_such) const noexcept  // NOLINT(modernize-use-nodiscard)
+        -> __none_such = delete;
     };
 
     template <class Base>
@@ -433,7 +436,7 @@ namespace experimental::execution
       using operation_state_concept = STDEXEC::operation_state_tag;
       using _iopstate_base_t<Base>::_iopstate_base_t;
 
-      virtual constexpr void start() & noexcept
+      virtual constexpr void start() & noexcept  // NOLINT(modernize-use-override)
       {
         STDEXEC::__any::__value(*this).start();
       }
@@ -725,6 +728,8 @@ namespace experimental::execution
     }
   };
 
+#if !STDEXEC_DOXYGEN_INVOKED
+
   ////////////////////////////////////////////////////////////////////////////////////////
   // Legacy interfaces for type-erased senders and receivers.
 
@@ -820,8 +825,10 @@ namespace experimental::execution
       };
     };
   };
+
+#endif  // !STDEXEC_DOXYGEN_INVOKED
 }  // namespace experimental::execution
 
-STDEXEC_PRAGMA_POP()
-
 namespace exec = experimental::execution;
+
+STDEXEC_PRAGMA_POP()
