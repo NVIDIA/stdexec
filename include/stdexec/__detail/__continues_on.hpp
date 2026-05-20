@@ -109,15 +109,18 @@ namespace STDEXEC
     template <class _Scheduler, class _Sexpr, class _Receiver>
     struct __state : __state_base<_Sexpr, _Receiver>
     {
-      using __receiver2_t = __receiver2<_Sexpr, _Receiver>;
+      using __receiver2_t       = __receiver2<_Sexpr, _Receiver>;
+      using __schedule_sender_t = schedule_result_t<_Scheduler&>;
 
       constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
+        noexcept(__nothrow_callable<schedule_t, _Scheduler&>
+                 && __nothrow_connectable<__schedule_sender_t, __receiver2_t>)
         : __state::__state_base{static_cast<_Receiver&&>(__rcvr)}
         , __state2_(connect(schedule(__sched), __receiver2_t{this}))
       {}
       STDEXEC_IMMOVABLE(__state);
 
-      connect_result_t<schedule_result_t<_Scheduler>, __receiver2_t> __state2_;
+      connect_result_t<__schedule_sender_t, __receiver2_t> __state2_;
     };
 
     //! @brief The @c continues_on sender's attributes.
@@ -342,8 +345,10 @@ namespace STDEXEC
       }
 
       static constexpr auto __get_state =
-        []<class _Sender, class _Receiver>(_Sender&&   __sndr,
-                                           _Receiver&& __rcvr) -> __state_for_t<_Sender, _Receiver>
+        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
+          __nothrow_constructible_from<__state_for_t<_Sender, _Receiver>,
+                                       __data_of<_Sender>&,
+                                       _Receiver>) -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(__sender_for<_Sender, continues_on_t>);
