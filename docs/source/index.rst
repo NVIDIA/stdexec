@@ -68,10 +68,10 @@ separates concerns cleanly, enabling:
 - Full support for customization: Plug in your own schedulers, senders, adaptors,
   allocators, stop tokens, etc.
 
-Senders end `Callback Hell <https://chatgpt.com/s/t_687fe7703d708191b94247513ad28246>`_.
+Senders end `Callback Hell <https://en.wiktionary.org/wiki/callback_hell>`_.
 
 
-🚦 Standardization Status (as of 2025)
+🚦 Standardization Status (as of 2026)
 --------------------------------------
 
 - The core Sender model has been accepted into the C++ standard for C++26.

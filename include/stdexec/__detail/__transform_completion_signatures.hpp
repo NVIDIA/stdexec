@@ -537,7 +537,7 @@ namespace STDEXEC
   //!     {
   //!       return ex::completion_signatures<set_value_t(result_t)>();
   //!     }
-  //!     else /* !is_void && !nothrow */
+  //!     else // !is_void && !nothrow
   //!     {
   //!       return ex::completion_signatures<set_value_t(result_t),
   //!                                        set_error_t(std::exception_ptr)>();

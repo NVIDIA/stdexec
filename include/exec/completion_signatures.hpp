@@ -54,7 +54,7 @@ namespace experimental::execution
   //!                      \c set_value_t, \c set_error_t, or \c set_stopped_t.
   //! \tparam DeducedSigs  Completion signature types to be deduced from the function
   //!                      arguments.
-  //! \param unnamed       Pointer arguments (unused) for type deduction of
+  //! \param __sigs        Pointer arguments (unused) for type deduction of
   //!                      \c DeducedSigs. Must be a pack of function pointer types, the
   //!                      returns types of which must be one of \c set_value_t,
   //!                      \c set_error_t, or \c set_stopped_t.
@@ -70,7 +70,7 @@ namespace experimental::execution
   //!       actual object instances.
   template <class... ExplicitSigs, class... DeducedSigs>
   [[nodiscard]]
-  consteval auto make_completion_signatures(DeducedSigs*...) noexcept
+  consteval auto make_completion_signatures([[maybe_unused]] DeducedSigs*... __sigs) noexcept
     -> detail::make_completion_signatures_t<ExplicitSigs..., DeducedSigs...>
   {
     return {};
@@ -185,7 +185,7 @@ namespace experimental::execution
   //!     {
   //!       return ex::completion_signatures<set_value_t(result_t)>();
   //!     }
-  //!     else /* !is_void && !nothrow */
+  //!     else // !is_void && !nothrow
   //!     {
   //!       return ex::completion_signatures<set_value_t(result_t),
   //!                                        set_error_t(std::exception_ptr)>();
@@ -219,17 +219,17 @@ namespace experimental::execution
             class ErrorFn   = keep_completion<STDEXEC::set_error_t>,
             class StoppedFn = keep_completion<STDEXEC::set_stopped_t>,
             class ExtraSigs = STDEXEC::completion_signatures<>>
-  consteval auto transform_completion_signatures(Completions,
-                                                 ValueFn   value_fn   = {},
-                                                 ErrorFn   error_fn   = {},
-                                                 StoppedFn stopped_fn = {},
-                                                 ExtraSigs            = {})
+  consteval auto transform_completion_signatures([[maybe_unused]] Completions completions,
+                                                 ValueFn                      value_fn   = {},
+                                                 ErrorFn                      error_fn   = {},
+                                                 StoppedFn                    stopped_fn = {},
+                                                 [[maybe_unused]] ExtraSigs   extra_sigs = {})
   {
-    return STDEXEC::__transform_completion_signatures(Completions{},
+    return STDEXEC::__transform_completion_signatures(Completions(),
                                                       value_fn,
                                                       error_fn,
                                                       stopped_fn,
-                                                      ExtraSigs{});
+                                                      ExtraSigs());
   }
 }  // namespace experimental::execution
 

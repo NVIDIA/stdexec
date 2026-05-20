@@ -43,12 +43,12 @@ The concepts fall into three layers:
   its lifetime is tracked.
 
 Sender concepts
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 .. _ref-concept-sender:
 
 ``sender``
-^^^^^^^^^^
+~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::sender
 
@@ -59,24 +59,24 @@ Sender concepts
 .. _ref-concept-sender_in:
 
 ``sender_in``
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::sender_in
 
 .. _ref-concept-sender_to:
 
 ``sender_to``
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::sender_to
 
 Receiver and operation-state concepts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. _ref-concept-receiver:
 
 ``receiver``
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::receiver
 
@@ -85,40 +85,40 @@ Receiver and operation-state concepts
 .. _ref-concept-receiver_of:
 
 ``receiver_of``
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::receiver_of
 
 .. _ref-concept-operation_state:
 
 ``operation_state``
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::operation_state
 
 .. doxygenstruct:: stdexec::operation_state_tag
 
 Context concepts
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. _ref-concept-scheduler:
 
 ``scheduler``
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::scheduler
 
 .. _ref-concept-scope_token:
 
 ``scope_token``
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::scope_token
 
 .. _ref-concept-scope_association:
 
 ``scope_association``
-^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
 .. doxygenconcept:: stdexec::scope_association
 
@@ -154,12 +154,12 @@ narrative walkthrough of how these fit together when writing a new
 sender adaptor.
 
 Sender-side
-~~~~~~~~~~~
+^^^^^^^^^^^
 
 .. _ref-cpo-connect:
 
 ``connect``
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 .. doxygenstruct:: stdexec::connect_t
    :members:
@@ -169,7 +169,7 @@ Sender-side
 .. _ref-cpo-get_completion_signatures:
 
 ``get_completion_signatures``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unlike the other entries in this section, ``get_completion_signatures``
 is a *function template* (not a CPO instance), so it has no underlying
@@ -180,12 +180,12 @@ share documentation:
    :sections: briefdescription detaileddescription
 
 Operation-state-side
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 .. _ref-cpo-start:
 
 ``start``
-^^^^^^^^^
+~~~~~~~~~
 
 .. doxygenstruct:: stdexec::start_t
    :members:
@@ -193,12 +193,12 @@ Operation-state-side
 .. doxygenvariable:: stdexec::start
 
 Receiver-side
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 .. _ref-cpo-set_value:
 
 ``set_value``
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 .. doxygenstruct:: stdexec::set_value_t
    :members:
@@ -208,7 +208,7 @@ Receiver-side
 .. _ref-cpo-set_error:
 
 ``set_error``
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 .. doxygenstruct:: stdexec::set_error_t
    :members:
@@ -218,7 +218,7 @@ Receiver-side
 .. _ref-cpo-set_stopped:
 
 ``set_stopped``
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~
 
 .. doxygenstruct:: stdexec::set_stopped_t
    :members:
@@ -228,7 +228,7 @@ Receiver-side
 .. _ref-cpo-get_env:
 
 ``get_env``
-^^^^^^^^^^^
+~~~~~~~~~~~
 
 .. doxygenstruct:: stdexec::get_env_t
    :members:
@@ -315,7 +315,7 @@ for an approachable introduction.
 .. _ref-just_from:
 
 ``just_from`` (experimental) — like ``just`` but value-producing via a function
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. doxygenvariable:: experimental::execution::just_from
 

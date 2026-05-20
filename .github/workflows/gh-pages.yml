@@ -34,12 +34,18 @@ jobs:
 
     - name: Install dependencies
       run: |
-        sudo apt-get install -y doxygen python3-sphinx python3-sphinx-rtd-theme graphviz
+        sudo apt-get install -y doxygen python3-sphinx python3-sphinx-rtd-theme graphviz \
+          libtbb-dev libtaskflow-cpp-dev
         pip3 install breathe sphinxcontrib-bibtex sphinx_copybutton IPython myst_parser \
           nbsphinx
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DSTDEXEC_BUILD_DOCS:BOOL=ON
+      run: cmake -B ${{github.workspace}}/build \
+          -DSTDEXEC_BUILD_DOCS:BOOL=ON \
+          -DSTDEXEC_ENABLE_ASIO:BOOL=ON \
+          -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=standalone \
+          -DSTDEXEC_ENABLE_TASKFLOW:BOOL=ON \
+          -DSTDEXEC_ENABLE_TBB:BOOL=ON
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --target docs
