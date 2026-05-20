@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <exec/completion_signatures.hpp>
 #include <exec/single_thread_context.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
@@ -70,7 +71,7 @@ namespace
     ::STDEXEC::start(op);
   }
 
-  template <typename IncompleteType, typename Env = STDEXEC::env_of_t<IncompleteType>>
+  template <class IncompleteType, class Env = STDEXEC::env_of_t<IncompleteType>>
   struct ReceiverIncomplete
   {
     using receiver_concept = STDEXEC::receiver_tag;
@@ -130,9 +131,8 @@ namespace
 
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
-      -> STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sndr>, Env...>
     {
-      return {};
+      return exec::get_child_completion_signatures<Self, Sndr, Env...>();
     }
 
     template <STDEXEC::receiver Rcvr>
