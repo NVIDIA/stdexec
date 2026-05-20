@@ -96,7 +96,7 @@ if(STDEXEC_ENABLE_ASIO)
       asio
     )
     if(STDEXEC_INSTALL)
-      install(TARGETS asioexec
+      install(TARGETS asioexec asio
         EXPORT stdexec-exports
         FILE_SET headers
       )

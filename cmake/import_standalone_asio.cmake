@@ -3,7 +3,8 @@
 # Importing standalone asio can't be done via rapids-cpm, because the library has no cmake
 # build setup. But still it can be imported with CPM.
 #
-# This function is based on the CPM example: https://github.com/cpm-cmake/CPM.cmake/blob/master/examples/asio-standalone/CMakeLists.txt
+# This function is based on the CPM example:
+# https://github.com/cpm-cmake/CPM.cmake/blob/master/examples/asio-standalone/CMakeLists.txt
 #
 #       import_standalone_asio([TAG github-tag] VERSION [version-stirng])
 #
@@ -17,21 +18,26 @@ function(import_standalone_asio)
     set(multi_args "")
     cmake_parse_arguments(IMPORT_STANDALONE_ASIO "${options}" "${args}" "${multi_args}" ${ARGN})
 
-    CPMAddPackage("gh:chriskohlhoff/asio#${IMPORT_STANDALONE_ASIO_TAG}@${IMPORT_STANDALONE_ASIO_VERSION}")
+    CPMFindPackage(
+      NAME              asio
+      VERSION           ${IMPORT_STANDALONE_ASIO_VERSION}
+      GIT_TAG           ${IMPORT_STANDALONE_ASIO_TAG}
+      GITHUB_REPOSITORY chriskohlhoff/asio)
 
-    # ASIO doesn't use CMake, we have to configure it manually. Extra notes for using on Windows:
+    # ASIO doesn't use CMake, we have to configure it manually. Extra notes for using on
+    # Windows:
     #
-    # 1) If _WIN32_WINNT is not set, ASIO assumes _WIN32_WINNT=0x0501, i.e. Windows XP target, which is
-    # definitely not the platform which most users target.
+    # 1) If _WIN32_WINNT is not set, ASIO assumes _WIN32_WINNT=0x0501, i.e. Windows XP
+    # target, which is definitely not the platform which most users target.
     #
     # 2) WIN32_LEAN_AND_MEAN is defined to make Winsock2 work.
     if(asio_ADDED)
       add_library(asio INTERFACE)
 
-      target_include_directories(asio SYSTEM INTERFACE ${asio_SOURCE_DIR}/asio/include)
-
+      target_include_directories(asio SYSTEM INTERFACE
+        $<BUILD_INTERFACE:${asio_SOURCE_DIR}/asio/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/asio/include>)
       target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
-
       target_link_libraries(asio INTERFACE Threads::Threads)
 
       if(WIN32)
