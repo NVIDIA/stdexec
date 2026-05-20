@@ -48,7 +48,7 @@ namespace STDEXEC
 #endif
 
   struct __monostate
-  { };
+  {};
 
   struct __visit_t
   {
@@ -102,7 +102,7 @@ namespace STDEXEC
     {
      public:
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr __variant(__no_init_t) noexcept { }
+      constexpr __variant(__no_init_t) noexcept {}
 
       template <class _Fn, class... _Us>
       STDEXEC_ATTRIBUTE(host, device)
@@ -169,7 +169,7 @@ namespace STDEXEC
 
       // Construct into the valueless state:
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr explicit __variant(__no_init_t) noexcept { }
+      constexpr explicit __variant(__no_init_t) noexcept {}
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr __variant(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>)

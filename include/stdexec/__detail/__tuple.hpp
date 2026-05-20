@@ -77,7 +77,7 @@ namespace STDEXEC
 
     template <class... _Ts>
     struct __tuple : __tup::__tupl_base<__make_indices<sizeof...(_Ts)>, _Ts...>
-    { };
+    {};
 
     template <>
     struct __tuple<>

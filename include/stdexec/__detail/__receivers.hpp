@@ -380,7 +380,7 @@ namespace STDEXEC
                   && __std::constructible_from<__decay_t<_Receiver>, _Receiver>;
 
   struct _THE_RECEIVER_DOES_NOT_ACCEPT_ALL_OF_THE_SENDERS_COMPLETION_SIGNALS_
-  { };
+  {};
 
   namespace __detail
   {
@@ -484,15 +484,15 @@ namespace STDEXEC
     template <class... _Args>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_value(_Args &&...) noexcept
-    { }
+    {}
 
     template <class _Error>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr void set_error(_Error &&) noexcept
-    { }
+    {}
 
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr void set_stopped() noexcept { }
+    constexpr void set_stopped() noexcept {}
   };
 
   template <class _Env>

@@ -145,7 +145,7 @@ namespace STDEXEC
 
     constexpr __coroutine_handle(__std::coroutine_handle<_Promise> __coro) noexcept
       : __coroutine_handle<>{__coro}
-    { }
+    {}
 
     [[nodiscard]]
     static constexpr auto from_promise(_Promise& __promise) noexcept -> __coroutine_handle
@@ -181,7 +181,7 @@ namespace STDEXEC
       __callback_fn_t* __resume_  = &__noop_fn;
       __callback_fn_t* __destroy_ = &__noop_fn;
 
-      static void __noop_fn(void*) noexcept { }
+      static void __noop_fn(void*) noexcept {}
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(

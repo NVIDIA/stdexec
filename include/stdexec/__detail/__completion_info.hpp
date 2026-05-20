@@ -57,7 +57,7 @@ namespace STDEXEC
       , __signature(__mtypeid<_Tag(_Args...)>)
       , __domain(__domain)
       , __behavior(__behavior)
-    { }
+    {}
 
     template <class _Sender, class... _Env>
     constexpr auto __populate() noexcept -> __completion_info &
