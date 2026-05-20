@@ -44,7 +44,7 @@ jobs:
         cmake -B ${{github.workspace}}/build \
           -DSTDEXEC_BUILD_DOCS:BOOL=ON \
           -DSTDEXEC_ENABLE_ASIO:BOOL=ON \
-          -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=standalone \
+          -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
           -DSTDEXEC_ENABLE_TASKFLOW:BOOL=ON \
           -DSTDEXEC_ENABLE_TBB:BOOL=ON \
           ;
