@@ -457,12 +457,21 @@ namespace STDEXEC
   }
 
   template <class _Tag, class _Receiver>
+  struct __completion_fn
+  {
+    _Receiver &__rcvr_;
+
+    template <class... _Args>
+    constexpr void operator()(_Args &&...__args) const noexcept
+    {
+      _Tag()(static_cast<_Receiver &&>(__rcvr_), static_cast<_Args &&>(__args)...);
+    }
+  };
+
+  template <class _Tag, class _Receiver>
   constexpr auto __mk_completion_fn(_Tag, _Receiver &__rcvr) noexcept
   {
-    return [&]<class... _Args>(_Args &&...__args) noexcept
-    {
-      _Tag()(static_cast<_Receiver &&>(__rcvr), static_cast<_Args &&>(__args)...);
-    };
+    return __completion_fn<_Tag, _Receiver>{__rcvr};
   }
 
   // Used to test whether a sender has a nothrow connect to a receiver whose environment

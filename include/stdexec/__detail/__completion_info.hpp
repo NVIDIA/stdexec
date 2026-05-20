@@ -126,17 +126,19 @@ namespace STDEXEC
       }
     }();
 
+    template <auto __sigs, std::size_t... _Is>
+    consteval auto __completion_sigs_splice(__indices<_Is...>) noexcept
+    {
+      return completion_signatures<__msplice<__sigs[_Is]>...>();
+    }
+
     template <class _GetComplInfo>
     consteval auto __completion_sigs_from(_GetComplInfo) noexcept
     {
       constexpr auto __sigs = __completion_sigs_from_v<(_GetComplInfo())>;
       STDEXEC_IF_OK(__sigs)
       {
-        constexpr auto __fn = [=]<std::size_t... _Is>(__indices<_Is...>)
-        {
-          return completion_signatures<__msplice<__sigs[_Is]>...>();
-        };
-        return __fn(__make_indices<__sigs.size()>());
+        return __completion_sigs_splice<__sigs>(__make_indices<__sigs.size()>());
       }
     }
 

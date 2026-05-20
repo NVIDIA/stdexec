@@ -453,15 +453,27 @@ namespace STDEXEC
   //
   namespace __tup
   {
+    template <class _Fn, class _Tuple>
+    struct __apply_partial_t
+    {
+      _Tuple&& __tup;
+      _Fn      __fn;
+
+      template <class... _Us>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      constexpr auto operator()(_Us&&... __us) noexcept(__nothrow_applicable<_Fn, _Tuple, _Us...>)
+        -> __apply_result_t<_Fn, _Tuple, _Us...>
+      {
+        return STDEXEC::__apply(__fn, static_cast<_Tuple&&>(__tup), static_cast<_Us&&>(__us)...);
+      }
+    };
+
     template <__is_tuple _Tuple, class _Fn>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr auto operator%(_Tuple&& __tup, _Fn __fn) noexcept(__nothrow_move_constructible<_Fn>)
+      -> __apply_partial_t<_Fn, _Tuple>
     {
-      return [&__tup, __fn = static_cast<_Fn&&>(__fn)]<class... _Us>(_Us&&... __us) noexcept(
-               __nothrow_applicable<_Fn, _Tuple, _Us...>) -> __apply_result_t<_Fn, _Tuple, _Us...>
-      {
-        return STDEXEC::__apply(__fn, static_cast<_Tuple&&>(__tup), static_cast<_Us&&>(__us)...);
-      };
+      return __apply_partial_t<_Fn, _Tuple>{static_cast<_Tuple&&>(__tup), static_cast<_Fn&&>(__fn)};
     }
 
     struct __cat_apply_t
