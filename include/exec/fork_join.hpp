@@ -292,7 +292,7 @@ namespace experimental::execution::__fork_join
     }
 
     static constexpr auto __connect =
-      []<class _Receiver, class _Sender>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept
+      []<class _Receiver, class _Sender>(_Sender&& __sndr, _Receiver __rcvr) noexcept
       -> fork_join_impl_t::_opstate_t<STDEXEC::__child_of<_Sender>,
                                       STDEXEC::__data_of<_Sender>,
                                       _Receiver>
