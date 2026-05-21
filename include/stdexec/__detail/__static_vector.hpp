@@ -54,15 +54,27 @@ namespace STDEXEC
 
       template <class _Ty, std::size_t _Capacity0, std::size_t _Capacity1>
       [[nodiscard]]
-      friend constexpr auto operator+(__static_vector<_Ty, _Capacity0> const &__lhs,  //
-                                      __static_vector<_Ty, _Capacity1> const &__rhs)
+      friend constexpr auto
+      operator+([[maybe_unused]] __static_vector<_Ty, _Capacity0> const &__lhs,  //
+                [[maybe_unused]] __static_vector<_Ty, _Capacity1> const &__rhs)
         noexcept(__nothrow_copy_constructible<_Ty>) -> __static_vector<_Ty, _Capacity0 + _Capacity1>
       {
-        __static_vector<_Ty, _Capacity0 + _Capacity1> __result;
-        std::copy(__lhs.begin(), __lhs.end(), __result.begin());
-        std::copy(__rhs.begin(), __rhs.end(), __result.begin() + __lhs.size());
-        __result.resize(__lhs.size() + __rhs.size());
-        return __result;
+        if constexpr (_Capacity0 == 0)
+        {
+          return __rhs;
+        }
+        else if constexpr (_Capacity1 == 0)
+        {
+          return __lhs;
+        }
+        else
+        {
+          __static_vector<_Ty, _Capacity0 + _Capacity1> __result;
+          std::copy(__lhs.begin(), __lhs.end(), __result.begin());
+          std::copy(__rhs.begin(), __rhs.end(), __result.begin() + __lhs.size());
+          __result.resize(__lhs.size() + __rhs.size());
+          return __result;
+        }
       }
     };
   }  // namespace __detail
@@ -134,13 +146,19 @@ namespace STDEXEC
 
     constexpr void resize(std::size_t __new_size) noexcept
     {
+      STDEXEC_ASSERT(__new_size <= _Capacity);
       __size_ = __new_size;
     }
 
     constexpr auto erase(const_iterator __first, const_iterator __last) noexcept -> iterator
     {
-      std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
-      resize(size() - (__last - __first));
+      STDEXEC_ASSERT(__first >= begin() && __first <= end());
+      STDEXEC_ASSERT(__last >= __first && __last <= end());
+      if (__first != __last)
+      {
+        std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
+        resize(size() - (__last - __first));
+      }
       return end();
     }
 
@@ -207,11 +225,15 @@ namespace STDEXEC
       return 0;
     }
 
-    constexpr auto erase(const_iterator __first, const_iterator __last) noexcept -> iterator
+    constexpr void resize([[maybe_unused]] std::size_t __new_size) noexcept
+    {
+      STDEXEC_ASSERT(__new_size == 0);
+    }
+
+    constexpr auto erase([[maybe_unused]] const_iterator __first,
+                         [[maybe_unused]] const_iterator __last) noexcept -> iterator
     {
       STDEXEC_ASSERT(__first == __last);
-      STDEXEC_ASSERT(__first == nullptr);
-
       return end();
     }
   };
