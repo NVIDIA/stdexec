@@ -104,14 +104,14 @@ namespace experimental::execution
 
         template <class _Uy>
         /*implicit*/ constexpr type(type<_Uy> const &other) noexcept
-          : __resource_(other.__resource_)
+          : __resource_(other.resource())
         {}
 
         constexpr ~type() = default;
 
         constexpr type &operator=(type const &) noexcept = default;
 
-        constexpr pointer allocator(std::size_t __n)
+        constexpr pointer allocate(std::size_t __n)
         {
           return static_cast<pointer>(
             __resource_->allocate(__n * sizeof(value_type), alignof(value_type)));
@@ -122,7 +122,24 @@ namespace experimental::execution
           __resource_->deallocate(__p, __n * sizeof(value_type), alignof(value_type));
         }
 
-        // TODO: perform uses-allocator construction in construct
+        template <class _Uy, class... _Args>
+        constexpr void construct(_Uy *__p, _Args &&...__args)
+        {
+          (void) std::uninitialized_construct_using_allocator(__p,
+                                                              *this,
+                                                              static_cast<_Args &&>(__args)...);
+        }
+
+        template <class _Uy>
+        constexpr void destroy(_Uy *__p) noexcept
+        {
+          __p->~_Uy();
+        }
+
+        constexpr _Delegate *resource() const noexcept
+        {
+          return __resource_;
+        }
 
        private:
         _Delegate *__resource_;
