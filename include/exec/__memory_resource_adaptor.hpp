@@ -23,6 +23,27 @@
 
 #include "../stdexec/__detail/__prologue.hpp"
 
+//! Defines template <class _Adaptee> exec::__memory_resource_adaptor_t
+//!
+//! A "memory resource adaptor" adapts a "thing that can allocate memory" to the
+//! std::pmr::memory_resource interface. It's used in exec::function when the function's
+//! type parameters do not require that its eventual receiver have an environment that's
+//! queryable with exec::get_frame_allocator. In those circumstances, function will ensure
+//! that the receiver to which its erased sender is connected *does* have an environment
+//! that responds to get_frame_allocator with a type-erased frame allocator. The
+//! type-erased frame allocator is a std::pmr::polymorphic_allocator<>, and the
+//! memory_resource given to it is a __memory_resoure_adaptor<_Adaptee>, where _Adaptee is
+//! the type of "allocator" used to allocate the function's operation state. _Adaptee may
+//! be one of:
+//!  - a type that models Allocator;
+//!  - std::pmr::memory_resource*; or
+//!  - T*, where T derives from std::pmr::memory_resource.
+//!
+//! Given an appropriate type, _Adaptee, __memory_resource_adaptor_t<_Adaptee> is a type
+//! T, such that:
+//!  - T is constructible from an lvalue reference to an object of type _Adaptee; and
+//!  - given an object rsrc of type T, std::pmr::polymorphic_allocator<>(&rsrc) is a valid
+//!    expression.
 namespace experimental::execution
 {
   namespace __mem_rsc_adpt
@@ -89,7 +110,7 @@ namespace experimental::execution
     struct __memory_resource_adaptor<_Adaptee>
     {
       //! Implement memory_resource in terms of an allocator<std::byte>
-      struct type : public std::pmr::memory_resource
+      struct type : std::pmr::memory_resource
       {
         template <class _Alloc>
           requires(!__same_as<_Alloc, type>)
