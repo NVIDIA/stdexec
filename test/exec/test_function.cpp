@@ -103,6 +103,16 @@ namespace
       REQUIRE(fortytwo == 42);
     }
 
+    SECTION("void() from just_stopped()")
+    {
+      exec::function<void()> sndr([]() noexcept { return ex::just_stopped(); });
+
+      auto ret = ex::sync_wait(std::move(sndr));
+
+      REQUIRE_FALSE(ret.has_value());
+    }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     SECTION("void() from throwing factory")
     {
       exec::function<void()> sndr([]() -> decltype(ex::just()) { throw "oops"; });
@@ -118,15 +128,6 @@ namespace
       REQUIRE_THROWS(ex::sync_wait(std::move(sndr)));
     }
 
-    SECTION("void() from just_stopped()")
-    {
-      exec::function<void()> sndr([]() noexcept { return ex::just_stopped(); });
-
-      auto ret = ex::sync_wait(std::move(sndr));
-
-      REQUIRE_FALSE(ret.has_value());
-    }
-
     SECTION("custom completions from just_error(42)")
     {
       exec::function<ex::sender_tag(),
@@ -135,6 +136,7 @@ namespace
 
       REQUIRE_THROWS_AS(ex::sync_wait(std::move(sndr)), int);
     }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
   }
 
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")

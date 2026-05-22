@@ -220,6 +220,7 @@ namespace
     REQUIRE(!failed);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   SCOPE_TEST_CASE("spawn lots of concurrent join-senders looking for UB")
   {
     exec::static_thread_pool pool;
@@ -273,6 +274,7 @@ namespace
 
     REQUIRE(!failed);
   }
+#endif
 
   TEST_CASE("counting_scope::request_stop signals associated senders", "[types][counting_scope]")
   {

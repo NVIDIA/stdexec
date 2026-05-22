@@ -78,7 +78,6 @@ namespace
         STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>>);
     CHECK_THROWS(STDEXEC::sync_wait(sndr));
   }
-#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   struct sequence_op
   {
@@ -114,4 +113,5 @@ namespace
                                               STDEXEC::set_error_t(std::exception_ptr)>;
     STATIC_REQUIRE(STDEXEC::__mset_eq<ExpectedSigs, ActualSigs>);
   }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace

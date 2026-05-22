@@ -77,7 +77,7 @@ namespace
     stopped_scheduler stop;
     int               result = 42;
     ex::sender auto   snd    = exec::when_any(completes_if{false}, ex::schedule(stop))
-                        | ex::then([&result] { result += 1; });
+                             | ex::then([&result] { result += 1; });
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
   }
@@ -98,7 +98,7 @@ namespace
   {
     int             result = 41;
     ex::sender auto snd    = exec::when_any(ex::just_stopped(), completes_if{false})
-                        | ex::upon_stopped([&result] { result += 1; });
+                           | ex::upon_stopped([&result] { result += 1; });
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
   }
@@ -131,7 +131,7 @@ namespace
     {
       move_throws() = default;
 
-      move_throws(move_throws&&) noexcept(false) {}
+      move_throws(move_throws&&) noexcept(false) { }
 
       auto operator=(move_throws&&) noexcept(false) -> move_throws&
       {
@@ -188,6 +188,7 @@ namespace
     // wait_for_value(std::move(snd), movable(42));
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <class Receiver>
   struct dup_op
   {
@@ -214,7 +215,6 @@ namespace
     }
   };
 
-#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]")
   {
     REQUIRE_THROWS(STDEXEC::sync_wait(exec::when_any(dup_sender{})));
