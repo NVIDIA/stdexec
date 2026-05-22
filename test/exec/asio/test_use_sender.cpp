@@ -254,6 +254,8 @@ namespace
     CHECK(ctx.stopped());
   }
 
+// It's not obvious, but this test also expects exception in expect_error_receiver
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("Substitution into async_result<use_sender, ...>::initiate is SFINAE-friendly",
             "[asioexec][completion_token]")
   {
@@ -269,6 +271,7 @@ namespace
     CHECK(ctx.run() != 0);
     CHECK(ctx.stopped());
   }
+#endif
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
   template <typename Timer>

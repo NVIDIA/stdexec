@@ -188,6 +188,7 @@ namespace
     // wait_for_value(std::move(snd), movable(42));
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <class Receiver>
   struct dup_op
   {
@@ -214,7 +215,6 @@ namespace
     }
   };
 
-#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]")
   {
     REQUIRE_THROWS(STDEXEC::sync_wait(exec::when_any(dup_sender{})));
