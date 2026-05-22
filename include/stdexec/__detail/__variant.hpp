@@ -327,7 +327,6 @@ namespace STDEXEC
         using __value_t = __at_t<_Ny>;
         static_assert(__same_as<__call_result_t<_Fn, _As...>, __value_t>,
                       "callable does not return the correct type");
-        constexpr bool __is_nothrow = __nothrow_callable<_Fn, _As...>;
 
         __destroy();
         auto __sg = __mk_index_guard(__index_, _Ny);
