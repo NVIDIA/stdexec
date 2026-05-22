@@ -222,7 +222,13 @@ namespace experimental::execution
     struct __memory_resource_adaptor<_Adaptee>
       : __memory_resource_adaptor<
           typename std::allocator_traits<_Adaptee>::template rebind_alloc<std::byte>>
-    {};
+    {
+      // This class is the reason we have a nested type alias named type inside a
+      // constrained class template rather than just a constrained class template. We
+      // are not deriving a resource adaptor from another adaptor; we're deriving one
+      // meta-function from another so that we collapse the number of actual adaptor types
+      // to the minimum.
+    };
 
     //! Handle the case that _Adaptee is a pointer to a type that derives from
     //! std::pmr::memory_resource
