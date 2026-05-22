@@ -32,6 +32,52 @@ namespace experimental::execution
     template <class _Adaptee>
     struct __memory_resource_adaptor;
 
+    //! Handle the case that _Adaptee is exactly std::allocator<std::byte>
+    //!
+    //! Implement do_allocate and do_deallocate in terms of ::operator new and
+    //! ::operator delete rather than conservatively reimplementing aligned allocation
+    //! on top of an arbitrary allocator.
+    template <>
+    struct __memory_resource_adaptor<std::allocator<std::byte>>
+    {
+      struct type : std::pmr::memory_resource
+      {
+        template <class _Ty>
+        constexpr explicit type(std::allocator<_Ty> const &) noexcept
+        {}
+
+        constexpr void *
+        allocate(std::size_t __bytes, std::size_t __align = alignof(std::max_align_t)) const
+        {
+          return ::operator new(__bytes, static_cast<std::align_val_t>(__align));
+        }
+
+        constexpr void deallocate(void       *__p,
+                                  std::size_t __bytes,
+                                  std::size_t __align = alignof(std::max_align_t)) const noexcept
+        {
+          ::operator delete(__p, __bytes, static_cast<std::align_val_t>(__align));
+        }
+
+       private:
+        constexpr void *do_allocate(std::size_t __bytes, std::size_t __align) final
+        {
+          return allocate(__bytes, __align);
+        }
+
+        constexpr void
+        do_deallocate(void *__p, std::size_t __bytes, std::size_t __align) noexcept final
+        {
+          deallocate(__p, __bytes, __align);
+        }
+
+        constexpr bool do_is_equal(std::pmr::memory_resource const &__other) const noexcept final
+        {
+          return !!dynamic_cast<type const *>(&__other);
+        }
+      };
+    };
+
     //! Handle the case that _Adaptee is an allocator of std::bytes
     //!
     //! Implement do_allocate and do_deallocate in terms of _Adaptee's allocate and
@@ -43,13 +89,8 @@ namespace experimental::execution
     struct __memory_resource_adaptor<_Adaptee>
     {
       //! Implement memory_resource in terms of an allocator<std::byte>
-      class type : public std::pmr::memory_resource
+      struct type : public std::pmr::memory_resource
       {
-        using __traits = std::allocator_traits<_Adaptee>;
-        static_assert(__same_as<std::byte, typename __traits::value_type>);
-        typename __traits::allocator_type __alloc_;
-
-       public:
         template <class _Alloc>
           requires(!__same_as<_Alloc, type>)
         constexpr explicit type(_Alloc const &__alloc) noexcept
@@ -59,16 +100,82 @@ namespace experimental::execution
           static_assert(__same_as<__traits, __rebound_traits>);
         }
 
-        constexpr void *do_allocate(std::size_t __bytes, std::size_t __align) override
+        constexpr void *
+        allocate(std::size_t __bytes, std::size_t __align = alignof(std::max_align_t))
         {
-          // TODO: we're not using __align, which is probably a bug
-          return __traits::allocate(__alloc_, __bytes);
+          // When asking __alloc_ for __bytes number of bytes, the worst case is that
+          // the resulting address is byte-aligned, and we need to adjust right by
+          // (__align - 1) bytes to get a properly aligned buffer; since we might have to
+          // make that shift, we need to allocate too many bytes, possibly make the shift,
+          // and return the resulting address. Since we're going to return an address that
+          // might be offset from what we got back from __alloc_, we need a way to
+          // retrieve from the offset address what the original address was so can pass to
+          // deallocate a pointer that actually originally came from allocate. To do that,
+          // we store a copy of the source address at the end of the buffer. To make room
+          // for the possible rightward shift and the copy of a pointer, we need to
+          // allocate extra space, and __bytes + __align - 1 + sizeof(void *) is the most
+          // we might need.
+          std::size_t __upstreamSize = __bytes + __align - 1 + sizeof(void *);
+          void *const __buffer       = __traits::allocate(__alloc_, __upstreamSize);
+
+          void *__ptr = __buffer;
+
+          void *__ret = std::align(__align, __bytes, __ptr, __upstreamSize);
+
+          // by asking for as much extra storage as we did, std::align ought to succeed
+          STDEXEC_ASSERT(__ret != nullptr);
+          // this is a postcondition of a successful call to std::align
+          STDEXEC_ASSERT(__ret == __ptr);
+          // we're going to store the value of __buffer in the first sizeof(void*) bytes
+          // after the end of the returned buffer so there had better be room for that
+          STDEXEC_ASSERT(__upstreamSize >= (__bytes + sizeof(void *)));
+
+          // put the address we got from __alloc_ at the end of the buffer
+          // we're going to return
+          auto *__as_bytes = new (__ret) std::byte[__upstreamSize];
+          std::memcpy(__as_bytes + __bytes, &__buffer, sizeof(__buffer));
+
+          return __ret;
         }
 
-        constexpr void do_deallocate(void *__p, std::size_t __bytes, std::size_t __align) override
+        constexpr void deallocate(void       *__p,
+                                  std::size_t __bytes,
+                                  std::size_t __align = alignof(std::max_align_t)) noexcept
         {
-          // TODO: we're not using __align, which is probably a bug
-          __traits::deallocate(__alloc_, new (__p) std::byte[__bytes], __bytes);
+          // we have to undo the bit-banging we did in allocate
+
+          void *__address_to_free;
+          std::memcpy(&__address_to_free, static_cast<std::byte *>(__p) + __bytes, sizeof(void *));
+
+          std::size_t __size_to_free = __bytes + __align - 1 + sizeof(void *);
+
+          [=]() mutable noexcept
+          {
+            // std::align mutates its final two by-reference arguments so run this
+            // assertion inside an immediately-invoked lambda that captures the inputs by
+            // value
+            STDEXEC_ASSERT(std::align(__align, __bytes, __address_to_free, __size_to_free) == __p);
+          }();
+
+          __traits::deallocate(__alloc_,
+                               new (__address_to_free) std::byte[__size_to_free],
+                               __size_to_free);
+        }
+
+       private:
+        using __traits = std::allocator_traits<_Adaptee>;
+        static_assert(__same_as<std::byte, typename __traits::value_type>);
+        typename __traits::allocator_type __alloc_;
+
+        constexpr void *do_allocate(std::size_t __bytes, std::size_t __align) final
+        {
+          return allocate(__bytes, __align);
+        }
+
+        constexpr void
+        do_deallocate(void *__p, std::size_t __bytes, std::size_t __align) noexcept final
+        {
+          deallocate(__p, __bytes, __align);
         }
 
         constexpr bool do_is_equal(std::pmr::memory_resource const &__other) const noexcept override
@@ -99,12 +206,26 @@ namespace experimental::execution
     //! Handle the case that _Adaptee is a pointer to a type that derives from
     //! std::pmr::memory_resource
     //!
-    //! In this case, there's nothing to "adapt" so we just alias _Adaptee.
+    //! In this case, there's nothing to "adapt" but we need a type constructible
+    //! from _Adaptee*, and whose operator& returns _Adaptee*.
     template <class _Adaptee>
-      requires __std::constructible_from<std::pmr::polymorphic_allocator<std::byte>, _Adaptee>
-    struct __memory_resource_adaptor<_Adaptee>
+      requires __std::constructible_from<std::pmr::polymorphic_allocator<std::byte>, _Adaptee *>
+    struct __memory_resource_adaptor<_Adaptee *>
     {
-      using type = _Adaptee;
+      struct type
+      {
+        explicit constexpr type(_Adaptee *__resource) noexcept
+          : __resource_(__resource)
+        {}
+
+        constexpr _Adaptee *operator&() const noexcept
+        {
+          return __resource_;
+        }
+
+       private:
+        _Adaptee *__resource_;
+      };
     };
   }  // namespace __mem_rsc_adpt
 
