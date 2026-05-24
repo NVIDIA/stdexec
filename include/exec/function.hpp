@@ -348,6 +348,33 @@ namespace experimental::execution
       completion_signatures<__single_value_sig_t<_Return>, set_stopped_t()>,
       __eptr_completion_unless_t<__mbool<_NoExcept>>>>;
 
+    //! maps a completion signature to the default completion domain query
+    struct __domain_query_from_sig
+    {
+      template <class _Tag, class... _Args>
+      consteval auto operator()(_Tag (*)(_Args...)) const noexcept  //
+        -> default_domain (*)(get_completion_domain_t<_Tag>)
+      {
+        return nullptr;
+      }
+    };
+
+    //! maps a pack of domain queries produced by __domain_query_from_sig to the
+    //! corresponding attrs<_Attrs...> type
+    class __attrs_from_domain_queries
+    {
+      template <class _Tag>
+      using __query_sig = default_domain (*)(get_completion_domain_t<_Tag>);
+
+     public:
+      template <class... _Tag>
+      consteval auto operator()(__query_sig<_Tag>...) const noexcept  //
+        -> __canonical_t<attrs<default_domain(get_completion_domain_t<_Tag>)...>>
+      {
+        return {};
+      }
+    };
+
     //! computes the set of get_completion_domain queries that must be supported by any
     //! sender that might be erased by the corresponding function
     //!
@@ -356,14 +383,10 @@ namespace experimental::execution
     //!
     //! the query form should be
     //!
-    //!   default_domain(get_completion_domain_t<Tag>, Env)
-    //!
-    //! where Env is the environment type we'll be synthesizing from _Queries
-    template <class _Sigs, class _Queries>
-    using __default_attrs =
-      __canonical_t<attrs<default_domain(get_completion_domain_t<set_value_t>),
-                          default_domain(get_completion_domain_t<set_error_t>),
-                          default_domain(get_completion_domain_t<set_stopped_t>)>>;
+    //!   default_domain(get_completion_domain_t<Tag>)
+    template <class _Sigs>
+    using __default_attrs = decltype(_Sigs::__transform_reduce(__domain_query_from_sig(),
+                                                               __attrs_from_domain_queries()));
 
     //! Map a variety of function<...> specifications into the canonical type-erased
     //! contract represented by the user-provided specification.
@@ -392,7 +415,7 @@ namespace experimental::execution
     {
       using __sigs    = __sigs_from_t<_Return, false>;
       using __queries = queries<>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
@@ -403,7 +426,7 @@ namespace experimental::execution
     {
       using __sigs    = __sigs_from_t<_Return, true>;
       using __queries = queries<>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
@@ -414,7 +437,7 @@ namespace experimental::execution
     {
       using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
       using __queries = queries<>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
@@ -425,7 +448,7 @@ namespace experimental::execution
     {
       using __sigs    = __sigs_from_t<_Return, false>;
       using __queries = __canonical_t<queries<_Queries...>>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
@@ -436,7 +459,7 @@ namespace experimental::execution
     {
       using __sigs    = __sigs_from_t<_Return, true>;
       using __queries = __canonical_t<queries<_Queries...>>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
@@ -449,7 +472,7 @@ namespace experimental::execution
     {
       using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
       using __queries = __canonical_t<queries<_Queries...>>;
-      using __attrs   = __default_attrs<__sigs, __queries>;
+      using __attrs   = __default_attrs<__sigs>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
