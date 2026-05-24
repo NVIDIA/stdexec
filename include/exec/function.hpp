@@ -199,11 +199,11 @@ namespace experimental::execution
     };
 
     template <class _Tag, class _Query>
-    struct __make_domain
+    struct __make_domain_impl
     {};
 
     template <class _Domain, class _Tag>
-    struct __make_domain<_Tag, _Domain(get_completion_domain_t<_Tag>)>
+    struct __make_domain_impl<_Tag, _Domain(get_completion_domain_t<_Tag>)>
     {
       constexpr _Domain operator()() const noexcept
       {
@@ -214,22 +214,21 @@ namespace experimental::execution
     //! get_completion_domain<> is a special case; its type parameter is void
     //! and it's equivalent to get_completion_domain<set_value_t>.
     template <class _Domain>
-    struct __make_domain<void, _Domain(get_completion_domain_t<set_value_t>)>
-      : __make_domain<set_value_t, _Domain(get_completion_domain_t<set_value_t>)>
+    struct __make_domain_impl<void, _Domain(get_completion_domain_t<set_value_t>)>
+      : __make_domain_impl<set_value_t, _Domain(get_completion_domain_t<set_value_t>)>
     {};
 
     template <class _Tag, class... _Attrs>
-    inline constexpr auto __get_completion_domain =
-      __first_callable<__make_domain<_Tag, _Attrs>...>();
+    inline constexpr auto __make_domain = __first_callable<__make_domain_impl<_Tag, _Attrs>...>();
 
     template <class... _Attrs>
     struct __attrs
     {
       template <class _Tag, class... _Env>
       constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
-        -> decltype(__get_completion_domain<_Tag, _Attrs...>())
+        -> decltype(__make_domain<_Tag, _Attrs...>())
       {
-        return __get_completion_domain<_Tag, _Attrs...>();
+        return __make_domain<_Tag, _Attrs...>();
       }
     };
 
