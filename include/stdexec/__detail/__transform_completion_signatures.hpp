@@ -180,90 +180,6 @@ namespace STDEXEC
                                         _StoppedSigs>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // __gather_completion_signatures_t
-  namespace __cmplsigs
-  {
-    template <class _WantedTag, bool = true>
-    struct __gather_sigs_fn;
-
-    template <>
-    struct __gather_sigs_fn<set_value_t>
-    {
-      template <class _Sigs,
-                template <class...> class _Then,
-                template <class...> class _Else,
-                template <class...> class _Variant,
-                class... _More>
-      using __f = __transform_reduce_completion_signatures_t<
-        _Sigs,
-        _Then,
-        __mbind_front_q<_Else, set_error_t>::template __f,
-        _Else<set_stopped_t>,
-        _Variant,
-        _More...>;
-    };
-
-    template <>
-    struct __gather_sigs_fn<set_error_t>
-    {
-      template <class _Sigs,
-                template <class...> class _Then,
-                template <class...> class _Else,
-                template <class...> class _Variant,
-                class... _More>
-      using __f = __transform_reduce_completion_signatures_t<
-        _Sigs,
-        __mbind_front_q<_Else, set_value_t>::template __f,
-        _Then,
-        _Else<set_stopped_t>,
-        _Variant,
-        _More...>;
-    };
-
-    template <>
-    struct __gather_sigs_fn<set_stopped_t>
-    {
-      template <class _Sigs,
-                template <class...> class _Then,
-                template <class...> class _Else,
-                template <class...> class _Variant,
-                class... _More>
-      using __f = __transform_reduce_completion_signatures_t<
-        _Sigs,
-        __mbind_front_q<_Else, set_value_t>::template __f,
-        __mbind_front_q<_Else, set_error_t>::template __f,
-        _Then<>,
-        _Variant,
-        _More...>;
-    };
-
-    template <class _WantedTag>
-    struct __gather_sigs_fn<_WantedTag, false>
-    {
-      template <class _Error,
-                template <class...> class,
-                template <class...> class,
-                template <class...> class,
-                class...>
-      using __f = _Error;
-    };
-  }  // namespace __cmplsigs
-
-  template <class _Sigs,
-            class _WantedTag,
-            template <class...> class _Then,
-            template <class...> class _Else,
-            template <class...> class _Variant,
-            class... _More>
-  using __gather_completion_signatures_t =                                //
-    __cmplsigs::__gather_sigs_fn<_WantedTag, __ok<_Sigs>>::template __f<  //
-      _Sigs,
-      _Then,
-      _Else,
-      _Variant,
-      _More...>;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
   // begin implementation of __transform_completion_signatures
   struct _IN_TRANSFORM_COMPLETION_SIGNATURES_;
   struct _A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION_;
@@ -598,12 +514,10 @@ namespace STDEXEC
 
   template <class _Catch, class _Tag, class _Fun, class _Sender, class... _Env>
   using __with_error_invoke_t =
-    __if<__gather_completion_signatures_t<
-           __completion_signatures_of_t<_Sender, _Env...>,
-           _Tag,
-           __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>::template __f,
-           __mconst<__mbool<true>>::__f,
-           __mand>,
+    __if<__gather_completions_t<_Tag,
+                                __completion_signatures_of_t<_Sender, _Env...>,
+                                __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>,
+                                __qq<__mand>>,
          completion_signatures<>,
          __eptr_completion_t>;
 
