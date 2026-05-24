@@ -489,4 +489,33 @@ namespace
       STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
     }
   }
+
+  struct domain : ex::default_domain
+  {};
+
+  TEST_CASE("function's constructor is constrained based on the common domain", "[types][function]")
+  {
+    using queries = exec::queries<domain(ex::get_domain_t) noexcept>;
+
+    SECTION("the constraint applies to set_value")
+    {
+      using function =
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t()>,
+                       queries,
+                       exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>) noexcept>>;
+
+      STATIC_REQUIRE(std::constructible_from<function, ex::just_t>);
+
+      function fn(ex::just);
+      auto     attrs        = ex::get_env(fn);
+      auto     value_domain = get_completion_domain<ex::set_value_t>(attrs);
+      auto     error_domain = get_completion_domain<ex::set_error_t>(attrs);
+      auto     stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
+
+      STATIC_REQUIRE(std::same_as<domain, decltype(value_domain)>);
+      STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
+      STATIC_REQUIRE(std::same_as<none_such, decltype(stop_domain)>);
+    }
+  }
 }  // namespace
