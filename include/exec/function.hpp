@@ -198,6 +198,41 @@ namespace experimental::execution
       }
     };
 
+    template <class _Tag, class _Query>
+    struct __make_domain
+    {};
+
+    template <class _Domain, class _Tag>
+    struct __make_domain<_Tag, _Domain(get_completion_domain_t<_Tag>)>
+    {
+      constexpr _Domain operator()() const noexcept
+      {
+        return _Domain();
+      }
+    };
+
+    template <class _Tag, class... _Attrs>
+    inline constexpr auto __get_completion_domain =
+      __first_callable<__make_domain<_Tag, _Attrs>...>();
+
+    template <class... _Attrs>
+    struct __attrs
+    {
+      template <class... _Env>
+      constexpr auto query(get_completion_domain_t<>, _Env &&...) const noexcept
+        -> decltype(__get_completion_domain<set_value_t, _Attrs...>)
+      {
+        return __get_completion_domain<set_value_t, _Attrs...>();
+      }
+
+      template <class _Tag, class... _Env>
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
+        -> decltype(__get_completion_domain<_Tag, _Attrs...>)
+      {
+        return __get_completion_domain<_Tag, _Attrs...>();
+      }
+    };
+
     template <class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function;
 
@@ -226,8 +261,9 @@ namespace experimental::execution
         -> _any::_any_opstate_base
       {
         auto &__make_sender = *__std::start_lifetime_as<_Factory>(__storage);
-        using __alloc_t     = decltype(__choose_frame_allocator(get_env(__rcvr)));
-        auto __alloc = __frame_allocator_t<__alloc_t>(__choose_frame_allocator(get_env(__rcvr)));
+        using __alloc_t     = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
+        auto __alloc        = __frame_allocator_t<__alloc_t>(
+          __choose_frame_allocator(STDEXEC::get_env(__rcvr)));
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
                                        __alloc,
@@ -283,6 +319,11 @@ namespace experimental::execution
           return __throw_compile_time_error(__check_queries_t());
         else
           return _Sigs();
+      }
+
+      constexpr __attrs<_Attrs...> get_env() const noexcept
+      {
+        return {};
       }
 
       template <class _Receiver>
