@@ -232,6 +232,28 @@ namespace experimental::execution
       }
     };
 
+    template <class _Tag, class _Attrs, class... _Env>
+    using __completion_domain_t = __call_result_or_t<
+      get_completion_domain_t<_Tag>,
+      __call_result_or_t<get_completion_domain_t<_Tag>, indeterminate_domain<>, _Attrs>,
+      _Attrs,
+      _Env const &...>;
+
+    template <class _Tag, class _ActualAttrs, class _ExpectedAttrs, class... _Env>
+    concept __completion_domain_matches =
+      __same_as<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
+                __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
+
+    template <class _ActualAttrs, class _ExpectedAttrs, class... _Env>
+    concept __completion_domains_match_impl =
+      __completion_domain_matches<set_value_t, _ActualAttrs, _ExpectedAttrs, _Env...>
+      && __completion_domain_matches<set_error_t, _ActualAttrs, _ExpectedAttrs, _Env...>
+      && __completion_domain_matches<set_stopped_t, _ActualAttrs, _ExpectedAttrs, _Env...>;
+
+    template <class _Actual, class _Expected, class... _Env>
+    concept __completion_domains_match =
+      __completion_domains_match_impl<env_of_t<_Actual>, env_of_t<_Expected>, _Env...>;
+
     template <class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function;
 
@@ -298,6 +320,9 @@ namespace experimental::execution
                 && (STDEXEC_IS_TRIVIALLY_COPYABLE(_Factory))     //
                 && (sizeof(_Factory) <= sizeof(__make_sender_))  //
                 && sender_to<__invoke_result_t<_Factory, _Args...>, __receiver_t>
+                && __completion_domains_match<__invoke_result_t<_Factory, _Args...>,
+                                              __function,
+                                              env_of_t<receiver_t>>
       constexpr explicit __function(_Args &&...__args, _Factory __factory)
         noexcept(__nothrow_move_constructible<_Args...>)
         : __args_(static_cast<_Args &&>(__args)...)
