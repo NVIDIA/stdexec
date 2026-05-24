@@ -1,273 +1,278 @@
-# Senders - A Standard Model for Asynchronous Execution in C++
+# stdexec — Senders for C++
 
-`stdexec` is an experimental reference implementation of the _Senders_ model of
-asynchronous programming proposed by [**P2300 -
-`std::execution`**](http://wg21.link/p2300) and accepted into the C++26 Standard.
-
-**Purpose of this Repository:**
-
-1. Provide a reference implementation for the C++26 additions to `std::execution`.
-
-2. Get usage experience with the C++26 `std::execution` additions, as well as with
-   not-yet-proposed extensions to `std::execution`.
-
-3. Provide NVIDIA-specific extensions for running code on NVIDIA GPUs using standard C++.
-
-4. Collaborate with those interested in extending `std::execution` for C++29.
-
-## Disclaimer
-
-`stdexec` is experimental in nature and subject to change without warning.
-The authors and NVIDIA do not guarantee that this code is fit for any purpose whatsoever.
+**A reference implementation of `std::execution` ([\[exec\]](https://wg21.link/exec)), the C++26 model for asynchronous and parallel programming.**
 
 [![CI (CPU)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.cpu.yml/badge.svg)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.cpu.yml)
 [![CI (GPU)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.gpu.yml/badge.svg)](https://github.com/NVIDIA/stdexec/actions/workflows/ci.gpu.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0%20with%20LLVM--exception-blue.svg)](LICENSE.txt)
+[![C++](https://img.shields.io/badge/C%2B%2B-20%2B-blue.svg)](https://en.cppreference.com/w/cpp/compiler_support)
+[![Try on Godbolt](https://img.shields.io/badge/try-godbolt-orange.svg)](https://godbolt.org/z/zjjvWoWPW)
+[![Documentation](https://img.shields.io/badge/docs-nvidia.github.io%2Fstdexec-blue.svg)](https://nvidia.github.io/stdexec)
+
+`stdexec` lets you express asynchronous work as composable, lazy *sender* pipelines that can run on threads, thread pools, GPUs, or any custom execution context — with structured concurrency guarantees.
+
+> [!WARNING]
+> `stdexec` is experimental and tracks an evolving standard. APIs may change without notice. NVIDIA does not guarantee fitness for any particular purpose.
+
+## Table of contents
+
+- [Example](#example)
+- [Features](#features)
+- [Compiler support](#compiler-support)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [GPU support](#gpu-support)
+- [Examples gallery](#examples-gallery)
+- [Documentation](#documentation)
+- [Building tests and examples](#building-tests-and-examples)
+- [IDE support](#ide-support)
+- [Resources](#resources)
+- [Contributing](#contributing)
+- [Citation](#citation)
+- [License](#license)
 
 ## Example
 
-Below is a simple program that executes three senders concurrently on a thread pool.
-Try it live on [godbolt!](https://godbolt.org/z/8MqaKEEfT).
+Run three pieces of work concurrently on the system thread pool. Try it live on [godbolt](https://godbolt.org/z/zjjvWoWPW).
 
 ```c++
 #include <stdexec/execution.hpp>
-#include <exec/static_thread_pool.hpp>
+#include <cstdio>
 
-int main()
-{
-    // Declare a pool of 3 worker threads:
-    exec::static_thread_pool pool(3);
+namespace ex = stdexec;
 
-    // Get a handle to the thread pool:
-    auto sched = pool.get_scheduler();
+int main() {
+    auto sched = ex::get_parallel_scheduler();
+    auto fun   = [](int i) { return i * i; };
 
-    // Describe some work:
-    // Creates 3 sender pipelines that are executed concurrently by passing to `when_all`
-    // Each sender is scheduled on `sched` using `on` and starts with `just(n)` that creates a
-    // Sender that just forwards `n` to the next sender.
-    // After `just(n)`, we chain `then(fun)` which invokes `fun` using the value provided from `just()`
-    // Note: No work actually happens here. Everything is lazy and `work` is just an object that statically
-    // represents the work to later be executed
-    auto fun = [](int i) { return i*i; };
-    auto work = stdexec::when_all(
-        stdexec::starts_on(sched, stdexec::just(0) | stdexec::then(fun)),
-        stdexec::starts_on(sched, stdexec::just(1) | stdexec::then(fun)),
-        stdexec::starts_on(sched, stdexec::just(2) | stdexec::then(fun))
-    );
+    // Build a lazy pipeline: three squares, computed in parallel.
+    auto work = ex::when_all(ex::on(sched, ex::just(0) | ex::then(fun)),
+                             ex::on(sched, ex::just(1) | ex::then(fun)),
+                             ex::on(sched, ex::just(2) | ex::then(fun)));
 
-    // Launch the work and wait for the result
-    auto [i, j, k] = stdexec::sync_wait(std::move(work)).value();
-
-    // Prints "0 1 4":
-    std::printf("%d %d %d\n", i, j, k);
+    // Launch the work and wait for the result.
+    auto [i, j, k] = ex::sync_wait(std::move(work)).value();
+    std::printf("%d %d %d\n", i, j, k); // prints "0 1 4"
 }
 ```
 
-## Structure
+## Features
 
-This library is header-only, so all the source code can be found in the `include/` directory. The physical and logical structure of the code can be summarized by the following table:
+- **C++26 reference implementation** of `std::execution` (P2300).
+- **Header-only**, no external dependencies.
+- **Composable algorithms**: `then`, `let_value`, `when_all`, `bulk`, `split`, `transfer`, `upon_*`, ...
+- **Structured concurrency primitives**: `async_scope`, `task`, `finally`, `when_any`, `repeat_n`, ...
+- **Pluggable schedulers**: system parallel scheduler, static thread pool, Linux `io_uring` context, NVIDIA GPU contexts, your own.
+- **GPU offload** via `nvexec` schedulers (`nvc++` compiler).
+- **Coroutine interop**: senders are awaitable; awaitables are senders.
+- **Generic extensions** (`<exec/...>`) for primitives not (yet) in the standard.
 
-| Kind | Path | Namespace |
-|------|------|-----------|
-| Things approved for the C++ standard | `<stdexec/...>` | `::stdexec` |
-| Generic additions and extensions | `<exec/...>` | `::exec` |
-| NVIDIA-specific extensions and customizations | <code>&lt;nvexec/...&gt;</code> | <code>::nvexec</code> |
-| | |
+## Compiler support
 
-## How to get `stdexec`
+| Compiler | Minimum version | Notes |
+|---|---|---|
+| GCC | 12 | |
+| Clang | 16 | |
+| MSVC | 14.43 | |
+| Xcode (Apple Clang) | 16 | |
+| nvc++ | 25.9 | required for [GPU support](#gpu-support) |
 
-There are a few ways to get `stdexec`:
-1. Clone from GitHub
-   - `git clone https://github.com/NVIDIA/stdexec.git`
-
-2. Download the [NVIDIA HPC SDK starting with
-   22.11](https://developer.nvidia.com/nvidia-hpc-sdk-releases)
-
-3. (Recommended) Use [CMake Package Manager (CPM)](https://github.com/cpm-cmake/CPM.cmake)
-   to automatically pull `stdexec` as part of your CMake project. [See
-   below](#cmake-package-manager-cpm) for more information.
-
-You can also try it directly on [godbolt.org](https://godbolt.org/z/acaE93xq3) where it is
-available as a C++ library or via the nvc++ compiler starting with version 22.11 ([see
-below](#nvhpc-sdk) for more details).
-
-## Using `stdexec`
-
-### Requirements
-
-`stdexec` requires compiling with C++20 (`-std=c++20`) but otherwise does not have any
-dependencies and only requires a sufficiently new compiler:
-
-- gcc 12+
-- clang 16+
-- MSVC 14.43+
-- XCode 16+
-- [nvc++ 25.9+](https://developer.nvidia.com/nvidia-hpc-sdk-releases) (required for [GPU
-  support](#gpu-support)).
+Requires `-std=c++20` or later.
 
 > [!NOTE]
-> `stdexec` does not yet work with NVIDIA's nvcc compiler.
+> `stdexec` does not yet support NVIDIA's `nvcc` compiler.
 
-How you configure your environment to use `stdexec` depends on how you got `stdexec`.
+## Installation
 
-### NVHPC SDK
+Pick whichever fits your project.
 
-Starting with the 22.11 release of the [NVHPC
-SDK](https://developer.nvidia.com/nvidia-hpc-sdk-releases), `stdexec` is available as an
-experimental, opt-in feature. Specifying the `--experimental-stdpar` flag to `nvc++` makes
-the `stdexec` headers available on the include path. You can then include any `stdexec`
-header as normal: `#include <stdexec/...>`, `#include <nvexec/...>`.  See [godbolt
-example](https://godbolt.org/z/qc1h3sqEv).
+### CPM (recommended)
 
-GPU features additionally require specifying `-stdpar=gpu`. For more details, see [GPU
-Support](#gpu-support).
+[CPM](https://github.com/cpm-cmake/CPM.cmake) fetches and configures `stdexec` automatically from your `CMakeLists.txt`:
 
-### GitHub
+```cmake
+CPMAddPackage(
+  NAME stdexec
+  GITHUB_REPOSITORY NVIDIA/stdexec
+  GIT_TAG main  # or a specific tag
+)
 
-As a (mostly) header-only C++ library, technically all one needs to do is add the
-`stdexec` `include/` directory to your include path as `-I<stdexec root>/include` in
-addition to specifying any necessary compile options.
-
-For simplicity, we recommend using the [CMake targets](#cmake) that `stdexec` provides as
-they encapsulate the necessary configuration.
-
-#### cmake
-
-If your project uses CMake, then after cloning `stdexec` simply add the following to your
-`CMakeLists.txt`:
-
-```
-add_subdirectory(<stdexec root>)
+target_link_libraries(my_target PRIVATE STDEXEC::stdexec)
 ```
 
-This will make the `STDEXEC::stdexec` target available to link with your project:
+### `add_subdirectory`
 
+Clone alongside your project and add it as a subdirectory:
+
+```bash
+git clone https://github.com/NVIDIA/stdexec.git
 ```
-target_link_libraries(my_project PRIVATE STDEXEC::stdexec)
+
+```cmake
+add_subdirectory(stdexec)
+target_link_libraries(my_target PRIVATE STDEXEC::stdexec)
 ```
 
-This target encapsulates all of the necessary configuration and compiler flags for using
-`stdexec`.
+### Conan
 
+A [`conanfile.py`](conanfile.py) is provided for use with the [Conan](https://conan.io) package manager.
 
-#### CMake Package Manager (CPM)
+### NVIDIA HPC SDK
 
-To further simplify obtaining and including `stdexec` in your CMake project, we recommend
-using [CMake Package Manager (CPM)](https://github.com/cpm-cmake/CPM.cmake) to fetch and
-configure `stdexec`.
+Starting with [NVHPC SDK 22.11](https://developer.nvidia.com/nvidia-hpc-sdk-releases), `stdexec` is bundled with `nvc++`. Pass `--experimental-stdpar` to put `stdexec` headers on the include path. Add `-stdpar=gpu` for GPU features. See the [godbolt example](https://godbolt.org/z/qc1h3sqEv).
 
-Complete example:
+### Manual include path
 
-```
-cmake_minimum_required(VERSION 3.25.0 FATAL_ERROR)
+`stdexec` is header-only, so adding `-I<stdexec root>/include` to your compile command is sufficient. Using the CMake target is recommended because it sets the required compile flags.
 
-project(stdexecExample)
+## Quick start
 
-# Get CPM. For more information on how to add CPM to your project, see:
-# https://github.com/cpm-cmake/CPM.cmake#adding-cpm
-include(CPM.cmake)
+A minimal `CMakeLists.txt` using CPM:
+
+```cmake
+cmake_minimum_required(VERSION 3.25.0)
+project(stdexec_example LANGUAGES CXX)
+
+include(CPM.cmake)  # see https://github.com/cpm-cmake/CPM.cmake#adding-cpm
 
 CPMAddPackage(
   NAME stdexec
   GITHUB_REPOSITORY NVIDIA/stdexec
-  GIT_TAG main # This will always pull the latest code from the `main` branch.
-               # You may also use a specific release version or tag.
+  GIT_TAG main
 )
 
-add_executable(main example.cpp)
-
-target_link_libraries(main STDEXEC::stdexec)
+add_executable(example example.cpp)
+target_link_libraries(example PRIVATE STDEXEC::stdexec)
 ```
 
-### GPU Support
+## GPU support
 
-`stdexec` provides schedulers that enable execution on NVIDIA GPUs:
+`stdexec` ships GPU schedulers in [`<nvexec/...>`](include/nvexec/) for use with `nvc++ -stdpar=gpu`:
 
-- `nvexec::stream_scheduler`
-   - Single GPU scheduler that executes on the first available GPU (device 0)
-   - Defined in
-     [`<nvexec/stream_context.cuh>`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/stream_context.cuh)
+| Scheduler | Header | Description |
+|---|---|---|
+| `nvexec::stream_scheduler` | [`<nvexec/stream_context.cuh>`](include/nvexec/stream_context.cuh) | Single-GPU scheduler (device 0). |
+| `nvexec::multi_gpu_stream_scheduler` | [`<nvexec/multi_gpu_context.cuh>`](include/nvexec/multi_gpu_context.cuh) | Multi-GPU scheduler across all visible devices. |
 
-- `nvexec::multi_gpu_stream_scheduler`
-   - Executes on all visible GPUs
-   - Defined in
-     [`<nvexec/multi_gpu_context.cuh>`](https://github.com/NVIDIA/stdexec/blob/main/include/nvexec/multi_gpu_context.cuh)
+Live example: <https://godbolt.org/z/h7rh5qGhj>
 
-These schedulers are only supported when using the `nvc++` compiler with `-stdpar=gpu`.
+## Examples gallery
 
-Example: https://godbolt.org/z/h7rh5qGhj
+The [`examples/`](examples/) directory contains runnable programs demonstrating the library.
 
-## Building
+| Example | What it shows |
+|---|---|
+| [`hello_world.cpp`](examples/hello_world.cpp) | The "hello world" of senders. |
+| [`hello_coro.cpp`](examples/hello_coro.cpp) | Awaiting a sender from a coroutine. |
+| [`then.cpp`](examples/then.cpp) | Writing a `then` algorithm from scratch. |
+| [`retry.cpp`](examples/retry.cpp) | Writing a `retry` algorithm from scratch. |
+| [`scope.cpp`](examples/scope.cpp) | Structured concurrency with `async_scope`. |
+| [`io_uring.cpp`](examples/io_uring.cpp) | Async I/O via the Linux `io_uring` context. |
+| [`sudoku.cpp`](examples/sudoku.cpp) | A parallel sudoku solver. |
+| [`server_theme/`](examples/server_theme/) | Server-style patterns (`let_value`, `split`, `bulk`, `transfer`). |
+| [`nvexec/`](examples/nvexec/) | GPU schedulers, including the Maxwell solver. |
 
-`stdexec` is a header-only library and does not require building anything.
+## Documentation
 
-This section is only relevant if you wish to build the `stdexec` tests or examples.
+**📖 Full documentation: <https://nvidia.github.io/stdexec>**
 
-The following tools are needed:
+- **User guide**: <https://nvidia.github.io/stdexec/user/> ([source](docs/source/user/))
+- **Reference**: <https://nvidia.github.io/stdexec/reference/> ([source](docs/source/reference/))
+- **Developer docs**: <https://nvidia.github.io/stdexec/developer/> ([source](docs/source/developer/))
+- **Contributing to docs**: [`docs/CONTRIBUTING-docs.md`](docs/CONTRIBUTING-docs.md)
+- **The proposal**: [`[exec]` — `std::execution`](https://wg21.link/exec)
 
-* [`CMake`](https://cmake.org/)
-* One of the following supported C++ compilers:
-  * GCC 11+
-  * clang 12+
-  * nvc++ 25.9
+The library is organized into three namespaces:
 
-Perform the following actions:
+| Namespace | Headers | Contents |
+|---|---|---|
+| `::stdexec` | `<stdexec/...>` | Things in (or proposed for) the C++ standard. |
+| `::exec` | `<exec/...>` | Generic additions and extensions. |
+| `::nvexec` | `<nvexec/...>` | NVIDIA-specific schedulers and customizations. |
+
+## Building tests and examples
+
+The library itself is header-only — these steps are only needed if you want to build the test suite or the examples.
 
 ```bash
-# Configure the project
-cmake -S . -B build -G<gen>
-# Build the project
+cmake -S . -B build -G Ninja
 cmake --build build
+ctest --test-dir build
 ```
 
-Here, `<gen>` can be `Ninja`, `"Unix Makefiles"`, `XCode`, `"Visual Studio 15 Win64"`, etc.
-
-### Specifying the compiler
-
-You can set the C++ compiler via `-D CMAKE_CXX_COMPILER`:
+To select a specific compiler:
 
 ```bash
-# Use GCC:
-cmake -S . -B build/g++ -DCMAKE_CXX_COMPILER=$(which g++)
-cmake --build build/g++
-
-# Or clang:
-cmake -S . -B build/clang++ -DCMAKE_CXX_COMPILER=$(which clang++)
-cmake --build build/clang++
+cmake -S . -B build/clang -DCMAKE_CXX_COMPILER=$(which clang++)
+cmake --build build/clang
 ```
 
-### Specifying the stdlib
-
-If you want to use `libc++` with clang instead of `libstdc++`, you can specify the standard library as follows:
+To use `libc++` with Clang:
 
 ```bash
-# Do the actual build
-cmake -S . -B build/clang++ -G<gen> \
-    -DCMAKE_CXX_FLAGS=-stdlib=libc++ \
-    -DCMAKE_CXX_COMPILER=$(which clang++)
-
-cmake --build build/clang++
+cmake -S . -B build/libcxx \
+    -DCMAKE_CXX_COMPILER=$(which clang++) \
+    -DCMAKE_CXX_FLAGS=-stdlib=libc++
+cmake --build build/libcxx
 ```
+
+## IDE support
+
+A [VSCode extension](https://marketplace.visualstudio.com/items?itemName=ericniebler.erics-build-output-colorizer) is available that colorizes compiler diagnostics from `stdexec`, making the long template error messages much easier to read. Source and configuration: <https://github.com/ericniebler/buildoutputcolorizer>.
 
 ## Resources
-- [Working with Asynchrony Generically: A Tour of Executors: Part 1](https://www.youtube.com/watch?v=xLboNIf7BTg) ([Part 2](https://www.youtube.com/watch?v=6a0zzUBUNW4)) (Video): A comprehensive introduction to Senders and structured concurrency
-- [What are Senders Good For, Anyway?](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/) (Blog): Demonstrates the value of a standard async programming model by wrapping a C-style async API in a sender
-- [From Zero to Sender/Receiver in ~60 Minutes](https://www.youtube.com/watch?v=xiaqNvqRB2E) (Video): Live-coding a toy sender/receiver implementation from scratch
-- [A Unifying Abstraction for Async in C++](https://www.youtube.com/watch?v=h-ExnuD6jms) (Video): A simple introduction to the concepts behind P2300
-- [A Universal Async Abstraction for C++](https://cor3ntin.github.io/posts/executors/) (Blog): An introduction to Senders
-- [A Universal I/O Abstraction for C++](https://cor3ntin.github.io/posts/iouring/) (Blog): A look at how the Senders concepts interact with `io_uring` on Linux
-- [Structured Concurrency](https://www.youtube.com/watch?v=1Wy5sq3s2rg) (Video): An explanation of structured concurrency in C++ and its benefits
-- [Executors: a Change of Perspective](https://accu.org/journals/overload/29/165/teodorescu/) (Article): An article about the computational completeness of Senders
-- [Structured Concurrency in C++](https://accu.org/journals/overload/30/168/teodorescu/) (Article): An article about how Senders manifest the principles of structured concurrency
-- [Structured Networking in C++](https://www.youtube.com/watch?v=XaNajUp-sGY) (Video): A look at what a P2300-style networking library could look like
-- [HPCWire Article](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/): Provides a high-level overview of the Sender model and its benefits
-- [NVIDIA HPC SDK Documentation](https://docs.nvidia.com/hpc-sdk/index.html): Documentation for the NVIDIA HPC SDK
-- [P2300 - `std::execution`](https://wg21.link/p2300): Senders proposal to C++ Standard
 
-### Tooling
+### Standards papers
 
-For users of **VSCode**, stdexec provides a
-[VSCode extension](https://marketplace.visualstudio.com/items?itemName=ericniebler.erics-build-output-colorizer)
-that colorizes compiler output. The highlighter recognizes the diagnostics
-generated by the stdexec library, styling them to make them easier to pick
-out. Details about how to configure the extension can be found
-[here](https://github.com/ericniebler/buildoutputcolorizer).
+- [P2300 — `std::execution`](https://wg21.link/p2300) — the proposal accepted into C++26.
+
+### Talks
+
+- [Working with Asynchrony Generically: A Tour of Executors](https://www.youtube.com/watch?v=xLboNIf7BTg) ([Part 2](https://www.youtube.com/watch?v=6a0zzUBUNW4)) — comprehensive introduction.
+- [From Zero to Sender/Receiver in ~60 Minutes](https://www.youtube.com/watch?v=xiaqNvqRB2E) — live-coding a toy sender/receiver from scratch.
+- [A Unifying Abstraction for Async in C++](https://www.youtube.com/watch?v=h-ExnuD6jms) — concepts behind P2300.
+- [Structured Concurrency](https://www.youtube.com/watch?v=1Wy5sq3s2rg) — what structured concurrency means and why.
+- [Structured Networking in C++](https://www.youtube.com/watch?v=XaNajUp-sGY) — what a P2300-style networking library could look like.
+
+### Articles and blog posts
+
+- [What are Senders Good For, Anyway?](https://ericniebler.com/2024/02/04/what-are-senders-good-for-anyway/) — wrapping a C-style async API in a sender.
+- [A Universal Async Abstraction for C++](https://cor3ntin.github.io/posts/executors/) — an introduction to senders.
+- [A Universal I/O Abstraction for C++](https://cor3ntin.github.io/posts/iouring/) — senders meet `io_uring`.
+- [Executors: a Change of Perspective](https://accu.org/journals/overload/29/165/teodorescu/) — on the computational completeness of senders.
+- [Structured Concurrency in C++](https://accu.org/journals/overload/30/168/teodorescu/) — how senders manifest structured concurrency.
+- [HPCWire: New C++ Sender Library Enables Portable Asynchrony](https://www.hpcwire.com/2022/12/05/new-c-sender-library-enables-portable-asynchrony/).
+
+### NVIDIA
+
+- [NVIDIA HPC SDK documentation](https://docs.nvidia.com/hpc-sdk/index.html).
+
+## Contributing
+
+Contributions are welcome. Before opening a PR, please review:
+
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- [`MAINTAINERS.md`](MAINTAINERS.md)
+- [`docs/CONTRIBUTING-docs.md`](docs/CONTRIBUTING-docs.md) for documentation contributions.
+
+Bug reports and feature requests belong in [GitHub Issues](https://github.com/NVIDIA/stdexec/issues); design discussion in [GitHub Discussions](https://github.com/NVIDIA/stdexec/discussions).
+
+## Citation
+
+If you reference `stdexec` in academic work, please cite the standards proposal:
+
+```bibtex
+@techreport{P2300,
+  author = {Niebler, Eric and Shoop, Kirk and Baker, Lewis and Dominiak, Michał and
+            Evtushenko, Georgy and Teodorescu, Lucian Radu and Howes, Lee and Garland,
+            Michael and Lelbach, Bryce Adelstein}
+  title  = {{P2300R10}: \texttt{std::execution}},
+  institution = {ISO/IEC JTC1/SC22/WG21},
+  year   = {2024},
+  url    = {https://wg21.link/p2300}
+}
+```
+
+## License
+
+`stdexec` is licensed under the **Apache License 2.0 with LLVM Exceptions**. See [LICENSE.txt](LICENSE.txt) for the full text.
