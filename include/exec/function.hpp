@@ -17,6 +17,7 @@
 
 #include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__domain.hpp"
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
@@ -55,6 +56,11 @@
 // queries to pick the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
+  // for specifying required sender attributes in exec::function
+  template <_query::_query_signature... Sigs>
+  struct attrs
+  {};
+
   namespace __func
   {
     using namespace STDEXEC;
@@ -192,7 +198,7 @@ namespace experimental::execution
       }
     };
 
-    template <class _Sigs, class _Queries, class... _Args>
+    template <class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function;
 
     //! the main implementation of the type-erasing sender function<...>
@@ -206,8 +212,8 @@ namespace experimental::execution
     //! not, as appropriate
     //!
     //! \tparam _Args The argument types used to construct the erased sender
-    template <class _Sigs, class... _Queries, class... _Args>
-    class __function<_Sigs, queries<_Queries...>, _Args...>
+    template <class _Sigs, class... _Queries, class... _Attrs, class... _Args>
+    class __function<_Sigs, queries<_Queries...>, attrs<_Attrs...>, _Args...>
     {
       using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, queries<_Queries...>>>;
 
@@ -342,6 +348,23 @@ namespace experimental::execution
       completion_signatures<__single_value_sig_t<_Return>, set_stopped_t()>,
       __eptr_completion_unless_t<__mbool<_NoExcept>>>>;
 
+    //! computes the set of get_completion_domain queries that must be supported by any
+    //! sender that might be erased by the corresponding function
+    //!
+    //! we should support get_completion_domain<Tag> only if _Sigs contains a completion
+    //! of type Tag
+    //!
+    //! the query form should be
+    //!
+    //!   default_domain(get_completion_domain_t<Tag>, Env)
+    //!
+    //! where Env is the environment type we'll be synthesizing from _Queries
+    template <class _Sigs, class _Queries>
+    using __default_attrs =
+      __canonical_t<attrs<default_domain(get_completion_domain_t<set_value_t>),
+                          default_domain(get_completion_domain_t<set_error_t>),
+                          default_domain(get_completion_domain_t<set_stopped_t>)>>;
+
     //! Map a variety of function<...> specifications into the canonical type-erased
     //! contract represented by the user-provided specification.
     //!
@@ -362,48 +385,74 @@ namespace experimental::execution
     //! The order of Args... is obviously important, but Sigs... and Queries... are both
     //! canonicalized into a sorted and uniqued list to ensure order is irrelevant.
     template <class...>
-    struct __make_function;
+    class __make_function;
 
     template <class _Return, class... _Args>
-    struct __make_function<_Return(_Args...)>
+    class __make_function<_Return(_Args...)>
     {
-      using type = __function<__sigs_from_t<_Return, false>, queries<>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args>
-    struct __make_function<_Return(_Args...) noexcept>
+    class __make_function<_Return(_Args...) noexcept>
     {
-      using type = __function<__sigs_from_t<_Return, true>, queries<>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class... _Args, class... _Sigs>
-    struct __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>>
+    class __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>>
     {
-      using type = __function<__canonical_t<completion_signatures<_Sigs...>>, queries<>, _Args...>;
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args, class... _Queries>
-    struct __make_function<_Return(_Args...), queries<_Queries...>>
+    class __make_function<_Return(_Args...), queries<_Queries...>>
     {
-      using type =
-        __function<__sigs_from_t<_Return, false>, __canonical_t<queries<_Queries...>>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args, class... _Queries>
-    struct __make_function<_Return(_Args...) noexcept, queries<_Queries...>>
+    class __make_function<_Return(_Args...) noexcept, queries<_Queries...>>
     {
-      using type =
-        __function<__sigs_from_t<_Return, true>, __canonical_t<queries<_Queries...>>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class... _Args, class... _Sigs, class... _Queries>
-    struct __make_function<sender_tag(_Args...),
-                           completion_signatures<_Sigs...>,
-                           queries<_Queries...>>
+    class __make_function<sender_tag(_Args...),
+                          completion_signatures<_Sigs...>,
+                          queries<_Queries...>>
     {
-      using type = __function<__canonical_t<completion_signatures<_Sigs...>>,
-                              __canonical_t<queries<_Queries...>>,
-                              _Args...>;
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs, __queries>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
   }  // namespace __func
 
