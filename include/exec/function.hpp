@@ -112,13 +112,13 @@ namespace experimental::execution
       {}
 
       constexpr auto get_env() const noexcept  //
-        -> __join_env_t<__prop_t, env_of_t<_Receiver>>
+        -> __join_env_t<__prop_t const &, env_of_t<_Receiver>>
       {
         return __env::__join(*__env_, STDEXEC::get_env(*static_cast<_Receiver const *>(this)));
       }
 
      private:
-      __prop_t *__env_;
+      __prop_t const *__env_;
     };
 
     template <class _Sigs, class _Queries>
@@ -203,7 +203,7 @@ namespace experimental::execution
     {};
 
     template <class _Domain, class _Tag>
-    struct __make_domain_impl<_Tag, _Domain(get_completion_domain_t<_Tag>)>
+    struct __make_domain_impl<_Tag, _Domain(get_completion_domain_t<_Tag>) noexcept>
     {
       constexpr _Domain operator()() const noexcept
       {
@@ -214,8 +214,15 @@ namespace experimental::execution
     //! get_completion_domain<> is a special case; its type parameter is void
     //! and it's equivalent to get_completion_domain<set_value_t>.
     template <class _Domain>
-    struct __make_domain_impl<void, _Domain(get_completion_domain_t<set_value_t>)>
-      : __make_domain_impl<set_value_t, _Domain(get_completion_domain_t<set_value_t>)>
+    struct __make_domain_impl<void, _Domain(get_completion_domain_t<set_value_t>) noexcept>
+      : __make_domain_impl<set_value_t, _Domain(get_completion_domain_t<set_value_t>) noexcept>
+    {};
+
+    //! get_completion_domain ought to be no-throw, so make it optional to specify
+    //! noexcept on the signature provided with attrs<...>
+    template <class _Domain, class _Tag1, class _Tag2>
+    struct __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>)>
+      : __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>) noexcept>
     {};
 
     template <class _Tag, class... _Attrs>
@@ -322,7 +329,7 @@ namespace experimental::execution
                 && sender_to<__invoke_result_t<_Factory, _Args...>, __receiver_t>
                 && __completion_domains_match<__invoke_result_t<_Factory, _Args...>,
                                               __function,
-                                              env_of_t<receiver_t>>
+                                              env_of_t<__receiver_t>>
       constexpr explicit __function(_Args &&...__args, _Factory __factory)
         noexcept(__nothrow_move_constructible<_Args...>)
         : __args_(static_cast<_Args &&>(__args)...)
@@ -418,7 +425,7 @@ namespace experimental::execution
     {
       template <class _Tag, class... _Args>
       consteval auto operator()(_Tag (*)(_Args...)) const noexcept  //
-        -> default_domain (*)(get_completion_domain_t<_Tag>)
+        -> default_domain (*)(get_completion_domain_t<_Tag>) noexcept
       {
         return nullptr;
       }
@@ -429,12 +436,12 @@ namespace experimental::execution
     class __attrs_from_domain_queries
     {
       template <class _Tag>
-      using __query_sig = default_domain (*)(get_completion_domain_t<_Tag>);
+      using __query_sig = default_domain (*)(get_completion_domain_t<_Tag>) noexcept;
 
      public:
       template <class... _Tag>
       consteval auto operator()(__query_sig<_Tag>...) const noexcept  //
-        -> __canonical_t<attrs<default_domain(get_completion_domain_t<_Tag>)...>>
+        -> __canonical_t<attrs<default_domain(get_completion_domain_t<_Tag>) noexcept...>>
       {
         return {};
       }
@@ -538,6 +545,20 @@ namespace experimental::execution
       using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
       using __queries = __canonical_t<queries<_Queries...>>;
       using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class... _Args, class... _Sigs, class... _Queries, class... _Attrs>
+    class __make_function<sender_tag(_Args...),
+                          completion_signatures<_Sigs...>,
+                          queries<_Queries...>,
+                          attrs<_Attrs...>>
+    {
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
