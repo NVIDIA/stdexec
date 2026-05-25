@@ -207,7 +207,7 @@ namespace STDEXEC
 
     template <class _Fn, class... _Args>
     using __transform_expr_t =
-      decltype(__cmplsigs::__transform_expr<_Args...>(__declval<_Fn const &>(), 0));
+      __decay_t<decltype(__cmplsigs::__transform_expr<_Args...>(__declval<_Fn const &>(), 0))>;
 
     template <class... _Args, class _Fn>
     [[nodiscard]]

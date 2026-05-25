@@ -19,7 +19,6 @@
 
 #include "__basic_sender.hpp"
 #include "__completion_signatures_of.hpp"
-#include "__diagnostics.hpp"
 #include "__meta.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
@@ -33,25 +32,19 @@ namespace STDEXEC
   // [execution.senders.adaptors.upon_stopped]
   namespace __upon_stopped
   {
-    using __on_not_callable = __mbind_front_q<__callable_error_t, upon_stopped_t>;
-
-    template <class _Fun, class _CvSender, class... _Env>
-    using __completion_signatures_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<_CvSender, _Env...>,
-      __with_error_invoke_t<__on_not_callable, set_stopped_t, _Fun, _CvSender, _Env...>,
-      __cmplsigs::__default_set_value,
-      __cmplsigs::__default_set_error,
-      __set_value_from_t<_Fun>>;
-
     struct __upon_stopped_impl : __sexpr_defaults
     {
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __completion_signatures_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
+      static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Sender, upon_stopped_t>);
-        // TODO: update this to use constant evaluation:
-        return {};
+        using __fn_t = __decay_t<__data_of<_Sender>>;
+        return STDEXEC::__transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
+          {},
+          {},
+          __always{__set_value_from_t<__fn_t>()},
+          __eptr_completion_unless_t<__mbool<__nothrow_callable<__fn_t>>>());
       };
 
       static constexpr auto __complete =

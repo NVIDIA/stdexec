@@ -34,14 +34,6 @@ namespace STDEXEC
   // [execution.senders.adaptors.then]
   namespace __then
   {
-    using __on_not_callable = __mbind_front_q<__callable_error_t, then_t>;
-
-    template <class _Fun, class _CvSender, class... _Env>
-    using __completions_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<_CvSender, _Env...>,
-      __with_error_invoke_t<__on_not_callable, set_value_t, _Fun, _CvSender, _Env...>,
-      __mbind_front<__mtry_catch_q<__set_value_from_t, __on_not_callable>, _Fun>::template __f>;
-
     struct __then_impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
@@ -50,13 +42,36 @@ namespace STDEXEC
         return __sync_attrs{__child};
       };
 
+      template <class _Fun>
+      static consteval auto __transform_value_completion() noexcept
+      {
+        return []<class... _Args>()
+        {
+          if constexpr (__nothrow_invocable<_Fun, _Args...>)
+          {
+            return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>>();
+          }
+          else if constexpr (__invocable<_Fun, _Args...>)
+          {
+            return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>,
+                                         set_error_t(std::exception_ptr)>();
+          }
+          else
+          {
+            return STDEXEC::__throw_compile_time_error(
+              __callable_error_t<then_t, _Fun, _Args...>());
+          }
+        };
+      }
+
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __completions_t<__decay_t<__data_of<_Sender>>, __child_of<_Sender>, _Env...>
+      static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Sender, then_t>);
-        // TODO: update this to use constant evaluation:
-        return {};
+        using __fn_t = __decay_t<__data_of<_Sender>>;
+        return STDEXEC::__transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
+          __transform_value_completion<__fn_t>());
       };
 
       struct __complete_fn
