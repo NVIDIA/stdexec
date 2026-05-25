@@ -291,7 +291,6 @@ namespace STDEXEC
       auto __initial_completions = get_completion_signatures<_CvInitialSender, _Env...>();
       STDEXEC_IF_OK(__initial_completions)
       {
-        using __initial_completions_t = decltype(__initial_completions);
         auto __final_completions =
           get_completion_signatures<_CvFinalSender, __mk_final_env_t<_CvInitialSender, _Env>...>();
         STDEXEC_IF_OK(__final_completions)

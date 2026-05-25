@@ -676,7 +676,6 @@ namespace STDEXEC
     {
       using __res_t =
         __detail::__system_bulk_op<_IsUnchunked, _Previous, _Size, _Fn, _Rcvr, _Parallelize>;
-      using __receiver_t = __res_t::__intermediate_receiver_t;
       return {
         std::move(*this),
         std::move(__rcvr),
