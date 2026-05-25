@@ -25,6 +25,11 @@
 #include <exception>
 #include <tuple>
 
+#if STDEXEC_APPLE_CLANG()
+#  error                                                                                           \
+    "at_coroutine_exit is not supported on Apple Clang due to a compiler bug that causes use-after-scope."
+#endif
+
 namespace experimental::execution
 {
   namespace __at_coro_exit
