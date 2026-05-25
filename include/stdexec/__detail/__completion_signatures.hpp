@@ -500,7 +500,7 @@ namespace STDEXEC
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
-  // __gather_completion_signatures_t
+  // __gather_completions_t
   namespace __detail
   {
     template <class _WantedTag>

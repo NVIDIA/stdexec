@@ -857,15 +857,11 @@ namespace experimental::execution
       struct __gather_sequences_t
       {
         template <class _Completions>
-        using __f = STDEXEC::__gather_completion_signatures_t<
-          _Completions,
+        using __f = STDEXEC::__gather_completions_t<
           STDEXEC::set_value_t,
-          // if set_value
-          __arg_of_t<_Sequence, _Sender, _Env...>::template __f,
-          // else remove
-          STDEXEC::__mconst<STDEXEC::__mlist<>>::__f,
-          // concat to __mlist result
-          STDEXEC::__mtry<STDEXEC::__mconcat<STDEXEC::__q<STDEXEC::__mlist>>>::__f>;
+          _Completions,
+          __arg_of_t<_Sequence, _Sender, _Env...>,
+          STDEXEC::__mtry<STDEXEC::__mconcat<STDEXEC::__qq<STDEXEC::__mlist>>>>;
       };
 
       template <class _Sequence, class _Sender, class... _Env>
