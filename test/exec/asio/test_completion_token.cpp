@@ -204,6 +204,7 @@ namespace
     CHECK(ctx.stopped());
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <typename CompletionToken>
   decltype(auto) async_throw_from_initiation(CompletionToken&& token)
   {
@@ -262,6 +263,7 @@ namespace
     CHECK(ctx.stopped());
     CHECK(ex);
   }
+#endif
 
   TEST_CASE("When an operation is abandoned this is reported via a stopped "
             "signal",
@@ -346,6 +348,7 @@ namespace
     CHECK(ptr.use_count() == 1U);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <typename Executor, typename CompletionToken>
   decltype(auto) async_indirect_completion_handler_throw_from_completion(Executor const &       ex,
                                                                          std::shared_ptr<void>& ptr,
@@ -417,6 +420,7 @@ namespace
     ptr.reset();
     CHECK(ex);
   }
+#endif
 
   template <typename CompletionToken>
   decltype(auto) async_multishot(CompletionToken&& token)
@@ -568,6 +572,7 @@ namespace
     b.join();
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("When the initiating function posts and then throws, and the "
             "posted operation simply abandons the completion handler, the operation "
             "completes after the post with the thrown error",
@@ -695,6 +700,7 @@ namespace
     start_shared(std::move(b));
     CHECK(ex);
   }
+#endif
 
   struct value_category_receiver
   {
@@ -978,6 +984,7 @@ namespace
     CHECK(!cancelled);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("Upon exception the stop token is no longer in use", "[asioexec][use_sender]")
   {
     bool                           cancelled = false;
@@ -1079,6 +1086,7 @@ namespace
     CHECK(ctx.stopped());
     CHECK(ex);
   }
+#endif
 
   TEST_CASE("I/O objects may be transformed to use senders as their default vocabulary with only "
             "minimal "
