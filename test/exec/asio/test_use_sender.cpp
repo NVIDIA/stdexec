@@ -203,6 +203,7 @@ namespace
       token);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("Error codes native to the version of Asio used are transformed "
             "into a system_error",
             "[asioexec][use_sender]")
@@ -238,6 +239,7 @@ namespace
     REQUIRE(ex);
     CHECK_THROWS_AS(std::rethrow_exception(std::move(ex)), std::system_error);
   }
+#endif
 
   TEST_CASE("I/O objects may be transformed to use senders as their default vocabulary",
             "[asioexec][use_sender]")
@@ -270,7 +272,7 @@ namespace
     CHECK(ctx.stopped());
   }
 
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <typename Timer>
   ::STDEXEC::task<void> test_awaitable_in_stdexec_task(Timer& timer)
   {

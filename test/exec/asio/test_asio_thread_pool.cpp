@@ -136,6 +136,7 @@ namespace
     CHECK(k == 5);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("asio_thread_pool exceptions", "[asio_thread_pool]")
   {
     using namespace STDEXEC;
@@ -158,6 +159,7 @@ namespace
       CHECK(tbb_result == other_result);
     }
   }
+#endif
 
   TEST_CASE("asio_thread_pool async_inclusive_scan", "[asio_thread_pool]")
   {
