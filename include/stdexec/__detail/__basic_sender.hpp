@@ -236,6 +236,16 @@ namespace STDEXEC
     using receiver_concept = receiver_tag;
     using __index_t        = __msize_t<_Idx>;
 
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr explicit __rcvr(_State& __state) noexcept
+      : __state_(__state)
+    {}
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __rcvr(__rcvr const & __other) noexcept
+      : __state_(__other.__state_)
+    {}
+
     template <class... _Args>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr void set_value(_Args&&... __args) noexcept
