@@ -75,11 +75,7 @@ foreach(example ${stdexec_examples})
   def_example(${example})
 endforeach()
 
-if (STDEXEC_BUILD_PARALLEL_SCHEDULER)
-  target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
-else()
-  target_compile_definitions(example.sudoku PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
-endif()
+target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
