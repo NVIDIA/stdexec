@@ -16,168 +16,252 @@
  * limitations under the License.
  */
 
-#include <catch2/catch_all.hpp>
-
-#include <type_traits>
-#include <utility>
-
-#include <exec/completion_signatures.hpp>
-#include <exec/single_thread_context.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/receivers.hpp>
+#include <stdexec/__detail/__basic_sender.hpp>
+#include <stdexec/__detail/__completion_signatures.hpp>
+#include <stdexec/__detail/__optional.hpp>
+#include <stdexec/__detail/__queries.hpp>
 
 namespace
 {
-
-  template <typename T>
-  struct receiver : expect_void_receiver<>
+  struct query_t
   {
-    [[nodiscard]]
-    constexpr ::STDEXEC::env<> get_env() const noexcept
+    template <class Env>
+    decltype(auto) operator()(Env const & env) const noexcept
     {
-      return state_->get_env();
-    }
-    T* state_;
-  };
-
-  struct state
-  {
-    [[nodiscard]]
-    constexpr ::STDEXEC::env<> get_env() const noexcept
-    {
-      return {};
+      return env.query(*this);
     }
   };
 
-  static_assert(!std::is_same_v<void,
-                                decltype(::STDEXEC::connect(
-                                  ::STDEXEC::just()
-                                    | ::STDEXEC::write_env(::STDEXEC::prop{
-                                      ::STDEXEC::get_stop_token,
-                                      std::declval<::STDEXEC::inplace_stop_source&>().get_token()}),
-                                  receiver<state>{{}, nullptr}))>);
+  inline constexpr query_t query;
+}  // namespace
 
-  TEST_CASE("write_env works when the actual environment is sourced from a type which was "
-            "initially "
-            "incomplete but has since been completed",
-            "[adaptors][write_env]")
+namespace STDEXEC
+{
+  namespace __read_env
   {
-    ::STDEXEC::inplace_stop_source source;
-    state                          s;
-    auto                           op = ::STDEXEC::connect(::STDEXEC::just()
-                                   | ::STDEXEC::write_env(::STDEXEC::prop{::STDEXEC::get_stop_token,
-                                                                          source.get_token()}),
-                                 receiver<state>{{}, &s});
-    ::STDEXEC::start(op);
-  }
+    template <class _Receiver, class _Query>
+    struct __opstate
+    {
+      constexpr void start() noexcept
+      {
+        // make sure our simplification stays valid
+        static_assert(std::is_reference_v<decltype(_Query()(__rcvr_.get_env()))>);
 
-  template <class IncompleteType, class Env = STDEXEC::env_of_t<IncompleteType>>
+        // The query returns a reference type; pass it straight through to the receiver.
+        auto&& result = _Query()(__rcvr_.get_env());
+        std::printf("completing with %p\n", (void*) &result);
+        static_cast<_Receiver&&>(__rcvr_).set_value(static_cast<decltype(result)&&>(result));
+      }
+
+      _Receiver __rcvr_;
+    };
+
+    struct __read_env_impl : __sexpr_defaults
+    {
+      template <class _Self, class _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        using __query_t = __data_of<_Self>;
+        {
+          using __result_t = __call_result_t<__query_t, _Env>;
+          return completion_signatures<set_value_t(__result_t)>();
+        }
+      };
+
+      static constexpr auto __connect =
+        []<class _Self, class _Receiver>(_Self const &, _Receiver&& __rcvr) noexcept
+      {
+        using __query_t = __data_of<_Self>;
+        return __opstate<_Receiver, __query_t>{static_cast<_Receiver&&>(__rcvr)};
+      };
+    };
+  }  // namespace __read_env
+
+  struct __read_env_t
+  {
+    template <class _Query>
+    constexpr auto operator()(_Query) const noexcept
+    {
+      return __make_sexpr<__read_env_t>(_Query());
+    }
+  };
+
+  inline constexpr __read_env_t read_env{};
+
+  template <>
+  struct __sexpr_impl<__read_env_t> : __read_env::__read_env_impl
+  {};
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // __write adaptor
+  namespace __write
+  {
+    struct __write_env_impl : __sexpr_defaults
+    {
+      static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+      {
+        auto&& logger = query(__state.__data_);
+        std::printf("write_env::get_env %p\n", (void const *) &logger);
+        return __state.__data_;
+      };
+
+      template <class _Self, class... _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        return completion_signatures<set_value_t(int)>();
+      }
+    };
+  }  // namespace __write
+
+  struct __write_env_t
+  {
+    template <sender _Sender, class _Env>
+    constexpr auto operator()(_Sender&& __sndr, _Env __env) const
+    {
+      return __make_sexpr<__write_env_t>(static_cast<_Env&&>(__env),
+                                         static_cast<_Sender&&>(__sndr));
+    }
+  };
+
+  inline constexpr __write_env_t write_env{};
+
+  template <>
+  struct __sexpr_impl<__write_env_t> : __write::__write_env_impl
+  {};
+}  // namespace STDEXEC
+
+#include <memory>
+
+namespace
+{
+  struct logger
+  {
+    logger() noexcept
+    {
+      std::printf("default %p\n", (void*) this);
+    }
+
+    logger(logger const & other) noexcept
+    {
+      std::printf("copy from %p to %p\n", (void const *) &other, (void*) this);
+    }
+
+    logger(logger&& other) noexcept
+    {
+      std::printf("move from %p to %p\n", (void*) &other, (void*) this);
+    }
+
+    ~logger()
+    {
+      std::printf("destroy %p\n", (void*) this);
+    }
+
+    logger& operator=(logger const & rhs) noexcept
+    {
+      std::printf("copy= from %p to %p\n", (void const *) &rhs, (void*) this);
+      return *this;
+    }
+
+    logger& operator=(logger&& rhs) noexcept
+    {
+      std::printf("move= from %p to %p\n", (void*) &rhs, (void*) this);
+      return *this;
+    }
+  };
+  using namespace STDEXEC;
+
+  template <class IncompleteType, class Env = env_of_t<IncompleteType>>
   struct ReceiverIncomplete
   {
-    using receiver_concept = STDEXEC::receiver_tag;
+    using receiver_concept = receiver_tag;
 
     IncompleteType* m_ptr;
 
-    void set_value() && noexcept
+    template <class V>
+    void set_value(V&&) && noexcept
     {
-      STDEXEC::set_value(std::move(m_ptr->rcvr));
-    }
-
-    template <typename Error>
-    void set_error(Error&& error) && noexcept
-    {
-      STDEXEC::set_error(std::move(m_ptr->rcvr), std::forward<Error>(error));
+      using rcvr_t = decltype(m_ptr->rcvr);
+      static_cast<rcvr_t&&>(m_ptr->rcvr).set_value();
     }
 
     [[nodiscard]]
     constexpr auto get_env() const noexcept -> Env
     {
-      return STDEXEC::get_env(*m_ptr);
+      auto&& logger = query(m_ptr->rcvr.get_env());
+      std::printf("ReceiverIncomplete::get_env %p\n", (void const *) &logger);
+      return m_ptr->rcvr.get_env();
     }
   };
 
-  template <STDEXEC::sender Sndr, STDEXEC::receiver Rcvr>
+  template <sender Sndr, receiver Rcvr>
   struct OpStateIncomplete
   {
-    using operation_state_concept = STDEXEC::operation_state_tag;
+    using operation_state_concept = operation_state_tag;
 
-    using rcvr_t          = ReceiverIncomplete<OpStateIncomplete, STDEXEC::env_of_t<Rcvr>>;
-    using inner_opstate_t = STDEXEC::connect_result_t<Sndr, rcvr_t>;
+    using rcvr_t          = ReceiverIncomplete<OpStateIncomplete, env_of_t<Rcvr>>;
+    using inner_opstate_t = connect_result_t<Sndr, rcvr_t>;
 
     Rcvr            rcvr;
     inner_opstate_t inner_opstate;
 
     OpStateIncomplete(Sndr&& sndr, Rcvr rcvr_)
-      : rcvr(std::move(rcvr_))
-      , inner_opstate(STDEXEC::connect(std::forward<Sndr>(sndr), rcvr_t{this}))
+      : rcvr(static_cast<Rcvr&&>(rcvr_))
+      , inner_opstate(connect(static_cast<Sndr&&>(sndr), rcvr_t{this}))
     {}
 
     void start() & noexcept
     {
-      STDEXEC::start(inner_opstate);
-    }
-
-    [[nodiscard]]
-    constexpr auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr>
-    {
-      return STDEXEC::get_env(rcvr);
+      inner_opstate.start();
     }
   };
 
-  template <STDEXEC::sender Sndr>
+  template <sender Sndr>
   struct SenderIncomplete
   {
-    using sender_concept = STDEXEC::sender_tag;
+    using sender_concept = sender_tag;
 
     template <class Self, class... Env>
-    static consteval auto get_completion_signatures()
+    static consteval auto get_completion_signatures() -> completion_signatures<set_value_t()>
     {
-      return exec::get_child_completion_signatures<Self, Sndr, Env...>();
+      return {};
     }
 
-    template <STDEXEC::receiver Rcvr>
+    template <receiver Rcvr>
     auto connect(Rcvr rcvr) && -> OpStateIncomplete<Sndr, Rcvr>
     {
-      return {std::forward<Sndr>(sndr), std::move(rcvr)};
+      return {static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr)};
     }
 
     Sndr sndr;
   };
 
-  struct incomplete_t
+  using result_t = std::optional<int>;
+}  // namespace
+
+int main()
+{
+  //alignas(64)
+  char     state[246]{};
+  result_t result{};
+
+  struct receiver_t
   {
-    constexpr auto operator()() const noexcept
+    using receiver_concept = receiver_tag;
+
+    void set_value() && noexcept
     {
-      return STDEXEC::__closure(*this);
+      result->emplace(0);
     }
 
-    template <typename Sndr>
-    constexpr auto operator()(Sndr&& sndr) const -> SenderIncomplete<Sndr>
-    {
-      return {std::forward<Sndr>(sndr)};
-    }
+    void*     state;
+    result_t* result;
   };
 
-  inline constexpr incomplete_t incomplete{};
+  logger const alloc;
+  auto         op = write_env(SenderIncomplete(read_env(query)), prop{query, alloc})
+              .connect(receiver_t{&state, &result});
 
-  TEST_CASE("write_env with a receiver pointing to an incomplete operation state",
-            "[adaptors][write_env]")
-  {
-    exec::single_thread_context stc{};
+  op.start();
 
-    int value = 0;
-
-    STDEXEC::sender auto sndr =
-      STDEXEC::read_env(STDEXEC::get_allocator)
-      | STDEXEC::then([](auto allocator)
-                      { static_assert(std::same_as<decltype(allocator), std::allocator<int>>); })
-      | STDEXEC::continues_on(stc.get_scheduler()) | incomplete()
-      | STDEXEC::write_env(STDEXEC::prop{STDEXEC::get_allocator, std::allocator<int>{}})
-      | STDEXEC::then([&value]() { ++value; });
-
-    STDEXEC::sync_wait(std::move(sndr));
-
-    CHECK(value == 1);
-  }
-
-}  // namespace
+  return 0;
+}
