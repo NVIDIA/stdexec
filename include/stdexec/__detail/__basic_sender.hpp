@@ -236,7 +236,6 @@ namespace STDEXEC
     using receiver_concept = receiver_tag;
     using __index_t        = __msize_t<_Idx>;
 
-
 #if STDEXEC_APPLE_CLANG()
     // These constructors are a work-around for bad codegen with apple-clang
     STDEXEC_ATTRIBUTE(always_inline)
