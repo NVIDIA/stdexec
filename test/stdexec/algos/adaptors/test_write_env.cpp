@@ -21,6 +21,8 @@
 #include <stdexec/__detail/__optional.hpp>
 #include <stdexec/__detail/__queries.hpp>
 
+#include <optional>
+
 namespace
 {
   struct query_t
@@ -130,8 +132,6 @@ namespace STDEXEC
   {};
 }  // namespace STDEXEC
 
-#include <memory>
-
 namespace
 {
   struct logger
@@ -208,6 +208,8 @@ namespace
       : rcvr(static_cast<Rcvr&&>(rcvr_))
       , inner_opstate(connect(static_cast<Sndr&&>(sndr), rcvr_t{this}))
     {}
+
+    OpStateIncomplete(OpStateIncomplete&&) = delete;
 
     void start() & noexcept
     {
