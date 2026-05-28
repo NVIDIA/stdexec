@@ -114,8 +114,7 @@ set_target_properties(
 target_include_directories(common_test_settings
                            INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_definitions(
-  common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution
-                                 $<$<PLATFORM_ID:Windows>:NOMINMAX>)
+  common_test_settings INTERFACE $<$<PLATFORM_ID:Windows>:NOMINMAX>)
 target_compile_options(
   common_test_settings
   INTERFACE
@@ -163,7 +162,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 target_link_libraries(
   test.stdexec
-  PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
+  PUBLIC STDEXEC::stdexec STDEXEC::parallel_scheduler stdexec_executable_flags
+         Catch2::Catch2WithMain
   PRIVATE common_test_settings)
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
