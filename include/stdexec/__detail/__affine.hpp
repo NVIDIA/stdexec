@@ -17,7 +17,7 @@
 
 #include "__basic_sender.hpp"
 #include "__completion_behavior.hpp"
-#include "__finally.hpp"
+#include "__continues_on.hpp"
 #include "__schedulers.hpp"
 #include "__senders.hpp"
 #include "__unstoppable.hpp"
@@ -31,6 +31,36 @@ namespace STDEXEC
 
   namespace __affine
   {
+    template <class _Scheduler>
+    struct __unstoppable_scheduler
+    {
+      using scheduler_concept = typename _Scheduler::scheduler_concept;
+
+      template <class _Q, class... _Args>
+        requires requires {
+          __declval<_Scheduler>().query(__declval<_Q const &>(), __declval<_Args>()...);
+        }
+      auto query(_Q const &__q, _Args &&...__args) const noexcept -> decltype(auto)
+      {
+        return __scheduler_.query(__q, static_cast<_Args &&>(__args)...);
+      }
+
+      auto schedule() const noexcept(std::is_nothrow_invocable_v<schedule_t, _Scheduler>)
+      {
+        return STDEXEC::unstoppable(STDEXEC::schedule(__scheduler_));
+      }
+
+      friend auto operator==(__unstoppable_scheduler const &, __unstoppable_scheduler const &)
+        -> bool = default;
+
+      _Scheduler __scheduler_;
+    };
+
+    template <class _Sender>
+    concept __has_affine_member = requires(_Sender &&__sndr) {
+      { static_cast<_Sender &&>(__sndr).affine() } -> sender;
+    };
+
     // For a given completion tag, a sender is "already affine" if either it doesn't send
     // that tag, or if its completion behavior for that tag is already "inline" or
     // "__asynchronous_affine".
@@ -84,6 +114,11 @@ namespace STDEXEC
         // we can just return the child sender. Otherwise, we need to wrap it.
         return STDEXEC::__forward_like<_Sender>(__child);
       }
+      else if constexpr (__affine::__has_affine_member<__cv_child_t>)
+      {
+        // If the child has member function `affine`, We use it.
+        return STDEXEC::__forward_like<_Sender>(__child).affine();
+      }
       else if constexpr (__same_as<__sched_t, __not_a_scheduler<>>)
       {
         // The environment doesn't have a scheduler, so we can't adapt the sender to be
@@ -111,8 +146,8 @@ namespace STDEXEC
         // The child sender is compatible with the environment, but isn't already affine, and
         // the environment has an infallible scheduler, so we can adapt the sender to run on
         // that scheduler, which will make it affine.
-        return STDEXEC::__finally_(STDEXEC::__forward_like<_Sender>(__child),
-                                   unstoppable(schedule(get_start_scheduler(__env))));
+        return continues_on(STDEXEC::__forward_like<_Sender>(__child),
+                            __affine::__unstoppable_scheduler{get_start_scheduler(__env)});
       }
     }
   };
