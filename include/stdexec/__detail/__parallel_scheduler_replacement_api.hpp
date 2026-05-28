@@ -36,9 +36,7 @@ import stdexec;
 namespace STDEXEC::parallel_scheduler_replacement
 {
   //! Get the backend for the parallel scheduler.
-  //! Users might replace this function.
   STDEXEC_MODULE_EXPORT
-  STDEXEC_ATTRIBUTE(weak)
   auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>;
 
   //! The type of a factory that can create `parallel_scheduler_backend`
