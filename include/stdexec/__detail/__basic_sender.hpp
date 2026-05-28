@@ -275,6 +275,20 @@ namespace STDEXEC
       return __sexpr_impl<_Tag>::__get_env(__index_t(), const_cast<_State const &>(__state_));
     }
 
+    constexpr explicit __rcvr(_State& __state) noexcept
+      : __state_(__state)
+    {}
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __rcvr(__rcvr const & __other) noexcept
+      : __state_(__other.__state_)
+    {}
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __rcvr(__rcvr&& __other) noexcept
+      : __state_(__other.__state_)
+    {}
+
     _State& __state_;
   };
 
