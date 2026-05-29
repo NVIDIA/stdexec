@@ -265,8 +265,8 @@ namespace STDEXEC
       noexcept(__nothrow_queryable_with<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
         -> __query_result_t<__1st_env_t<_Query, _Args...>, _Query, _Args...>
     {
-      auto const &__env = __detail::__get_1st_env<_Query, _Args...>()(*this);
-      return __env.query(_Query(), static_cast<_Args &&>(__args)...);
+      return __detail::__get_1st_env<_Query, _Args...>()(*this)
+               .query(_Query(), static_cast<_Args &&>(__args)...);
     }
   };
 
