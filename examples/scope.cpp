@@ -100,7 +100,7 @@ auto main() -> int
 
   {
     sender auto nest = scope.nest(begin);
-    auto        op   = connect(std::move(nest), noop_receiver{});
+    auto        op   = stdexec::connect(std::move(nest), noop_receiver{});
     (void) op;
   }
   sync_wait(scope.on_empty());
