@@ -47,6 +47,9 @@ function(def_example example)
                                                          # emitted from stdlib
                                                          # headers, why?
       $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
+  target_compile_definitions(${target} PRIVATE
+    $<$<PLATFORM_ID:Windows>:NOMINMAX>
+  )
   target_link_libraries(
     ${target}
     PRIVATE STDEXEC::stdexec stdexec_executable_flags stdexec_example_settings
