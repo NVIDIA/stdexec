@@ -18,8 +18,10 @@
 #include "../stdexec/__detail/__concepts.hpp"
 
 #include <cstddef>
+#include <cstring>
 #include <memory>
 #include <memory_resource>
+#include <new>
 
 #include "../stdexec/__detail/__prologue.hpp"
 
@@ -48,6 +50,30 @@ namespace experimental::execution
 {
   namespace __mem_rsc_adpt
   {
+    template <class... _Args>
+    concept __can_globally_delete =  //
+      requires(_Args... __args) {
+        { ::operator delete(__args...) } -> std::same_as<void>;
+      };
+
+    struct __global_delete_fn
+    {
+      template <class _Void, class _Size, class _Align>
+        requires __can_globally_delete<_Void, _Size, _Align>
+      constexpr void operator()(_Void __p, _Size __size, _Align __align) const noexcept
+      {
+        ::operator delete(__p, __size, __align);
+      }
+
+      template <class _Void, class _Size, class _Align>
+      constexpr void operator()(_Void __p, _Size, _Align __align) const noexcept
+      {
+        ::operator delete(__p, __align);
+      }
+    };
+
+    inline constexpr __global_delete_fn __global_delete{};
+
     using namespace STDEXEC;
 
     template <class _Adaptee>
@@ -77,7 +103,7 @@ namespace experimental::execution
                                   std::size_t __bytes,
                                   std::size_t __align = alignof(std::max_align_t)) const noexcept
         {
-          ::operator delete(__p, __bytes, static_cast<std::align_val_t>(__align));
+          __global_delete(__p, __bytes, static_cast<std::align_val_t>(__align));
         }
 
        private:
