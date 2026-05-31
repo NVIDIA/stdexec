@@ -50,6 +50,14 @@ namespace experimental::execution
 {
   namespace __mem_rsc_adpt
   {
+
+// some old versions of Clang, GCC, and MSVC have non-constexpr new/delete
+#if defined(__cpp_lib_constexpr_new) && __cpp_lib_constexpr_new >= 202406L
+#  define STDEXEC_CONSTEXPR_ALLOC constexpr
+#else
+#  define STDEXEC_CONSTEXPR_ALLOC
+#endif
+
     template <class... _Args>
     concept __can_globally_delete =  //
       requires(_Args... __args) {
@@ -60,13 +68,14 @@ namespace experimental::execution
     {
       template <class _Void, class _Size, class _Align>
         requires __can_globally_delete<_Void, _Size, _Align>
-      constexpr void operator()(_Void __p, _Size __size, _Align __align) const noexcept
+      STDEXEC_CONSTEXPR_ALLOC void
+      operator()(_Void __p, _Size __size, _Align __align) const noexcept
       {
         ::operator delete(__p, __size, __align);
       }
 
       template <class _Void, class _Size, class _Align>
-      constexpr void operator()(_Void __p, _Size, _Align __align) const noexcept
+      STDEXEC_CONSTEXPR_ALLOC void operator()(_Void __p, _Size, _Align __align) const noexcept
       {
         ::operator delete(__p, __align);
       }
@@ -93,37 +102,41 @@ namespace experimental::execution
         constexpr explicit type(std::allocator<_Ty> const &) noexcept
         {}
 
-        constexpr void *
-        allocate(std::size_t __bytes, std::size_t __align = alignof(std::max_align_t)) const
+        STDEXEC_CONSTEXPR_ALLOC
+        void *allocate(std::size_t __bytes, std::size_t __align = alignof(std::max_align_t)) const
         {
           return ::operator new(__bytes, static_cast<std::align_val_t>(__align));
         }
 
-        constexpr void deallocate(void       *__p,
-                                  std::size_t __bytes,
-                                  std::size_t __align = alignof(std::max_align_t)) const noexcept
+        STDEXEC_CONSTEXPR_ALLOC void
+        deallocate(void       *__p,
+                   std::size_t __bytes,
+                   std::size_t __align = alignof(std::max_align_t)) const noexcept
         {
           __global_delete(__p, __bytes, static_cast<std::align_val_t>(__align));
         }
 
        private:
-        constexpr void *do_allocate(std::size_t __bytes, std::size_t __align) final
+        STDEXEC_CONSTEXPR_ALLOC void *do_allocate(std::size_t __bytes, std::size_t __align) final
         {
           return allocate(__bytes, __align);
         }
 
-        constexpr void
+        STDEXEC_CONSTEXPR_ALLOC void
         do_deallocate(void *__p, std::size_t __bytes, std::size_t __align) noexcept final
         {
           deallocate(__p, __bytes, __align);
         }
 
-        constexpr bool do_is_equal(std::pmr::memory_resource const &__other) const noexcept final
+        STDEXEC_CONSTEXPR_ALLOC bool
+        do_is_equal(std::pmr::memory_resource const &__other) const noexcept final
         {
           return !!dynamic_cast<type const *>(&__other);
         }
       };
     };
+
+#undef STDEXEC_CONSTEXPR_ALLOC
 
     //! Handle the case that _Adaptee is an allocator of std::bytes
     //!
