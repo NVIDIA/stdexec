@@ -14,8 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "./common.hpp"
+
+// ASIO requires a specific include order.
 #include <exec/asio/asio_thread_pool.hpp>
+//
+
+#include "./common.hpp"
 #include <exec/start_detached.hpp>
 
 struct RunThread
