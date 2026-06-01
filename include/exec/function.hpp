@@ -143,7 +143,7 @@ namespace experimental::execution
 
       constexpr explicit __opstate_base(_Receiver &&__rcvr)
         : __resource_(__choose_frame_allocator(__rcvr))
-        , __env_{get_frame_allocator, &__resource_}
+        , __env_(get_frame_allocator, std::pmr::polymorphic_allocator<>(&__resource_))
         , __rcvr_(static_cast<_Receiver &&>(__rcvr))
       {}
     };
