@@ -246,10 +246,14 @@ namespace experimental::execution
       _Attrs,
       _Env const &...>;
 
+    template <class _ActualDomain, class _ExpectedDomain>
+    concept __completion_domain_matches_impl =
+      __same_as<_ExpectedDomain, __common_domain_t<_ActualDomain, _ExpectedDomain>>;
+
     template <class _Tag, class _ActualAttrs, class _ExpectedAttrs, class... _Env>
     concept __completion_domain_matches =
-      __same_as<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
-                __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
+      __completion_domain_matches_impl<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
+                                       __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
 
     template <class _ActualAttrs, class _ExpectedAttrs, class... _Env>
     concept __completion_domains_match_impl =

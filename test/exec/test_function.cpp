@@ -500,10 +500,7 @@ namespace
     SECTION("the constraint applies to set_value")
     {
       using function =
-        exec::function<ex::sender_tag(),
-                       ex::completion_signatures<ex::set_value_t()>,
-                       queries,
-                       exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>) noexcept>>;
+        exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t()>, queries>;
 
       STATIC_REQUIRE(std::constructible_from<function, ex::just_t>);
 
@@ -513,9 +510,46 @@ namespace
       auto     error_domain = get_completion_domain<ex::set_error_t>(attrs);
       auto     stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
 
-      STATIC_REQUIRE(std::same_as<domain, decltype(value_domain)>);
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(value_domain)>);
       STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
       STATIC_REQUIRE(std::same_as<none_such, decltype(stop_domain)>);
+    }
+
+    SECTION("the constraint applies to set_error")
+    {
+      using function = exec::function<ex::sender_tag(int),
+                                      ex::completion_signatures<ex::set_error_t(int)>,
+                                      queries>;
+
+      STATIC_REQUIRE(std::constructible_from<function, int, ex::just_error_t>);
+
+      function fn(42, ex::just_error);
+      auto     attrs        = ex::get_env(fn);
+      auto     value_domain = get_completion_domain<ex::set_value_t>(attrs);
+      auto     error_domain = get_completion_domain<ex::set_error_t>(attrs);
+      auto     stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
+
+      STATIC_REQUIRE(std::same_as<none_such, decltype(value_domain)>);
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(error_domain)>);
+      STATIC_REQUIRE(std::same_as<none_such, decltype(stop_domain)>);
+    }
+
+    SECTION("the constraint applies to set_stopped")
+    {
+      using function =
+        exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>, queries>;
+
+      STATIC_REQUIRE(std::constructible_from<function, ex::just_stopped_t>);
+
+      function fn(ex::just_stopped);
+      auto     attrs        = ex::get_env(fn);
+      auto     value_domain = get_completion_domain<ex::set_value_t>(attrs);
+      auto     error_domain = get_completion_domain<ex::set_error_t>(attrs);
+      auto     stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
+
+      STATIC_REQUIRE(std::same_as<none_such, decltype(value_domain)>);
+      STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
     }
   }
 }  // namespace
