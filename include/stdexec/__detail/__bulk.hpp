@@ -34,7 +34,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.bulk]
+  // [exec.bulk]
   namespace __bulk
   {
     //! Wrapper for a policy object.

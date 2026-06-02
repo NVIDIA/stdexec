@@ -29,7 +29,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.connect]
+  // [exec.connect]
   namespace __connect
   {
     template <class _Sender, class _Receiver>

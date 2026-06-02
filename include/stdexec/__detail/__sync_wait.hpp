@@ -44,8 +44,8 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 namespace STDEXEC::__sync_wait
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.consumers.sync_wait]
-  // [execution.senders.consumers.sync_wait_with_variant]
+  // [exec.sync.wait]
+  // [exec.sync.wait.var]
   struct __env
   {
     template <__one_of<get_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
@@ -192,7 +192,7 @@ namespace STDEXEC::__sync_wait
 
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   ////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.consumers.sync_wait]
+  // [exec.sync.wait]
 
   //! @brief A sender consumer that synchronously blocks the calling thread
   //!        until a sender completes and returns its result.

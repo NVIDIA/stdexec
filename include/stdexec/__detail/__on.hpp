@@ -39,7 +39,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.on]
+  // [exec.on]
   struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_;
 
   namespace __on
