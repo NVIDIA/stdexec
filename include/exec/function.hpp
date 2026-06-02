@@ -141,11 +141,27 @@ namespace experimental::execution
       __prop_t                                 __env_;
       _any::_state<_Receiver, __stop_token_t>  __rcvr_;
 
-      constexpr explicit __opstate_base(_Receiver &&__rcvr)
-        : __resource_(__choose_frame_allocator(__rcvr))
+      explicit __opstate_base(_Receiver __rcvr)
+        : __resource_(__choose_frame_allocator(std::as_const(__rcvr)))
         , __env_(get_frame_allocator, std::pmr::polymorphic_allocator<>(&__resource_))
         , __rcvr_(static_cast<_Receiver &&>(__rcvr))
       {}
+
+     private:
+      //! the indirection through __make_env and __make_alloc is to work around what
+      //! appears to be miscompilation with Clang 16; initializing __env_ inline
+      //! rather than delegating to these helpers results in passing an invalid
+      //! address to the polymorphic_allocator constructor instead of the address of
+      //! __resource_, leading to segfaults
+      __prop_t __make_env()
+      {
+        return __prop_t(get_frame_allocator, __make_alloc());
+      }
+
+      std::pmr::polymorphic_allocator<> __make_alloc()
+      {
+        return std::pmr::polymorphic_allocator<>(&__resource_);
+      }
     };
 
     //! The concrete operation state resulting from connecting a function<...> to a
