@@ -552,4 +552,180 @@ namespace
       STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
     }
   }
+
+  //! a sender that wraps another, and tells the inner sender it's starting in domain
+  //! Domain, with the expectation that saying so will influence the inner sender's
+  //! completion domain, which this sender forwards out through its attributes
+  template <ex::sender Sender, class Domain>
+  class inject_domain
+  {
+    //! our inner sender will be connected to a receiver that prepends this type to
+    //! the outer receiver's environment, ensuring that the inner sender believes it's
+    //! running in the specified domain
+    struct env
+    {
+      constexpr Domain query(ex::get_domain_t) const noexcept
+      {
+        return Domain{};
+      }
+    };
+
+    //! advertise that we complete on whichever domain the inner sender completes on
+    //!
+    //! as used, this is expected to be Domain because the just family of senders
+    //! "complete where they start" so our receiver environment should ensure our
+    //! desired result
+    struct attrs
+    {
+      template <class Tag>
+      using domain_t =
+        ex::__call_result_t<ex::get_completion_domain_t<Tag>, ex::env_of_t<Sender>, env>;
+
+      template <class Tag, class... Env>
+      constexpr auto query(ex::get_completion_domain_t<Tag>, Env const &...) const noexcept  //
+        -> domain_t<Tag>
+      {
+        return domain_t<Tag>{};
+      }
+    };
+
+    template <class Receiver>
+    class opstate
+    {
+      struct receiver
+      {
+        using receiver_concept = ex::receiver_tag;
+
+        template <class... T>
+        constexpr void set_value(T &&...t) && noexcept
+        {
+          ex::set_value(std::move(self_->rcvr_), std::forward<T>(t)...);
+        }
+
+        template <class E>
+        constexpr void set_error(E &&e) && noexcept
+        {
+          ex::set_error(std::move(self_->rcvr_), std::forward<E>(e));
+        }
+
+        constexpr void set_stopped() && noexcept
+        {
+          ex::set_stopped(std::move(self_->rcvr_));
+        }
+
+        constexpr auto get_env() const noexcept  //
+          -> ex::__join_env_t<env, ex::env_of_t<Receiver>>
+        {
+          return ex::__env::__join(env{}, ex::get_env(self_->rcvr_));
+        }
+
+        opstate *self_;
+      };
+
+      Receiver                               rcvr_;
+      ex::connect_result_t<Sender, receiver> op_;
+
+     public:
+      using operation_state_concept = ex::operation_state_tag;
+
+      constexpr explicit opstate(Sender sndr, Receiver rcvr) noexcept
+        : rcvr_(std::move(rcvr))
+        , op_(ex::connect(std::move(sndr), receiver(this)))
+      {}
+
+      void start() & noexcept
+      {
+        ex::start(op_);
+      }
+    };
+
+    Sender sndr;
+
+   public:
+    using sender_concept = ex::sender_tag;
+
+    template <class...>
+    static consteval auto get_completion_signatures()  //
+      -> decltype(ex::get_completion_signatures<Sender>())
+    {
+      return ex::get_completion_signatures<Sender>();
+    }
+
+    explicit inject_domain(Sender sndr, Domain) noexcept
+      : sndr(std::move(sndr))
+    {}
+
+    constexpr attrs get_env() const noexcept
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    constexpr opstate<Receiver> connect(Receiver rcvr) && noexcept
+    {
+      return opstate<Receiver>(std::move(sndr), std::move(rcvr));
+    }
+  };
+
+  template <auto Tag>
+  using custom_domain_for = exec::attrs<domain(ex::get_completion_domain_t<decltype(Tag)>)>;
+
+  TEST_CASE("function can't be constructed with a sender that completes in the wrong domain",
+            "[types][function]")
+  {
+    //! convert the given sender factory to a factory that wraps the given factory's
+    //! result in an inject_domain sender
+    auto change_domain = [](auto &factory) noexcept
+    {
+      return [&](auto... values) noexcept
+      {
+        return inject_domain(factory(std::move(values)...), domain{});
+      };
+    };
+
+    SECTION("the constraint applies to set_value")
+    {
+      using function = exec::function<ex::sender_tag(),
+                                      ex::completion_signatures<ex::set_value_t()>,
+                                      exec::queries<>,
+                                      custom_domain_for<ex::set_value>>;
+
+      STATIC_REQUIRE(!std::constructible_from<function, ex::just_t>);
+
+      // double check that it *would* work if the sender reported a custom domain
+      using custom_just_t = decltype(change_domain(ex::just));
+
+      STATIC_REQUIRE(std::constructible_from<function, custom_just_t>);
+    }
+
+    SECTION("the constraint applies to set_error")
+    {
+      using function = exec::function<ex::sender_tag(int),
+                                      ex::completion_signatures<ex::set_error_t(int)>,
+                                      exec::queries<>,
+                                      custom_domain_for<ex::set_error>>;
+
+      STATIC_REQUIRE(!std::constructible_from<function, int, ex::just_error_t>);
+
+      // double check that it *would* work if the sender reported a custom domain
+      using custom_just_error_t = decltype(change_domain(ex::just_error));
+
+      STATIC_REQUIRE(std::constructible_from<function, int, custom_just_error_t>);
+    }
+
+    SECTION("the constraint applies to set_stopped")
+    {
+      using function = exec::function<ex::sender_tag(),
+                                      ex::completion_signatures<ex::set_stopped_t()>,
+                                      exec::queries<>,
+                                      custom_domain_for<ex::set_stopped>>;
+
+      STATIC_REQUIRE(!std::constructible_from<function, ex::just_stopped_t>);
+
+      // double check that it *would* work if the sender reported a custom domain
+      using custom_just_stopped_t = decltype(change_domain(ex::just_stopped));
+
+      STATIC_REQUIRE(std::constructible_from<function, custom_just_stopped_t>);
+    }
+  }
 }  // namespace
