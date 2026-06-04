@@ -228,8 +228,11 @@ namespace experimental::execution
     template <class _Tag, class... _Attrs>
     inline constexpr auto __make_domain = __first_callable<__make_domain_impl<_Tag, _Attrs>...>();
 
+    template <class _Attrs>
+    struct __attrs;
+
     template <class... _Attrs>
-    struct __attrs
+    struct __attrs<attrs<_Attrs...>>
     {
       template <class _Tag, class... _Env>
       constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
@@ -265,8 +268,17 @@ namespace experimental::execution
     concept __completion_domains_match =
       __completion_domains_match_impl<env_of_t<_Actual>, env_of_t<_Expected>, _Env...>;
 
-    template <class _Sigs, class _Queries, class _Attrs, class... _Args>
-    class __function;
+    template <class _Queries, class... _Env>
+    struct __check_queries;
+
+    template <class... _Queries, class... _Env>
+    struct __check_queries<queries<_Queries...>, _Env...>
+    {
+      using type = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
+    };
+
+    template <class _Queries, class... _Env>
+    using __check_queries_t = __check_queries<_Queries, _Env...>::type;
 
     //! the main implementation of the type-erasing sender function<...>
     //
@@ -279,13 +291,13 @@ namespace experimental::execution
     //! not, as appropriate
     //!
     //! \tparam _Args The argument types used to construct the erased sender
-    template <class _Sigs, class... _Queries, class... _Attrs, class... _Args>
-    class __function<_Sigs, queries<_Queries...>, attrs<_Attrs...>, _Args...>
+    template <class _Sigs, class _Queries, class _Attrs, class... _Args>
+    class __function
     {
-      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, queries<_Queries...>>>;
+      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
       template <class _Receiver>
-      using __opstate_t = __opstate<_Receiver, _Sigs, queries<_Queries...>>;
+      using __opstate_t = __opstate<_Receiver, _Sigs, _Queries>;
 
       template <class _Factory>
       static constexpr auto
@@ -349,14 +361,13 @@ namespace experimental::execution
       {
         static_assert(__decays_to_derived_from<_Self, __function>);
         //! throw if _Env does not contain the queries needed to type-erase the receiver:
-        using __check_queries_t = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
-        if constexpr (__merror<__check_queries_t>)
-          return __throw_compile_time_error(__check_queries_t());
+        if constexpr (__merror<__check_queries_t<_Queries, _Env...>>)
+          return __throw_compile_time_error(__check_queries_t<_Queries, _Env...>());
         else
           return _Sigs();
       }
 
-      constexpr __attrs<_Attrs...> get_env() const noexcept
+      constexpr __attrs<_Attrs> get_env() const noexcept
       {
         return {};
       }
