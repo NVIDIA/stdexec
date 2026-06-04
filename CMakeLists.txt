@@ -173,11 +173,13 @@ endif()
 # Additionally, we require GCC-12 or newer for Relacy, at __atomic.hpp has fallback
 # when std::atomic<std::shared_ptr<>> is not provided, and GCC-12 is the first
 # libstdc++ that provides it.
+# Additionally, realacy is not ready for -fno-exceptions.
 if(
   ${STDEXEC_BUILD_TESTS} AND
   CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
   CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12 AND
-  NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize")
+  NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize" AND
+  NOT CMAKE_CXX_FLAGS MATCHES "-fno-exceptions")
   set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT ON)
 else()
   set(STDEXEC_BUILD_RELACY_TESTS_DEFAULT OFF)
