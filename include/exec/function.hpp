@@ -294,6 +294,13 @@ namespace experimental::execution
     template <class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function
     {
+      // check these with asserts rather than requires because the only way to violate
+      // them is to circumvent the exec::function alias template so any violation is
+      // a user hitting themselves
+      static_assert(__is_instance_of<_Sigs, completion_signatures>);
+      static_assert(__is_instance_of<_Queries, queries>);
+      static_assert(__is_instance_of<_Attrs, attrs>);
+
       using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
       template <class _Receiver>
