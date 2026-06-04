@@ -27,6 +27,73 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  template <class Channel, class Domain>
+  struct domain_sender_t
+  {
+    template <class... Values>
+    class sender
+    {
+      struct attrs
+      {
+        template <class... Env>
+        constexpr Domain query(ex::get_completion_domain_t<Channel>, Env const &...) const noexcept
+        {
+          return {};
+        }
+      };
+
+      template <class Receiver>
+      struct opstate
+      {
+        using operation_state_concept = ex::operation_state_tag;
+
+        void start() & noexcept
+        {
+          ex::__apply(Channel(), std::move(values), std::move(rcvr));
+        }
+
+        Receiver               rcvr;
+        ex::__tuple<Values...> values;
+      };
+
+      ex::__tuple<Values...> values_;
+
+     public:
+      using sender_concept = ex::sender_tag;
+
+      template <class S>
+      static consteval auto get_completion_signatures() noexcept  //
+        -> ex::completion_signatures<Channel(Values...)>
+      {
+        return {};
+      }
+
+      constexpr attrs get_env() const noexcept
+      {
+        return {};
+      }
+
+      constexpr explicit sender(Values... values) noexcept
+        : values_(values...)
+      {}
+
+      template <class Receiver>
+      opstate<Receiver> connect(Receiver rcvr) && noexcept
+      {
+        return opstate<Receiver>(std::move(rcvr), std::move(values_));
+      }
+    };
+
+    template <class... Values>
+    constexpr sender<Values...> operator()(Values... values) const noexcept
+    {
+      return sender(std::move(values)...);
+    }
+  };
+
+  template <auto Channel, class Domain>
+  inline constexpr domain_sender_t<decltype(Channel), Domain> domain_sender{};
+
   TEST_CASE("exec::function is constructible", "[types][function]")
   {
     SECTION("void()")
@@ -89,6 +156,49 @@ namespace
                      exec::queries<>>
         sndr(5, [](int) noexcept { return ex::just(); });
       STATIC_REQUIRE(STDEXEC::sender<decltype(sndr)>);
+    }
+
+    struct domain
+    {};
+
+    SECTION("void() with attrs but no queries")
+    {
+      exec::function<void(), exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>
+        sndr(domain_sender<ex::set_value, domain>);
+
+      STATIC_REQUIRE(ex::sender<decltype(sndr)>);
+    }
+
+    SECTION("void() noexcept with attrs but no queries")
+    {
+      exec::function<void() noexcept,
+                     exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>
+        sndr(domain_sender<ex::set_value, domain>);
+
+      STATIC_REQUIRE(ex::sender<decltype(sndr)>);
+    }
+
+    SECTION("sender_tag(int) with set_value_t(int) and attrs but no queries")
+    {
+      // TODO: validate that the required completion domains "match" the permitted completions
+      exec::function<ex::sender_tag(int),
+                     ex::completion_signatures<ex::set_value_t(int)>,
+                     exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>
+        sndr(42, domain_sender<ex::set_value, domain>);
+
+      STATIC_REQUIRE(ex::sender<decltype(sndr)>);
+    }
+
+    SECTION("sender_tag(int) with set_error_t(int), attrs, and trivial queries")
+    {
+      // TODO: validate that the required completion domains "match" the permitted completions
+      exec::function<ex::sender_tag(int),
+                     ex::completion_signatures<ex::set_error_t(int)>,
+		     exec::queries<>,
+                     exec::attrs<domain(ex::get_completion_domain_t<ex::set_error_t>)>>
+        sndr(42, domain_sender<ex::set_error, domain>);
+
+      STATIC_REQUIRE(ex::sender<decltype(sndr)>);
     }
   }
 

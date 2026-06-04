@@ -472,7 +472,8 @@ namespace experimental::execution
     //!   function<
     //!       sender_tag(Args...),
     //!       completion_signatures<Sigs...>,
-    //!       queries<Queries...>>
+    //!       queries<Queries...>,
+    //!       attrs<Attrs...>>
     //!
     //! where:
     //!  - Args... is the type-erased sender factory's parameter list
@@ -480,9 +481,11 @@ namespace experimental::execution
     //!            to advertise
     //!  - Queries... is the set of queries that the eventual receiver's environment must
     //!               support
+    //!  - Attrs... is the set of attributes the type-erased sender must report; only
+    //!             supports the specification of the sender's completion domains
     //!
-    //! The order of Args... is obviously important, but Sigs... and Queries... are both
-    //! canonicalized into a sorted and uniqued list to ensure order is irrelevant.
+    //! The order of Args... is obviously important, but Sigs..., Queries..., and Attrs...
+    //! are all canonicalized into a sorted and uniqued list to ensure order is irrelevant.
     template <class...>
     class __make_function;
 
@@ -549,6 +552,39 @@ namespace experimental::execution
       using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
       using __queries = __canonical_t<queries<_Queries...>>;
       using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class _Return, class... _Args, class... _Attrs>
+    class __make_function<_Return(_Args...), attrs<_Attrs...>>
+    {
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class _Return, class... _Args, class... _Attrs>
+    class __make_function<_Return(_Args...) noexcept, attrs<_Attrs...>>
+    {
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class... _Args, class... _Sigs, class... _Attrs>
+    class __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>, attrs<_Attrs...>>
+    {
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
 
      public:
       using type = __function<__sigs, __queries, __attrs, _Args...>;
