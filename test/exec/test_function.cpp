@@ -180,7 +180,6 @@ namespace
 
     SECTION("sender_tag(int) with set_value_t(int) and attrs but no queries")
     {
-      // TODO: validate that the required completion domains "match" the permitted completions
       exec::function<ex::sender_tag(int),
                      ex::completion_signatures<ex::set_value_t(int)>,
                      exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>
@@ -191,7 +190,6 @@ namespace
 
     SECTION("sender_tag(int) with set_error_t(int), attrs, and trivial queries")
     {
-      // TODO: validate that the required completion domains "match" the permitted completions
       exec::function<ex::sender_tag(int),
                      ex::completion_signatures<ex::set_error_t(int)>,
                      exec::queries<>,
