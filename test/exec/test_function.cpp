@@ -709,4 +709,75 @@ namespace
       STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_stopped_t, domain>>);
     }
   }
+
+  template <class Sigs, class Attrs>
+  concept function_exists = requires { typename exec::function<ex::sender_tag(), Sigs, Attrs>; };
+
+  TEST_CASE("function can't be specialized with invalid completion specifications")
+  {
+    SECTION("specifying a completion signature with no corresponding completion domain is fine")
+    {
+      STATIC_REQUIRE(function_exists<ex::completion_signatures<ex::set_value_t()>, exec::attrs<>>);
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_error_t(int)>, exec::attrs<>>);
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_stopped_t()>, exec::attrs<>>);
+    }
+
+    SECTION("specifying a completion domain is fine if you also specify a corresponding signature")
+    {
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_value_t()>,
+                        exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>);
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_error_t(int)>,
+                        exec::attrs<domain(ex::get_completion_domain_t<ex::set_error_t>)>>);
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_stopped_t()>,
+                        exec::attrs<domain(ex::get_completion_domain_t<ex::set_stopped_t>)>>);
+    }
+
+    SECTION("you may not specify a completion domain if there's no corresponding signature")
+    {
+      STATIC_REQUIRE(
+        !function_exists<ex::completion_signatures<ex::set_error_t(int)>,
+                         exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>);
+      STATIC_REQUIRE(
+        !function_exists<ex::completion_signatures<ex::set_value_t(int)>,
+                         exec::attrs<domain(ex::get_completion_domain_t<ex::set_error_t>)>>);
+      STATIC_REQUIRE(
+        !function_exists<ex::completion_signatures<ex::set_error_t(int)>,
+                         exec::attrs<domain(ex::get_completion_domain_t<ex::set_stopped_t>)>>);
+    }
+
+    SECTION("you may specify only some completion domains")
+    {
+      STATIC_REQUIRE(
+        function_exists<
+          ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int), ex::set_stopped_t()>,
+          exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>);
+      STATIC_REQUIRE(
+        function_exists<
+          ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int), ex::set_stopped_t()>,
+          exec::attrs<domain(ex::get_completion_domain_t<ex::set_error_t>)>>);
+      STATIC_REQUIRE(
+        function_exists<
+          ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int), ex::set_stopped_t()>,
+          exec::attrs<domain(ex::get_completion_domain_t<ex::set_stopped_t>)>>);
+    }
+
+    SECTION("sender attributes other than completion domain queries don't break")
+    {
+      // TODO: it's not obvious that it makes sense to support sender attributes other than
+      //       completion domain queries so this may be silly....
+      auto query = [](auto const &)
+      {
+        return 0;
+      };
+      using query_t = decltype(query);
+
+      STATIC_REQUIRE(
+        function_exists<ex::completion_signatures<ex::set_value_t()>, exec::attrs<int(query_t)>>);
+    }
+  }
 }  // namespace

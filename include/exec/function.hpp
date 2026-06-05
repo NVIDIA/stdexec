@@ -280,6 +280,46 @@ namespace experimental::execution
     template <class _Queries, class... _Env>
     using __check_queries_t = __check_queries<_Queries, _Env...>::type;
 
+    template <class _Attr>
+    struct __get_completion_domain_tag;
+
+    template <class _Tag, class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>)>
+    {
+      using type = _Tag;
+    };
+
+    template <class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<>)>
+    {
+      using type = set_value_t;
+    };
+
+    template <class _Tag, class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>) noexcept>
+      : __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>)>
+    {};
+
+    template <class _Attr>
+    using __get_completion_domain_tag_t = __get_completion_domain_tag<_Attr>::type;
+
+    template <class _Attrs, class _Tag>
+    inline constexpr bool __has_completion_domain = false;
+
+    template <class... _Attrs, class _Tag>
+      requires __one_of<_Tag, __get_completion_domain_tag_t<_Attrs>...>
+    inline constexpr bool __has_completion_domain<attrs<_Attrs...>, _Tag> = true;
+
+    //! it is undefined behaviour for a sender to advertise a completion domain for a
+    //! completion channel that it never completes on so make sure there are no
+    //! completion domains required by _Attrs that correspond to completion channels
+    //! not advertised as possible by _Sigs
+    template <class _Sigs, class _Attrs>
+    concept __completion_signatures_and_domains_are_compatible =
+      ((!__has_completion_domain<_Attrs, set_value_t>) || _Sigs::__count(set_value) > 0)     //
+      && ((!__has_completion_domain<_Attrs, set_error_t>) || _Sigs::__count(set_error) > 0)  //
+      && ((!__has_completion_domain<_Attrs, set_stopped_t>) || _Sigs::__count(set_stopped) > 0);
+
     //! the main implementation of the type-erasing sender function<...>
     //
     //! \tparam _Sigs The supported completion signatures
@@ -300,6 +340,7 @@ namespace experimental::execution
       static_assert(__is_instance_of<_Sigs, completion_signatures>);
       static_assert(__is_instance_of<_Queries, queries>);
       static_assert(__is_instance_of<_Attrs, attrs>);
+      static_assert(__completion_signatures_and_domains_are_compatible<_Sigs, _Attrs>);
 
       using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
@@ -576,6 +617,8 @@ namespace experimental::execution
     };
 
     template <class _Return, class... _Args, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<__sigs_from_t<_Return, false>,
+                                                                  attrs<_Attrs...>>
     class __make_function<_Return(_Args...), attrs<_Attrs...>>
     {
       using __sigs    = __sigs_from_t<_Return, false>;
@@ -587,6 +630,8 @@ namespace experimental::execution
     };
 
     template <class _Return, class... _Args, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<__sigs_from_t<_Return, true>,
+                                                                  attrs<_Attrs...>>
     class __make_function<_Return(_Args...) noexcept, attrs<_Attrs...>>
     {
       using __sigs    = __sigs_from_t<_Return, true>;
@@ -598,6 +643,8 @@ namespace experimental::execution
     };
 
     template <class... _Args, class... _Sigs, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<completion_signatures<_Sigs...>,
+                                                                  attrs<_Attrs...>>
     class __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>, attrs<_Attrs...>>
     {
       using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
@@ -609,6 +656,8 @@ namespace experimental::execution
     };
 
     template <class... _Args, class... _Sigs, class... _Queries, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<completion_signatures<_Sigs...>,
+                                                                  attrs<_Attrs...>>
     class __make_function<sender_tag(_Args...),
                           completion_signatures<_Sigs...>,
                           queries<_Queries...>,
