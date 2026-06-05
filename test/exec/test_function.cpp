@@ -87,12 +87,12 @@ namespace
     template <class... Values>
     constexpr sender<Values...> operator()(Values... values) const noexcept
     {
-      return sender(std::move(values)...);
+      return sender<Values...>(std::move(values)...);
     }
   };
 
   template <auto Channel, class Domain>
-  inline constexpr domain_sender_t<decltype(Channel), Domain> domain_sender{};
+  inline constexpr domain_sender_t<std::remove_cvref_t<decltype(Channel)>, Domain> domain_sender{};
 
   TEST_CASE("exec::function is constructible", "[types][function]")
   {
