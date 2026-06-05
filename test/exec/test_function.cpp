@@ -662,7 +662,8 @@ namespace
   }
 
   template <auto Tag>
-  using custom_domain_for = exec::attrs<domain(ex::get_completion_domain_t<decltype(Tag)>)>;
+  using custom_domain_for =
+    exec::attrs<domain(ex::get_completion_domain_t<std::remove_cvref_t<decltype(Tag)>>)>;
 
   TEST_CASE("function can't be constructed with a sender that completes in the wrong domain",
             "[types][function]")
