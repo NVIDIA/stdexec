@@ -200,7 +200,7 @@ namespace STDEXEC
     __call_result_t<__get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{};
 
   template <class _Tag, class _Attrs, class... _Env>
-  concept __completes_inline = (__completion_behavior_of_v<_Tag, _Attrs, _Env...>
+  concept __completes_inline = (__completion_behavior_of_v<_Tag, _Attrs, _Env...>.value
                                 == __completion_behavior::__inline_completion);
 
   template <class _Tag, class _Attrs, class... _Env>
