@@ -16,7 +16,8 @@
 
 add_library(stdexec_example_settings INTERFACE)
 
-target_compile_definitions(stdexec_example_settings INTERFACE STDEXEC_NAMESPACE=stdexec)
+target_compile_definitions(stdexec_example_settings INTERFACE
+  $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,26.3.0>>:STDEXEC_NAMESPACE=stdexec>)
 
 function(split pair name_out path_out)
     string(STRIP "${pair}" pair)
