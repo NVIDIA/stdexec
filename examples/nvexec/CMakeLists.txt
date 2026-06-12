@@ -42,6 +42,7 @@ target_include_directories(nvexec_example
 )
 target_link_libraries(nvexec_example
     INTERFACE nvexec_executable_flags
+              stdexec_example_settings
 )
 
 add_library(stdpar_multicore INTERFACE)
@@ -49,7 +50,9 @@ target_include_directories(stdpar_multicore
     SYSTEM
     INTERFACE $<$<COMPILE_LANG_AND_ID:CXX,Clang>:${CUDAToolkit_INCLUDE_DIRS}>
 )
-
+target_link_libraries(stdpar_multicore
+    INTERFACE stdexec_example_settings
+)
 target_compile_options(stdpar_multicore
     INTERFACE $<$<COMPILE_LANG_AND_ID:CXX,NVHPC>:-stdpar=multicore>
               $<$<COMPILE_LANG_AND_ID:CXX,Clang>:
