@@ -37,7 +37,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.continues_on]
+  // [exec.continues.on]
   namespace __trnsfr
   {
     template <class... _Values>

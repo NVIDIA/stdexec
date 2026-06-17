@@ -35,7 +35,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.into_variant]
+  // [exec.into.variant]
   namespace __into_variant
   {
     template <class _Sender, class _Env>

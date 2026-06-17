@@ -29,7 +29,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.stopped_as_error]
+  // [exec.stopped.err]
 
   //! @brief A pipeable sender adaptor that converts a predecessor's stopped
   //!        completion into an error completion carrying a user-supplied

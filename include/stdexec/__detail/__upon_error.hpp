@@ -31,7 +31,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.upon_error]
+  // [exec.then]
   namespace __upon_error
   {
     struct __upon_error_impl : __sexpr_defaults

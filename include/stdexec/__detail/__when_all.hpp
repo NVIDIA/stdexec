@@ -45,8 +45,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.when_all]
-  // [execution.senders.adaptors.when_all_with_variant]
+  // [exec.when.all]
   //! @brief A variadic sender factory that runs multiple senders concurrently
   //!        and completes when all of them have completed, concatenating
   //!        their value datums.
