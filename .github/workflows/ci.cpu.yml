@@ -41,7 +41,7 @@ jobs:
           - { name: "CPU (gcc 15, Release, c++23)",  build: "Release", tag: gcc15-cuda12.9,  cxxstd: "23", cxxflags: "", }
     container:
       options: -u root
-      image: rapidsai/devcontainers:26.06-cpp-${{ matrix.tag }}
+      image: rapidsai/devcontainers:26.08-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
       contents: read  # This is required for actions/checkout
@@ -166,8 +166,8 @@ jobs:
       - name: Build and test CPU schedulers (Windows)
         shell: pwsh
         run: |
-          docker pull rapidsai/devcontainers:26.06-${{ matrix.tag }}-windows2022
-          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:26.06-${{ matrix.tag }}-windows2022 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
+          docker pull rapidsai/devcontainers:26.08-${{ matrix.tag }}-windows2022
+          docker run --isolation=process -v "$(pwd):C:/stdexec" rapidsai/devcontainers:26.08-${{ matrix.tag }}-windows2022 powershell C:/stdexec/.github/workflows/test-windows.ps1 -Compiler '${{ matrix.compiler }}' -Config '${{ matrix.build }}'
 
   ci-cpu-windows:
     runs-on: windows-latest

@@ -1,5 +1,5 @@
 {
-  "image": "rapidsai/devcontainers:26.02-cpp-llvm16-cuda12.9",
+  "image": "rapidsai/devcontainers:26.08-cpp-llvm16-cuda12.9",
 
   "hostRequirements": { "gpu": "optional" },
 
@@ -8,11 +8,12 @@
   "postCreateCommand": [
     "/bin/bash",
     "-c",
-    "if test -z \"${DISABLE_SCCACHE:+x}\"; then echo \"export SCCACHE_DIST_URL='https://$(dpkg --print-architecture).$(uname -s | tr '[:upper:]' '[:lower:]').sccache.rapids.nvidia.com'\" >> /home/coder/.bashrc; fi"
+    "if test -z \"${DISABLE_SCCACHE:+x}\"; then echo \"export SCCACHE_DIST_URL='https://$(uname -m | sed -e 's/x86_/amd/' -e 's/aarch/arm/').linux.sccache.rapids.nvidia.com'\" >> /home/coder/.bashrc; fi"
   ],
 
   "containerEnv": {
-    "AWS_ROLE_ARN": "arn:aws:iam::279114543810:role/nv-gha-token-sccache-devs",
+    "AWS_IDP_URL": "https://token.rapids.nvidia.com",
+    "AWS_ROLE_ARN": "arn:aws:iam::279114543810:role/rapids-token-sccache-devs",
     "DEVCONTAINER_UTILS_ENABLE_SCCACHE_DIST": "true",
     "HISTFILE": "${containerWorkspaceFolder}/.cache/._bash_history",
     "NVCC_APPEND_FLAGS": "-t=100",

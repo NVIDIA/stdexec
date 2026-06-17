@@ -14,6 +14,11 @@
 # limitations under the License.
 #=============================================================================
 
+add_library(stdexec_example_settings INTERFACE)
+
+target_compile_definitions(stdexec_example_settings INTERFACE
+  $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,26.3.0>>:STDEXEC_NAMESPACE=stdexec>)
+
 function(split pair name_out path_out)
     string(STRIP "${pair}" pair)
     string(REPLACE ":" ";" pair "${pair}")
@@ -35,6 +40,7 @@ function(def_example example)
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags
+                stdexec_example_settings
                 $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endfunction()
 
@@ -84,25 +90,33 @@ endif()
 
 if (STDEXEC_ENABLE_TBB)
   add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
-  target_link_libraries(example.benchmark.tbb_thread_pool PRIVATE STDEXEC::tbbexec)
+  target_link_libraries(example.benchmark.tbb_thread_pool
+      PRIVATE stdexec_example_settings
+              STDEXEC::tbbexec)
 
   add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
-  target_link_libraries(example.benchmark.tbb_thread_pool_nested PRIVATE STDEXEC::tbbexec)
+  target_link_libraries(example.benchmark.tbb_thread_pool_nested
+      PRIVATE stdexec_example_settings
+              STDEXEC::tbbexec)
 
   add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
-  target_link_libraries(example.benchmark.fibonacci PRIVATE STDEXEC::tbbexec)
+  target_link_libraries(example.benchmark.fibonacci
+      PRIVATE stdexec_example_settings
+              STDEXEC::tbbexec)
 endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)
   add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
   target_link_libraries(example.benchmark.taskflow_thread_pool
-      PRIVATE STDEXEC::taskflowexec
+      PRIVATE stdexec_example_settings
+              STDEXEC::taskflowexec
               $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()
 
 if(STDEXEC_ENABLE_ASIO)
   add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
   target_link_libraries(example.benchmark.asio_thread_pool
-      PRIVATE STDEXEC::asioexec
+      PRIVATE stdexec_example_settings
+              STDEXEC::asioexec
               $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()
