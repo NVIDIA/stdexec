@@ -157,8 +157,11 @@ namespace experimental::execution
       template <__has_continuation _Promise>
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) -> bool
       {
-        // Set the cleanup task's scheduler to the parent coroutine's scheduler.
-        __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
+        // Set the cleanup task's scheduler to the parent coroutine's scheduler, if present
+        if constexpr (requires { get_start_scheduler(get_env(__parent.promise())); })
+        {
+          __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
+        }
         // This causes the parent to be resumed after the cleanup action is performed.
         __coro_.promise().set_continuation(__parent.promise().continuation());
         // This causes the parent to invoke the cleanup action when it performs the final
