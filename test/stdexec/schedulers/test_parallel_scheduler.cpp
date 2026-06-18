@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <memory>
+#include <stdexcept>
 #include <thread>
 
 #define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
@@ -407,6 +410,165 @@ struct my_inline_scheduler_backend_impl : scr::parallel_scheduler_backend
   }
 };
 
+enum class bulk_completion_kind
+{
+  error,
+  stopped
+};
+
+struct terminal_bulk_scheduler_backend_impl : scr::parallel_scheduler_backend
+{
+  explicit terminal_bulk_scheduler_backend_impl(bulk_completion_kind completion) noexcept
+    : completion_(completion)
+  {}
+
+  void schedule(scr::receiver_proxy& r, std::span<std::byte>) noexcept override
+  {
+    r.set_value();
+  }
+
+  void schedule_bulk_chunked(size_t                         count,
+                             scr::bulk_item_receiver_proxy& r,
+                             std::span<std::byte>) noexcept override
+  {
+    r.execute(0, count);
+    complete(r);
+  }
+
+  void schedule_bulk_unchunked(size_t                         count,
+                               scr::bulk_item_receiver_proxy& r,
+                               std::span<std::byte>) noexcept override
+  {
+    for (size_t i = 0; i < count; ++i)
+      r.execute(i, i + 1);
+    complete(r);
+  }
+
+  void complete(scr::bulk_item_receiver_proxy& r) const noexcept
+  {
+    if (completion_ == bulk_completion_kind::error)
+    {
+      r.set_error(std::make_exception_ptr(std::runtime_error{"bulk"}));
+    }
+    else
+    {
+      r.set_stopped();
+    }
+  }
+
+  bulk_completion_kind completion_;
+};
+
+auto error_bulk_scheduler_backend() -> std::shared_ptr<scr::parallel_scheduler_backend>
+{
+  return std::make_shared<terminal_bulk_scheduler_backend_impl>(bulk_completion_kind::error);
+}
+
+auto stopped_bulk_scheduler_backend() -> std::shared_ptr<scr::parallel_scheduler_backend>
+{
+  return std::make_shared<terminal_bulk_scheduler_backend_impl>(bulk_completion_kind::stopped);
+}
+
+struct backend_factory_guard
+{
+  explicit backend_factory_guard(scr::__parallel_scheduler_backend_factory_t factory)
+    : old_factory_(scr::set_parallel_scheduler_backend(factory))
+  {}
+
+  ~backend_factory_guard()
+  {
+    (void) scr::set_parallel_scheduler_backend(old_factory_);
+  }
+
+  scr::__parallel_scheduler_backend_factory_t old_factory_;
+};
+
+struct destructor_tracked_value
+{
+  explicit destructor_tracked_value(std::shared_ptr<std::atomic<int>> live) noexcept
+    : live_(std::move(live))
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+  }
+
+  destructor_tracked_value(destructor_tracked_value const & other) noexcept
+    : live_(other.live_)
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+  }
+
+  destructor_tracked_value(destructor_tracked_value&& other) noexcept
+    : live_(other.live_)
+  {
+    live_->fetch_add(1, std::memory_order_relaxed);
+  }
+
+  auto operator=(destructor_tracked_value const &) -> destructor_tracked_value& = delete;
+  auto operator=(destructor_tracked_value&&) -> destructor_tracked_value&       = delete;
+
+  ~destructor_tracked_value()
+  {
+    live_->fetch_sub(1, std::memory_order_relaxed);
+  }
+
+  std::shared_ptr<std::atomic<int>> live_;
+};
+
+struct tracked_value_sender
+{
+  using sender_concept        = ex::sender_tag;
+  using completion_signatures = ex::completion_signatures<ex::set_value_t(destructor_tracked_value)>;
+
+  struct env
+  {
+    STDEXEC::parallel_scheduler sched_;
+
+    auto query(ex::get_completion_scheduler_t<ex::set_value_t>, auto const &...) const noexcept
+      -> STDEXEC::parallel_scheduler
+    {
+      return sched_;
+    }
+
+    auto query(ex::get_completion_domain_t<ex::set_value_t>, auto const &...) const noexcept
+    {
+      return ex::get_domain(sched_);
+    }
+  };
+
+  template <class Receiver>
+  struct operation
+  {
+    using operation_state_concept = ex::operation_state_tag;
+
+    Receiver                 rcvr_;
+    destructor_tracked_value value_;
+
+    void start() & noexcept
+    {
+      ex::set_value(std::move(rcvr_), std::move(value_));
+    }
+  };
+
+  tracked_value_sender(STDEXEC::parallel_scheduler sched, std::shared_ptr<std::atomic<int>> live)
+    : sched_(std::move(sched))
+    , value_(std::move(live))
+  {}
+
+  auto get_env() const noexcept -> env
+  {
+    return {sched_};
+  }
+
+  template <ex::receiver Receiver>
+  auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+  {
+    return {std::move(rcvr), std::move(value_)};
+  }
+
+  STDEXEC::parallel_scheduler sched_;
+  destructor_tracked_value    value_;
+};
+
 TEST_CASE("can change the implementation of parallel scheduler at runtime",
           "[scheduler][parallel_scheduler]")
 {
@@ -449,6 +611,58 @@ TEST_CASE("can change the implementation of parallel scheduler at runtime, with 
   REQUIRE(this_id == pool_id);
 
   (void) scr::set_parallel_scheduler_backend(old_factory);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values",
+          "[scheduler][parallel_scheduler]")
+{
+  auto live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+    auto snd = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+
+    auto result = ex::sync_wait(std::move(snd));
+    REQUIRE(result.has_value());
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after error",
+          "[scheduler][parallel_scheduler]")
+{
+  backend_factory_guard guard{error_bulk_scheduler_backend};
+  auto                  live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+    auto snd = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+
+    CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after stopped",
+          "[scheduler][parallel_scheduler]")
+{
+  backend_factory_guard guard{stopped_bulk_scheduler_backend};
+  auto                  live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+    auto snd = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+
+    auto result = ex::sync_wait(std::move(snd));
+    CHECK_FALSE(result.has_value());
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
 }
 
 TEST_CASE("empty environment always returns nullopt for any query",
