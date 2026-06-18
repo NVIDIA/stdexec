@@ -312,7 +312,7 @@ namespace STDEXEC
     }
 
     template <class _Attrs, class... _Env>
-    static constexpr auto __get_domain() noexcept
+    static constexpr decltype(auto) __get_domain() noexcept
     {
       // If __attrs has a completion domain, then return it:
       if constexpr (__callable<__read_query_t, _Attrs const &, _Env const &...>)

@@ -24,15 +24,8 @@ if(POLICY CMP0167)
 endif()
 
 ##############################################################################
-# - Download and initialize RAPIDS CMake helpers -----------------------------
-
-# Fetch rapids-cmake
-if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
-  file(DOWNLOAD https://raw.githubusercontent.com/rapidsai/rapids-cmake/branch-24.02/RAPIDS.cmake
-       ${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
-endif()
 # Initialize rapids-cmake
-include(${CMAKE_CURRENT_BINARY_DIR}/RAPIDS.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/RAPIDS.cmake)
 # utilities for generating export set package metadata
 include(rapids-export)
 # utilities for finding packages
@@ -41,17 +34,7 @@ include(rapids-find)
 include(rapids-cmake)
 # utilities for using CPM
 include(rapids-cpm)
-
-##############################################################################
 # - Project definition -------------------------------------------------------
-
-# Define the project and set the version and languages
-if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/execution.bs)
-  file(DOWNLOAD "https://raw.githubusercontent.com/cplusplus/sender-receiver/main/execution.bs"
-      ${CMAKE_CURRENT_BINARY_DIR}/execution.bs)
-endif()
-file(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/execution.bs" STD_EXECUTION_BS_REVISION_LINE REGEX "Revision: [0-9]+")
-string(REGEX REPLACE "Revision: ([0-9]+)" "\\1" STD_EXECUTION_BS_REVISION ${STD_EXECUTION_BS_REVISION_LINE})
 
 # Determine if STDEXEC is built as a subproject (using add_subdirectory) or if it is the main project.
 if (NOT DEFINED STDEXEC_MAIN_PROJECT)
@@ -62,7 +45,7 @@ if (NOT DEFINED STDEXEC_MAIN_PROJECT)
   endif ()
 endif ()
 
-project(STDEXEC VERSION "0.${STD_EXECUTION_BS_REVISION}.0" LANGUAGES CXX)
+project(STDEXEC VERSION "0.11.0" LANGUAGES CXX)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/CompilerHelpers.cmake)
 
