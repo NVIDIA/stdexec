@@ -2,10 +2,51 @@
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 
+#include <exception>
 #include <mutex>
+#include <ranges>
+#include <stdexcept>
 #include <thread>
 #include <unordered_set>
 namespace ex = STDEXEC;
+
+namespace
+{
+  struct throwing_set_next_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    bool&               set_value_called_;
+    bool&               set_stopped_called_;
+    std::exception_ptr& error_;
+
+    template <class Item>
+    auto set_next(Item&&) -> decltype(ex::just())
+    {
+      throw std::runtime_error{"set_next failed"};
+    }
+
+    void set_value() noexcept
+    {
+      set_value_called_ = true;
+    }
+
+    void set_stopped() noexcept
+    {
+      set_stopped_called_ = true;
+    }
+
+    void set_error(std::exception_ptr error) noexcept
+    {
+      error_ = error;
+    }
+
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+}  // namespace
 
 TEST_CASE("static_thread_pool::get_scheduler_on_thread Test start on a specific thread",
           "[types][static_thread_pool]")
@@ -43,6 +84,27 @@ TEST_CASE("bulk on static_thread_pool executes on multiple threads", "[types][st
                                            }));
   ex::sync_wait(std::move(sender));
   REQUIRE(thread_ids.size() == num_of_threads);
+}
+
+TEST_CASE("schedule_all on static_thread_pool sends errors from set_next",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{1};
+  bool                     set_value_called   = false;
+  bool                     set_stopped_called = false;
+  std::exception_ptr       error;
+
+  auto op = exec::subscribe(exec::schedule_all(pool, std::views::iota(0, 1)),
+                            throwing_set_next_receiver{set_value_called,
+                                                       set_stopped_called,
+                                                       error});
+
+  ex::start(op);
+
+  CHECK_FALSE(set_value_called);
+  CHECK_FALSE(set_stopped_called);
+  REQUIRE(error);
+  CHECK_THROWS_AS(std::rethrow_exception(error), std::runtime_error);
 }
 
 TEST_CASE("bulk on static_thread_pool executes on multiple threads, take 2",
