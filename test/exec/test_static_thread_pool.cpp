@@ -1,8 +1,12 @@
 #include "catch2/catch_all.hpp"
+#include <exec/sequence/ignore_all_values.hpp>
+#include <exec/sequence/transform_each.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 
+#include <array>
 #include <mutex>
+#include <ranges>
 #include <thread>
 #include <unordered_set>
 namespace ex = STDEXEC;
@@ -64,4 +68,23 @@ TEST_CASE("bulk on static_thread_pool executes on multiple threads, take 2",
                          });
   ex::sync_wait(std::move(sender));
   REQUIRE(thread_ids.size() == num_of_threads);
+}
+
+TEST_CASE("schedule_all on static_thread_pool handles fewer items than threads",
+          "[types][static_thread_pool]")
+{
+  constexpr size_t const   num_of_threads = 4;
+  exec::static_thread_pool pool{num_of_threads};
+  std::array<bool, 3>      visited{};
+
+  auto sender = exec::schedule_all(pool, std::views::iota(size_t{0}, visited.size()))
+              | exec::transform_each(ex::then([&](size_t i) noexcept { visited[i] = true; }))
+              | exec::ignore_all_values();
+
+  ex::sync_wait(std::move(sender));
+
+  for (bool item_visited: visited)
+  {
+    REQUIRE(item_visited);
+  }
 }
