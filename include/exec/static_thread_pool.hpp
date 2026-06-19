@@ -1746,6 +1746,12 @@ namespace experimental::execution
         void start() & noexcept
         {
           std::size_t size         = items_.size();
+          if (size == 0)
+          {
+            STDEXEC::set_value(static_cast<Receiver&&>(this->rcvr_));
+            return;
+          }
+
           std::size_t nthreads     = this->pool_.available_parallelism();
           bwos_params params       = this->pool_.params();
           std::size_t local_size   = params.blockSize * params.numBlocks;

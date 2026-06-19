@@ -1,8 +1,10 @@
 #include "catch2/catch_all.hpp"
+#include <exec/sequence/ignore_all_values.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 
 #include <mutex>
+#include <ranges>
 #include <thread>
 #include <unordered_set>
 namespace ex = STDEXEC;
@@ -43,6 +45,16 @@ TEST_CASE("bulk on static_thread_pool executes on multiple threads", "[types][st
                                            }));
   ex::sync_wait(std::move(sender));
   REQUIRE(thread_ids.size() == num_of_threads);
+}
+
+TEST_CASE("schedule_all on static_thread_pool handles empty ranges",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{2};
+  auto sender = exec::schedule_all(pool, std::views::iota(size_t{0}, size_t{0}))
+              | exec::ignore_all_values();
+
+  CHECK(ex::sync_wait(std::move(sender)));
 }
 
 TEST_CASE("bulk on static_thread_pool executes on multiple threads, take 2",
