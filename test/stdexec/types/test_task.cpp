@@ -134,6 +134,7 @@ namespace
     CHECK(i == 42);
   }
 
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   auto test_task_awaits_just_error_sender() -> ex::task<int>
   {
     co_await ex::just_error(std::runtime_error("error"));
@@ -145,6 +146,7 @@ namespace
     auto t = test_task_awaits_just_error_sender();
     REQUIRE_THROWS_AS(ex::sync_wait(std::move(t)), std::runtime_error);
   }
+#  endif
 
   auto test_task_awaits_just_stopped_sender() -> ex::task<int>
   {

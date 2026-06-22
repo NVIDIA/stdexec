@@ -209,6 +209,7 @@ namespace
 
   static_assert(any::__iabstract<ifoo>::__buffer_size < any::__iabstract<ibaz>::__buffer_size);
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   // test constant evaluation works
   template <class T>
   consteval void test_consteval()
@@ -231,6 +232,7 @@ namespace
     [[maybe_unused]]
     auto y = any::__any_cast<foobar<T>>(pifoo);
   }
+#endif
 
   template <class Base>
   struct iempty : any::__interface_base<iempty, Base, any::__extends<>, 0>
@@ -249,7 +251,8 @@ namespace
   {
     static constexpr bool is_small = std::same_as<TestType, foobar<Small>>;
 
-#if STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403)
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()                                                                \
+  && (STDEXEC_CLANG() || (STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1403))
     test_consteval<TestType>();  // NOLINT(invalid_consteval_call)
 #endif
 

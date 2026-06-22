@@ -149,12 +149,12 @@ namespace
     ex::set_value(static_cast<receiver_ref &&>(ref), 42);
     CHECK(value.value_.index() == 1);
     CHECK(std::get<1>(value.value_) == 42);
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     // Check set error
     CHECK(error.value_.index() == 0);
     ref = error;
     ex::set_error(static_cast<receiver_ref &&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
-#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     // MSVC issues a warning about unreachable code in this block, hence the warning
     // suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
@@ -610,11 +610,13 @@ namespace
       auto op = ex::connect(ex::schedule(scheduler), expect_stopped_receiver{});
       ex::start(op);
     }
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     scheduler = error_scheduler<>{std::make_exception_ptr(std::logic_error("test"))};
     {
       auto op = ex::connect(ex::schedule(scheduler), expect_error_receiver<>{});
       ex::start(op);
     }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
   }
 
   TEST_CASE("any_scheduler sender lifetime", "[types][any_scheduler][any_sender]")
@@ -799,14 +801,14 @@ namespace
   TEST_CASE("any_receiver", "[types][any_sender]")
   {
     using completions_t = ex::completion_signatures<ex::set_value_t(int),
-                                                    ex::set_error_t(std::exception_ptr),
+                                                    ex::set_error_t(std::string_view),
                                                     ex::set_stopped_t()>;
     using queries_t     = exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>;
 
     using any_receiver_t = exec::any_receiver<completions_t, queries_t>;
     any_receiver_t rcvr  = sink<completions_t>{};
     std::move(rcvr).set_value(42);
-    std::move(rcvr).set_error(std::make_exception_ptr(std::runtime_error("error")));
+    std::move(rcvr).set_error(std::string_view{"error"});
     std::move(rcvr).set_stopped();
 
     [[maybe_unused]]

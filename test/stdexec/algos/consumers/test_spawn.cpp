@@ -120,7 +120,7 @@ namespace
     REQUIRE(rsc1.allocated() == 0);
     REQUIRE(rsc2.allocated() == 0);
   }
-
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("spawn tolerates throwing scope tokens", "[consumers][spawn]")
   {
     counting_resource                          rsc;
@@ -154,6 +154,7 @@ namespace
 
     REQUIRE(rsc.allocated() == 0);
   }
+#endif
 
   TEST_CASE("spawn tolerates expired scope tokens", "[consumers][spawn]")
   {
