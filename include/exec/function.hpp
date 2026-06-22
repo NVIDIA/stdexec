@@ -17,6 +17,7 @@
 
 #include "../stdexec/__detail/__completion_signatures.hpp"
 #include "../stdexec/__detail/__concepts.hpp"
+#include "../stdexec/__detail/__domain.hpp"
 #include "../stdexec/__detail/__meta.hpp"
 #include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
@@ -55,6 +56,11 @@
 // queries to pick the frame allocator from the environment without relying on TLS.
 namespace experimental::execution
 {
+  // for specifying required sender attributes in exec::function
+  template <_query::_query_signature... Sigs>
+  struct attrs
+  {};
+
   namespace __func
   {
     using namespace STDEXEC;
@@ -106,13 +112,13 @@ namespace experimental::execution
       {}
 
       constexpr auto get_env() const noexcept  //
-        -> __join_env_t<__prop_t, env_of_t<_Receiver>>
+        -> __join_env_t<__prop_t const &, env_of_t<_Receiver>>
       {
         return __env::__join(*__env_, STDEXEC::get_env(*static_cast<_Receiver const *>(this)));
       }
 
      private:
-      __prop_t *__env_;
+      __prop_t const *__env_;
     };
 
     template <class _Sigs, class _Queries>
@@ -192,8 +198,127 @@ namespace experimental::execution
       }
     };
 
-    template <class _Sigs, class _Queries, class... _Args>
-    class __function;
+    template <class _Tag, class _Query>
+    struct __make_domain_impl
+    {};
+
+    template <class _Domain, class _Tag>
+    struct __make_domain_impl<_Tag, _Domain(get_completion_domain_t<_Tag>) noexcept>
+    {
+      constexpr _Domain operator()() const noexcept
+      {
+        return _Domain();
+      }
+    };
+
+    //! get_completion_domain<> is a special case; its type parameter is void
+    //! and it's equivalent to get_completion_domain<set_value_t>.
+    template <class _Domain>
+    struct __make_domain_impl<void, _Domain(get_completion_domain_t<set_value_t>) noexcept>
+      : __make_domain_impl<set_value_t, _Domain(get_completion_domain_t<set_value_t>) noexcept>
+    {};
+
+    //! get_completion_domain ought to be no-throw, so make it optional to specify
+    //! noexcept on the signature provided with attrs<...>
+    template <class _Domain, class _Tag1, class _Tag2>
+    struct __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>)>
+      : __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>) noexcept>
+    {};
+
+    template <class _Tag, class... _Attrs>
+    inline constexpr auto __make_domain = __first_callable<__make_domain_impl<_Tag, _Attrs>...>();
+
+    template <class _Attrs>
+    struct __attrs;
+
+    template <class... _Attrs>
+    struct __attrs<attrs<_Attrs...>>
+    {
+      template <class _Tag, class... _Env>
+      constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
+        -> decltype(__make_domain<_Tag, _Attrs...>())
+      {
+        return __make_domain<_Tag, _Attrs...>();
+      }
+    };
+
+    template <class _Tag, class _Attrs, class... _Env>
+    using __completion_domain_t = __call_result_or_t<
+      get_completion_domain_t<_Tag>,
+      __call_result_or_t<get_completion_domain_t<_Tag>, indeterminate_domain<>, _Attrs>,
+      _Attrs,
+      _Env const &...>;
+
+    template <class _ActualDomain, class _ExpectedDomain>
+    concept __completion_domain_matches_impl =
+      __same_as<_ExpectedDomain, __common_domain_t<_ActualDomain, _ExpectedDomain>>;
+
+    template <class _Tag, class _ActualAttrs, class _ExpectedAttrs, class... _Env>
+    concept __completion_domain_matches =
+      __completion_domain_matches_impl<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
+                                       __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
+
+    template <class _ActualAttrs, class _ExpectedAttrs, class... _Env>
+    concept __completion_domains_match_impl =
+      __completion_domain_matches<set_value_t, _ActualAttrs, _ExpectedAttrs, _Env...>
+      && __completion_domain_matches<set_error_t, _ActualAttrs, _ExpectedAttrs, _Env...>
+      && __completion_domain_matches<set_stopped_t, _ActualAttrs, _ExpectedAttrs, _Env...>;
+
+    template <class _Actual, class _Expected, class... _Env>
+    concept __completion_domains_match =
+      __completion_domains_match_impl<env_of_t<_Actual>, env_of_t<_Expected>, _Env...>;
+
+    template <class _Queries, class... _Env>
+    struct __check_queries;
+
+    template <class... _Queries, class... _Env>
+    struct __check_queries<queries<_Queries...>, _Env...>
+    {
+      using type = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
+    };
+
+    template <class _Queries, class... _Env>
+    using __check_queries_t = __check_queries<_Queries, _Env...>::type;
+
+    template <class _Attr>
+    struct __get_completion_domain_tag;
+
+    template <class _Tag, class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>)>
+    {
+      using type = _Tag;
+    };
+
+    template <class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<>)>
+    {
+      using type = set_value_t;
+    };
+
+    template <class _Tag, class _Domain>
+    struct __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>) noexcept>
+      : __get_completion_domain_tag<_Domain(get_completion_domain_t<_Tag>)>
+    {};
+
+    template <class _Attr>
+    using __get_completion_domain_tag_t = __get_completion_domain_tag<_Attr>::type;
+
+    template <class _Attrs, class _Tag>
+    inline constexpr bool __has_completion_domain = false;
+
+    template <class... _Attrs, class _Tag>
+      requires __one_of<_Tag, __get_completion_domain_tag_t<_Attrs>...>
+    inline constexpr bool __has_completion_domain<attrs<_Attrs...>, _Tag> = true;
+
+    //! it is undefined behaviour for a sender to advertise a completion domain for a
+    //! completion channel that it never completes on so make sure there are no
+    //! completion domains required by _Attrs that correspond to completion channels
+    //! not advertised as possible by _Sigs
+    template <class _Sigs, class _Attrs>
+    concept __completion_signatures_and_domains_are_compatible =
+      ((!__has_completion_domain<_Attrs, set_value_t>) || _Sigs::__count(set_value) > 0)     //
+      && ((!__has_completion_domain<_Attrs, set_error_t>) || _Sigs::__count(set_error) > 0)  //
+      && ((!__has_completion_domain<_Attrs, set_stopped_t>) || _Sigs::__count(set_stopped) > 0);
 
     //! the main implementation of the type-erasing sender function<...>
     //
@@ -206,13 +331,21 @@ namespace experimental::execution
     //! not, as appropriate
     //!
     //! \tparam _Args The argument types used to construct the erased sender
-    template <class _Sigs, class... _Queries, class... _Args>
-    class __function<_Sigs, queries<_Queries...>, _Args...>
+    template <class _Sigs, class _Queries, class _Attrs, class... _Args>
+    class __function
     {
-      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, queries<_Queries...>>>;
+      // check these with asserts rather than requires because the only way to violate
+      // them is to circumvent the exec::function alias template so any violation is
+      // a user hitting themselves
+      static_assert(__is_instance_of<_Sigs, completion_signatures>);
+      static_assert(__is_instance_of<_Queries, queries>);
+      static_assert(__is_instance_of<_Attrs, attrs>);
+      static_assert(__completion_signatures_and_domains_are_compatible<_Sigs, _Attrs>);
+
+      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
       template <class _Receiver>
-      using __opstate_t = __opstate<_Receiver, _Sigs, queries<_Queries...>>;
+      using __opstate_t = __opstate<_Receiver, _Sigs, _Queries>;
 
       template <class _Factory>
       static constexpr auto
@@ -220,8 +353,9 @@ namespace experimental::execution
         -> _any::_any_opstate_base
       {
         auto &__make_sender = *__std::start_lifetime_as<_Factory>(__storage);
-        using __alloc_t     = decltype(__choose_frame_allocator(get_env(__rcvr)));
-        auto __alloc = __frame_allocator_t<__alloc_t>(__choose_frame_allocator(get_env(__rcvr)));
+        using __alloc_t     = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
+        auto __alloc        = __frame_allocator_t<__alloc_t>(
+          __choose_frame_allocator(STDEXEC::get_env(__rcvr)));
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
                                        __alloc,
@@ -257,6 +391,9 @@ namespace experimental::execution
                 && (STDEXEC_IS_TRIVIALLY_COPYABLE(_Factory))     //
                 && (sizeof(_Factory) <= sizeof(__make_sender_))  //
                 && sender_to<__invoke_result_t<_Factory, _Args...>, __receiver_t>
+                && __completion_domains_match<__invoke_result_t<_Factory, _Args...>,
+                                              __function,
+                                              env_of_t<__receiver_t>>
       constexpr explicit __function(_Args &&...__args, _Factory __factory)
         noexcept(__nothrow_move_constructible<_Args...>)
         : __args_(static_cast<_Args &&>(__args)...)
@@ -272,11 +409,15 @@ namespace experimental::execution
       {
         static_assert(__decays_to_derived_from<_Self, __function>);
         //! throw if _Env does not contain the queries needed to type-erase the receiver:
-        using __check_queries_t = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
-        if constexpr (__merror<__check_queries_t>)
-          return __throw_compile_time_error(__check_queries_t());
+        if constexpr (__merror<__check_queries_t<_Queries, _Env...>>)
+          return __throw_compile_time_error(__check_queries_t<_Queries, _Env...>());
         else
           return _Sigs();
+      }
+
+      constexpr __attrs<_Attrs> get_env() const noexcept
+      {
+        return {};
       }
 
       template <class _Receiver>
@@ -342,6 +483,46 @@ namespace experimental::execution
       completion_signatures<__single_value_sig_t<_Return>, set_stopped_t()>,
       __eptr_completion_unless_t<__mbool<_NoExcept>>>>;
 
+    //! maps a completion signature to the default completion domain query
+    struct __domain_query_from_sig
+    {
+      template <class _Tag, class... _Args>
+      consteval auto operator()(_Tag (*)(_Args...)) const noexcept  //
+        -> default_domain (*)(get_completion_domain_t<_Tag>) noexcept
+      {
+        return nullptr;
+      }
+    };
+
+    //! maps a pack of domain queries produced by __domain_query_from_sig to the
+    //! corresponding attrs<_Attrs...> type
+    class __attrs_from_domain_queries
+    {
+      template <class _Tag>
+      using __query_sig = default_domain (*)(get_completion_domain_t<_Tag>) noexcept;
+
+     public:
+      template <class... _Tag>
+      consteval auto operator()(__query_sig<_Tag>...) const noexcept  //
+        -> __canonical_t<attrs<default_domain(get_completion_domain_t<_Tag>) noexcept...>>
+      {
+        return {};
+      }
+    };
+
+    //! computes the set of get_completion_domain queries that must be supported by any
+    //! sender that might be erased by the corresponding function
+    //!
+    //! we should support get_completion_domain<Tag> only if _Sigs contains a completion
+    //! of type Tag
+    //!
+    //! the query form should be
+    //!
+    //!   default_domain(get_completion_domain_t<Tag>)
+    template <class _Sigs>
+    using __default_attrs = decltype(_Sigs::__transform_reduce(__domain_query_from_sig(),
+                                                               __attrs_from_domain_queries()));
+
     //! Map a variety of function<...> specifications into the canonical type-erased
     //! contract represented by the user-provided specification.
     //!
@@ -350,7 +531,8 @@ namespace experimental::execution
     //!   function<
     //!       sender_tag(Args...),
     //!       completion_signatures<Sigs...>,
-    //!       queries<Queries...>>
+    //!       queries<Queries...>,
+    //!       attrs<Attrs...>>
     //!
     //! where:
     //!  - Args... is the type-erased sender factory's parameter list
@@ -358,52 +540,135 @@ namespace experimental::execution
     //!            to advertise
     //!  - Queries... is the set of queries that the eventual receiver's environment must
     //!               support
+    //!  - Attrs... is the set of attributes the type-erased sender must report; only
+    //!             supports the specification of the sender's completion domains
     //!
-    //! The order of Args... is obviously important, but Sigs... and Queries... are both
-    //! canonicalized into a sorted and uniqued list to ensure order is irrelevant.
+    //! The order of Args... is obviously important, but Sigs..., Queries..., and Attrs...
+    //! are all canonicalized into a sorted and uniqued list to ensure order is irrelevant.
     template <class...>
-    struct __make_function;
+    class __make_function;
 
     template <class _Return, class... _Args>
-    struct __make_function<_Return(_Args...)>
+    class __make_function<_Return(_Args...)>
     {
-      using type = __function<__sigs_from_t<_Return, false>, queries<>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args>
-    struct __make_function<_Return(_Args...) noexcept>
+    class __make_function<_Return(_Args...) noexcept>
     {
-      using type = __function<__sigs_from_t<_Return, true>, queries<>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class... _Args, class... _Sigs>
-    struct __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>>
+    class __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>>
     {
-      using type = __function<__canonical_t<completion_signatures<_Sigs...>>, queries<>, _Args...>;
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = queries<>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args, class... _Queries>
-    struct __make_function<_Return(_Args...), queries<_Queries...>>
+    class __make_function<_Return(_Args...), queries<_Queries...>>
     {
-      using type =
-        __function<__sigs_from_t<_Return, false>, __canonical_t<queries<_Queries...>>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class _Return, class... _Args, class... _Queries>
-    struct __make_function<_Return(_Args...) noexcept, queries<_Queries...>>
+    class __make_function<_Return(_Args...) noexcept, queries<_Queries...>>
     {
-      using type =
-        __function<__sigs_from_t<_Return, true>, __canonical_t<queries<_Queries...>>, _Args...>;
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
 
     template <class... _Args, class... _Sigs, class... _Queries>
-    struct __make_function<sender_tag(_Args...),
-                           completion_signatures<_Sigs...>,
-                           queries<_Queries...>>
+    class __make_function<sender_tag(_Args...),
+                          completion_signatures<_Sigs...>,
+                          queries<_Queries...>>
     {
-      using type = __function<__canonical_t<completion_signatures<_Sigs...>>,
-                              __canonical_t<queries<_Queries...>>,
-                              _Args...>;
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __default_attrs<__sigs>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class _Return, class... _Args, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<__sigs_from_t<_Return, false>,
+                                                                  attrs<_Attrs...>>
+    class __make_function<_Return(_Args...), attrs<_Attrs...>>
+    {
+      using __sigs    = __sigs_from_t<_Return, false>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class _Return, class... _Args, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<__sigs_from_t<_Return, true>,
+                                                                  attrs<_Attrs...>>
+    class __make_function<_Return(_Args...) noexcept, attrs<_Attrs...>>
+    {
+      using __sigs    = __sigs_from_t<_Return, true>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class... _Args, class... _Sigs, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<completion_signatures<_Sigs...>,
+                                                                  attrs<_Attrs...>>
+    class __make_function<sender_tag(_Args...), completion_signatures<_Sigs...>, attrs<_Attrs...>>
+    {
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = queries<>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
+    };
+
+    template <class... _Args, class... _Sigs, class... _Queries, class... _Attrs>
+      requires __completion_signatures_and_domains_are_compatible<completion_signatures<_Sigs...>,
+                                                                  attrs<_Attrs...>>
+    class __make_function<sender_tag(_Args...),
+                          completion_signatures<_Sigs...>,
+                          queries<_Queries...>,
+                          attrs<_Attrs...>>
+    {
+      using __sigs    = __canonical_t<completion_signatures<_Sigs...>>;
+      using __queries = __canonical_t<queries<_Queries...>>;
+      using __attrs   = __canonical_t<attrs<_Attrs...>>;
+
+     public:
+      using type = __function<__sigs, __queries, __attrs, _Args...>;
     };
   }  // namespace __func
 
