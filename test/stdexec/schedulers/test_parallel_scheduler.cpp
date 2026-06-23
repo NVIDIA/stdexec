@@ -16,9 +16,9 @@
 
 #include <thread>
 
-#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
-
 #include <stdexec/execution.hpp>
+
+#include <stdexec/__detail/__parallel_scheduler_default_impl.hpp>
 
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>

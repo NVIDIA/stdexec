@@ -262,6 +262,10 @@ if (NOT STDEXEC_NAMESPACE STREQUAL "stdexec")
   target_compile_definitions(stdexec INTERFACE STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
 endif()
 
+if (NOT STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  target_compile_definitions(stdexec INTERFACE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
+endif()
+
 option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING "Enable extra type checking that is costly at compile-time" OFF)
 if (STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
   target_compile_definitions(stdexec INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
@@ -457,11 +461,14 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
       $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus /Zc:preprocessor /Zc:externConstexpr>
       )
   target_link_libraries(parallel_scheduler PUBLIC stdexec)
-
-  add_library(STDEXEC::parallel_scheduler ALIAS parallel_scheduler)
-  add_library(system_context ALIAS parallel_scheduler)
-  add_library(STDEXEC::system_context ALIAS parallel_scheduler)
+else()
+  add_library(parallel_scheduler INTERFACE)
+  target_link_libraries(parallel_scheduler INTERFACE stdexec)
 endif()
+
+add_library(STDEXEC::parallel_scheduler ALIAS parallel_scheduler)
+add_library(system_context ALIAS parallel_scheduler)
+add_library(STDEXEC::system_context ALIAS parallel_scheduler)
 
 option(STDEXEC_ENABLE_IO_URING "Enable the use of the io_uring scheduler on Linux" OFF)
 
