@@ -33,6 +33,40 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  struct stop_sensitive_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class Self, class Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (ex::unstoppable_token<ex::stop_token_of_t<Env>>)
+      {
+        return ex::completion_signatures<ex::set_value_t()>{};
+      }
+      else
+      {
+        return ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>{};
+      }
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(receiver_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) const noexcept -> operation<Receiver>
+    {
+      return {std::move(receiver)};
+    }
+  };
 
   TEST_CASE("when_all returns a sender", "[adaptors][when_all]")
   {
@@ -40,6 +74,34 @@ namespace
     static_assert(ex::sender<decltype(snd)>);
     static_assert(noexcept(ex::connect(snd, expect_error_receiver{})));
     (void) snd;
+  }
+
+  TEST_CASE("when_all coalesces empty and unary calls", "[adaptors][when_all]")
+  {
+    using empty_t = decltype(ex::when_all());
+    STATIC_REQUIRE(std::same_as<empty_t, decltype(ex::just())>);
+    STATIC_REQUIRE(!exec::sender_for<empty_t, ex::when_all_t>);
+    STATIC_REQUIRE(noexcept(ex::when_all()));
+
+    auto child    = ex::just(42);
+    using unary_t = decltype(ex::when_all(child));
+    STATIC_REQUIRE(std::same_as<unary_t, decltype(child)>);
+    STATIC_REQUIRE(!exec::sender_for<unary_t, ex::when_all_t>);
+    STATIC_REQUIRE(noexcept(ex::when_all(child)));
+
+    auto multi = ex::when_all(ex::just(1), ex::just(2));
+    STATIC_REQUIRE(exec::sender_for<decltype(multi), ex::when_all_t>);
+  }
+
+  TEST_CASE("unary when_all preserves every completion channel", "[adaptors][when_all]")
+  {
+    wait_for_value(ex::when_all(ex::just(42)), 42);
+
+    auto error_op = ex::connect(ex::when_all(ex::just_error(42)), expect_error_receiver<int>{42});
+    ex::start(error_op);
+
+    auto stopped_op = ex::connect(ex::when_all(ex::just_stopped()), expect_stopped_receiver{});
+    ex::start(stopped_op);
   }
 
   TEST_CASE("when_all with environment returns a sender", "[adaptors][when_all]")
@@ -451,6 +513,80 @@ namespace
                                  ex::completion_signatures<ex::set_value_t()>>);
     auto op = ex::connect(snd, expect_void_receiver(env));
     ex::start(op);
+  }
+
+  TEST_CASE("infallible when_all children retain the receiver stop token", "[adaptors][when_all]")
+  {
+    auto observes_stop_possible = ex::read_env(ex::get_stop_token)
+                                | ex::then([](auto token) noexcept
+                                           { return token.stop_possible(); });
+
+    auto unstoppable = ex::when_all(observes_stop_possible, observes_stop_possible);
+    static_assert(set_equivalent<ex::completion_signatures_of_t<decltype(unstoppable), ex::env<>>,
+                                 ex::completion_signatures<ex::set_value_t(bool, bool)>>);
+    wait_for_value(std::move(unstoppable), false, false);
+
+    ex::inplace_stop_source source;
+    auto stoppable = ex::when_all(observes_stop_possible, observes_stop_possible);
+    auto env       = ex::prop(ex::get_stop_token, source.get_token());
+    static_assert(set_equivalent<ex::completion_signatures_of_t<decltype(stoppable), decltype(env)>,
+                                 ex::completion_signatures<ex::set_value_t(bool, bool)>>);
+    auto op = ex::connect(std::move(stoppable), expect_value_receiver{env_tag{}, env, true, true});
+    ex::start(op);
+  }
+
+  TEST_CASE("when_all publishes environment-sensitive completion signatures",
+            "[adaptors][when_all]")
+  {
+    auto snd = ex::when_all(stop_sensitive_sender{}, stop_sensitive_sender{});
+    static_assert(set_equivalent<ex::completion_signatures_of_t<decltype(snd), ex::env<>>,
+                                 ex::completion_signatures<ex::set_value_t()>>);
+
+    ex::inplace_stop_source source;
+    auto                    env = ex::prop(ex::get_stop_token, source.get_token());
+    static_assert(
+      set_equivalent<ex::completion_signatures_of_t<decltype(snd), decltype(env)>,
+                     ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>>);
+  }
+
+  TEST_CASE("when_all publishes storage failure as exception_ptr", "[adaptors][when_all]")
+  {
+    auto snd = ex::when_all(ex::just(), ex::just(potentially_throwing{}));
+    static_assert(set_equivalent<ex::completion_signatures_of_t<decltype(snd), ex::env<>>,
+                                 ex::completion_signatures<ex::set_value_t(potentially_throwing),
+                                                           ex::set_error_t(std::exception_ptr)>>);
+
+    ex::inplace_stop_source source;
+    auto                    env = ex::prop(ex::get_stop_token, source.get_token());
+    static_assert(set_equivalent<ex::completion_signatures_of_t<decltype(snd), decltype(env)>,
+                                 ex::completion_signatures<ex::set_value_t(potentially_throwing),
+                                                           ex::set_error_t(std::exception_ptr)>>);
+  }
+
+  TEST_CASE("fallible when_all children receive an internal stop token", "[adaptors][when_all]")
+  {
+    bool observed_stop_possible = false;
+    auto observer               = ex::read_env(ex::get_stop_token)
+                  | ex::then([&](auto token) noexcept
+                             { observed_stop_possible = token.stop_possible(); });
+    auto snd = ex::when_all(std::move(observer), ex::just_error(42));
+    auto op  = ex::connect(std::move(snd), expect_error_receiver<int>{42});
+    ex::start(op);
+    CHECK(observed_stop_possible);
+  }
+
+  TEST_CASE("potentially throwing when_all result storage uses an internal stop token",
+            "[adaptors][when_all]")
+  {
+    bool observed_stop_possible = false;
+    auto observer               = ex::read_env(ex::get_stop_token)
+                  | ex::then([&](auto token) noexcept
+                             { observed_stop_possible = token.stop_possible(); });
+    auto snd = ex::when_all(std::move(observer), ex::just(potentially_throwing{}))
+             | ex::then([](potentially_throwing) noexcept {});
+    auto op = ex::connect(std::move(snd), expect_void_receiver{});
+    ex::start(op);
+    CHECK(observed_stop_possible);
   }
 
   TEST_CASE("when_all handles stop requests from the environment correctly", "[adaptors][when_all]")
