@@ -27,8 +27,6 @@
 
 #include <catch2/catch_all.hpp>
 
-#include <iostream>
-
 namespace ex = STDEXEC;
 
 STDEXEC_PRAGMA_PUSH()
@@ -766,20 +764,16 @@ namespace
     void set_value(_Args &&...__args) noexcept
       requires ex::__one_of<ex::set_value_t(_Args...), _Sigs...>
     {
-      std::printf("set_value called");
-      ((std::cout << ' ' << __args), ...);
-      std::cout << '\n';
+      (void) sizeof...(__args);
     }
     template <class Error>
     void set_error(Error &&) noexcept
       requires ex::__one_of<ex::set_error_t(Error), _Sigs...>
     {
-      std::puts("set_error called");
     }
     void set_stopped() noexcept
       requires ex::__one_of<ex::set_stopped_t(), _Sigs...>
     {
-      std::puts("set_stopped called");
     }
     struct env
     {
