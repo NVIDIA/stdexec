@@ -70,7 +70,8 @@ set(exec_test_sources
     test_unless_stop_requested.cpp
     test_function.cpp
     test_frame_allocator.cpp
-    test_memory_resource_adaptor.cpp)
+    test_memory_resource_adaptor.cpp
+    test_matching_completion_signature.cpp)
 
 set_source_files_properties(
   test_any_sender.cpp PROPERTIES COMPILE_FLAGS
