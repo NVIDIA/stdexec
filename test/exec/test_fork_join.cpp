@@ -104,9 +104,10 @@ namespace
                           return (is + ...);
                         }));
     STATIC_REQUIRE(sender_in<decltype(sndr), env<>>);
-    STATIC_REQUIRE(set_equivalent<
-                   completion_signatures_of_t<decltype(sndr), env<>>,
-                   completion_signatures<set_value_t(int, int), set_error_t(std::exception_ptr)>>);
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<decltype(sndr), env<>>,
+                                  completion_signatures<set_value_t(int, int),
+                                                        set_error_t(std::exception_ptr),
+                                                        set_error_t(std::exception_ptr const &)>>);
 
     auto [i1, i2] = sync_wait(sndr).value();
     CHECK(i1 == 42);

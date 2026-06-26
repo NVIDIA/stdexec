@@ -68,6 +68,93 @@ namespace
     }
   };
 
+  struct error_that_throws_when_persisted
+  {
+    error_that_throws_when_persisted() = default;
+
+    error_that_throws_when_persisted(error_that_throws_when_persisted &&)
+    {
+      throw std::runtime_error("error persistence failed");
+    }
+  };
+
+  struct throws_when_error_is_persisted_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(),
+                                       ex::set_error_t(error_that_throws_when_persisted)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      Receiver receiver_;
+
+      void start() & noexcept
+      {
+        ex::set_error(std::move(receiver_), error_that_throws_when_persisted{});
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) const -> operation<Receiver>
+    {
+      return {std::move(receiver)};
+    }
+  };
+
+  template <class Value>
+  struct advertises_value_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(Value)>{};
+    }
+  };
+
+  struct not_move_constructible
+  {
+    not_move_constructible()                               = default;
+    not_move_constructible(not_move_constructible &&)      = delete;
+    not_move_constructible(not_move_constructible const &) = delete;
+  };
+
+  struct expect_rvalue_value_receiver
+  {
+    using receiver_concept = ex::receiver_t;
+
+    void set_value(int &&i, double &&d) && noexcept
+    {
+      CHECK(i == 3);
+      CHECK(d == 0.1415);
+    }
+
+    template <class Error>
+    void set_error(Error &&) && noexcept
+    {
+      FAIL("unexpected error");
+    }
+
+    void set_stopped() && noexcept
+    {
+      FAIL("unexpected stopped");
+    }
+
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+
   TEST_CASE("when_all returns a sender", "[adaptors][when_all]")
   {
     auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
@@ -117,6 +204,15 @@ namespace
     auto snd1 = std::move(snd) | ex::then([](int x, double y) { return x + y; });
     auto op   = ex::connect(std::move(snd1),
                           expect_value_receiver{3.1415});  // NOLINT(modernize-use-std-numbers)
+    ex::start(op);
+  }
+
+  TEST_CASE("when_all sends by-value completions as rvalues", "[adaptors][when_all]")
+  {
+    auto snd = ex::when_all(ex::just(3), ex::just(0.1415));
+    STATIC_REQUIRE(set_equivalent<ex::completion_signatures_of_t<decltype(snd), ex::env<>>,
+                                  ex::completion_signatures<ex::set_value_t(int, double)>>);
+    auto op = ex::connect(std::move(snd), expect_rvalue_value_receiver{});
     ex::start(op);
   }
 
@@ -325,7 +421,7 @@ namespace
     CHECK(cancelled);
   }
 
-  TEST_CASE("when_all has the values_type based on the children, decayed and as rvalue references",
+  TEST_CASE("when_all has the values_type based on the children, preserving references",
             "[adaptors][when_all]")
   {
     check_val_types<ex::__mset<pack<int>>>(ex::when_all(ex::just(13)));
@@ -342,9 +438,33 @@ namespace
     check_val_types<ex::__mset<pack<int, double>>>(
       ex::when_all(ex::just(3), ex::just(), ex::just(0.14)));
 
-    // if children send references, they get decayed
-    check_val_types<ex::__mset<pack<int, double>>>(
+    // unary when_all coalesces to the child, so references are preserved
+    check_val_types<ex::__mset<pack<int const &>>>(ex::when_all(exec::split(ex::just(3))));
+
+    // if multiple children send references, they are preserved
+    check_val_types<ex::__mset<pack<int const &, double const &>>>(
       ex::when_all(exec::split(ex::just(3)), exec::split(ex::just(0.14))));
+  }
+
+  TEST_CASE("when_all validates every value completion storage", "[adaptors][when_all]")
+  {
+#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+    using invalid_sender =
+      decltype(ex::__make_sexpr<ex::when_all_t>(ex::__{},
+                                                advertises_value_sender<not_move_constructible>{},
+                                                ex::just()));
+    using invalid_completions =
+      decltype(invalid_sender::template get_completion_signatures<invalid_sender, ex::env<>>());
+    STATIC_REQUIRE(ex::__merror<invalid_completions>);
+#endif
+
+    using reference_sender =
+      decltype(ex::when_all(advertises_value_sender<not_move_constructible &>{}, ex::just()));
+    using reference_completions =
+      decltype(ex::get_completion_signatures<reference_sender, ex::env<>>());
+    STATIC_REQUIRE(
+      set_equivalent<reference_completions,
+                     ex::completion_signatures<ex::set_value_t(not_move_constructible &)>>);
   }
 
   TEST_CASE("when_all has the error_types based on the children", "[adaptors][when_all]")
@@ -360,6 +480,44 @@ namespace
 
     check_err_types<ex::__mset<std::exception_ptr>>(
       ex::when_all(ex::just(13), ex::just_error(std::exception_ptr{}), ex::just_stopped()));
+  }
+
+  TEST_CASE("when_all reports exception_ptr if persisting an error throws", "[adaptors][when_all]")
+  {
+    auto snd = ex::when_all(ex::just(), throws_when_error_is_persisted_sender{});
+    STATIC_REQUIRE(exec::sender_for<decltype(snd), ex::when_all_t>);
+    check_err_types<ex::__mset<error_that_throws_when_persisted, std::exception_ptr>>(snd);
+
+    std::exception_ptr ex;
+    struct receiver
+    {
+      using receiver_concept = ex::receiver_t;
+
+      void set_value() noexcept
+      {
+        FAIL("Unexpected value completion");
+      }
+
+      void set_stopped() noexcept
+      {
+        FAIL("Unexpected stopped completion");
+      }
+
+      void set_error(error_that_throws_when_persisted &&) noexcept
+      {
+        FAIL("Unexpected original error completion");
+      }
+
+      void set_error(std::exception_ptr err) noexcept
+      {
+        *ex_ = std::move(err);
+      }
+
+      std::exception_ptr *ex_;
+    };
+    auto op = ex::connect(std::move(snd), receiver{&ex});
+    ex::start(op);
+    CHECK(ex);
   }
 
   TEST_CASE("when_all has sends_stopped == true if and only if at least one child sends stopped",
