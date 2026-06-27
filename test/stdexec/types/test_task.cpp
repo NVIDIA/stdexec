@@ -446,6 +446,52 @@ namespace
     double * double_value_;
   };
 
+  struct non_affine_reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int *    value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {std::move(receiver), value_};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_value_t>) noexcept
+      {
+        return ex::__completion_behavior::__asynchronous;
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+
+    int *value_;
+  };
+
   template <bool Inline>
   auto task_awaits_reference_sender() -> ex::task<int &>
   {
@@ -462,6 +508,13 @@ namespace
     STATIC_REQUIRE(std::same_as<decltype(values), std::tuple<int &, double &>>);
     CHECK(&std::get<0>(values) == &global_int);
     CHECK(&std::get<1>(values) == &global_double);
+  }
+
+  auto task_awaits_non_affine_reference_sender() -> ex::task<void>
+  {
+    auto &&i = co_await non_affine_reference_sender{&global_int};
+    CHECK(&i == &global_int);
+    CHECK(i == 42);
   }
 
   auto test_task_of_reference_type() -> ex::task<int &>
@@ -526,6 +579,13 @@ namespace
     global_int = 42;
     global_double = 0.125;
     ex::sync_wait(task_awaits_references_sender<false>());
+  }
+
+  TEST_CASE("task co_await preserves a reference when affine inserts finally",
+            "[types][task]")
+  {
+    global_int = 42;
+    ex::sync_wait(task_awaits_non_affine_reference_sender());
   }
 
   struct inline_affine_stopped_sender
