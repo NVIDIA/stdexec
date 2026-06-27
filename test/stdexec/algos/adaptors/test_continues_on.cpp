@@ -31,6 +31,144 @@ using namespace std::chrono_literals;
 
 namespace
 {
+  constinit int    global_int    = 0;
+  constinit double global_double = 0.0;
+
+  struct reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int     *value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver &&>(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(receiver), value_};
+    }
+
+    int *value_;
+  };
+
+  struct references_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &, double &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int     *int_value_;
+      double  *double_value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver &&>(receiver_), *int_value_, *double_value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(receiver), int_value_, double_value_};
+    }
+
+    int    *int_value_;
+    double *double_value_;
+  };
+
+  struct value_domain
+  {};
+
+  struct error_domain
+  {};
+
+  struct throwing_value_domain_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(potentially_throwing),
+                                       ex::set_error_t(int)>{};
+    }
+
+    struct attrs
+    {
+      constexpr auto
+      query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> value_domain
+      {
+        return {};
+      }
+
+      constexpr auto
+      query(ex::get_completion_domain_t<ex::set_error_t>) const noexcept -> error_domain
+      {
+        return {};
+      }
+    };
+
+    constexpr auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  struct error_domain_scheduler
+  {
+    using scheduler_concept = ex::scheduler_tag;
+
+    struct sender
+    {
+      using sender_concept = ex::sender_tag;
+      using completion_signatures =
+        ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int)>;
+
+      struct attrs
+      {
+        template <class _Tag>
+        constexpr auto query(ex::get_completion_domain_t<_Tag>) const noexcept -> error_domain
+        {
+          return {};
+        }
+      };
+
+      constexpr auto get_env() const noexcept -> attrs
+      {
+        return {};
+      }
+    };
+
+    constexpr auto schedule() const noexcept -> sender
+    {
+      return {};
+    }
+
+    auto operator==(error_domain_scheduler const &) const noexcept -> bool = default;
+  };
+
   struct potentially_throwing_connect_scheduler
   {
     using scheduler_concept = ex::scheduler_tag;
@@ -99,6 +237,54 @@ namespace
     auto op  = ex::connect(std::move(snd), expect_value_receiver{13});
     ex::start(op);
     // The receiver checks if we receive the right value
+  }
+
+  TEST_CASE("continues_on preserves a single reference completion", "[adaptors][continues_on]")
+  {
+    global_int = 42;
+    auto raw   = ex::continues_on(reference_sender{&global_int}, inline_scheduler{});
+    STATIC_REQUIRE(set_equivalent<ex::completion_signatures_of_t<decltype(raw), ex::env<>>,
+                                  ex::completion_signatures<ex::set_value_t(int &)>>);
+    auto snd = std::move(raw)
+             | ex::then(
+                 [](auto &&i) noexcept
+                 {
+                   CHECK(&i == &global_int);
+                   CHECK(i == 42);
+                 });
+
+    ex::sync_wait(std::move(snd));
+  }
+
+  TEST_CASE("continues_on preserves multiple reference completion arguments",
+            "[adaptors][continues_on]")
+  {
+    global_int    = 42;
+    global_double = 0.125;
+    auto raw = ex::continues_on(references_sender{&global_int, &global_double}, inline_scheduler{});
+    STATIC_REQUIRE(set_equivalent<ex::completion_signatures_of_t<decltype(raw), ex::env<>>,
+                                  ex::completion_signatures<ex::set_value_t(int &, double &)>>);
+    auto snd = std::move(raw)
+             | ex::then(
+                 [](auto &&i, auto &&d) noexcept
+                 {
+                   CHECK(&i == &global_int);
+                   CHECK(&d == &global_double);
+                   CHECK(i == 42);
+                   CHECK(d == 0.125);
+                 });
+
+    ex::sync_wait(std::move(snd));
+  }
+
+  TEST_CASE("continues_on does not report the source value domain for persistence errors",
+            "[adaptors][continues_on]")
+  {
+    using attrs = ex::__trnsfr::__attrs<error_domain_scheduler, throwing_value_domain_sender>;
+
+    auto domain = attrs{error_domain_scheduler{}, throwing_value_domain_sender::attrs{}}
+                    .query(ex::get_completion_domain<ex::set_error_t>, ex::env<>{});
+    STATIC_REQUIRE(std::same_as<decltype(domain), error_domain>);
   }
 
   TEST_CASE("continues_on can be piped", "[adaptors][continues_on]")
