@@ -31,6 +31,39 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  constinit int global_int = 0;
+
+  struct reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int&)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int*     value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver&&>(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), value_};
+    }
+
+    int* value_;
+  };
+
   TEST_CASE("future completion signature calculation works", "[adaptors][spawn_future]")
   {
     {
@@ -56,14 +89,32 @@ namespace
     }
 
     {
-      using expected = ex::completion_signatures<ex::set_stopped_t(),
-                                                 ex::set_error_t(std::exception_ptr),
-                                                 ex::set_value_t(std::string)>;
+      using expected =
+        ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(std::string const &)>;
       using actual =
         ex::__spawn_future::__future_completions_t<ex::env<>, ex::set_value_t(std::string const &)>;
 
       STATIC_REQUIRE(actual{} == expected{});
     }
+  }
+
+  TEST_CASE("spawn_future preserves reference completions", "[adaptors][spawn_future]")
+  {
+    global_int     = 42;
+    auto future    = ex::spawn_future(reference_sender{&global_int}, null_token{});
+    using expected = ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(int&)>;
+    using actual   = ex::completion_signatures_of_t<decltype(future), ex::env<>>;
+    STATIC_REQUIRE(actual{} == expected{});
+
+    auto snd = std::move(future)
+             | ex::then(
+                 [](auto&& i) noexcept
+                 {
+                   CHECK(&i == &global_int);
+                   CHECK(i == 42);
+                 });
+
+    ex::sync_wait(std::move(snd));
   }
 
   TEST_CASE("spawn_future(just(...)) is equivalent to just(...)", "[adaptors][spawn_future]")
