@@ -94,7 +94,10 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
-    )
+    stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/types/test_counting_scopes.cpp
+    stdexec/types/test_matching_completion_signature.cpp
+    stdexec/types/test_task.cpp)
 endif()
 
 add_library(common_test_settings INTERFACE)
