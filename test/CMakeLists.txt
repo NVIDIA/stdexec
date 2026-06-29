@@ -97,6 +97,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/types/test_counting_scopes.cpp
     stdexec/types/test_matching_completion_signature.cpp
+    stdexec/types/test_storage_for_completion_signatures.cpp
     stdexec/types/test_task.cpp)
 endif()
 
