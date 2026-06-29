@@ -88,7 +88,8 @@ set(stdexec_test_sources
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
     stdexec/types/test_counting_scopes.cpp
-    stdexec/types/test_matching_completion_signature.cpp)
+    stdexec/types/test_matching_completion_signature.cpp
+    stdexec/types/test_storage_for_completion_signatures.cpp)
 
 add_library(common_test_settings INTERFACE)
 set_target_properties(
