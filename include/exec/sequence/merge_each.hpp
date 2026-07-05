@@ -194,12 +194,8 @@ namespace experimental::execution
         return __env_with_inplace_stop_token(__token_, static_cast<_Env&&>(__env));
       }
 
-      template <class _Error>
-        requires(!__std::same_as<_Error, _ErrorStorage>)
-      void store_error(_Error&& __error)
-        noexcept(__nothrow_callable<decltype(&_ErrorStorage::template emplace<_Error>),
-                                    _ErrorStorage&,
-                                    _Error>)
+      template <__not_same_as<_ErrorStorage> _Error>
+      void store_error(_Error&& __error) noexcept
       {
         if (this->nested_value_fail())
         {
