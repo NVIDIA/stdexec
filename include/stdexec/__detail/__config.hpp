@@ -658,38 +658,6 @@ namespace STDEXEC
 #  define STDEXEC_IF_NOT_CONSTEVAL STDEXEC_IF_CONSTEVAL {} else
 #endif
 
-#if defined(STDEXEC_ASSERT)
-// nothing to do, user has provided their own assertion macro
-#elif defined(STDEXEC_ASSERT_FN)
-// legacy way to customize assertions, still supported for backward compatibility
-#  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
-#else
-#  define STDEXEC_ASSERT(_XP)                                                                      \
-  do                                                                                               \
-  {                                                                                                \
-    STDEXEC_IF_CONSTEVAL                                                                           \
-    {                                                                                              \
-      if (!(_XP))                                                                                  \
-        STDEXEC::__throw_assertion_failure();                                                      \
-    }                                                                                              \
-    else                                                                                           \
-    {                                                                                              \
-      assert(_XP);                                                                                 \
-    }                                                                                              \
-  } while (false)
-#endif
-
-namespace STDEXEC
-{
-  struct __assertion_failure
-  {};
-
-  inline void __throw_assertion_failure()
-  {
-    throw __assertion_failure{};
-  }
-}  // namespace STDEXEC
-
 #define STDEXEC_AUTO_RETURN(...)                                                                   \
   noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) {                                         \
     return __VA_ARGS__;                                                                            \
@@ -807,6 +775,38 @@ namespace STDEXEC
     STDEXEC_IF_HOST(::exit(-1))
     STDEXEC_IF_DEVICE(__trap())
     STDEXEC_UNREACHABLE();
+  }
+}  // namespace STDEXEC
+
+#if defined(STDEXEC_ASSERT)
+// nothing to do, user has provided their own assertion macro
+#elif defined(STDEXEC_ASSERT_FN)
+// legacy way to customize assertions, still supported for backward compatibility
+#  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
+#else
+#  define STDEXEC_ASSERT(_XP)                                                                      \
+  do                                                                                               \
+  {                                                                                                \
+    STDEXEC_IF_CONSTEVAL                                                                           \
+    {                                                                                              \
+      if (!(_XP))                                                                                  \
+        STDEXEC::__throw_assertion_failure();                                                      \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      assert(_XP);                                                                                 \
+    }                                                                                              \
+  } while (false)
+#endif
+
+namespace STDEXEC
+{
+  struct __assertion_failure
+  {};
+
+  inline void __throw_assertion_failure()
+  {
+    STDEXEC_THROW(__assertion_failure{});
   }
 }  // namespace STDEXEC
 

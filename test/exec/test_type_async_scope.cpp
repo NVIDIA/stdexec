@@ -131,7 +131,7 @@ namespace
     }
   }
 
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#if !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_NO_STDCPP_EXCEPTIONS()
   template <typename AsyncScope>
   ::STDEXEC::task<void> test_awaitable_in_stdexec_task(AsyncScope& scope)
   {
@@ -144,6 +144,6 @@ namespace
     exec::async_scope scope;
     CHECK_NOTHROW(test_awaitable_in_stdexec_task(scope));
   }
-#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+#endif  // !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
 }  // namespace

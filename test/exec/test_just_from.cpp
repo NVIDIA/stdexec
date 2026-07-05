@@ -68,12 +68,10 @@ namespace
     {
       if (sizeof(sink) == ~0ul)
       {
-        std::puts("sink(42)");
         sink(42);
       }
       else
       {
-        std::puts("sink(43, 44)");
         sink(43, 44);
       }
       return ex::completion_signatures<ex::set_value_t(int), ex::set_value_t(int, int)>{};

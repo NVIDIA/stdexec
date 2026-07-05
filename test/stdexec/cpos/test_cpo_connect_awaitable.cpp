@@ -492,6 +492,7 @@ namespace
     }
   }
 
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("exceptions thrown from await_ready are reported to set_error",
             "[cpo][cpo_connect_awaitable]")
   {
@@ -689,6 +690,7 @@ namespace
       op.start();
     }
   }
+#  endif
 
   struct stop_on_suspend
   {
