@@ -34,6 +34,9 @@
 #include <string_view>
 #include <vector>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
+
 #if STDEXEC_CUDA_COMPILATION()
 #  define STDEXEC_STDERR
 #  include "nvexec/detail/throw_on_cuda_error.cuh"
@@ -538,3 +541,5 @@ auto value(std::map<std::string_view, std::size_t> const &params,
   }
   return default_value;
 }
+
+STDEXEC_PRAGMA_POP()

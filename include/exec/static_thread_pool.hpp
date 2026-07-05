@@ -206,10 +206,10 @@ namespace experimental::execution
       struct _is_nothrow_bulk_fn
       {
         template <class... Args>
-          requires __callable<Fun, Shape, Shape, __decay_t<Args>&...>
+          requires __callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args>&...>
         using __f = __mbool<
           // If function invocation doesn't throw ...
-          __nothrow_callable<Fun, Shape, Shape, __decay_t<Args>&...> &&
+          __nothrow_callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args>&...> &&
           // ... and decay-copying the arguments doesn't throw ...
           __nothrow_decay_copyable<Args...>
           // ... then there is no need to advertise completion with `exception_ptr`
@@ -250,14 +250,16 @@ namespace experimental::execution
           if constexpr (__same_as<Tag, bulk_unchunked_t>)
           {
             // Turn a bulk_unchunked into a bulk_chunked operation
-            using fun_t    = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
-            using sender_t = _bulk_sender<parallelize, decltype(shape), fun_t, __decay_t<CvSender>>;
+            using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
+            using sender_t =
+              _bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>>;
             return sender_t{pool_, static_cast<CvSender&&>(sndr), shape, fun_t(std::move(fun))};
           }
           else
           {
-            using fun_t    = decltype(fun);
-            using sender_t = _bulk_sender<parallelize, decltype(shape), fun_t, __decay_t<CvSender>>;
+            using fun_t = decltype(fun);
+            using sender_t =
+              _bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>>;
             return sender_t{pool_, static_cast<CvSender&&>(sndr), shape, std::move(fun)};
           }
         }
@@ -268,7 +270,8 @@ namespace experimental::execution
       struct _transform_iterate
       {
         template <class Range>
-        auto operator()(exec::iterate_t, Range&& range) -> schedule_all_::sequence<__decay_t<Range>>
+        auto operator()(exec::iterate_t, Range&& range)
+          -> schedule_all_::sequence<STDEXEC::__decay_t<Range>>
         {
           return {static_cast<Range&&>(range), pool_};
         }
