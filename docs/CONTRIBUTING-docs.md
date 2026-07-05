@@ -58,6 +58,12 @@ both call syntaxes (direct and pipe) in a small `@code{.cpp}` block. End
 with a pointer to the normative spec: `See [exec.foo] in the C++26
 working draft for the normative specification.`
 
+Use the exact working-draft stable name in brackets (e.g. `[exec.then]`,
+`[exec.sync.wait.var]`). A Doxygen input filter (`eelis_link_filter.pl`)
+automatically turns any `[exec.*]` reference into a hyperlink to the matching
+section on <https://eel.is/c++draft> in the generated docs, so just write the
+bare stable name — do not add the URL by hand.
+
 ### 3. Inline section headings
 
 Use **bold inline headings** for sub-sections — not `@par`, not `###`.

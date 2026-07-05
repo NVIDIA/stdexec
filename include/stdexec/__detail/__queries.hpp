@@ -30,7 +30,7 @@ namespace STDEXEC
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
 
-  // [exec.get.await.adapt], see https://eel.is/c++draft/exec#get.await.adapt
+  // [exec.get.await.adapt]
   struct get_await_completion_adaptor_t : __query<get_await_completion_adaptor_t>
   {
     template <class _Env>

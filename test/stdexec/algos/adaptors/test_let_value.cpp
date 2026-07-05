@@ -105,6 +105,7 @@ namespace
     ex::start(op);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   auto is_prime(int x) -> bool
   {
     if (x > 2 && (x % 2 == 0))
@@ -119,7 +120,6 @@ namespace
     return true;
   }
 
-#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("let_value can be used for composition", "[adaptors][let_value]")
   {
     bool called1{false};
@@ -414,6 +414,7 @@ namespace
     CHECK(completed);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   struct throws_on_connect
   {
     using sender_concept = ::STDEXEC::sender_tag;
@@ -516,4 +517,5 @@ namespace
     auto                   op     = ex::connect(sender, expect_void_receiver{});
     ex::start(op);
   }
+#endif
 }  // namespace

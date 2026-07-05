@@ -28,7 +28,6 @@
 namespace experimental::execution
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.execute]
   struct __execute_t
   {
     template <STDEXEC::scheduler _Scheduler, STDEXEC::__std::move_constructible _Fun>

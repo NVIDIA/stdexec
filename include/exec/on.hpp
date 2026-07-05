@@ -20,7 +20,7 @@
 namespace experimental::execution
 {
   /////////////////////////////////////////////////////////////////////////////
-  // A scoped version of [execution.senders.adaptors.on]
+  // A scoped version of [exec.on]
   using on_t [[deprecated(
     "on_t has been moved to the " STDEXEC_PP_STRINGIZE(STDEXEC) ":: namespace")]] = STDEXEC::on_t;
 

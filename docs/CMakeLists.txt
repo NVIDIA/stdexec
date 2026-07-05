@@ -38,6 +38,10 @@ set(DOXYGEN_INDEX_FILE ${DOXYGEN_OUTPUT_DIR}/xml/index.xml)
 set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in)
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
 
+# Doxygen INPUT_FILTER that hyperlinks [exec.*] working-draft stable names in
+# the comments to the corresponding sections on https://eel.is/c++draft.
+set(DOXYGEN_INPUT_FILTER "perl ${CMAKE_CURRENT_SOURCE_DIR}/eelis_link_filter.pl")
+
 # Find the location of stddef.h
 execute_process(COMMAND echo "#include <stddef.h>"
                 COMMAND c++ -xc -dI -E -

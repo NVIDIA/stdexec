@@ -1723,6 +1723,7 @@ namespace experimental::execution
           STDEXEC::__manual_lifetime<item_operation_t>>;
 
         std::vector<__manual_lifetime<item_operation_t>, item_allocator_t> items_;
+        std::size_t                                                        items_constructed_{};
 
        public:
         operation(Range range, _static_thread_pool& pool, Receiver rcvr)
@@ -1734,12 +1735,9 @@ namespace experimental::execution
 
         ~operation()
         {
-          if (this->has_started_)
+          for (std::size_t i = 0; i < items_constructed_; ++i)
           {
-            for (auto& item: items_)
-            {
-              item.__destroy();
-            }
+            items_[i].__destroy();
           }
         }
 
@@ -1753,13 +1751,26 @@ namespace experimental::execution
           auto&       remote_queue = *this->pool_.get_remote_queue();
           auto        it           = std::ranges::begin(this->range_);
           std::size_t i0           = 0;
-          while (i0 + chunk_size < size)
+          STDEXEC_TRY
           {
-            for (std::size_t i = i0; i < i0 + chunk_size; ++i)
+            for (std::size_t i = 0; i < size; ++i)
             {
               items_[i].__construct_from(STDEXEC::connect,
                                          set_next(this->rcvr_, item_sender_t{this, it + i}),
                                          next_receiver_t{this});
+              ++items_constructed_;
+            }
+          }
+          STDEXEC_CATCH_ALL
+          {
+            STDEXEC::set_error(static_cast<Receiver&&>(this->rcvr_), std::current_exception());
+            return;
+          }
+
+          while (i0 + chunk_size < size)
+          {
+            for (std::size_t i = i0; i < i0 + chunk_size; ++i)
+            {
               STDEXEC::start(items_[i].__get());
             }
 
@@ -1770,9 +1781,6 @@ namespace experimental::execution
           }
           for (std::size_t i = i0; i < size; ++i)
           {
-            items_[i].__construct_from(STDEXEC::connect,
-                                       set_next(this->rcvr_, item_sender_t{this, it + i}),
-                                       next_receiver_t{this});
             STDEXEC::start(items_[i].__get());
           }
           std::unique_lock lock{this->start_mutex_};

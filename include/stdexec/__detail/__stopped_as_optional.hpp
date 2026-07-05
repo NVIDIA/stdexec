@@ -37,7 +37,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.stopped_as_optional]
+  // [exec.stopped.opt]
   namespace __sao
   {
     struct _SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_;

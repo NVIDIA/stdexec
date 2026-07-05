@@ -282,7 +282,7 @@ namespace STDEXEC
 
     /// Returns the execution domain of `this`.
     [[nodiscard]]
-    auto query(get_domain_t) const noexcept -> __parallel_scheduler_domain
+    auto query(get_completion_domain_t<set_value_t>) const noexcept -> __parallel_scheduler_domain
     {
       return {};
     }
@@ -378,19 +378,19 @@ namespace STDEXEC
       }
 
       /// Calls the bulk functor passing `__index` and the values from the previous sender.
-      void execute(uint32_t __begin, uint32_t __end) noexcept override
+      void execute(size_t __begin, size_t __end) noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
         if constexpr (_BulkState::__is_unchunked)
         {
           (void) __end;  // not used
           // If we are not parallelizing, we need to run all the iterations sequentially.
-          uint32_t __increments = 1;
+          size_t __increments = 1;
           if constexpr (!_BulkState::__parallelize)
           {
-            __increments = static_cast<uint32_t>(__state->__size_);
+            __increments = static_cast<size_t>(__state->__size_);
           }
-          for (uint32_t __i = __begin; __i < __begin + __increments; __i++)
+          for (size_t __i = __begin; __i < __begin + __increments; __i++)
           {
             std::apply([&](auto&&... __args) { __state->__fun_(__i, __args...); },
                        *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
@@ -514,14 +514,14 @@ namespace STDEXEC
         if constexpr (_BulkState::__is_unchunked)
         {
           __scheduler->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1,
-                                               __storage,
-                                               *__r);
+                                               *__r,
+                                               __storage);
         }
         else
         {
           __scheduler->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1,
-                                             __storage,
-                                             *__r);
+                                             *__r,
+                                             __storage);
         }
       }
 
@@ -603,7 +603,7 @@ namespace STDEXEC
           &__system_bulk_op::__prepare_storage_for_backend_impl;
 
         // Start using the preallocated buffer to store the inner operation state.
-        new (__preallocated_.__as_ptr()) __inner_op_state(__initFunc(*this));
+        new (__preallocated_.__as_ptr()) __inner_op_state(std::forward<_InitF>(__initFunc)(*this));
       }
 
       __system_bulk_op(__system_bulk_op const &)                    = delete;

@@ -35,7 +35,6 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.transfer_just]
   struct __transfer_just_t
   {
     template <scheduler _Scheduler, __movable_value... _Values>
