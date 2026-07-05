@@ -31,6 +31,11 @@ namespace STDEXEC
 
   namespace __affine
   {
+    template <class _Sender>
+    concept __has_affine_member = requires(_Sender &&__sndr) {
+      { static_cast<_Sender &&>(__sndr).affine() } -> sender;
+    };
+
     // For a given completion tag, a sender is "already affine" if either it doesn't send
     // that tag, or if its completion behavior for that tag is already "inline" or
     // "__asynchronous_affine".
@@ -83,6 +88,11 @@ namespace STDEXEC
         // Check the child's completion behavior. If it is "inline" or "async_affine", then
         // we can just return the child sender. Otherwise, we need to wrap it.
         return STDEXEC::__forward_like<_Sender>(__child);
+      }
+      else if constexpr (__affine::__has_affine_member<__cv_child_t>)
+      {
+        // If the child has member function `affine`, We use it.
+        return STDEXEC::__forward_like<_Sender>(__child).affine();
       }
       else if constexpr (__same_as<__sched_t, __not_a_scheduler<>>)
       {

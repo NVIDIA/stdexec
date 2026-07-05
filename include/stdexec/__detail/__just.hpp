@@ -32,7 +32,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.factories]
+  // [exec.factories]
   namespace __just
   {
     template <class _SetTag>

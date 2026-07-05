@@ -46,7 +46,7 @@ namespace STDEXEC
   }  // namespace __detail
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.receivers]
+  // [exec.recv]
   template <class _Receiver, class... _As>
   concept __set_value_member = requires(_Receiver &&__rcvr, _As &&...__args) {
     static_cast<_Receiver &&>(__rcvr).set_value(static_cast<_As &&>(__args)...);

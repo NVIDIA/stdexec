@@ -32,7 +32,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders]
+  // [exec.snd]
 
   //! @brief Tag type used to opt a class into the @c stdexec::sender concept.
   //!
@@ -102,17 +102,17 @@ namespace STDEXEC
   //!    @c sender_concept type alias derived from @c stdexec::sender_tag,
   //!    or by specializing `stdexec::enable_sender<S>` to @c true, or by
   //!    being an awaitable in stdexec's coroutine promise type.
-  //! 2. @c S provides an environment via @c stdexec::get_env (every sender
-  //!    has an environment, possibly empty).
+  //! 2. @c S provides a queryable set of attributes via @c stdexec::get_env.
+  //!    Every sender has a (possibly empty) set of attributes.
   //! 3. @c S's decayed type is move-constructible and constructible from
   //!    an @c S (this is what allows senders to be stored and forwarded
   //!    by value).
   //!
   //! Note that @c sender by itself does *not* require the sender's
   //! completion signatures to be computable. That is the additional
-  //! constraint of @c sender_in (which carries an environment). Generic
-  //! sender-adaptor code that needs to know "what does this sender
-  //! complete with?" uses `sender_in<S, Env>`, not @c sender (alone).
+  //! constraint of @c sender_in. Generic sender-adaptor code that needs to
+  //! know "in which ways can this sender complete?" uses `sender_in<S, Env>`,
+  //! not @c sender (alone).
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!
@@ -140,10 +140,10 @@ namespace STDEXEC
   //!        given environment.
   //!
   //! @c sender_in is the form of the sender concept that generic adaptor
-  //! code actually uses. Where @c sender just asks "is this a sender at
-  //! all?", `sender_in<S, Env>` asks "is @c S a sender whose completion
-  //! signatures we can compute when connected to a receiver with
-  //! environment @c Env?" — that information is what every adaptor needs
+  //! code actually uses. Where @c sender just asks \"is this a sender at
+  //! all?\", `sender_in<S, Env>` asks \"is @c S a sender whose completion
+  //! signatures can be computed when connected to a receiver with
+  //! environment @c Env?\" — that information is what every adaptor needs
   //! to type-check itself.
   //!
   //! Concretely, `sender_in<S, Env>` requires:
@@ -155,8 +155,11 @@ namespace STDEXEC
   //!
   //! The @c Env parameter is optional (the variadic accepts zero or one
   //! environment). When no environment is supplied, the sender must have
-  //! a *dependent-environment-free* set of completion signatures — i.e.
-  //! its signatures must not vary by environment.
+  //! a *non-dependent* set of completion signatures — i.e. its signatures
+  //! are the same regardless of the environment. In that case,
+  //! @c sender_in requires that `get_completion_signatures<S>()` is a
+  //! constant expression whose value is a valid @c completion_signatures
+  //! specialization.
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!

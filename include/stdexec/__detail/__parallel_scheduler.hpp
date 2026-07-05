@@ -20,6 +20,7 @@
 
 #include "__bulk.hpp"
 #include "__domain.hpp"
+#include "__manual_lifetime.hpp"
 #include "__parallel_scheduler_replacement_api.hpp"
 #include "__schedulers.hpp"
 #include "__sender_introspection.hpp"
@@ -117,6 +118,13 @@ namespace STDEXEC
       auto query(get_completion_scheduler_t<_Tag>) const noexcept
       {
         return __detail::__make_parallel_scheduler_from(_Tag(), __sched_);
+      }
+
+      /// Returns the system scheduler as the completion domain for `set_value_t`.
+      [[nodiscard]]
+      auto query(get_completion_domain_t<set_value_t>) const noexcept -> __parallel_scheduler_domain
+      {
+        return {};
       }
 
       /// The underlying implementation of the scheduler we are using.
@@ -282,7 +290,7 @@ namespace STDEXEC
 
     /// Returns the execution domain of `this`.
     [[nodiscard]]
-    auto query(get_domain_t) const noexcept -> __parallel_scheduler_domain
+    auto query(get_completion_domain_t<set_value_t>) const noexcept -> __parallel_scheduler_domain
     {
       return {};
     }
@@ -328,10 +336,10 @@ namespace STDEXEC
     template <class _Previous>
     struct __forward_args_receiver : parallel_scheduler_replacement::bulk_item_receiver_proxy
     {
-      using __storage_t = __detail::__sender_data_t<_Previous>;
+      using __storage_t = __decay_t<__detail::__sender_data_t<_Previous>>;
 
       /// Storage for the arguments received from the previous sender.
-      alignas(__storage_t) unsigned char __arguments_data_[sizeof(__storage_t)];
+      __manual_lifetime<__storage_t> __arguments_;
     };
 
     /// Derived class that properly forwards the arguments received from `_Previous` to the receiver methods.
@@ -345,55 +353,56 @@ namespace STDEXEC
       /// Stores `__as` in the base class storage, with the right types.
       explicit __typed_forward_args_receiver(_As&&... __as)
       {
-        static_assert(sizeof(std::tuple<_As...>) <= sizeof(__base_t::__arguments_data_));
-        // BUGBUG: this seems wrong. we are not ever destroying this tuple.
-        new (__base_t::__arguments_data_) std::tuple<__decay_t<_As>...>{std::move(__as)...};
+        __base_t::__arguments_.__construct(std::forward<_As>(__as)...);
       }
 
       /// Calls `set_value()` on the final receiver of the bulk operation, using the values from the previous sender.
       void set_value() noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        std::apply(
-          [&](auto&&... __args)
-          {
-            STDEXEC::set_value(std::forward<__rcvr_t>(__state->__rcvr_),
-                               std::forward<_As>(__args)...);
-          },
-          *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+        auto __args  = std::move(__base_t::__arguments_.__get());
+        __base_t::__arguments_.__destroy();
+        std::destroy_at(this);
+        std::apply([&](auto&&... __args)
+                   { STDEXEC::set_value(std::move(__state->__rcvr_), std::move(__args)...); },
+                   std::move(__args));
       }
 
       /// Calls `set_error()` on the final receiver of the bulk operation, passing `__ex`.
       void set_error(std::exception_ptr __ex) noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        STDEXEC::set_error(std::forward<__rcvr_t>(__state->__rcvr_), std::move(__ex));
+        __base_t::__arguments_.__destroy();
+        std::destroy_at(this);
+        STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__ex));
       }
 
       /// Calls `set_stopped()` on the final receiver of the bulk operation.
       void set_stopped() noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        STDEXEC::set_stopped(std::forward<__rcvr_t>(__state->__rcvr_));
+        __base_t::__arguments_.__destroy();
+        std::destroy_at(this);
+        STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
       /// Calls the bulk functor passing `__index` and the values from the previous sender.
-      void execute(uint32_t __begin, uint32_t __end) noexcept override
+      void execute(size_t __begin, size_t __end) noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
         if constexpr (_BulkState::__is_unchunked)
         {
           (void) __end;  // not used
           // If we are not parallelizing, we need to run all the iterations sequentially.
-          uint32_t __increments = 1;
+          size_t __increments = 1;
           if constexpr (!_BulkState::__parallelize)
           {
-            __increments = static_cast<uint32_t>(__state->__size_);
+            __increments = static_cast<size_t>(__state->__size_);
           }
-          for (uint32_t __i = __begin; __i < __begin + __increments; __i++)
+          for (size_t __i = __begin; __i < __begin + __increments; __i++)
           {
             std::apply([&](auto&&... __args) { __state->__fun_(__i, __args...); },
-                       *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+                       __base_t::__arguments_.__get());
           }
         }
         else
@@ -402,10 +411,10 @@ namespace STDEXEC
           if constexpr (!_BulkState::__parallelize)
           {
             __begin = 0;
-            __end   = static_cast<uint32_t>(__state->__size_);
+            __end   = static_cast<size_t>(__state->__size_);
           }
           std::apply([&](auto&&... __args) { __state->__fun_(__begin, __end, __args...); },
-                     *reinterpret_cast<std::tuple<_As...>*>(__base_t::__arguments_data_));
+                     __base_t::__arguments_.__get());
         }
       }
 
@@ -504,7 +513,7 @@ namespace STDEXEC
           __typed_forward_args_receiver_t(std::forward<_As>(__as)...);
 
         auto __scheduler = __sched_;
-        auto __size      = static_cast<uint32_t>(__state_.__size_);
+        auto __size      = static_cast<size_t>(__state_.__size_);
 
         auto __storage = __state_.__prepare_storage_for_backend(&__state_);
         // This might destroy the `this` object.
@@ -514,14 +523,14 @@ namespace STDEXEC
         if constexpr (_BulkState::__is_unchunked)
         {
           __scheduler->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1,
-                                               __storage,
-                                               *__r);
+                                               *__r,
+                                               __storage);
         }
         else
         {
           __scheduler->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1,
-                                             __storage,
-                                             *__r);
+                                             *__r,
+                                             __storage);
         }
       }
 
@@ -603,7 +612,7 @@ namespace STDEXEC
           &__system_bulk_op::__prepare_storage_for_backend_impl;
 
         // Start using the preallocated buffer to store the inner operation state.
-        new (__preallocated_.__as_ptr()) __inner_op_state(__initFunc(*this));
+        new (__preallocated_.__as_ptr()) __inner_op_state(static_cast<_InitF&&>(__initFunc)(*this));
       }
 
       __system_bulk_op(__system_bulk_op const &)                    = delete;

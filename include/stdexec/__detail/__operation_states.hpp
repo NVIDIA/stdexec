@@ -50,7 +50,7 @@ namespace STDEXEC
   {};
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.op_state]
+  // [exec.opstate]
   template <class _Op>
   concept __has_start_member = requires(_Op &__op) { __op.start(); };
 
@@ -153,7 +153,7 @@ namespace STDEXEC
   inline constexpr start_t start{};
 
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.op_state]
+  // [exec.opstate]
 
   //! @brief An in-progress, *immovable*, *startable* representation of an
   //!        asynchronous operation — the result of connecting a sender to

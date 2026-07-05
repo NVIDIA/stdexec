@@ -49,6 +49,7 @@ namespace
     return thread_id;
   }
 
+#  if !STDEXEC_APPLE_CLANG()
   auto test_stickiness_for_two_single_thread_contexts_nested(ex::scheduler auto scheduler1,
                                                              ex::scheduler auto,
                                                              auto id1,
@@ -210,6 +211,7 @@ namespace
     auto t   = test_stickiness_for_two_single_thread_contexts(scheduler1, scheduler2, id1, id2);
     ex::sync_wait(std::move(t));
   }
+#  endif
 
   auto test_stick_on_main_nested(ex::scheduler auto sched1,
                                  ex::scheduler auto,

@@ -29,7 +29,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.upon_stopped]
+  // [exec.then]
   namespace __upon_stopped
   {
     struct __upon_stopped_impl : __sexpr_defaults

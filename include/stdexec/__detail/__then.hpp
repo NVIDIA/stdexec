@@ -31,7 +31,7 @@
 namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
-  // [execution.senders.adaptors.then]
+  // [exec.then]
   namespace __then
   {
     struct __then_impl : __sexpr_defaults
