@@ -229,9 +229,8 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<_Self, _Sender>, _Env...>();
       }
 
       template <__decays_to<__sender> _Self, class _Receiver>

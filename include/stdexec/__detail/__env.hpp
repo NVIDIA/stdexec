@@ -249,6 +249,8 @@ namespace STDEXEC
           sizeof...(_Envs) - __mcall<__mfind_if<__q1<__has_query_t>, __msize>, _Envs...>::value;
         if constexpr (__index < sizeof...(_Envs))
           return STDEXEC::__get<__index>(__env);
+        else
+          return;
       }
     };
   }  // namespace __detail

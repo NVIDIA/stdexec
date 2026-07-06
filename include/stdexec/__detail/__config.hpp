@@ -787,6 +787,8 @@ namespace STDEXEC
 #  define STDEXEC_ASSERT(_XP)                                                                      \
   do                                                                                               \
   {                                                                                                \
+    STDEXEC_PRAGMA_PUSH()                                                                          \
+    STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)                       \
     STDEXEC_IF_CONSTEVAL                                                                           \
     {                                                                                              \
       if (!(_XP))                                                                                  \
@@ -796,6 +798,7 @@ namespace STDEXEC
     {                                                                                              \
       assert(_XP);                                                                                 \
     }                                                                                              \
+    STDEXEC_PRAGMA_POP()                                                                           \
   } while (false)
 #endif
 

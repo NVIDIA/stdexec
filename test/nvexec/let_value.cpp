@@ -167,7 +167,7 @@ namespace
     auto                     flags = flags_storage.get();
 
     auto snd = ex::schedule(sch)  //
-             | ex::let_value([] { return ex::get_scheduler(); })
+             | ex::let_value([] { return ex::get_start_scheduler(); })
              | ex::then(
                  [flags](nvexec::stream_scheduler sch2)
                  {
