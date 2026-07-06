@@ -15,6 +15,10 @@
  * limitations under the License.
  */
 
+// ASIO requires a specific include order.
+#include <exec/asio/asio_thread_pool.hpp>
+//
+
 #include <catch2/catch_all.hpp>
 
 #include <numeric>
@@ -24,8 +28,6 @@
 
 #include <exec/inline_scheduler.hpp>
 #include <test_common/schedulers.hpp>
-
-#include <exec/asio/asio_thread_pool.hpp>
 
 #include <exec/asio/use_sender.hpp>
 

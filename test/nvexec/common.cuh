@@ -26,6 +26,9 @@
 #include <cstdio>
 #include <cstdlib>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
+
 namespace
 {
 
@@ -362,3 +365,5 @@ namespace
 
   static_assert(!std::is_trivially_copyable_v<move_only_t>);
 }  // namespace
+
+STDEXEC_PRAGMA_POP()

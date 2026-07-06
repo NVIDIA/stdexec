@@ -37,6 +37,9 @@ function(def_example example)
         $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
         $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
     )
+    target_compile_definitions(${target} PRIVATE
+        $<$<PLATFORM_ID:Windows>:NOMINMAX>
+    )
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
                 stdexec_executable_flags
@@ -78,11 +81,7 @@ foreach(example ${stdexec_examples})
   def_example(${example})
 endforeach()
 
-if (STDEXEC_BUILD_PARALLEL_SCHEDULER)
-  target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
-else()
-  target_compile_definitions(example.sudoku PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
-endif()
+target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)

@@ -38,6 +38,8 @@ namespace pmr = std::pmr;
 #  define STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE 1
 #endif
 
+#include <stdexec/__detail/__prologue.hpp>
+
 struct statistics
 {
   std::chrono::milliseconds total_time_ms;
@@ -193,3 +195,5 @@ void my_main(int argc, char** argv, exec::numa_policy policy = exec::get_numa_po
     compute_perf(starts, ends, warmup, nRuns - 1, total_scheds);
   std::cout << avg << " | " << max << " | " << min << " | " << stddev << "\n";
 }
+
+#include <stdexec/__detail/__epilogue.hpp>
