@@ -62,7 +62,7 @@ namespace STDEXEC
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
   template <class _Sender>
-  concept __well_formed_sender = sender_in<_Sender> || dependent_sender<_Sender>;
+  concept __well_formed_sender = dependent_sender<_Sender> || sender_in<_Sender>;
 
   template <__well_formed_sender _Sender>
   constexpr void __ensure_well_formed_sender() noexcept

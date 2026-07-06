@@ -273,12 +273,50 @@ namespace STDEXEC
   struct __construct_from
   {
     template <class... _As>
-      requires __initializable_from<_Ty, _As...>
+      requires __std::constructible_from<_Ty, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto
-    operator()(_As &&...__as) const noexcept(__nothrow_initializable_from<_Ty, _As...>) -> _Ty
+    constexpr auto operator()(_As &&...__as) const  //
+      noexcept(__nothrow_constructible_from<_Ty, _As...>) -> _Ty
+    {
+      return _Ty(static_cast<_As &&>(__as)...);
+    }
+
+    template <class... _As>
+      requires __std::constructible_from<_Ty, _As...> || __initializable_from<_Ty, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr auto operator()(_As &&...__as) const  //
+      noexcept(__nothrow_initializable_from<_Ty, _As...>) -> _Ty
     {
       return _Ty{static_cast<_As &&>(__as)...};
+    }
+  };
+
+  // usage: __with_indices<3>()([]<size_t... _Is>(args...){...}, args...)
+  template <std::size_t _Count>
+  struct __with_indices
+  {
+    struct __impl_fn
+    {
+      // clang-format off
+      template <std::size_t... _Is, class _Fn, class... _As>
+      STDEXEC_ATTRIBUTE(host, device, always_inline)
+      constexpr auto operator()(__indices<_Is...>, _Fn &&__fn, _As &&...__as) const
+      STDEXEC_AUTO_RETURN
+      (
+        static_cast<_Fn &&>(__fn).template operator()<_Is...>(static_cast<_As &&>(__as)...)
+      )
+      // clang-format on
+    };
+
+    template <class _Fn, class... _As>
+      requires __callable<__impl_fn, __make_indices<_Count>, _Fn, _As...>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    constexpr auto operator()(_Fn &&__fn, _As &&...__as) const
+      noexcept(__nothrow_callable<__impl_fn, __make_indices<_Count>, _Fn, _As...>) -> decltype(auto)
+    {
+      return __impl_fn()(__make_indices<_Count>{},
+                         static_cast<_Fn &&>(__fn),
+                         static_cast<_As &&>(__as)...);
     }
   };
 
@@ -370,6 +408,12 @@ namespace STDEXEC
     noexcept(__nothrow_move_constructible<_BoundArgs...> && __nothrow_decay_copyable<_Fn>)
   {
     using __binder_t = __back_binder<__decay_t<_Fn>, _BoundArgs...>;
-    return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
+    return __binder_t{static_cast<_Fn &&>(__fn), {static_cast<_BoundArgs &&>(__bound_args)...}};
+  };
+
+  template <class _Fn>
+  constexpr auto __bind_back(_Fn &&__fn) noexcept(__nothrow_move_constructible<_Fn>) -> _Fn
+  {
+    return static_cast<_Fn &&>(__fn);
   };
 }  // namespace STDEXEC

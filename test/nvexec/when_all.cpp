@@ -24,11 +24,13 @@ namespace
   TEST_CASE("nvexec when_all works", "[cuda][stream][adaptors][when_all]")
   {
     nvexec::stream_context stream_ctx{};
+    auto                   sch   = stream_ctx.get_scheduler();
+    auto                   attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
 
     flags_storage_t<2> flags_storage{};
     auto               flags = flags_storage.get();
 
-    auto snd = ex::when_all(ex::schedule(stream_ctx.get_scheduler())
+    auto snd = ex::when_all(ex::schedule(sch)
                               | ex::then(
                                 [=]
                                 {
@@ -37,7 +39,7 @@ namespace
                                     flags.set(0);
                                   }
                                 }),
-                            ex::schedule(stream_ctx.get_scheduler())
+                            ex::schedule(sch)
                               | ex::then(
                                 [=]
                                 {
@@ -45,7 +47,8 @@ namespace
                                   {
                                     flags.set(1);
                                   }
-                                }));
+                                }))
+             | exec::write_attrs(attrs);
     STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -54,11 +57,12 @@ namespace
   TEST_CASE("nvexec when_all returns values", "[cuda][stream][adaptors][when_all]")
   {
     nvexec::stream_context stream_ctx{};
+    auto                   sch   = stream_ctx.get_scheduler();
+    auto                   attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
 
-    auto snd      = ex::when_all(ex::schedule(stream_ctx.get_scheduler())
-                              | ex::then([] { return is_on_gpu() * 24; }),
-                            ex::schedule(stream_ctx.get_scheduler())
-                              | ex::then([] { return is_on_gpu() * 42; }));
+    auto snd = ex::when_all(ex::schedule(sch) | ex::then([] { return is_on_gpu() * 24; }),
+                            ex::schedule(sch) | ex::then([] { return is_on_gpu() * 42; }))
+             | exec::write_attrs(attrs);
     auto [v1, v2] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 24);
@@ -68,13 +72,15 @@ namespace
   TEST_CASE("nvexec when_all with many senders", "[cuda][stream][adaptors][when_all]")
   {
     nvexec::stream_context stream_ctx{};
+    auto                   sch   = stream_ctx.get_scheduler();
+    auto                   attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
 
-    auto snd = ex::when_all(
-      ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 1; }),
-      ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 2; }),
-      ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 3; }),
-      ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 4; }),
-      ex::schedule(stream_ctx.get_scheduler()) | ex::then([] { return is_on_gpu() * 5; }));
+    auto snd = ex::when_all(ex::schedule(sch) | ex::then([] { return is_on_gpu() * 1; }),
+                            ex::schedule(sch) | ex::then([] { return is_on_gpu() * 2; }),
+                            ex::schedule(sch) | ex::then([] { return is_on_gpu() * 3; }),
+                            ex::schedule(sch) | ex::then([] { return is_on_gpu() * 4; }),
+                            ex::schedule(sch) | ex::then([] { return is_on_gpu() * 5; }))
+             | exec::write_attrs(attrs);
     auto [v1, v2, v3, v4, v5] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 1);
@@ -87,10 +93,12 @@ namespace
   TEST_CASE("nvexec when_all works with unknown senders", "[cuda][stream][adaptors][when_all]")
   {
     nvexec::stream_context stream_ctx{};
-    auto                   sch = stream_ctx.get_scheduler();
+    auto                   sch   = stream_ctx.get_scheduler();
+    auto                   attrs = ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch};
 
     auto snd = ex::when_all(ex::schedule(sch) | ex::then([]() -> int { return is_on_gpu() * 24; }),
-                            ex::schedule(sch) | a_sender([]() -> int { return is_on_gpu() * 42; }));
+                            ex::schedule(sch) | a_sender([]() -> int { return is_on_gpu() * 42; }))
+             | exec::write_attrs(attrs);
     auto [v1, v2] = STDEXEC::sync_wait(std::move(snd)).value();
 
     REQUIRE(v1 == 24);

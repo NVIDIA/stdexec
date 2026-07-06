@@ -229,9 +229,8 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<_Self, _Sender>, _Env...>();
       }
 
       template <__decays_to<__sender> _Self, class _Receiver>
@@ -271,5 +270,12 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+
+namespace STDEXEC::__detail
+{
+  template <class Sender, class Attrs>
+  extern __mtype<exec::__write_attrs::__sender<__demangle_t<Sender>, Attrs>>
+    __demangle_v<exec::__write_attrs::__sender<Sender, Attrs>>;
+}  // namespace STDEXEC::__detail
 
 STDEXEC_PRAGMA_POP()
