@@ -33,7 +33,6 @@ import stdexec;
 #  include "__schedulers.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
-#  include "__transform_completion_signatures.hpp"
 #  include "__transform_sender.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -644,12 +643,6 @@ namespace STDEXEC
   template <bool _IsUnchunked, sender _Previous, std::integral _Size, class _Fn, bool _Parallelize>
   class __parallel_bulk_sender
   {
-    /// Meta-function that returns the completion signatures of `this`.
-    template <class _Self, class... _Env>
-    using __completions_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<_Self, _Previous>, _Env...>,
-      completion_signatures<set_error_t(std::exception_ptr)>>;
-
     template <bool, sender, std::integral, class, class, bool>
     friend struct __detail::__system_bulk_op;
 
@@ -704,9 +697,11 @@ namespace STDEXEC
 
     /// Gets the completion signatures for this sender.
     template <__decays_to<__parallel_bulk_sender> _Self, class... _Env>
-    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      using __cv_previous_t = __copy_cvref_t<_Self, _Previous>;
+      auto __completions    = STDEXEC::get_completion_signatures<__cv_previous_t, _Env...>();
+      return STDEXEC::__concat_completion_signatures(__completions, __eptr_completion_t());
     }
 
    private:

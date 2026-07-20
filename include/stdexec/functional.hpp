@@ -357,12 +357,16 @@ namespace STDEXEC
   struct __back_binder
   {
     template <class _Self, class... _Args>
-      requires __callable<_Fn, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>
+      requires __callable<__copy_cvref_t<_Self, _Fn>, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
-                                                           _Args &&...__args)            //
-      noexcept(__nothrow_callable<_Fn, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>)  //
-      -> __call_result_t<_Fn, _Args..., __copy_cvref_t<_Self, _BoundArgs>...>
+                                                           _Args &&...__args)  //
+      noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>,
+                                  _Args...,
+                                  __copy_cvref_t<_Self, _BoundArgs>...>)
+        -> __call_result_t<__copy_cvref_t<_Self, _Fn>,
+                           _Args...,
+                           __copy_cvref_t<_Self, _BoundArgs>...>
     {
       return STDEXEC::__apply(static_cast<_Self &&>(__self).__fn_,
                               static_cast<_Self &&>(__self).__bound_args_,
@@ -375,11 +379,73 @@ namespace STDEXEC
   };
 
   template <class... _BoundArgs, class _Fn>
+  STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __bind_back(_Fn &&__fn, _BoundArgs... __bound_args)
     noexcept(__nothrow_move_constructible<_BoundArgs...> && __nothrow_decay_copyable<_Fn>)
   {
     using __binder_t = __back_binder<__decay_t<_Fn>, _BoundArgs...>;
     return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
+
+  //! \brief A binary callable that wraps another binary callable and calls it with its
+  //! two arguments in reverse order.
+  //!
+  //! \tparam _Fn The wrapped binary callable.
+  //!
+  //! \see __flip
+  template <class _Fn>
+  struct __flipped
+  {
+    //! \brief Calls the wrapped callable with the arguments transposed.
+    //!
+    //! The cv- and reference-qualifiers of `*this` are propagated to the wrapped
+    //! callable, so an rvalue `__flipped` invokes `_Fn` as an rvalue.
+    //!
+    //! \tparam _Self The deduced type of `*this`, including cvref-qualifiers.
+    //! \tparam _T0 The type of the first argument, forwarded as the second.
+    //! \tparam _T1 The type of the second argument, forwarded as the first.
+    //!
+    //! \param __self The `__flipped` object itself.
+    //! \param __t0 The first argument; forwarded to `_Fn` as its second argument.
+    //! \param __t1 The second argument; forwarded to `_Fn` as its first argument.
+    //!
+    //! \returns The result of `__fn_(__t1, __t0)`.
+    template <class _Self, class _T0, class _T1>
+      requires __callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self,
+                                                           _T0        &&__t0,
+                                                           _T1        &&__t1)
+      noexcept(__nothrow_callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>)
+        -> __call_result_t<__copy_cvref_t<_Self, _Fn>, _T1, _T0>
+    {
+      return static_cast<_Self &&>(__self).__fn_(static_cast<_T1 &&>(__t1),
+                                                 static_cast<_T0 &&>(__t0));
+    }
+    STDEXEC_EXPLICIT_THIS_END(operator())
+
+    //! \brief The wrapped binary callable.
+    _Fn __fn_;
+  };
+
+  template <class _Fn>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __flipped(_Fn) -> __flipped<_Fn>;
+
+  //! \brief Wraps a binary callable in a `__flipped` object that reverses the order of
+  //! its two arguments.
+  //!
+  //! \tparam _Fn The type of the callable to wrap.
+  //!
+  //! \param __fn The binary callable to wrap. It is decay-copied into the result.
+  //!
+  //! \returns A `__flipped<__decay_t<_Fn>>` object such that calling it with `(a, b)`
+  //! calls `__fn(b, a)`.
+  template <class _Fn>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto __flip(_Fn &&__fn) noexcept(__nothrow_decay_copyable<_Fn>)
+  {
+    return __flipped{static_cast<_Fn &&>(__fn)};
+  }
 }  // namespace STDEXEC
+
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

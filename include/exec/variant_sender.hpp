@@ -19,6 +19,8 @@
 #include "../stdexec/__detail/__variant.hpp"
 #include "../stdexec/execution.hpp"
 
+#include "completion_signatures.hpp"
+
 namespace experimental::execution
 {
   namespace __var
@@ -60,10 +62,6 @@ namespace experimental::execution
   template <class... _Senders>
   struct variant_sender
   {
-    template <class _Self, class... _Env>
-    using __completions_t = STDEXEC::__mtry_q<STDEXEC::__concat_completion_signatures_t>::__f<
-      STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Env...>...>;
-
     template <std::size_t _Index>
     using __nth_t = STDEXEC::__m_at_c<_Index, _Senders...>;
 
@@ -140,9 +138,10 @@ namespace experimental::execution
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <STDEXEC::__decays_to<variant_sender> _Self, class... _Env>
-    static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::concat_completion_signatures(
+        STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<_Self, _Senders>, _Env...>()...);
     }
   };
 }  // namespace experimental::execution

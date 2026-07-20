@@ -37,8 +37,7 @@ namespace STDEXEC
     using __sender_t = __copy_cvref_t<_Self, std::remove_cv_t<_Sender>>;
 
     template <class _Self, class... _Env>
-    static consteval auto get_completion_signatures()  //
-      -> __completion_signatures_of_t<__sender_t<_Self>, _Env...>
+    static consteval auto get_completion_signatures()
     {
       return STDEXEC::get_completion_signatures<__sender_t<_Self>, _Env...>();
     }

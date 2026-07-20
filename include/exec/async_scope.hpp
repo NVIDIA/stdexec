@@ -19,6 +19,7 @@
 #include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
+#include "completion_signatures.hpp"
 #include "env.hpp"
 
 #include "../stdexec/__detail/__atomic.hpp"
@@ -37,6 +38,9 @@ namespace experimental::execution
 
     struct __impl;
     struct async_scope;
+
+    template <class _Sender, class _Env>
+    struct __future;
 
     template <class _A>
     concept __async_scope = requires(_A& __a) {
@@ -130,9 +134,9 @@ namespace experimental::execution
 
       template <__decays_to<__when_empty_sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...>
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<_Self, _Constrained>,
+                                                  __env_t<_Env>...>();
       }
 
       __impl const * __scope_;
@@ -256,9 +260,9 @@ namespace experimental::execution
 
       template <__decays_to<__nest_sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Constrained>, __env_t<_Env>...>
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<_Self, _Constrained>,
+                                                  __env_t<_Env>...>();
       }
 
       __impl const * __scope_;
@@ -442,22 +446,11 @@ namespace experimental::execution
       static_cast<_Fn*>(nullptr)));
 #endif
 
-    template <class... _Ts>
-    using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>...)>;
-
-    template <class _Ty>
-    using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>)>;
-
     template <class _Sender, class _Env>
-    using __future_completions_t = __transform_completion_signatures_of_t<
-      _Sender,
-      __env_t<_Env>,
-      completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>,
-      __decay_values_t,
-      __decay_error_t>;
+    using __future_completions_t = STDEXEC::completion_signatures_of_t<__future<_Sender, _Env>>;
 
     template <class _Completions>
-    using __completions_as_variant = __mapply<
+    using __completions_as_variant_t = __mapply<
       __mtransform<__q<__completion_as_tuple_t>, __mbind_front_q<std::variant, std::monostate>>,
       _Completions>;
 
@@ -532,7 +525,7 @@ namespace experimental::execution
       std::mutex                                                    __mutex_;
       __future_step __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
-      __completions_as_variant<_Completions>                                      __data_;
+      __completions_as_variant_t<_Completions>                                    __data_;
       __intrusive_queue<&__subscription::__next_>                                 __subscribers_;
       __env_t<_Env>                                                               __env_;
     };
@@ -652,9 +645,6 @@ namespace experimental::execution
     struct __future
     {
      private:
-      template <class _Self>
-      using __completions_t = __future_completions_t<__mfront<_Sender, _Self>, _Env>;
-
       template <class _Receiver>
       using __future_opstate_t = __future_opstate<_Sender, _Env, _Receiver>;
 
@@ -684,7 +674,6 @@ namespace experimental::execution
       }
 
       template <__decays_to<__future> _Self, receiver _Receiver>
-        requires receiver_of<_Receiver, __completions_t<_Self>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
         -> __future_opstate_t<_Receiver>
       {
@@ -694,9 +683,14 @@ namespace experimental::execution
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<__future> _Self, class... _OtherEnv>
-      static consteval auto get_completion_signatures() -> __completions_t<_Self>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_Sender, __env_t<_Env>>(),
+          exec::decay_arguments<set_value_t>(),
+          exec::decay_arguments<set_error_t>(),
+          {},
+          completion_signatures<set_stopped_t(), set_error_t(std::exception_ptr)>());
       }
 
      private:

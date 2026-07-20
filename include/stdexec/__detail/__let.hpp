@@ -120,7 +120,7 @@ namespace STDEXEC
 
     template <class _LetTag, class... _Args>
     using __not_decay_copyable_error_t =
-      __mexception<_WHAT_(_SENDER_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+      __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
                    _WHERE_(_IN_ALGORITHM_, _LetTag),
                    _WITH_ARGUMENTS_(_Args...)>;
 

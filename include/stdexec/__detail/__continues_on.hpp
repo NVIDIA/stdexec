@@ -291,31 +291,22 @@ namespace STDEXEC
       template <class _Child, class... _Env>
       static consteval auto __get_child_completions()
       {
-        auto __child_completions =
-          STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>();
-        STDEXEC_IF_OK(__child_completions)
-        {
-          // continues_on has the completions of the child sender, but with value and
-          // error result types decayed.
-          return __transform_completion_signatures(
-            __child_completions,
-            __decay_arguments<set_value_t, continues_on_t>(),
-            __decay_arguments<set_error_t, continues_on_t>());
-        }
+        // continues_on has the completions of the child sender, but with value and error
+        // result types decayed.
+        return STDEXEC::__transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>(),
+          __decay_arguments<set_value_t, continues_on_t>(),
+          __decay_arguments<set_error_t, continues_on_t>());
       }
 
       template <class _Scheduler, class... _Env>
       static consteval auto __get_scheduler_completions()
       {
-        using __sndr_t = schedule_result_t<_Scheduler>;
-        auto __sched_completions =
-          STDEXEC::get_completion_signatures<__sndr_t, __fwd_env_t<_Env>...>();
-        STDEXEC_IF_OK(__sched_completions)
-        {
-          // The scheduler contributes only error and stopped completions; we ignore value
-          // completions here
-          return __transform_completion_signatures(__sched_completions, __ignore_completion());
-        }
+        // The scheduler contributes only error and stopped completions; we ignore value
+        // completions here
+        return STDEXEC::__transform_completion_signatures(
+          STDEXEC::get_completion_signatures<schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>(),
+          __ignore_completion());
       }
 
       template <class _Sender, class _Receiver>
@@ -337,7 +328,7 @@ namespace STDEXEC
         using __scheduler_t      = __decay_t<__data_of<_Sender>>;
         using __child_t          = __child_of<_Sender>;
         auto __child_completions = __get_child_completions<__child_t, _Env...>();
-        return __concat_completion_signatures(
+        return STDEXEC::__concat_completion_signatures(
           __child_completions,
           __get_scheduler_completions<__scheduler_t, _Env...>(),
           __eptr_completion_unless_t<

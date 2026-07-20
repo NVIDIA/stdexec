@@ -1298,8 +1298,7 @@ namespace experimental::execution
         }
 
         template <class>
-        [[nodiscard]]
-        static consteval auto get_completion_signatures() noexcept -> __completions_t
+        static consteval auto get_completion_signatures()
         {
           return __completions_t{};
         }
