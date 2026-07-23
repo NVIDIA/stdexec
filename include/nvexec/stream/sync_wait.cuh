@@ -181,7 +181,7 @@ namespace nv::execution::_strm
     struct sync_wait_t
     {
       template <sender_in<env> Sender>
-        requires __single_value_variant_sender<Sender, env>
+        requires(__count_of<set_value_t, Sender, env>::value == 1)
       auto operator()(context ctx, Sender&& sndr) const  //
         -> std::optional<sync_wait_result_t<Sender>>
       {

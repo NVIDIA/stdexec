@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Lucian Radu Teodorescu
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -20,6 +20,8 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-parameter")
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
+STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
 
 #include <catch2/catch_all.hpp>
 
