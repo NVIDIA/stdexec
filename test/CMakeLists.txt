@@ -115,7 +115,14 @@ target_link_libraries(common_test_settings
 # target_compile_definitions( common_test_settings INTERFACE
 # $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
-add_executable(test.stdexec ${stdexec_test_sources})
+if(STDEXEC_BUILD_MODULES)
+    # temporarily speed up the test cycle by building only one test
+    add_executable(test.stdexec stdexec/module/test_module.cpp)
+    set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
+else()
+    add_executable(test.stdexec ${stdexec_test_sources})
+endif()
+
 add_compile_diagnostics(test.stdexec)
 target_link_libraries(
   test.stdexec
@@ -157,7 +164,10 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
                        30)
 endif()
 
-add_subdirectory(exec)
+if(!STDEXEC_BUILD_MODULES)
+    # temporarily speed up the test cycle by building less
+    add_subdirectory(exec)
+endif()
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)

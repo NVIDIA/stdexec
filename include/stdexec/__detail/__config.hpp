@@ -29,6 +29,13 @@
 #  error This library requires the use of the new conforming preprocessor enabled by /Zc:preprocessor.
 #endif
 
+#if defined(STDEXEC_BUILD_MODULES)
+#  define STDEXEC_USE_MODULES() 1
+#  undef STDEXEC_BUILD_MODULES
+#else
+#  define STDEXEC_USE_MODULES() 0
+#endif
+
 #include "__preprocessor.hpp"
 
 #if __has_include(<version>)
