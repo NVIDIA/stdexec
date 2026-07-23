@@ -188,7 +188,7 @@ namespace STDEXEC
   //! `sender_to<S, R>` is the strongest form of the sender concept: it
   //! requires that @c S is a sender whose completion signatures can be
   //! computed in @c R's environment, that @c R is a receiver that accepts
-  //! all of those signatures, *and* that @c connect(S, R) is well-formed.
+  //! all of those signatures, *and* that `connect(S, R)` is well-formed.
   //!
   //! This is the constraint a sender consumer or scheduler implementation
   //! uses just before actually calling @c connect — it's the strongest
@@ -234,14 +234,20 @@ namespace STDEXEC
   template <class _Sender>
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
 
-  template <class _Sender, class... _Env>
-  using __single_sender_value_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                                  __qq<__msingle>,
-                                                  __qq<__msingle>>;
+  struct __as_single_value
+  {
+    template <class... _Ts>
+      requires(sizeof...(_Ts) >= 1)
+    using __f =
+      __mcall<__if_c<(sizeof...(_Ts) == 1), __q<__decay_t>, __qq<__decayed_std_tuple>>, _Ts...>;
+  };
 
+  //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26 working draft.
   template <class _Sender, class... _Env>
-  using __single_value_variant_sender_t =
-    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>, __qq<__mlist>, __qq<__msingle>>;
+  using __single_sender_value_t =  //
+    __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
+                    __as_single_value,
+                    __qq<__msingle>>;
 
   template <class _Tag, class _Sender, class... _Env>
   concept __sends = sender_in<_Sender, _Env...>  //
@@ -255,22 +261,17 @@ namespace STDEXEC
   using __never_sends_t = __mbool<__never_sends<_Tag, _Sender, _Env...>>;
 
   template <class _Error>
-  using __is_eptr = __mbool<__decays_to<_Error, std::exception_ptr>>;
+  using __is_eptr_t = __mbool<__decays_to<_Error, std::exception_ptr>>;
 
   template <class _Sender, class... _Env>
   concept __has_eptr_completion = sender_in<_Sender, _Env...>  //
                                && __error_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                                  __q1<__is_eptr>,
+                                                  __q1<__is_eptr_t>,
                                                   __qq<__mor_t>>::value;
 
   template <class _Sender, class... _Env>
   concept __single_value_sender = sender_in<_Sender, _Env...>  //
                                && requires { typename __single_sender_value_t<_Sender, _Env...>; };
-
-  template <class _Sender, class... _Env>
-  concept __single_value_variant_sender =
-    sender_in<_Sender, _Env...>  //
-    && requires { typename __single_value_variant_sender_t<_Sender, _Env...>; };
 
   namespace __detail
   {

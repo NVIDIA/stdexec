@@ -185,7 +185,7 @@ namespace STDEXEC::__sync_wait
 
   template <class _CvSender>
   concept __valid_sync_wait_argument = __ok<__minvoke<
-    __mtry_catch_q<__single_value_variant_sender_t, __q<__too_many_successful_completions_error_t>>,
+    __mtry_catch_q<__single_sender_value_t, __q<__too_many_successful_completions_error_t>>,
     _CvSender,
     __env>>;
 }  // namespace STDEXEC::__sync_wait

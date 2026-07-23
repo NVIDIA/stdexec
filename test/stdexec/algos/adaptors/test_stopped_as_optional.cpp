@@ -63,12 +63,14 @@ namespace
     wait_for_value(std::move(snd), std::optional<int>{11});
   }
 
-  // TEST_CASE(
-  //   "stopped_as_optional shall not work with multi-value senders",
-  //   "[adaptors][stopped_as_optional]") {
-  //   auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
-  //   static_assert(!ex::sender_to<decltype(snd), expect_error_receiver<>>);
-  // }
+  TEST_CASE("stopped_as_optional works with multi-value senders", "[adaptors][stopped_as_optional]")
+  {
+    auto snd = ex::just(3, 0.1415) | ex::stopped_as_optional();
+    wait_for_value(std::move(snd),
+                   std::optional<std::tuple<int, double>>{
+                     std::tuple{3, 0.1415}
+    });
+  }
 
   TEST_CASE("stopped_as_optional shall not work with senders that have multiple alternatives",
             "[adaptors][stopped_as_optional]")
@@ -111,13 +113,13 @@ namespace
     error_scheduler      sched2{};
     error_scheduler<int> sched3{-1};
 
-    check_err_types<ex::__mset<std::exception_ptr>>(ex::just(11) | ex::continues_on(sched1)
-                                                    | ex::stopped_as_optional());
+    check_err_types<ex::__mset<>>(ex::just(11) | ex::continues_on(sched1)
+                                  | ex::stopped_as_optional());
     check_err_types<ex::__mset<std::exception_ptr>>(ex::just(13) | ex::continues_on(sched2)
                                                     | ex::stopped_as_optional());
 
-    check_err_types<ex::__mset<std::exception_ptr, int>>(ex::just(13) | ex::continues_on(sched3)
-                                                         | ex::stopped_as_optional());
+    check_err_types<ex::__mset<int>>(ex::just(13) | ex::continues_on(sched3)
+                                     | ex::stopped_as_optional());
   }
 
   TEST_CASE("stopped_as_optional overrides sends_stopped to false",

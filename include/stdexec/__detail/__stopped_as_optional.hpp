@@ -27,7 +27,6 @@
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__type_traits.hpp"
 
 #include <exception>
 #include <optional>
@@ -40,7 +39,7 @@ namespace STDEXEC
   // [exec.stopped.opt]
   namespace __sao
   {
-    struct _SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_;
+    struct _SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_;
 
     template <class _Receiver, class _Value>
     struct __state
@@ -53,53 +52,48 @@ namespace STDEXEC
 
     struct __stopped_as_optional_impl : __sexpr_defaults
     {
-      template <class... _Tys>
-        requires(sizeof...(_Tys) == 1)
-      using __set_value_t = completion_signatures<set_value_t(std::optional<__decay_t<_Tys>>...)>;
-
-      template <class _Ty>
-      using __set_error_t = completion_signatures<set_error_t(_Ty)>;
-
-      template <class _Sender, class _Receiver>
-      using __value_type_t =
-        __decay_t<__single_sender_value_t<__child_of<_Sender>, env_of_t<_Receiver>>>;
+      static consteval auto __get_value_transform_fn() noexcept
+      {
+        return []<class... _Ts>()
+        {
+          using __value_t = __mcall<__as_single_value, _Ts...>;
+          return STDEXEC::__concat_completion_signatures(
+            completion_signatures<set_value_t(std::optional<__value_t>)>(),
+            __eptr_completion_unless_t<__nothrow_decay_copyable_t<_Ts...>>());
+        };
+      }
 
       template <class _Self, class... _Env>
-      static constexpr auto __get_completion_signatures()
+      static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, stopped_as_optional_t>);
-        auto __completions = STDEXEC::get_completion_signatures<__child_of<_Self>, _Env...>();
-
+        using __cv_sndr_t  = __child_of<_Self>;
+        auto __completions = STDEXEC::get_completion_signatures<__cv_sndr_t, _Env...>();
         STDEXEC_IF_OK(__completions)
         {
-          using _Completions = decltype(__completions);
-          if constexpr (__single_value_sender<__child_of<_Self>, _Env...>)
+          if constexpr (!__single_value_sender<__cv_sndr_t, _Env...>)
           {
-            return __transform_completion_signatures_t<
-              _Completions,
-              completion_signatures<set_error_t(std::exception_ptr)>,
-              __set_value_t,
-              __set_error_t,
-              completion_signatures<>>();
+            return STDEXEC::__throw_compile_time_error<
+              _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
+              _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
+              _WITH_PRETTY_SENDER_<__cv_sndr_t>>();
           }
           else
           {
-            return STDEXEC::__throw_compile_time_error<
-              _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_ONE_ARGUMENT_),
-              _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-              _WITH_PRETTY_SENDER_<__child_of<_Self>>>();
+            return STDEXEC::__transform_completion_signatures(__completions,
+                                                              __get_value_transform_fn(),
+                                                              {},
+                                                              __ignore_completion());
           }
         }
-      };
+      }
 
       static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
-        -> __state<_Receiver, __value_type_t<_Self, _Receiver>>
-        requires sender_in<__child_of<_Self>, env_of_t<_Receiver>>
+        -> __state<_Receiver, __single_sender_value_t<__child_of<_Self>, env_of_t<_Receiver>>>
       {
         static_assert(__sender_for<_Self, stopped_as_optional_t>);
-        using __value_t = __value_type_t<_Self, _Receiver>;
-        return __state<_Receiver, __value_t>{static_cast<_Receiver&&>(__rcvr)};
+        return {static_cast<_Receiver&&>(__rcvr)};
       };
 
       static constexpr auto __complete =
@@ -115,11 +109,15 @@ namespace STDEXEC
           {
             static_assert(__std::constructible_from<__value_t, _Args...>);
             STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
-                               std::optional<__value_t>{static_cast<_Args&&>(__args)...});
+                               std::optional<__value_t>{std::in_place,
+                                                        static_cast<_Args&&>(__args)...});
           }
           STDEXEC_CATCH_ALL
           {
-            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
+            if constexpr (!__nothrow_decay_copyable<_Args...>)
+            {
+              STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
+            }
           }
         }
         else if constexpr (__same_as<_Tag, set_error_t>)
