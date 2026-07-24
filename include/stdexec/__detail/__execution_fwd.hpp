@@ -275,7 +275,7 @@ namespace STDEXEC
   extern bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct just_t;
+  STDEXEC_MODULE_EXPORT struct just_t;
   extern just_t const just;
 
   struct just_error_t;

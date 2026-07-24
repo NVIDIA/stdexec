@@ -951,5 +951,11 @@ namespace STDEXEC
 #  endif
 #endif
 
-namespace STDEXEC
+#if STDEXEC_USE_MODULES() && defined(STDEXEC_IN_MODULE_PURVIEW)
+#  define STDEXEC_MODULE_EXPORT export
+#else
+#  define STDEXEC_MODULE_EXPORT
+#endif
+
+STDEXEC_MODULE_EXPORT namespace STDEXEC
 {}
