@@ -298,7 +298,7 @@ namespace STDEXEC
   //! description, completion signatures, and a usage example.
   //!
   //! @hideinitializer
-  inline constexpr just_t just{};
+  STDEXEC_MODULE_EXPORT inline constexpr just_t just{};
 
   //! @brief The customization point object for the @c just_error sender factory.
   //!

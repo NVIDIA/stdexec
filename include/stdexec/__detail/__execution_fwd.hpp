@@ -276,7 +276,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT struct just_t;
-  extern just_t const just;
+  STDEXEC_MODULE_EXPORT extern just_t const just;
 
   struct just_error_t;
   extern just_error_t const just_error;

@@ -23,8 +23,15 @@ namespace ex = stdexec;
 
 namespace
 {
-  TEST_CASE("I can use ex::just in a modules build", "[modules]")
+  TEST_CASE("I can utter ex::just_t in a modules build", "[modules]")
   {
     STATIC_REQUIRE(sizeof(ex::just_t) > 0);
+  }
+
+  TEST_CASE("I can invoke ex::just() in a modules build", "[modules]")
+  {
+    auto sender = ex::just();
+
+    STATIC_REQUIRE(sizeof(decltype(sender)) > 0);
   }
 }  // namespace
