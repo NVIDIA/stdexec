@@ -15,13 +15,21 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__completion_behavior.hpp"
-#include "__receivers.hpp"
-#include "__schedulers.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__completion_behavior.hpp"
+#  include "__receivers.hpp"
+#  include "__schedulers.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -88,4 +96,5 @@ namespace STDEXEC
   static_assert(__completes_inline<set_value_t, env_of_t<schedule_result_t<inline_scheduler>>>);
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

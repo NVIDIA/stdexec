@@ -15,19 +15,27 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__completion_signatures_of.hpp"
-#include "__diagnostics.hpp"
-#include "__execution_legacy.hpp"  // IWYU pragma: export
-#include "__meta.hpp"
-#include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
-#include "__transform_completion_signatures.hpp"
+#  include "__basic_sender.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__diagnostics.hpp"
+#  include "__execution_legacy.hpp"  // IWYU pragma: export
+#  include "__meta.hpp"
+#  include "__sender_adaptor_closure.hpp"
+#  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
+#  include "__transform_completion_signatures.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -541,4 +549,5 @@ namespace STDEXEC
   {};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

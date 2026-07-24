@@ -15,18 +15,26 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__debug.hpp"  // IWYU pragma: keep for STDEXEC::__debug_sender
-#include "__get_completion_signatures.hpp"
-#include "__sender_concepts.hpp"  // IWYU pragma: export
+#  include "__debug.hpp"  // IWYU pragma: keep for STDEXEC::__debug_sender
+#  include "__get_completion_signatures.hpp"
+#  include "__sender_concepts.hpp"  // IWYU pragma: export
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+#  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
   // completion signatures wrapper enforces that at compile time.
@@ -43,11 +51,12 @@ namespace STDEXEC
   using completion_signatures_of_t =
     decltype(STDEXEC::__checked_completion_signatures(__declval<_CvSender>(),
                                                       __declval<_Env>()...));
-#else
+#  else
   template <class _CvSender, class... _Env>
     requires sender_in<_CvSender, _Env...>
   using completion_signatures_of_t = __completion_signatures_of_t<_CvSender, _Env...>;
-#endif
+#  endif
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

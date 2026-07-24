@@ -15,16 +15,24 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures_of.hpp"
-#include "__connect_awaitable.hpp"
-#include "__tag_invoke.hpp"
-#include "__transform_sender.hpp"
-#include "__type_traits.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__connect_awaitable.hpp"
+#  include "__tag_invoke.hpp"
+#  include "__transform_sender.hpp"
+#  include "__type_traits.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -56,9 +64,9 @@ namespace STDEXEC
                               || __with_co_await<_Sender, _Receiver>
                               || __with_legacy_tag_invoke<_Sender, _Receiver>;
 
-#if !STDEXEC_MSVC()
+#  if !STDEXEC_MSVC()
 
-#  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn_t<decltype(_EXPR), noexcept(_EXPR)>
+#    define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn_t<decltype(_EXPR), noexcept(_EXPR)>
 
     // A variable template whose type is a function pointer such that the
     // return type and noexcept-ness depend on whether _Sender can be connected
@@ -131,11 +139,11 @@ namespace STDEXEC
                _Receiver,
                __nothrow_callable<transform_sender_t, _Sender, env_of_t<_Receiver>>>);
 
-#  undef STDEXEC_CONNECT_DECLFN_FOR
+#    undef STDEXEC_CONNECT_DECLFN_FOR
 
-#else  // ^^^ !STDEXEC_MSVC() ^^^ / vvv STDEXEC_MSVC() vvv
+#  else  // ^^^ !STDEXEC_MSVC() ^^^ / vvv STDEXEC_MSVC() vvv
 
-#  define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn<decltype(_EXPR), noexcept(_EXPR)>()
+#    define STDEXEC_CONNECT_DECLFN_FOR(_EXPR) __declfn<decltype(_EXPR), noexcept(_EXPR)>()
 
     template <bool _NothrowTransform>
     struct __connect_declfn;
@@ -212,9 +220,9 @@ namespace STDEXEC
                  template __get<transform_sender_result_t<_Sender, env_of_t<_Receiver>>,
                                 _Receiver>());
 
-#  undef STDEXEC_CONNECT_DECLFN_FOR
+#    undef STDEXEC_CONNECT_DECLFN_FOR
 
-#endif  // STDEXEC_MSVC()
+#  endif  // STDEXEC_MSVC()
   }  // namespace __connect
 
   template <class _Sender, class _Receiver>
@@ -371,4 +379,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
