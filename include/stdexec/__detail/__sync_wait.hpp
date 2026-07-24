@@ -15,29 +15,39 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__debug.hpp"  // IWYU pragma: keep
-#include "__diagnostics.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__into_variant.hpp"
-#include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__run_loop.hpp"
-#include "__senders.hpp"
-#include "__transform_sender.hpp"
-#include "__type_traits.hpp"
+#  include "__concepts.hpp"
+#  include "__debug.hpp"  // IWYU pragma: keep
+#  include "__diagnostics.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__into_variant.hpp"
+#  include "__meta.hpp"
+#  include "__receivers.hpp"
+#  include "__run_loop.hpp"
+#  include "__senders.hpp"
+#  include "__transform_sender.hpp"
+#  include "__type_traits.hpp"
 
-#include <exception>
-#include <optional>
-#include <system_error>
-#include <tuple>
-#include <variant>
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <optional>
+#    include <system_error>
+#    include <tuple>
+#    include <variant>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 
@@ -514,4 +524,5 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
 
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

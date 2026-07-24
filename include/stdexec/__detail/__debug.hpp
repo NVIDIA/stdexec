@@ -15,18 +15,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__completion_signatures.hpp"
-#include "__concepts.hpp"
-#include "__env.hpp"  // IWYU pragma: keep for env<>
-#include "__meta.hpp"
-#include "__query.hpp"
-#include "__sender_concepts.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <exception>  // IWYU pragma: keep for std::terminate
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__completion_signatures.hpp"
+#  include "__concepts.hpp"
+#  include "__env.hpp"  // IWYU pragma: keep for env<>
+#  include "__meta.hpp"
+#  include "__query.hpp"
+#  include "__sender_concepts.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>  // IWYU pragma: keep for std::terminate
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -215,4 +225,5 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -15,19 +15,29 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__meta.hpp"
-#include "__tuple.hpp"  // IWYU pragma: keep for __tuple
-#include "__utility.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__meta.hpp"
+#  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
+#  include "__utility.hpp"
 
-#include <exception>
-#include <type_traits>
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <type_traits>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -438,7 +448,7 @@ namespace STDEXEC
   template <class _NoExcept>
   using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion_t>;
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class, class... _What, class... _Values>
   [[nodiscard]]
@@ -454,7 +464,7 @@ namespace STDEXEC
     return {};
   }
 
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _Return, class _What, class... _More, class... _Values>
@@ -483,7 +493,7 @@ namespace STDEXEC
       static_cast<_Values>(__values)...);
   }
 
-#endif  // ^^^ constexpr exceptions ^^^
+#  endif  // ^^^ constexpr exceptions ^^^
 
   template <class _Return, class... _What>
   [[nodiscard]]
@@ -552,9 +562,9 @@ namespace STDEXEC
   // Below is the definition of the STDEXEC_IF_OK portability macro. It is used to check
   // that an expression's type is not an __mexception type.
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
-#  define STDEXEC_IF_OK(_ID)                        \
+#    define STDEXEC_IF_OK(_ID)                        \
     if constexpr (STDEXEC::__merror<decltype(_ID)>) \
     {                                               \
       return _ID;                                   \
@@ -574,9 +584,9 @@ namespace STDEXEC
     return {};
   }
 
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
-#  define STDEXEC_IF_OK(_ID)
+#    define STDEXEC_IF_OK(_ID)
 
   template <class _Result, class _Sndr>
   [[noreturn, nodiscard]]
@@ -592,7 +602,8 @@ namespace STDEXEC
     throw __dependent_sender_error_t<_Sndr>{};
   }
 
-#endif  // ^^^ constexpr exceptions ^^^
+#  endif  // ^^^ constexpr exceptions ^^^
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

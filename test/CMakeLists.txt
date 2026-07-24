@@ -118,6 +118,7 @@ target_link_libraries(common_test_settings
 if(STDEXEC_BUILD_MODULES)
     # temporarily speed up the test cycle by building only one test
     add_executable(test.stdexec stdexec/module/test_module.cpp)
+
     set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
 else()
     add_executable(test.stdexec ${stdexec_test_sources})
@@ -141,13 +142,16 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
     PRIVATE common_test_settings)
 endif()
 
-add_executable(test.scratch test_main.cpp test_scratch.cpp)
-add_compile_diagnostics(test.scratch)
-target_link_libraries(
-  test.scratch
-  PUBLIC STDEXEC::stdexec $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-         stdexec_executable_flags Catch2::Catch2WithMain
-  PRIVATE common_test_settings)
+if(!STDEXEC_BUILD_MODULES)
+  # TODO: this doesn't build with modules, yet
+  add_executable(test.scratch test_main.cpp test_scratch.cpp)
+  add_compile_diagnostics(test.scratch)
+  target_link_libraries(
+    test.scratch
+    PUBLIC STDEXEC::stdexec $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+           stdexec_executable_flags Catch2::Catch2WithMain
+    PRIVATE common_test_settings)
+endif()
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
@@ -157,7 +161,10 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
-catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+if(!STDEXEC_BUILD_MODULES)
+  # TODO: this doesn't build with modules, yet
+  catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+endif()
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
   catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT

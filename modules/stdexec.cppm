@@ -1,6 +1,8 @@
 module;
 
 #include <cassert>
+#include <cstdarg>
+#include <cstdio>
 
 export module stdexec;
 

@@ -15,22 +15,32 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__awaitable.hpp"
-#include "__completion_info.hpp"
-#include "__completion_signatures.hpp"  // IWYU pragma: export
-#include "__connect_awaitable.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__meta.hpp"
-#include "__tag_invoke.hpp"
-#include "__tuple.hpp"  // IWYU pragma: keep for __tuple
+#  include "__awaitable.hpp"
+#  include "__completion_info.hpp"
+#  include "__completion_signatures.hpp"  // IWYU pragma: export
+#  include "__connect_awaitable.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__meta.hpp"
+#  include "__tag_invoke.hpp"
+#  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
-#include <algorithm>
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -58,11 +68,11 @@ namespace STDEXEC
 
   namespace __cmplsigs
   {
-#define STDEXEC_GET_COMPLSIGS(...)                                                                 \
+#  define STDEXEC_GET_COMPLSIGS(...)                                                                 \
   STDEXEC_REMOVE_REFERENCE(                                                                        \
     STDEXEC_PP_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
 
-#define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                      \
+#  define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                      \
   STDEXEC::__cmplsigs::__checked_complsigs(                                                        \
     __VA_ARGS__, static_cast<__mlist<STDEXEC_PP_EXPAND _ARGS>*>(nullptr))
 
@@ -381,14 +391,14 @@ namespace STDEXEC
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
-#if STDEXEC_GCC()
+#  if STDEXEC_GCC()
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
             && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
 
-#elif STDEXEC_EDG()
+#  elif STDEXEC_EDG()
 
   namespace __detail
   {
@@ -404,7 +414,7 @@ namespace STDEXEC
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
 
-#elif STDEXEC_MSVC()
+#  elif STDEXEC_MSVC()
 
   // MSVC cannot handle a __completion_signatures_of_t alias template that requires
   // get_completion_signatures to be a constant expression, even if we wrap the call to
@@ -416,13 +426,13 @@ namespace STDEXEC
   using __completion_signatures_of_t =
     decltype(STDEXEC::get_completion_signatures<_Sender, _Env...>());
 
-#else
+#  else
 
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
     __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
-#endif
+#  endif
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures
@@ -434,11 +444,11 @@ namespace STDEXEC
                                               __fwd_env_t<_Env>...>();
   }
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
   template <class _Sender>
   concept __is_dependent_sender =
     __std::derived_from<__completion_signatures_of_t<_Sender>, dependent_sender_error>;
-#else   // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#  else   // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
   // When asked for its completions without an envitonment, a dependent sender
   // will throw an exception of a type derived from `dependent_sender_error`.
   template <class _Sender>
@@ -460,7 +470,7 @@ namespace STDEXEC
 
   template <class _Sender>
   concept __is_dependent_sender = __mbool<__is_dependent_sender_helper<_Sender>()>::value;
-#endif  // ^^^ constexpr exceptions ^^^
+#  endif  // ^^^ constexpr exceptions ^^^
 
   template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>
   using __gather_completions_of_t =
@@ -516,4 +526,5 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

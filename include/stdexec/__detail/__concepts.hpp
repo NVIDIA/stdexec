@@ -20,18 +20,27 @@
 #endif
 
 #include "__config.hpp"
-#include "__type_traits.hpp"
 
-#include <utility>  // IWYU pragma: keep for std::swap
-#include <version>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
-#  include <concepts>
+import stdexec;
+
 #else
-#  include <type_traits>
-#endif
 
-#include "__prologue.hpp"
+#  include "__type_traits.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <utility>  // IWYU pragma: keep for std::swap
+#    include <version>
+
+#    if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
+#      include <concepts>
+#    else
+#      include <type_traits>
+#    endif
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -123,14 +132,14 @@ namespace STDEXEC
     template <class _Ap, class _Bp>
     concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
 
-#if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
+#  if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
 
     using std::integral;
     using std::derived_from;
     using std::convertible_to;
     using std::equality_comparable;
 
-#else
+#  else
 
     template <class T>
     concept integral = std::is_integral_v<T>;
@@ -148,7 +157,7 @@ namespace STDEXEC
       { __t == __t } -> convertible_to<bool>;
       { __t != __t } -> convertible_to<bool>;
     };
-#endif
+#  endif
   }  // namespace __std
 
   // Not exactly right, but close.
@@ -178,13 +187,13 @@ namespace STDEXEC
     // Avoid using libstdc++'s object concepts because they instantiate a
     // LOT of templates.
 
-#if STDEXEC_HAS_BUILTIN(__is_nothrow_destructible) || STDEXEC_MSVC()
+#  if STDEXEC_HAS_BUILTIN(__is_nothrow_destructible) || STDEXEC_MSVC()
     template <class _Ty>
     concept destructible = __is_nothrow_destructible(_Ty);
-#else   // ^^^ has __is_nothrow_destructible / no __is_nothrow_destructible vvv
+#  else   // ^^^ has __is_nothrow_destructible / no __is_nothrow_destructible vvv
     template <class T>
     concept destructible = __detail::__destructible_<T>;
-#endif  // ^^^ no __is_nothrow_destructible
+#  endif  // ^^^ no __is_nothrow_destructible
 
     template <class _Ty, class... _As>
     concept constructible_from = destructible<_Ty> && STDEXEC_IS_CONSTRUCTIBLE(_Ty, _As...);
@@ -344,4 +353,5 @@ namespace STDEXEC
     && __std::equality_comparable<_Alloc>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

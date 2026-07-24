@@ -15,32 +15,42 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__concepts.hpp"
-#include "__continues_on.hpp"
-#include "__diagnostics.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__into_variant.hpp"
-#include "__meta.hpp"
-#include "__optional.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__tuple.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
-#include "__variant.hpp"
+#  include "__basic_sender.hpp"
+#  include "__concepts.hpp"
+#  include "__continues_on.hpp"
+#  include "__diagnostics.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__into_variant.hpp"
+#  include "__meta.hpp"
+#  include "__optional.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__transform_completion_signatures.hpp"
+#  include "__tuple.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
+#  include "__variant.hpp"
 
-#include "../stop_token.hpp"
+#  include "../stop_token.hpp"
 
-#include "__atomic.hpp"
-#include <exception>
+#  include "__atomic.hpp"
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -945,4 +955,5 @@ namespace STDEXEC
   {};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -17,9 +17,19 @@
 
 #include "__config.hpp"
 
-#include <ranges>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__config.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <ranges>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -35,4 +45,5 @@ namespace STDEXEC
   }  // namespace ranges
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

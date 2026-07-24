@@ -15,26 +15,36 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../stop_token.hpp"
-#include "__basic_sender.hpp"
-#include "__completion_behavior.hpp"
-#include "__completion_signatures.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__meta.hpp"
-#include "__optional.hpp"
-#include "__queries.hpp"
-#include "__receivers.hpp"
-#include "__schedulers.hpp"
-#include "__submit.hpp"  // IWYU pragma: keep
+#  include "../stop_token.hpp"
+#  include "__basic_sender.hpp"
+#  include "__completion_behavior.hpp"
+#  include "__completion_signatures.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__meta.hpp"
+#  include "__optional.hpp"
+#  include "__queries.hpp"
+#  include "__receivers.hpp"
+#  include "__schedulers.hpp"
+#  include "__submit.hpp"  // IWYU pragma: keep
 
-#include <exception>
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -272,4 +282,5 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   }
 STDEXEC_P2300_NAMESPACE_END()
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

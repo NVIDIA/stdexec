@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <test_common/catch2.hpp>
+#include <catch2/catch_all.hpp>
 
 import std;
 import stdexec;

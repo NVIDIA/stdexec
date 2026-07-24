@@ -15,18 +15,27 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__type_traits.hpp"
-#include "__typeinfo.hpp"
 
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cstddef>
-#include <type_traits>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__concepts.hpp"
+#  include "__type_traits.hpp"
+#  include "__typeinfo.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#    include <array>
+#    include <cassert>
+#    include <cstddef>
+#    include <type_traits>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -44,13 +53,13 @@ namespace STDEXEC
   template <class...>
   concept __mnever = false;
 
-#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
   template <auto _Value>
   using __mtypeof = std::remove_const_t<decltype(_Value)>;
-#else
+#  else
   template <auto _Value>
   using __mtypeof = decltype(_Value);
-#endif
+#  endif
 
   template <class...>
   struct __mlist;
@@ -99,7 +108,7 @@ namespace STDEXEC
   template <std::size_t... _Is>
   using __indices = __iota<_Is...> *;
 
-#if STDEXEC_MSVC()
+#  if STDEXEC_MSVC()
   namespace __pack
   {
     template <class _Ty, _Ty... _Is>
@@ -115,7 +124,7 @@ namespace STDEXEC
   template <std::size_t _Np>
   using __make_indices =
     decltype(__pack::__mkidx<__make_integer_seq<__pack::__idx, std::size_t, _Np>>);
-#elif STDEXEC_HAS_BUILTIN(__make_integer_seq)
+#  elif STDEXEC_HAS_BUILTIN(__make_integer_seq)
   namespace __pack
   {
     template <class _Ty, _Ty... _Is>
@@ -124,7 +133,7 @@ namespace STDEXEC
 
   template <std::size_t _Np>
   using __make_indices = __make_integer_seq<__pack::__idx, std::size_t, _Np>;
-#elif STDEXEC_HAS_BUILTIN(__integer_pack)
+#  elif STDEXEC_HAS_BUILTIN(__integer_pack)
   namespace __pack
   {
     template <std::size_t _Np>
@@ -133,7 +142,7 @@ namespace STDEXEC
 
   template <std::size_t _Np>
   using __make_indices = decltype(__pack::__make_indices<_Np>);
-#else
+#  else
   namespace __pack
   {
     template <std::size_t _Np, class _Idx = __indices<>>
@@ -154,7 +163,7 @@ namespace STDEXEC
 
   template <std::size_t _Np>
   using __make_indices = decltype(__pack::__mk_indices<_Np>);
-#endif
+#  endif
 
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
@@ -417,15 +426,15 @@ namespace STDEXEC
   template <template <class...> class _Fn, class... _Args>
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
-#if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1800)
+#  if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1800)
   // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an indirection
   // that hides the builtin from the mangler.
   template <template <class...> class _Fn, class... _Args>
   using __mmangle_t = __mmemoize_q<_Fn, _Args...>;
-#else
+#  else
   template <template <class...> class _Fn, class... _Args>
   using __mmangle_t = _Fn<_Args...>;
-#endif
+#  endif
 
   namespace __detail
   {
@@ -747,7 +756,7 @@ namespace STDEXEC
     using __f = _Return(_Args...);
   };
 
-#if !STDEXEC_NO_STDCPP_PACK_INDEXING()
+#  if !STDEXEC_NO_STDCPP_PACK_INDEXING()
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 
@@ -765,7 +774,7 @@ namespace STDEXEC
   using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
 
   STDEXEC_PRAGMA_POP()
-#elif STDEXEC_HAS_BUILTIN(__type_pack_element)
+#  elif STDEXEC_HAS_BUILTIN(__type_pack_element)
   template <bool>
   struct __m_at_
   {
@@ -778,7 +787,7 @@ namespace STDEXEC
 
   template <std::size_t _Np, class... _Ts>
   using __m_at_c = __minvoke<__m_at_<_Np == ~0ul>, __msize_t<_Np>, _Ts...>;
-#else
+#  else
   template <std::size_t>
   using __void_ptr = void *;
 
@@ -802,7 +811,7 @@ namespace STDEXEC
 
   template <class _Np, class... _Ts>
   using __m_at = __m_at_c<_Np::value, _Ts...>;
-#endif
+#  endif
 
   namespace __detail
   {
@@ -991,13 +1000,13 @@ namespace STDEXEC
   template <class _Continuation = __q<__mlist>>
   struct __munique
   {
-#if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
+#  if STDEXEC_HAS_BUILTIN(__builtin_dedup_pack)
     template <class... _Ts>
     using __f = __minvoke<_Continuation, __builtin_dedup_pack<_Ts...>...>;
-#else
+#  else
     template <class... _Ts>
     using __f = __mapply<_Continuation, __mmake_set<_Ts...>>;
-#endif
+#  endif
   };
 
   namespace __detail
@@ -1028,4 +1037,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW

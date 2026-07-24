@@ -16,12 +16,21 @@
 #pragma once
 
 #include "__detail/__config.hpp"
-#include "__detail/__tuple.hpp"
-#include "__detail/__utility.hpp"
 
-#include "concepts.hpp"  // IWYU pragma: keep
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <functional>
+import stdexec;
+
+#else
+
+#  include "__detail/__tuple.hpp"
+#  include "__detail/__utility.hpp"
+
+#  include "concepts.hpp"  // IWYU pragma: keep
+
+#  if !STDEXEC_USE_MODULES()
+#    include <functional>
+#  endif
 
 namespace STDEXEC
 {
@@ -373,3 +382,4 @@ namespace STDEXEC
     return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
 }  // namespace STDEXEC
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

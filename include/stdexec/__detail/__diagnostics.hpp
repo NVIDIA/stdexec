@@ -15,14 +15,24 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__meta.hpp"
+#  include "__meta.hpp"
 
-#include <exception>  // IWYU pragma: keep for std::exception
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>  // IWYU pragma: keep for std::exception
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -146,12 +156,12 @@ namespace STDEXEC
                  _WITH_PRETTY_SENDER_<_Sender>,
                  _WITH_ENVIRONMENT_(_Env)...>;
 
-#if __cpp_lib_constexpr_exceptions >= 202502L
+#  if __cpp_lib_constexpr_exceptions >= 202502L
 
   // constexpr stdlib exception types, https://wg21.link/p3378
   using __exception = ::std::exception;
 
-#elif __cpp_constexpr >= 201907L && !STDEXEC_MSVC() && !STDEXEC_NVHPC()
+#  elif __cpp_constexpr >= 201907L && !STDEXEC_MSVC() && !STDEXEC_NVHPC()
 
   // constexpr virtual functions
   struct __exception
@@ -166,7 +176,7 @@ namespace STDEXEC
     }
   };
 
-#else
+#  else
 
   // no constexpr virtual functions
   struct __exception
@@ -180,7 +190,7 @@ namespace STDEXEC
     }
   };
 
-#endif  // __cpp_lib_constexpr_exceptions >= 202502L
+#  endif  // __cpp_lib_constexpr_exceptions >= 202502L
 
   struct __compile_time_error : __exception
   {};
@@ -296,7 +306,7 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE                                                       \
+#  define STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE                                                     \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The given type is not a sender because " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<Sender>"\
@@ -327,7 +337,7 @@ namespace STDEXEC
   "     inline constexpr bool " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<MySender> = true;\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                                         \
+#  define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                                       \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The sender type was not able to report its completion signatures when asked.\n"                 \
@@ -378,13 +388,13 @@ namespace STDEXEC
   "     };\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR                                  \
+#  define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR                                \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "Trying to compute the sender's completion signatures resulted in an error. See\n"               \
   "the rest of the compiler diagnostic for clues. Look for the string \"_ERROR_\".\n"
 
-#define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE                            \
+#  define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE                          \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The member function 'get_completion_signatures' of the sender returned an\n"                    \
@@ -412,7 +422,7 @@ namespace STDEXEC
   "  };\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                                            \
+#  define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                                          \
   "\n"                                                                                             \
   "A sender must provide a 'connect' member function that takes a receiver as an\n"                \
   "argument and returns an object whose type satisfies '" STDEXEC_PP_STRINGIZE(STDEXEC)            \
@@ -450,7 +460,7 @@ namespace STDEXEC
   "  };\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER                                  \
+#  define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER                                \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The sender passed to '" STDEXEC_PP_STRINGIZE(STDEXEC) "::sync_wait()' does not have a "         \
@@ -458,4 +468,5 @@ namespace STDEXEC
   "member function that accepts sync_wait's receiver.\n"                                           \
   STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

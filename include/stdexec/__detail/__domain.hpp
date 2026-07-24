@@ -15,18 +15,27 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
-
-#include "__completion_behavior.hpp"
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__meta.hpp"
-#include "__sender_introspection.hpp"
-#include "__utility.hpp"
 
-#include <type_traits>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__completion_behavior.hpp"
+#  include "__concepts.hpp"
+#  include "__meta.hpp"
+#  include "__sender_introspection.hpp"
+#  include "__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <type_traits>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -448,10 +457,10 @@ namespace STDEXEC
     }
   };
 
-#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
+#  if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
   template <class _Tag>
   inline constexpr get_completion_domain_t<_Tag> get_completion_domain{};
-#else
+#  else
   template <>
   inline constexpr get_completion_domain_t<> get_completion_domain<>{};
   template <>
@@ -460,7 +469,7 @@ namespace STDEXEC
   inline constexpr get_completion_domain_t<set_error_t> get_completion_domain<set_error_t>{};
   template <>
   inline constexpr get_completion_domain_t<set_stopped_t> get_completion_domain<set_stopped_t>{};
-#endif
+#  endif
 
   inline constexpr get_domain_t get_domain{};
 }  // namespace STDEXEC
@@ -490,4 +499,5 @@ namespace std
 
 }  // namespace std
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

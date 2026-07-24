@@ -15,46 +15,56 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__any.hpp"
-#include "__bulk.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__inline_scheduler.hpp"
-#include "__just.hpp"
-#include "__memory.hpp"
-#include "__meta.hpp"
-#include "__parallel_scheduler_backend.hpp"
-#include "__schedulers.hpp"
-#include "__scope.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__typeinfo.hpp"
-#include "__variant.hpp"  // IWYU pragma: keep for __variant
+#  include "__any.hpp"
+#  include "__bulk.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__inline_scheduler.hpp"
+#  include "__just.hpp"
+#  include "__memory.hpp"
+#  include "__meta.hpp"
+#  include "__parallel_scheduler_backend.hpp"
+#  include "__schedulers.hpp"
+#  include "__scope.hpp"
+#  include "__transform_completion_signatures.hpp"
+#  include "__typeinfo.hpp"
+#  include "__variant.hpp"  // IWYU pragma: keep for __variant
 
-#include <cstddef>
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
 
-#include <exception>
-#include <span>
-#include <utility>
+#    include <exception>
+#    include <span>
+#    include <utility>
+#  endif
 
-#ifndef STDEXEC_TASK_SCHEDULE_OPSTATE_SIZE
-#  define STDEXEC_TASK_SCHEDULE_OPSTATE_SIZE 72
-#endif
-#ifndef STDEXEC_TASK_SCHEDULE_OPSTATE_ALIGN
-#  define STDEXEC_TASK_SCHEDULE_OPSTATE_ALIGN 8
-#endif
-#ifndef STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_SIZE
-#  define STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_SIZE 152
-#endif
-#ifndef STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_ALIGN
-#  define STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_ALIGN 8
-#endif
+#  ifndef STDEXEC_TASK_SCHEDULE_OPSTATE_SIZE
+#    define STDEXEC_TASK_SCHEDULE_OPSTATE_SIZE 72
+#  endif
+#  ifndef STDEXEC_TASK_SCHEDULE_OPSTATE_ALIGN
+#    define STDEXEC_TASK_SCHEDULE_OPSTATE_ALIGN 8
+#  endif
+#  ifndef STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_SIZE
+#    define STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_SIZE 152
+#  endif
+#  ifndef STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_ALIGN
+#    define STDEXEC_TASK_BULK_SCHEDULE_OPSTATE_ALIGN 8
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
@@ -848,4 +858,5 @@ namespace STDEXEC
   }  // namespace __detail
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

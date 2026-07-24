@@ -16,12 +16,22 @@
 
 #pragma once
 
-#include "__execution_fwd.hpp"
-#include "__parallel_scheduler_backend.hpp"
+#include "__config.hpp"
 
-#include <memory>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+#  include "__parallel_scheduler_backend.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <memory>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC::parallel_scheduler_replacement
 {
@@ -44,4 +54,5 @@ namespace STDEXEC::parallel_scheduler_replacement
     -> __parallel_scheduler_backend_factory_t;
 }  // namespace STDEXEC::parallel_scheduler_replacement
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

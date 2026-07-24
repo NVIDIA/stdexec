@@ -15,25 +15,35 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__memory.hpp"
-#include "__type_traits.hpp"
-#include "__typeinfo.hpp"
-#include "__utility.hpp"
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <bit>
-#include <exception>
-#include <memory>
-#include <span>
-#include <type_traits>
-#include <utility>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__concepts.hpp"
+#  include "__config.hpp"
+#  include "__memory.hpp"
+#  include "__type_traits.hpp"
+#  include "__typeinfo.hpp"
+#  include "__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <cstdint>
+#    include <cstring>
+
+#    include <bit>
+#    include <exception>
+#    include <memory>
+#    include <span>
+#    include <type_traits>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
@@ -465,7 +475,7 @@ namespace STDEXEC::__any
       : __val_(static_cast<_Args &&>(__args)...)
     {}
 
-#if !STDEXEC_GCC()
+#  if !STDEXEC_GCC()
     template <class _Fn, class... _Args>
     constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       noexcept(__nothrow_callable<_Fn, _Args...>)
@@ -473,7 +483,7 @@ namespace STDEXEC::__any
     {
       static_assert(__same_as<__call_result_t<_Fn, _Args...>, _Value>);
     }
-#else
+#  else
     template <class _Fn, class... _Args>
     constexpr explicit __box(__in_place_from_t, _Fn &&__fn, _Args &&...__args)
       noexcept(__nothrow_callable<_Fn, _Args...>)
@@ -516,7 +526,7 @@ namespace STDEXEC::__any
       __val_ = __rhs.__val_;
       return *this;
     }
-#endif
+#  endif
 
     template <class _Self>
     [[nodiscard]]
@@ -526,16 +536,16 @@ namespace STDEXEC::__any
     }
 
    private:
-#if !STDEXEC_GCC()
+#  if !STDEXEC_GCC()
     STDEXEC_ATTRIBUTE(no_unique_address)
     _Value __val_;
-#else
+#  else
     union
     {
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Value __val_;
     };
-#endif
+#  endif
   };
 
   template <class _Interface, __box_kind _BoxKind>
@@ -1583,28 +1593,28 @@ namespace STDEXEC::__any
   struct __bad_any_cast : std::exception
   {
     [[nodiscard]]
-#if __cpp_lib_constexpr_exceptions >= 202502L  // constexpr support for std::exception
+#  if __cpp_lib_constexpr_exceptions >= 202502L  // constexpr support for std::exception
     constexpr
-#endif
+#  endif
       char const *what() const noexcept override
     {
       return "__bad_any_cast";
     }
   };
 
-#if defined(__cpp_exceptions) && __cpp_exceptions >= 199711L
+#  if defined(__cpp_exceptions) && __cpp_exceptions >= 199711L
   [[noreturn]]
   inline void __throw_bad_any_cast()
   {
     throw __bad_any_cast();
   }
-#else
+#  else
   [[noreturn]]
   inline constexpr void __throw_bad_any_cast() noexcept
   {
     STDEXEC::__die("__bad_any_cast\n");
   }
-#endif
+#  endif
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //! __any_static_cast
@@ -2254,4 +2264,5 @@ namespace STDEXEC::__any
 
 // NOLINTEND(moderize-use-override)
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

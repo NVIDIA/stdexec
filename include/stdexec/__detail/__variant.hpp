@@ -15,15 +15,25 @@
  */
 #pragma once
 
-#include "__meta.hpp"
-#include "__scope.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
+#include "__config.hpp"
 
-#include <cstddef>
-#include <memory>
-#include <new>
-#include <utility>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__meta.hpp"
+#  include "__scope.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <memory>
+#    include <new>
+#    include <utility>
+#  endif
 
 /********************************************************************************/
 /* NB: The variant type implemented here default-constructs into the valueless  */
@@ -32,20 +42,20 @@
 /* the need for a default constructor for each alternative type.                */
 /********************************************************************************/
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-#if STDEXEC_NVHPC()
+#  if STDEXEC_NVHPC()
   enum __variant_npos_t : std::size_t
   {
     __variant_npos = ~0UL
   };
-#else
+#  else
   STDEXEC_GLOBAL_CONSTANT std::size_t __variant_npos = ~0UL;
-#endif
+#  endif
 
   struct __monostate
   {};
@@ -406,4 +416,5 @@ namespace STDEXEC
   using __uniqued_variant = __mcall<__munique<__qq<__variant>>, __decay_t<Ts>...>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

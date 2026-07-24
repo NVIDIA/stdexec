@@ -15,26 +15,35 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
-
-#include "../coroutine.hpp"
-#include "__awaitable.hpp"
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__env.hpp"
-#include "__manual_lifetime.hpp"
-#include "__receivers.hpp"
-#include "__scope.hpp"
 
-#include <exception>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "../coroutine.hpp"
+#  include "__awaitable.hpp"
+#  include "__concepts.hpp"
+#  include "__env.hpp"
+#  include "__manual_lifetime.hpp"
+#  include "__receivers.hpp"
+#  include "__scope.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wsubobject-linkage")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // __connect_await
   namespace __connect_await
@@ -514,7 +523,7 @@ namespace STDEXEC
     }
   };
 
-#else
+#  else
 
   namespace __connect_await
   {
@@ -530,9 +539,10 @@ namespace STDEXEC
   struct __connect_awaitable_t
   {};
 
-#endif
+#  endif
 
   inline constexpr __connect_awaitable_t __connect_awaitable{};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -15,20 +15,32 @@
  */
 #pragma once
 
-#include "__concepts.hpp"  // IWYU pragma: keep for __std::integral
 #include "__config.hpp"
 
-#if __has_include(<cuda/std/atomic>)
-#  include <cuda/std/atomic>
-#  define STDEXEC_HAS_CUDA_STD_ATOMIC() 1
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
 #else
-#  include <atomic>
-#  define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
-#endif
 
-#include <memory>
+#  include "__concepts.hpp"  // IWYU pragma: keep for __std::integral
 
-#include "__prologue.hpp"
+#  if !STDEXEC_USE_MODULES()
+#    if __has_include(<cuda/std/atomic>)
+#      include <cuda/std/atomic>
+#      define STDEXEC_HAS_CUDA_STD_ATOMIC() 1
+#    else
+#      include <atomic>
+#      define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
+#    endif
+
+#    include <memory>
+#  else
+     // this is the "use-std" case, but we rely on import std
+#    define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
@@ -36,7 +48,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
 namespace STDEXEC::__std
 {
-#if STDEXEC_HAS_CUDA_STD_ATOMIC()
+#  if STDEXEC_HAS_CUDA_STD_ATOMIC()
 
   using cuda::std::atomic;
   using cuda::std::atomic_ref;
@@ -51,7 +63,7 @@ namespace STDEXEC::__std
   using cuda::std::atomic_thread_fence;
   using cuda::std::atomic_signal_fence;
 
-#else  // ^^^ STDEXEC_HAS_CUDA_STD_ATOMIC() / vvv !STDEXEC_HAS_CUDA_STD_ATOMIC()
+#  else  // ^^^ STDEXEC_HAS_CUDA_STD_ATOMIC() / vvv !STDEXEC_HAS_CUDA_STD_ATOMIC()
 
   using std::atomic;
   using std::atomic_flag;
@@ -65,9 +77,9 @@ namespace STDEXEC::__std
   using std::atomic_thread_fence;
   using std::atomic_signal_fence;
 
-#  if __cpp_lib_atomic_ref >= 201806L
+#    if __cpp_lib_atomic_ref >= 201806L
   using std::atomic_ref;
-#  else
+#    else
   inline constexpr int __atomic_flag_map[] = {
     __ATOMIC_RELAXED,
     __ATOMIC_CONSUME,
@@ -110,9 +122,9 @@ namespace STDEXEC::__std
       __atomic_store_n(__ptr_, __desired, __map_memory_order(__order));
     }
   };
-#  endif  // ^^^ __cpp_lib_atomic_ref < 201806L
+#    endif  // ^^^ __cpp_lib_atomic_ref < 201806L
 
-#endif  // ^^^ !STDEXEC_HAS_CUDA_STD_ATOMIC()
+#  endif  // ^^^ !STDEXEC_HAS_CUDA_STD_ATOMIC()
 
   constexpr memory_order __memory_order_load(memory_order __order) noexcept
   {
@@ -121,10 +133,10 @@ namespace STDEXEC::__std
                                            : __order;
   }
 
-#if __cpp_lib_atomic_shared_ptr >= 201711L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
+#  if __cpp_lib_atomic_shared_ptr >= 201711L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
   template <class _Ty>
   using __atomic_shared_ptr = std::atomic<std::shared_ptr<_Ty>>;
-#else
+#  else
   template <typename _Ty>
   struct __atomic_shared_ptr
   {
@@ -241,8 +253,9 @@ namespace STDEXEC::__std
   template <typename _Ty>
   __atomic_shared_ptr(std::shared_ptr<_Ty>) -> __atomic_shared_ptr<_Ty>;
 
-#endif  // ^^^ __cpp_lib_atomic_shared_ptr < 201711L
+#  endif  // ^^^ __cpp_lib_atomic_shared_ptr < 201711L
 
 }  // namespace STDEXEC::__std
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

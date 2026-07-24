@@ -15,26 +15,36 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "__config.hpp"
 
-#include "__execution_fwd.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  pragma once
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../functional.hpp"  // IWYU pragma: keep for __with_default
-#include "../stop_token.hpp"  // IWYU pragma: keep for get_stop_token_t
-#include "__any.hpp"
-#include "__any_allocator.hpp"
-#include "__inline_scheduler.hpp"
-#include "__optional.hpp"
-#include "__queries.hpp"
-#include "__schedulers.hpp"
-#include "__typeinfo.hpp"
+#  include "../functional.hpp"  // IWYU pragma: keep for __with_default
+#  include "../stop_token.hpp"  // IWYU pragma: keep for get_stop_token_t
+#  include "__any.hpp"
+#  include "__any_allocator.hpp"
+#  include "__inline_scheduler.hpp"
+#  include "__optional.hpp"
+#  include "__queries.hpp"
+#  include "__schedulers.hpp"
+#  include "__typeinfo.hpp"
 
-#include <exception>
-#include <optional>
-#include <span>
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <optional>
+#    include <span>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // warning C4702: unreachable code
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
@@ -410,4 +420,5 @@ namespace STDEXEC
   }  // namespace __detail
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -16,26 +16,36 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "../stop_token.hpp"
-#include "__atomic.hpp"
-#include "__basic_sender.hpp"
-#include "__concepts.hpp"
-#include "__receivers.hpp"
-#include "__scope.hpp"
-#include "__scope_concepts.hpp"
-#include "__senders.hpp"
-#include "__spawn_common.hpp"
-#include "__storage.hpp"
-#include "__tuple.hpp"
-#include "__type_traits.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <memory>
-#include <type_traits>
-#include <utility>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "../stop_token.hpp"
+#  include "__atomic.hpp"
+#  include "__basic_sender.hpp"
+#  include "__concepts.hpp"
+#  include "__receivers.hpp"
+#  include "__scope.hpp"
+#  include "__scope_concepts.hpp"
+#  include "__senders.hpp"
+#  include "__spawn_common.hpp"
+#  include "__storage.hpp"
+#  include "__tuple.hpp"
+#  include "__type_traits.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <memory>
+#    include <type_traits>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -882,4 +892,5 @@ namespace STDEXEC
   {};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -15,16 +15,26 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
-#include "__meta.hpp"
-#include "__sender_concepts.hpp"
-#include "__tuple.hpp"  // IWYU pragma: keep for __is_tuple and __tuple_size_v
-#include "__type_traits.hpp"
+#include "__config.hpp"
 
-#include <cstddef>
-#include <exception>  // IWYU pragma: keep for std::terminate
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+#  include "__meta.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__tuple.hpp"  // IWYU pragma: keep for __is_tuple and __tuple_size_v
+#  include "__type_traits.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <exception>  // IWYU pragma: keep for std::terminate
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 
@@ -66,11 +76,11 @@ namespace STDEXEC
   template <class _Ty>
   inline constexpr int __structured_binding_size_v = -1;
 
-#if STDEXEC_HAS_BUILTIN(__builtin_structured_binding_size)
+#  if STDEXEC_HAS_BUILTIN(__builtin_structured_binding_size)
   template <class _Ty>
     requires(__builtin_structured_binding_size(_Ty) >= 0U)
   inline constexpr int __structured_binding_size_v<_Ty> = __builtin_structured_binding_size(_Ty);
-#else
+#  else
   template <__is_tuple _Ty>
   inline constexpr int __structured_binding_size_v<_Ty> = __tuple_size_v<_Ty>;
 
@@ -80,7 +90,7 @@ namespace STDEXEC
 
   // For types that are *not* tuples, __structured_binding_size_v must be specialized
   // explicitly.
-#endif
+#  endif
 
   namespace __detail
   {
@@ -91,7 +101,7 @@ namespace STDEXEC
       static constexpr type value = _Apply;
     };
 
-#if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 202411L
+#  if defined(__cpp_structured_bindings) && __cpp_structured_bindings >= 202411L
 
     // Structured bindings can introduce a pack, so the implementation of
     // __structured_apply is simple.
@@ -109,7 +119,7 @@ namespace STDEXEC
     template <int _Ny, bool _Nothrow = true>
     inline constexpr auto const &__structured_apply_v = __structured_apply_impl<_Nothrow>;
 
-#else
+#  else
 
     // Structured bindings *cannot* introduce a pack, so we explicitly handle structures
     // with up to 10 members.
@@ -124,9 +134,9 @@ namespace STDEXEC
         return static_cast<_Fn &&>(__fn)(static_cast<_Us &&>(__us)...);                    //
       })>::value;                                                                          //
 
-#  define STDEXEC_STRUCTURED_APPLY_ELEM_ID(_NY)   STDEXEC_PP_IF(_NY, STDEXEC_PP_COMMA, STDEXEC_PP_EAT)() __a##_NY
-#  define STDEXEC_STRUCTURED_APPLY_ELEM(_NY)      , static_cast<__mcall1<__cpcv, decltype(__a##_NY)> &&>(__a##_NY)
-#  define STDEXEC_STRUCTURED_APPLY_ITERATE(_IDX)                                                    \
+#    define STDEXEC_STRUCTURED_APPLY_ELEM_ID(_NY)   STDEXEC_PP_IF(_NY, STDEXEC_PP_COMMA, STDEXEC_PP_EAT)() __a##_NY
+#    define STDEXEC_STRUCTURED_APPLY_ELEM(_NY)      , static_cast<__mcall1<__cpcv, decltype(__a##_NY)> &&>(__a##_NY)
+#    define STDEXEC_STRUCTURED_APPLY_ITERATE(_IDX)                                                    \
     template <bool _Nothrow>                                                                  \
     inline constexpr auto const& __structured_apply_v<_IDX, _Nothrow> = __static_const<(      \
       []<class _Fn, class _Type, class... _Us>(_Fn &&__fn, _Type &&__obj, _Us &&...__us)      \
@@ -148,11 +158,11 @@ namespace STDEXEC
     STDEXEC_STRUCTURED_APPLY_ITERATE(8);
     STDEXEC_STRUCTURED_APPLY_ITERATE(9);
     STDEXEC_STRUCTURED_APPLY_ITERATE(10);
-#  undef STDEXEC_STRUCTURED_APPLY_ELEM
-#  undef STDEXEC_STRUCTURED_APPLY_ELEM_ID
-#  undef STDEXEC_STRUCTURED_APPLY_ITERATE
+#    undef STDEXEC_STRUCTURED_APPLY_ELEM
+#    undef STDEXEC_STRUCTURED_APPLY_ELEM_ID
+#    undef STDEXEC_STRUCTURED_APPLY_ITERATE
 
-#endif
+#  endif
 
     struct __structured_apply
     {
@@ -170,7 +180,7 @@ namespace STDEXEC
         }
       };
 
-#if STDEXEC_EDG()
+#  if STDEXEC_EDG()
       template <class _Fn, class _Type, class... _Us>
       static auto __declfn_fn()                                                             //
         -> decltype((__detail::__structured_apply_v<__structured_binding_size_v<_Type>>) (  //
@@ -181,14 +191,14 @@ namespace STDEXEC
       template <class _Fn, class _Type, class... _Us>
         requires(__structured_binding_size_v<_Type> >= 0)
       using __declfn_t = decltype(__declfn_fn<_Fn, _Type, _Us...>());
-#else
+#  else
       template <class _Fn, class _Type, class... _Us>
         requires(__structured_binding_size_v<_Type> >= 0)
       using __declfn_t = __result_of<__structured_apply_v<__structured_binding_size_v<_Type>>,
                                      __get_declfn<_Fn>,
                                      _Type,
                                      _Us...>;
-#endif
+#  endif
 
      public:
       template <class _Fn, class _Type, class... _Us, class _DeclFn = __declfn_t<_Fn, _Type, _Us...>>
@@ -282,4 +292,5 @@ namespace STDEXEC
                               "<exec/sender_for.hpp> instead") = __sender_for<_Sender, _Tag>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

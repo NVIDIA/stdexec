@@ -38,16 +38,20 @@
 
 #include "__preprocessor.hpp"
 
-#if __has_include(<version>)
-#  include <version>
+#if STDEXEC_USE_MODULES()
+import std;
 #else
-#  include <ciso646>  // For stdlib feature-test macros when <version> is not available
-#endif
+#  if __has_include(<version>)
+#    include <version>
+#  else
+#    include <ciso646>  // For stdlib feature-test macros when <version> is not available
+#  endif
 
-#include <cassert>
-#include <cstdlib>
-#include <type_traits>  // IWYU pragma: keep
-#include <utility>      // IWYU pragma: keep for std::unreachable
+#  include <cassert>
+#  include <cstdlib>
+#  include <type_traits>  // IWYU pragma: keep
+#  include <utility>      // IWYU pragma: keep for std::unreachable
+#endif
 
 // When used with no arguments, these macros expand to 1 if the current
 // compiler corresponds to the macro name; 0, otherwise. When used with arguments,
@@ -212,6 +216,8 @@ STDEXEC_NAMESPACE_STD_END
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if !defined(STDEXEC_NAMESPACE)
 #  define STDEXEC stdexec
+#elif STDEXEC_USE_MODULES()
+#  define STDEXEC stdexec
 #else
 #  define STDEXEC STDEXEC_NAMESPACE
 #endif
@@ -247,7 +253,10 @@ STDEXEC_NAMESPACE_STD_END
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
-#  include <coroutine>  // IWYU pragma: keep
+#  if !STDEXEC_USE_MODULES()
+     // we've already imported std above
+#    include <coroutine>  // IWYU pragma: keep
+#  endif
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
 namespace STDEXEC::__std
 {
@@ -575,6 +584,8 @@ namespace STDEXEC
 #endif
 
 #if STDEXEC_NVHPC()
+// TODO: this is probably wrong in modules builds, but I don't know if there's an
+//       nv-prefixed build that can enable modules
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
 #elif STDEXEC_CLANG() && defined(__CUDA__) && defined(__CUDA_ARCH__)
@@ -715,6 +726,7 @@ namespace STDEXEC
 
 // clang-format off
 #if STDEXEC_HAS_CTK() && __has_include(<nv/target>)
+// TODO: probably wrong with modules, but do nv-prefixed builds care?
 #  include <nv/target>
 #  define STDEXEC_IF_HOST(...)     NV_IF_TARGET(NV_IS_HOST, (__VA_ARGS__;))
 #  define STDEXEC_IF_DEVICE(...)   NV_IF_TARGET(NV_IS_DEVICE, (__VA_ARGS__;))
@@ -727,6 +739,7 @@ namespace STDEXEC
 // CUDA compilers preinclude cuda_runtime.h, but if we're not compiling for CUDA then we
 // need to include it ourselves.
 #if STDEXEC_HAS_CTK() && !STDEXEC_CUDA_COMPILATION()
+// TODO: probably wrong with modules, but do nv-prefixed builds care?
 #  include <cuda_runtime_api.h>
 #endif
 
@@ -766,6 +779,7 @@ namespace STDEXEC
 
 // clang-format on
 
+#if !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
 namespace STDEXEC
 {
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
@@ -784,6 +798,7 @@ namespace STDEXEC
     STDEXEC_UNREACHABLE();
   }
 }  // namespace STDEXEC
+#endif
 
 #if defined(STDEXEC_ASSERT)
 // nothing to do, user has provided their own assertion macro
@@ -917,6 +932,7 @@ namespace STDEXEC
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)
+// TODO: probably wrong with modules, but do nv-prefixed builds care?
 #  include <cuda_runtime_api.h>  // IWYU pragma: keep
 #  if !defined(__launch_bounds__)
 #    define __launch_bounds__(...)
