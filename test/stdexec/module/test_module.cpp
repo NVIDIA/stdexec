@@ -34,4 +34,20 @@ namespace
 
     STATIC_REQUIRE(sizeof(decltype(sender)) > 0);
   }
+
+  TEST_CASE("I can connect and start a just-sender in a modules build", "[modules]")
+  {
+    struct receiver
+    {
+      using receiver_concept = ex::receiver_tag;
+
+      void set_value() && noexcept {}
+    };
+
+    auto op = ex::connect(ex::just(), receiver{});
+
+    STATIC_REQUIRE(sizeof(decltype(op)) > 0);
+
+    op.start();
+  }
 }  // namespace
