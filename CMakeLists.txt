@@ -612,10 +612,23 @@ if(STDEXEC_INSTALL)
     list(APPEND stdexec_install_targets parallel_scheduler)
   endif()
 
-  install(
-    TARGETS ${stdexec_install_targets}
-    EXPORT stdexec-exports
-    FILE_SET headers FILE_SET version_config)
+  if(STDEXEC_BUILD_MODULES)
+    install(
+      TARGETS ${stdexec_install_targets}
+      EXPORT stdexec-exports
+      FILE_SET headers FILE_SET version_config
+      # I cargo-culted this modules-handling stuff from Beman
+      FILE_SET CXX_MODULES
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/stdexec/modules"
+      CXX_MODULES_BMI
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/stdexec/bmi-${CMAKE_CXX_COMPILER_ID}_$<CONFIG>
+        COMPONENT stdexec_Development)
+  else()
+    install(
+      TARGETS ${stdexec_install_targets}
+      EXPORT stdexec-exports
+      FILE_SET headers FILE_SET version_config)
+  endif()
 
   # ############################################################################
   # Install exports ------------------------------------------------------------
