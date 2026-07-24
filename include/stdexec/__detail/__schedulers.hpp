@@ -15,20 +15,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures_of.hpp"  // IWYU pragma: keep for the sender concept
-#include "__concepts.hpp"
-#include "__config.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__query.hpp"
-#include "__sender_concepts.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
+#  include "__completion_signatures_of.hpp"  // IWYU pragma: keep for the sender concept
+#  include "__concepts.hpp"
+#  include "__config.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__query.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -98,7 +106,7 @@ namespace STDEXEC
   //! **Example.**
   //!
   //! @code{.cpp}
-  //! #include <stdexec/execution.hpp>
+  //! #  include <stdexec/execution.hpp>
   //!
   //! int main() {
   //!   using namespace stdexec;
@@ -509,10 +517,10 @@ namespace STDEXEC
   inline constexpr get_start_scheduler_t            get_start_scheduler{};
   inline constexpr get_delegation_scheduler_t       get_delegation_scheduler{};
 
-#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
+#  if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
   template <__completion_tag _Query>
   inline constexpr get_completion_scheduler_t<_Query> get_completion_scheduler{};
-#else
+#  else
   template <>
   inline constexpr get_completion_scheduler_t<set_value_t> get_completion_scheduler<set_value_t>{};
   template <>
@@ -520,7 +528,7 @@ namespace STDEXEC
   template <>
   inline constexpr get_completion_scheduler_t<set_stopped_t>
     get_completion_scheduler<set_stopped_t>{};
-#endif
+#  endif
 
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
@@ -698,4 +706,5 @@ namespace STDEXEC
   = get_delegation_scheduler;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

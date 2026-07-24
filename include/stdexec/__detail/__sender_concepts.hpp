@@ -15,19 +15,27 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__awaitable.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__get_completion_signatures.hpp"
-#include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__type_traits.hpp"
+#  include "__awaitable.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__get_completion_signatures.hpp"
+#  include "__meta.hpp"
+#  include "__receivers.hpp"
+#  include "__type_traits.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -126,15 +134,15 @@ namespace STDEXEC
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
-#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<std::remove_const_t<decltype(_Completions)>>;
-#else
+#  else
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<decltype(_Completions)>;
-#endif
+#  endif
 
   //! @brief A @c sender whose *completion signatures* can be computed in a
   //!        given environment.
@@ -309,11 +317,11 @@ namespace STDEXEC
           static_assert(__valid_completion_signatures<_Completions>,
                         STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
         }
-#if STDEXEC_MSVC() || STDEXEC_NVHPC()
+#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
         // MSVC and NVHPC need more encouragement to print the type of the
         // error.
         _Completions __what = 0;
-#endif
+#  endif
       }
     }
   }  // namespace __detail
@@ -329,4 +337,5 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

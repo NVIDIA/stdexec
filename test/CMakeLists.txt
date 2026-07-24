@@ -117,7 +117,10 @@ target_link_libraries(common_test_settings
 
 if(STDEXEC_BUILD_MODULES)
     # temporarily speed up the test cycle by building only one test
-    add_executable(test.stdexec stdexec/module/test_module.cpp)
+    add_executable(
+        test.stdexec
+            stdexec/module/test_module.cpp
+            stdexec/algos/factories/test_just.cpp)
 
     set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
 else()

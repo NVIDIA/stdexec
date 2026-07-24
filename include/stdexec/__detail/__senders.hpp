@@ -15,14 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures.hpp"  // IWYU pragma: export
-#include "__connect.hpp"                // IWYU pragma: export
-#include "__sender_concepts.hpp"        // IWYU pragma: export
+#  include "__completion_signatures.hpp"  // IWYU pragma: export
+#  include "__connect.hpp"                // IWYU pragma: export
+#  include "__sender_concepts.hpp"        // IWYU pragma: export
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -69,4 +77,5 @@ namespace STDEXEC
   {}
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
