@@ -145,7 +145,7 @@ namespace STDEXEC
   //! @see stdexec::just_error    — synchronously complete with an error
   //! @see stdexec::just_stopped  — synchronously complete with stopped
   //! @see stdexec::read_env      — synchronously complete with a value read from the environment
-  STDEXEC_MODULE_EXPORT struct just_t
+  struct just_t
   {
     using __tag_t = set_value_t;
 
@@ -298,7 +298,7 @@ namespace STDEXEC
   //! description, completion signatures, and a usage example.
   //!
   //! @hideinitializer
-  STDEXEC_MODULE_EXPORT inline constexpr just_t just{};
+  inline constexpr just_t just{};
 
   //! @brief The customization point object for the @c just_error sender factory.
   //!

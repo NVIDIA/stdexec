@@ -174,7 +174,7 @@ namespace STDEXEC
   struct sender_tag;
   struct operation_state_tag;
   struct scheduler_tag;
-  struct receiver_tag;
+  STDEXEC_MODULE_EXPORT struct receiver_tag;
 
   // concept tag aliases for backwards compatibility:
   using sender_t          = sender_tag;
@@ -227,7 +227,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct connect_t;
-  extern connect_t const connect;
+  STDEXEC_MODULE_EXPORT extern connect_t const connect;
 
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
