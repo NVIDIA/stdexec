@@ -25,6 +25,7 @@ jobs:
           - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (clang 22, Debug)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
+          - { name: "CPU (clang 22, Debug, modules)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release, noexcept)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++ -fno-exceptions" }
           - { name: "CPU (gcc 12, Debug)",           build: "Debug",   tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
@@ -116,6 +117,7 @@ jobs:
             -DCMAKE_CXX_STANDARD:STRING=${{ matrix.cxxstd }} \
             -DCMAKE_CXX_EXTENSIONS:BOOL=OFF \
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
+            -DSTDEXEC_BUILD_MODULES:BOOL=${{ contains(matrix.name, 'modules') }} \
             ;
 
           # Compile
