@@ -87,7 +87,7 @@ namespace STDEXEC
   template <class _Cp>
   concept __class = __true<int _Cp::*> && (!__same_as<_Cp const, _Cp>);
 
-  template <class _Ty, class... _As>
+  STDEXEC_MODULE_EXPORT_META template <class _Ty, class... _As>
   concept __one_of = (__same_as<_Ty, _As> || ...);
 
   template <class _Ty, class... _Us>
@@ -306,7 +306,7 @@ namespace STDEXEC
   template <class... _Ts>
   concept __nothrow_move_constructible = (__nothrow_constructible_from<_Ts, _Ts> && ...);
 
-  template <class... _Ts>
+  STDEXEC_MODULE_EXPORT_META template <class... _Ts>
   concept __nothrow_copy_constructible = (__nothrow_constructible_from<_Ts, _Ts const &> && ...);
 
   template <class _Ty, class _A>

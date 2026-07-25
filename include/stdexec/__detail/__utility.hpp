@@ -67,7 +67,7 @@ namespace STDEXEC
     {};
   }  // namespace
 
-  struct __immovable
+  STDEXEC_MODULE_EXPORT_AUTHORING struct __immovable
   {
     __immovable() = default;
     STDEXEC_IMMOVABLE(__immovable);
@@ -90,10 +90,10 @@ namespace STDEXEC
 
 // BUGBUG TODO file this bug with nvc++
 #  if STDEXEC_EDG()
-  template <const auto& _Fun, class... _As>
+  STDEXEC_MODULE_EXPORT_META template <const auto& _Fun, class... _As>
   using __result_of = __call_result_t<decltype(_Fun), _As...>;
 #  else
-  template <const auto& _Fun, class... _As>
+  STDEXEC_MODULE_EXPORT_META template <const auto& _Fun, class... _As>
   using __result_of = decltype(_Fun(__declval<_As>()...));
 #  endif
 

@@ -93,7 +93,7 @@ namespace STDEXEC
 
   constexpr auto __invalid_disposition = static_cast<__disposition>(3);  // invalid value
 
-  template <class _Tag>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
   STDEXEC_MODULE_EXPORT template <class _Sender>
