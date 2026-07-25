@@ -963,4 +963,11 @@ namespace STDEXEC
 #  define STDEXEC_MODULE_EXPORT
 #endif
 
-STDEXEC_MODULE_EXPORT namespace STDEXEC {}
+// Placeholder until stdexec.meta / stdexec.authoring exist as separate
+// modules; these currently just export into stdexec itself. See #2139
+// (https://github.com/NVIDIA/stdexec/issues/2139)
+#define STDEXEC_MODULE_EXPORT_META      STDEXEC_MODULE_EXPORT
+#define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT
+
+STDEXEC_MODULE_EXPORT namespace STDEXEC
+{}

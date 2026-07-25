@@ -128,7 +128,7 @@ namespace STDEXEC
   //! @see stdexec::sender_to    — sender plus a specific receiver, with compatible signatures
   //! @see stdexec::sender_tag   — the tag type that opts a class into this concept
   //! @see stdexec::enable_sender — alternative opt-in path
-  template <class _Sender>
+  STDEXEC_MODULE_EXPORT template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>          //
                 && __environment_provider<__cref_t<_Sender>>  //
                 && __std::move_constructible<__decay_t<_Sender>>

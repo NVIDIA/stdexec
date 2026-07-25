@@ -486,7 +486,7 @@ namespace STDEXEC
   using __value_types_of_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
-  template <class _Sender,
+  STDEXEC_MODULE_EXPORT template <class _Sender,
             class _Env                         = env<>,
             template <class...> class _Tuple   = __decayed_std_tuple,
             template <class...> class _Variant = __std_variant>
@@ -500,16 +500,17 @@ namespace STDEXEC
   using __error_types_of_t =
     __error_types_t<__completion_signatures_of_t<_Sender, _Env>, _Variant, _Transform>;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Env = env<>, template <class...> class _Variant = __std_variant>
   using error_types_of_t =
     __error_types_t<__completion_signatures_of_t<_Sender, _Env>, __q<_Variant>>;
 
-  template <class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
     requires __valid_completion_signatures<__completion_signatures_of_t<_Sender, _Env...>>
   inline constexpr bool sends_stopped =
     __sends_stopped<__completion_signatures_of_t<_Sender, _Env...>>;
 
-  template <class _Tag, class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Tag, class _Sender, class... _Env>
   using __count_of =
     __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
 

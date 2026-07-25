@@ -56,7 +56,7 @@ namespace STDEXEC::__sync_wait
   /////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait]
   // [exec.sync.wait.var]
-  struct __env
+  STDEXEC_MODULE_EXPORT_AUTHORING struct __env
   {
     template <__one_of<get_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
     [[nodiscard]]
