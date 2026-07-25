@@ -16,6 +16,40 @@
 
 include_guard(GLOBAL)
 
+# nvhpc_find_libcudacxx_include_dir(<out_var>)
+# Invokes nvc++ -stdpar to locate the libcudacxx include root (the directory
+# that contains cuda/std/bit) and stores it in <out_var>.
+function(nvhpc_find_libcudacxx_include_dir out_var)
+  set(_src "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/find_libcudacxx.cu")
+  file(WRITE "${_src}" "#include <cuda/std/bit>\n")
+  execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -stdpar -E -M "${_src}"
+      OUTPUT_VARIABLE _output
+      ERROR_STRIP_TRAILING_WHITESPACE
+  )
+  string(REGEX MATCH "(/[^\n]*/cuda/std/bit) " _match "${_output}")
+  if(CMAKE_MATCH_1)
+    string(REGEX REPLACE "/cuda/std/bit$" "" _dir "${CMAKE_MATCH_1}")
+    set(${out_var} "${_dir}" PARENT_SCOPE)
+  else()
+    set(${out_var} "" PARENT_SCOPE)
+  endif()
+endfunction()
+
+# cuda_archs_to_gpu_list(<archs> <out_var>) Converts a list of CUDA architectures (e.g.
+# 80, 86, 90) to a comma-separated list of GPU names (e.g. cc80, cc86, cc90) and stores it
+# in <out_var>. This is useful for passing to the -gpu option of nvc++.
+function(cuda_archs_to_gpu_list archs out_var)
+  set(_gpus)
+  foreach(_arch IN LISTS archs)
+    string(REGEX REPLACE "-(real|virtual)$" "" _arch "${_arch}")
+    string(PREPEND _arch "cc")
+    list(APPEND _gpus "${_arch}")
+  endforeach()
+  list(JOIN _gpus "," _gpus)
+  set(${out_var} "${_gpus}" PARENT_SCOPE)
+endfunction()
+
 function(disable_compiler)
   cmake_parse_arguments("" "" "LANG;VAR" "" ${ARGN})
   set(_val)

@@ -21,9 +21,28 @@ If:
   PathMatch: .*\.cuh?$
   PathExclude: examples/nvexec/.*
 CompileFlags:
+  Compiler: clang++
   Add:
+    - "--offload-arch=sm_86"
+    - "-D__builtin_ia32_tmmultf32ps_internal(m,n,k,dst,src1,src2)=dst"
     # Allow variadic CUDA functions
     - "-Xclang=-fcuda-allow-variadic-functions"
+
+---
+
+# Use clang++ in CUDA mode to provide intellisense for files with `nvexec` in their path
+If:
+  PathMatch: [test/nvexec/.*, examples/nvexec/.*]
+CompileFlags:
+  Compiler: clang++
+  Add:
+    - "-x"
+    - "cuda"
+    - "--offload-arch=sm_86"
+    - "-D__builtin_ia32_tmmultf32ps_internal(m,n,k,dst,src1,src2)=dst"
+  Remove:
+    - "-x"
+    - "c++-header"
 
 ---
 
@@ -40,7 +59,6 @@ CompileFlags:
 CompileFlags:
   CompilationDatabase: .
   Add:
-    - "-DLIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE"
     # report all errors
     - "-ferror-limit=0"
     - "-fmacro-backtrace-limit=0"
