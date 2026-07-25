@@ -19,12 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: "clang 22",    cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.0",  gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "clang 22",    cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.9",  gpu: "v100", sm: "70", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.1",        gpu: "l4",   sm: "75", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.1",        gpu: "l4",   sm: "75", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.3",        gpu: "l4",   sm: "75", driver: "latest", arch: "amd64" }
-          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.3",        gpu: "l4",   sm: "75", driver: "latest", arch: "amd64" }
+          - { name: "clang 22",    cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "-Wno-deprecated-declarations" }
+          - { name: "clang 22",    cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.1",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.1",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.1",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Release", tag: "nvhpc26.3",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.3",  cuda: "13.1", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.3",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
@@ -99,7 +99,9 @@ jobs:
             -DSTDEXEC_ENABLE_CUDA=ON \
             -DSTDEXEC_ENABLE_IO_URING=OFF \
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
+            -DCMAKE_CXX_FLAGS=${{ matrix.flags }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
+            -DCMAKE_CUDA_FLAGS=${{ matrix.flags }} \
             -DCMAKE_CUDA_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CUDA_ARCHITECTURES=${{ matrix.sm }} \
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
