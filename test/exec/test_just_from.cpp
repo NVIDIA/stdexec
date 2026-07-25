@@ -24,6 +24,30 @@ namespace
 {
   constinit int global_int = 0;
 
+  struct throwing_move_callable
+  {
+    throwing_move_callable()                                        = default;
+    throwing_move_callable(throwing_move_callable const &) noexcept = default;
+    throwing_move_callable(throwing_move_callable &&other) noexcept(false)
+      : should_throw_(other.should_throw_)
+    {
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+      if (should_throw_)
+      {
+        throw 42;
+      }
+#endif
+    }
+
+    template <class Sink>
+    auto operator()(Sink sink)
+    {
+      return sink();
+    }
+
+    bool should_throw_{false};
+  };
+
   TEST_CASE("just_from is a sender", "[just_from]")
   {
     SECTION("potentially throwing")
@@ -60,6 +84,17 @@ namespace
     CHECK(a == 42);
     CHECK(b == 43);
     CHECK(c == 44);
+  }
+
+  TEST_CASE("just_from propagates exceptions from storing the callable", "[just_from]")
+  {
+    throwing_move_callable fn;
+    STATIC_REQUIRE_FALSE(noexcept(exec::just_from(fn)));
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+    fn.should_throw_ = true;
+    CHECK_THROWS_AS(exec::just_from(fn), int);
+#endif
   }
 
   TEST_CASE("just_from with multiple completions", "[just_from]")
@@ -100,7 +135,7 @@ namespace
     global_int = 42;
     auto s     = exec::just_from([](auto sink) noexcept { return sink(global_int); })
            | ex::then(
-               [](int& i) noexcept
+               [](int &i) noexcept
                {
                  CHECK(&i == &global_int);
                  return std::ref(i);
