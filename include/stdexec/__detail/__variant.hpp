@@ -198,7 +198,8 @@ namespace STDEXEC
       }
 
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr __variant &operator=(__variant &&__other) noexcept
+      constexpr __variant &
+      operator=(__variant &&__other) noexcept(__nothrow_move_constructible<_Ts...>)
         requires(std::move_constructible<_Ts> && ...)
       {
         if (this != &__other)
@@ -375,7 +376,7 @@ namespace STDEXEC
                                             static_cast<_Us &&>(__us)...);
       }
 
-      void swap(__variant &__other) noexcept
+      void swap(__variant &__other) noexcept(__nothrow_move_constructible<_Ts...>)
       {
         std::swap(*this, __other);
       }

@@ -121,9 +121,8 @@ namespace experimental::execution
       return __sndrs_.template emplace<_Index>(static_cast<_Args&&>(__args)...);
     }
 
-    void swap(variant_sender& __other) noexcept
+    void swap(variant_sender& __other) noexcept(noexcept(__sndrs_.swap(__other.__sndrs_)))
     {
-      static_assert(noexcept(__sndrs_.swap(__other.__sndrs_)));
       __sndrs_.swap(__other.__sndrs_);
     }
 
