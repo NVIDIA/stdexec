@@ -26,6 +26,7 @@ set(exec_test_sources
     test_create.cpp
     test_env.cpp
     test_into_tuple.cpp
+    test_intrusive_heap.cpp
     test_repeat_until.cpp
     test_repeat_n.cpp
     async_scope/test_dtor.cpp
