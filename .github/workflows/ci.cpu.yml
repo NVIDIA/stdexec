@@ -118,6 +118,7 @@ jobs:
             -DCMAKE_CXX_EXTENSIONS:BOOL=OFF \
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             -DSTDEXEC_BUILD_MODULES:BOOL=${{ contains(matrix.name, 'modules') }} \
+            -DCMAKE_CXX_STDLIB_MODULES_JSON=/usr/lib/llvm-22/lib/libc++.modules.json \
             ;
 
           # Compile

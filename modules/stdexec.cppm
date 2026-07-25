@@ -2,7 +2,9 @@ module;
 
 #include <cassert>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 
 export module stdexec;
 
