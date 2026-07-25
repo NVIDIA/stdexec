@@ -1,4 +1,7 @@
+#include <stdexec/__detail/__config.hpp>
+
 #include <bit>
+#include <cstddef>
 
 // Exercise the fallback even when the standard library provides std::bit_ceil.
 #undef __cpp_lib_int_pow2
@@ -22,12 +25,12 @@ namespace
 
   TEST_CASE("intrusive_heap fallback bit_ceil handles powers of two", "[intrusive_heap]")
   {
-    CHECK(exec::detail::bit_ceil(1) == 1);
-    CHECK(exec::detail::bit_ceil(2) == 2);
-    CHECK(exec::detail::bit_ceil(3) == 4);
-    CHECK(exec::detail::bit_ceil(4) == 4);
-    CHECK(exec::detail::bit_ceil(5) == 8);
-    CHECK(exec::detail::bit_ceil(8) == 8);
+    CHECK(exec::detail::bit_ceil(std::size_t{1}) == 1);
+    CHECK(exec::detail::bit_ceil(std::size_t{2}) == 2);
+    CHECK(exec::detail::bit_ceil(std::size_t{3}) == 4);
+    CHECK(exec::detail::bit_ceil(std::size_t{4}) == 4);
+    CHECK(exec::detail::bit_ceil(std::size_t{5}) == 8);
+    CHECK(exec::detail::bit_ceil(std::size_t{8}) == 8);
   }
 
   TEST_CASE("intrusive_heap fallback inserts three nodes", "[intrusive_heap]")
