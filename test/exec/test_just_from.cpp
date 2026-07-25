@@ -40,7 +40,7 @@ namespace
     }
 
     template <class Sink>
-    auto operator()(Sink sink)
+    auto operator()(Sink sink) noexcept
     {
       return sink();
     }
@@ -86,8 +86,14 @@ namespace
     CHECK(c == 44);
   }
 
-  TEST_CASE("just_from propagates exceptions from storing the callable", "[just_from]")
+  TEST_CASE("just_from is conditionally noexcept when storing the callable", "[just_from]")
   {
+    auto nothrow_fn = [](auto sink) noexcept
+    {
+      return sink();
+    };
+    STATIC_REQUIRE(noexcept(exec::just_from(nothrow_fn)));
+
     throwing_move_callable fn;
     STATIC_REQUIRE_FALSE(noexcept(exec::just_from(fn)));
 
