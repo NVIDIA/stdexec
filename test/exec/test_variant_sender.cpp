@@ -19,6 +19,9 @@
 
 #include <test_common/catch2.hpp>
 
+#include <type_traits>
+#include <utility>
+
 using namespace STDEXEC;
 using namespace exec;
 
@@ -37,6 +40,18 @@ namespace
   using just_void_t      = decltype(just());
   using just_then_void_t = decltype(then(just(), [] {}));
 
+  struct throwing_move_sender
+  {
+    using sender_concept        = sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<set_value_t()>;
+
+    throwing_move_sender()                             = default;
+    throwing_move_sender(throwing_move_sender const &) = default;
+    throwing_move_sender(throwing_move_sender &&) noexcept(false) {}
+  };
+
+  using throwing_variant_sender_t = variant_sender<throwing_move_sender>;
+
   TEST_CASE("variant_sender - default constructible", "[types][variant_sender]")
   {
     variant_sender<just_void_t, just_int_t> variant{just()};
@@ -48,6 +63,14 @@ namespace
   {
     variant_sender<just_void_t, just_then_void_t> variant{just()};
     STATIC_REQUIRE(sender_of<decltype(variant), set_value_t()>);
+  }
+
+  TEST_CASE("variant_sender - throwing move exception guarantees", "[types][variant_sender]")
+  {
+    STATIC_REQUIRE_FALSE(std::is_nothrow_move_constructible_v<throwing_variant_sender_t>);
+    STATIC_REQUIRE_FALSE(std::is_nothrow_move_assignable_v<throwing_variant_sender_t>);
+    STATIC_REQUIRE_FALSE(noexcept(std::declval<throwing_variant_sender_t &>().swap(
+      std::declval<throwing_variant_sender_t &>())));
   }
 
   TEST_CASE("variant_sender - using an overloaded then adaptor", "[types][variant_sender]")
