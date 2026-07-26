@@ -180,36 +180,40 @@ if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
 endif()
 
-# build failure tests: tests which parse a source file for an expected error
-# message
-icm_add_build_failure_test(
-  NAME
-  test_let_fail1
-  TARGET
-  test_let_fail1
-  SOURCES
-  PARSE
-  stdexec/algos/adaptors/test_let_fail1.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+if(!STDEXEC_BUILD_MODULES)
+  # these don't build with modules, yet
 
-icm_add_build_failure_test(
-  NAME
-  test_then_fail1
-  TARGET
-  test_then_fail1
-  SOURCES
-  PARSE
-  stdexec/algos/adaptors/test_then_fail1.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+  # build failure tests: tests which parse a source file for an expected error
+  # message
+  icm_add_build_failure_test(
+    NAME
+    test_let_fail1
+    TARGET
+    test_let_fail1
+    SOURCES
+    PARSE
+    stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES
+    stdexec
+    FOLDER
+    test)
 
-if(STDEXEC_BUILD_RELACY_TESTS)
-  add_subdirectory(rrd)
+  icm_add_build_failure_test(
+    NAME
+    test_then_fail1
+    TARGET
+    test_then_fail1
+    SOURCES
+    PARSE
+    stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES
+    stdexec
+    FOLDER
+    test)
+
+  if(STDEXEC_BUILD_RELACY_TESTS)
+    add_subdirectory(rrd)
+  endif()
 endif()
 
 # # Adding multiple tests with a glob icm_glob_build_failure_tests( PATTERN
