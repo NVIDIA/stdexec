@@ -2265,4 +2265,4 @@ namespace STDEXEC::__any
 // NOLINTEND(moderize-use-override)
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

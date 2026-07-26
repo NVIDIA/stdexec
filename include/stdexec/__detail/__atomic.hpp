@@ -36,7 +36,7 @@ import stdexec;
 
 #    include <memory>
 #  else
-     // this is the "use-std" case, but we rely on import std
+// this is the "use-std" case, but we rely on import std
 #    define STDEXEC_HAS_CUDA_STD_ATOMIC() 0
 #  endif
 
@@ -258,4 +258,4 @@ namespace STDEXEC::__std
 }  // namespace STDEXEC::__std
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

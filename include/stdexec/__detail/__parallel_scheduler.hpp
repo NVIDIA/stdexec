@@ -44,9 +44,9 @@ import stdexec;
 #  include "__prologue.hpp"
 
 #  if defined(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE)                                             \
-  || defined(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN)                                             \
-  || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE)                                         \
-  || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN)
+    || defined(STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN)                                           \
+    || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE)                                       \
+    || defined(STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_ALIGN)
 #    error STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_SIZE, \
         STDEXEC_SYSTEM_CONTEXT_SCHEDULE_OP_ALIGN, \
         STDEXEC_SYSTEM_CONTEXT_BULK_SCHEDULE_OP_SIZE, and \
@@ -820,7 +820,7 @@ namespace STDEXEC
 #  elif defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)
 #    if STDEXEC_MSVC()
 #      pragma message("WARNING: STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY has been renamed to "           \
-                    "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY.")
+                      "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY.")
 #    else
 #      warning "STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY has been renamed to "                           \
              "STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY."
@@ -829,4 +829,4 @@ namespace STDEXEC
 #    define STDEXEC_PARALLEL_SCHEDULER_INLINE inline
 #    include "__parallel_scheduler_default_impl_entry.hpp"
 #  endif
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

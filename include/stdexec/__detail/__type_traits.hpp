@@ -24,9 +24,9 @@ import stdexec;
 #else
 
 #  if !STDEXEC_USE_MODULES()
-#      include <exception>    // IWYU pragma: keep for std::terminate
-#      include <type_traits>  // IWYU pragma: export
-#      include <utility>      // IWYU pragma: keep
+#    include <exception>    // IWYU pragma: keep for std::terminate
+#    include <type_traits>  // IWYU pragma: export
+#    include <utility>      // IWYU pragma: keep
 #  endif
 
 #  include "__prologue.hpp"
@@ -182,4 +182,4 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
-#endif // STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

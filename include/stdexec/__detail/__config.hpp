@@ -254,7 +254,7 @@ STDEXEC_NAMESPACE_STD_END
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
 #  if !STDEXEC_USE_MODULES()
-     // we've already imported std above
+// we've already imported std above
 #    include <coroutine>  // IWYU pragma: keep
 #  endif
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
@@ -957,5 +957,4 @@ namespace STDEXEC
 #  define STDEXEC_MODULE_EXPORT
 #endif
 
-STDEXEC_MODULE_EXPORT namespace STDEXEC
-{}
+STDEXEC_MODULE_EXPORT namespace STDEXEC {}

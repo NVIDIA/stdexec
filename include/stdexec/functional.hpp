@@ -382,4 +382,4 @@ namespace STDEXEC
     return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
 }  // namespace STDEXEC
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

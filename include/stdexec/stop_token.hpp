@@ -484,4 +484,4 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 STDEXEC_PRAGMA_POP()
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -335,4 +335,4 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 #  endif  // !STDEXEC_NO_STDCPP_COROUTINES()
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif    // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

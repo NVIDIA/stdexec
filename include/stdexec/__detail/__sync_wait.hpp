@@ -525,4 +525,4 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

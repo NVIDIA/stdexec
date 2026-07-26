@@ -105,4 +105,4 @@ namespace STDEXEC::__spawn_common
 }  // namespace STDEXEC::__spawn_common
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
