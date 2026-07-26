@@ -20,3 +20,38 @@ stdexec should follow.
   on implementation details if needed for correctness; otherwise, leave
   them unconstrained. Use `static_assert` if you must, but don't bother
   rechecking things that were already checked at the public interface.
+
+* Regarding the modularized build:
+  * Enable the modularized build with `-DSTDEXEC_BUILD_MODULES=1` at
+    configure time. It has so far only been tested with Clang 22.
+  * Every header that is transitively included by `modules/stdexec.cppm` must
+    check its build context:
+    * if `STDEXEC_USE_MODULES()` is true then modules are enabled
+    * if `STDEXEC_IN_MODULE_PURVIEW` is defined then not only are modules
+      enabled, but also the header is being included in the module definition
+      unit (i.e. inside `modules/stdexec.cppm` for headers in
+      `include/stdexec`)
+    * otherwise, this is a normal include into a non-modules TU
+  * When `STDEXEC_USE_MODULES()` is true and `STDEXEC_IN_MODULE_PURVIEW` is
+    defined, the header's job is to define its part of the module unit so it
+    should behave mostly like a traditional include. One key difference from
+    traditional inclusion is that standard headers should *not* be included;
+    instead, use `import std;`.
+  * When `STDEXEC_USE_MODULES()` is true and `STDEXEC_IN_MODULE_PURVIEW` is
+    not defined, the header should do nothing but `import stdexec;`
+  * Otherwise, headers should behave as normal.
+  * Within the header, use `STDEXEC_MODULE_EXPORT` to expose symbols through
+    the module interface; for symbols that are part of the metaprogramming
+    library in `include/stdexec/__detail/__meta.hpp` that are used outside
+    the module's purview, export them with `STDEXEC_MODULE_EXPORT_META`;
+    this is a stopgap that will need to be changed eventually. Similarly,
+    for logically-module-private symbols that are used in the tests or in
+    the `include/exec` directory, export them with
+    `STDEXEC_MODULE_EXPORT_AUTHORING`.
+
+* The first non-comment, non-blank line in a test file should be
+  `#include <catch2/catch_all.hpp>` so as not to break the modules build.
+  If compile-time behavior needs to differ between modularized and
+  traditional builds, the next inclusion should be
+  `#include <stdexec/__detail/__config.hpp>` so that `STDEXEC_USE_MODULES()`
+  is defined and can be checked.
