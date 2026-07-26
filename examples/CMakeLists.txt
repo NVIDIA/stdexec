@@ -1,122 +1,132 @@
-#=============================================================================
+# =============================================================================
 # Copyright 2023 NVIDIA Corporation
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#=============================================================================
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+# =============================================================================
 
 add_library(stdexec_example_settings INTERFACE)
 
-target_compile_definitions(stdexec_example_settings INTERFACE
-  $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,26.3.0>>:STDEXEC_NAMESPACE=stdexec>)
+target_compile_definitions(
+  stdexec_example_settings
+  INTERFACE
+    $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,26.3.0>>:STDEXEC_NAMESPACE=stdexec>
+)
 
 function(split pair name_out path_out)
-    string(STRIP "${pair}" pair)
-    string(REPLACE ":" ";" pair "${pair}")
-    list(POP_FRONT pair _name)
-    list(POP_FRONT pair _path)
-    string(STRIP "${_name}" _name)
-    string(STRIP "${_path}" _path)
-    set(${name_out} "${_name}" PARENT_SCOPE)
-    set(${path_out} "${_path}" PARENT_SCOPE)
+  string(STRIP "${pair}" pair)
+  string(REPLACE ":" ";" pair "${pair}")
+  list(POP_FRONT pair _name)
+  list(POP_FRONT pair _path)
+  string(STRIP "${_name}" _name)
+  string(STRIP "${_path}" _path)
+  set(${name_out}
+      "${_name}"
+      PARENT_SCOPE)
+  set(${path_out}
+      "${_path}"
+      PARENT_SCOPE)
 endfunction()
 
 function(def_example example)
-    split(${example} target source)
-    add_executable(${target} ${source})
-    target_compile_options(${target} PUBLIC
-        $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
-    )
-    target_link_libraries(${target}
-        PRIVATE STDEXEC::stdexec
-                stdexec_executable_flags
-                stdexec_example_settings
-                $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+  split(${example} target source)
+  add_executable(${target} ${source})
+  target_compile_options(
+    ${target}
+    PUBLIC
+      $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being
+                                                         # emitted from stdlib
+                                                         # headers, why?
+      $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
+  target_link_libraries(
+    ${target}
+    PRIVATE STDEXEC::stdexec stdexec_executable_flags stdexec_example_settings
+            $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endfunction()
 
 set(stdexec_examples
-                                          "example.problem : problem.cpp"
-                                      "example.hello_world : hello_world.cpp"
-                                       "example.hello_coro : hello_coro.cpp"
-                                            "example.scope : scope.cpp"
-                                           "example.sudoku : sudoku.cpp"
-                                            "example.retry : retry.cpp"
-                                             "example.then : then.cpp"
-                           "example.server_theme.let_value : server_theme/let_value.cpp"
-                         "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
-                           "example.server_theme.then_upon : server_theme/then_upon.cpp"
-                          "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
-                     "example.benchmark.static_thread_pool : benchmark/static_thread_pool.cpp"
-)
+    "example.problem : problem.cpp"
+    "example.hello_world : hello_world.cpp"
+    "example.hello_coro : hello_coro.cpp"
+    "example.scope : scope.cpp"
+    "example.sudoku : sudoku.cpp"
+    "example.retry : retry.cpp"
+    "example.then : then.cpp"
+    "example.server_theme.let_value : server_theme/let_value.cpp"
+    "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
+    "example.server_theme.then_upon : server_theme/then_upon.cpp"
+    "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
+    "example.benchmark.static_thread_pool : benchmark/static_thread_pool.cpp")
 
-if (NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  # The following examples generate files with names that are too long for Windows.
-  set(stdexec_examples ${stdexec_examples}
-              "example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
-        "example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
- "example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  # The following examples generate files with names that are too long for
+  # Windows.
+  set(stdexec_examples
+      ${stdexec_examples}
+      "example.benchmark.static_thread_pool_nested : benchmark/static_thread_pool_nested.cpp"
+      "example.benchmark.static_thread_pool_bulk_enqueue : benchmark/static_thread_pool_bulk_enqueue.cpp"
+      "example.benchmark.static_thread_pool_bulk_enqueue_nested : benchmark/static_thread_pool_bulk_enqueue_nested.cpp"
   )
-endif ()
+endif()
 
-if (LINUX)
-  set(stdexec_examples ${stdexec_examples}
-                    "example.io_uring : io_uring.cpp"
-  )
-endif ()
+if(LINUX)
+  set(stdexec_examples ${stdexec_examples} "example.io_uring : io_uring.cpp")
+endif()
 
 foreach(example ${stdexec_examples})
   def_example(${example})
 endforeach()
 
-if (STDEXEC_BUILD_PARALLEL_SCHEDULER)
+if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
   target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
 else()
-  target_compile_definitions(example.sudoku PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
+  target_compile_definitions(example.sudoku
+                             PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 endif()
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
 endif()
 
-if (STDEXEC_ENABLE_TBB)
-  add_executable(example.benchmark.tbb_thread_pool benchmark/tbb_thread_pool.cpp)
+if(STDEXEC_ENABLE_TBB)
+  add_executable(example.benchmark.tbb_thread_pool
+                 benchmark/tbb_thread_pool.cpp)
   target_link_libraries(example.benchmark.tbb_thread_pool
-      PRIVATE stdexec_example_settings
-              STDEXEC::tbbexec)
+                        PRIVATE stdexec_example_settings STDEXEC::tbbexec)
 
-  add_executable(example.benchmark.tbb_thread_pool_nested benchmark/tbb_thread_pool_nested.cpp)
+  add_executable(example.benchmark.tbb_thread_pool_nested
+                 benchmark/tbb_thread_pool_nested.cpp)
   target_link_libraries(example.benchmark.tbb_thread_pool_nested
-      PRIVATE stdexec_example_settings
-              STDEXEC::tbbexec)
+                        PRIVATE stdexec_example_settings STDEXEC::tbbexec)
 
   add_executable(example.benchmark.fibonacci benchmark/fibonacci.cpp)
   target_link_libraries(example.benchmark.fibonacci
-      PRIVATE stdexec_example_settings
-              STDEXEC::tbbexec)
+                        PRIVATE stdexec_example_settings STDEXEC::tbbexec)
 endif()
 
 if(STDEXEC_ENABLE_TASKFLOW)
-  add_executable(example.benchmark.taskflow_thread_pool benchmark/taskflow_thread_pool.cpp)
-  target_link_libraries(example.benchmark.taskflow_thread_pool
-      PRIVATE stdexec_example_settings
-              STDEXEC::taskflowexec
-              $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+  add_executable(example.benchmark.taskflow_thread_pool
+                 benchmark/taskflow_thread_pool.cpp)
+  target_link_libraries(
+    example.benchmark.taskflow_thread_pool
+    PRIVATE stdexec_example_settings STDEXEC::taskflowexec
+            $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()
 
 if(STDEXEC_ENABLE_ASIO)
-  add_executable(example.benchmark.asio_thread_pool benchmark/asio_thread_pool.cpp)
-  target_link_libraries(example.benchmark.asio_thread_pool
-      PRIVATE stdexec_example_settings
-              STDEXEC::asioexec
-              $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+  add_executable(example.benchmark.asio_thread_pool
+                 benchmark/asio_thread_pool.cpp)
+  target_link_libraries(
+    example.benchmark.asio_thread_pool
+    PRIVATE stdexec_example_settings STDEXEC::asioexec
+            $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 endif()

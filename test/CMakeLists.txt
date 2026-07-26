@@ -1,25 +1,28 @@
-#=============================================================================
+# =============================================================================
 # Copyright 2023 NVIDIA Corporation
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#=============================================================================
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
+# =============================================================================
 include(CheckCompilerFlag)
 check_compiler_flag(CXX -Wno-c2y-extensions HAVE_C2Y_EXTENSIONS_WARNING)
 
 function(add_compile_diagnostics TARGET)
-    if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        target_compile_options(${TARGET} PRIVATE -Wall -Wextra -Wpedantic -Werror $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>)
-    endif()
+  if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(
+      ${TARGET}
+      PRIVATE -Wall -Wextra -Wpedantic -Werror
+              $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>)
+  endif()
 endfunction()
 
 set(stdexec_test_sources
@@ -84,66 +87,60 @@ set(stdexec_test_sources
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/types/test_task.cpp
-    stdexec/types/test_counting_scopes.cpp
-    )
+    stdexec/types/test_counting_scopes.cpp)
 
 add_library(common_test_settings INTERFACE)
-set_target_properties(common_test_settings PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
-    MSVC_DEBUG_INFORMATION_FORMAT Embedded
-    )
-target_include_directories(common_test_settings INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
-target_compile_definitions(common_test_settings INTERFACE
-    STDEXEC_NAMESPACE=std::execution
-    $<$<PLATFORM_ID:Windows>:NOMINMAX>
-    )
-target_compile_options(common_test_settings INTERFACE
-    $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not inlined
-    $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted from stdlib headers, why?
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>
-    )
-target_link_libraries(common_test_settings INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
-# target_compile_definitions(
-#     common_test_settings INTERFACE
-#     $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
+set_target_properties(
+  common_test_settings
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF
+             MSVC_DEBUG_INFORMATION_FORMAT Embedded)
+target_include_directories(common_test_settings
+                           INTERFACE "${CMAKE_CURRENT_LIST_DIR}")
+target_compile_definitions(
+  common_test_settings INTERFACE STDEXEC_NAMESPACE=std::execution
+                                 $<$<PLATFORM_ID:Windows>:NOMINMAX>)
+target_compile_options(
+  common_test_settings
+  INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:/wd4714> # function marked as __forceinline not
+                                       # inlined
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted
+                                                       # from stdlib headers,
+                                                       # why?
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
+target_link_libraries(common_test_settings
+                      INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+# target_compile_definitions( common_test_settings INTERFACE
+# $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
 add_executable(test.stdexec ${stdexec_test_sources})
 add_compile_diagnostics(test.stdexec)
-target_link_libraries(test.stdexec
-    PUBLIC
-    STDEXEC::stdexec
-    stdexec_executable_flags
-    Catch2::Catch2WithMain
-    PRIVATE
-    common_test_settings)
+target_link_libraries(
+  test.stdexec
+  PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
+  PRIVATE common_test_settings)
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
-  add_executable(test.parallel_scheduler_replacement
-                 test_main.cpp
-                 stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
+  add_executable(
+    test.parallel_scheduler_replacement
+    test_main.cpp stdexec/schedulers/test_parallel_scheduler_replacement.cpp)
   add_compile_diagnostics(test.parallel_scheduler_replacement)
-  target_link_libraries(test.parallel_scheduler_replacement
-      PUBLIC
-      STDEXEC::stdexec
-      STDEXEC::parallel_scheduler
-      stdexec_executable_flags
-      Catch2::Catch2WithMain
-      PRIVATE
-      common_test_settings)
+  target_link_libraries(
+    test.parallel_scheduler_replacement
+    PUBLIC STDEXEC::stdexec STDEXEC::parallel_scheduler stdexec_executable_flags
+           Catch2::Catch2WithMain
+    PRIVATE common_test_settings)
 endif()
 
 add_executable(test.scratch test_main.cpp test_scratch.cpp)
 add_compile_diagnostics(test.scratch)
-target_link_libraries(test.scratch
-    PUBLIC
-    STDEXEC::stdexec
-    $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-    stdexec_executable_flags
-    Catch2::Catch2WithMain
-    PRIVATE
-    common_test_settings)
+target_link_libraries(
+  test.scratch
+  PUBLIC STDEXEC::stdexec $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+         stdexec_executable_flags Catch2::Catch2WithMain
+  PRIVATE common_test_settings)
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
@@ -156,41 +153,48 @@ catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
-    catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT 30)
+  catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT
+                       30)
 endif()
 
 add_subdirectory(exec)
 
 if(STDEXEC_ENABLE_CUDA)
-    add_subdirectory(nvexec)
+  add_subdirectory(nvexec)
 endif()
 
 # build failure tests: tests which parse a source file for an expected error
 # message
 icm_add_build_failure_test(
-    NAME test_let_fail1
-    TARGET test_let_fail1
-    SOURCES PARSE stdexec/algos/adaptors/test_let_fail1.cpp
-    LIBRARIES stdexec
-    FOLDER test
-)
+  NAME
+  test_let_fail1
+  TARGET
+  test_let_fail1
+  SOURCES
+  PARSE
+  stdexec/algos/adaptors/test_let_fail1.cpp
+  LIBRARIES
+  stdexec
+  FOLDER
+  test)
 
 icm_add_build_failure_test(
-    NAME test_then_fail1
-    TARGET test_then_fail1
-    SOURCES PARSE stdexec/algos/adaptors/test_then_fail1.cpp
-    LIBRARIES stdexec
-    FOLDER test
-)
+  NAME
+  test_then_fail1
+  TARGET
+  test_then_fail1
+  SOURCES
+  PARSE
+  stdexec/algos/adaptors/test_then_fail1.cpp
+  LIBRARIES
+  stdexec
+  FOLDER
+  test)
 
 if(STDEXEC_BUILD_RELACY_TESTS)
-    add_subdirectory(rrd)
+  add_subdirectory(rrd)
 endif()
 
-# # Adding multiple tests with a glob
-# icm_glob_build_failure_tests(
-#     PATTERN *_fail*.cpp
-#     LIBRARIES stdexec
-#     PREFIX stdexec
-#     FOLDER test/stdexec/algos/adaptors
-# )
+# # Adding multiple tests with a glob icm_glob_build_failure_tests( PATTERN
+# *_fail*.cpp LIBRARIES stdexec PREFIX stdexec FOLDER
+# test/stdexec/algos/adaptors )
