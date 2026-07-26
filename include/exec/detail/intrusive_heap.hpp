@@ -39,9 +39,12 @@ namespace experimental::execution
   {
     inline std::size_t bit_ceil(std::size_t n) noexcept
     {
-      int const         leading_zeros = __builtin_clzll(n);
-      std::size_t const p             = std::size_t{1} << (sizeof(std::size_t) * 8 - leading_zeros);
-      return p < n ? p << 1 : p;
+      if (n <= 1)
+      {
+        return 1;
+      }
+      int const leading_zeros = __builtin_clzll(n - 1);
+      return std::size_t{1} << (sizeof(unsigned long long) * 8 - leading_zeros);
     }
   }  // namespace detail
 #  else
