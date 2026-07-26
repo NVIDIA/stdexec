@@ -24,12 +24,12 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <concepts>
-#include <exception>
-#include <optional>
-#include <type_traits>
+#  include <concepts>
+#  include <exception>
+#  include <optional>
+#  include <type_traits>
 #endif
 
 namespace

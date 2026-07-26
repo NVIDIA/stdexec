@@ -21,7 +21,7 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/__detail/__any.hpp>
+#  include <stdexec/__detail/__any.hpp>
 
 #  include <cstdio>
 #endif

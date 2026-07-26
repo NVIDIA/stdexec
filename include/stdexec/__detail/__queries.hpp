@@ -115,4 +115,4 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
   inline constexpr get_allocator_t get_allocator{};
 STDEXEC_P2300_NAMESPACE_END()
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

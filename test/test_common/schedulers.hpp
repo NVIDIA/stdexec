@@ -24,15 +24,15 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <condition_variable>
-#include <exception>
-#include <functional>
-#include <memory>
-#include <mutex>
-#include <utility>
-#include <vector>
+#  include <condition_variable>
+#  include <exception>
+#  include <functional>
+#  include <memory>
+#  include <mutex>
+#  include <utility>
+#  include <vector>
 #endif
 
 namespace ex = STDEXEC;

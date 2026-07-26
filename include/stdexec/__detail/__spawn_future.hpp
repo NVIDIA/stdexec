@@ -122,7 +122,7 @@ namespace STDEXEC
       stop_token_of_t<_Env>,
       __future_stop_callback>;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env, class... _Sigs>
     using __future_completions_t =
       __future_completions<__stop_callback_is_nothrow_constructible<_Env>

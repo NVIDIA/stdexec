@@ -20,7 +20,7 @@
 
 #if STDEXEC_USE_MODULES()
 import stdexec;
-#include "../stdexec/__detail/__diagnostic_macros.hpp"
+#  include "../stdexec/__detail/__diagnostic_macros.hpp"
 #else
 #  include "../stdexec/__detail/__execution_fwd.hpp"
 

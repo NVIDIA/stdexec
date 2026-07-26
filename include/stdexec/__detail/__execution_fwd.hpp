@@ -144,15 +144,16 @@ namespace STDEXEC
 
   struct __debug_env_t;
 
-  extern __execute_may_block_caller_t const     __execute_may_block_caller;
-  STDEXEC_MODULE_EXPORT extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
-  STDEXEC_MODULE_EXPORT extern get_scheduler_t const                  get_scheduler;
-  STDEXEC_MODULE_EXPORT extern get_start_scheduler_t const            get_start_scheduler;
-  STDEXEC_MODULE_EXPORT extern get_delegation_scheduler_t const       get_delegation_scheduler;
+  extern __execute_may_block_caller_t const __execute_may_block_caller;
+  STDEXEC_MODULE_EXPORT extern get_forward_progress_guarantee_t const
+                                                                get_forward_progress_guarantee;
+  STDEXEC_MODULE_EXPORT extern get_scheduler_t const            get_scheduler;
+  STDEXEC_MODULE_EXPORT extern get_start_scheduler_t const      get_start_scheduler;
+  STDEXEC_MODULE_EXPORT extern get_delegation_scheduler_t const get_delegation_scheduler;
   STDEXEC_MODULE_EXPORT template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
   STDEXEC_MODULE_EXPORT template <class _CPO = void>
-  extern get_completion_domain_t<_CPO> const  get_completion_domain;
+  extern get_completion_domain_t<_CPO> const                        get_completion_domain;
   STDEXEC_MODULE_EXPORT extern get_domain_t const                   get_domain;
   STDEXEC_MODULE_EXPORT extern get_await_completion_adaptor_t const get_await_completion_adaptor;
 

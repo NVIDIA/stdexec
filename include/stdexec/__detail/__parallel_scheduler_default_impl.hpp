@@ -415,4 +415,4 @@ namespace STDEXEC::__parallel_scheduler_default_impl
 }  // namespace STDEXEC::__parallel_scheduler_default_impl
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

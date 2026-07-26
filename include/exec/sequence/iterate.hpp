@@ -22,19 +22,19 @@
 import std;
 import stdexec;
 #else
-#include "../../stdexec/__detail/__execution_fwd.hpp"
+#  include "../../stdexec/__detail/__execution_fwd.hpp"
 
-#include "../../stdexec/__detail/__concepts.hpp"
-#include "../../stdexec/__detail/__connect.hpp"
-#include "../../stdexec/__detail/__env.hpp"
-#include "../../stdexec/__detail/__operation_states.hpp"
-#include "../../stdexec/__detail/__optional.hpp"
-#include "../../stdexec/__detail/__receivers.hpp"
-#include "../../stdexec/__detail/__schedulers.hpp"
-#include "../../stdexec/__detail/__sender_concepts.hpp"
+#  include "../../stdexec/__detail/__concepts.hpp"
+#  include "../../stdexec/__detail/__connect.hpp"
+#  include "../../stdexec/__detail/__env.hpp"
+#  include "../../stdexec/__detail/__operation_states.hpp"
+#  include "../../stdexec/__detail/__optional.hpp"
+#  include "../../stdexec/__detail/__receivers.hpp"
+#  include "../../stdexec/__detail/__schedulers.hpp"
+#  include "../../stdexec/__detail/__sender_concepts.hpp"
 
-#include <exception>
-#include <ranges>
+#  include <exception>
+#  include <ranges>
 #endif
 
 #include "../detail/basic_sequence.hpp"

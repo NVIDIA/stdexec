@@ -60,9 +60,9 @@ namespace STDEXEC
   {};
 
   STDEXEC_MODULE_EXPORT
-  inline constexpr sequenced_policy            seq{};
+  inline constexpr sequenced_policy seq{};
   STDEXEC_MODULE_EXPORT
-  inline constexpr parallel_policy             par{};
+  inline constexpr parallel_policy par{};
   STDEXEC_MODULE_EXPORT
   inline constexpr parallel_unsequenced_policy par_unseq{};
 

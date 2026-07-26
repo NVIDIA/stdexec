@@ -20,7 +20,7 @@
 #if STDEXEC_USE_MODULES()
 import stdexec;
 #else
-#include "../stdexec/execution.hpp"
+#  include "../stdexec/execution.hpp"
 #endif
 
 STDEXEC_PRAGMA_PUSH()

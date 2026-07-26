@@ -98,7 +98,7 @@ namespace STDEXEC
       }
     };
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     inline constexpr __submit_t __submit{};
   }  // namespace __submit
 
@@ -237,4 +237,4 @@ namespace STDEXEC
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

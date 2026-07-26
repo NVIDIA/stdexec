@@ -22,13 +22,13 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <cstddef>
-#include <cstdint>
-#include <memory_resource>
-#include <type_traits>
-#include <utility>
+#  include <cstddef>
+#  include <cstdint>
+#  include <memory_resource>
+#  include <type_traits>
+#  include <utility>
 #endif
 
 namespace ex = STDEXEC;

@@ -93,4 +93,4 @@ template <STDEXEC::sender _Ignore, STDEXEC::sender _Sender>
   requires STDEXEC::__ok<STDEXEC::__bad_pipe_sink_t<_Sender>>
 auto operator|(_Ignore&&, _Sender&&) noexcept;
 
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
