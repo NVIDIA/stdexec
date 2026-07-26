@@ -193,7 +193,7 @@ namespace experimental::execution
    public:
     template <class Fn>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
-    auto operator()(Fn fn) const noexcept
+    auto operator()(Fn fn) const noexcept(STDEXEC::__nothrow_move_constructible<Fn>)
     {
       if constexpr (STDEXEC::__callable<Fn, _probe_fn>)
       {
