@@ -317,6 +317,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 24.5.0)
         set(_nvhpc_seperate_memory_flags "-gpu=nomanaged")
     endif()
+
+    # Use nvc++ -stdpar to find the location of the HPC SDK's libcudacxx headers.
+    nvhpc_find_libcudacxx_include_dir(STDEXEC_NVHPC_LIBCUDACXX_INCLUDE_DIR)
 endif()
 
 # Support target for examples and tests
@@ -343,26 +346,11 @@ if(STDEXEC_ENABLE_CUDA)
     target_compile_features(nvexec INTERFACE cuda_std_20)
     target_link_libraries(nvexec INTERFACE STDEXEC::stdexec)
 
-    if(NOT CMAKE_CUDA_ARCHITECTURES)
+    if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
       set(CMAKE_CUDA_ARCHITECTURES "native")
     endif()
 
-    set(_gpus)
-    foreach(_arch IN LISTS CMAKE_CUDA_ARCHITECTURES)
-      if(_arch MATCHES "-real")
-        string(REPLACE "-real" "" _arch "${_arch}")
-        string(PREPEND _arch "cc")
-      elseif(_arch MATCHES "-virtual")
-        string(REPLACE "-virtual" "" _arch "${_arch}")
-        string(PREPEND _arch "cc")
-      elseif(_arch MATCHES "^[0-9]+$")
-        string(PREPEND _arch "cc")
-      elseif(_arch MATCHES "^native$")
-        string(PREPEND _arch "cc")
-      endif()
-      list(APPEND _gpus "${_arch}")
-    endforeach()
-    list(JOIN _gpus "," _gpus)
+    cuda_archs_to_gpu_list("${CMAKE_CUDA_ARCHITECTURES}" _gpus)
 
     target_compile_options(nvexec INTERFACE
       $<$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>:-stdpar -gpu=${_gpus}>)
@@ -373,7 +361,13 @@ if(STDEXEC_ENABLE_CUDA)
         EXPORT stdexec-exports
         FILE_SET headers)
 
-    if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC")
+        if(STDEXEC_NVHPC_LIBCUDACXX_INCLUDE_DIR)
+            # Explicitly add the libcudacxx include directory to the nvexec target so that
+            # clangd can find the libcudacxx headers.
+            target_include_directories(nvexec SYSTEM INTERFACE ${STDEXEC_NVHPC_LIBCUDACXX_INCLUDE_DIR})
+        endif()
+    else ()
         include(rapids-cuda)
         # Needs to run before `enable_language(CUDA)`
         rapids_cuda_init_architectures(STDEXEC)
@@ -388,7 +382,7 @@ if(STDEXEC_ENABLE_CUDA)
         # because the former works with clangd intellisense
         set(CMAKE_INCLUDE_SYSTEM_FLAG_CUDA "-isystem ")
 
-        set_source_files_properties(${nvexec_sources} PROPERTIES LANGUAGE CUDA)
+        set_source_files_properties(${nvexec_headers} PROPERTIES LANGUAGE CUDA)
 
         rapids_find_package(
             CUDAToolkit REQUIRED
@@ -404,7 +398,7 @@ if(STDEXEC_ENABLE_CUDA)
             INSTALL_EXPORT_SET stdexec-exports
             SYSTEM TRUE)
 
-        target_link_libraries(stdexec INTERFACE CCCL::CCCL)
+        target_link_libraries(nvexec INTERFACE CCCL::CCCL)
     endif ()
 endif ()
 
@@ -521,7 +515,7 @@ endif()
 # Install targets ------------------------------------------------------------
 if(STDEXEC_INSTALL)
 	include(CPack)
-	
+
   set(stdexec_install_targets stdexec)
   if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
     list(APPEND stdexec_install_targets parallel_scheduler)
@@ -531,12 +525,12 @@ if(STDEXEC_INSTALL)
     EXPORT stdexec-exports
 		FILE_SET headers
 		FILE_SET version_config)
-	
+
 	##############################################################################
 	# Install exports ------------------------------------------------------------
-	
+
 	set(code_string "")
-	
+
 	# Install side of the export set
 	rapids_export(
 	  INSTALL ${stdexec_export_targets}
@@ -545,7 +539,7 @@ if(STDEXEC_INSTALL)
 	  NAMESPACE STDEXEC::
 	  FINAL_CODE_BLOCK code_string
 	)
-	
+
 	# Build side of the export set so a user can use the build dir as a CMake package root
 	rapids_export(
 	  BUILD ${stdexec_export_targets}
