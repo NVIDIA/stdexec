@@ -272,10 +272,12 @@ namespace experimental::execution
                          && __has_schedule_at<_Scheduler>;
 
   template <timed_scheduler _Scheduler>
-  using schedule_after_result_t = STDEXEC::__call_result_t<schedule_after_t, _Scheduler>;
+  using schedule_after_result_t =
+    STDEXEC::__call_result_t<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>;
 
   template <timed_scheduler _Scheduler>
-  using schedule_at_result_t = STDEXEC::__call_result_t<schedule_at_t, _Scheduler>;
+  using schedule_at_result_t =
+    STDEXEC::__call_result_t<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>;
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

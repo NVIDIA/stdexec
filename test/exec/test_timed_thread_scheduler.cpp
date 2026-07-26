@@ -22,6 +22,9 @@
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
+#include <concepts>
+#include <utility>
+
 // Avoid a TSAN bug in GCC 11 and earlier
 #if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1200 && defined(__SANITIZE_THREAD__)
 // nothing
@@ -31,7 +34,17 @@ namespace
   TEST_CASE("timed_thread_scheduler - unused context",
             "[types][timed_thread_scheduler][schedulers]")
   {
-    static_assert(exec::__timed_scheduler<exec::timed_thread_scheduler>);
+    using scheduler_t = exec::timed_thread_scheduler;
+
+    static_assert(exec::__timed_scheduler<scheduler_t>);
+    static_assert(std::same_as<exec::schedule_after_result_t<scheduler_t>,
+                               decltype(exec::schedule_after(
+                                 std::declval<scheduler_t>(),
+                                 std::declval<exec::duration_of_t<scheduler_t> const &>()))>);
+    static_assert(std::same_as<exec::schedule_at_result_t<scheduler_t>,
+                               decltype(exec::schedule_at(
+                                 std::declval<scheduler_t>(),
+                                 std::declval<exec::time_point_of_t<scheduler_t> const &>()))>);
     exec::timed_thread_context context;
   }
 
