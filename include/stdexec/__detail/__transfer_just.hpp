@@ -112,4 +112,4 @@ namespace STDEXEC
 #  endif  // STDEXEC_DOXYGEN_INVOKED
 
 #  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

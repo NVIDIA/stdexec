@@ -17,13 +17,13 @@
 
 #include "__config.hpp"
 
-#  if STDEXEC_EDG()
-#    define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)                                               \
+#if STDEXEC_EDG()
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)                                               \
     ([]<class _Desc = _Descriptor>(_Desc __desc = {}) { return __desc; })
-#    define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                          \
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                          \
     STDEXEC::__descriptor_fn<_Tag, _Data, _Child>()
-#  else  // ^^^ EDG ^^^ / vvv !EDG vvv
-#    define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor) ([] { return _Descriptor(); })
-#    define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                          \
+#else  // ^^^ EDG ^^^ / vvv !EDG vvv
+#  define STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor) ([] { return _Descriptor(); })
+#  define STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child)                                          \
     STDEXEC::__descriptor_fn_v<STDEXEC::__desc<_Tag, _Data, _Child>>
-#  endif
+#endif

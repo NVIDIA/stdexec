@@ -27,8 +27,8 @@
 import std;
 import stdexec;
 #else
-#include <memory>
-#include <stdexec/execution.hpp>
+#  include <memory>
+#  include <stdexec/execution.hpp>
 #endif
 
 namespace ex = STDEXEC;

@@ -28,8 +28,8 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#include <cstdlib>
-#include <exception>
+#  include <cstdlib>
+#  include <exception>
 #endif
 
 #ifdef REQUIRE_TERMINATE

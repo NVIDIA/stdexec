@@ -53,11 +53,11 @@ namespace STDEXEC
   // Generic __sender type
 
 #  if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
-	STDEXEC_MODULE_EXPORT_AUTHORING
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Descriptor>
   inline constexpr auto __descriptor_fn_v = _Descriptor{};
 #  else
-	STDEXEC_MODULE_EXPORT_AUTHORING
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Descriptor, auto _DescriptorFn = STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)>
   inline constexpr auto __descriptor_fn_v = _DescriptorFn;
 #  endif
@@ -347,10 +347,10 @@ namespace STDEXEC
     };
   };
 
-#if !STDEXEC_USE_MODULES()
+#  if !STDEXEC_USE_MODULES()
   namespace
   {
-#endif
+#  endif
     //! A struct template to aid in creating senders. This struct resembles P2300's
     //! [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24), but is not an exact
     //! implementation. Note: The struct named `__basic_sender` is just a dummy type and
@@ -446,9 +446,9 @@ namespace STDEXEC
     template <class _Tag, class _Data, class... _Child>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
     __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-#if !STDEXEC_USE_MODULES()
+#  if !STDEXEC_USE_MODULES()
   }  // anonymous namespace
-#endif
+#  endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __make_sexpr

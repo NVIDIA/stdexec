@@ -23,7 +23,7 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#include <tuple>
+#  include <tuple>
 #endif
 
 // Workaround for https://github.com/llvm/llvm-project/issues/113087

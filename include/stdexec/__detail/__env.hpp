@@ -179,7 +179,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT_AUTHORING
   using __env::__root_env;
 
-  inline constexpr __env::__fwd_fn         __fwd_env{};
+  inline constexpr __env::__fwd_fn __fwd_env{};
   STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __env::__as_root_env_fn __as_root_env{};
 

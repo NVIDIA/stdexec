@@ -38,7 +38,7 @@ namespace STDEXEC
 {
   //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`, `__destry()`,
   //! and `__get()` the `_Ty` without regard for usual lifetime rules.
-	STDEXEC_MODULE_EXPORT_AUTHORING
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   class __manual_lifetime
   {

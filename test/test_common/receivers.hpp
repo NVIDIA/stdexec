@@ -27,12 +27,12 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <atomic>
-#include <exception>
-#include <tuple>
-#include <typeinfo>
+#  include <atomic>
+#  include <exception>
+#  include <tuple>
+#  include <typeinfo>
 #endif
 
 namespace ex = STDEXEC;

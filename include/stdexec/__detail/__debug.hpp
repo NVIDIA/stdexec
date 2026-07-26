@@ -67,7 +67,7 @@ namespace STDEXEC
     struct _SIGNAL_SENT_BY_SENDER_
     {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Warning>
     [[deprecated("The sender claims to send a particular set of completions,"
                  " but in actual fact it completes with a result that is not"
@@ -76,11 +76,11 @@ namespace STDEXEC
       void _ATTENTION_() noexcept
     {}
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
     using __env_t = env<prop<__debug_env_t, bool>, _Env>;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _CvSender, class _Env, class... _Sigs>
     struct __receiver
     {

@@ -105,7 +105,7 @@ namespace STDEXEC
 #  endif
 
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <const auto& _Fun, class... _As>
+  template <auto const & _Fun, class... _As>
   inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
   // For emplacing non-movable types into optionals:

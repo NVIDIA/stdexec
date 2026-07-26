@@ -17,18 +17,18 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#include "env.hpp"
 #include "../stdexec/__detail/__receiver_ref.hpp"
+#include "env.hpp"
 
 #if STDEXEC_USE_MODULES()
 import std;
 import stdexec;
 #else
-#include "../stdexec/__detail/__any.hpp"
-#include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__any.hpp"
+#  include "../stdexec/__detail/__concepts.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
 
-#include <utility>
+#  include <utility>
 #endif
 
 STDEXEC_PRAGMA_PUSH()

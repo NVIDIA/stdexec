@@ -46,7 +46,7 @@ namespace STDEXEC
 {
   namespace __detail
   {
-	  STDEXEC_MODULE_EXPORT_AUTHORING
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
     struct __promise : __connect_await::__with_await_transform<__promise<_Env>>
     {
@@ -497,9 +497,9 @@ namespace STDEXEC
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, _Tuple, _Variant>;
 
   STDEXEC_MODULE_EXPORT template <class _Sender,
-            class _Env                         = env<>,
-            template <class...> class _Tuple   = __decayed_std_tuple,
-            template <class...> class _Variant = __std_variant>
+                                  class _Env                         = env<>,
+                                  template <class...> class _Tuple   = __decayed_std_tuple,
+                                  template <class...> class _Variant = __std_variant>
   using value_types_of_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, __q<_Tuple>, __q<_Variant>>;
 

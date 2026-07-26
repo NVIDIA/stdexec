@@ -22,7 +22,7 @@
 import std;
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 #endif
 
 namespace ex = STDEXEC;

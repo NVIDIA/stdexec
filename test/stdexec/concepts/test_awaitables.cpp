@@ -20,9 +20,9 @@
 #if STDEXEC_USE_MODULES()
 import stdexec;
 #else
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
 
-#include <stdexec/coroutine.hpp>
+#  include <stdexec/coroutine.hpp>
 #endif
 
 #include <exec/static_thread_pool.hpp>

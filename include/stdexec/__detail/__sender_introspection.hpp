@@ -40,16 +40,16 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 
 namespace STDEXEC
 {
-#if STDEXEC_USE_MODULES()
+#  if STDEXEC_USE_MODULES()
   template <auto _Descriptor>
   struct __sexpr;
-#else
+#  else
   namespace
   {
     template <auto _Descriptor>
     struct __sexpr;
   }  // namespace
-#endif
+#  endif
 
   // A type that describes a sender's metadata
   STDEXEC_MODULE_EXPORT_AUTHORING

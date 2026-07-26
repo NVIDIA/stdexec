@@ -51,7 +51,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 // NOLINTBEGIN(moderize-use-override)
 
 STDEXEC_MODULE_EXPORT_AUTHORING
-namespace STDEXEC::__any {}
+namespace STDEXEC::__any
+{}
 
 namespace STDEXEC::__any
 {
