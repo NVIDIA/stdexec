@@ -55,7 +55,7 @@ namespace STDEXEC
   template <class _Sig>
   using __signature_tag_t = decltype(__detail::__signature_tag_v<_Sig>);
 
-  template <class _Sender, class _SetSig, class... _Env>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class _SetSig, class... _Env>
   concept sender_of =
     sender_in<_Sender, _Env...>
     && __same_as<__mlist<_SetSig>,

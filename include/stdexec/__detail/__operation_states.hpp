@@ -209,7 +209,7 @@ namespace STDEXEC
   //! @see stdexec::connect              — the customization point that produces operation states
   //! @see stdexec::start                — the customization point this concept depends on
   //! @see stdexec::operation_state_tag  — the tag type that opts a class into this concept
-  template <class _Op>
+  STDEXEC_MODULE_EXPORT template <class _Op>
   concept operation_state = __std::destructible<_Op> && std::is_object_v<_Op>
                          && requires(_Op &__op) { STDEXEC::start(__op); };
 }  // namespace STDEXEC
