@@ -75,10 +75,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   };
 #  endif
 
-  template <class _Token, class _Callback>
+  STDEXEC_MODULE_EXPORT template <class _Token, class _Callback>
   using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Callback>;
 
-  template <class _Token>
+  STDEXEC_MODULE_EXPORT template <class _Token>
   concept stoppable_token =
     requires(_Token const __token) {
       requires __has_stop_callback_v<_Token>;
@@ -88,7 +88,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     } && STDEXEC::__std::copyable<_Token>  //
     && STDEXEC::__std::equality_comparable<_Token>;
 
-  template <class _Token>
+  STDEXEC_MODULE_EXPORT template <class _Token>
   concept unstoppable_token =
     stoppable_token<_Token> //
     && requires {
@@ -97,7 +97,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     && (!_Token::stop_possible());
 
   // [stoptoken.never], class never_stop_token
-  struct never_stop_token
+  STDEXEC_MODULE_EXPORT struct never_stop_token
   {
    private:
     struct __callback_type

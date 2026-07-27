@@ -299,7 +299,7 @@ namespace STDEXEC
                                       { __decay_t<_Ty>(__decay_t<_Ty>(__t())) } noexcept;
                                     };
 
-  template <class _Ty, class... _As>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Ty, class... _As>
   concept __nothrow_constructible_from = __std::constructible_from<_Ty, _As...>
                                       && STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(_Ty, _As...);
 
@@ -312,7 +312,7 @@ namespace STDEXEC
   template <class _Ty, class _A>
   concept __assignable_from = STDEXEC_IS_ASSIGNABLE(_Ty, _A);
 
-  template <class _Ty, class _A>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Ty, class _A>
   concept __nothrow_assignable_from = STDEXEC_IS_NOTHROW_ASSIGNABLE(_Ty, _A);
 
   template <class... _Ts>

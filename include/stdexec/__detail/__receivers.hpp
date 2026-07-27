@@ -383,7 +383,7 @@ namespace STDEXEC
   //! @see stdexec::set_value
   //! @see stdexec::set_error
   //! @see stdexec::set_stopped
-  template <class _Receiver>
+  STDEXEC_MODULE_EXPORT template <class _Receiver>
   concept receiver = __detail::__enable_receiver<__decay_t<_Receiver>>
                   && __environment_provider<__cref_t<_Receiver>>
                   && __nothrow_move_constructible<__decay_t<_Receiver>>
@@ -434,7 +434,7 @@ namespace STDEXEC
   //! @see stdexec::receiver              — without the signature check
   //! @see stdexec::sender_to             — the sender-side mirror of this concept
   //! @see stdexec::completion_signatures — the signature pack this concept consumes
-  template <class _Receiver, class _Completions>
+  STDEXEC_MODULE_EXPORT template <class _Receiver, class _Completions>
   concept receiver_of = receiver<_Receiver> && requires(_Completions *__completions) {
     { __detail::__try_completions<_Receiver>(__completions) } -> __ok;
   };

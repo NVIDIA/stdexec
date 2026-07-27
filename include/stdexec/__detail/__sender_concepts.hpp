@@ -174,7 +174,7 @@ namespace STDEXEC
   //! @see stdexec::sender                    — the base concept
   //! @see stdexec::sender_to                 — adds a specific receiver
   //! @see stdexec::get_completion_signatures — the customization point this concept depends on
-  template <class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
     && sender<_Sender>      //
@@ -207,7 +207,7 @@ namespace STDEXEC
   //! @see stdexec::sender_in     — without the receiver-compatibility check
   //! @see stdexec::receiver_of   — the receiver-side mirror of this concept
   //! @see stdexec::connect       — the operation @c sender_to validates
-  template <class _Sender, class _Receiver>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class _Receiver>
   concept sender_to = __sender_to<_Sender, _Receiver>  //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
