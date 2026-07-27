@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25.0)
+cmake_minimum_required(VERSION 3.28.0)
 
 set(ENV{SCCACHE_NO_DIST_COMPILE} "1")
 
@@ -22,6 +22,8 @@ if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
   set(CMAKE_POLICY_DEFAULT_CMP0167 NEW)
 endif()
+
+include(cmake/enable-experimental-import-std.cmake)
 
 # ##############################################################################
 # Initialize rapids-cmake
@@ -189,10 +191,25 @@ option(STDEXEC_BUILD_RELACY_TESTS "Build stdexec relacy tests"
 set(stdexec_export_targets)
 
 # Define the main library
-add_library(stdexec INTERFACE)
+option(STDEXEC_BUILD_MODULES "Build stdexec C++20 modules" OFF)
+if(STDEXEC_BUILD_MODULES)
+    set(stdexec_scope PUBLIC)
+    set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+else()
+    set(stdexec_scope INTERFACE)
+endif()
+
+if(STDEXEC_BUILD_MODULES)
+    add_library(stdexec OBJECT)
+    target_compile_definitions(stdexec PUBLIC STDEXEC_BUILD_MODULES=1)
+else()
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+    add_library(stdexec INTERFACE)
+endif()
 
 file(GLOB_RECURSE exec_headers CONFIGURE_DEPENDS include/exec/*.hpp)
 file(GLOB_RECURSE stdexec_headers CONFIGURE_DEPENDS include/stdexec/*.hpp)
+
 target_sources(
   stdexec
   PUBLIC FILE_SET
@@ -213,13 +230,28 @@ target_sources(
          ${CMAKE_CURRENT_BINARY_DIR}/include
          FILES
          ${CMAKE_CURRENT_BINARY_DIR}/include/stdexec_version_config.hpp)
-# Mark include directories as SYSTEM so consumers don't get warnings from
-# stdexec internals
-target_include_directories(
-  stdexec SYSTEM
-  INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
+if(STDEXEC_BUILD_MODULES)
+  target_sources(
+    stdexec
+    PUBLIC FILE_SET
+           CXX_MODULES
+           TYPE
+           CXX_MODULES
+           BASE_DIRS
+           modules
+           FILES
+           modules/stdexec.cppm)
+
+  set_target_properties(stdexec PROPERTIES CXX_MODULE_STD ON)
+endif()
+
+# Mark include directories as SYSTEM so consumers don't get warnings from stdexec internals
+target_include_directories(stdexec SYSTEM ${stdexec_scope}
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
 list(APPEND stdexec_export_targets stdexec)
 
@@ -235,10 +267,16 @@ endif()
 # Declare the public include directories
 include(GNUInstallDirs)
 
-target_link_libraries(stdexec INTERFACE Threads::Threads)
+target_link_libraries(stdexec ${stdexec_scope} Threads::Threads)
 
-# Use C++20 standard
-target_compile_features(stdexec INTERFACE cxx_std_20)
+if(STDEXEC_BUILD_MODULES)
+    # Use C++23 standard; modules were introduced in 20 so this feels
+    # like it ought to be unnecessary, but it makes `import std` work
+    target_compile_features(stdexec ${stdexec_scope} cxx_std_23)
+else()
+    # Use C++20 standard
+    target_compile_features(stdexec ${stdexec_scope} cxx_std_20)
+endif()
 
 # # Enable GPU compilation when using NVHPC compiler
 # target_compile_options(stdexec INTERFACE
@@ -247,16 +285,16 @@ target_compile_features(stdexec INTERFACE cxx_std_20)
 
 # Enable coroutines for GCC
 target_compile_options(stdexec
-                       INTERFACE $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>)
+                       ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fcoroutines>)
 
 # Increase the concepts diagnostics depth for GCC
 target_compile_options(
   stdexec
-  INTERFACE $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>)
+  ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-fconcepts-diagnostics-depth=10>)
 
 # Do you want a preprocessor that works? Picky, picky.
 target_compile_options(
-  stdexec INTERFACE $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus
+  stdexec ${stdexec_scope} $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Zc:__cplusplus
                     /Zc:preprocessor /Zc:externConstexpr /bigobj>)
 
 set(STDEXEC_NAMESPACE
@@ -264,14 +302,14 @@ set(STDEXEC_NAMESPACE
     CACHE STRING "The name of the top-level namespace for stdexec")
 if(NOT STDEXEC_NAMESPACE STREQUAL "stdexec")
   target_compile_definitions(stdexec
-                             INTERFACE STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
+                             ${stdexec_scope} STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
 endif()
 
 option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
        "Enable extra type checking that is costly at compile-time" OFF)
 if(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
   target_compile_definitions(stdexec
-                             INTERFACE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+                             ${stdexec_scope} STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
 endif()
 
 add_library(STDEXEC::stdexec ALIAS stdexec)
@@ -566,6 +604,7 @@ endif()
 
 # ##############################################################################
 # Install targets ------------------------------------------------------------
+# TODO: this is broken in the modules build
 if(STDEXEC_INSTALL)
   include(CPack)
 
@@ -574,10 +613,23 @@ if(STDEXEC_INSTALL)
     list(APPEND stdexec_install_targets parallel_scheduler)
   endif()
 
-  install(
-    TARGETS ${stdexec_install_targets}
-    EXPORT stdexec-exports
-    FILE_SET headers FILE_SET version_config)
+  if(STDEXEC_BUILD_MODULES)
+    install(
+      TARGETS ${stdexec_install_targets}
+      EXPORT stdexec-exports
+      FILE_SET headers FILE_SET version_config
+      # I cargo-culted this modules-handling stuff from Beman
+      FILE_SET CXX_MODULES
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/stdexec/modules"
+      CXX_MODULES_BMI
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/stdexec/bmi-${CMAKE_CXX_COMPILER_ID}_$<CONFIG>
+        COMPONENT stdexec_Development)
+  else()
+    install(
+      TARGETS ${stdexec_install_targets}
+      EXPORT stdexec-exports
+      FILE_SET headers FILE_SET version_config)
+  endif()
 
   # ############################################################################
   # Install exports ------------------------------------------------------------

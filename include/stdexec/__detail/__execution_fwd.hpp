@@ -19,13 +19,20 @@
 
 #include "__config.hpp"  // IWYU pragma: export
 
-#include "__concepts.hpp"
-#include "__meta.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
 
+#else
+
+#  include "__concepts.hpp"
+#  include "__meta.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
+
+#  include "__prologue.hpp"
+
+#  if !STDEXEC_USE_MODULES()
 STDEXEC_NAMESPACE_STD_BEGIN
   struct monostate;
 
@@ -35,6 +42,7 @@ STDEXEC_NAMESPACE_STD_BEGIN
   template <class...>
   class tuple;
 STDEXEC_NAMESPACE_STD_END
+#  endif
 
 namespace STDEXEC
 {
@@ -198,20 +206,20 @@ namespace STDEXEC
 
   using __cmplsigs::get_completion_signatures_t;
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
   [[nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
 
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
 
-#endif  // ^^^ constexpr exceptions ^^^
+#  endif  // ^^^ constexpr exceptions ^^^
 
   template <class... _What>
   [[nodiscard]]
@@ -267,7 +275,7 @@ namespace STDEXEC
   extern bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  struct just_t;
+  STDEXEC_MODULE_EXPORT struct just_t;
   extern just_t const just;
 
   struct just_error_t;
@@ -407,4 +415,5 @@ namespace STDEXEC
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::this_thread::sync_wait_with_variant)
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -115,7 +115,15 @@ target_link_libraries(common_test_settings
 # target_compile_definitions( common_test_settings INTERFACE
 # $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
-add_executable(test.stdexec ${stdexec_test_sources})
+if(STDEXEC_BUILD_MODULES)
+    # temporarily speed up the test cycle by building only one test
+    add_executable(test.stdexec stdexec/module/test_module.cpp)
+
+    set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
+else()
+    add_executable(test.stdexec ${stdexec_test_sources})
+endif()
+
 add_compile_diagnostics(test.stdexec)
 target_link_libraries(
   test.stdexec
@@ -134,13 +142,16 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
     PRIVATE common_test_settings)
 endif()
 
-add_executable(test.scratch test_main.cpp test_scratch.cpp)
-add_compile_diagnostics(test.scratch)
-target_link_libraries(
-  test.scratch
-  PUBLIC STDEXEC::stdexec $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-         stdexec_executable_flags Catch2::Catch2WithMain
-  PRIVATE common_test_settings)
+if(NOT STDEXEC_BUILD_MODULES)
+  # TODO: this doesn't build with modules, yet
+  add_executable(test.scratch test_main.cpp test_scratch.cpp)
+  add_compile_diagnostics(test.scratch)
+  target_link_libraries(
+    test.scratch
+    PUBLIC STDEXEC::stdexec $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+           stdexec_executable_flags Catch2::Catch2WithMain
+    PRIVATE common_test_settings)
+endif()
 
 # Discover the Catch2 test built by the application
 include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
@@ -150,49 +161,59 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
-catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+if(NOT STDEXEC_BUILD_MODULES)
+  # TODO: this doesn't build with modules, yet
+  catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
+endif()
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
   catch_discover_tests(test.parallel_scheduler_replacement PROPERTIES TIMEOUT
                        30)
 endif()
 
-add_subdirectory(exec)
+if(NOT STDEXEC_BUILD_MODULES)
+    # temporarily speed up the test cycle by building less
+    add_subdirectory(exec)
+endif()
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
 endif()
 
-# build failure tests: tests which parse a source file for an expected error
-# message
-icm_add_build_failure_test(
-  NAME
-  test_let_fail1
-  TARGET
-  test_let_fail1
-  SOURCES
-  PARSE
-  stdexec/algos/adaptors/test_let_fail1.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+if(NOT STDEXEC_BUILD_MODULES)
+  # these don't build with modules, yet
 
-icm_add_build_failure_test(
-  NAME
-  test_then_fail1
-  TARGET
-  test_then_fail1
-  SOURCES
-  PARSE
-  stdexec/algos/adaptors/test_then_fail1.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+  # build failure tests: tests which parse a source file for an expected error
+  # message
+  icm_add_build_failure_test(
+    NAME
+    test_let_fail1
+    TARGET
+    test_let_fail1
+    SOURCES
+    PARSE
+    stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES
+    stdexec
+    FOLDER
+    test)
 
-if(STDEXEC_BUILD_RELACY_TESTS)
-  add_subdirectory(rrd)
+  icm_add_build_failure_test(
+    NAME
+    test_then_fail1
+    TARGET
+    test_then_fail1
+    SOURCES
+    PARSE
+    stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES
+    stdexec
+    FOLDER
+    test)
+
+  if(STDEXEC_BUILD_RELACY_TESTS)
+    add_subdirectory(rrd)
+  endif()
 endif()
 
 # # Adding multiple tests with a glob icm_glob_build_failure_tests( PATTERN

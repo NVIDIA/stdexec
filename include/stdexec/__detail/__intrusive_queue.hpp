@@ -18,11 +18,19 @@
 
 #include "__config.hpp"
 
-#include <cassert>
-#include <cstddef>
-#include <utility>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cassert>
+#    include <cstddef>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -298,4 +306,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

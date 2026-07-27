@@ -15,19 +15,32 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
+#include "__config.hpp"
 
-#include "__atomic.hpp"
-#include <cstddef>
-#include <memory>
-#include <type_traits>
-#include <utility>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#if STDEXEC_TSAN()
-#  include <sanitizer/tsan_interface.h>
-#endif
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__concepts.hpp"
+
+#  include "__atomic.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <memory>
+#    include <type_traits>
+#    include <utility>
+#  endif
+
+// TODO: I wonder if this belongs in the GMF in stdexec.cppm
+//       when we're building for modules.
+#  if STDEXEC_TSAN()
+#    include <sanitizer/tsan_interface.h>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -378,4 +391,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

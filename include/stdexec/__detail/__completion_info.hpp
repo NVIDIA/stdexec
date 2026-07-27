@@ -15,23 +15,35 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // IWYU pragma: begin_keep
-#include "__completion_behavior.hpp"
-#include "__completion_signatures.hpp"
-#include "__meta.hpp"
-#include "__static_vector.hpp"
-#include "__typeinfo.hpp"
+#  include "__completion_behavior.hpp"
+#  include "__completion_signatures.hpp"
+#  include "__meta.hpp"
+#  include "__static_vector.hpp"
+#  include "__typeinfo.hpp"
 
-#include "../functional.hpp"
-
-#include <algorithm>
-#include <array>
-#include <compare>
+#  include "../functional.hpp"
 // IWYU pragma: end_keep
 
-#include "__prologue.hpp"
+#  if !STDEXEC_USE_MODULES()
+// IWYU pragma: begin_keep
+#    include <algorithm>
+#    include <array>
+#    include <compare>
+// IWYU pragma: end_keep
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -154,4 +166,5 @@ namespace STDEXEC
   }  // namespace __cmplsigs
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

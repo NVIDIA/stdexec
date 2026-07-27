@@ -16,22 +16,32 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__env.hpp"
-#include "__receivers.hpp"
-#include "__scope.hpp"
-#include "__scope_concepts.hpp"
-#include "__sender_concepts.hpp"
-#include "__spawn_common.hpp"
-#include "__type_traits.hpp"
-#include "__write_env.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <memory>
-#include <type_traits>
-#include <utility>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__env.hpp"
+#  include "__receivers.hpp"
+#  include "__scope.hpp"
+#  include "__scope_concepts.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__spawn_common.hpp"
+#  include "__type_traits.hpp"
+#  include "__write_env.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <memory>
+#    include <type_traits>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -223,7 +233,7 @@ namespace STDEXEC
     // Hidden from Doxygen: this diagnostic-only overload shares its signature
     // with the primary three-argument overload above (they differ only by a
     // constraint), which the Sphinx C++ domain cannot disambiguate.
-#if !defined(STDEXEC_DOXYGEN_INVOKED)
+#  if !defined(STDEXEC_DOXYGEN_INVOKED)
     //! @brief Diagnostic overload — selected when the sender's completion
     //!        signatures include @c set_error_t. Emits a @c static_assert
     //!        explaining that @c spawn expects a sender that cannot fail.
@@ -238,7 +248,7 @@ namespace STDEXEC
                       && __never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
                     "spawn expects a sender that cannot fail");
     }
-#endif  // !defined(STDEXEC_DOXYGEN_INVOKED)
+#  endif  // !defined(STDEXEC_DOXYGEN_INVOKED)
 
     //! @brief Spawn @c __sndr into the scope identified by @c __tkn, using
     //!        the allocator queried from @c __env.
@@ -305,4 +315,5 @@ namespace STDEXEC
   inline constexpr spawn_t spawn{};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

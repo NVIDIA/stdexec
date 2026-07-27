@@ -16,25 +16,35 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "../stop_token.hpp"  // IWYU pragma: keep for inplace_stop_source
-#include "__atomic.hpp"
-#include "__concepts.hpp"
-#include "__env.hpp"
-#include "__receivers.hpp"
-#include "__schedulers.hpp"
-#include "__sender_concepts.hpp"
-#include "__stop_when.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <cstddef>
-#include <exception>
-#include <limits>
-#include <memory>
-#include <type_traits>
-#include <utility>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "../stop_token.hpp"  // IWYU pragma: keep for inplace_stop_source
+#  include "__atomic.hpp"
+#  include "__concepts.hpp"
+#  include "__env.hpp"
+#  include "__receivers.hpp"
+#  include "__schedulers.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__stop_when.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <exception>
+#    include <limits>
+#    include <memory>
+#    include <type_traits>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -869,4 +879,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

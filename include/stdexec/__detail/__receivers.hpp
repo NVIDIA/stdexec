@@ -15,18 +15,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__tag_invoke.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "../functional.hpp"
+import stdexec;
 
-#include <exception>
+#else
 
-#include "__prologue.hpp"
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__tag_invoke.hpp"
+
+#  include "../functional.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -507,4 +517,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

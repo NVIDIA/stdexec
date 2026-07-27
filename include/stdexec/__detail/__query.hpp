@@ -15,17 +15,27 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__meta.hpp"
-#include "__tag_invoke.hpp"
-#include "__utility.hpp"
+#  include "__concepts.hpp"
+#  include "__meta.hpp"
+#  include "__tag_invoke.hpp"
+#  include "__utility.hpp"
 
-#include <type_traits>
+#  if !STDEXEC_USE_MODULES()
+#    include <type_traits>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -177,4 +187,5 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   inline constexpr forwarding_query_t forwarding_query{};
 STDEXEC_P2300_NAMESPACE_END()
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

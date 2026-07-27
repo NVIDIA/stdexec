@@ -17,11 +17,19 @@
 
 #include "__config.hpp"
 
-#include <exception>    // IWYU pragma: keep for std::terminate
-#include <type_traits>  // IWYU pragma: export
-#include <utility>      // IWYU pragma: keep
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>    // IWYU pragma: keep for std::terminate
+#    include <type_traits>  // IWYU pragma: export
+#    include <utility>      // IWYU pragma: keep
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -37,7 +45,7 @@ namespace STDEXEC
   template <class... _NoneSuch>
   extern __declfn_t<void> __declval<void, _NoneSuch...>;
 
-#if STDEXEC_MSVC()
+#  if STDEXEC_MSVC()
   template <class _Tp, bool _Noexcept = true>
   _Tp __declfn_() noexcept(_Noexcept)
   {
@@ -49,14 +57,14 @@ namespace STDEXEC
   {
     return &__declfn_<_Tp, _Noexcept>;
   }
-#else
+#  else
   template <class _Tp, bool _Noexcept = true>
   using __declfn = __declfn_t<_Tp, _Noexcept>;
-#endif
+#  endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
-#if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 2100)
+#  if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 2100)
   namespace __tt
   {
     template <class>
@@ -72,10 +80,10 @@ namespace STDEXEC
 
   template <class _Ty>
   using __decay_t = __tt::__decay_<bool(sizeof(__declfn_t<_Ty>))>::template __f<_Ty>;
-#else
+#  else
   template <class _Ty>
   using __decay_t = std::decay_t<_Ty>;
-#endif
+#  endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __copy_cvref_t: For copying cvref from one type to another
@@ -173,4 +181,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

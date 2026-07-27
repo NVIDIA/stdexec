@@ -15,19 +15,29 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__manual_lifetime.hpp"
-#include "__scope.hpp"
+#  include "__concepts.hpp"
+#  include "__manual_lifetime.hpp"
+#  include "__scope.hpp"
 
-#include <exception>
-#include <memory>
-#include <new>  // IWYU pragma: keep for ::new
-#include <utility>
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <memory>
+#    include <new>  // IWYU pragma: keep for ::new
+#    include <utility>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -256,4 +266,5 @@ namespace STDEXEC
   using __opt::__nullopt;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

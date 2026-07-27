@@ -15,15 +15,25 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <algorithm>
-#include <cstddef>
-#include <initializer_list>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#    include <cstddef>
+#    include <initializer_list>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -249,4 +259,5 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

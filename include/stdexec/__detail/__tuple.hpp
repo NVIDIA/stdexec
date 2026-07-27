@@ -15,28 +15,37 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__meta.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
 
-#include <cstddef>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#if STDEXEC_GCC() || STDEXEC_NVHPC()
+import stdexec;
+
+#else
+
+#  include "__concepts.hpp"
+#  include "__meta.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#  endif
+
+#  if STDEXEC_GCC() || STDEXEC_NVHPC()
 // GCC (as of v14) does not implement the resolution of CWG1835
 // https://cplusplus.github.io/CWG/issues/1835.html
 // See: https://godbolt.org/z/TzxrhK6ea
-#  define STDEXEC_NO_CWG1835
-#endif
+#    define STDEXEC_NO_CWG1835
+#  endif
 
-#ifdef STDEXEC_NO_CWG1835
-#  define STDEXEC_CWG1835_TEMPLATE
-#else
-#  define STDEXEC_CWG1835_TEMPLATE template
-#endif
+#  ifdef STDEXEC_NO_CWG1835
+#    define STDEXEC_CWG1835_TEMPLATE
+#  else
+#    define STDEXEC_CWG1835_TEMPLATE template
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -223,7 +232,7 @@ namespace STDEXEC
     template <class... _Ts>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __tuple(_Ts...) -> __tuple<_Ts...>;
 
-#define STDEXEC_TUPLE_GET(_Idx) , static_cast<_Tuple&&>(__tupl).__val##_Idx
+#  define STDEXEC_TUPLE_GET(_Idx) , static_cast<_Tuple&&>(__tupl).__val##_Idx
 
     //
     // __apply(fn, tuple, extra...)
@@ -308,7 +317,7 @@ namespace STDEXEC
       }
     };
 
-#undef STDEXEC_TUPLE_GET
+#  undef STDEXEC_TUPLE_GET
   }  // namespace __tup
 
   using __tup::__tuple;
@@ -546,4 +555,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

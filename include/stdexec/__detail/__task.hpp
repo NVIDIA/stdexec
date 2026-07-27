@@ -15,28 +15,37 @@
  */
 #pragma once
 
-#include "../stop_token.hpp"
-#include "__affine.hpp"
-#include "__as_awaitable.hpp"
 #include "__config.hpp"
-#include "__meta.hpp"
-#include "__optional.hpp"
-#include "__schedulers.hpp"
-#include "__task_scheduler.hpp"
-#include "__with_awaitable_senders.hpp"
 
-#include <cstddef>
-#include <exception>
-#include <memory>
-#include <utility>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "../stop_token.hpp"
+#  include "__affine.hpp"
+#  include "__as_awaitable.hpp"
+#  include "__meta.hpp"
+#  include "__optional.hpp"
+#  include "__schedulers.hpp"
+#  include "__task_scheduler.hpp"
+#  include "__with_awaitable_senders.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <exception>
+#    include <memory>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
@@ -756,7 +765,8 @@ namespace STDEXEC
     __stop_variant_t __stop_{__no_init};
     __awaiter_base*  __state_ = nullptr;
   };
-#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+#  endif  // !STDEXEC_NO_STDCPP_COROUTINES()
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

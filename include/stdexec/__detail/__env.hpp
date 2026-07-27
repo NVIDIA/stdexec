@@ -15,19 +15,29 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
-#include "__meta.hpp"
-#include "__query.hpp"
-#include "__tag_invoke.hpp"
-#include "__tuple.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <exception>   // IWYU pragma: keep for std::terminate
-#include <functional>  // IWYU pragma: keep for unwrap_reference_t
-#include <type_traits>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+#  include "__meta.hpp"
+#  include "__query.hpp"
+#  include "__tag_invoke.hpp"
+#  include "__tuple.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>   // IWYU pragma: keep for std::terminate
+#    include <functional>  // IWYU pragma: keep for unwrap_reference_t
+#    include <type_traits>
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
@@ -373,4 +383,5 @@ namespace STDEXEC
   concept __environment_provider = __minvocable_q<__call_result_t, get_env_t, _EnvProvider const &>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

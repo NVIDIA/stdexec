@@ -15,34 +15,44 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "../coroutine.hpp"
-#include "../functional.hpp"
-#include "__atomic.hpp"
-#include "__awaitable.hpp"
-#include "__completion_signatures_of.hpp"
-#include "__concepts.hpp"
-#include "__connect.hpp"
-#include "__meta.hpp"
-#include "__queries.hpp"
-#include "__spin_loop_pause.hpp"
-#include "__type_traits.hpp"
-#include "__variant.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <exception>
-#include <functional>  // for std::identity
-#include <system_error>
-#include <thread>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "../coroutine.hpp"
+#  include "../functional.hpp"
+#  include "__atomic.hpp"
+#  include "__awaitable.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__concepts.hpp"
+#  include "__connect.hpp"
+#  include "__meta.hpp"
+#  include "__queries.hpp"
+#  include "__spin_loop_pause.hpp"
+#  include "__type_traits.hpp"
+#  include "__variant.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <functional>  // for std::identity
+#    include <system_error>
+#    include <thread>
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
   /////////////////////////////////////////////////////////////////////////////
   // STDEXEC::as_awaitable [exec.as.awaitable]
 
@@ -332,17 +342,17 @@ namespace STDEXEC
         // finished and won't access the frame anymore.
         // We do this with an exchange({}), except on buggy MSVC versions, where we have to delay
         // the signaling until we exited this function.
-#  if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
+#    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
         bool const __done =  //
           this->__thread_id_.exchange(std::thread::id{}, __std::memory_order_release)
           == std::thread::id{};
         return __done ? this->__get_continuation() : __std::noop_coroutine();
-#  else
+#    else
         bool const __done =  //
           this->__thread_id_.load(__std::memory_order_relaxed) == std::thread::id{};
         return __done ? this->__get_continuation()
                       : __coroutine_signal_completion(this->__thread_id_);
-#  endif
+#    endif
       }
 
      private:
@@ -474,7 +484,8 @@ namespace STDEXEC
   {};
 
   inline constexpr as_awaitable_t as_awaitable{};
-#endif
+#  endif
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -16,15 +16,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
-#  include <stop_token>  // IWYU pragma: export
-#endif
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+#      include <stop_token>  // IWYU pragma: export
+#    endif
 
 // This shouldn't be necessary, but some standard library implementations claim support
 // for jthread but don't actually provide std::stop_token.
@@ -33,6 +40,9 @@ STDEXEC_NAMESPACE_STD_BEGIN
   template <class _Callback>
   class stop_callback;
 STDEXEC_NAMESPACE_STD_END
+#  endif
+
+#  include "__prologue.hpp"
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
 
@@ -44,10 +54,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     typename __check_type_alias_exists<_StopToken::template callback_type>;
   };
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
   template <>
   inline constexpr bool __has_stop_callback_v<std::stop_token> = true;
-#endif
+#  endif
 
   template <class _Token>
   struct __stop_callback_for
@@ -56,14 +66,14 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     using __f = _Token::template callback_type<_Callback>;
   };
 
-#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
   template <>
   struct __stop_callback_for<std::stop_token>
   {
     template <class _Callback>
     using __f = std::stop_callback<_Callback>;
   };
-#endif
+#  endif
 
   template <class _Token, class _Callback>
   using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Callback>;
@@ -120,4 +130,5 @@ namespace STDEXEC
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::never_stop_token)
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

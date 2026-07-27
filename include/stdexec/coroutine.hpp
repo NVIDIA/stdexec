@@ -15,20 +15,29 @@
  */
 #pragma once
 
-#include "__detail/__atomic.hpp"
-#include "__detail/__awaitable.hpp"  // IWYU pragma: export
-#include "__detail/__concepts.hpp"
 #include "__detail/__config.hpp"
-#include "__detail/__utility.hpp"
 
-#include <exception>
-#include <thread>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+import stdexec;
 
-#  if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1950
-#    define STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+#else
+
+#  include "__detail/__atomic.hpp"
+#  include "__detail/__awaitable.hpp"  // IWYU pragma: export
+#  include "__detail/__concepts.hpp"
+#  include "__detail/__utility.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <thread>
 #  endif
+
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
+
+#    if STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1950
+#      define STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+#    endif
 
 namespace STDEXEC
 {
@@ -188,7 +197,7 @@ namespace STDEXEC
       sizeof(__synthetic_coro_frame));
   }  // namespace __detail
 
-#  if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
+#    if defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   // MSVCBUG https://developercommunity.visualstudio.com/t/destroy-coroutine-from-final_suspend-r/10096047
 
   // Prior to Visual Studio 17.9 (Feb, 2024), aka MSVC 19.39, MSVC incorrectly allocates
@@ -296,7 +305,7 @@ namespace STDEXEC
     return __std::coroutine_handle<>::from_address(&__signal_completion_frame::value);
   }
 
-#  else
+#    else
 
   STDEXEC_ATTRIBUTE(always_inline)
   auto __coroutine_destroy_and_continue(__std::coroutine_handle<> __destroy,            //
@@ -321,8 +330,9 @@ namespace STDEXEC
     __thread_id_.store({}, __std::memory_order_release);
     return __std::noop_coroutine();
   }
-#  endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
+#    endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
 
 }  // namespace STDEXEC
 
-#endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+#  endif  // !STDEXEC_NO_STDCPP_COROUTINES()
+#endif    // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

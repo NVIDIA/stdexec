@@ -16,14 +16,24 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
-#include "__env.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include <memory>
+import stdexec;
 
-#include "__prologue.hpp"
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+#  include "__env.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <memory>
+#  endif
+
+#  include "__prologue.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // [exec.spawn] paragraph 9
@@ -94,4 +104,5 @@ namespace STDEXEC::__spawn_common
   inline constexpr __choose_senv_fn __choose_senv{};
 }  // namespace STDEXEC::__spawn_common
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
