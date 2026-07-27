@@ -15,14 +15,22 @@
  */
 #pragma once
 
-#include "__basic_sender.hpp"
-#include "__completion_behavior.hpp"
-#include "__finally.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__unstoppable.hpp"
+#include "__config.hpp"
 
-#include "__prologue.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__basic_sender.hpp"
+#  include "__completion_behavior.hpp"
+#  include "__finally.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__unstoppable.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -179,4 +187,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

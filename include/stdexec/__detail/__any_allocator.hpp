@@ -16,14 +16,22 @@
 
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__any.hpp"
-#include "__concepts.hpp"
-#include "__memory.hpp"
-#include "__typeinfo.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__any.hpp"
+#  include "__concepts.hpp"
+#  include "__memory.hpp"
+#  include "__typeinfo.hpp"
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
@@ -125,4 +133,5 @@ namespace STDEXEC
   __any_allocator(std::allocator<void>) -> __any_allocator<std::byte>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

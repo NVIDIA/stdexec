@@ -15,18 +15,26 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "../coroutine.hpp"  // IWYU pragma: keep for __coroutine_handle
-#include "__as_awaitable.hpp"
-#include "__concepts.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "../coroutine.hpp"  // IWYU pragma: keep for __coroutine_handle
+#  include "__as_awaitable.hpp"
+#  include "__concepts.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
-  template <class _Promise>
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
+  STDEXEC_MODULE_EXPORT template <class _Promise>
   struct with_awaitable_senders;
 
   namespace __detail
@@ -84,7 +92,8 @@ namespace STDEXEC
     friend _Promise;
     with_awaitable_senders() = default;
   };
-#endif
+#  endif
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

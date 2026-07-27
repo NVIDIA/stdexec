@@ -15,13 +15,21 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__concepts.hpp"
-#include "__receivers.hpp"
-#include "__type_traits.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__concepts.hpp"
+#  include "__receivers.hpp"
+#  include "__type_traits.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -84,7 +92,7 @@ namespace STDEXEC
 // don't shadow type aliases of the same name in base classes. :-O
 // On mingw gcc, 'bool(type::existing_member_function)' evaluates to true,
 // but 'int(type::existing_member_function)' is an error (as desired).
-#define STDEXEC_DISPATCH_MEMBER(_TAG)                                                              \
+#  define STDEXEC_DISPATCH_MEMBER(_TAG)                                                            \
   template <class _Self, class... _Ts>                                                             \
   STDEXEC_ATTRIBUTE(host, device, always_inline)                                                   \
   static auto __call_##_TAG(_Self&& __self, _Ts&&... __ts) noexcept                                \
@@ -92,22 +100,22 @@ namespace STDEXEC
     static_assert(noexcept((static_cast<_Self&&>(__self))._TAG(static_cast<_Ts&&>(__ts)...)));     \
     return static_cast<_Self&&>(__self)._TAG(static_cast<_Ts&&>(__ts)...);                         \
   } /**/
-#define STDEXEC_CALL_MEMBER(_TAG, ...) __call_##_TAG(__VA_ARGS__)
+#  define STDEXEC_CALL_MEMBER(_TAG, ...) __call_##_TAG(__VA_ARGS__)
 
-#if STDEXEC_CLANG()
+#  if STDEXEC_CLANG()
 // Only clang gets this right.
-#  define STDEXEC_MISSING_MEMBER(_Dp, _TAG) requires { typename _Dp::_TAG; }
-#  define STDEXEC_DEFINE_MEMBER(_TAG)       STDEXEC_DISPATCH_MEMBER(_TAG) using _TAG = void
-#else
-#  define STDEXEC_MISSING_MEMBER(_Dp, _TAG) (__missing_##_TAG<_Dp>())
-#  define STDEXEC_DEFINE_MEMBER(_TAG)                                                              \
+#    define STDEXEC_MISSING_MEMBER(_Dp, _TAG) requires { typename _Dp::_TAG; }
+#    define STDEXEC_DEFINE_MEMBER(_TAG)       STDEXEC_DISPATCH_MEMBER(_TAG) using _TAG = void
+#  else
+#    define STDEXEC_MISSING_MEMBER(_Dp, _TAG) (__missing_##_TAG<_Dp>())
+#    define STDEXEC_DEFINE_MEMBER(_TAG)                                                            \
     template <class _Dp>                                                                           \
-    static constexpr bool __missing_##_TAG() noexcept {                                            \
+    static constexpr bool __missing_#  #_TAG() noexcept {                                          \
       return requires { requires bool(int(_Dp::_TAG)); };                                          \
     }                                                                                              \
     STDEXEC_DISPATCH_MEMBER(_TAG)                                                                  \
     static constexpr int _TAG = 1 /**/
-#endif
+#  endif
 
   template <__class _Derived, class _Base = __adaptors::__not_a_receiver>
   struct __receiver_adaptor
@@ -185,4 +193,5 @@ namespace STDEXEC
   = __receiver_adaptor<_Derived, _Base>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

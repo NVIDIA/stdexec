@@ -15,16 +15,24 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__just.hpp"
-#include "__let.hpp"
-#include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp"
+#  include "__concepts.hpp"
+#  include "__just.hpp"
+#  include "__let.hpp"
+#  include "__sender_adaptor_closure.hpp"
+#  include "__senders.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -141,4 +149,5 @@ namespace STDEXEC
   inline constexpr stopped_as_error_t stopped_as_error{};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

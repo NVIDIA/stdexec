@@ -17,13 +17,21 @@
 
 #include "__config.hpp"
 
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
 //
-#include "__atomic.hpp"
-#include "__intrusive_queue.hpp"
+#  include "__atomic.hpp"
+#  include "__intrusive_queue.hpp"
 
-#include <cassert>
+#  if !STDEXEC_USE_MODULES()
+#    include <cassert>
+#  endif
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -81,4 +89,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

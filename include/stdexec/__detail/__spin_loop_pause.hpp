@@ -16,46 +16,54 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__config.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
 
 // The below code for spin_loop_pause is taken from https://github.com/max0x7ba/atomic_queue/blob/master/include/atomic_queue/defs.h
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-#  if STDEXEC_MSVC_HEADERS()
-#    include <intrin.h>
-#  endif
+#  if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#    if STDEXEC_MSVC_HEADERS()
+// TODO: does this go in the CMF in stdexec.cppm when building for modules?
+#      include <intrin.h>
+#    endif
 namespace STDEXEC
 {
   STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept
   {
-#  if STDEXEC_MSVC_HEADERS()
+#    if STDEXEC_MSVC_HEADERS()
     _mm_pause();
-#  else
+#    else
     __builtin_ia32_pause();
-#  endif
+#    endif
   }
 }  // namespace STDEXEC
-#elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
+#  elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
 namespace STDEXEC
 {
   STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept
   {
-#  if (defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)           \
+#    if (defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)         \
        || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)         \
        || defined(__ARM_ARCH_7R__) || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7S__)         \
        || defined(__ARM_ARCH_8A__) || defined(__aarch64__))
     asm volatile("yield" ::: "memory");
-#  elif defined(_M_ARM64)
+#    elif defined(_M_ARM64)
     __yield();
-#  else
+#    else
     asm volatile("nop" ::: "memory");
-#  endif
+#    endif
   }
 }  // namespace STDEXEC
-#else
+#  else
 namespace STDEXEC
 {
   STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {}
 }  // namespace STDEXEC
-#endif
+#  endif
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

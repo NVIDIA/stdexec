@@ -15,24 +15,32 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__completion_signatures_of.hpp"
-#include "__continues_on.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__inline_scheduler.hpp"
-#include "__meta.hpp"
-#include "__schedulers.hpp"
-#include "__sender_adaptor_closure.hpp"
-#include "__sender_introspection.hpp"
-#include "__sender_ref.hpp"
-#include "__starts_on.hpp"
-#include "__utility.hpp"
+#  include "__basic_sender.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__continues_on.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__inline_scheduler.hpp"
+#  include "__meta.hpp"
+#  include "__schedulers.hpp"
+#  include "__sender_adaptor_closure.hpp"
+#  include "__sender_introspection.hpp"
+#  include "__sender_ref.hpp"
+#  include "__starts_on.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -399,4 +407,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

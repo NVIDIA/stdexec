@@ -15,15 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_behavior.hpp"
-#include "__concepts.hpp"
-#include "__config.hpp"
-#include "__query.hpp"
+#  include "__completion_behavior.hpp"
+#  include "__concepts.hpp"
+#  include "__query.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -77,7 +84,7 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sync_attrs(_Sender const &) -> __sync_attrs<_Sender>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
   //////////////////////////////////////////////////////////////////////////////////
@@ -108,3 +115,4 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
   inline constexpr get_allocator_t get_allocator{};
 STDEXEC_P2300_NAMESPACE_END()
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

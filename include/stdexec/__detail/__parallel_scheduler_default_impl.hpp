@@ -15,32 +15,43 @@
  */
 #pragma once
 
-#include "__atomic.hpp"
-#include "__bulk.hpp"
-#include "__operation_states.hpp"
-#include "__parallel_scheduler_backend.hpp"
-#include "__parallel_scheduler_replacement_api.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__utility.hpp"
+#include "__config.hpp"
 
-#if STDEXEC_ENABLE_LIBDISPATCH
-#  include "../../exec/libdispatch_queue.hpp"  // IWYU pragma: keep
-#elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
-#  include "../../exec/windows/windows_thread_pool.hpp"  // IWYU pragma: keep
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
 #else
-#  include "../../exec/static_thread_pool.hpp"  // IWYU pragma: keep
-#endif
 
-#include <concepts>
-#include <cstddef>
-#include <exception>
-#include <memory>
-#include <span>
-#include <thread>
-#include <utility>
+#  include "__atomic.hpp"
+#  include "__bulk.hpp"
+#  include "__operation_states.hpp"
+#  include "__parallel_scheduler_backend.hpp"
+#  include "__parallel_scheduler_replacement_api.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+// TODO: maybe these belong in the GMF?
+#  if STDEXEC_ENABLE_LIBDISPATCH
+#    include "../../exec/libdispatch_queue.hpp"  // IWYU pragma: keep
+#  elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
+#    include "../../exec/windows/windows_thread_pool.hpp"  // IWYU pragma: keep
+#  else
+#    include "../../exec/static_thread_pool.hpp"  // IWYU pragma: keep
+#  endif
+
+#  if !STDEXEC_USE_MODULES()
+#    include <concepts>
+#    include <cstddef>
+#    include <exception>
+#    include <memory>
+#    include <span>
+#    include <thread>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC::__parallel_scheduler_default_impl
 {
@@ -388,13 +399,13 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     }
   };
 
-#if STDEXEC_ENABLE_LIBDISPATCH
+#  if STDEXEC_ENABLE_LIBDISPATCH
   using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
-#elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
+#  elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
   using __parallel_scheduler_backend_impl = __generic_impl<exec::windows_thread_pool>;
-#else
+#  else
   using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
-#endif
+#  endif
 
   /// The singleton to hold the `parallel_scheduler_backend` instance.
   inline constinit __instance_data<parallel_scheduler_replacement::parallel_scheduler_backend,
@@ -403,4 +414,5 @@ namespace STDEXEC::__parallel_scheduler_default_impl
 
 }  // namespace STDEXEC::__parallel_scheduler_default_impl
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -15,15 +15,23 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__env.hpp"
-#include "__queries.hpp"
-#include "__sender_adaptor_closure.hpp"
+#  include "__basic_sender.hpp"
+#  include "__env.hpp"
+#  include "__queries.hpp"
+#  include "__sender_adaptor_closure.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -142,11 +150,12 @@ namespace STDEXEC
   //! @see stdexec::get_env   — the CPO that exposes the merged environment
   //!
   //! @hideinitializer
-  inline constexpr __write_env_t write_env{};
+  STDEXEC_MODULE_EXPORT inline constexpr __write_env_t write_env{};
 
   template <>
   struct __sexpr_impl<__write_env_t> : __write::__write_env_impl
   {};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

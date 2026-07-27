@@ -15,15 +15,23 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__concepts.hpp"
-#include "__domain.hpp"
-#include "__meta.hpp"
-#include "__type_traits.hpp"
+#  include "__concepts.hpp"
+#  include "__domain.hpp"
+#  include "__meta.hpp"
+#  include "__type_traits.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
@@ -167,7 +175,7 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.snd.apply]
-  inline constexpr struct apply_sender_t
+  STDEXEC_MODULE_EXPORT inline constexpr struct apply_sender_t
   {
     template <class _Domain, class _Tag, class _Sender, class... _Args>
       requires __has_implementation_for<_Tag, _Domain, _Sender, _Args...>
@@ -190,7 +198,7 @@ namespace STDEXEC
     }
   } apply_sender{};
 
-  template <class _Domain, class _Tag, class _Sender, class... _Args>
+  STDEXEC_MODULE_EXPORT template <class _Domain, class _Tag, class _Sender, class... _Args>
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
 
   /////////////////////////////////////////////////////////////////////////////
@@ -200,4 +208,5 @@ namespace STDEXEC
                 _Scheduler>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
