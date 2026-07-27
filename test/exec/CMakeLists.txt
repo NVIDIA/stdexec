@@ -71,6 +71,10 @@ set_source_files_properties(
                                  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
 add_executable(test.exec ${exec_test_sources})
+if(STDEXEC_BUILD_MODULES)
+  set_target_properties(test.exec PROPERTIES CXX_MODULE_STD ON)
+endif()
+
 add_compile_diagnostics(test.exec)
 target_link_libraries(
   test.exec
