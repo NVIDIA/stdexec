@@ -142,7 +142,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
     PRIVATE common_test_settings)
 endif()
 
-if(!STDEXEC_BUILD_MODULES)
+if(NOT STDEXEC_BUILD_MODULES)
   # TODO: this doesn't build with modules, yet
   add_executable(test.scratch test_main.cpp test_scratch.cpp)
   add_compile_diagnostics(test.scratch)
@@ -161,7 +161,7 @@ include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
 
 catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
-if(!STDEXEC_BUILD_MODULES)
+if(NOT STDEXEC_BUILD_MODULES)
   # TODO: this doesn't build with modules, yet
   catch_discover_tests(test.scratch PROPERTIES TIMEOUT 30)
 endif()
@@ -171,7 +171,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
                        30)
 endif()
 
-if(!STDEXEC_BUILD_MODULES)
+if(NOT STDEXEC_BUILD_MODULES)
     # temporarily speed up the test cycle by building less
     add_subdirectory(exec)
 endif()
@@ -180,7 +180,7 @@ if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
 endif()
 
-if(!STDEXEC_BUILD_MODULES)
+if(NOT STDEXEC_BUILD_MODULES)
   # these don't build with modules, yet
 
   # build failure tests: tests which parse a source file for an expected error
