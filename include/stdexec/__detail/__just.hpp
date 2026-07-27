@@ -15,17 +15,25 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__basic_sender.hpp"
-#include "__completion_behavior.hpp"
-#include "__completion_signatures.hpp"
-#include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__sender_introspection.hpp"
-#include "__type_traits.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__basic_sender.hpp"
+#  include "__completion_behavior.hpp"
+#  include "__completion_signatures.hpp"
+#  include "__meta.hpp"
+#  include "__receivers.hpp"
+#  include "__sender_introspection.hpp"
+#  include "__type_traits.hpp"
+
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
@@ -318,4 +326,5 @@ namespace STDEXEC
   inline constexpr just_stopped_t just_stopped{};
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

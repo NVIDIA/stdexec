@@ -211,7 +211,7 @@ namespace STDEXEC
   //! @see stdexec::starts_on      — adaptor that runs a sender on a scheduler
   //! @see stdexec::continues_on   — adaptor that transfers to a scheduler mid-pipeline
   //! @see stdexec::schedule_result_t — the sender type returned by @c schedule(s)
-  template <class _Scheduler>
+  STDEXEC_MODULE_EXPORT template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
                    && __std::equality_comparable<__decay_t<_Scheduler>>
                    && __std::copy_constructible<__decay_t<_Scheduler>>

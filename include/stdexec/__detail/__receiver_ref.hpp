@@ -15,16 +15,25 @@
  */
 #pragma once
 
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__execution_fwd.hpp"
-#include "__receivers.hpp"
-#include "__sender_concepts.hpp"
 
-#include <memory>
-#include <utility>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__concepts.hpp"
+#  include "__execution_fwd.hpp"
+#  include "__receivers.hpp"
+#  include "__sender_concepts.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <memory>
+#    include <utility>
+#  endif
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -105,4 +114,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

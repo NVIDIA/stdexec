@@ -15,15 +15,23 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__get_completion_signatures.hpp"
-#include "__meta.hpp"
-#include "__sender_concepts.hpp"
-#include "__tuple.hpp"
-#include "__variant.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__get_completion_signatures.hpp"
+#  include "__meta.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__tuple.hpp"
+#  include "__variant.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -83,4 +91,5 @@ namespace STDEXEC
     __mapply_q<__results_storage, __completion_signatures_of_t<_CvSender, _Env>>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

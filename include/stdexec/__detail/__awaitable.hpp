@@ -15,16 +15,24 @@
  */
 #pragma once
 
-#include "../functional.hpp"
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__meta.hpp"
 
-#include "__prologue.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "../functional.hpp"
+#  include "__concepts.hpp"
+#  include "__config.hpp"
+#  include "__meta.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
   concept __await_suspend_result = __one_of<_Tp, void, bool>
@@ -99,7 +107,7 @@ namespace STDEXEC
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = __t<__await_result<_Awaitable, _Promise...>>;
 
-#else
+#  else
 
   template <class _Awaitable, class... _Promise>
   concept __awaitable = false;
@@ -108,7 +116,8 @@ namespace STDEXEC
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = void;
 
-#endif
+#  endif
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

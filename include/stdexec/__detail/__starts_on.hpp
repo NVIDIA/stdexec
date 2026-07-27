@@ -15,21 +15,29 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures_of.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__just.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__sequence.hpp"
-#include "__utility.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__just.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__sequence.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -260,4 +268,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -15,15 +15,23 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__manual_lifetime.hpp"
-#include "__operation_states.hpp"
-#include "__optional.hpp"
-#include "__senders.hpp"
-#include "__type_traits.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__manual_lifetime.hpp"
+#  include "__operation_states.hpp"
+#  include "__optional.hpp"
+#  include "__senders.hpp"
+#  include "__type_traits.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -224,4 +232,5 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

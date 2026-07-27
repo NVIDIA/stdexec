@@ -15,18 +15,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../stop_token.hpp"
-#include "__env.hpp"
-#include "__write_env.hpp"
+#  include "../stop_token.hpp"
+#  include "__env.hpp"
+#  include "__write_env.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT
   inline constexpr auto unstoppable = write_env(prop{get_stop_token, never_stop_token{}});
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

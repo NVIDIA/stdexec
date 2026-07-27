@@ -15,18 +15,26 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__connect.hpp"
-#include "__just.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__variant.hpp"
+#  include "__basic_sender.hpp"
+#  include "__connect.hpp"
+#  include "__just.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__transform_completion_signatures.hpp"
+#  include "__variant.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
@@ -505,4 +513,5 @@ namespace STDEXEC
   }  // namespace __detail
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

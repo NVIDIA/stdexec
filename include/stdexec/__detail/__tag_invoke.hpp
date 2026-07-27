@@ -16,13 +16,20 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__type_traits.hpp"
 
-#define STDEXEC_TAG_INVOKE_DEPRECATED_MSG                                                          \
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__type_traits.hpp"
+
+#  define STDEXEC_TAG_INVOKE_DEPRECATED_MSG                                                        \
   "The use of tag_invoke as a means of customization is deprecated. Please use member functions "  \
   "instead."
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -121,4 +128,5 @@ namespace STDEXEC
   = __decay_t<decltype(_Tag)>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

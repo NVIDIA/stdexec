@@ -168,7 +168,7 @@ namespace STDEXEC
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
-  struct __ignore
+  STDEXEC_MODULE_EXPORT_AUTHORING struct __ignore
   {
     constexpr __ignore() = default;
 
