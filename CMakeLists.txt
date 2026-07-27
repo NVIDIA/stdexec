@@ -203,6 +203,7 @@ if(STDEXEC_BUILD_MODULES)
     add_library(stdexec OBJECT)
     target_compile_definitions(stdexec PUBLIC STDEXEC_BUILD_MODULES=1)
 else()
+    set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
     add_library(stdexec INTERFACE)
 endif()
 
