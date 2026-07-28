@@ -49,6 +49,7 @@ namespace STDEXEC
 
   namespace __detail
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ty>
     extern __mtype<_Ty> __demangle_v;
   }  // namespace __detail
