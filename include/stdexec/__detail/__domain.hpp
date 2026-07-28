@@ -180,7 +180,8 @@ namespace STDEXEC
   }  // namespace __detail
 
   ////////////////////////////////////////////////////////////////////////////////////////////////
-  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Tag, sender _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_domain_of_t = __completion_domain_t<_Tag, env_of_t<_Sender>, _Env const &...>;
 
@@ -408,7 +409,8 @@ namespace STDEXEC
     }
   };
 
-  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Tag, class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Tag, class _Sender, class... _Env>
   concept __has_completion_domain_for =
     __sends<_Tag, _Sender, _Env...>
     && __callable<get_completion_domain_t<_Tag>, env_of_t<_Sender>, _Env const &...>;

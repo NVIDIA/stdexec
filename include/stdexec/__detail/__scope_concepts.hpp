@@ -75,7 +75,8 @@ namespace STDEXEC
   //! @see stdexec::scope_token
   //! @see stdexec::spawn
   //! @see stdexec::spawn_future
-  STDEXEC_MODULE_EXPORT template <class _Assoc>
+  STDEXEC_MODULE_EXPORT
+  template <class _Assoc>
   concept scope_association = __std::movable<_Assoc> && __nothrow_move_constructible<_Assoc>
                            && __nothrow_move_assignable<_Assoc>
                            && __std::default_initializable<_Assoc>
@@ -86,7 +87,8 @@ namespace STDEXEC
 
   namespace __scope_concepts
   {
-    STDEXEC_MODULE_EXPORT_AUTHORING struct __test_sender
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    struct __test_sender
     {
       using sender_concept = STDEXEC::sender_tag;
 
@@ -142,7 +144,8 @@ namespace STDEXEC
   //! @see stdexec::scope_association  — the return type of @c try_associate
   //! @see stdexec::spawn              — fire-and-forget into a scope
   //! @see stdexec::spawn_future       — spawn into a scope and observe via a sender
-  STDEXEC_MODULE_EXPORT template <class _Token>
+  STDEXEC_MODULE_EXPORT
+  template <class _Token>
   concept scope_token = __std::copyable<_Token> && requires(_Token const __token) {
     { __token.try_associate() } -> scope_association;
     { __token.wrap(__declval<__scope_concepts::__test_sender>()) } -> sender_in<STDEXEC::env<>>;

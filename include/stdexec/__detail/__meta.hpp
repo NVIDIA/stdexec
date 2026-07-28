@@ -69,7 +69,8 @@ namespace STDEXEC
   template <class... _Ts>
   using __mlist_ptr = __mlist<_Ts...> *;
 
-  STDEXEC_MODULE_EXPORT_META template <class _Tp>
+  STDEXEC_MODULE_EXPORT_META
+  template <class _Tp>
   using __midentity = _Tp;
 
   template <auto _Np>
@@ -171,7 +172,8 @@ namespace STDEXEC
   template <class... _Ts>
   using __indices_for = __make_indices<sizeof...(_Ts)>;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING struct __ignore
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct __ignore
   {
     constexpr __ignore() = default;
 
@@ -620,7 +622,8 @@ namespace STDEXEC
     using __f = _ERROR_<_What...>;
   };
 
-  STDEXEC_MODULE_EXPORT_META template <class _Fn, class _List>
+  STDEXEC_MODULE_EXPORT_META
+  template <class _Fn, class _List>
   using __mapply = __mcall1<__mfor<_List>, _Fn>;
 
   template <template <class...> class _Fn, class _List>
@@ -683,7 +686,8 @@ namespace STDEXEC
     using __f = __mapply<_Continuation, __mconcat_result_t<__mlist<>, _Args...>>;
   };
 
-  STDEXEC_MODULE_EXPORT_META struct __msize
+  STDEXEC_MODULE_EXPORT_META
+  struct __msize
   {
     template <class... _Ts>
     using __f = __msize_t<sizeof...(_Ts)>;
@@ -709,7 +713,8 @@ namespace STDEXEC
     using __f = __msize_t<(bool(__minvoke<_Fn, _Ts>::value) + ... + 0)>;
   };
 
-  STDEXEC_MODULE_EXPORT_META template <class _Tp>
+  STDEXEC_MODULE_EXPORT_META
+  template <class _Tp>
   struct __mcontains
   {
     template <class... _Args>
@@ -932,7 +937,8 @@ namespace STDEXEC
 
   template <class... _Booleans>
   using __mand_t = __mbool<(_Booleans::value && ...)>;
-  STDEXEC_MODULE_EXPORT_META template <class... _Booleans>
+  STDEXEC_MODULE_EXPORT_META
+  template <class... _Booleans>
   using __mand = __minvoke_q<__mand_t, _Booleans...>;
 
   template <class... _Booleans>
@@ -1015,7 +1021,8 @@ namespace STDEXEC
     };
   }  // namespace __set
 
-  STDEXEC_MODULE_EXPORT_META template <class... _Ts>
+  STDEXEC_MODULE_EXPORT_META
+  template <class... _Ts>
   using __mset = __set::__inherit<_Ts...>;
 
   template <class _Set, class... _Ts>
@@ -1025,7 +1032,8 @@ namespace STDEXEC
   template <class... _Ts>
   using __mmake_set = __mset_insert<__mset<>, _Ts...>;
 
-  STDEXEC_MODULE_EXPORT_META template <class _Set1, class _Set2>
+  STDEXEC_MODULE_EXPORT_META
+  template <class _Set1, class _Set2>
   concept __mset_eq = __mapply<__set::__eq<_Set1>, _Set2>::value;
 
   STDEXEC_MODULE_EXPORT_META

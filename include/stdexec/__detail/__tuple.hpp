@@ -53,7 +53,8 @@ namespace STDEXEC
 {
   namespace __tup
   {
-    STDEXEC_MODULE_EXPORT_AUTHORING template <class... _Ts>
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class... _Ts>
     struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
 
     template <class _Ty, std::size_t _Idx>
@@ -320,7 +321,8 @@ namespace STDEXEC
 #  undef STDEXEC_TUPLE_GET
   }  // namespace __tup
 
-  STDEXEC_MODULE_EXPORT_AUTHORING using __tup::__tuple;
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  using __tup::__tuple;
 
   inline constexpr __tup::__apply_t __apply{};
 

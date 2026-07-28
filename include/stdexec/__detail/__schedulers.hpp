@@ -106,7 +106,7 @@ namespace STDEXEC
   //! **Example.**
   //!
   //! @code{.cpp}
-  //! #  include <stdexec/execution.hpp>
+  //! #include <stdexec/execution.hpp>
   //!
   //! int main() {
   //!   using namespace stdexec;
@@ -211,7 +211,8 @@ namespace STDEXEC
   //! @see stdexec::starts_on      — adaptor that runs a sender on a scheduler
   //! @see stdexec::continues_on   — adaptor that transfers to a scheduler mid-pipeline
   //! @see stdexec::schedule_result_t — the sender type returned by @c schedule(s)
-  STDEXEC_MODULE_EXPORT template <class _Scheduler>
+  STDEXEC_MODULE_EXPORT
+  template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
                    && __std::equality_comparable<__decay_t<_Scheduler>>
                    && __std::copy_constructible<__decay_t<_Scheduler>>
@@ -698,7 +699,8 @@ namespace STDEXEC
                                 && __infallible_sender<__result_of<schedule, _Scheduler>, _Env...>;
 
   // Deprecated interfaces
-  STDEXEC_MODULE_EXPORT_AUTHORING using get_delegatee_scheduler_t
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  using get_delegatee_scheduler_t
     [[deprecated("get_delegatee_scheduler_t has been renamed "
                  "get_delegation_scheduler_t")]] = get_delegation_scheduler_t;
 

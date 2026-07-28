@@ -54,7 +54,8 @@ namespace STDEXEC
   }  // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
-  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Ty>
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Ty>
   using __demangle_t = decltype(__detail::__demangle_v<_Ty>)::__t;
 
   namespace __detail
