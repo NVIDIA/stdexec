@@ -15,9 +15,10 @@
  */
 #include <catch2/catch_all.hpp>
 
+#include <stdexec/execution.hpp>
+
 #include <exec/env.hpp>
 #include <exec/static_thread_pool.hpp>
-#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>

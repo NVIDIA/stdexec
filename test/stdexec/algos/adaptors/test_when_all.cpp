@@ -15,12 +15,13 @@
  */
 #include <catch2/catch_all.hpp>
 
+#include <stdexec/execution.hpp>
+
 #include <exec/any_sender_of.hpp>
 #include <exec/async_scope.hpp>
 #include <exec/env.hpp>
 #include <exec/sender_for.hpp>
 #include <exec/split.hpp>
-#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>

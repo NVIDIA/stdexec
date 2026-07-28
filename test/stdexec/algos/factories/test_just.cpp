@@ -16,13 +16,18 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
+
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-#include <cstddef>
-#include <stdexcept>
-#include <utility>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <cstddef>
+#  include <stdexcept>
+#  include <utility>
+#endif
 
 namespace ex = STDEXEC;
 

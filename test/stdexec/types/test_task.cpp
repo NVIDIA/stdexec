@@ -26,15 +26,15 @@
 #  include <exec/single_thread_context.hpp>
 #  include <exec/static_thread_pool.hpp>
 
+#  include <test_common/allocators.hpp>
+#  include <test_common/senders.hpp>
+
 #  if STDEXEC_USE_MODULES()
 import std;
 #  else
 #    include <atomic>
 #    include <utility>
 #  endif
-
-#  include <test_common/allocators.hpp>
-#  include <test_common/senders.hpp>
 
 namespace ex = STDEXEC;
 

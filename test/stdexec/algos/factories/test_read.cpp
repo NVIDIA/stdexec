@@ -14,9 +14,14 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
+
 #include <test_common/type_helpers.hpp>
 
-#include <memory>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <memory>
+#endif
 
 namespace ex = STDEXEC;
 

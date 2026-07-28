@@ -15,13 +15,7 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__config.hpp>
-
-#if STDEXEC_USE_MODULES()
-import stdexec;
-#else
-#  include <stdexec/execution.hpp>
-#endif
+#include <stdexec/execution.hpp>
 
 #include <exec/sender_for.hpp>
 #include <test_common/receivers.hpp>

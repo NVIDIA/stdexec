@@ -15,26 +15,22 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__config.hpp>
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
+#include <stdexec/execution.hpp>
+
+#include <exec/async_scope.hpp>
+#include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
+#include <test_common/receivers.hpp>
 
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#  define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
-
-#  include <stdexec/execution.hpp>
-
 #  include <atomic>
 #  include <memory>
 #  include <stdexcept>
 #  include <thread>
 #endif
-
-#include <exec/async_scope.hpp>
-#include <exec/inline_scheduler.hpp>
-#include <exec/static_thread_pool.hpp>
-
-#include <test_common/receivers.hpp>
 
 namespace ex  = STDEXEC;
 namespace scr = ex::parallel_scheduler_replacement;

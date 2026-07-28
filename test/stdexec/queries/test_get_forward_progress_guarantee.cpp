@@ -16,6 +16,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
+
 #include <test_common/schedulers.hpp>
 
 STDEXEC_PRAGMA_PUSH()
