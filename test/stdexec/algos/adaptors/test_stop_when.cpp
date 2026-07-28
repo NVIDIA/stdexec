@@ -77,6 +77,7 @@ namespace
   }
 
 #if !STDEXEC_USE_MODULES()
+  // TODO: figure out why this fails in a modules build
   TEST_CASE("stop-when fuses its token with the receiver's when both are stoppable",
             "[adaptors][stop-when]")
   {
@@ -100,6 +101,7 @@ namespace
   }
 
 #if !STDEXEC_USE_MODULES()
+  // TODO: figure out why this fails in a modules build
   TEST_CASE("callbacks registered with stop-when's token can be invoked", "[adaptors][stop-when]")
   {
     int  invokeCount = 0;

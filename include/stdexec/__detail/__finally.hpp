@@ -50,7 +50,8 @@ namespace STDEXEC
   struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_;
   struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING struct __finally_t
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct __finally_t
   {
     template <sender _Initial, sender _Final>
     constexpr auto operator()(_Initial&& __initial, _Final&& __final) const  //
@@ -77,7 +78,8 @@ namespace STDEXEC
     }
   };
 
-  STDEXEC_MODULE_EXPORT_AUTHORING inline constexpr __finally_t __finally_{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  inline constexpr __finally_t __finally_{};
 
   namespace __final
   {
