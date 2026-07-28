@@ -16,19 +16,19 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__config.hpp>
+#include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
+
+#  include <stdexec/execution.hpp>
 
 #  include "test_common/receivers.hpp"
 #  include "test_common/type_helpers.hpp"
 
 #  if STDEXEC_USE_MODULES()
 import std;
-import stdexec;
 #  else
 #    include <stdexcept>
-#    include <stdexec/execution.hpp>
 #    include <type_traits>
 #  endif
 

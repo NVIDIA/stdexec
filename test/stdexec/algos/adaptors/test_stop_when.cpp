@@ -16,15 +16,7 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__config.hpp>
-
-#if STDEXEC_USE_MODULES()
-import stdexec;
-#else
-#  include <stdexec/__detail/__stop_when.hpp>
-#  include <stdexec/execution.hpp>
-#  include <stdexec/stop_token.hpp>
-#endif
+#include <stdexec/execution.hpp>
 
 #include <test_common/receivers.hpp>
 

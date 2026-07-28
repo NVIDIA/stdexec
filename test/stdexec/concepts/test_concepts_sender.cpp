@@ -15,9 +15,8 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__config.hpp>
-
 #include <stdexec/execution.hpp>
+
 #include <test_common/receivers.hpp>
 #include <test_common/type_helpers.hpp>
 
