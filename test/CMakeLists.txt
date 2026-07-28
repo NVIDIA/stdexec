@@ -28,13 +28,18 @@ endfunction()
 set(stdexec_test_sources
     test_main.cpp
     stdexec/algos/adaptors/test_associate.cpp
+    stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
     stdexec/algos/adaptors/test_let_error.cpp
+    stdexec/algos/adaptors/test_let_stopped.cpp
+    stdexec/algos/adaptors/test_let_value.cpp
     stdexec/algos/adaptors/test_sequence.cpp
+    stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
     stdexec/algos/adaptors/test_stop_when.cpp
+    stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
     stdexec/algos/adaptors/test_then.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
@@ -72,18 +77,14 @@ set(stdexec_test_sources
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/types/test_task.cpp
     )
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
   list(APPEND stdexec_test_sources
-    stdexec/algos/adaptors/test_bulk.cpp
-    stdexec/algos/adaptors/test_let_stopped.cpp
-    stdexec/algos/adaptors/test_let_value.cpp
     stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
-    stdexec/algos/adaptors/test_spawn_future.cpp
-    stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/factories/test_just_error.cpp
@@ -91,8 +92,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/detail/test_any_allocator.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/schedulers/test_task_scheduler.cpp
-    stdexec/types/test_counting_scopes.cpp
-    stdexec/types/test_task.cpp)
+    stdexec/types/test_counting_scopes.cpp)
 endif()
 
 add_library(common_test_settings INTERFACE)
