@@ -171,10 +171,7 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
                        30)
 endif()
 
-if(NOT STDEXEC_BUILD_MODULES)
-    # temporarily speed up the test cycle by building less
-    add_subdirectory(exec)
-endif()
+add_subdirectory(exec)
 
 if(STDEXEC_ENABLE_CUDA)
   add_subdirectory(nvexec)
