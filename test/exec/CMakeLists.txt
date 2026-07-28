@@ -70,9 +70,15 @@ set_source_files_properties(
   test_any_sender.cpp PROPERTIES COMPILE_FLAGS
                                  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
-add_executable(test.exec ${exec_test_sources})
 if(STDEXEC_BUILD_MODULES)
+  # these are the only files that build right now...
+  add_executable(test.exec
+      ../test_main.cpp
+      async_scope/test_empty.cpp
+      async_scope/test_spawn.cpp)
   set_target_properties(test.exec PROPERTIES CXX_MODULE_STD ON)
+else()
+  add_executable(test.exec ${exec_test_sources})
 endif()
 
 add_compile_diagnostics(test.exec)
