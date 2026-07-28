@@ -14,18 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
 #include <test_common/scope_helpers.hpp>
 #include <test_common/scope_tokens.hpp>
 
-#include <array>
-#include <atomic>
-#include <optional>
-#include <string>
-#include <thread>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <array>
+#  include <atomic>
+#  include <optional>
+#  include <string>
+#  include <thread>
+#endif
 
 namespace ex = STDEXEC;
 

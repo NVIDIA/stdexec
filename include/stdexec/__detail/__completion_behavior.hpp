@@ -41,6 +41,7 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////////////////
   // __get_completion_behavior
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __completion_behavior
   {
     //private:
@@ -204,6 +205,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Attrs, class... _Env>
   inline constexpr auto __completion_behavior_of_v =
     __call_result_t<__get_completion_behavior_t<_Tag>, _Attrs const &, _Env const &...>{};

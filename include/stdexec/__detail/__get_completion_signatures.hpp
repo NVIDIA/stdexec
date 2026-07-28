@@ -46,6 +46,7 @@ namespace STDEXEC
 {
   namespace __detail
   {
+	  STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
     struct __promise : __connect_await::__with_await_transform<__promise<_Env>>
     {
@@ -157,6 +158,7 @@ namespace STDEXEC
     concept __with_legacy_non_dependent_tag_invoke =
       (sizeof...(_Env) == 0) && __tag_invocable<get_completion_signatures_t, _Sender, env<>>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
     concept __with_legacy_member_alias = requires {
       typename STDEXEC_REMOVE_REFERENCE(_Sender)::completion_signatures;
@@ -353,6 +355,7 @@ namespace STDEXEC
   //! @see stdexec::completion_signatures_of_t — convenience type alias around this
   //! @see stdexec::sender_in               — the concept built on top of this
   //! @see stdexec::transform_sender        — domain-customization run before signature computation
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
   consteval auto get_completion_signatures()
   {
@@ -372,6 +375,7 @@ namespace STDEXEC
   //!          connected to a receiver with environment @c _Env.
   //!
   //! See @ref get_completion_signatures() for the full description.
+  STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Env>
     requires __has_get_completion_signatures<_Sender, _Env>
   consteval auto get_completion_signatures()
@@ -382,6 +386,7 @@ namespace STDEXEC
   }
 
   // Legacy interface:
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
     requires(sizeof...(_Env) <= 1)
   constexpr auto get_completion_signatures(_Sender &&, _Env const &...) noexcept
@@ -392,6 +397,7 @@ namespace STDEXEC
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
 #  if STDEXEC_GCC()
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
             && __constant<STDEXEC::get_completion_signatures<_Sender, _Env...>()>
@@ -408,6 +414,7 @@ namespace STDEXEC
                              STDEXEC::get_completion_signatures<_Sender, _Env...>()>::value_type;
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
             && __minvocable_q<__detail::__cmplsigs_of_t, _Sender, _Env...>
@@ -421,6 +428,7 @@ namespace STDEXEC
   // get_completion_signatures in an integral_constant like we do for EDG. So we skip
   // checking the requirement.
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
@@ -428,6 +436,7 @@ namespace STDEXEC
 
 #  else
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
     requires enable_sender<__decay_t<_Sender>>
   using __completion_signatures_of_t =
@@ -479,6 +488,7 @@ namespace STDEXEC
                            _Tuple,
                            _Variant>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender,
             class _Env     = env<>,
             class _Tuple   = __qq<__decayed_std_tuple>,
@@ -493,6 +503,7 @@ namespace STDEXEC
   using value_types_of_t =
     __value_types_t<__completion_signatures_of_t<_Sender, _Env>, __q<_Tuple>, __q<_Variant>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender,
             class _Env       = env<>,
             class _Variant   = __qq<__std_variant>,

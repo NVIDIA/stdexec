@@ -100,6 +100,7 @@ namespace STDEXEC
       }
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
     using __fwd_env_t = __call_result_t<__fwd_fn, _Env>;
 
@@ -132,8 +133,10 @@ namespace STDEXEC
       }
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     inline constexpr __join_fn __join{};
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _First, class... _Second>
     using __join_env_t = __result_of<__join, _First, _Second...>;
 
@@ -146,6 +149,7 @@ namespace STDEXEC
       }
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     struct __root_env
     {
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
@@ -167,14 +171,19 @@ namespace STDEXEC
     };
   }  // namespace __env
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __env::__join_env_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __env::__fwd_env_t;
   using __env::__root_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __env::__root_env;
 
   inline constexpr __env::__fwd_fn         __fwd_env{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __env::__as_root_env_fn __as_root_env{};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env>
   using __as_root_env_t = __result_of<__as_root_env, _Env>;
 

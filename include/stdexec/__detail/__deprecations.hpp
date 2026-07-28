@@ -57,7 +57,9 @@ namespace STDEXEC
   [[deprecated("affine_on has been renamed affine")]]
   inline constexpr affine_t const & affine_on = affine;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using transfer_just_t [[deprecated]] = __transfer_just_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[deprecated]]
   inline constexpr __transfer_just_t const & transfer_just = __transfer_just;
 

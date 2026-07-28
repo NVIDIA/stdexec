@@ -184,6 +184,7 @@ namespace STDEXEC
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_domain_of_t = __completion_domain_t<_Tag, env_of_t<_Sender>, _Env const &...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Domains>
   using __common_domain_t = decltype(__detail::__common_domain_fn<_Domains...>());
 

@@ -40,6 +40,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   struct __mtype
   {
@@ -53,7 +54,7 @@ namespace STDEXEC
   }  // namespace __detail
 
   // A utility for pretty-printing type names in diagnostics
-  template <class _Ty>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <class _Ty>
   using __demangle_t = decltype(__detail::__demangle_v<_Ty>)::__t;
 
   namespace __detail
@@ -266,6 +267,7 @@ namespace STDEXEC
   }  // namespace __detail
 
   // For a given type, return a __type_index object
+  STDEXEC_MODULE_EXPORT_META
   template <class _Ty>
   inline constexpr __type_index __mtypeid = __detail::__mtypeid_value<_Ty>::__id;
 

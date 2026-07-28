@@ -373,6 +373,7 @@ namespace STDEXEC
   //! @hideinitializer
   inline constexpr connect_t connect{};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Receiver>
   concept __nothrow_connectable = sender_to<_Sender, _Receiver>
                                && __nothrow_callable<connect_t, _Sender, _Receiver>;

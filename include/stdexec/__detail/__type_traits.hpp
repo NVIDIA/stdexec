@@ -36,9 +36,11 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, bool _Noexcept = true>
   using __declfn_t = auto (*)() noexcept(_Noexcept) -> _Tp;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, class...>
   extern __declfn_t<_Tp &&> __declval;
 
@@ -78,15 +80,18 @@ namespace STDEXEC
     };
   }  // namespace __tt
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   using __decay_t = __tt::__decay_<bool(sizeof(__declfn_t<_Ty>))>::template __f<_Ty>;
 #  else
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   using __decay_t = std::decay_t<_Ty>;
 #  endif
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // __copy_cvref_t: For copying cvref from one type to another
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __cp
   {
     template <class _Tp>
@@ -111,6 +116,7 @@ namespace STDEXEC
     using __f = _Tp &&;
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __cpclr
   {
     template <class _Tp>
@@ -138,6 +144,7 @@ namespace STDEXEC
   template <class _Tp>
   using __copy_cvref_fn = decltype(__cpcvr<_Tp>);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _From, class _To>
   using __copy_cvref_t = __copy_cvref_fn<_From>::template __f<_To>;
 
@@ -172,6 +179,7 @@ namespace STDEXEC
   // template <bool _Bp>
   // using __mbool = __mconstant<_Bp>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <bool _Bp>
   struct __mbool : std::bool_constant<_Bp>
   {};

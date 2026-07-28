@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include <stdexec/__detail/__parallel_scheduler.hpp>
 #include <stdexec/__detail/__parallel_scheduler_default_impl.hpp>
 #include <stdexec/execution.hpp>
-
-#include <test_common/catch2.hpp>
 
 #if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 #  error This should be testing replacement of the system context with weak linking.

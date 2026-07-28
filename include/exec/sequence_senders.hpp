@@ -16,24 +16,31 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__execution_fwd.hpp"
+#include "../stdexec/__detail/__config.hpp"
 
-#include "../stdexec/__detail/__completion_signatures.hpp"
-#include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__connect.hpp"
-#include "../stdexec/__detail/__debug.hpp"
-#include "../stdexec/__detail/__diagnostics.hpp"
-#include "../stdexec/__detail/__env.hpp"
-#include "../stdexec/__detail/__just.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
-#include "../stdexec/__detail/__senders.hpp"
-#include "../stdexec/__detail/__stop_token.hpp"
-#include "../stdexec/__detail/__tag_invoke.hpp"
-#include "../stdexec/__detail/__transform_sender.hpp"
-#include "../stdexec/__detail/__type_traits.hpp"
-#include "../stdexec/__detail/__utility.hpp"
-#include "../stdexec/stop_token.hpp"
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#include "../stdexec/__detail/__diagnostic_macros.hpp"
+#else
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+
+#  include "../stdexec/__detail/__completion_signatures.hpp"
+#  include "../stdexec/__detail/__concepts.hpp"
+#  include "../stdexec/__detail/__connect.hpp"
+#  include "../stdexec/__detail/__debug.hpp"
+#  include "../stdexec/__detail/__diagnostics.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__just.hpp"
+#  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__senders.hpp"
+#  include "../stdexec/__detail/__stop_token.hpp"
+#  include "../stdexec/__detail/__tag_invoke.hpp"
+#  include "../stdexec/__detail/__transform_sender.hpp"
+#  include "../stdexec/__detail/__type_traits.hpp"
+#  include "../stdexec/__detail/__utility.hpp"
+#  include "../stdexec/stop_token.hpp"
+#endif
 
 #include "completion_signatures.hpp"
 

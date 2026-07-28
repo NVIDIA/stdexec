@@ -16,14 +16,21 @@
 
 #pragma once
 
-// Pull in the reference implementation of P2300:
+#include <stdexec/__detail/__config.hpp>
+
 #include <exec/completion_signatures.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
 #include <stdexec/execution.hpp>
 
 #include <concepts>
 #include <exception>
 #include <optional>
 #include <type_traits>
+#endif
 
 namespace
 {

@@ -65,17 +65,17 @@ namespace STDEXEC::__std
 
 #  else  // ^^^ STDEXEC_HAS_CUDA_STD_ATOMIC() / vvv !STDEXEC_HAS_CUDA_STD_ATOMIC()
 
-  using std::atomic;
-  using std::atomic_flag;
-  using std::atomic_ptrdiff_t;
-  using std::memory_order;
-  using std::memory_order_relaxed;
-  using std::memory_order_acquire;
-  using std::memory_order_release;
-  using std::memory_order_acq_rel;
-  using std::memory_order_seq_cst;
-  using std::atomic_thread_fence;
-  using std::atomic_signal_fence;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::atomic;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::atomic_flag;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::atomic_ptrdiff_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order_relaxed;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order_acquire;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order_release;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order_acq_rel;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::memory_order_seq_cst;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::atomic_thread_fence;
+  STDEXEC_MODULE_EXPORT_AUTHORING using std::atomic_signal_fence;
 
 #    if __cpp_lib_atomic_ref >= 201806L
   using std::atomic_ref;
@@ -91,7 +91,7 @@ namespace STDEXEC::__std
 
   // clang-12 does not know about std::atomic_ref yet
   // Here we implement only what we need
-  template <integral _Ty>
+  STDEXEC_MODULE_EXPORT_AUTHORING template <integral _Ty>
   class atomic_ref
   {
     _Ty* __ptr_;
@@ -134,9 +134,11 @@ namespace STDEXEC::__std
   }
 
 #  if __cpp_lib_atomic_shared_ptr >= 201711L && !STDEXEC_HAS_CUDA_STD_ATOMIC()
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   using __atomic_shared_ptr = std::atomic<std::shared_ptr<_Ty>>;
 #  else
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <typename _Ty>
   struct __atomic_shared_ptr
   {

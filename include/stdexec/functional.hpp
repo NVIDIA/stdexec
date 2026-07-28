@@ -207,6 +207,7 @@ namespace STDEXEC
   template <class _Fun, class... _As>
   using __invoke_result_t = decltype(__invoke(__declval<_Fun>(), __declval<_As>()...));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class _Default>
   struct __with_default : _Fn
   {

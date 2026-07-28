@@ -21,17 +21,11 @@
 
 #pragma once
 
-#include "__config.hpp"
+#include "__atomic.hpp"
 
-#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+#include "stdexec/__detail/__config.hpp"
 
-import stdexec;
-
-#else
-
-#  include "__atomic.hpp"
-
-#  include "__prologue.hpp"
+#include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -113,5 +107,4 @@ namespace STDEXEC
 
 }  // namespace STDEXEC
 
-#  include "__epilogue.hpp"
-#endif // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#include "__epilogue.hpp"

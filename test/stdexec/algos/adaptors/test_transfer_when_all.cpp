@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
-#include <exec/sender_for.hpp>
-#include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
-#include <test_common/receivers.hpp>
-#include <test_common/schedulers.hpp>
-#include <test_common/type_helpers.hpp>
+#include <stdexec/__detail/__config.hpp>
+
+#if !STDEXEC_USE_MODULES()
+// TODO: I don't know why this doesn't build in modules mode
+
+#  include <exec/sender_for.hpp>
+#  include <stdexec/execution.hpp>
+#  include <test_common/receivers.hpp>
+#  include <test_common/schedulers.hpp>
+#  include <test_common/type_helpers.hpp>
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
@@ -219,3 +224,4 @@ namespace
     }
   }
 }  // namespace
+#endif

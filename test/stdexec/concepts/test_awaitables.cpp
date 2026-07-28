@@ -13,13 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#else
 #include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
+
+#include <stdexec/coroutine.hpp>
+#endif
 
 #include <exec/static_thread_pool.hpp>
-#include <stdexec/coroutine.hpp>
-
 #include <test_common/type_helpers.hpp>
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()

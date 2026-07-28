@@ -43,19 +43,24 @@ namespace STDEXEC
 {
   inline constexpr std::size_t __npos = ~0UL;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __undefined;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __empty = struct __
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __none_such
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr struct __no_init_t
   {
   } __no_init{};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr struct __in_place_from_t
   {
     explicit __in_place_from_t() = default;
@@ -73,6 +78,7 @@ namespace STDEXEC
     STDEXEC_IMMOVABLE(__immovable);
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __move_only
   {
     __move_only()                                          = default;
@@ -82,6 +88,7 @@ namespace STDEXEC
     auto operator=(__move_only const &) -> __move_only&    = delete;
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   using __call_result_t = decltype(__declval<_Fun>()(__declval<_As>()...));
 
@@ -97,6 +104,7 @@ namespace STDEXEC
   using __result_of = decltype(_Fun(__declval<_As>()...));
 #  endif
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <const auto& _Fun, class... _As>
   inline constexpr bool __noexcept_of = noexcept(_Fun(__declval<_As>()...));
 
@@ -135,6 +143,7 @@ namespace STDEXEC
   struct __priority<0>
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr auto __umin(std::initializer_list<std::size_t> __il) noexcept -> std::size_t
   {
     std::size_t __m = ~0UL;
@@ -148,6 +157,7 @@ namespace STDEXEC
     return __m;
   }
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr auto __umax(std::initializer_list<std::size_t> __il) noexcept -> std::size_t
   {
     std::size_t __m = 0;
@@ -266,6 +276,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __unconst
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class T>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline)
   constexpr auto __unconst(T const & t) noexcept -> T&
@@ -340,8 +351,10 @@ namespace STDEXEC
 //////////////////////////////////////////////////////////////////////////////////////////
 // unreachable
 #  if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
+    STDEXEC_MODULE_EXPORT_AUTHORING
     using std::unreachable;
 #  else
+    STDEXEC_MODULE_EXPORT_AUTHORING
     [[noreturn]]
     inline void unreachable()
     {

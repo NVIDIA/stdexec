@@ -66,6 +66,7 @@ namespace STDEXEC
 
   // A variant type that is capable of storing the result datums of the specified
   // completion signatures.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Signatures>
   struct __results_storage
     : __mcall<__mconcat<__qq<__uniqued_variant>>,

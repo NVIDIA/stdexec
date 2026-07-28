@@ -13,17 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include <exec/sender_for.hpp>
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
 
-#include <chrono>  // IWYU pragma: keep for std::chrono_literals
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <chrono>  // IWYU pragma: keep for std::chrono_literals
+#endif
 
 namespace ex = STDEXEC;
 

@@ -68,6 +68,7 @@ namespace STDEXEC
   template <class _Query, class _Env, class... _Args>
   concept __has_validation = requires { _Query::template __validate<_Env, _Args...>(); };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Query, auto _Default = __no_default, class _Transform = __q1<__midentity>>
   struct __query  // NOLINT(bugprone-crtp-constructor-accessibility)
     : __query<_Query, __no_default, _Transform>
@@ -122,12 +123,15 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Query, class... _Args>
   concept __queryable_with = __callable<__query<_Query>, _Env &, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Query, class... _Args>
   concept __nothrow_queryable_with = __nothrow_callable<__query<_Query>, _Env &, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Query, class... _Args>
   using __query_result_t = __call_result_t<__query<_Query>, _Env &, _Args...>;
 

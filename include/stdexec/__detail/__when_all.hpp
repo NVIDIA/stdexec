@@ -388,6 +388,7 @@ namespace STDEXEC
   //!             <tt>when_all(...) | continues_on(sch)</tt> instead.
   //!
   //! @hideinitializer
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr transfer_when_all_t transfer_when_all{};
 
   //! @brief The customization point object for the

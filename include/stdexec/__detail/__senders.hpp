@@ -52,6 +52,7 @@ namespace STDEXEC
     using __nofail_t = _Error;
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sig>
   using __signature_tag_t = decltype(__detail::__signature_tag_v<_Sig>);
 
@@ -69,6 +70,7 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   concept __well_formed_sender = sender_in<_Sender> || dependent_sender<_Sender>;
 

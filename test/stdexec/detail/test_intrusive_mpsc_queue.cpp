@@ -1,11 +1,18 @@
-#include <stdexec/__detail/__intrusive_mpsc_queue.hpp>
-#include <test_common/catch2.hpp>
+#include <catch2/catch_all.hpp>
 
-#include <algorithm>
-#include <atomic>
-#include <set>
-#include <thread>
-#include <vector>
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <algorithm>
+#  include <atomic>
+#  include <set>
+#  include <thread>
+#  include <vector>
+#endif
+
+#include <stdexec/__detail/__intrusive_mpsc_queue.hpp>
 
 namespace
 {

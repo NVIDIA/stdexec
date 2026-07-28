@@ -199,6 +199,7 @@ namespace STDEXEC
   //!                                when the spawned work completes
   //! @see exec::start_detached    — scope-less fire-and-forget (extension)
   //! @see stdexec::sync_wait      — top-level synchronous wait that returns the result
+  STDEXEC_MODULE_EXPORT
   struct spawn_t
   {
    private:
@@ -312,6 +313,7 @@ namespace STDEXEC
   //! description, scope semantics, and a usage example.
   //!
   //! @hideinitializer
+  STDEXEC_MODULE_EXPORT
   inline constexpr spawn_t spawn{};
 }  // namespace STDEXEC
 

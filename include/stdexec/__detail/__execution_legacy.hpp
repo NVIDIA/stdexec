@@ -44,19 +44,26 @@ namespace STDEXEC
     using std::is_execution_policy;
   }  // namespace __policy
 
+  STDEXEC_MODULE_EXPORT
   using namespace __policy;
 
 #else
 
+  STDEXEC_MODULE_EXPORT
   struct sequenced_policy
   {};
+  STDEXEC_MODULE_EXPORT
   struct parallel_policy
   {};
+  STDEXEC_MODULE_EXPORT
   struct parallel_unsequenced_policy
   {};
 
+  STDEXEC_MODULE_EXPORT
   inline constexpr sequenced_policy            seq{};
+  STDEXEC_MODULE_EXPORT
   inline constexpr parallel_policy             par{};
+  STDEXEC_MODULE_EXPORT
   inline constexpr parallel_unsequenced_policy par_unseq{};
 
   template <typename>
@@ -92,6 +99,7 @@ namespace STDEXEC
   struct unsequenced_policy
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr unsequenced_policy unseq{};
 
   template <>

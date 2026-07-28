@@ -51,6 +51,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT
   class task_scheduler;
 
   namespace parallel_scheduler_replacement

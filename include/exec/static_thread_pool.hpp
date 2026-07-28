@@ -17,23 +17,37 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__atomic.hpp"
-#include "../stdexec/__detail/__bulk.hpp"
-#include "../stdexec/__detail/__completion_signatures.hpp"
-#include "../stdexec/__detail/__concepts.hpp"
 #include "../stdexec/__detail/__config.hpp"
-#include "../stdexec/__detail/__domain.hpp"
-#include "../stdexec/__detail/__execution_fwd.hpp"
-#include "../stdexec/__detail/__execution_legacy.hpp"
-#include "../stdexec/__detail/__get_completion_signatures.hpp"
-#include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__manual_lifetime.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__optional.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
-#include "../stdexec/__detail/__tuple.hpp"
-#include "../stdexec/__detail/__type_traits.hpp"
-#include "../stdexec/__detail/__variant.hpp"
+
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include "../stdexec/__detail/__domain.hpp"
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+#  include "../stdexec/__detail/__execution_legacy.hpp"
+#  include "../stdexec/__detail/__get_completion_signatures.hpp"
+#  include "../stdexec/__detail/__intrusive_queue.hpp"
+#  include "../stdexec/__detail/__manual_lifetime.hpp"
+#  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__optional.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__tuple.hpp"
+#  include "../stdexec/__detail/__type_traits.hpp"
+#  include "../stdexec/__detail/__variant.hpp"
+
+#  include <compare>
+#  include <condition_variable>
+#  include <cstdint>
+#  include <exception>
+#  include <limits>
+#  include <mutex>
+#  include <random>
+#  include <span>
+#  include <thread>
+#  include <type_traits>
+#  include <vector>
+#endif
 
 #include "detail/atomic_intrusive_queue.hpp"
 #include "detail/bwos_lifo_queue.hpp"
@@ -44,18 +58,6 @@
 #include "sender_for.hpp"
 #include "sequence/iterate.hpp"
 #include "sequence_senders.hpp"
-
-#include <compare>
-#include <condition_variable>
-#include <cstdint>
-#include <exception>
-#include <limits>
-#include <mutex>
-#include <random>
-#include <span>
-#include <thread>
-#include <type_traits>
-#include <vector>
 
 namespace experimental::execution
 {

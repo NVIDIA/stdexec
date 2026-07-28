@@ -36,6 +36,7 @@ namespace STDEXEC
 {
   namespace __slist
   {
+	  STDEXEC_MODULE_EXPORT_AUTHORING
     template <auto _Next>
     class __intrusive_slist;
 
@@ -178,6 +179,7 @@ namespace STDEXEC
     };
   }  // namespace __slist
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __slist::__intrusive_slist;
 
 }  // namespace STDEXEC

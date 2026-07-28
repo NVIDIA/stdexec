@@ -45,6 +45,7 @@ namespace STDEXEC
   // completion_signatures
   namespace __cmplsigs
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sig>
     inline constexpr bool __is_compl_sig = false;
     template <class... _Args>
@@ -55,6 +56,7 @@ namespace STDEXEC
     inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
   }  // namespace __cmplsigs
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sig>
   concept __completion_signature = __cmplsigs::__is_compl_sig<_Sig>;
 
@@ -83,6 +85,7 @@ namespace STDEXEC
     using __normalize_completions_t = decltype(__cmplsigs::__normalize_completions(
       static_cast<_Completions*>(nullptr)));
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sig>
     using __normalize_sig_t = decltype(__cmplsigs::__normalize_sig(static_cast<_Sig*>(nullptr)));
   }  // namespace __cmplsigs
@@ -207,6 +210,7 @@ namespace STDEXEC
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////
   // completion signatures type traits
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs,
             class _Tuple   = __qq<__decayed_std_tuple>,
             class _Variant = __qq<__std_variant>>
@@ -235,12 +239,14 @@ namespace STDEXEC
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   // concat_completion_signatures
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Sigs>
   using __concat_completion_signatures_t =
     __mcall<__mconcat<__munique<__qq<completion_signatures>>>, _Sigs...>;
 
   namespace __detail
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     struct __concat_completion_signatures_fn
     {
       template <STDEXEC::__valid_completion_signatures... Sigs>
@@ -443,6 +449,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __eptr_completion_t = completion_signatures<set_error_t(std::exception_ptr)>;
 
   template <class _NoExcept>
@@ -450,6 +457,7 @@ namespace STDEXEC
 
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class, class... _What, class... _Values>
   [[nodiscard]]
   consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
@@ -467,6 +475,7 @@ namespace STDEXEC
 #  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Return, class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
@@ -538,6 +547,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _WantedTag, class _Sigs, class _Tuple, class _Variant>
   using __gather_completions_t =
     __detail::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Tuple, _Variant>;
@@ -570,6 +580,7 @@ namespace STDEXEC
       return _ID;                                   \
     } else
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class, class _Sndr>
   [[nodiscard]]
   consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
@@ -588,6 +599,7 @@ namespace STDEXEC
 
 #    define STDEXEC_IF_OK(_ID)
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Result, class _Sndr>
   [[noreturn, nodiscard]]
   consteval auto __throw_dependent_sender_error_r() -> _Result

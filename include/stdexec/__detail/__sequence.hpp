@@ -43,6 +43,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __sequence_t;
   struct _ALL_SENDERS_BUT_THE_LAST_MUST_BE_SENDERS_OF_VOID_;
 

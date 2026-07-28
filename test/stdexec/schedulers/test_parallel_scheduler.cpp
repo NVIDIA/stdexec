@@ -13,21 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
-#include <atomic>
-#include <memory>
-#include <stdexcept>
-#include <thread>
+#include <stdexec/__detail/__config.hpp>
 
-#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 
-#include <stdexec/execution.hpp>
+#  include <stdexec/execution.hpp>
+
+#  include <atomic>
+#  include <memory>
+#  include <stdexcept>
+#  include <thread>
+#endif
 
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
 
-#include <test_common/catch2.hpp>
 #include <test_common/receivers.hpp>
 
 namespace ex  = STDEXEC;

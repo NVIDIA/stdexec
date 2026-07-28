@@ -217,6 +217,7 @@ namespace STDEXEC
                    && __std::copy_constructible<__decay_t<_Scheduler>>
                    && __nothrow_move_constructible<__decay_t<_Scheduler>>;
 
+  STDEXEC_MODULE_EXPORT
   template <scheduler _Scheduler>
   using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
 
@@ -697,10 +698,11 @@ namespace STDEXEC
                                 && __infallible_sender<__result_of<schedule, _Scheduler>, _Env...>;
 
   // Deprecated interfaces
-  using get_delegatee_scheduler_t
+  STDEXEC_MODULE_EXPORT_AUTHORING using get_delegatee_scheduler_t
     [[deprecated("get_delegatee_scheduler_t has been renamed "
                  "get_delegation_scheduler_t")]] = get_delegation_scheduler_t;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr auto &get_delegatee_scheduler [[deprecated("get_delegatee_scheduler has been "
                                                               "renamed get_delegation_scheduler")]]
   = get_delegation_scheduler;

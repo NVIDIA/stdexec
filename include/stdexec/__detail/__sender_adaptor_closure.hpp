@@ -91,10 +91,12 @@ namespace STDEXEC
     };
   }  // namespace __clsur
 
+  STDEXEC_MODULE_EXPORT
   template <__class _Dp>
   struct sender_adaptor_closure : __clsur::__sender_adaptor_closure_base
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class... _As>
   struct __closure : sender_adaptor_closure<__closure<_Fn, _As...>>
   {

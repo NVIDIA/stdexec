@@ -13,12 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>  // IWYU pragma: keep
 
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
 #include <stdexec/__detail/__any.hpp>
 
-#include <cstdio>
-
-#include <test_common/catch2.hpp>  // IWYU pragma: keep
+#  include <cstdio>
+#endif
 
 // NOLINTBEGIN(modernize-use-override)
 STDEXEC_PRAGMA_PUSH()

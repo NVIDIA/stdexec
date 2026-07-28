@@ -13,13 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
-#include <numbers>
 #include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <numbers>
+#endif
 
 namespace ex = STDEXEC;
 

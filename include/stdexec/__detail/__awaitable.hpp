@@ -38,6 +38,7 @@ namespace STDEXEC
   concept __await_suspend_result = __one_of<_Tp, void, bool>
                                 || __is_instance_of<_Tp, __std::coroutine_handle>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaiter, class... _Promise>
   concept __awaiter = requires(_Awaiter &__awaiter, __std::coroutine_handle<_Promise...> __h) {
     __awaiter.await_ready() ? 1 : 0;
@@ -82,6 +83,7 @@ namespace STDEXEC
   template <class _Awaitable>
   using __awaiter_of_t = decltype(STDEXEC::__get_awaiter(__declval<_Awaitable>()));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable &&__awaitable, _Promise &...__promise) {
     {
@@ -93,6 +95,7 @@ namespace STDEXEC
   template <class _Tp>
   constexpr auto __as_lvalue(_Tp &&) -> _Tp &;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   struct __await_result
   {
@@ -103,15 +106,18 @@ namespace STDEXEC
                            .await_resume());
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = __t<__await_result<_Awaitable, _Promise...>>;
 
 #  else
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   concept __awaitable = false;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = void;

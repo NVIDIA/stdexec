@@ -467,6 +467,7 @@ namespace STDEXEC
     }
   }  // namespace __stok
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _StopSource = inplace_stop_source>
   struct __forward_stop_request
   {
