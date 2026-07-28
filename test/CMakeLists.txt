@@ -25,135 +25,73 @@ function(add_compile_diagnostics TARGET)
   endif()
 endfunction()
 
-if(STDEXEC_BUILD_MODULES)
 set(stdexec_test_sources
     test_main.cpp
-    stdexec/cpos/test_cpo_bulk.cpp
-    stdexec/cpos/test_cpo_receiver.cpp
-    stdexec/cpos/test_cpo_start.cpp
-    stdexec/cpos/test_cpo_connect.cpp
-    stdexec/cpos/test_cpo_connect_awaitable.cpp
-    stdexec/cpos/test_cpo_schedule.cpp
-    stdexec/cpos/test_cpo_upon_error.cpp
-    stdexec/cpos/test_cpo_upon_stopped.cpp
-    stdexec/concepts/test_concept_scheduler.cpp
-    stdexec/concepts/test_concepts_receiver.cpp
-    stdexec/concepts/test_concept_operation_state.cpp
-    stdexec/concepts/test_concepts_sender.cpp
-    stdexec/concepts/test_concepts_stop_tokens.cpp
-    stdexec/concepts/test_concepts_scope_association.cpp
-    stdexec/concepts/test_concepts_scope_token.cpp
-    #stdexec/concepts/test_awaitables.cpp
+    stdexec/algos/adaptors/test_on3.cpp
+    stdexec/algos/adaptors/test_sequence.cpp
+    stdexec/algos/adaptors/test_stop_when.cpp
+    stdexec/algos/adaptors/test_stopped_as_optional.cpp
+    stdexec/algos/adaptors/test_upon_error.cpp
+    stdexec/algos/adaptors/test_upon_stopped.cpp
+    stdexec/algos/adaptors/test_write_env.cpp
     stdexec/algos/factories/test_just.cpp
-    stdexec/algos/factories/test_transfer_just.cpp
     stdexec/algos/factories/test_just_error.cpp
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
-    #stdexec/algos/factories/test_schedule.cpp
-    #stdexec/algos/adaptors/test_associate.cpp
-    #stdexec/algos/adaptors/test_starts_on.cpp
-    #stdexec/algos/adaptors/test_on.cpp
-    #stdexec/algos/adaptors/test_on2.cpp
-    stdexec/algos/adaptors/test_on3.cpp
-    #stdexec/algos/adaptors/test_continues_on.cpp
-    #stdexec/algos/adaptors/test_finally.cpp
-    #stdexec/algos/adaptors/test_then.cpp
-    stdexec/algos/adaptors/test_upon_error.cpp
-    stdexec/algos/adaptors/test_upon_stopped.cpp
-    #stdexec/algos/adaptors/test_let_value.cpp
-    #stdexec/algos/adaptors/test_let_error.cpp
-    #stdexec/algos/adaptors/test_let_stopped.cpp
-    #stdexec/algos/adaptors/test_bulk.cpp
-    #stdexec/algos/adaptors/test_when_all.cpp
-    #stdexec/algos/adaptors/test_transfer_when_all.cpp
-    #stdexec/algos/adaptors/test_into_variant.cpp
-    stdexec/algos/adaptors/test_sequence.cpp
-    stdexec/algos/adaptors/test_stopped_as_optional.cpp
-    #stdexec/algos/adaptors/test_stopped_as_error.cpp
-    stdexec/algos/adaptors/test_write_env.cpp
-    stdexec/algos/adaptors/test_stop_when.cpp
-    #stdexec/algos/adaptors/test_spawn_future.cpp
-    #stdexec/algos/consumers/test_sync_wait.cpp
-    #stdexec/algos/consumers/test_spawn.cpp
+    stdexec/algos/factories/test_transfer_just.cpp
+    stdexec/concepts/test_concept_operation_state.cpp
+    stdexec/concepts/test_concept_scheduler.cpp
+    stdexec/concepts/test_concepts_receiver.cpp
+    stdexec/concepts/test_concepts_scope_association.cpp
+    stdexec/concepts/test_concepts_scope_token.cpp
+    stdexec/concepts/test_concepts_sender.cpp
+    stdexec/concepts/test_concepts_stop_tokens.cpp
+    stdexec/cpos/test_cpo_bulk.cpp
+    stdexec/cpos/test_cpo_connect.cpp
+    stdexec/cpos/test_cpo_connect_awaitable.cpp
+    stdexec/cpos/test_cpo_receiver.cpp
+    stdexec/cpos/test_cpo_schedule.cpp
+    stdexec/cpos/test_cpo_start.cpp
+    stdexec/cpos/test_cpo_upon_error.cpp
+    stdexec/cpos/test_cpo_upon_stopped.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_common_domain.cpp
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_demangle.cpp
-    stdexec/detail/test_utility.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
-    #stdexec/schedulers/test_task_scheduler.cpp
-    #stdexec/schedulers/test_parallel_scheduler.cpp
+    stdexec/detail/test_utility.cpp
     stdexec/queries/test_env.cpp
-    stdexec/queries/test_get_forward_progress_guarantee.cpp
-    stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_forwarding_queries.cpp
-    #stdexec/types/test_task.cpp
-    #stdexec/types/test_counting_scopes.cpp
+    stdexec/queries/test_get_completion_behavior.cpp
+    stdexec/queries/test_get_forward_progress_guarantee.cpp
     )
-else()
-set(stdexec_test_sources
-    test_main.cpp
-    stdexec/cpos/test_cpo_bulk.cpp
-    stdexec/cpos/test_cpo_receiver.cpp
-    stdexec/cpos/test_cpo_start.cpp
-    stdexec/cpos/test_cpo_connect.cpp
-    stdexec/cpos/test_cpo_connect_awaitable.cpp
-    stdexec/cpos/test_cpo_schedule.cpp
-    stdexec/cpos/test_cpo_upon_error.cpp
-    stdexec/cpos/test_cpo_upon_stopped.cpp
-    stdexec/concepts/test_concept_scheduler.cpp
-    stdexec/concepts/test_concepts_receiver.cpp
-    stdexec/concepts/test_concept_operation_state.cpp
-    stdexec/concepts/test_concepts_sender.cpp
-    stdexec/concepts/test_concepts_stop_tokens.cpp
-    stdexec/concepts/test_concepts_scope_association.cpp
-    stdexec/concepts/test_concepts_scope_token.cpp
-    stdexec/concepts/test_awaitables.cpp
-    stdexec/algos/factories/test_just.cpp
-    stdexec/algos/factories/test_transfer_just.cpp
-    stdexec/algos/factories/test_just_error.cpp
-    stdexec/algos/factories/test_just_stopped.cpp
-    stdexec/algos/factories/test_read.cpp
-    stdexec/algos/factories/test_schedule.cpp
+if(NOT STDEXEC_BUILD_MODULES)
+  # these tests don't build in modules mode, yet
+  list(APPEND stdexec_test_sources
     stdexec/algos/adaptors/test_associate.cpp
-    stdexec/algos/adaptors/test_starts_on.cpp
-    stdexec/algos/adaptors/test_on.cpp
-    stdexec/algos/adaptors/test_on2.cpp
-    stdexec/algos/adaptors/test_on3.cpp
+    stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_finally.cpp
-    stdexec/algos/adaptors/test_then.cpp
-    stdexec/algos/adaptors/test_upon_error.cpp
-    stdexec/algos/adaptors/test_upon_stopped.cpp
-    stdexec/algos/adaptors/test_let_value.cpp
+    stdexec/algos/adaptors/test_into_variant.cpp
     stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_let_stopped.cpp
-    stdexec/algos/adaptors/test_bulk.cpp
-    stdexec/algos/adaptors/test_when_all.cpp
-    stdexec/algos/adaptors/test_transfer_when_all.cpp
-    stdexec/algos/adaptors/test_into_variant.cpp
-    stdexec/algos/adaptors/test_sequence.cpp
-    stdexec/algos/adaptors/test_stopped_as_optional.cpp
-    stdexec/algos/adaptors/test_stopped_as_error.cpp
-    stdexec/algos/adaptors/test_write_env.cpp
-    stdexec/algos/adaptors/test_stop_when.cpp
+    stdexec/algos/adaptors/test_let_value.cpp
+    stdexec/algos/adaptors/test_on.cpp
+    stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_spawn_future.cpp
-    stdexec/algos/consumers/test_sync_wait.cpp
+    stdexec/algos/adaptors/test_starts_on.cpp
+    stdexec/algos/adaptors/test_stopped_as_error.cpp
+    stdexec/algos/adaptors/test_then.cpp
+    stdexec/algos/adaptors/test_transfer_when_all.cpp
+    stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/consumers/test_spawn.cpp
-    stdexec/detail/test_any.cpp
-    stdexec/detail/test_common_domain.cpp
-    stdexec/detail/test_completion_signatures.cpp
-    stdexec/detail/test_demangle.cpp
-    stdexec/detail/test_utility.cpp
-    stdexec/detail/test_intrusive_mpsc_queue.cpp
-    stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/algos/consumers/test_sync_wait.cpp
+    stdexec/algos/factories/test_schedule.cpp
+    stdexec/concepts/test_awaitables.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
-    stdexec/queries/test_env.cpp
-    stdexec/queries/test_get_forward_progress_guarantee.cpp
-    stdexec/queries/test_get_completion_behavior.cpp
-    stdexec/queries/test_forwarding_queries.cpp
-    stdexec/types/test_task.cpp
-    stdexec/types/test_counting_scopes.cpp)
+    stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/types/test_counting_scopes.cpp
+    stdexec/types/test_task.cpp)
 endif()
 
 add_library(common_test_settings INTERFACE)
