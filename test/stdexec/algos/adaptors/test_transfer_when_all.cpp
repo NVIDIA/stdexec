@@ -17,14 +17,16 @@
 
 #include <stdexec/__detail/__config.hpp>
 
-#if !STDEXEC_USE_MODULES()
-// TODO: I don't know why this doesn't build in modules mode
-
-#  include <exec/sender_for.hpp>
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#else
 #  include <stdexec/execution.hpp>
-#  include <test_common/receivers.hpp>
-#  include <test_common/schedulers.hpp>
-#  include <test_common/type_helpers.hpp>
+#endif
+
+#include <exec/sender_for.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
@@ -224,4 +226,3 @@ namespace
     }
   }
 }  // namespace
-#endif

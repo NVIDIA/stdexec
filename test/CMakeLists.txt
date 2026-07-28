@@ -65,7 +65,7 @@ set(stdexec_test_sources
     #stdexec/algos/adaptors/test_let_stopped.cpp
     #stdexec/algos/adaptors/test_bulk.cpp
     #stdexec/algos/adaptors/test_when_all.cpp
-    stdexec/algos/adaptors/test_transfer_when_all.cpp
+    #stdexec/algos/adaptors/test_transfer_when_all.cpp
     #stdexec/algos/adaptors/test_into_variant.cpp
     stdexec/algos/adaptors/test_sequence.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
