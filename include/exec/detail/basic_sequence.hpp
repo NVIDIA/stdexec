@@ -16,11 +16,17 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__basic_sender.hpp"
 #include "../../stdexec/__detail/__config.hpp"
+
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#else
+#include "../../stdexec/__detail/__basic_sender.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
+#endif
 
 #include "../sequence_senders.hpp"
+#include "../../stdexec/__detail/__basic_sender_macros.hpp"
 
 namespace experimental::execution
 {

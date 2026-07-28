@@ -98,12 +98,15 @@ namespace STDEXEC
       }
     };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
     inline constexpr __submit_t __submit{};
   }  // namespace __submit
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Receiver, class _Default = __submit::__submit_t::__void>
   using __submit_result_t = __call_result_t<__submit::__submit_t, _Sender, _Receiver, _Default>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Receiver>
   concept __submittable = requires(_Sender&& __sndr, _Receiver&& __rcvr) {
     __submit::__submit(static_cast<_Sender&&>(__sndr), static_cast<_Receiver&&>(__rcvr));
@@ -152,6 +155,7 @@ namespace STDEXEC
     return __submit_result_kind::__connect;
   }
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender,
             class _Receiver,
             __submit_result_kind _Kind = __get_submit_result_kind<_Sender, _Receiver>()>

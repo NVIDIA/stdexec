@@ -14,11 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__stop_when.hpp>
-#include <stdexec/execution.hpp>
-#include <stdexec/stop_token.hpp>
-#include <test_common/catch2.hpp>
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#else
+#  include <stdexec/__detail/__stop_when.hpp>
+#  include <stdexec/execution.hpp>
+#  include <stdexec/stop_token.hpp>
+#endif
+
 #include <test_common/receivers.hpp>
 
 namespace ex = STDEXEC;
@@ -69,6 +76,7 @@ namespace
     wait_for_value(ex::__stop_when(isTokenStoppable(), source.get_token()), true);
   }
 
+#if !STDEXEC_USE_MODULES()
   TEST_CASE("stop-when fuses its token with the receiver's when both are stoppable",
             "[adaptors][stop-when]")
   {
@@ -77,6 +85,7 @@ namespace
                                    source.get_token()),
                    true);
   }
+#endif
 
   template <std::invocable Fn>
   ex::sender auto make_stop_callback(Fn&& fn) noexcept
@@ -90,6 +99,7 @@ namespace
              });
   }
 
+#if !STDEXEC_USE_MODULES()
   TEST_CASE("callbacks registered with stop-when's token can be invoked", "[adaptors][stop-when]")
   {
     int  invokeCount = 0;
@@ -139,4 +149,5 @@ namespace
                      2);
     }
   }
+#endif
 }  // namespace

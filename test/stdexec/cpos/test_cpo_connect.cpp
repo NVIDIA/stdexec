@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include "test_common/receivers.hpp"
 #include "test_common/type_helpers.hpp"
 #include <stdexec/execution.hpp>
-#include <test_common/catch2.hpp>
 
 namespace ex = STDEXEC;
 

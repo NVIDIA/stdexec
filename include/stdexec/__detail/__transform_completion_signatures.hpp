@@ -141,6 +141,7 @@ namespace STDEXEC
     constexpr auto __transform_reduce_sigs(__undefined<completion_signatures<_Sigs...>> *)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _Values>
     using __default_set_value = completion_signatures<set_value_t(_Values...)>;
 
@@ -161,6 +162,7 @@ namespace STDEXEC
     decltype(__cmplsigs::__transform_reduce_sigs<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
       static_cast<__undefined<_Sigs> *>(nullptr)));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs,
             class _MoreSigs                           = completion_signatures<>,
             template <class...> class _ValueTransform = __cmplsigs::__default_set_value,
@@ -174,6 +176,7 @@ namespace STDEXEC
                                                __mtry_q<__concat_completion_signatures_t>::__f,
                                                _MoreSigs>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sndr,
             class _Env                                = env<>,
             class _MoreSigs                           = completion_signatures<>,
@@ -304,6 +307,7 @@ namespace STDEXEC
   //! * __ignore_completion
   //! * __transform_arguments
   //! * __decay_arguments
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag>
   struct __keep_completion
   {
@@ -314,6 +318,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __ignore_completion
   {
     template <class...>
@@ -323,6 +328,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag, class _Fn, class... _AlgoTag>
   struct __transform_arguments
   {
@@ -358,6 +364,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag, class... _AlgoTag>
   struct __decay_arguments
   {
@@ -490,6 +497,7 @@ namespace STDEXEC
   //! \endcode
   //!
   //! \note This function is evaluated at compile-time (consteval).
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Completions,
             class _ValueFn   = __keep_completion<set_value_t>,
             class _ErrorFn   = __keep_completion<set_error_t>,

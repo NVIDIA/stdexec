@@ -46,12 +46,14 @@ namespace STDEXEC
     return __completions_t{};
   }
 
+  STDEXEC_MODULE_EXPORT
   template <class _CvSender, class... _Env>
     requires sender_in<_CvSender, _Env...>
   using completion_signatures_of_t =
     decltype(STDEXEC::__checked_completion_signatures(__declval<_CvSender>(),
                                                       __declval<_Env>()...));
 #  else
+  STDEXEC_MODULE_EXPORT
   template <class _CvSender, class... _Env>
     requires sender_in<_CvSender, _Env...>
   using completion_signatures_of_t = __completion_signatures_of_t<_CvSender, _Env...>;

@@ -14,16 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <stdexec/execution.hpp>
+#include <stdexec/__detail/__config.hpp>
 
 #include "test_common/scope_tokens.hpp"
+
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#include <stdexec/execution.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
 #include <type_traits>
 #include <utility>
+#endif
 
 namespace ex = STDEXEC;
 

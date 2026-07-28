@@ -86,7 +86,7 @@ namespace STDEXEC
 
   namespace __scope_concepts
   {
-    struct __test_sender
+    STDEXEC_MODULE_EXPORT_AUTHORING struct __test_sender
     {
       using sender_concept = STDEXEC::sender_tag;
 

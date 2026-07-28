@@ -16,9 +16,15 @@
 
 #pragma once
 
-#include <test_common/catch2.hpp>
+#include <catch2/catch_all.hpp>
 
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+#else
 #include <tuple>
+#endif
 
 // Workaround for https://github.com/llvm/llvm-project/issues/113087
 #if defined(__clang__) && defined(__cpp_lib_tuple_like)

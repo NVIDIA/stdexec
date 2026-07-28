@@ -16,6 +16,7 @@
 #pragma once
 
 #include "__config.hpp"
+#include "__diagnostic_macros.hpp"
 
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
@@ -39,15 +40,19 @@ namespace STDEXEC
   struct sender_tag;
   struct scheduler_tag;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHAT_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHERE_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHY_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _IN_ALGORITHM_
   {};
 
@@ -61,24 +66,29 @@ namespace STDEXEC
   struct _WITH_SENDERS_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   using _WITH_PRETTY_SENDER_ = _WITH_SENDER_<__demangle_t<_Sender>>;
 
   template <class... _Senders>
   using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_<__demangle_t<_Senders>...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_ENVIRONMENT_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   struct _WITH_TYPE_;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_RECEIVER_
   {};
 
   template <class _Sig>
   struct _UNHANDLED_COMPLETION_SIGNAL_;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sig>
   struct _WITH_COMPLETION_SIGNATURE_;
 
@@ -91,15 +101,18 @@ namespace STDEXEC
   struct _WITH_ARGUMENTS_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_QUERY_
   {};
 
   struct _WITH_SCHEDULER_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _TO_FIX_THIS_ERROR_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _SENDER_TYPE_IS_NOT_DECAY_COPYABLE_
   {};
 
@@ -192,6 +205,7 @@ namespace STDEXEC
 
 #  endif  // __cpp_lib_constexpr_exceptions >= 202502L
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __compile_time_error : __exception
   {};
 
@@ -279,6 +293,7 @@ namespace STDEXEC
   template <class _Sender>
   using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_PRETTY_SENDER_<_Sender>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What>
   struct __not_a_sender
   {
@@ -304,169 +319,6 @@ namespace STDEXEC
     constexpr bool operator==(__not_a_scheduler const &) const noexcept = default;
   };
 }  // namespace STDEXEC
-
-////////////////////////////////////////////////////////////////////////////////
-#  define STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE                                                     \
-  "\n"                                                                                             \
-  "\n"                                                                                             \
-  "The given type is not a sender because " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<Sender>"\
-  "is false. Either:\n"                                                                            \
-  "\n"                                                                                             \
-  "1. Give the type a nested '::sender_concept' type that is an alias for '"                       \
-  STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag',\n"                                                 \
-  "   as in:\n"                                                                                    \
-  "\n"                                                                                             \
-  "     class MySender\n"                                                                          \
-  "     {\n"                                                                                       \
-  "     public:\n"                                                                                 \
-  "       using sender_concept = " STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag;\n"                 \
-  "       ...\n"                                                                                   \
-  "     };\n"                                                                                      \
-  "\n"                                                                                             \
-  "   or,\n"                                                                                       \
-  "\n"                                                                                             \
-  "2. Specialize the '" STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender' boolean trait for this "   \
-  "type to true, as follows:\n"                                                                    \
-  "\n"                                                                                             \
-  "     class MySender\n"                                                                          \
-  "     {\n"                                                                                       \
-  "       ...\n"                                                                                   \
-  "     };\n"                                                                                      \
-  "\n"                                                                                             \
-  "     template <>\n"                                                                             \
-  "     inline constexpr bool " STDEXEC_PP_STRINGIZE(STDEXEC) "::enable_sender<MySender> = true;\n"
-
-////////////////////////////////////////////////////////////////////////////////
-#  define STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES                                       \
-  "\n"                                                                                             \
-  "\n"                                                                                             \
-  "The sender type was not able to report its completion signatures when asked.\n"                 \
-  "This is either because it lacks the necessary member function, or because the\n"                \
-  "member function was ill-formed.\n"                                                              \
-  "\n"                                                                                             \
-  "A sender can declare its completion signatures in one of two ways:\n"                           \
-  "\n"                                                                                             \
-  "1. By defining a nested type alias named 'completion_signatures' that is a\n"                   \
-  "  specialization of '" STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<...>', "          \
-  "as follows:\n"                                                                                  \
-  "\n"                                                                                             \
-  "     class MySender\n"                                                                          \
-  "     {\n"                                                                                       \
-  "     public:\n"                                                                                 \
-  "       using sender_concept        = " STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag;\n"          \
-  "       using completion_signatures = " STDEXEC_PP_STRINGIZE(STDEXEC)                            \
-  "::completion_signatures<\n"                                                                     \
-  "         // This sender can complete successfully with an int and a float...\n"                 \
-  "         " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t(int, float),\n"                         \
-  "         // ... or in error with an exception_ptr\n"                                            \
-  "         " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_error_t(std::exception_ptr)>;\n"                \
-  "       ...\n"                                                                                   \
-  "     };\n"                                                                                      \
-  "\n"                                                                                             \
-  "   or,\n"                                                                                       \
-  "\n"                                                                                             \
-  "2. By defining a member function named 'get_completion_signatures' that returns\n"              \
-  "   a specialization of '" STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<...>', as "    \
-  "follows:\n"                                                                                     \
-  "\n"                                                                                             \
-  "     class MySender\n"                                                                          \
-  "     {\n"                                                                                       \
-  "     public:\n"                                                                                 \
-  "       using sender_concept        = " STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag;\n"          \
-  "\n"                                                                                             \
-  "       template <class Self, class... Env>\n"                                                   \
-  "       static consteval auto get_completion_signatures() -> " STDEXEC_PP_STRINGIZE(STDEXEC)     \
-  "::completion_signatures<\n"                                                                     \
-  "         // This sender can complete successfully with an int and a float...\n"                 \
-  "         " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t(int, float),\n"                         \
-  "         // ... or in error with a std::exception_ptr.\n"                                       \
-  "         " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_error_t(std::exception_ptr)>\n"                 \
-  "       {\n"                                                                                     \
-  "        return {};\n"                                                                           \
-  "       }\n"                                                                                     \
-  "       ...\n"                                                                                   \
-  "     };\n"
-
-////////////////////////////////////////////////////////////////////////////////
-#  define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR                                \
-  "\n"                                                                                             \
-  "\n"                                                                                             \
-  "Trying to compute the sender's completion signatures resulted in an error. See\n"               \
-  "the rest of the compiler diagnostic for clues. Look for the string \"_ERROR_\".\n"
-
-#  define STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE                          \
-  "\n"                                                                                             \
-  "\n"                                                                                             \
-  "The member function 'get_completion_signatures' of the sender returned an\n"                    \
-  "invalid type.\n"                                                                                \
-  "\n"                                                                                             \
-  "A sender's 'get_completion_signatures' function must return a specialization of\n"              \
-  "'" STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<...>', as follows:\n"                 \
-  "\n"                                                                                             \
-  "  class MySender\n"                                                                             \
-  "  {\n"                                                                                          \
-  "  public:\n"                                                                                    \
-  "    using sender_concept = " STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag;\n"                    \
-  "\n"                                                                                             \
-  "    template <class Self, class... Env>\n"                                                      \
-  "    static consteval auto get_completion_signatures() -> " STDEXEC_PP_STRINGIZE(STDEXEC)        \
-  "::completion_signatures<\n"                                                                     \
-  "      // This sender can complete successfully with an int and a float...\n"                    \
-  "      " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t(int, float),\n"                            \
-  "      // ... or in error with a std::exception_ptr.\n"                                          \
-  "      " STDEXEC_PP_STRINGIZE(STDEXEC) "::set_error_t(std::exception_ptr)>\n"                    \
-  "    {\n"                                                                                        \
-  "      return {};\n"                                                                             \
-  "    }\n"                                                                                        \
-  "    ...\n"                                                                                      \
-  "  };\n"
-
-////////////////////////////////////////////////////////////////////////////////
-#  define STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER                                          \
-  "\n"                                                                                             \
-  "A sender must provide a 'connect' member function that takes a receiver as an\n"                \
-  "argument and returns an object whose type satisfies '" STDEXEC_PP_STRINGIZE(STDEXEC)            \
-  "::operation_state',\n"                                                                          \
-  "as shown below:\n"                                                                              \
-  "\n"                                                                                             \
-  "  class MySender\n"                                                                             \
-  "  {\n"                                                                                          \
-  "  public:\n"                                                                                    \
-  "    using sender_concept        = " STDEXEC_PP_STRINGIZE(STDEXEC) "::sender_tag;\n"             \
-  "    using completion_signatures = " STDEXEC_PP_STRINGIZE(STDEXEC) "::completion_signatures<"    \
-  STDEXEC_PP_STRINGIZE(STDEXEC) "::set_value_t()>;\n"                                              \
-  "\n"                                                                                             \
-  "    template <class Receiver>\n"                                                                \
-  "    struct MyOpState\n"                                                                         \
-  "    {\n"                                                                                        \
-  "      using operation_state_concept = " STDEXEC_PP_STRINGIZE(STDEXEC) "::operation_state_tag;\n"\
-  "\n"                                                                                             \
-  "      void start() noexcept\n"                                                                  \
-  "      {\n"                                                                                      \
-  "        // Start the operation, which will eventually complete and send its\n"                  \
-  "        // result to rcvr_;\n"                                                                  \
-  "      }\n"                                                                                      \
-  "\n"                                                                                             \
-  "      Receiver rcvr_;\n"                                                                        \
-  "    };\n"                                                                                       \
-  "\n"                                                                                             \
-  "    template <" STDEXEC_PP_STRINGIZE(STDEXEC) "::receiver Receiver>\n"                          \
-  "    auto connect(Receiver rcvr) -> MyOpState<Receiver>\n"                                       \
-  "    {\n"                                                                                        \
-  "      return MyOpState<Receiver>{std::move(rcvr)};\n"                                           \
-  "    }\n"                                                                                        \
-  "\n"                                                                                             \
-  "    ...\n"                                                                                      \
-  "  };\n"
-
-////////////////////////////////////////////////////////////////////////////////
-#  define STDEXEC_ERROR_SYNC_WAIT_CANNOT_CONNECT_SENDER_TO_RECEIVER                                \
-  "\n"                                                                                             \
-  "\n"                                                                                             \
-  "The sender passed to '" STDEXEC_PP_STRINGIZE(STDEXEC) "::sync_wait()' does not have a "         \
-  "'connect'\n"                                                                                    \
-  "member function that accepts sync_wait's receiver.\n"                                           \
-  STDEXEC_ERROR_CANNOT_CONNECT_SENDER_TO_RECEIVER
 
 #  include "__epilogue.hpp"
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

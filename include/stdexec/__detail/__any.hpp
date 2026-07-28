@@ -50,6 +50,9 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
 // NOLINTBEGIN(moderize-use-override)
 
+STDEXEC_MODULE_EXPORT_AUTHORING
+namespace STDEXEC::__any {}
+
 namespace STDEXEC::__any
 {
 
@@ -165,25 +168,31 @@ namespace STDEXEC::__any
   template <template <class> class _Interface>
   struct __any_ptr_base;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <template <class> class _Interface>
   struct __any_ptr;
 
   template <template <class> class _Interface>
   struct __any_cptr;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <template <class> class... _BaseInterfaces>
   struct __extends;
 
   // semiregular interfaces
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Base>
   struct __imovable;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Base>
   struct __icopyable;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Base>
   struct __iequality_comparable;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Base>
   struct __isemiregular;
 
@@ -192,6 +201,7 @@ namespace STDEXEC::__any
   template <template <class> class _Interface>
   using __bases_of = _Interface<__iroot>::__bases_type;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <template <class> class _Interface,
             class _Base,
             class _BaseInterfaces   = __extends<>,
@@ -292,18 +302,23 @@ namespace STDEXEC::__any
     };
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[maybe_unused]]
   inline constexpr auto __value = __access::__value_t{};
   [[maybe_unused]]
   inline constexpr auto __empty = __access::__empty_t{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[maybe_unused]]
   inline constexpr auto __reset = __access::__reset_t{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[maybe_unused]]
   inline constexpr auto __type = __access::__type_t{};
   [[maybe_unused]]
   inline constexpr auto __data = __access::__data_t{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[maybe_unused]]
   inline constexpr auto __addressof = __access::__addressof_t{};
+  STDEXEC_MODULE_EXPORT_AUTHORING
   [[maybe_unused]]
   inline constexpr auto __caddressof = __access::__caddressof_t{};
 
@@ -313,12 +328,14 @@ namespace STDEXEC::__any
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __extension_of
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Interface, template <class> class _BaseInterface>
   concept __extension_of = requires(_Interface const &__arg) {
     STDEXEC::__any::__interface_cast<_BaseInterface>(__arg);
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT_AUTHORING
   enum class __box_kind
   {
     __abstract,
@@ -403,6 +420,7 @@ namespace STDEXEC::__any
   //! derived from
   //! @c __iabstract<_Base>. @c __iabstract<_Derived> is an alias for @c
   //! Derived<Base<__iroot>>.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <template <class> class _Interface, class _BaseInterfaces = __bases_of<_Interface>>
   using __iabstract = _Interface<__mcall1<_BaseInterfaces, __iroot>>;
 
@@ -1779,6 +1797,7 @@ namespace STDEXEC::__any
   struct __any_cast_t : __basic_cast_t<_Value, __any_dynamic_cast_t>
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Value>
   constexpr __any_cast_t<_Value> __any_cast{};
 
@@ -1788,6 +1807,7 @@ namespace STDEXEC::__any
   struct __any_static_cast_t : __basic_cast_t<_Value, __any_static_cast_impl_t>
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Value>
   constexpr __any_static_cast_t<_Value> __any_static_cast{};
 

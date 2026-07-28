@@ -45,17 +45,20 @@ import stdexec;
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   concept __callable = requires(_Fun &&__fun, _As &&...__as) {
     static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...);
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   concept __nothrow_callable = __callable<_Fun, _As...> && requires(_Fun &&__fun, _As &&...__as) {
     { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __mlist;
 
@@ -65,16 +68,20 @@ namespace STDEXEC
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ap, class _Bp>
   concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ap, class _Bp>
   concept __not_same_as = !STDEXEC_IS_SAME(_Ap, _Bp);
 
   // Handy concepts
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Up>
   concept __decays_to = __same_as<__decay_t<_Ty>, _Up>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Up>
   concept __not_decays_to = !__decays_to<_Ty, _Up>;
 
@@ -93,6 +100,7 @@ namespace STDEXEC
   template <class _Ty, class... _Us>
   concept __all_of = (__same_as<_Ty, _Us> && ...);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class... _Us>
   concept __none_of = (__not_same_as<_Ty, _Us> && ...);
 
@@ -102,6 +110,7 @@ namespace STDEXEC
   template <class... _As, template <class...> class _Ty>
   constexpr bool __is_instance_of_<_Ty<_As...>, _Ty> = true;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ay, template <class...> class _Ty>
   concept __is_instance_of = __is_instance_of_<_Ay, _Ty>;
 
@@ -129,13 +138,16 @@ namespace STDEXEC
 
     // Make sure we're using a same_as concept that doesn't instantiate a class template
     // (i.e., std::is_same)
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ap, class _Bp>
     concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
 
 #  if !STDEXEC_NO_STDCPP_CONCEPTS_HEADER()
 
     using std::integral;
+    STDEXEC_MODULE_EXPORT_AUTHORING
     using std::derived_from;
+    STDEXEC_MODULE_EXPORT_AUTHORING
     using std::convertible_to;
     using std::equality_comparable;
 
@@ -144,10 +156,12 @@ namespace STDEXEC
     template <class T>
     concept integral = std::is_integral_v<T>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ap, class _Bp>
     concept derived_from = STDEXEC_IS_BASE_OF(_Bp, _Ap)
                         && STDEXEC_IS_CONVERTIBLE_TO(_Ap const volatile *, _Bp const volatile *);
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _From, class _To>
     concept convertible_to = STDEXEC_IS_CONVERTIBLE_TO(_From, _To)
                           && requires(__declfn_t<_From> __fun) { static_cast<_To>(__fun()); };
@@ -198,6 +212,7 @@ namespace STDEXEC
     template <class _Ty, class... _As>
     concept constructible_from = destructible<_Ty> && STDEXEC_IS_CONSTRUCTIBLE(_Ty, _As...);
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ty>
     concept default_initializable = constructible_from<_Ty> && requires { _Ty{}; }
                                  && requires { ::new _Ty; };
@@ -289,6 +304,7 @@ namespace STDEXEC
     { _Ty{__as()...} } noexcept;
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   concept __movable_value = __std::move_constructible<__decay_t<_Ty>>
                          && __std::constructible_from<__decay_t<_Ty>, _Ty>;
@@ -303,6 +319,7 @@ namespace STDEXEC
   concept __nothrow_constructible_from = __std::constructible_from<_Ty, _As...>
                                       && STDEXEC_IS_NOTHROW_CONSTRUCTIBLE(_Ty, _As...);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   concept __nothrow_move_constructible = (__nothrow_constructible_from<_Ts, _Ts> && ...);
 
@@ -327,22 +344,26 @@ namespace STDEXEC
   template <class... _Ts>
   concept __nothrow_copy_assignable = (__nothrow_assignable_from<_Ts, _Ts const &> && ...);
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   concept __decay_copyable = (__std::constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
   template <class... _Ts>
   using __decay_copyable_t = __mbool<__decay_copyable<_Ts...>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   concept __nothrow_decay_copyable = (__nothrow_constructible_from<__decay_t<_Ts>, _Ts> && ...);
 
   template <class... _Ts>
   using __nothrow_decay_copyable_t = __mbool<__nothrow_decay_copyable<_Ts...>>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = __std::derived_from<__decay_t<_Ty>, _Up>;
 
   // See [allocator.requirements.general]/p99 (https://eel.is/c++draft/allocator.requirements.general#99)
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Alloc>
   concept __simple_allocator =  //
     requires(_Alloc __alloc, std::size_t __count) {

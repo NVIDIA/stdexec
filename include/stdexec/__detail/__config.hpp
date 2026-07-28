@@ -38,15 +38,15 @@
 
 #include "__preprocessor.hpp"
 
+#if __has_include(<version>)
+#  include <version>
+#else
+#  include <ciso646>  // For stdlib feature-test macros when <version> is not available
+#endif
+
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#  if __has_include(<version>)
-#    include <version>
-#  else
-#    include <ciso646>  // For stdlib feature-test macros when <version> is not available
-#  endif
-
 #  include <cassert>
 #  include <cstdlib>
 #  include <type_traits>  // IWYU pragma: keep
@@ -970,4 +970,7 @@ namespace STDEXEC
 #define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT
 
 STDEXEC_MODULE_EXPORT namespace STDEXEC
-{}
+{
+  namespace parallel_scheduler_replacement
+  {}
+}

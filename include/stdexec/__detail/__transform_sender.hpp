@@ -202,6 +202,7 @@ namespace STDEXEC
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
 
   /////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Scheduler, class _Env, class _Tag = set_value_t>
   concept __completes_on =
     __decays_to<__call_result_t<get_completion_scheduler_t<_Tag>, env_of_t<_Sender>, _Env>,

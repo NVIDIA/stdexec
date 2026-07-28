@@ -50,6 +50,7 @@ namespace STDEXEC
   template <class _Ret, class... _Args>
   using __fn_ptr_t = _Ret (*)(_Args...);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   concept __mnever = false;
 
@@ -61,13 +62,14 @@ namespace STDEXEC
   using __mtypeof = decltype(_Value);
 #  endif
 
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __mlist;
 
   template <class... _Ts>
   using __mlist_ptr = __mlist<_Ts...> *;
 
-  template <class _Tp>
+  STDEXEC_MODULE_EXPORT_META template <class _Tp>
   using __midentity = _Tp;
 
   template <auto _Np>
@@ -99,6 +101,7 @@ namespace STDEXEC
   template <class _Tp, class _Up>
   using __msecond = _Up;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __undefined;
 
@@ -178,12 +181,14 @@ namespace STDEXEC
     {}
   };
 
+  STDEXEC_MODULE_EXPORT_META
   using __msuccess = int;
 
   template <class _What, class... _With>
   struct _WARNING_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What>
   struct _ERROR_
   {
@@ -215,9 +220,11 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <class... _What>
   using __mexception = _ERROR_<_What...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class>
   extern __msuccess __ok_v;
 
@@ -230,18 +237,23 @@ namespace STDEXEC
   template <class _Ty>
   using __ok_t = decltype(__ok_v<_Ty>);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class... _Ts>
   using __mfind_error = decltype((__ok_t<_Ts>(), ..., __msuccess()));
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Arg>
   concept __ok = STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Arg>
   concept __merror = !STDEXEC_IS_SAME(__ok_t<_Arg>, __msuccess);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Args>
   using __mcall = _Fn::template __f<_Args...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class _Arg>
   using __mcall1 = _Fn::template __f<_Arg>;
 
@@ -316,9 +328,11 @@ namespace STDEXEC
   //! Metafunction invocation
   //! Given a metafunction, `_Fn`, and args.
   //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Args>
   using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __qq
   {
@@ -326,6 +340,7 @@ namespace STDEXEC
     using __f = _Fn<_Args...>;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class> class _Fn>
   struct __q1
   {
@@ -350,6 +365,7 @@ namespace STDEXEC
   //!
   //! This design lets us report type errors briefly at the library boundary, even if the
   //! actual error happens deep inside a meta-program.
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __q
   {
@@ -371,6 +387,7 @@ namespace STDEXEC
     using __f = _Error;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn, class... _Front>
   struct __mbind_front_q
   {
@@ -378,9 +395,11 @@ namespace STDEXEC
     using __f = __minvoke_q<_Fn, _Front..., _Args...>;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Front>
   using __mbind_front = __mbind_front_q<_Fn::template __f, _Front...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn, class... _Back>
   struct __mbind_back_q
   {
@@ -391,6 +410,7 @@ namespace STDEXEC
   template <class _Fn, class... _Back>
   using __mbind_back = __mbind_back_q<_Fn::template __f, _Back...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Tp, class... _Args>
   concept __minvocable_q = requires { typename __minvoke_q<_Tp, _Args...>; };
 
@@ -462,15 +482,18 @@ namespace STDEXEC
   template <class _Pred, class _Then, class _Else>
   using __if = __minvoke_q<__detail::__if_t, _Pred, _Then, _Else>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <bool _Pred, class _Then, class _Else>
   using __if_c = __minvoke<__detail::__if_<_Pred>, _Then, _Else>;
 
   template <class _Pred, class _Then, class _Else, class... _Args>
   using __minvoke_if = __minvoke<__if<_Pred, _Then, _Else>, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <bool _Pred, class _Then, class _Else, class... _Args>
   using __minvoke_if_c = __minvoke<__if_c<_Pred, _Then, _Else>, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Tp>
   struct __mconst
   {
@@ -492,9 +515,11 @@ namespace STDEXEC
     using __f = __minvoke_if_c<__minvocable<_Try, _Args...>, _Try, _Catch, _Args...>;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class _Default>
   using __mwith_default = __mtry_catch<_Fn, __mconst<_Default>>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn, class _Default>
   using __mwith_default_q = __mtry_catch_q<_Fn, __mconst<_Default>>;
 
@@ -504,6 +529,7 @@ namespace STDEXEC
   template <template <class...> class _Fn, class _Default, class... _Args>
   using __minvoke_or_q = __minvoke<__mwith_default_q<_Fn, _Default>, _Args...>;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class _Continuation = __q<__mlist>>
   struct __mtransform
   {
@@ -697,6 +723,7 @@ namespace STDEXEC
     using __f = __mapply<__mbind_back<_Continuation, _Item>, _List>;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __mcompose
   {};
@@ -749,6 +776,7 @@ namespace STDEXEC
                           __if<__minvoke<_Pred, _Args>, __mlist<>, __mlist<_Args>>...>;
   };
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Return>
   struct __qf
   {
@@ -819,6 +847,7 @@ namespace STDEXEC
     using __mfront_ = _Ty;
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_META
   template <class... _As>
   using __mfront = __minvoke_q<__detail::__mfront_, _As...>;
 
@@ -940,6 +969,7 @@ namespace STDEXEC
   template <class _Set, class... _Ty>
   concept __mset_contains = (STDEXEC_IS_BASE_OF(__mtype<_Ty>, _Set) && ...);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Set, class... _Ty>
   using __mset_contains_t = __mbool<__mset_contains<_Set, _Ty...>>;
 
@@ -991,12 +1021,14 @@ namespace STDEXEC
   template <class _Set, class... _Ts>
   using __mset_insert = decltype(+(__declval<_Set &>() % ... % __declval<__mtype<_Ts> &>()));
 
+  STDEXEC_MODULE_EXPORT_META
   template <class... _Ts>
   using __mmake_set = __mset_insert<__mset<>, _Ts...>;
 
   STDEXEC_MODULE_EXPORT_META template <class _Set1, class _Set2>
   concept __mset_eq = __mapply<__set::__eq<_Set1>, _Set2>::value;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Continuation = __q<__mlist>>
   struct __munique
   {
@@ -1028,6 +1060,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Continuation = __q<__mlist>>
   struct __msort
   {

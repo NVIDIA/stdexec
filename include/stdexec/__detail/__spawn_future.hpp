@@ -122,6 +122,7 @@ namespace STDEXEC
       stop_token_of_t<_Env>,
       __future_stop_callback>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env, class... _Sigs>
     using __future_completions_t =
       __future_completions<__stop_callback_is_nothrow_constructible<_Env>
@@ -786,6 +787,7 @@ namespace STDEXEC
   //! @see exec::start_detached    — scope-less fire-and-forget (extension)
   //! @see stdexec::sync_wait      — top-level synchronous wait that returns the result
   //! @see stdexec::when_all       — combine multiple senders concurrently (lazy)
+  STDEXEC_MODULE_EXPORT
   struct spawn_future_t
   {
     //! @brief Spawn @c __sndr into the scope identified by @c __tkn,
@@ -885,6 +887,7 @@ namespace STDEXEC
   //! semantics, and a usage example.
   //!
   //! @hideinitializer
+  STDEXEC_MODULE_EXPORT
   inline constexpr spawn_future_t spawn_future{};
 
   template <>

@@ -505,6 +505,7 @@ namespace STDEXEC
     constexpr void set_stopped() noexcept {}
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env>
   struct __receiver_archetype : __receiver_archetype_base
   {

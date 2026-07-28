@@ -180,6 +180,7 @@ namespace STDEXEC
     && sender<_Sender>      //
     && __constant_completion_signatures_v<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Receiver, class _Sender>
   concept __receiver_from =
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
@@ -239,6 +240,7 @@ namespace STDEXEC
   //! @see stdexec::sender                    — the base concept (no environment required)
   //! @see stdexec::sender_in                 — sender with a concrete environment
   //! @see stdexec::get_completion_signatures — the CPO that throws @c dependent_sender_error
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
 
@@ -328,6 +330,7 @@ namespace STDEXEC
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
   constexpr auto __diagnose_sender_concept_failure() noexcept
   {

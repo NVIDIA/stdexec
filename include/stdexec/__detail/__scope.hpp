@@ -33,6 +33,7 @@ import stdexec;
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class... _Ts>
   struct __scope_guard;
 

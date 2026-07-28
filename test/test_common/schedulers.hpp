@@ -16,8 +16,15 @@
 
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include <stdexec/__detail/__config.hpp>
+
 #include <test_common/type_helpers.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#include <stdexec/execution.hpp>
 
 #include <condition_variable>
 #include <exception>
@@ -26,6 +33,7 @@
 #include <mutex>
 #include <utility>
 #include <vector>
+#endif
 
 namespace ex = STDEXEC;
 

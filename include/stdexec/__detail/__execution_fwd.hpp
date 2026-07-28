@@ -66,6 +66,7 @@ namespace STDEXEC
   using __nullable_std_variant =
     __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   using __decayed_std_tuple = std::tuple<__decay_t<_Ts>...>;
 
@@ -135,6 +136,7 @@ namespace STDEXEC
   struct get_completion_scheduler_t;
   STDEXEC_MODULE_EXPORT template <class _CPO = void>
   struct get_completion_domain_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <__completion_tag _CPO>
   struct __get_completion_behavior_t;
   STDEXEC_MODULE_EXPORT struct get_domain_t;
@@ -160,6 +162,7 @@ namespace STDEXEC
                                                    _Attrs,
                                                    _Env const &...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
@@ -210,6 +213,7 @@ namespace STDEXEC
 
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What, class... _Values>
   [[nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
@@ -317,6 +321,7 @@ namespace STDEXEC
   struct __read_env_t;
   STDEXEC_MODULE_EXPORT extern __read_env_t const read_env;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __write_env_t;
   STDEXEC_MODULE_EXPORT extern __write_env_t const write_env;
 
@@ -345,6 +350,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // deprecated interfaces (see __deprecations.hpp):
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_just_t;
   extern __transfer_just_t const __transfer_just;
 }  // namespace STDEXEC
