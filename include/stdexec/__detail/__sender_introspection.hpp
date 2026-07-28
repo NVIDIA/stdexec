@@ -232,13 +232,16 @@ namespace STDEXEC
     template <class _Sender>
     using __desc_of_t = __call_result_t<__structured_apply, __get_desc, _Sender>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
     extern __undefined<_Sender> &__desc_of_v;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
       requires(__structured_binding_size_v<_Sender> >= 2)
     extern __desc_of_t<_Sender> __desc_of_v<_Sender>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <auto _Descriptor>
     extern decltype(_Descriptor()) __desc_of_v<__sexpr<_Descriptor>>;
   }  // namespace __detail
