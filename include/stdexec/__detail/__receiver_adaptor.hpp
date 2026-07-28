@@ -110,7 +110,7 @@ namespace STDEXEC
 #    define STDEXEC_MISSING_MEMBER(_Dp, _TAG) (__missing_##_TAG<_Dp>())
 #    define STDEXEC_DEFINE_MEMBER(_TAG)                                                            \
     template <class _Dp>                                                                           \
-    static constexpr bool __missing_#  #_TAG() noexcept {                                          \
+    static constexpr bool __missing_##_TAG() noexcept {                                            \
       return requires { requires bool(int(_Dp::_TAG)); };                                          \
     }                                                                                              \
     STDEXEC_DISPATCH_MEMBER(_TAG)                                                                  \
