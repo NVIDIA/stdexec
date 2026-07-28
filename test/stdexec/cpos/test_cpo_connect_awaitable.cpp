@@ -16,19 +16,19 @@
  */
 #include <catch2/catch_all.hpp>
 
-#include <stdexec/coroutine.hpp>
+#include <stdexec/__detail/__config.hpp>
 
-// TODO: I don't know why awaitables aren't senders when modules are enabled
-#if !STDEXEC_NO_STDCPP_COROUTINES() && !STDEXEC_USE_MODULES()
+#if !STDEXEC_NO_STDCPP_COROUTINES()
 
 #  include "test_common/receivers.hpp"
 #  include "test_common/type_helpers.hpp"
-#  include <stdexec/execution.hpp>
 
 #  if STDEXEC_USE_MODULES()
 import std;
+import stdexec;
 #  else
 #    include <stdexcept>
+#    include <stdexec/execution.hpp>
 #    include <type_traits>
 #  endif
 
