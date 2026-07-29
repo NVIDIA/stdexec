@@ -20,25 +20,33 @@
 
 #include <exec/asio/asio_config.hpp>
 
-#include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__config.hpp"
 
-#include "../../stdexec/__detail/__completion_signatures_of.hpp"
-#include "../../stdexec/__detail/__env.hpp"
-#include "../../stdexec/__detail/__queries.hpp"
-#include "../../stdexec/__detail/__receivers.hpp"
-#include "../../stdexec/__detail/__type_traits.hpp"
-#include "../../stdexec/stop_token.hpp"
-#include "as_default_on.hpp"
+#  include "as_default_on.hpp"
 
-#include <concepts>
-#include <exception>
-#include <functional>
-#include <mutex>
-#include <optional>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <version>
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include "../../stdexec/__detail/__execution_fwd.hpp"
+
+#  include "../../stdexec/__detail/__completion_signatures_of.hpp"
+#  include "../../stdexec/__detail/__env.hpp"
+#  include "../../stdexec/__detail/__queries.hpp"
+#  include "../../stdexec/__detail/__receivers.hpp"
+#  include "../../stdexec/__detail/__type_traits.hpp"
+#  include "../../stdexec/stop_token.hpp"
+
+#  include <concepts>
+#  include <exception>
+#  include <functional>
+#  include <mutex>
+#  include <optional>
+#  include <tuple>
+#  include <type_traits>
+#  include <utility>
+#  include <version>
+#endif
 
 namespace experimental::execution::asio
 {

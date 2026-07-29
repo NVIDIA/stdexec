@@ -194,6 +194,7 @@ namespace STDEXEC
     return __pos_of(__same, __same + sizeof...(_Ts));
   }
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Uy>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline)
   constexpr auto __forward_like(_Uy&& __uy) noexcept -> auto&&
