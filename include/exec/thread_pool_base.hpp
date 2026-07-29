@@ -17,27 +17,34 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__execution_fwd.hpp"
-
-#include "../stdexec/__detail/__connect.hpp"
-#include "../stdexec/__detail/__env.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__operation_states.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
-#include "../stdexec/__detail/__schedulers.hpp"
-#include "../stdexec/__detail/__transform_completion_signatures.hpp"
-#include "../stdexec/__detail/__type_traits.hpp"
+#include "../stdexec/__detail/__config.hpp"
 
 #include "sender_for.hpp"
 #include "static_thread_pool.hpp"
 
-#include <atomic>
-#include <concepts>
-#include <cstdint>
-#include <exception>
-#include <tuple>
-#include <utility>
-#include <variant>
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include "../stdexec/__detail/__execution_fwd.hpp"
+
+#  include "../stdexec/__detail/__connect.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__operation_states.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/__detail/__schedulers.hpp"
+#  include "../stdexec/__detail/__transform_completion_signatures.hpp"
+#  include "../stdexec/__detail/__type_traits.hpp"
+
+#  include <atomic>
+#  include <concepts>
+#  include <cstdint>
+#  include <exception>
+#  include <tuple>
+#  include <utility>
+#  include <variant>
+#endif
 
 namespace experimental::execution
 {

@@ -452,6 +452,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT_AUTHORING
   using __eptr_completion_t = completion_signatures<set_error_t(std::exception_ptr)>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _NoExcept>
   using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion_t>;
 

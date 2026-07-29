@@ -149,6 +149,7 @@ namespace STDEXEC
   template <class _Tp>
   concept __is_bool_constant = requires { typename __mbool<_Tp::value>; };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag>
   concept __forwarding_query = forwarding_query(_Tag{});
 

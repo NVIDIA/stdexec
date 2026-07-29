@@ -56,6 +56,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   using __std_variant = __minvoke_if_c<sizeof...(_Ts) == 0,
                                        __mconst<__detail::__not_a_variant>,
