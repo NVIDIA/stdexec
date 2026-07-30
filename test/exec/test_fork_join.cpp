@@ -114,6 +114,30 @@ namespace
     CHECK(i2 == 42);
   }
 
+  TEST_CASE("fork_join preserves reference results", "[adaptors][fork_join]")
+  {
+    struct immovable
+    {
+      immovable()                             = default;
+      immovable(immovable const &)            = delete;
+      immovable(immovable &&)                 = delete;
+      immovable &operator=(immovable const &) = delete;
+      immovable &operator=(immovable &&)      = delete;
+    } value;
+
+    auto source = exec::just_from(
+      [&](auto sink) noexcept
+      {
+        sink(value);
+        return completion_signatures<set_value_t(immovable &)>{};
+      });
+    auto check_reference = then([&](immovable &result) noexcept { CHECK(&result == &value); });
+
+    auto sndr = exec::fork_join(std::move(source), check_reference, check_reference);
+    STATIC_REQUIRE(sender_in<decltype(sndr), env<>>);
+    sync_wait(std::move(sndr));
+  }
+
   TEST_CASE("fork_join with empty value channel", "[adaptors][fork_join]")
   {
     auto sndr = ::STDEXEC::just() | ::STDEXEC::then([]() noexcept -> void {})

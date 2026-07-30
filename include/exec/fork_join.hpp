@@ -16,17 +16,12 @@
 #pragma once
 
 #include "../stdexec/__detail/__receiver_ref.hpp"
-#include "../stdexec/__detail/__storage.hpp"
+#include "../stdexec/__detail/__storage_for_completion_signatures.hpp"
 #include "../stdexec/execution.hpp"
-
-#include <exception>
 
 namespace experimental::execution
 {
   struct fork_join_t;
-
-  struct PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE
-  {};
 
   struct INVALID_ARGUMENTS_TO_FORK_JOIN
   {};
@@ -44,7 +39,7 @@ namespace experimental::execution
     };
 
     template <class Completions>
-    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage, Completions>;
+    using _storage_t = STDEXEC::storage_for_completion_signatures<Completions>;
 
     template <class Domain>
     struct _env_t
@@ -70,7 +65,14 @@ namespace experimental::execution
     using _cache_sndr_completions_t =
       STDEXEC::completion_signatures<STDEXEC::__mapply<STDEXEC::__q<_cref_sig_t>, AsyncResults>...>;
 
-    template <class Variant, class Domain>
+    template <class... Signatures>
+    consteval auto _cache_sndr_completions(STDEXEC::completion_signatures<Signatures...>)
+      -> _cache_sndr_completions_t<Signatures...>
+    {
+      return {};
+    }
+
+    template <class Storage, class Domain>
     struct _cache_sndr_t
     {
       using sender_concept = STDEXEC::sender_tag;
@@ -82,18 +84,39 @@ namespace experimental::execution
 
         STDEXEC_ATTRIBUTE(host, device) void start() noexcept
         {
-          std::as_const(*_results_).__complete(_rcvr_);
+          STDEXEC::visit_stored_completion(
+            STDEXEC::__overload{[]() noexcept -> void
+                                {
+                                  STDEXEC_ASSERT(false);
+                                  STDEXEC_UNREACHABLE();
+                                },
+                                [&](auto const & __completion) noexcept -> void
+                                {
+                                  STDEXEC::__apply(
+                                    [&](auto&&... __args) noexcept
+                                    {
+                                      __completion.tag()(static_cast<Rcvr&&>(_rcvr_),
+                                                         static_cast<decltype(__args)&&>(
+                                                           __args)...);
+                                    },
+                                    __completion.__forward_arguments());
+                                }},
+            *_results_);
         }
 
         Rcvr            _rcvr_;
-        Variant const * _results_;
+        Storage const * _results_;
       };
 
       template <class _Self, class... _Env>
       STDEXEC_ATTRIBUTE(host, device)
       static consteval auto get_completion_signatures()
       {
-        return STDEXEC::__mapply<STDEXEC::__qq<_cache_sndr_completions_t>, Variant>{};
+        auto _stored_completions = Storage::get_completion_signatures();
+        STDEXEC_IF_OK(_stored_completions)
+        {
+          return _cache_sndr_completions(_stored_completions);
+        }
       }
 
       template <class Rcvr>
@@ -109,14 +132,14 @@ namespace experimental::execution
         return {};
       }
 
-      Variant const * _results_;
+      Storage const * _results_;
     };
 
     template <class Completions, class Closures, class Domain>
     using _when_all_sndr_t =
       STDEXEC::__apply_result_t<_mk_when_all_fn,
                                 Closures,
-                                _cache_sndr_t<_variant_t<Completions>, Domain>>;
+                                _cache_sndr_t<_storage_t<Completions>, Domain>>;
 
     template <class Sndr, class Closures, class Rcvr>
     struct _opstate_t
@@ -131,7 +154,7 @@ namespace experimental::execution
         STDEXEC::connect_result_t<Sndr, STDEXEC::__receiver_ref<_opstate_t, _env_t>>;
       using _fork_opstate_t =
         STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__receiver_ref<Rcvr>>;
-      using _cache_sndr_t = _fork_join::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
+      using _cache_sndr_t = _fork_join::_cache_sndr_t<_storage_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
@@ -152,7 +175,7 @@ namespace experimental::execution
       constexpr ~_opstate_t()
       {
         // If this opstate was never started, we must explicitly destroy the _child_opstate_.
-        if (_cache_.__is_valueless())
+        if (!_cache_.has_completion())
         {
           _child_opstate_.__destroy();
         }
@@ -168,20 +191,7 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       constexpr void _complete(Tag, Args&&... args) noexcept
       {
-        STDEXEC_TRY
-        {
-          using _tuple_t = STDEXEC::__decayed_tuple<Tag, Args...>;
-          _cache_.template emplace<_tuple_t>(Tag{}, static_cast<Args&&>(args)...);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!STDEXEC::__nothrow_decay_copyable<Args...>)
-          {
-            using _tuple_t = STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>;
-            _cache_._results_.template emplace<_tuple_t>(STDEXEC::set_error,
-                                                         ::std::current_exception());
-          }
-        }
+        _cache_.arrive(Tag{}, static_cast<Args&&>(args)...);
         _child_opstate_.__destroy();
         STDEXEC::start(_fork_opstate_);
       }
@@ -213,7 +223,7 @@ namespace experimental::execution
       }
 
       Rcvr                                         _rcvr_;
-      _variant_t<_child_completions_t>             _cache_;
+      _storage_t<_child_completions_t>             _cache_;
       STDEXEC::__manual_lifetime<_child_opstate_t> _child_opstate_{};
       _fork_opstate_t                              _fork_opstate_;
     };
@@ -238,17 +248,9 @@ namespace experimental::execution
           using _domain_t            = __completion_domain_of_t<set_value_t, _child_sndr_t, Env...>;
           using _child_t             = __copy_cvref_t<Self, _child_sndr_t>;
           using _child_completions_t = __completion_signatures_of_t<_child_t, __fwd_env_t<Env>...>;
-          using __decay_copyable_results_t = __decay_copyable_results_t<_child_completions_t>;
-
           if constexpr (!__valid_completion_signatures<_child_completions_t>)
           {
             return _child_completions_t{};
-          }
-          else if constexpr (!__decay_copyable_results_t::value)
-          {
-            return STDEXEC::__throw_compile_time_error<  //
-              _WHAT_(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
-              _IN_ALGORITHM_(exec::fork_join_t)>();
           }
           else
           {
