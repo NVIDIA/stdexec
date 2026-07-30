@@ -18,6 +18,7 @@
 #include <exec/ensure_started.hpp>
 
 #include <exec/async_scope.hpp>
+#include <exec/just_from.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
@@ -108,6 +109,35 @@ namespace
     sch.start_next();
     CHECK(called);
     auto op = ex::connect(std::move(snd), expect_value_receiver{42});
+    ex::start(op);
+  }
+
+  TEST_CASE("ensure_started preserves reference results", "[adaptors][ensure_started]")
+  {
+    struct immovable
+    {
+      immovable()                             = default;
+      immovable(immovable const &)            = delete;
+      immovable(immovable &&)                 = delete;
+      immovable &operator=(immovable const &) = delete;
+      immovable &operator=(immovable &&)      = delete;
+    } value;
+
+    auto source = exec::just_from(
+      [&](auto sink) noexcept
+      {
+        sink(value);
+        return ex::completion_signatures<ex::set_value_t(immovable &)>{};
+      });
+    auto sndr    = exec::ensure_started(std::move(source));
+    using sndr_t = decltype(sndr);
+    static_assert(
+      set_equivalent<ex::completion_signatures_of_t<sndr_t, ex::env<>>,
+                     ex::completion_signatures<ex::set_value_t(immovable &), ex::set_stopped_t()>>);
+
+    auto checked = std::move(sndr)
+                 | ex::then([&](immovable &result) noexcept { CHECK(&result == &value); });
+    auto op = ex::connect(std::move(checked), expect_void_receiver{});
     ex::start(op);
   }
 
