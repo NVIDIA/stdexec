@@ -20,7 +20,7 @@
 
 // include these after execution.hpp
 #include "../../stdexec/__detail/__senders.hpp"
-#include "../../stdexec/__detail/__tuple.hpp"
+#include "../../stdexec/__detail/__storage_for_completion_signatures.hpp"
 #include "../sender_for.hpp"
 #include "../sequence_senders.hpp"
 
@@ -28,46 +28,20 @@
 
 namespace experimental::execution
 {
-  template <class _Variant, class _Type, class... _Args>
-  concept __variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    __var.template emplace<_Type>(static_cast<_Args&&>(__args)...);
-  };
-
-  template <class _Variant, class _Type, class... _Args>
-  concept __nothrow_variant_emplaceable = requires(_Variant& __var, _Args&&... __args) {
-    { __var.template emplace<_Type>(static_cast<_Args&&>(__args)...) } noexcept;
-  };
-
   namespace __ignore_all_values
   {
     using namespace STDEXEC;
 
-    constexpr auto __complete_fn =
-      []<class _Receiver, class _Tag, class... _Args>(_Receiver&& __rcvr,
-                                                      _Tag,
-                                                      _Args&&... __args) noexcept
-    {
-      _Tag()(static_cast<_Receiver&&>(__rcvr), static_cast<_Args&&>(__args)...);
-    };
-
-    constexpr auto __visit_fn =
-      []<class _Receiver, class _Tuple>(_Receiver&& __rcvr, _Tuple&& __tupl) noexcept
-    {
-      STDEXEC::__apply(__complete_fn,
-                       static_cast<_Tuple&&>(__tupl),
-                       static_cast<_Receiver&&>(__rcvr));
-    };
-
     template <class _ResultsStorage>
     struct __result_type
     {
-      template <class... _Args>
-      void __emplace(_Args&&... __args) noexcept
+      template <class _Tag, class... _Args>
+      void __arrive(_Tag __tag, _Args&&... __args) noexcept
       {
         int __expected = 0;
         if (__emplaced_.compare_exchange_strong(__expected, 1, __std::memory_order_relaxed))
         {
-          __result_.template emplace<__decayed_tuple<_Args...>>(static_cast<_Args&&>(__args)...);
+          __result_.arrive(__tag, static_cast<_Args&&>(__args)...);
           __emplaced_.store(2, __std::memory_order_release);
         }
       }
@@ -83,9 +57,12 @@ namespace experimental::execution
         {
           STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr));
         }
-        else if constexpr (STDEXEC::__mapply<STDEXEC::__msize, _ResultsStorage>::value != 0)
+        else
         {
-          static_cast<_ResultsStorage&&>(__result_).__complete(__rcvr);
+          bool const __completed = static_cast<_ResultsStorage&&>(__result_).complete(
+            static_cast<_Receiver&&>(__rcvr));
+          STDEXEC_ASSERT(__completed);
+          (void) __completed;
         }
       }
 
@@ -114,26 +91,22 @@ namespace experimental::execution
       }
 
       template <class _Error>
-        requires __variant_emplaceable<_ResultsStorage,
-                                       __decayed_tuple<set_error_t, _Error>,
-                                       set_error_t,
-                                       _Error>
-              && __callable<STDEXEC::set_stopped_t, _ItemReceiver>
+        requires requires(_ResultsStorage& __storage, _Error&& __error) {
+          __storage.arrive(set_error, static_cast<_Error&&>(__error));
+        } && __callable<STDEXEC::set_stopped_t, _ItemReceiver>
       void set_error(_Error&& __error) noexcept
       {
         // store error and signal stop
-        __op_->__result_->__emplace(set_error_t(), static_cast<_Error&&>(__error));
+        __op_->__result_->__arrive(set_error_t(), static_cast<_Error&&>(__error));
         STDEXEC::set_stopped(static_cast<_ItemReceiver&&>(__op_->__rcvr_));
       }
 
       void set_stopped() noexcept
-        requires __variant_emplaceable<_ResultsStorage,
-                                       __decayed_tuple<set_stopped_t>,
-                                       set_stopped_t>
+        requires requires(_ResultsStorage& __storage) { __storage.arrive(set_stopped); }
               && __callable<set_stopped_t, _ItemReceiver>
       {
         // stop without error
-        __op_->__result_->__emplace(set_stopped_t());
+        __op_->__result_->__arrive(set_stopped_t());
         STDEXEC::set_stopped(static_cast<_ItemReceiver&&>(__op_->__rcvr_));
       }
 
@@ -251,19 +224,23 @@ namespace experimental::execution
     using __is_set_value_signature_t =
       __mbool<__same_as<set_value_t, __signature_tag_t<_Signature>>>;
 
+    template <class _CompletionSignatures>
+    using __nonvalue_completion_signatures_t =
+      __mapply<__mremove_if<__q1<__is_set_value_signature_t>, __qq<completion_signatures>>,
+               _CompletionSignatures>;
+
     // Storage for the non-set_value completions
     template <class _Sender, class _Env>
-    using __result_variant_t =
-      __mapply<__mremove_if<__q1<__is_set_value_signature_t>, __qq<__results_storage>>,
-               __sequence_completion_signatures_of_t<_Sender, _Env>>;
+    using __result_storage_t = storage_for_completion_signatures<
+      __nonvalue_completion_signatures_t<__sequence_completion_signatures_of_t<_Sender, _Env>>>;
 
     template <class _Sender, class _Receiver>
     struct __operation
-      : __operation_base<_Receiver, __result_variant_t<_Sender, env_of_t<_Receiver>>>
+      : __operation_base<_Receiver, __result_storage_t<_Sender, env_of_t<_Receiver>>>
     {
-      using __variant_t  = __result_variant_t<_Sender, env_of_t<_Receiver>>;
-      using __base_t     = __operation_base<_Receiver, __variant_t>;
-      using __receiver_t = __receiver<_Receiver, __variant_t>;
+      using __storage_t  = __result_storage_t<_Sender, env_of_t<_Receiver>>;
+      using __base_t     = __operation_base<_Receiver, __storage_t>;
+      using __receiver_t = __receiver<_Receiver, __storage_t>;
 
       explicit __operation(_Sender&& __sndr, _Receiver __rcvr)
         noexcept(__nothrow_subscribable<_Sender, __receiver_t>)
@@ -317,7 +294,18 @@ namespace experimental::execution
       static consteval auto __get_completion_signatures()
       {
         static_assert(sender_for<_Sender, ignore_all_values_t>);
-        return __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
+        auto __completions = __sequence_completion_signatures_of<__child_of<_Sender>, _Env...>();
+        STDEXEC_IF_OK(__completions)
+        {
+          using __storage_t = storage_for_completion_signatures<
+            __nonvalue_completion_signatures_t<decltype(__completions)>>;
+          auto __stored_completions = __storage_t::get_completion_signatures();
+          STDEXEC_IF_OK(__stored_completions)
+          {
+            return STDEXEC::__concat_completion_signatures(completion_signatures<set_value_t()>{},
+                                                           __stored_completions);
+          }
+        }
       }
 
       static constexpr auto __connect =
