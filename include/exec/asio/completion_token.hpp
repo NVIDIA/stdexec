@@ -35,11 +35,11 @@ import stdexec;
 #  include "../../stdexec/__detail/__queries.hpp"
 #  include "../../stdexec/__detail/__receivers.hpp"
 #  include "../../stdexec/__detail/__type_traits.hpp"
+#  include "../../stdexec/functional.hpp"
 #  include "../../stdexec/stop_token.hpp"
 
 #  include <concepts>
 #  include <exception>
-#  include <functional>
 #  include <mutex>
 #  include <optional>
 #  include <tuple>
@@ -385,9 +385,9 @@ namespace experimental::execution::asio
           std::apply(
             [&](auto&&... args)
             {
-              std::invoke(static_cast<Initiation&&>(init_),
-                          completion_handler<Signatures, Receiver>(*this),
-                          static_cast<decltype(args)&&>(args)...);
+              ::STDEXEC::__invoke(static_cast<Initiation&&>(init_),
+                                  completion_handler<Signatures, Receiver>(*this),
+                                  static_cast<decltype(args)&&>(args)...);
             },
             std::move(args_));
         }
@@ -626,7 +626,7 @@ namespace ASIOEXEC_ASIO_NAMESPACE
   };
 
   template <typename Signatures, typename Receiver, typename Allocator>
-    requires requires(Receiver const & r) { ::STDEXEC::get_allocator(::STDEXEC::get_env(r)); }
+    requires ::STDEXEC::__callable<::STDEXEC::get_allocator_t, ::STDEXEC::env_of_t<Receiver>>
   struct associated_allocator<
     ::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver>,
     Allocator>
