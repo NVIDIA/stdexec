@@ -26,6 +26,7 @@
 #  include <exec/static_thread_pool.hpp>
 
 #  include <atomic>
+#  include <utility>
 
 #  include <test_common/catch2.hpp>
 
@@ -160,6 +161,51 @@ namespace
     auto t   = test_task_awaits_just_stopped_sender();
     auto res = ex::sync_wait(std::move(t));
     CHECK(!res.has_value());
+  }
+
+  struct destruction_probe
+  {
+    explicit destruction_probe(bool &destroyed) noexcept
+      : destroyed_(&destroyed)
+    {}
+
+    destruction_probe(destruction_probe &&other) noexcept
+      : destroyed_(std::exchange(other.destroyed_, nullptr))
+    {}
+
+    ~destruction_probe()
+    {
+      if (destroyed_ != nullptr)
+      {
+        *destroyed_ = true;
+      }
+    }
+
+    destruction_probe(destruction_probe const &) = delete;
+
+    bool *destroyed_;
+  };
+
+  auto test_task_destroys_frame_before_propagating_stopped(
+    [[maybe_unused]] destruction_probe probe) -> ex::task<int>
+  {
+    co_await ex::just_stopped();
+    FAIL("Expected co_awaiting just_stopped to stop the task");
+    co_return 42;
+  }
+
+  TEST_CASE("task destroys its coroutine frame before propagating stopped", "[types][task]")
+  {
+    bool destroyed = false;
+    auto t = test_task_destroys_frame_before_propagating_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped(
+               [&]() noexcept
+               {
+                 CHECK(destroyed);
+                 return 0;
+               });
+    ex::sync_wait(std::move(t));
+    CHECK(destroyed);
   }
 
   // A sender type that does not claim to complete inline:

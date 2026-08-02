@@ -535,7 +535,10 @@ namespace STDEXEC
       auto __canceled() noexcept -> __std::coroutine_handle<> final
       {
         this->__reset_callback();
-        return this->__handle().promise().continuation().unhandled_stopped();
+        auto const __continuation = this->__handle().promise().continuation();
+        auto const __coro         = std::exchange(this->__task_.__coro_, {});
+        STDEXEC::__coroutine_destroy_nothrow(__coro);
+        return __continuation.unhandled_stopped();
       }
 
       _ParentPromise& __parent_;
