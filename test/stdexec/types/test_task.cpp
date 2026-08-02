@@ -208,6 +208,82 @@ namespace
     CHECK(destroyed);
   }
 
+  auto test_task_yields_stopped([[maybe_unused]] destruction_probe probe) -> ex::task<void>
+  {
+    co_yield ex::with_stopped();
+    FAIL("Expected co_yielding with_stopped to stop the task");
+  }
+
+  TEST_CASE("task can co_yield with_stopped", "[types][task]")
+  {
+    bool destroyed = false;
+    auto t = test_task_yields_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped(
+               [&]() noexcept
+               {
+                 CHECK(destroyed);
+               });
+    ex::sync_wait(std::move(t));
+    CHECK(destroyed);
+  }
+
+  auto test_task_returns_stopped([[maybe_unused]] destruction_probe probe) -> ex::task<int>
+  {
+    co_return ex::with_stopped();
+  }
+
+  TEST_CASE("non-void task can co_return with_stopped", "[types][task]")
+  {
+    bool destroyed = false;
+    auto t = test_task_returns_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped(
+               [&]() noexcept
+               {
+                 CHECK(destroyed);
+                 return 42;
+               });
+    auto [value] = ex::sync_wait(std::move(t)).value();
+    CHECK(value == 42);
+    CHECK(destroyed);
+  }
+
+#  if !STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE()
+  auto test_void_task_returns_stopped([[maybe_unused]] destruction_probe probe) -> ex::task<void>
+  {
+    co_return ex::with_stopped();
+  }
+
+  TEST_CASE("void task can co_return with_stopped", "[types][task]")
+  {
+    bool destroyed = false;
+    auto t = test_void_task_returns_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped(
+               [&]() noexcept
+               {
+                 CHECK(destroyed);
+               });
+    ex::sync_wait(std::move(t));
+    CHECK(destroyed);
+  }
+#  endif
+
+  struct stopped_as_value
+  {
+    constexpr stopped_as_value(ex::with_stopped) noexcept {}
+  };
+
+  auto test_task_returns_with_stopped_as_value() -> ex::task<stopped_as_value>
+  {
+    co_return ex::with_stopped();
+  }
+
+  TEST_CASE("task returns with_stopped as a value when it is convertible to the value type",
+            "[types][task]")
+  {
+    auto result = ex::sync_wait(test_task_returns_with_stopped_as_value());
+    CHECK(result.has_value());
+  }
+
 #  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   struct long_error_env
   {
@@ -239,7 +315,81 @@ namespace
     auto [error] = ex::sync_wait(test_task_catches_converted_yielded_error()).value();
     CHECK(error == 42);
   }
+
+  auto test_task_returns_convertible_error() -> ex::task<int, long_error_env>
+  {
+    co_return ex::with_error{42};
+  }
+
+  auto test_task_catches_converted_returned_error() -> ex::task<long>
+  {
+    try
+    {
+      co_await test_task_returns_convertible_error();
+    }
+    catch (long error)
+    {
+      co_return error;
+    }
+    FAIL("Expected co_awaiting the task to throw its declared error type");
+    co_return 0;
+  }
+
+  TEST_CASE("non-void task converts a co_returned error to its declared error type",
+            "[types][task]")
+  {
+    auto [error] = ex::sync_wait(test_task_catches_converted_returned_error()).value();
+    CHECK(error == 42);
+  }
+
+#    if !STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE()
+  auto test_void_task_returns_convertible_error() -> ex::task<void, long_error_env>
+  {
+    co_return ex::with_error{42};
+  }
+
+  auto test_task_catches_void_task_returned_error() -> ex::task<long>
+  {
+    try
+    {
+      co_await test_void_task_returns_convertible_error();
+    }
+    catch (long error)
+    {
+      co_return error;
+    }
+    FAIL("Expected co_awaiting the task to throw its declared error type");
+    co_return 0;
+  }
+
+  TEST_CASE("void task converts a co_returned error to its declared error type", "[types][task]")
+  {
+    auto [error] = ex::sync_wait(test_task_catches_void_task_returned_error()).value();
+    CHECK(error == 42);
+  }
+#    endif
 #  endif
+
+  struct error_as_value
+  {
+    constexpr error_as_value(ex::with_error<int> error) noexcept
+      : value_(error.error)
+    {}
+
+    int value_;
+  };
+
+  auto test_task_returns_with_error_as_value() -> ex::task<error_as_value>
+  {
+    co_return ex::with_error{42};
+  }
+
+  TEST_CASE("task returns with_error as a value when it is convertible to the value type",
+            "[types][task]")
+  {
+    auto [value] = ex::sync_wait(test_task_returns_with_error_as_value()).value();
+    CHECK(value.value_ == 42);
+  }
 
   // A sender type that does not claim to complete inline:
   struct just_int : ex::__result_of<ex::just, int>
