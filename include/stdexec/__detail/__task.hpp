@@ -623,16 +623,38 @@ namespace STDEXEC
     }
 
     template <class _Error>
-    constexpr auto yield_value(with_error<_Error> __error)  //
-      noexcept(__nothrow_decay_copyable<_Error>)
+    static consteval bool __nothrow_error_conversion()
     {
-      if constexpr (__mapply<__mcontains<__decay_t<_Error>>, __error_variant_t>::value)
+      using __is_convertible_error = __mbind_front_q<__mconvertible_to, _Error>;
+      constexpr auto __count =
+        __mapply<__mcount_if<__is_convertible_error>, __error_variant_t>::value;
+      if constexpr (__count == 1)
       {
-        __state_->__errors_.template emplace<__decay_t<_Error>>(std::move(__error).error);
+        using __error_t =
+          __mapply<__mfind_if<__is_convertible_error, __q<__mfront>>, __error_variant_t>;
+        return __nothrow_constructible_from<__error_t, _Error>;
       }
       else
       {
-        static_assert(__mnever<_Error>, "Error type not in task's error_types");
+        return false;
+      }
+    }
+
+    template <class _Error>
+    constexpr auto yield_value(with_error<_Error> __error)  //
+      noexcept(__nothrow_error_conversion<typename with_error<_Error>::type&&>())
+    {
+      using __source_t = typename with_error<_Error>::type&&;
+      using __is_convertible_error = __mbind_front_q<__mconvertible_to, __source_t>;
+      constexpr auto __count =
+        __mapply<__mcount_if<__is_convertible_error>, __error_variant_t>::value;
+      static_assert(__count == 1,
+                    "The error must be convertible to exactly one of the task's error types");
+      if constexpr (__count == 1)
+      {
+        using __error_t =
+          __mapply<__mfind_if<__is_convertible_error, __q<__mfront>>, __error_variant_t>;
+        __state_->__errors_.template emplace<__error_t>(std::move(__error).error);
       }
       return __completed_awaiter{};
     }

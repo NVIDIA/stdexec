@@ -208,6 +208,39 @@ namespace
     CHECK(destroyed);
   }
 
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct long_error_env
+  {
+    using error_types = ex::completion_signatures<ex::set_error_t(long)>;
+  };
+
+  auto test_task_yields_convertible_error() -> ex::task<void, long_error_env>
+  {
+    co_yield ex::with_error{42};
+    FAIL("Expected co_yielding with_error to complete the task with an error");
+  }
+
+  auto test_task_catches_converted_yielded_error() -> ex::task<long>
+  {
+    try
+    {
+      co_await test_task_yields_convertible_error();
+    }
+    catch (long error)
+    {
+      co_return error;
+    }
+    FAIL("Expected co_awaiting the task to throw its declared error type");
+    co_return 0;
+  }
+
+  TEST_CASE("task converts a co_yielded error to its declared error type", "[types][task]")
+  {
+    auto [error] = ex::sync_wait(test_task_catches_converted_yielded_error()).value();
+    CHECK(error == 42);
+  }
+#  endif
+
   // A sender type that does not claim to complete inline:
   struct just_int : ex::__result_of<ex::just, int>
   {
