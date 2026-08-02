@@ -26,6 +26,8 @@
 #  include <exec/static_thread_pool.hpp>
 
 #  include <atomic>
+#  include <tuple>
+#  include <type_traits>
 
 #  include <test_common/catch2.hpp>
 
@@ -330,8 +332,190 @@ namespace
   }
 
   constinit int global_int = 0;
+  constinit double global_double = 0.0;
 
   constexpr auto wrap_ref = ex::then([](auto &i) noexcept { return std::ref(i); });
+
+  template <bool Inline>
+  struct reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int *    value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {std::move(receiver), value_};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_value_t>) noexcept
+      {
+        if constexpr (Inline)
+        {
+          return ex::__completion_behavior::__inline_completion;
+        }
+        else
+        {
+          return ex::__completion_behavior::__asynchronous_affine;
+        }
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+
+    int *value_;
+  };
+
+  template <bool Inline>
+  struct references_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &, double &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int *    int_value_;
+      double * double_value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(receiver_), *int_value_, *double_value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {std::move(receiver), int_value_, double_value_};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_value_t>) noexcept
+      {
+        if constexpr (Inline)
+        {
+          return ex::__completion_behavior::__inline_completion;
+        }
+        else
+        {
+          return ex::__completion_behavior::__asynchronous_affine;
+        }
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+
+    int *    int_value_;
+    double * double_value_;
+  };
+
+  struct non_affine_reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int &)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int *    value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {std::move(receiver), value_};
+    }
+
+    struct attrs
+    {
+      [[nodiscard]]
+      static constexpr auto query(ex::__get_completion_behavior_t<ex::set_value_t>) noexcept
+      {
+        return ex::__completion_behavior::__asynchronous;
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+
+    int *value_;
+  };
+
+  template <bool Inline>
+  auto task_awaits_reference_sender() -> ex::task<int &>
+  {
+    decltype(auto) i = co_await reference_sender<Inline>{&global_int};
+    STATIC_REQUIRE(std::same_as<decltype(i), int &>);
+    CHECK(&i == &global_int);
+    co_return i;
+  }
+
+  template <bool Inline>
+  auto task_awaits_references_sender() -> ex::task<void>
+  {
+    decltype(auto) values = co_await references_sender<Inline>{&global_int, &global_double};
+    STATIC_REQUIRE(std::same_as<decltype(values), std::tuple<int &, double &>>);
+    CHECK(&std::get<0>(values) == &global_int);
+    CHECK(&std::get<1>(values) == &global_double);
+  }
+
+  auto task_awaits_non_affine_reference_sender() -> ex::task<void>
+  {
+    auto &&i = co_await non_affine_reference_sender{&global_int};
+    CHECK(&i == &global_int);
+    CHECK(i == 42);
+  }
 
   auto test_task_of_reference_type() -> ex::task<int &>
   {
@@ -363,6 +547,45 @@ namespace
     }();
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 42);
+  }
+
+  TEST_CASE("task co_await preserves a single reference from inline sender",
+            "[types][task]")
+  {
+    global_int = 42;
+    auto [i] = ex::sync_wait(task_awaits_reference_sender<true>()).value();
+    CHECK(i == 42);
+  }
+
+  TEST_CASE("task co_await preserves a single reference from async sender",
+            "[types][task]")
+  {
+    global_int = 42;
+    auto [i] = ex::sync_wait(task_awaits_reference_sender<false>()).value();
+    CHECK(i == 42);
+  }
+
+  TEST_CASE("task co_await preserves reference tuple from inline sender",
+            "[types][task]")
+  {
+    global_int = 42;
+    global_double = 0.125;
+    ex::sync_wait(task_awaits_references_sender<true>());
+  }
+
+  TEST_CASE("task co_await preserves reference tuple from async sender",
+            "[types][task]")
+  {
+    global_int = 42;
+    global_double = 0.125;
+    ex::sync_wait(task_awaits_references_sender<false>());
+  }
+
+  TEST_CASE("task co_await preserves a reference when affine inserts finally",
+            "[types][task]")
+  {
+    global_int = 42;
+    ex::sync_wait(task_awaits_non_affine_reference_sender());
   }
 
   struct inline_affine_stopped_sender

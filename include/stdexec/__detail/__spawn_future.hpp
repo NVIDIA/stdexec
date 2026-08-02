@@ -35,8 +35,7 @@ import stdexec;
 #  include "__scope_concepts.hpp"
 #  include "__senders.hpp"
 #  include "__spawn_common.hpp"
-#  include "__storage.hpp"
-#  include "__tuple.hpp"
+#  include "__storage_for_completion_signatures.hpp"
 #  include "__type_traits.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -49,13 +48,6 @@ import stdexec;
 
 namespace STDEXEC
 {
-  template <class _Signature>
-  using __decayed_signature_t = __mapply<__mtransform<__q1<__decay_t>, __q<__fn_t>>, _Signature>;
-
-  template <class _Signature>
-  inline constexpr bool __nothrow_storable_signature =
-    __mapply<__qq<__nothrow_decay_copyable_t>, _Signature>::value;
-
   /////////////////////////////////////////////////////////////////////////////
   // [exec.spawn.future]
   namespace __spawn_future
@@ -96,24 +88,41 @@ namespace STDEXEC
     template <bool _NothrowSyncWork, class... _Sigs>
     struct __future_completions
     {
-      // this case handles _NothrowSyncWork == true
-      // this case is applicable when both conditions are true:
-      //  - the results of all possible completions can be decay-copied into the decayed-tuple that
-      //    stores the results for later consumption by the future; and
-      //  - the stop token provided by the future's receiver can no-throw-construct a stop callback
-      //    in the future's operation state
-      using type = __mcall<__munique<__qq<completion_signatures>>,
-                           set_stopped_t(),
-                           __decayed_signature_t<_Sigs>...>;
+      using __stored_signatures_t =
+        __concat_completion_signatures_t<completion_signatures<set_stopped_t()>,
+                                         completion_signatures<_Sigs...>>;
+      // This case handles _NothrowSyncWork == true, which means the stop token provided by the
+      // future's receiver can no-throw-construct a stop callback in the future's operation state.
+      using __storage_t = storage_for_completion_signatures<__stored_signatures_t>;
+      using type        = typename __storage_t::completion_signatures;
+
+      static consteval auto get_completion_signatures()
+      {
+        return __storage_t::get_completion_signatures();
+      }
     };
 
     template <class... _Sigs>
     struct __future_completions<false, _Sigs...>
     {
-      using type = __mcall<__munique<__qq<completion_signatures>>,
-                           set_stopped_t(),
-                           set_error_t(std::exception_ptr),
-                           __decayed_signature_t<_Sigs>...>;
+      using __stored_signatures_t =
+        __concat_completion_signatures_t<completion_signatures<set_stopped_t()>,
+                                         completion_signatures<_Sigs...>>;
+      using __storage_t = storage_for_completion_signatures<__stored_signatures_t>;
+      using type =
+        __concat_completion_signatures_t<typename __storage_t::completion_signatures,
+                                         completion_signatures<set_error_t(std::exception_ptr)>>;
+
+      static consteval auto get_completion_signatures()
+      {
+        auto __stored_completions = __storage_t::get_completion_signatures();
+        STDEXEC_IF_OK(__stored_completions)
+        {
+          return __concat_completion_signatures(
+            __stored_completions,
+            completion_signatures<set_error_t(std::exception_ptr)>{});
+        }
+      }
     };
 
     template <class _Env>
@@ -124,9 +133,7 @@ namespace STDEXEC
 
     template <class _Env, class... _Sigs>
     using __future_completions_t =
-      __future_completions<__stop_callback_is_nothrow_constructible<_Env>
-                             && (__nothrow_storable_signature<_Sigs> && ...),
-                           _Sigs...>::type;
+      __future_completions<__stop_callback_is_nothrow_constructible<_Env>, _Sigs...>::type;
 
     // [exec.spawn.future] paragraph 3
     template <class _Completions>
@@ -135,11 +142,21 @@ namespace STDEXEC
     template <class... _Sigs>
     struct __spawn_future_state_base<completion_signatures<_Sigs...>> : __try_cancelable
     {
-      using __variant_t = __results_storage<set_stopped_t(), _Sigs...>;
+      using __stored_signatures_t =
+        __concat_completion_signatures_t<completion_signatures<set_stopped_t()>,
+                                         completion_signatures<_Sigs...>>;
+      using __storage_t = storage_for_completion_signatures<__stored_signatures_t>;
       template <class _Env>
       using __completions_t = __future_completions_t<_Env, _Sigs...>;
 
-      __variant_t __result_;
+      template <class _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        return __future_completions<__stop_callback_is_nothrow_constructible<_Env>,
+                                    _Sigs...>::get_completion_signatures();
+      }
+
+      __storage_t __result_;
 
       explicit __spawn_future_state_base(
         void (*__try_cancel)(__try_cancelable*) noexcept,
@@ -191,20 +208,7 @@ namespace STDEXEC
       template <class _Tag, class... _Ts>
       void __set_complete(_Ts&&... __ts) noexcept
       {
-        STDEXEC_TRY
-        {
-          using __tuple_t = __decayed_tuple<_Tag, _Ts...>;
-          __state_->__result_.template emplace<__tuple_t>(_Tag{}, static_cast<_Ts&&>(__ts)...);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if constexpr (!__nothrow_decay_copyable<_Ts...>)
-          {
-            using tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-            __state_->__result_.template emplace<tuple_t>(set_error_t{}, std::current_exception());
-          }
-        }
-
+        __state_->__result_.arrive(_Tag{}, static_cast<_Ts&&>(__ts)...);
         __state_->__complete();
       }
     };
@@ -229,7 +233,7 @@ namespace STDEXEC
 
       using __op_t = connect_result_t<__future_spawned_sender<_Sender, _Env>, __receiver_t>;
 
-      using __base = __spawn_future_state_base<completion_signatures_of_t<_Sender, _Env>>;
+      using __base = __spawn_future_state_base<__sigs_t>;
 
       __spawn_future_state(_Alloc __alloc, _Sender&& __sndr, _Token __token, _Env __env)
         : __base(__do_try_cancel, __do_complete)
@@ -391,7 +395,7 @@ namespace STDEXEC
       // NOTE: __rcvr's type is unconstrained because the thing we pass doesn't satisfy receiver
       void __do_consume(auto& __rcvr) noexcept
       {
-        std::move(this->__result_).__complete(__rcvr);
+        std::move(this->__result_).complete(std::move(__rcvr));
       }
 
       static void __do_complete(__base* __base_ptr) noexcept
@@ -693,10 +697,9 @@ namespace STDEXEC
       using __completions_t = __spawn_future_state_t<_Sender>::template __completions_t<_Env>;
 
       template <class _Sender, class _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __completions_t<_Sender, _Env>
+      static consteval auto __get_completion_signatures()
       {
-        return {};
+        return __spawn_future_state_t<_Sender>::template __get_completion_signatures<_Env>();
       };
 
       static constexpr auto __get_state =

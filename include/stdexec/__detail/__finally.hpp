@@ -24,9 +24,8 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__storage.hpp"
+#include "__storage_for_completion_signatures.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__tuple.hpp"
 #include "__utility.hpp"
 
 #include "__prologue.hpp"
@@ -77,14 +76,15 @@ namespace STDEXEC
     struct __result_variant_fn
     {
       template <class _InitialSender, class _Receiver>
-      using __f = __storage_for_t<_InitialSender, env_of_t<_Receiver>>;
+      using __f = storage_for_completion_signatures<
+        __completion_signatures_of_t<_InitialSender, env_of_t<_Receiver>>>;
     };
 
     template <>
     struct __result_variant_fn<false>
     {
       template <class, class>
-      using __f = __results_storage<>;
+      using __f = storage_for_completion_signatures<completion_signatures<>>;
     };
 
     // If the final sender has no value completions, then we don't need to store the
@@ -101,7 +101,7 @@ namespace STDEXEC
       _Receiver __rcvr_{};
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Env2 const __env2_{};
-      _Storage    __result_;  // __variant<__tuple<set_tag, args...>, ...>
+      _Storage    __result_;
     };
 
     using __mk_secondary_env_t =
@@ -122,7 +122,7 @@ namespace STDEXEC
 
       constexpr void set_value() noexcept
       {
-        std::move(__opstate_->__result_).__complete(__opstate_->__rcvr_);
+        std::move(__opstate_->__result_).complete(static_cast<_Receiver&&>(__opstate_->__rcvr_));
       }
 
       template <class _Error>
@@ -177,21 +177,9 @@ namespace STDEXEC
         }
         else
         {
-          STDEXEC_TRY
-          {
-            using __tuple_t = __decayed_tuple<_Args...>;
-            this->__result_.template emplace<__tuple_t>(static_cast<_Args&&>(__args)...);
-            (*__cleanup_callback_)(this);
-            STDEXEC::start(this->__final_opstate_);
-          }
-          STDEXEC_CATCH_ALL
-          {
-            if constexpr (!__nothrow_decay_copyable<_Args...>)
-            {
-              (*__cleanup_callback_)(this);
-              STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::current_exception());
-            }
-          }
+          this->__result_.arrive(static_cast<_Args&&>(__args)...);
+          (*__cleanup_callback_)(this);
+          STDEXEC::start(this->__final_opstate_);
         }
       }
 
@@ -301,8 +289,7 @@ namespace STDEXEC
           {
             // If the finally sender doesn't have set_value completions, then we
             // don't need to worry about the initial sender's value types not being
-            // nothrow decay-copyable, because they won't be propagated to the
-            // receiver.
+            // storable, because they won't be propagated to the receiver.
             return STDEXEC::__transform_completion_signatures(__initial_completions,
                                                               __ignore_completion(),
                                                               {},
@@ -323,15 +310,19 @@ namespace STDEXEC
           }
           else
           {
-            // The finally sender's completion signatures are ...
-            return STDEXEC::__concat_completion_signatures(
-              // ... the initial sender's completions with value types decayed ...
-              STDEXEC::__transform_completion_signatures(
-                __initial_completions,
-                __decay_arguments<set_value_t, __finally_t>()),
-              // ... and the final sender's error and stopped completions ...
-              STDEXEC::__transform_completion_signatures(__final_completions,
-                                                         __ignore_completion()));
+            using __initial_storage_t =
+              storage_for_completion_signatures<decltype(__initial_completions)>;
+            auto __stored_initial_completions = __initial_storage_t::get_completion_signatures();
+            STDEXEC_IF_OK(__stored_initial_completions)
+            {
+              // The finally sender's completion signatures are ...
+              return STDEXEC::__concat_completion_signatures(
+                // ... the initial sender's completions as stored for replay ...
+                __stored_initial_completions,
+                // ... and the final sender's error and stopped completions ...
+                STDEXEC::__transform_completion_signatures(__final_completions,
+                                                           __ignore_completion()));
+            }
           }
         }
       }

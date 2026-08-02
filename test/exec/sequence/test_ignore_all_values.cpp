@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include "exec/just_from.hpp"
 #include "exec/sequence/empty_sequence.hpp"
 #include "exec/sequence/ignore_all_values.hpp"
 
@@ -63,6 +64,31 @@ namespace
       STDEXEC::__mset_eq<STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>,
                          STDEXEC::completion_signatures_of_t<Sender, STDEXEC::env<>>>);
     CHECK_FALSE(STDEXEC::sync_wait(sndr));
+  }
+
+  TEST_CASE("ignore_all_values - preserve error references",
+            "[sequence_senders][ignore_all_values]")
+  {
+    struct immovable
+    {
+      immovable()                             = default;
+      immovable(immovable const &)            = delete;
+      immovable(immovable &&)                 = delete;
+      immovable &operator=(immovable const &) = delete;
+      immovable &operator=(immovable &&)      = delete;
+    } error;
+
+    auto source      = exec::just_error_from([&](auto sink) noexcept { return sink(error); });
+    auto sndr        = exec::ignore_all_values(std::move(source));
+    using sender_t   = decltype(sndr);
+    using actual_t   = STDEXEC::completion_signatures_of_t<sender_t, STDEXEC::env<>>;
+    using expected_t = STDEXEC::__mset<STDEXEC::set_value_t(), STDEXEC::set_error_t(immovable &)>;
+    STATIC_REQUIRE(STDEXEC::__mset_eq<expected_t, actual_t>);
+
+    auto recovered = std::move(sndr)
+                   | STDEXEC::upon_error([&](immovable &actual) noexcept
+                                         { CHECK(&actual == &error); });
+    CHECK(STDEXEC::sync_wait(std::move(recovered)));
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()

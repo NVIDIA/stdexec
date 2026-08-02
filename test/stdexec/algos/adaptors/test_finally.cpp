@@ -19,10 +19,121 @@
 
 #include <test_common/catch2.hpp>
 
+#include <stdexcept>
+
 using namespace STDEXEC;
 
 namespace
 {
+  constinit int    global_int    = 0;
+  constinit double global_double = 0.0;
+
+  struct reference_sender
+  {
+    using sender_concept = sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return completion_signatures<set_value_t(int&)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int*     value_;
+
+      void start() & noexcept
+      {
+        set_value(static_cast<Receiver&&>(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), value_};
+    }
+
+    int* value_;
+  };
+
+  struct references_sender
+  {
+    using sender_concept = sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return completion_signatures<set_value_t(int&, double&)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int*     int_value_;
+      double*  double_value_;
+
+      void start() & noexcept
+      {
+        set_value(static_cast<Receiver&&>(receiver_), *int_value_, *double_value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), int_value_, double_value_};
+    }
+
+    int*    int_value_;
+    double* double_value_;
+  };
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throws_on_move
+  {
+    throws_on_move()                       = default;
+    throws_on_move(throws_on_move const &) = delete;
+    throws_on_move(throws_on_move&&)
+    {
+      throw std::runtime_error("Throwing as requested");
+    }
+  };
+
+  struct throwing_value_sender
+  {
+    using sender_concept = sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return completion_signatures<set_value_t(throws_on_move)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver        receiver_;
+      throws_on_move* value_;
+
+      void start() & noexcept
+      {
+        set_value(static_cast<Receiver&&>(receiver_), std::move(*value_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), value_};
+    }
+
+    throws_on_move* value_;
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("finally is a sender", "[adaptors][finally]")
   {
@@ -65,7 +176,67 @@ namespace
     CHECK(i == 42);
   }
 
+  TEST_CASE("finally preserves a single reference completion", "[adaptors][finally]")
+  {
+    bool called = false;
+    global_int  = 42;
+    auto raw    = exec::finally(reference_sender{&global_int},
+                             just() | then([&called]() noexcept { called = true; }));
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<decltype(raw), ex::env<>>,
+                                  completion_signatures<set_value_t(int&)>>);
+    auto s = std::move(raw)
+           | then(
+               [](auto&& i) noexcept
+               {
+                 CHECK(&i == &global_int);
+                 CHECK(i == 42);
+               });
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<decltype(s), ex::env<>>,
+                                  completion_signatures<set_value_t()>>);
+
+    sync_wait(s);
+    CHECK(called);
+  }
+
+  TEST_CASE("finally preserves multiple reference completion arguments", "[adaptors][finally]")
+  {
+    bool called   = false;
+    global_int    = 42;
+    global_double = 0.125;
+    auto raw      = exec::finally(references_sender{&global_int, &global_double},
+                             just() | then([&called]() noexcept { called = true; }));
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<decltype(raw), ex::env<>>,
+                                  completion_signatures<set_value_t(int&, double&)>>);
+    auto s = std::move(raw)
+           | then(
+               [](auto&& i, auto&& d) noexcept
+               {
+                 CHECK(&i == &global_int);
+                 CHECK(&d == &global_double);
+                 CHECK(i == 42);
+                 CHECK(d == 0.125);
+               });
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<decltype(s), ex::env<>>,
+                                  completion_signatures<set_value_t()>>);
+
+    sync_wait(s);
+    CHECK(called);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("finally executes the final action when storing the initial completion throws",
+            "[adaptors][finally]")
+  {
+    bool           called = false;
+    throws_on_move value;
+
+    auto s = exec::finally(throwing_value_sender{&value},
+                           just() | then([&called]() noexcept { called = true; }));
+
+    CHECK_THROWS_AS(sync_wait(s), std::runtime_error);
+    CHECK(called);
+  }
+
   TEST_CASE("finally does not execute the final action and throws integer", "[adaptors][finally]")
   {
     bool called = false;

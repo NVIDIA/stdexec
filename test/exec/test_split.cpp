@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+#include <exec/just_from.hpp>
 #include <exec/split.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
@@ -118,6 +119,36 @@ namespace
     // The receiver will ensure that the right value is produced
   }
 
+  TEST_CASE("split preserves reference results", "[adaptors][split]")
+  {
+    struct immovable
+    {
+      immovable()                             = default;
+      immovable(immovable const &)            = delete;
+      immovable(immovable &&)                 = delete;
+      immovable &operator=(immovable const &) = delete;
+      immovable &operator=(immovable &&)      = delete;
+    } value;
+
+    auto source = exec::just_from(
+      [&](auto sink) noexcept
+      {
+        sink(value);
+        return ex::completion_signatures<ex::set_value_t(immovable &)>{};
+      });
+    auto split    = exec::split(std::move(source));
+    using split_t = decltype(split);
+    static_assert(
+      set_equivalent<ex::completion_signatures_of_t<split_t, ex::env<>>,
+                     ex::completion_signatures<ex::set_value_t(immovable &), ex::set_stopped_t()>>);
+
+    auto check_reference = ex::then([&](immovable &result) noexcept { CHECK(&result == &value); });
+    auto op1             = ex::connect(split | check_reference, expect_void_receiver{});
+    auto op2             = ex::connect(split | check_reference, expect_void_receiver{});
+    ex::start(op1);
+    ex::start(op2);
+  }
+
   TEST_CASE("split forwards errors", "[adaptors][split]")
   {
     SECTION("of exception_ptr type")
@@ -137,10 +168,17 @@ namespace
       auto split    = exec::split(ex::just_error(42));
       using split_t = decltype(split);
       using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
-      static_assert(ex::__mset_eq<error_t, ex::__mset<std::exception_ptr const &, int const &>>);
+      static_assert(ex::__mset_eq<error_t, ex::__mset<int const &>>);
 
       auto op = ex::connect(split, expect_error_receiver<int>{});
       ex::start(op);
+    }
+
+    SECTION("from storing a potentially throwing result")
+    {
+      using split_t = decltype(exec::split(ex::just(potentially_throwing{})));
+      using error_t = ex::error_types_of_t<split_t, ex::env<>, ex::__mmake_set>;
+      static_assert(ex::__mset_eq<error_t, ex::__mset<std::exception_ptr const &>>);
     }
   }
 
@@ -536,7 +574,7 @@ namespace
 
     REQUIRE(v1 == 1);
     REQUIRE(v2 == 2);
-    REQUIRE(v3 == 1);
+    REQUIRE(v3 == 2);
   }
 
   TEST_CASE("split doesn't advertise completion scheduler", "[adaptors][split]")

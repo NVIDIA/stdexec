@@ -27,9 +27,8 @@
 #include "__schedulers.hpp"
 #include "__sender_adaptor_closure.hpp"
 #include "__senders.hpp"
-#include "__storage.hpp"
+#include "__storage_for_completion_signatures.hpp"
 #include "__transform_completion_signatures.hpp"
-#include "__tuple.hpp"
 #include "__utility.hpp"
 
 #include "__prologue.hpp"
@@ -40,32 +39,14 @@ namespace STDEXEC
   // [exec.continues.on]
   namespace __trnsfr
   {
-    template <class... _Values>
-    using __decay_value_sig = set_value_t (*)(__decay_t<_Values>...);
-
-    template <class _Error>
-    using __decay_error_sig = set_error_t (*)(__decay_t<_Error>);
-
-    template <class _Scheduler, class _Completions, class... _Env>
-    using __completions_impl_t = __mtry_q<__concat_completion_signatures_t>::__f<
-      __transform_reduce_completion_signatures_t<_Completions,
-                                                 __decay_value_sig,
-                                                 __decay_error_sig,
-                                                 set_stopped_t (*)(),
-                                                 __completion_signature_ptrs_t>,
-      __transform_completion_signatures_t<
-        __completion_signatures_of_t<schedule_result_t<_Scheduler>, _Env...>,
-        __eptr_completion_unless_t<__nothrow_decay_copyable_results_t<_Completions>>,
-        __mconst<completion_signatures<>>::__f>>;
-
-    template <class _Scheduler, class _CvSender, class... _Env>
-    using __completions_t =
-      __completions_impl_t<_Scheduler, __completion_signatures_of_t<_CvSender, _Env...>, _Env...>;
+    template <class _Sender, class... _Env>
+    using __completion_storage_t =
+      storage_for_completion_signatures<__completion_signatures_of_t<_Sender, _Env...>>;
 
     template <class _Sexpr, class _Receiver>
     struct __state_base
     {
-      using __storage_t = __storage_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __storage_t = __completion_storage_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver   __rcvr_;
       __storage_t __data_;
@@ -82,7 +63,7 @@ namespace STDEXEC
 
       constexpr void set_value() noexcept
       {
-        std::move(__state_->__data_).__complete(__state_->__rcvr_);
+        std::move(__state_->__data_).complete(static_cast<_Receiver&&>(__state_->__rcvr_));
       }
 
       template <class _Error>
@@ -128,26 +109,6 @@ namespace STDEXEC
     struct __attrs
     {
      private:
-      //! @brief Returns `true` when:
-      //! - _SetTag is set_error_t, and
-      //! - _Sender has value completions, and
-      //! - at least one of the value completions is not nothrow decay-copyable.
-      //! In that case, error completions can come from the sender's value completions.
-      template <class _SetTag, class... _Env>
-      static consteval bool __has_decay_copy_errors() noexcept
-      {
-        if constexpr (__same_as<_SetTag, set_error_t>)
-        {
-          if constexpr (__sends<set_value_t, _Sender, __fwd_env_t<_Env>...>)
-          {
-            return !__cmplsigs::__partitions_of_t<completion_signatures_of_t<
-              _Sender,
-              __fwd_env_t<_Env>...>>::__nothrow_decay_copyable::__values::value;
-          }
-        }
-        return false;
-      }
-
       _Scheduler        __sch_;
       env_of_t<_Sender> __attrs_;
 
@@ -165,10 +126,9 @@ namespace STDEXEC
       //! @note If @c _SetTag is @c set_value_t, then we are in the happy path: everything
       //! succeeded and execution continues on @c _Scheduler.
       //!
-      //! Otherwise, if @c _Sender never completes with @c _SetTag, and either @c _SetTag is
-      //! @c set_stopped_t or decay-copying @c _Sender's value results cannot throw, then a
-      //! @c _SetTag completion can only come from the scheduler's sender. In this case, return
-      //! the scheduler's completion scheduler if it has one.
+      //! Otherwise, if @c _Sender never completes with @c _SetTag, then a @c _SetTag completion
+      //! can only happen on the scheduler's execution resource. In this case, return the
+      //! scheduler's completion scheduler if it has one.
       //!
       //! Otherwise, if the scheduler's sender never completes with @c _SetTag, then a
       //! @c _SetTag completion can only come from the original sender, so return the
@@ -176,7 +136,6 @@ namespace STDEXEC
       template <class _SetTag, class... _Env>
         requires(__same_as<_SetTag, set_value_t>
                  || __never_sends<_SetTag, _Sender, __fwd_env_t<_Env>...>)
-             && (!__has_decay_copy_errors<_SetTag, _Env...>())
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
@@ -205,14 +164,8 @@ namespace STDEXEC
       //! @note If @c _SetTag is @c set_value_t, then we are in the happy path: everything
       //! succeeded and execution continues on @c _Scheduler.
       //!
-      //! Otherwise, if @c _SetTag is @c set_stopped_t or if decay-copying @c _Sender's value
-      //! results cannot throw, then a @c _SetTag completion can happen on the sender's
-      //! completion domain (if it has one) or the scheduler's completion domain (if it has
-      //! one).
-      //!
-      //! @note Otherwise, @c _SetTag is @c set_error_t and decay-copying @c _Sender's value
-      //! results can throw, so error completions can also come from the sender's value
-      //! completions.
+      //! Otherwise, a @c _SetTag completion can happen on the sender's completion domain (if it
+      //! has one) or the scheduler's completion domain (if it has one).
       template <__same_as<set_value_t> _SetTag, class... _Env>
       [[nodiscard]]
       constexpr auto
@@ -225,28 +178,12 @@ namespace STDEXEC
 
       //! @overload
       template <__one_of<set_error_t, set_stopped_t> _SetTag, class... _Env>
-        requires(!__has_decay_copy_errors<_SetTag, _Env...>())
       [[nodiscard]]
       constexpr auto
       query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
         __common_domain_t<
           __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
           __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>>,
-        indeterminate_domain<>>
-      {
-        return {};
-      }
-
-      //! @overload
-      template <class _SetTag, class... _Env>
-        requires(__has_decay_copy_errors<_SetTag, _Env...>())
-      [[nodiscard]]
-      constexpr auto
-      query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
-        __common_domain_t<
-          __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<set_value_t, _Sender, __fwd_env_t<_Env>...>>,
         indeterminate_domain<>>
       {
         return {};
@@ -295,12 +232,8 @@ namespace STDEXEC
           STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>();
         STDEXEC_IF_OK(__child_completions)
         {
-          // continues_on has the completions of the child sender, but with value and
-          // error result types decayed.
-          return __transform_completion_signatures(
-            __child_completions,
-            __decay_arguments<set_value_t, continues_on_t>(),
-            __decay_arguments<set_error_t, continues_on_t>());
+          using __storage_t = __completion_storage_t<_Child, __fwd_env_t<_Env>...>;
+          return __storage_t::get_completion_signatures();
         }
       }
 
@@ -339,9 +272,7 @@ namespace STDEXEC
         auto __child_completions = __get_child_completions<__child_t, _Env...>();
         return __concat_completion_signatures(
           __child_completions,
-          __get_scheduler_completions<__scheduler_t, _Env...>(),
-          __eptr_completion_unless_t<
-            __nothrow_decay_copyable_results_t<decltype(__child_completions)>>());
+          __get_scheduler_completions<__scheduler_t, _Env...>());
       }
 
       static constexpr auto __get_state =
@@ -364,22 +295,7 @@ namespace STDEXEC
       {
         // Write the tag and the args into the operation state so that we can forward the completion
         // from within the scheduler's execution context.
-        if constexpr (__nothrow_callable<__mktuple_t, _Tag, _Args...>)
-        {
-          __state.__data_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
-        }
-        else
-        {
-          STDEXEC_TRY
-          {
-            __state.__data_.__emplace_from(__mktuple, __tag, static_cast<_Args&&>(__args)...);
-          }
-          STDEXEC_CATCH_ALL
-          {
-            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-            return;
-          }
-        }
+        __state.__data_.arrive(__tag, static_cast<_Args&&>(__args)...);
 
         // Enqueue the schedule operation so the completion happens on the scheduler's execution
         // context.
@@ -423,15 +339,15 @@ namespace STDEXEC
   //! the sender produced by <tt>continues_on(sndr, sched)</tt> has the same
   //! completion signatures as @c sndr, except that a
   //! @c set_error_t(std::exception_ptr) completion may be added if any of
-  //! @c sndr's completion datums are not @c nothrow decay-copyable (the
-  //! datums must be stored across the scheduling hop).
+  //! @c sndr's completion datums cannot be stored without throwing (the datums
+  //! must be stored across the scheduling hop).
   //!
   //! @c continues_on does *not* alter @c sndr's values or errors; it only
   //! changes the execution context on which the completion is delivered.
   //!
   //! **Exception behavior.**
   //!
-  //! If decay-copying a completion datum across the scheduling hop throws,
+  //! If storing a completion datum across the scheduling hop throws,
   //! the exception is delivered through @c set_error_t(std::exception_ptr).
   //! If scheduling onto @c sched fails, an error completion is delivered on
   //! an unspecified execution agent.
@@ -483,7 +399,7 @@ namespace STDEXEC
     //!
     //! @returns A sender with the same completion signatures as @c __sndr
     //!          (plus a possible @c set_error_t(std::exception_ptr) for
-    //!          decay-copy failures during the hop). The completions are
+    //!          storage failures during the hop). The completions are
     //!          delivered on @c __sched's execution resource.
     template <scheduler _Scheduler, sender _Sender>
     constexpr auto

@@ -15,6 +15,7 @@
  */
 
 #include <exec/single_thread_context.hpp>
+#include <exec/split.hpp>
 #include <exec/when_any.hpp>
 #include <numbers>
 #include <test_common/receivers.hpp>
@@ -51,6 +52,16 @@ namespace
     auto         snd1     = std::move(snd) | ex::then([](double y) { return y + 0.1415; });
     double const expected = 3.0 + 0.1415;
     auto         op       = ex::connect(std::move(snd1), expect_value_receiver{expected});
+    ex::start(op);
+  }
+
+  TEST_CASE("when_any preserves reference value completions", "[adaptors][when_any]")
+  {
+    auto source = exec::split(ex::just(42));
+    auto snd    = exec::when_any(std::move(source));
+    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                                 completion_signatures<set_value_t(int const &), set_stopped_t()>>);
+    auto op = ex::connect(std::move(snd), expect_value_receiver{42});
     ex::start(op);
   }
 
@@ -215,9 +226,13 @@ namespace
     }
   };
 
-  TEST_CASE("when_any - with duplicate completions", "[adaptors][when_any]")
+  TEST_CASE("when_any rejects ambiguous normalized completions", "[adaptors][when_any]")
   {
-    REQUIRE_THROWS(STDEXEC::sync_wait(exec::when_any(dup_sender{})));
+    using sender_t = decltype(exec::when_any(dup_sender{}));
+    using completions_t =
+      decltype(sender_t::template get_completion_signatures<sender_t, ex::env<>>());
+
+    static_assert(ex::__merror<completions_t>);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace

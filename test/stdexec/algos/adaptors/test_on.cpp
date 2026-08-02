@@ -20,11 +20,50 @@
 #include <test_common/catch2.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
+#include <test_common/type_helpers.hpp>
 
 namespace ex = STDEXEC;
 
 namespace
 {
+  constinit int global_int = 0;
+
+  struct reference_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+    {
+      return ex::completion_signatures<ex::set_value_t(int&)>{};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver receiver_;
+      int*     value_;
+
+      void start() & noexcept
+      {
+        ex::set_value(static_cast<Receiver&&>(receiver_), *value_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) && -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), value_};
+    }
+
+    auto get_env() const noexcept
+    {
+      return ex::prop{ex::get_completion_scheduler<ex::set_value_t>, inline_scheduler{}};
+    }
+
+    int* value_;
+  };
+
   template <ex::scheduler Sched = inline_scheduler>
   inline auto _make_env_with_sched(Sched sched = {})
   {
@@ -117,6 +156,52 @@ namespace
     ex::sync_wait(std::move(snd));
     // the work should be executed
     REQUIRE(called);
+  }
+
+  TEST_CASE("STDEXEC::on preserves reference completions in whole-sender form", "[adaptors][on]")
+  {
+    global_int = 42;
+    auto raw   = ex::on(inline_scheduler{}, reference_sender{&global_int});
+    STATIC_REQUIRE(
+      set_equivalent<
+        ex::completion_signatures_of_t<decltype(raw), _env_with_sched_t>,
+        ex::completion_signatures<ex::set_value_t(int&), ex::set_error_t(std::exception_ptr)>>);
+    auto snd = std::move(raw)
+             | ex::then(
+                 [](auto&& i) noexcept
+                 {
+                   CHECK(&i == &global_int);
+                   CHECK(i == 42);
+                 })
+             | _with_scheduler();
+
+    ex::sync_wait(std::move(snd));
+  }
+
+  TEST_CASE("STDEXEC::on preserves reference completions in closure form", "[adaptors][on]")
+  {
+    global_int = 42;
+    auto raw   = reference_sender{&global_int}
+             | ex::on(inline_scheduler{},
+                      ex::then(
+                        [](int& i) noexcept -> int&
+                        {
+                          CHECK(&i == &global_int);
+                          CHECK(i == 42);
+                          return i;
+                        }));
+    STATIC_REQUIRE(set_equivalent<ex::completion_signatures_of_t<decltype(raw), _env_with_sched_t>,
+                                  ex::completion_signatures<ex::set_value_t(int&)>>);
+    auto snd = std::move(raw)
+             | ex::then(
+                 [](auto&& i) noexcept
+                 {
+                   CHECK(&i == &global_int);
+                   CHECK(i == 42);
+                 })
+             | _with_scheduler();
+
+    ex::sync_wait(std::move(snd));
   }
 
   TEST_CASE("STDEXEC::on can be called with rvalue ref scheduler", "[adaptors][on]")

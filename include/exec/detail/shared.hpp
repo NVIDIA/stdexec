@@ -27,14 +27,15 @@
 #include "../../stdexec/__detail/__optional.hpp"
 #include "../../stdexec/__detail/__queries.hpp"
 #include "../../stdexec/__detail/__receivers.hpp"
-#include "../../stdexec/__detail/__storage.hpp"
+#include "../../stdexec/__detail/__storage_for_completion_signatures.hpp"
 #include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__tuple.hpp"
 #include "../../stdexec/__detail/__variant.hpp"  // IWYU pragma: keep
 #include "../../stdexec/stop_token.hpp"
 
-#include <exception>
 #include <mutex>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 
 ////////////////////////////////////////////////////////////////////////////
@@ -69,7 +70,7 @@ namespace experimental::execution::__shared
 {
   using namespace STDEXEC;
 
-  template <class _Env, class _Variant>
+  template <class _Env, class _Storage>
   struct __shared_state_base;
 
   template <class _CvSender, class _Env>
@@ -79,7 +80,7 @@ namespace experimental::execution::__shared
   using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
   ////////////////////////////////////////////////////////////////////////////////////////
-  template <class _Env, class _Variant>
+  template <class _Env, class _Storage>
   struct __receiver
   {
     using receiver_concept = receiver_tag;
@@ -110,14 +111,23 @@ namespace experimental::execution::__shared
     }
 
     // The receiver does not hold a reference to the shared state.
-    __shared_state_base<_Env, _Variant>* __sh_state_;
+    __shared_state_base<_Env, _Storage>* __sh_state_;
   };
 
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvSender, class _Env>
-  using __result_variant_t =
-    __mapply<__mbind_front_q<__results_storage, set_stopped_t(), set_error_t(std::exception_ptr)>,
-             __completion_signatures_of_t<_CvSender, _Env>>;
+  using __result_storage_t = storage_for_completion_signatures<
+    __transform_completion_signatures_of_t<_CvSender,
+                                           __env_t<_Env>,
+                                           completion_signatures<set_stopped_t()>>>;
+
+  // Owned results from split are replayed by const reference. Results that are already
+  // references retain the type advertised by the child. ensure_started consumes the cache, so
+  // it replays every result with its stored type.
+  template <class _Tag, class _Result>
+  using __replayed_result_t =
+    __minvoke<__if_c<__same_as<_Tag, split_t> && !std::is_reference_v<_Result>, __cpclr, __cp>,
+              _Result>;
 
   ////////////////////////////////////////////////////////////////////////////////////////
   template <class _CvChild, class _Env>
@@ -241,13 +251,37 @@ namespace experimental::execution::__shared
     // __local_state::operator().
     constexpr void __notify() noexcept final
     {
-      // The split algorithm sends by T const&. ensure_started sends by T&&.
-      constexpr bool __is_split = __std::same_as<split_t, _Tag>;
-      using __variant_t         = decltype(__sh_state_->__results_);
-      using __cv_variant_t      = __if_c<__is_split, __variant_t const &, __variant_t>;
-
       __on_stop_.reset();
-      static_cast<__cv_variant_t&&>(__sh_state_->__results_).__complete(__rcvr_);
+      if constexpr (__std::same_as<split_t, _Tag>)
+      {
+        STDEXEC::visit_stored_completion(
+          STDEXEC::__overload{
+            []() noexcept -> void
+            {
+              STDEXEC_ASSERT(false);
+              STDEXEC_UNREACHABLE();
+            },
+            [&]<class _SetTag, class... _Results>(
+              storage_for_completion_signature<_SetTag(_Results...)> const & __completion) noexcept
+              -> void
+            {
+              STDEXEC::__apply(
+                [&](auto&&... __results) noexcept
+                {
+                  _SetTag{}(static_cast<_Receiver&&>(__rcvr_),
+                            static_cast<__replayed_result_t<split_t, _Results>>(__results)...);
+                },
+                __completion.__forward_arguments());
+            }},
+          std::as_const(__sh_state_->__results_));
+      }
+      else
+      {
+        bool const __completed =
+          std::move(__sh_state_->__results_).complete(static_cast<_Receiver&&>(__rcvr_));
+        STDEXEC_ASSERT(__completed);
+        (void) __completed;
+      }
     }
 
     _Receiver                                                 __rcvr_;
@@ -257,7 +291,7 @@ namespace experimental::execution::__shared
 
   ////////////////////////////////////////////////////////////////////////////////////////
   //! Base class for heap-allocatable shared state for `split` and `ensure_started`.
-  template <class _Env, class _Variant>
+  template <class _Env, class _Storage>
   struct __shared_state_base : __local_state_base
   {
     using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
@@ -265,9 +299,7 @@ namespace experimental::execution::__shared
     constexpr explicit __shared_state_base(_Env __env)
       : __env_(__env::__join(prop{get_stop_token, __stop_source_.get_token()},
                              static_cast<_Env&&>(__env)))
-    {
-      __results_.template emplace<__tuple<set_stopped_t>>();
-    }
+    {}
 
     virtual ~__shared_state_base() = 0;
 
@@ -276,20 +308,7 @@ namespace experimental::execution::__shared
     template <class _Tag, class... _As>
     void __complete(_Tag, _As&&... __as) noexcept
     {
-      STDEXEC_TRY
-      {
-        using __tuple_t = __decayed_tuple<_Tag, _As...>;
-        __results_.template emplace<__tuple_t>(_Tag(), static_cast<_As&&>(__as)...);
-      }
-      STDEXEC_CATCH_ALL
-      {
-        if constexpr (!__nothrow_decay_copyable<_As...>)
-        {
-          using __tuple_t = __decayed_tuple<set_error_t, std::exception_ptr>;
-          __results_.template emplace<__tuple_t>(set_error, std::current_exception());
-        }
-      }
-
+      __results_.arrive(_Tag(), static_cast<_As&&>(__as)...);
       __notify_waiters();
     }
 
@@ -328,20 +347,20 @@ namespace experimental::execution::__shared
     __waiters_list_t    __waiters_{};
     inplace_stop_source __stop_source_{};
     __env_t<_Env>       __env_;
-    _Variant            __results_;  // Initialized to the "set_stopped" state in the ctor.
+    _Storage            __results_;
   };
 
-  template <class _Env, class _Variant>
-  __shared_state_base<_Env, _Variant>::~__shared_state_base() = default;
+  template <class _Env, class _Storage>
+  __shared_state_base<_Env, _Storage>::~__shared_state_base() = default;
 
   ////////////////////////////////////////////////////////////////////////////////////////
   //! Heap-allocatable shared state for `stdexec::split` and `stdexec::ensure_started`.
   template <class _CvSender, class _Env>
   struct STDEXEC_ATTRIBUTE(empty_bases) __shared_state final
     : std::enable_shared_from_this<__shared_state<_CvSender, _Env>>
-    , __shared_state_base<_Env, __result_variant_t<_CvSender, _Env>>
+    , __shared_state_base<_Env, __result_storage_t<_CvSender, _Env>>
   {
-    using __receiver_t     = __receiver<_Env, __result_variant_t<_CvSender, _Env>>;
+    using __receiver_t     = __receiver<_Env, __result_storage_t<_CvSender, _Env>>;
     using __waiters_list_t = __shared_state::__shared_state_base::__waiters_list_t;
 
     constexpr explicit __shared_state(_CvSender&& __sndr, _Env __env)
@@ -380,7 +399,7 @@ namespace experimental::execution::__shared
           // 1. Sets __waiters_ to a known "tombstone" value.
           // 2. Notifies all the waiters that the operation has stopped.
           // 3. Sets the "is running" bit in the ref count to 0.
-          this->__notify_waiters();
+          this->__complete(set_stopped);
         }
         else
         {
@@ -437,19 +456,6 @@ namespace experimental::execution::__shared
     connect_result_t<_CvSender, __receiver_t>  __shared_op_;
   };
 
-  template <class _Cv, class _CvSender, class _Env>
-  using __make_completions_t = __transform_completion_signatures_of_t<
-    _CvSender,
-    __env_t<_Env>,
-    completion_signatures<set_error_t(__mcall1<_Cv, std::exception_ptr>), set_stopped_t()>,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_value_t>>>::template __f,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_error_t>>>::template __f>;
-
-  // split completes with const T&. ensure_started completes with T&&.
-  template <class _Tag>
-  using __cvref_results_t =
-    __mcompose<__if_c<__same_as<_Tag, split_t>, __cpclr, __cp>, __q1<__decay_t>>;
-
   template <class _Tag>
   struct __impls : __sexpr_defaults
   {
@@ -460,7 +466,26 @@ namespace experimental::execution::__shared
       // TODO: update this for constant evaluation
       if constexpr (__decay_copyable<_CvChild>)
       {
-        return __make_completions_t<__cvref_results_t<_Tag>, _CvChild, _Env>();
+        auto __child_completions = STDEXEC::get_completion_signatures<_CvChild, __env_t<_Env>>();
+        STDEXEC_IF_OK(__child_completions)
+        {
+          auto __input_completions =
+            STDEXEC::__concat_completion_signatures(__child_completions,
+                                                    completion_signatures<set_stopped_t()>{});
+          using __storage_t = storage_for_completion_signatures<decltype(__input_completions)>;
+          auto __stored_completions = __storage_t::get_completion_signatures();
+          STDEXEC_IF_OK(__stored_completions)
+          {
+            return STDEXEC::__transform_completion_signatures(
+              __stored_completions,
+              []<class... _Values>()
+              {
+                return completion_signatures<set_value_t(__replayed_result_t<_Tag, _Values>...)>{};
+              },
+              []<class _Error>()
+              { return completion_signatures<set_error_t(__replayed_result_t<_Tag, _Error>)>{}; });
+          }
+        }
       }
       else
       {

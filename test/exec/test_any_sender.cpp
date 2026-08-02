@@ -282,7 +282,7 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("any_sender uses overload rules for completion signatures", "[types][any_sender]")
   {
-    auto split_sender = exec::split(ex::just(42));
+    auto split_sender = exec::split(ex::just(42) | ex::then([](int value) { return value; }));
     STATIC_REQUIRE(
       ex::sender_of<decltype(split_sender), ex::set_error_t(std::exception_ptr const &)>);
     STATIC_REQUIRE(ex::sender_of<decltype(split_sender), ex::set_value_t(int const &)>);

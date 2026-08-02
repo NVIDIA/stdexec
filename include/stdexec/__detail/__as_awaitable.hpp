@@ -32,17 +32,21 @@ import stdexec;
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__connect.hpp"
+#  include "__manual_lifetime.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
+#  include "__scope.hpp"
 #  include "__spin_loop_pause.hpp"
+#  include "__storage_for_completion_signatures.hpp"
 #  include "__type_traits.hpp"
-#  include "__variant.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
 #    include <functional>  // for std::identity
 #    include <system_error>
 #    include <thread>
+#    include <tuple>
+#    include <variant>
 #  endif
 
 #  include "__prologue.hpp"
@@ -58,8 +62,11 @@ namespace STDEXEC
 
   namespace __as_awaitable
   {
+    template <class... _Values>
+    using __value_tuple_t = std::tuple<_Values...>;
+
     template <std::size_t _Count>
-    extern __q<__decayed_std_tuple> const __as_single;
+    extern __q<__value_tuple_t> const __as_single;
 
     template <>
     inline constexpr __q<__midentity> __as_single<1>;
@@ -71,8 +78,8 @@ namespace STDEXEC
     using __single_value_t = __minvoke<decltype(__as_single<sizeof...(_Values)>), _Values...>;
 
     template <class _Sender, class _Promise>
-    using __value_t = __decay_t<
-      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value_t>, __msingle_or<void>>>;
+    using __value_t =
+      __value_types_of_t<_Sender, env_of_t<_Promise&>, __q<__single_value_t>, __msingle_or<void>>;
 
     inline constexpr auto __get_await_completion_adaptor =
       __with_default{get_await_completion_adaptor, std::identity{}};
@@ -91,14 +98,46 @@ namespace STDEXEC
     using __adapted_sender_t =
       __remove_rvalue_reference_t<__call_result_t<__adapt_completion_t<_Sender>, _Sender>>;
 
-    struct __void
-    {};
+    template <class... _Values>
+    using __set_value_sig_t = completion_signatures<set_value_t(_Values...)>;
+
+    template <class _Sender, class _Promise>
+    using __value_signatures_t =
+      __value_types_of_t<_Sender,
+                         env_of_t<_Promise&>,
+                         __q<__set_value_sig_t>,
+                         __msingle_or<completion_signatures<set_value_t()>>>;
+
+    template <class _Sender, class _Promise>
+    using __expected_t = storage_for_completion_signatures<
+      __concat_completion_signatures_t<__value_signatures_t<_Sender, _Promise>,
+                                       completion_signatures<set_error_t(std::exception_ptr)>>>;
 
     template <class _Value>
-    using __value_or_void_t = __if_c<__same_as<_Value, void>, __void, _Value>;
+    struct __await_result
+    {
+      template <class _Arg>
+      constexpr auto operator()(_Arg&& __arg) const -> _Value
+      {
+        return static_cast<_Arg&&>(__arg);
+      }
+    };
 
-    template <class _Value>
-    using __expected_t = __variant<__value_or_void_t<_Value>, std::exception_ptr>;
+    template <>
+    struct __await_result<void>
+    {
+      constexpr void operator()() const noexcept {}
+    };
+
+    template <class... _Values>
+    struct __await_result<std::tuple<_Values...>>
+    {
+      template <class... _Args>
+      constexpr auto operator()(_Args&&... __args) const -> std::tuple<_Values...>
+      {
+        return std::tuple<_Values...>{static_cast<_Args&&>(__args)...};
+      }
+    };
 
     using __connect_await::__has_as_awaitable_member;
 
@@ -111,11 +150,11 @@ namespace STDEXEC
                               && __completes_inline_for<set_error_t, _Sender, _Env...>
                               && __completes_inline_for<set_stopped_t, _Sender, _Env...>;
 
-    template <class _Value, bool _Inline>
+    template <class _Sender, class _Promise, class _Value, bool _Inline>
     struct __sender_awaiter_base;
 
-    template <class _Value>
-    struct __sender_awaiter_base<_Value, true>
+    template <class _Sender, class _Promise, class _Value>
+    struct __sender_awaiter_base<_Sender, _Promise, _Value, true>
     {
       static constexpr auto await_ready() noexcept -> bool
       {
@@ -124,27 +163,65 @@ namespace STDEXEC
 
       constexpr auto await_resume() -> _Value
       {
-        // If the operation completed with set_stopped (as denoted by the result variant
-        // being valueless), we should not be resuming this coroutine at all.
-        STDEXEC_ASSERT(!__result_.__is_valueless());
-        if (__result_.index() == 1)
-        {
-          // The operation completed with set_error, so we need to rethrow the exception.
-          std::rethrow_exception(std::move(__var::__get<1>(__result_)));
-        }
+        __manual_lifetime<_Value> __value;
+        bool const                __has_result = visit_stored_completion(
+          __overload{
+            []() -> bool
+            {
+              STDEXEC_ASSERT(false);
+              STDEXEC_UNREACHABLE();
+            },
+            [&](auto&& __completion) -> bool
+            {
+              using __completion_t = std::remove_cvref_t<decltype(__completion)>;
+              auto __args = static_cast<decltype(__completion)&&>(__completion).forward_arguments();
+              if constexpr (__same_as<typename __completion_t::tag_type, set_error_t>)
+              {
+                static_assert(std::tuple_size_v<decltype(__args)> == 1);
+                std::apply([](auto&& __err) -> void
+                           { std::rethrow_exception(static_cast<decltype(__err)&&>(__err)); },
+                           static_cast<decltype(__args)&&>(__args));
+              }
+              else
+              {
+                std::apply(
+                  [&](auto&&... __as) -> void
+                  {
+                    __value.__construct_from(__await_result<_Value>{},
+                                             static_cast<decltype(__as)&&>(__as)...);
+                  },
+                  static_cast<decltype(__args)&&>(__args));
+              }
+              return true;
+            }},
+          static_cast<__expected_t<_Sender, _Promise>&&>(__result_));
+
+        // If the operation completed with set_stopped, we should not be resuming this coroutine at all.
+        STDEXEC_ASSERT(__has_result);
         // The operation completed with set_value, so we can just return the value, which
         // may be void.
-        using __reference_t = std::add_rvalue_reference_t<_Value>;
-        return static_cast<__reference_t>(__var::__get<0>(__result_));
+        if constexpr (__same_as<_Value, void>)
+        {
+          return;
+        }
+        else if constexpr (std::is_reference_v<_Value>)
+        {
+          return __value.__get();
+        }
+        else
+        {
+          auto __guard = __scope_guard{[&]() noexcept { __value.__destroy(); }};
+          return static_cast<_Value&&>(__value.__get());
+        }
       }
 
       [[nodiscard]]
       constexpr auto __get_continuation() const noexcept -> __std::coroutine_handle<>
       {
-        // If the operation was stopped (__result_ is valueless), we should use the
+        // If the operation was stopped (__result_ is empty), we should use the
         // unhandled_stopped() continuation. Otherwise, should resume the __continuation_
         // as normal.
-        if (__result_.__is_valueless())
+        if (!__result_.has_completion())
         {
           return STDEXEC::__coroutine_unhandled_stopped(__continuation_);
         }
@@ -154,14 +231,15 @@ namespace STDEXEC
         }
       }
 
-      __coroutine_handle<> __continuation_;
-      __expected_t<_Value> __result_{__no_init};
+      __coroutine_handle<>            __continuation_;
+      __expected_t<_Sender, _Promise> __result_{};
     };
 
     // When the sender is not statically known to complete inline, we need to use atomic
     // state to guard against too many inline completions causing a stack overflow.
-    template <class _Value>
-    struct __sender_awaiter_base<_Value, false> : __sender_awaiter_base<_Value, true>
+    template <class _Sender, class _Promise, class _Value>
+    struct __sender_awaiter_base<_Sender, _Promise, _Value, false>
+      : __sender_awaiter_base<_Sender, _Promise, _Value, true>
     {
       // This is used to coordinate between await_suspend (T1) and the receiver (T2).
       // It can hold three different values:
@@ -183,7 +261,7 @@ namespace STDEXEC
       __std::atomic<std::thread::id> __thread_id_{std::this_thread::get_id()};
     };
 
-    template <class _Value>
+    template <class _Sender, class _Promise, class _Value>
     struct __receiver_base
     {
       using receiver_concept = receiver_tag;
@@ -193,11 +271,11 @@ namespace STDEXEC
       {
         STDEXEC_TRY
         {
-          __awaiter_.__result_.template emplace<0>(static_cast<_Us&&>(__us)...);
+          __awaiter_.__result_.arrive(set_value_t{}, static_cast<_Us&&>(__us)...);
         }
         STDEXEC_CATCH_ALL
         {
-          __awaiter_.__result_.template emplace<1>(std::current_exception());
+          __awaiter_.__result_.arrive(set_error_t{}, std::current_exception());
         }
       }
 
@@ -205,25 +283,31 @@ namespace STDEXEC
       void set_error(_Error&& __err) noexcept
       {
         if constexpr (__decays_to<_Error, std::exception_ptr>)
-          __awaiter_.__result_.template emplace<1>(static_cast<_Error&&>(__err));
+        {
+          __awaiter_.__result_.arrive(set_error_t{}, static_cast<_Error&&>(__err));
+        }
         else if constexpr (__decays_to<_Error, std::error_code>)
-          __awaiter_.__result_.template emplace<1>(
-            std::make_exception_ptr(std::system_error(__err)));
+        {
+          __awaiter_.__result_.arrive(set_error_t{},
+                                      std::make_exception_ptr(std::system_error(__err)));
+        }
         else
-          __awaiter_.__result_.template emplace<1>(
-            std::make_exception_ptr(static_cast<_Error&&>(__err)));
+        {
+          __awaiter_.__result_.arrive(set_error_t{},
+                                      std::make_exception_ptr(static_cast<_Error&&>(__err)));
+        }
       }
 
-      __sender_awaiter_base<_Value, true>& __awaiter_;
+      __sender_awaiter_base<_Sender, _Promise, _Value, true>& __awaiter_;
     };
 
-    template <class _Promise, class _Value>
-    struct __sync_receiver : __receiver_base<_Value>
+    template <class _Sender, class _Promise, class _Value>
+    struct __sync_receiver : __receiver_base<_Sender, _Promise, _Value>
     {
-      using __awaiter_t = __sender_awaiter_base<_Value, true>;
+      using __awaiter_t = __sender_awaiter_base<_Sender, _Promise, _Value, true>;
 
       constexpr explicit __sync_receiver(__awaiter_t& __awaiter) noexcept
-        : __receiver_base<_Value>{__awaiter}
+        : __receiver_base<_Sender, _Promise, _Value>{__awaiter}
       {}
 
       void set_stopped() noexcept
@@ -243,26 +327,26 @@ namespace STDEXEC
     };
 
     // The receiver type used to connect to senders that could complete asynchronously.
-    template <class _Promise, class _Value>
-    struct __async_receiver : __sync_receiver<_Promise, _Value>
+    template <class _Sender, class _Promise, class _Value>
+    struct __async_receiver : __sync_receiver<_Sender, _Promise, _Value>
     {
-      using __awaiter_t = __sender_awaiter_base<_Value, false>;
+      using __awaiter_t = __sender_awaiter_base<_Sender, _Promise, _Value, false>;
 
       constexpr explicit __async_receiver(__awaiter_t& __awaiter) noexcept
-        : __sync_receiver<_Promise, _Value>{__awaiter}
+        : __sync_receiver<_Sender, _Promise, _Value>{__awaiter}
       {}
 
       template <class... _Us>
       void set_value(_Us&&... __us) noexcept
       {
-        this->__sync_receiver<_Promise, _Value>::set_value(static_cast<_Us&&>(__us)...);
+        this->__sync_receiver<_Sender, _Promise, _Value>::set_value(static_cast<_Us&&>(__us)...);
         __done();
       }
 
       template <class _Error>
       void set_error(_Error&& __err) noexcept
       {
-        this->__sync_receiver<_Promise, _Value>::set_error(static_cast<_Error&&>(__err));
+        this->__sync_receiver<_Sender, _Promise, _Value>::set_error(static_cast<_Error&&>(__err));
         __done();
       }
 
@@ -306,23 +390,24 @@ namespace STDEXEC
     };
 
     template <class _Sender, class _Promise>
-    using __sync_receiver_t = __sync_receiver<_Promise, __value_t<_Sender, _Promise>>;
+    using __sync_receiver_t = __sync_receiver<_Sender, _Promise, __value_t<_Sender, _Promise>>;
 
     template <class _Sender, class _Promise>
-    using __async_receiver_t = __async_receiver<_Promise, __value_t<_Sender, _Promise>>;
+    using __async_receiver_t = __async_receiver<_Sender, _Promise, __value_t<_Sender, _Promise>>;
 
     //////////////////////////////////////////////////////////////////////////////////////
     // __sender_awaiter: awaitable type returned by as_awaitable when given a sender
     // that does not have an as_awaitable member function
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
-    struct __sender_awaiter : __sender_awaiter_base<__value_t<_Sender, _Promise>, false>
+    struct __sender_awaiter
+      : __sender_awaiter_base<_Sender, _Promise, __value_t<_Sender, _Promise>, false>
     {
       using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
       constexpr explicit __sender_awaiter(_Sender&&                         __sndr,
                                           __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_connectable<_Sender, __receiver_t>)
-        : __sender_awaiter_base<__value_t, false>{__hcoro}
+        : __sender_awaiter_base<_Sender, _Promise, __value_t, false>{__hcoro}
         , __opstate_(STDEXEC::connect(static_cast<_Sender&&>(__sndr), __receiver_t(*this)))
       {}
 
@@ -365,14 +450,14 @@ namespace STDEXEC
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
       requires __completes_inline<_Sender, env_of_t<_Promise&>>
     struct __sender_awaiter<_Promise, _Sender>
-      : __sender_awaiter_base<__value_t<_Sender, _Promise>, true>
+      : __sender_awaiter_base<_Sender, _Promise, __value_t<_Sender, _Promise>, true>
     {
       using __value_t = __as_awaitable::__value_t<_Sender, _Promise>;
 
       constexpr explicit __sender_awaiter(_Sender&&                         __sndr,
                                           __std::coroutine_handle<_Promise> __hcoro)
         noexcept(__nothrow_move_constructible<_Sender>)
-        : __sender_awaiter_base<__value_t, true>{__hcoro}
+        : __sender_awaiter_base<_Sender, _Promise, __value_t, true>{__hcoro}
         , __sndr_(static_cast<_Sender&&>(__sndr))
       {}
 
