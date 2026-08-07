@@ -16,18 +16,25 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__execution_fwd.hpp"
+#include "../stdexec/__detail/__config.hpp"
 
-#include "../stdexec/__detail/__concepts.hpp"
-#include "../stdexec/__detail/__domain.hpp"
-#include "../stdexec/__detail/__env.hpp"
-#include "../stdexec/__detail/__receivers.hpp"
-#include "../stdexec/stop_token.hpp"
+#  include "completion_behavior.hpp"
 
-#include "completion_behavior.hpp"
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include "../stdexec/__detail/__execution_fwd.hpp"
 
-#include <cstddef>
-#include <utility>
+#  include "../stdexec/__detail/__concepts.hpp"
+#  include "../stdexec/__detail/__domain.hpp"
+#  include "../stdexec/__detail/__env.hpp"
+#  include "../stdexec/__detail/__receivers.hpp"
+#  include "../stdexec/stop_token.hpp"
+
+#  include <cstddef>
+#  include <utility>
+#endif
 
 namespace experimental::execution
 {
