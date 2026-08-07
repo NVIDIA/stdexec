@@ -252,6 +252,12 @@ STDEXEC_NAMESPACE_STD_END
 // clang-format on
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(__cpp_impl_coroutine) && __cpp_impl_coroutine >= 202606L
+#  define STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE() 0
+#else
+#  define STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE() 1
+#endif
+
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
 #  if !STDEXEC_USE_MODULES()
 // we've already imported std above

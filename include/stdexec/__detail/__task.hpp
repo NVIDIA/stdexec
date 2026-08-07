@@ -46,17 +46,48 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
+  ////////////////////////////////////////////////////////////////////////////////
+  // STDEXEC::with_error
+  template <class _Error>
+  struct with_error
+  {
+    using type = __decay_t<_Error>;
+    type error;
+  };
+
+  template <class _Error>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE with_error(_Error) -> with_error<_Error>;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  // STDEXEC::with_stopped
+  struct with_stopped
+  {};
+
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
     // A base class for task::promise_type so it can be specialized when _Ty is void:
-    template <class _Ty>
+    template <class _Promise, class _Ty>
     struct __promise_base
     {
       template <class _Value = _Ty>
       constexpr void return_value(_Value&& __value)
       {
         __result_.emplace(static_cast<_Value&&>(__value));
+      }
+
+      template <class _Error>
+        requires(!__std::convertible_to<with_error<_Error>, _Ty>)
+      constexpr void return_value(with_error<_Error> __error)  //
+        noexcept(noexcept(static_cast<_Promise&>(*this).__set_error(std::move(__error).error)))
+      {
+        static_cast<_Promise&>(*this).__set_error(std::move(__error).error);
+      }
+
+      constexpr void return_value(with_stopped) noexcept
+        requires(!__std::convertible_to<with_stopped, _Ty>)
+      {
+        static_cast<_Promise&>(*this).__set_stopped();
       }
 
       [[nodiscard]]
@@ -68,10 +99,25 @@ namespace STDEXEC
       __optional<_Ty> __result_{};
     };
 
-    template <>
-    struct __promise_base<void>
+    template <class _Promise>
+    struct __promise_base<_Promise, void>
     {
       constexpr void return_void() {}
+
+#    if !STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE()
+      template <class _Error>
+      constexpr void return_value(with_error<_Error> __error)  //
+        noexcept(noexcept(static_cast<_Promise&>(*this).__set_error(std::move(__error).error)))
+      {
+        static_cast<_Promise&>(*this).__set_error(std::move(__error).error);
+      }
+
+      constexpr void return_value(with_stopped) noexcept
+      {
+        static_cast<_Promise&>(*this).__set_stopped();
+      }
+#    endif
+
       constexpr void __result() {}
     };
 
@@ -260,18 +306,6 @@ namespace STDEXEC
       }
     } __throw_error{};
   }  // namespace __task
-
-  ////////////////////////////////////////////////////////////////////////////////
-  // STDEXEC::with_error
-  template <class _Error>
-  struct with_error
-  {
-    using type = __decay_t<_Error>;
-    type error;
-  };
-
-  template <class _Error>
-  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE with_error(_Error) -> with_error<_Error>;
 
   ////////////////////////////////////////////////////////////////////////////////
   // STDEXEC::task
@@ -471,6 +505,7 @@ namespace STDEXEC
       _TaskEnv             __env_;
       task                 __task_;
       __error_variant_t    __errors_{__no_init};
+      bool                 __stopped_{};
     };
 
     template <class _Env>
@@ -527,6 +562,10 @@ namespace STDEXEC
       [[nodiscard]]
       auto __completed() noexcept -> __std::coroutine_handle<> final
       {
+        if (this->__stopped_)
+        {
+          return STDEXEC::__coroutine_unhandled_stopped(this->__handle());
+        }
         this->__reset_callback();
         return this->__handle().promise().continuation().handle();
       }
@@ -535,7 +574,10 @@ namespace STDEXEC
       auto __canceled() noexcept -> __std::coroutine_handle<> final
       {
         this->__reset_callback();
-        return this->__handle().promise().continuation().unhandled_stopped();
+        auto const __continuation = this->__handle().promise().continuation();
+        auto const __coro         = std::exchange(this->__task_.__coro_, {});
+        STDEXEC::__coroutine_destroy_nothrow(__coro);
+        return __continuation.unhandled_stopped();
       }
 
       _ParentPromise& __parent_;
@@ -578,7 +620,7 @@ namespace STDEXEC
   // task<T,E>::promise_type
   template <class _Ty, class _TaskEnv>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _TaskEnv>::__promise
-    : __task::__promise_base<_Ty>
+    : __task::__promise_base<__promise, _Ty>
     , with_awaitable_senders<__promise>
   {
     __promise() noexcept = default;
@@ -620,17 +662,55 @@ namespace STDEXEC
     }
 
     template <class _Error>
-    constexpr auto yield_value(with_error<_Error> __error)  //
-      noexcept(__nothrow_decay_copyable<_Error>)
+    static consteval bool __nothrow_error_conversion()
     {
-      if constexpr (__mapply<__mcontains<__decay_t<_Error>>, __error_variant_t>::value)
+      using __is_convertible_error = __mbind_front_q<__mconvertible_to, _Error>;
+      constexpr auto __count =
+        __mapply<__mcount_if<__is_convertible_error>, __error_variant_t>::value;
+      if constexpr (__count == 1)
       {
-        __state_->__errors_.template emplace<__decay_t<_Error>>(std::move(__error).error);
+        using __error_t =
+          __mapply<__mfind_if<__is_convertible_error, __q<__mfront>>, __error_variant_t>;
+        return __nothrow_constructible_from<__error_t, _Error>;
       }
       else
       {
-        static_assert(__mnever<_Error>, "Error type not in task's error_types");
+        return false;
       }
+    }
+
+    template <class _Error>
+    constexpr void __set_error(_Error&& __error) noexcept(__nothrow_error_conversion<_Error&&>())
+    {
+      using __is_convertible_error = __mbind_front_q<__mconvertible_to, _Error&&>;
+      constexpr auto __count =
+        __mapply<__mcount_if<__is_convertible_error>, __error_variant_t>::value;
+      static_assert(__count == 1,
+                    "The error must be convertible to exactly one of the task's error types");
+      if constexpr (__count == 1)
+      {
+        using __error_t =
+          __mapply<__mfind_if<__is_convertible_error, __q<__mfront>>, __error_variant_t>;
+        __state_->__errors_.template emplace<__error_t>(static_cast<_Error&&>(__error));
+      }
+    }
+
+    template <class _Error>
+    constexpr auto yield_value(with_error<_Error> __error)  //
+      noexcept(noexcept(__set_error(std::move(__error).error)))
+    {
+      __set_error(std::move(__error).error);
+      return __completed_awaiter{};
+    }
+
+    constexpr void __set_stopped() noexcept
+    {
+      __state_->__stopped_ = true;
+    }
+
+    constexpr auto yield_value(with_stopped) noexcept
+    {
+      __set_stopped();
       return __completed_awaiter{};
     }
 
