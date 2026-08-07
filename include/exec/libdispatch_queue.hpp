@@ -280,8 +280,9 @@ namespace experimental::execution
       template <STDEXEC::__decays_to<bulk_sender> Self, class... Env>
       static consteval auto get_completion_signatures()
       {
+        using namespace STDEXEC;
         return exec::transform_completion_signatures(
-          STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>(),
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
           []<class... Args>()
           {
             if constexpr (!__decay_copyable<Args...>)
