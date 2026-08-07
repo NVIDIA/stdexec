@@ -205,7 +205,7 @@ namespace experimental::execution
     struct __read_with_default_t
     {
       template <class _Query, class _Default>
-      constexpr auto operator()(_Query, _Default&& __default) const
+      constexpr auto operator()(_Query, _Default&& __default) const  //
         noexcept(__nothrow_decay_copyable<_Default>)
       {
         return __sender<_Query, __decay_t<_Default>>{static_cast<_Default&&>(__default)};
