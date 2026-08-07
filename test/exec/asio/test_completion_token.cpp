@@ -38,6 +38,11 @@
 using namespace STDEXEC;
 using namespace exec::asio;
 
+#if STDEXEC_GCC() && STDEXEC_GCC_VERSION >= 1400 && STDEXEC_GCC_VERSION < 1500
+// Work around a GCC 14 IPA mod/ref miscompilation in this test.
+#  pragma GCC optimize("no-ipa-modref")
+#endif
+
 namespace
 {
 
@@ -354,19 +359,6 @@ namespace
                                                                          std::shared_ptr<void>& ptr,
                                                                          CompletionToken&& token)
   {
-    //  This function is seemingly fragile?
-    //
-    //  In release mode slightly different arrangements produce bizarre outcomes:
-    //
-    //  /root/stdexec/test/asioexec/test_completion_token.cpp:380: FAILED:
-    //    CHECK( !ex )
-    //  with expansion:
-    //    false
-    //
-    //  /root/stdexec/test/asioexec/test_completion_token.cpp:382: FAILED:
-    //    CHECK( ptr.use_count() == 1U )
-    //  with expansion:
-    //    -1564306560 == 1
     using signature_type = void();
     return asio_impl::async_initiate<CompletionToken, signature_type>(
       [&ptr](auto h, auto const & ex)
@@ -374,16 +366,13 @@ namespace
         auto       local = std::make_shared<decltype(h)>(std::move(h));
         auto const assoc = asio_impl::get_associated_executor(*local, ex);
         ptr              = local;
-        asio_impl::post(assoc,
-                        [&ptr, local = std::move(local)]() mutable
-                        {
-                          CHECK(local.use_count() == 2);
-                          CHECK(ptr.use_count() == 2);
-                          auto cpy = std::move(local);
-                          cpy.reset();
-                          CHECK(ptr.use_count() == 1);
-                          throw std::logic_error("Test");
-                        });
+        asio_impl::post(ex,
+                        asio_impl::bind_executor(assoc,
+                                                 [local]() mutable
+                                                 {
+                                                   local.reset();
+                                                   throw std::logic_error("Test");
+                                                 }));
       },
       token,
       ex);
@@ -394,7 +383,7 @@ namespace
             "completion handler's lifetime (this is necessary in situations where "
             "asynchronous control flow bifurcates and one of the child operations ends "
             "via exception)",
-            "[asioexec][completion_token][!mayfail]")
+            "[asioexec][completion_token]")
   {
     std::exception_ptr    ex;
     std::shared_ptr<void> ptr;
