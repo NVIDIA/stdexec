@@ -77,7 +77,7 @@ namespace STDEXEC
       }
 
       template <class _Error>
-        requires (!__std::convertible_to<with_error<_Error>, _Ty>)
+        requires(!__std::convertible_to<with_error<_Error>, _Ty>)
       constexpr void return_value(with_error<_Error> __error)  //
         noexcept(noexcept(static_cast<_Promise&>(*this).__set_error(std::move(__error).error)))
       {
@@ -85,7 +85,7 @@ namespace STDEXEC
       }
 
       constexpr void return_value(with_stopped) noexcept
-        requires (!__std::convertible_to<with_stopped, _Ty>)
+        requires(!__std::convertible_to<with_stopped, _Ty>)
       {
         static_cast<_Promise&>(*this).__set_stopped();
       }

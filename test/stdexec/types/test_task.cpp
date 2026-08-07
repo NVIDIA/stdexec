@@ -186,8 +186,8 @@ namespace
     bool *destroyed_;
   };
 
-  auto test_task_destroys_frame_before_propagating_stopped(
-    [[maybe_unused]] destruction_probe probe) -> ex::task<int>
+  auto test_task_destroys_frame_before_propagating_stopped([[maybe_unused]] destruction_probe probe)
+    -> ex::task<int>
   {
     co_await ex::just_stopped();
     FAIL("Expected co_awaiting just_stopped to stop the task");
@@ -217,12 +217,8 @@ namespace
   TEST_CASE("task can co_yield with_stopped", "[types][task]")
   {
     bool destroyed = false;
-    auto t = test_task_yields_stopped(destruction_probe{destroyed})
-           | ex::upon_stopped(
-               [&]() noexcept
-               {
-                 CHECK(destroyed);
-               });
+    auto t         = test_task_yields_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped([&]() noexcept { CHECK(destroyed); });
     ex::sync_wait(std::move(t));
     CHECK(destroyed);
   }
@@ -235,7 +231,7 @@ namespace
   TEST_CASE("non-void task can co_return with_stopped", "[types][task]")
   {
     bool destroyed = false;
-    auto t = test_task_returns_stopped(destruction_probe{destroyed})
+    auto t         = test_task_returns_stopped(destruction_probe{destroyed})
            | ex::upon_stopped(
                [&]() noexcept
                {
@@ -256,12 +252,8 @@ namespace
   TEST_CASE("void task can co_return with_stopped", "[types][task]")
   {
     bool destroyed = false;
-    auto t = test_void_task_returns_stopped(destruction_probe{destroyed})
-           | ex::upon_stopped(
-               [&]() noexcept
-               {
-                 CHECK(destroyed);
-               });
+    auto t         = test_void_task_returns_stopped(destruction_probe{destroyed})
+           | ex::upon_stopped([&]() noexcept { CHECK(destroyed); });
     ex::sync_wait(std::move(t));
     CHECK(destroyed);
   }
