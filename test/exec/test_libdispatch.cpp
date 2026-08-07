@@ -71,6 +71,7 @@ namespace
     CHECK(res == 30);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("libdispatch bulk should handle exceptions gracefully")
   {
     exec::libdispatch_queue queue;
@@ -105,4 +106,5 @@ namespace
       FAIL("invalid exception caught");
     }
   }
+#endif
 }  // namespace
