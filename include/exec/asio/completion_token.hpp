@@ -22,7 +22,7 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
-#  include "as_default_on.hpp"
+#include "as_default_on.hpp"
 
 #if STDEXEC_USE_MODULES()
 import std;
