@@ -25,11 +25,7 @@ namespace experimental::execution
 {
   struct fork_join_t;
 
-  struct PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE
-  {};
-
-  struct INVALID_ARGUMENTS_TO_FORK_JOIN
-  {};
+  struct INVALID_ARGUMENTS_TO_FORK_JOIN;
 
   namespace _fork_join
   {
@@ -247,7 +243,7 @@ namespace experimental::execution
           else if constexpr (!__decay_copyable_results_t::value)
           {
             return STDEXEC::__throw_compile_time_error<  //
-              _WHAT_(PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE),
+              _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
               _IN_ALGORITHM_(exec::fork_join_t)>();
           }
           else

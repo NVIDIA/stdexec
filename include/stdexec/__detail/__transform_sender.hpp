@@ -34,7 +34,7 @@ namespace STDEXEC
   namespace __detail
   {
     template <class _Domain, class _OpTag>
-    struct __transform_sender_t
+    struct __transform_sender
     {
       template <class _Sndr, class _Env>
       using __domain_for_t =
@@ -65,7 +65,7 @@ namespace STDEXEC
         else
         {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
+            __transform_sender<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t::template __get_declfn<__result_t,
                                                               _Env,
                                                               (_Nothrow && __is_nothrow)>();
@@ -102,7 +102,7 @@ namespace STDEXEC
         else
         {
           using __transform_recurse_t =
-            __transform_sender_t<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
+            __transform_sender<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
           return __transform_recurse_t()(__domain_t().transform_sender(_OpTag(),
                                                                        static_cast<_Sndr&&>(__sndr),
                                                                        __env),
@@ -133,28 +133,27 @@ namespace STDEXEC
     // 2. Starting domain transformation (where the operation state starts)
     template <class _Sndr, class _Env>
     using __impl_fn_t =
-      __compose<__detail::__transform_sender_t<__detail::__starting_domain_t<_Env>, start_t>,
-                __detail::__transform_sender_t<__detail::__completing_domain_t<void, _Sndr, _Env>,
-                                               set_value_t>>;
+      __compose<__detail::__transform_sender<__detail::__starting_domain_t<_Env>, start_t>,
+                __detail::__transform_sender<__detail::__completing_domain_t<void, _Sndr, _Env>,
+                                             set_value_t>>;
 
    public:
     // NOT TO SPEC:
     template <class _Sndr>
     STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-    constexpr auto
-    operator()(_Sndr&& __sndr) const noexcept(__nothrow_move_constructible<_Sndr>)  //
-      -> _Sndr
+    constexpr auto operator()(_Sndr&& __sndr) const  //
+      noexcept(__nothrow_move_constructible<_Sndr>) -> _Sndr
     {
       return static_cast<_Sndr&&>(__sndr);
     }
 
-    template <class _Sndr, class _Env, auto _ImplFn = __impl_fn_t<_Sndr, _Env>{}>
+    template <class _Sndr, class _Env, class _ImplFn = __impl_fn_t<_Sndr, _Env>>
     STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-    constexpr auto operator()(_Sndr && __sndr, _Env const & __env) const
-      noexcept(noexcept(_ImplFn(static_cast<_Sndr&&>(__sndr), __env)))
-        -> decltype(_ImplFn(static_cast<_Sndr&&>(__sndr), __env))
+    constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const
+      noexcept(__nothrow_callable<_ImplFn, _Sndr, _Env const &>)
+        -> __call_result_t<_ImplFn, _Sndr, _Env const &>
     {
-      return _ImplFn(static_cast<_Sndr&&>(__sndr), __env);
+      return _ImplFn()(static_cast<_Sndr&&>(__sndr), __env);
     }
   };
 

@@ -121,62 +121,6 @@ namespace STDEXEC
     __data(_Pol const &, _Shape, _Fun) -> __data<_Pol, _Shape, _Fun>;
 
     template <class _AlgoTag>
-    struct __bulk_traits;
-
-    template <>
-    struct __bulk_traits<bulk_t>
-    {
-      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_t>;
-
-      // Curried function, after passing the required indices.
-      template <class _Fun, class _Shape>
-      using __fun_curried =
-        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape>;
-    };
-
-    template <>
-    struct __bulk_traits<bulk_chunked_t>
-    {
-      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_chunked_t>;
-
-      // Curried function, after passing the required indices.
-      template <class _Fun, class _Shape>
-      using __fun_curried = __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>,
-                                          _Fun,
-                                          _Shape,
-                                          _Shape>;
-    };
-
-    template <>
-    struct __bulk_traits<bulk_unchunked_t>
-    {
-      using __on_not_callable = __mbind_front_q<__callable_error_t, bulk_unchunked_t>;
-
-      // Curried function, after passing the required indices.
-      template <class _Fun, class _Shape>
-      using __fun_curried =
-        __mbind_front<__mtry_catch_q<__nothrow_invocable_t, __on_not_callable>, _Fun, _Shape>;
-    };
-
-    template <class _Ty>
-    using __decay_ref = __decay_t<_Ty>&;
-
-    template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
-    using __with_error_invoke_t =
-      __if<__value_types_t<
-             __completion_signatures_of_t<_CvSender, _Env...>,
-             __mtransform<__q<__decay_ref>,
-                          typename __bulk_traits<_AlgoTag>::template __fun_curried<_Fun, _Shape>>,
-             __q<__mand>>,
-           completion_signatures<>,
-           __eptr_completion_t>;
-
-    template <class _AlgoTag, class _Fun, class _Shape, class _CvSender, class... _Env>
-    using __completion_signatures = __transform_completion_signatures_t<
-      __completion_signatures_of_t<_CvSender, _Env...>,
-      __with_error_invoke_t<_AlgoTag, _Fun, _Shape, _CvSender, _Env...>>;
-
-    template <class _AlgoTag>
     struct __generic_bulk_t  // NOLINT(bugprone-crtp-constructor-accessibility)
     {
       template <sender _Sender,
@@ -231,7 +175,7 @@ namespace STDEXEC
 
       template <class _Shape, class... _Args>
       constexpr void operator()(_Shape __begin, _Shape __end, _Args&... __args)
-        noexcept(__nothrow_callable<_Fun&, _Shape, decltype(__args)...>)
+        noexcept(__nothrow_callable<_Fun&, _Shape, _Args&...>)
       {
         for (; __begin != __end; ++__begin)
         {
@@ -264,12 +208,6 @@ namespace STDEXEC
     template <class _AlgoTag>
     struct __impl_base : __sexpr_defaults
     {
-      template <class _Sender>
-      using __fun_t = decltype(__decay_t<__data_of<_Sender>>::__fun_);
-
-      template <class _Sender>
-      using __shape_t = decltype(__decay_t<__data_of<_Sender>>::__shape_);
-
       // Forward the child sender's environment (which contains completion scheduler)
       static constexpr auto __get_attrs =  //
         []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
@@ -277,25 +215,49 @@ namespace STDEXEC
         return __attrs{__child};
       };
 
-      template <class _Sender, class... _Env>
+      template <class _CvSender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(__sender_for<_Sender, _AlgoTag>);
-        // TODO: port this to use constant evaluation
-        return __completion_signatures<_AlgoTag,
-                                       __fun_t<_Sender>,
-                                       __shape_t<_Sender>,
-                                       __child_of<_Sender>,
-                                       _Env...>{};
+        static_assert(__sender_for<_CvSender, _AlgoTag>);
+        using __state_t = __decay_t<__data_of<_CvSender>>;
+        using __fun_t   = decltype(__state_t::__fun_);
+        using __shape_t = decltype(__state_t::__shape_);
+
+        return STDEXEC::__transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__child_of<_CvSender>, __fwd_env_t<_Env>...>(),
+          []<class... _Args>()
+          {
+            using __value_sig_t = set_value_t(_Args...);
+            using __arg_pack_t  = __if_c<__same_as<_AlgoTag, bulk_chunked_t>,
+                                         __tuple<__shape_t, __shape_t, _Args&...>,
+                                         __tuple<__shape_t, _Args&...>>;
+
+            if constexpr (__nothrow_applicable<__fun_t&, __arg_pack_t>)
+            {
+              return completion_signatures<__value_sig_t>();
+            }
+            else if constexpr (__applicable<__fun_t&, __arg_pack_t>)
+            {
+              return completion_signatures<__value_sig_t, set_error_t(std::exception_ptr)>();
+            }
+            else
+            {
+              return STDEXEC::__throw_compile_time_error<
+                _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+                _WHERE_(_IN_ALGORITHM_, _AlgoTag),
+                _WITH_FUNCTION_(__fun_t&),
+                __mapply<__qf<_WITH_ARGUMENTS_>, __arg_pack_t>>();
+            }
+          });
       };
     };
 
     struct __chunked_impl : __impl_base<bulk_chunked_t>
     {
-      //! This implements the core default behavior for `bulk_chunked`:
-      //! When setting value, it calls the function with the entire range.
-      //! Note: This is not done in parallel. That is customized by the scheduler.
-      //! See, e.g., static_thread_pool::bulk_receiver::__t.
+      //! This implements the core default behavior for `bulk_chunked`: When setting
+      //! value, it calls the function with the entire range. Note: This is not done in
+      //! parallel. That is customized by the scheduler. See, e.g.,
+      //! `static_thread_pool::bulk_receiver`.
       static constexpr auto __complete =
         []<class _Tag, class _State, class... _Args>(__ignore,
                                                      _State& __state,
@@ -305,17 +267,18 @@ namespace STDEXEC
         if constexpr (__std::same_as<_Tag, set_value_t>)
         {
           // Intercept set_value and dispatch to the bulk operation.
-          using __shape_t             = decltype(__state.__data_.__shape_);
-          using __fun_t               = decltype(__state.__data_.__fun_);
-          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, __shape_t, _Args...>;
+          using __shape_t = decltype(__state.__data_.__shape_);
+          using __fun_t   = decltype(__state.__data_.__fun_);
+
           STDEXEC_TRY
           {
-            __state.__data_.__fun_(static_cast<__shape_t>(0), __state.__data_.__shape_, __args...);
-            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+            __state.__data_.__fun_(__shape_t(), __shape_t(__state.__data_.__shape_), __args...);
+            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
+                               static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL
           {
-            if constexpr (!__is_nothrow)
+            if constexpr (!__nothrow_callable<__fun_t&, __shape_t, __shape_t, _Args&...>)
             {
               STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }
@@ -341,21 +304,22 @@ namespace STDEXEC
       {
         if constexpr (__std::same_as<_Tag, set_value_t>)
         {
-          using __shape_t             = decltype(__state.__data_.__shape_);
-          using __fun_t               = decltype(__state.__data_.__fun_);
-          constexpr bool __is_nothrow = __nothrow_callable<__fun_t, __shape_t, _Args...>;
-          auto const     __shape      = __state.__data_.__shape_;
+          using __shape_t    = decltype(__state.__data_.__shape_);
+          using __fun_t      = decltype(__state.__data_.__fun_);
+          auto const __shape = __state.__data_.__shape_;
+
           STDEXEC_TRY
           {
             for (__shape_t __i{}; __i != __shape; ++__i)
             {
-              __state.__data_.__fun_(__i, __args...);
+              __state.__data_.__fun_(__shape_t(__i), __args...);
             }
-            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
+            STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
+                               static_cast<_Args&&>(__args)...);
           }
           STDEXEC_CATCH_ALL
           {
-            if constexpr (!__is_nothrow)
+            if constexpr (!__nothrow_callable<__fun_t&, __shape_t, _Args&...>)
             {
               STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
             }

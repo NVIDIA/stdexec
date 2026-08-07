@@ -122,10 +122,11 @@ namespace experimental::execution
 
     struct read_with_default_t;
 
-    template <class _Tag, class _Default, class _Receiver>
+    template <class _Query, class _Default, class _Receiver>
     struct __opstate
     {
       constexpr explicit __opstate(_Default&& __default, _Receiver&& __rcvr)
+        noexcept(__nothrow_move_constructible<_Default>)
         : __default_(static_cast<_Default&&>(__default))
         , __rcvr_(static_cast<_Receiver&&>(__rcvr))
       {}
@@ -136,10 +137,10 @@ namespace experimental::execution
       {
         STDEXEC_TRY
         {
-          if constexpr (__callable<_Tag, env_of_t<_Receiver>>)
+          if constexpr (__callable<_Query, env_of_t<_Receiver>>)
           {
-            auto const & __env = get_env(__rcvr_);
-            STDEXEC::set_value(std::move(__rcvr_), _Tag{}(__env));
+            auto const & __env = STDEXEC::get_env(__rcvr_);
+            STDEXEC::set_value(std::move(__rcvr_), _Query()(__env));
           }
           else
           {
@@ -148,7 +149,10 @@ namespace experimental::execution
         }
         STDEXEC_CATCH_ALL
         {
-          STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
+          if constexpr (!__nothrow_callable<_Query, env_of_t<_Receiver>>)
+          {
+            STDEXEC::set_error(std::move(__rcvr_), std::current_exception());
+          }
         }
       }
 
@@ -157,37 +161,41 @@ namespace experimental::execution
       _Receiver __rcvr_;
     };
 
-    template <class _Tag, class _Default>
+    template <class _Query, class _Default>
     struct __sender
     {
       using sender_concept = STDEXEC::sender_tag;
 
       template <class _Env>
-      using __value_t =
-        __minvoke<__mwith_default<__mbind_back_q<__call_result_t, _Env>, _Default>, _Tag>;
-      template <class _Env>
-      using __default_t = __if_c<__callable<_Tag, _Env>, __ignore, _Default>;
-
-      template <class _Env>
-      using __completions_t =
-        completion_signatures<set_value_t(__value_t<_Env>), set_error_t(std::exception_ptr)>;
+      using __default_t = __if_c<__callable<_Query, _Env>, __ignore, _Default>;
 
       template <__decays_to<__sender> _Self, class _Receiver>
-        requires receiver_of<_Receiver, __completions_t<env_of_t<_Receiver>>>
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
         noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
-          -> __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>
+          -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
-        using __opstate_t = __opstate<_Tag, __default_t<env_of_t<_Receiver>>, _Receiver>;
+        using __opstate_t = __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>;
         return __opstate_t{static_cast<_Self&&>(__self).__default_,
                            static_cast<_Receiver&&>(__rcvr)};
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <class, class _Env>
-      static consteval auto get_completion_signatures() -> __completions_t<_Env>
+      static consteval auto get_completion_signatures() noexcept
       {
-        return {};
+        if constexpr (__nothrow_callable<_Query, _Env>)
+        {
+          return STDEXEC::completion_signatures<set_value_t(__call_result_t<_Query, _Env>)>();
+        }
+        else if constexpr (__callable<_Query, _Env>)
+        {
+          return STDEXEC::completion_signatures<set_value_t(__call_result_t<_Query, _Env>),
+                                                set_error_t(std::exception_ptr)>();
+        }
+        else
+        {
+          return STDEXEC::completion_signatures<set_value_t(_Default)>();
+        }
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
@@ -196,11 +204,11 @@ namespace experimental::execution
 
     struct __read_with_default_t
     {
-      template <class _Tag, class _Default>
-      constexpr auto
-      operator()(_Tag, _Default&& __default) const -> __sender<_Tag, __decay_t<_Default>>
+      template <class _Query, class _Default>
+      constexpr auto operator()(_Query, _Default&& __default) const  //
+        noexcept(__nothrow_decay_copyable<_Default>)
       {
-        return {static_cast<_Default&&>(__default)};
+        return __sender<_Query, __decay_t<_Default>>{static_cast<_Default&&>(__default)};
       }
     };
   }  // namespace __read_with_default
@@ -229,9 +237,8 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
-        -> __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>
       {
-        return {};
+        return STDEXEC::get_completion_signatures<__copy_cvref_t<_Self, _Sender>, _Env...>();
       }
 
       template <__decays_to<__sender> _Self, class _Receiver>

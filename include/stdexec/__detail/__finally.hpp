@@ -361,9 +361,9 @@ namespace STDEXEC
       template <__decays_to<__sender> _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
-        return __final ::__get_completion_signatures<__copy_cvref_t<_Self, _InitialSender>,
-                                                     __copy_cvref_t<_Self, _FinalSender>,
-                                                     _Env...>();
+        return __final::__get_completion_signatures<__copy_cvref_t<_Self, _InitialSender>,
+                                                    __copy_cvref_t<_Self, _FinalSender>,
+                                                    _Env...>();
       }
 
       _InitialSender __initial_sndr_;

@@ -21,6 +21,7 @@
 #include "../stdexec/execution.hpp"
 
 #include "any_sender_of.hpp"
+#include "completion_signatures.hpp"
 
 #include <exception>
 #include <tuple>
@@ -79,23 +80,23 @@ namespace experimental::execution
       {
         using sender_concept = STDEXEC::sender_tag;
 
-        template <class... _Env>
-        using __completions_t = __mapply<__mremove<set_stopped_t(), __q<completion_signatures>>,
-                                         __completion_signatures_of_t<_Sender, _Env...>>;
-
         template <receiver _Receiver>
-          requires sender_to<_Sender, __receiver<_Receiver>>
-        auto connect(_Receiver __rcvr) && noexcept  //
-          -> connect_result_t<_Sender, __receiver<_Receiver>>
+        auto connect(_Receiver __rcvr) &&  //
+          noexcept(__nothrow_connectable<_Sender, __receiver<_Receiver>>)
+            -> connect_result_t<_Sender, __receiver<_Receiver>>
         {
           return STDEXEC::connect(static_cast<_Sender&&>(__sender_),
                                   __receiver<_Receiver>{static_cast<_Receiver&&>(__rcvr)});
         }
 
         template <__same_as<__sender> _Self, class... _Env>
-        static consteval auto get_completion_signatures() -> __completions_t<_Env...>
+        static consteval auto get_completion_signatures()
         {
-          return {};
+          return exec::transform_completion_signatures(
+            STDEXEC::get_completion_signatures<_Sender, _Env...>(),
+            {},
+            {},
+            exec::ignore_completion());
         }
 
         auto get_env() const noexcept -> env_of_t<_Sender>

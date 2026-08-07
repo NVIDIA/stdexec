@@ -36,7 +36,6 @@ import stdexec;
 #  include "__sender_concepts.hpp"
 #  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
-#  include "__transform_completion_signatures.hpp"
 #  include "__type_traits.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -256,13 +255,12 @@ namespace STDEXEC
         __copy_cvref_t<_Sender, typename __data_of<std::remove_cvref_t<_Sender>>::__wrap_sender_t>;
 
       template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()  //
-        -> __transform_completion_signatures_t<
-          __completion_signatures_of_t<__wrap_sender_of_t<_Sender>, _Env...>,
-          completion_signatures<set_stopped_t()>>
+      static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Sender, associate_t>);
-        return {};
+        return STDEXEC::__concat_completion_signatures(
+          STDEXEC::get_completion_signatures<__wrap_sender_of_t<_Sender>, _Env...>(),
+          completion_signatures<set_stopped_t()>());
       };
 
       static constexpr auto __get_state =
