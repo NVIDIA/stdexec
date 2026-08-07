@@ -82,6 +82,7 @@ set(stdexec_test_sources
     stdexec/queries/test_get_forward_progress_guarantee.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/types/test_counting_scopes.cpp
+    stdexec/types/test_task.cpp
     )
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
@@ -92,7 +93,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/algos/factories/test_just_error.cpp
     stdexec/detail/test_any_allocator.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
-    stdexec/types/test_task.cpp)
+    )
 endif()
 
 add_library(common_test_settings INTERFACE)
