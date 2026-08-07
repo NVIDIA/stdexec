@@ -77,6 +77,7 @@ jobs:
           SCCACHE_DIST_REQUEST_TIMEOUT: "7140"
           SCCACHE_DIST_URL: "https://amd64.linux.sccache.rapids.nvidia.com"
           SCCACHE_IDLE_TIMEOUT: "0"
+          SCCACHE_NO_DIST_COMPILE: ${{ contains(matrix.name, 'modules') && '1' || '' }}
           SCCACHE_REGION: "us-east-2"
           SCCACHE_S3_KEY_PREFIX: "nvidia-stdexec-dev"
           SCCACHE_S3_PREPROCESSOR_CACHE_KEY_PREFIX: "nvidia-stdexec-dev/preprocessor"
