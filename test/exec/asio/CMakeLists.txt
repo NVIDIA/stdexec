@@ -22,7 +22,7 @@ set(asioexec_test_sources
 
 if(NOT STDEXEC_BUILD_MODULES)
     # this test doesn't build with modules, yet
-    list(APPEND asio_test_sources test_asio_thread_pool.cpp)
+    list(APPEND asioexec_test_sources test_asio_thread_pool.cpp)
 endif()
 
 add_executable(test.asioexec ${asioexec_test_sources})
