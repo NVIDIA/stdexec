@@ -441,6 +441,7 @@ namespace STDEXEC
   //!
   //! \returns A `__flipped<__decay_t<_Fn>>` object such that calling it with `(a, b)`
   //! calls `__fn(b, a)`.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __flip(_Fn &&__fn) noexcept(__nothrow_decay_copyable<_Fn>)
