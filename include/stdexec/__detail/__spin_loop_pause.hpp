@@ -35,7 +35,11 @@ import stdexec;
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept
+  STDEXEC_ATTRIBUTE(always_inline)
+#    if !STDEXEC_USE_MODULES()
+  static
+#    endif
+    void __spin_loop_pause() noexcept
   {
 #    if STDEXEC_MSVC_HEADERS()
     _mm_pause();
@@ -48,7 +52,11 @@ namespace STDEXEC
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept
+  STDEXEC_ATTRIBUTE(always_inline)
+#    if !STDEXEC_USE_MODULES()
+  static
+#    endif
+    void __spin_loop_pause() noexcept
   {
 #    if (defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)         \
          || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)       \
@@ -66,7 +74,12 @@ namespace STDEXEC
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept {}
+  STDEXEC_ATTRIBUTE(always_inline)
+#    if !STDEXEC_USE_MODULES()
+  static
+#    endif
+    void __spin_loop_pause() noexcept
+  {}
 }  // namespace STDEXEC
 #  endif
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
