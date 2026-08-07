@@ -285,31 +285,35 @@ namespace experimental::execution
           STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
           []<class... Args>()
           {
+            using value_sig_t = set_value_t(__decay_t<Args>...);
+            using arg_pack_t  = __tuple<Shape, __decay_t<Args> &...>;
+            // using arg_pack_t  = __if_c<__same_as<_AlgoTag, bulk_chunked_t>,
+            //                             __tuple<Shape, Shape, Args&...>,
+            //                             __tuple<Shape, Args&...>>;
             if constexpr (!__decay_copyable<Args...>)
             {
               return exec::throw_compile_time_error<
                 _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
                 _WHERE_(_IN_ALGORITHM_, bulk_t),
+                _WITH_ARGUMENTS_(Args...),
                 _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
                 _WITH_ENVIRONMENT_(Env...)>();
             }
-            else if constexpr (!__callable<Fun &, Shape, Shape, __decay_t<Args> &...>)
+            else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>)
             {
-              return exec::throw_compile_time_error<
-                _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
-                _WHERE_(_IN_ALGORITHM_, bulk_t),
-                _WITH_FUNCTION_(Fun &),
-                _WITH_ARGUMENTS_(__decay_t<Args> & ...)>();
+              return completion_signatures<value_sig_t>();
             }
-            else if constexpr (__nothrow_callable<Fun &, Shape, Shape, __decay_t<Args> &...>
-                               && __nothrow_decay_copyable<Args...>)
+            else if constexpr (__applicable<Fun &, arg_pack_t>)
             {
-              return completion_signatures<set_value_t(__decay_t<Args>...)>();
+              return completion_signatures<value_sig_t, set_error_t(std::exception_ptr)>();
             }
             else
             {
-              return completion_signatures<set_value_t(__decay_t<Args>...),
-                                           set_error_t(std::exception_ptr)>();
+              return STDEXEC::__throw_compile_time_error<
+                _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+                _WHERE_(_IN_ALGORITHM_, bulk_t),
+                _WITH_FUNCTION_(Fun &),
+                __mapply<__qf<_WITH_ARGUMENTS_>, arg_pack_t>>();
             }
           });
       }
