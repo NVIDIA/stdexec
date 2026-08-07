@@ -28,6 +28,7 @@ endfunction()
 set(stdexec_test_sources
     test_main.cpp
     stdexec/algos/adaptors/test_associate.cpp
+    stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
@@ -85,7 +86,6 @@ set(stdexec_test_sources
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
   list(APPEND stdexec_test_sources
-    stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
