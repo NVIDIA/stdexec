@@ -289,6 +289,7 @@ namespace STDEXEC
   //!
   //! @see stdexec::when_all      — without the scheduler transfer
   //! @see stdexec::continues_on  — the underlying transfer primitive
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct transfer_when_all_t
   {
     //! @brief Compose @c __sndrs... and deliver the combined completion on
@@ -335,6 +336,7 @@ namespace STDEXEC
   //!
   //! @see stdexec::when_all_with_variant
   //! @see stdexec::transfer_when_all
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct transfer_when_all_with_variant_t
   {
     //! @brief Compose @c __sndrs... (each wrapped in @c into_variant) and
@@ -398,6 +400,7 @@ namespace STDEXEC
   //!             <tt>when_all_with_variant(...) | continues_on(sch)</tt> instead.
   //!
   //! @hideinitializer
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
 
   namespace __when_all
@@ -704,7 +707,10 @@ namespace STDEXEC
     };
 
     template <class _Receiver>
-    static constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept
+#  if !STDEXEC_USE_MODULES()
+    static
+#  endif
+      constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept
     {
       return [&]<class... _Child>(__ignore, __ignore, _Child&&...) noexcept
         requires(__max1_sender<_Child, __env_t<env_of_t<_Receiver>, _Child...>> && ...)

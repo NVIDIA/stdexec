@@ -35,15 +35,19 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_let_stopped.cpp
     stdexec/algos/adaptors/test_let_value.cpp
     stdexec/algos/adaptors/test_sequence.cpp
+    stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
     stdexec/algos/adaptors/test_stop_when.cpp
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_stopped_as_optional.cpp
     stdexec/algos/adaptors/test_then.cpp
+    stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_upon_error.cpp
     stdexec/algos/adaptors/test_upon_stopped.cpp
+    stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/adaptors/test_write_env.cpp
     stdexec/algos/consumers/test_spawn.cpp
+    stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/algos/factories/test_just.cpp
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
@@ -75,6 +79,8 @@ set(stdexec_test_sources
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/schedulers/test_task_scheduler.cpp
+    stdexec/types/test_counting_scopes.cpp
     )
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
@@ -83,15 +89,9 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
     stdexec/algos/adaptors/test_on3.cpp
-    stdexec/algos/adaptors/test_spawn_future.cpp
-    stdexec/algos/adaptors/test_transfer_when_all.cpp
-    stdexec/algos/adaptors/test_when_all.cpp
     stdexec/algos/factories/test_just_error.cpp
-    stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/detail/test_any_allocator.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
-    stdexec/schedulers/test_task_scheduler.cpp
-    stdexec/types/test_counting_scopes.cpp
     stdexec/types/test_task.cpp)
 endif()
 
