@@ -35,7 +35,7 @@ import stdexec;
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept
+  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept
   {
 #    if STDEXEC_MSVC_HEADERS()
     _mm_pause();
@@ -66,7 +66,7 @@ namespace STDEXEC
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  STDEXEC_ATTRIBUTE(always_inline) static void __spin_loop_pause() noexcept {}
+  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept {}
 }  // namespace STDEXEC
 #  endif
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
