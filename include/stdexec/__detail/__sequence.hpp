@@ -61,6 +61,7 @@ namespace STDEXEC
     // Attributes for __sequence. This is a bit more complicated than the attributes for
     // other algorithms because we need to be able to query the completion scheduler (for
     // example) of the second sender from the context of the first sender's completions.
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _CvSenders>
     struct __attrs;
 

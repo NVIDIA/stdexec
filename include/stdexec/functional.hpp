@@ -199,6 +199,7 @@ namespace STDEXEC
     __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   concept __nothrow_invocable = __invocable<_Fun, _As...> && requires(_Fun &&__f, _As &&...__as) {
     { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
