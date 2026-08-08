@@ -27,12 +27,12 @@
 #include "../../stdexec/__detail/__queries.hpp"
 #include "../../stdexec/__detail/__receivers.hpp"
 #include "../../stdexec/__detail/__type_traits.hpp"
+#include "../../stdexec/functional.hpp"
 #include "../../stdexec/stop_token.hpp"
 #include "as_default_on.hpp"
 
 #include <concepts>
 #include <exception>
-#include <functional>
 #include <mutex>
 #include <optional>
 #include <tuple>
@@ -154,10 +154,7 @@ namespace experimental::execution::asio
                                        ::STDEXEC::set_error_t(std::exception_ptr),
                                        ::STDEXEC::set_stopped_t()>;
 
-    template <typename, typename>
-    class completion_handler;
-
-    template <typename Signatures, typename Receiver>
+    template <typename Mutex, typename Signatures, typename Receiver>
     struct operation_state_base
     {
       class frame_;
@@ -172,20 +169,19 @@ namespace experimental::execution::asio
 
       Receiver                       r_;
       asio_impl::cancellation_signal signal_;
-      std::recursive_mutex           m_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      Mutex                          m_;
       frame_*                        frames_{nullptr};
       std::exception_ptr             ex_;
       bool                           abandoned_{false};
 
       class frame_
       {
-        operation_state_base&                  self_;
-        std::unique_lock<std::recursive_mutex> l_;
-        frame_*                                prev_;
+        operation_state_base* self_;
+        frame_*               prev_;
        public:
         explicit frame_(operation_state_base& self) noexcept
-          : self_(self)
-          , l_(self.m_)
+          : self_((self.m_.lock(), &self))
           , prev_(self.frames_)
         {
           self.frames_ = this;
@@ -195,23 +191,24 @@ namespace experimental::execution::asio
 
         ~frame_() noexcept
         {
-          if (l_)
+          if (self_)
           {
-            STDEXEC_ASSERT(self_.frames_ == this);
-            self_.frames_ = prev_;
-            if (!self_.frames_ && self_.abandoned_)
+            std::unique_lock l(self_->m_, std::adopt_lock);
+            STDEXEC_ASSERT(self_->frames_ == this);
+            self_->frames_ = prev_;
+            if (!self_->frames_ && self_->abandoned_)
             {
               //  We are the last frame and the handler is gone so it's up to us to
               //  finalize the operation
-              l_.unlock();
-              self_.callback_.reset();
-              if (self_.ex_)
+              l.unlock();
+              self_->callback_.reset();
+              if (self_->ex_)
               {
-                ::STDEXEC::set_error(static_cast<Receiver&&>(self_.r_), std::move(self_.ex_));
+                ::STDEXEC::set_error(static_cast<Receiver&&>(self_->r_), std::move(self_->ex_));
               }
               else
               {
-                ::STDEXEC::set_stopped(static_cast<Receiver&&>(self_.r_));
+                ::STDEXEC::set_stopped(static_cast<Receiver&&>(self_->r_));
               }
             }
           }
@@ -219,22 +216,27 @@ namespace experimental::execution::asio
 
         explicit operator bool() const noexcept
         {
-          return bool(l_);
+          return bool(self_);
         }
 
         void release() noexcept
         {
-          auto ptr = this;
-          do
+          auto&& self = *self_;
+          STDEXEC_ASSERT(this == self.frames_);
+          for (;;)
           {
-            STDEXEC_ASSERT(ptr->l_);
-            STDEXEC_ASSERT(self_.frames_ == ptr);
-            ptr = ptr->prev_;
-            self_.frames_->l_.unlock();
-            self_.frames_->prev_ = nullptr;
-            self_.frames_        = ptr;
+            STDEXEC_ASSERT(self.frames_);
+            STDEXEC_ASSERT(self.frames_->self_ == &self);
+            auto const current = std::exchange(self.frames_, self.frames_->prev_);
+            current->self_     = nullptr;
+            current->prev_     = nullptr;
+            self.m_.unlock();
+            if (!self.frames_)
+            {
+              break;
+            }
           }
-          while (ptr);
+          STDEXEC_ASSERT(!self_);
         }
       };
 
@@ -274,12 +276,13 @@ namespace experimental::execution::asio
         callback_;
     };
 
-    template <typename Signatures, typename Receiver>
+    template <typename Mutex, typename Signatures, typename Receiver>
     class completion_handler
     {
-      operation_state_base<Signatures, Receiver>* self_;
+      using operation_state_type_ = operation_state_base<Mutex, Signatures, Receiver>;
+      operation_state_type_* self_;
      public:
-      explicit completion_handler(operation_state_base<Signatures, Receiver>& self) noexcept
+      explicit completion_handler(operation_state_type_& self) noexcept
         : self_(&self)
       {}
 
@@ -296,7 +299,7 @@ namespace experimental::execution::asio
           //  When this goes out of scope it might send set stopped or set error, or
           //  it might defer that to the executor frames above us on the call stack
           //  (if any)
-          typename operation_state_base<Signatures, Receiver>::frame_ const frame(*self_);
+          typename operation_state_type_::frame_ const frame(*self_);
           self_->abandoned_ = true;
         }
       }
@@ -343,17 +346,21 @@ namespace experimental::execution::asio
         return self_->signal_.slot();
       }
 
-      operation_state_base<Signatures, Receiver>& state() const noexcept
+      operation_state_type_& state() const noexcept
       {
         STDEXEC_ASSERT(self_);
         return *self_;
       }
     };
 
-    template <typename Signatures, typename Receiver, typename Initiation, typename Args>
-    class operation_state : operation_state_base<Signatures, Receiver>
+    template <typename Mutex,
+              typename Signatures,
+              typename Receiver,
+              typename Initiation,
+              typename Args>
+    class operation_state : operation_state_base<Mutex, Signatures, Receiver>
     {
-      using base_ = operation_state_base<Signatures, Receiver>;
+      using base_ = operation_state_base<Mutex, Signatures, Receiver>;
       Initiation init_;
       Args       args_;
      public:
@@ -377,9 +384,9 @@ namespace experimental::execution::asio
           std::apply(
             [&](auto&&... args)
             {
-              std::invoke(static_cast<Initiation&&>(init_),
-                          completion_handler<Signatures, Receiver>(*this),
-                          static_cast<decltype(args)&&>(args)...);
+              ::STDEXEC::__invoke(static_cast<Initiation&&>(init_),
+                                  completion_handler<Mutex, Signatures, Receiver>(*this),
+                                  static_cast<decltype(args)&&>(args)...);
             },
             std::move(args_));
         }
@@ -403,10 +410,13 @@ namespace experimental::execution::asio
       }
     };
 
-    template <typename Signatures, typename Initiation, typename... Args>
+    template <typename Mutex, typename Signatures, typename Initiation, typename... Args>
     class sender
     {
       using args_type_ = std::tuple<std::decay_t<Args>...>;
+      template <typename Receiver>
+      using operation_state_type_ =
+        operation_state<Mutex, Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>;
      public:
       using sender_concept = ::STDEXEC::sender_tag;
 
@@ -433,16 +443,12 @@ namespace experimental::execution::asio
           std::remove_cvref_t<Receiver>,
           ::STDEXEC::completion_signatures_of_t<sender const &, ::STDEXEC::env_of_t<Receiver>>>
       constexpr auto connect(Receiver&& receiver) const & noexcept(
-        std::is_nothrow_constructible_v<
-          operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>,
-          Receiver,
-          Initiation const &,
-          args_type_ const &>)
+        std::is_nothrow_constructible_v<operation_state_type_<Receiver>,
+                                        Receiver,
+                                        Initiation const &,
+                                        args_type_ const &>)
       {
-        return operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>(
-          static_cast<Receiver&&>(receiver),
-          init_,
-          args_);
+        return operation_state_type_<Receiver>(static_cast<Receiver&&>(receiver), init_, args_);
       }
 
       template <typename Receiver>
@@ -450,27 +456,26 @@ namespace experimental::execution::asio
           std::remove_cvref_t<Receiver>,
           ::STDEXEC::completion_signatures_of_t<sender, ::STDEXEC::env_of_t<Receiver>>>
       constexpr auto connect(Receiver&& receiver) && noexcept(
-        std::is_nothrow_constructible_v<
-          operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>,
-          Receiver,
-          Initiation,
-          args_type_>)
+        std::is_nothrow_constructible_v<operation_state_type_<Receiver>,
+                                        Receiver,
+                                        Initiation,
+                                        args_type_>)
       {
-        return operation_state<Signatures, std::remove_cvref_t<Receiver>, Initiation, args_type_>(
-          static_cast<Receiver&&>(receiver),
-          static_cast<Initiation&&>(init_),
-          static_cast<args_type_&&>(args_));
+        return operation_state_type_<Receiver>(static_cast<Receiver&&>(receiver),
+                                               static_cast<Initiation&&>(init_),
+                                               static_cast<args_type_&&>(args_));
       }
      private:
       Initiation init_;
       args_type_ args_;
     };
 
-    template <typename Signatures, typename Receiver, typename Executor>
+    template <typename Mutex, typename Signatures, typename Receiver, typename Executor>
     class executor
     {
-      operation_state_base<Signatures, Receiver>& self_;
-      Executor                                    ex_;
+      using operation_state_type_ = operation_state_base<Mutex, Signatures, Receiver>;
+      operation_state_type_& self_;
+      Executor               ex_;
 
       template <typename F>
       constexpr auto wrap_(F f) const noexcept(std::is_nothrow_move_constructible_v<F>)
@@ -481,8 +486,7 @@ namespace experimental::execution::asio
         };
       }
      public:
-      constexpr explicit executor(operation_state_base<Signatures, Receiver>& self,
-                                  Executor const &                            ex) noexcept
+      constexpr explicit executor(operation_state_type_& self, Executor const & ex) noexcept
         : self_(self)
         , ex_(ex)
       {}
@@ -503,7 +507,7 @@ namespace experimental::execution::asio
       constexpr decltype(auto) prefer(Args&&... args) const noexcept
       {
         auto const ex = asio_impl::prefer(ex_, static_cast<Args&&>(args)...);
-        return executor<Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
+        return executor<Mutex, Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
       }
 
       template <typename... Args>
@@ -513,7 +517,7 @@ namespace experimental::execution::asio
       constexpr decltype(auto) require(Args&&... args) const noexcept
       {
         auto const ex = asio_impl::require(ex_, static_cast<Args&&>(args)...);
-        return executor<Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
+        return executor<Mutex, Signatures, Receiver, std::remove_cvref_t<decltype(ex)>>(self_, ex);
       }
 
       template <typename T>
@@ -569,16 +573,31 @@ namespace experimental::execution::asio
       bool operator!=(executor const & rhs) const = default;
     };
 
+    template <typename Mutex>
+    struct token
+    {
+      static constexpr auto as_default_on = asio::as_default_on<token>;
+      template <typename IoObject>
+      using as_default_on_t = asio::as_default_on_t<token, IoObject>;
+    };
+
+    struct null_basic_lockable
+    {
+      constexpr void lock() noexcept {}
+
+      constexpr void unlock() noexcept {}
+    };
+
   }  // namespace detail::completion_token
 
-  struct completion_token_t
-  {
-    static constexpr auto as_default_on = asio::as_default_on<completion_token_t>;
-    template <typename IoObject>
-    using as_default_on_t = asio::as_default_on_t<completion_token_t, IoObject>;
-  };
+  using completion_token_t = detail::completion_token::token<std::recursive_mutex>;
 
   inline completion_token_t const completion_token{};
+
+  using thread_unsafe_completion_token_t =
+    detail::completion_token::token<detail::completion_token::null_basic_lockable>;
+
+  inline thread_unsafe_completion_token_t const thread_unsafe_completion_token{};
 
 }  // namespace experimental::execution::asio
 
@@ -587,48 +606,53 @@ namespace exec = experimental::execution;
 namespace ASIOEXEC_ASIO_NAMESPACE
 {
 
-  template <typename... Signatures>
-  struct async_result<::exec::asio::completion_token_t, Signatures...>
+  template <typename Mutex, typename... Signatures>
+  struct async_result<::exec::asio::detail::completion_token::token<Mutex>, Signatures...>
   {
     template <typename Initiation, typename... Args>
       requires(std::is_constructible_v<std::decay_t<Args>, Args> && ...)
-    static constexpr auto
-    initiate(Initiation&& i, ::exec::asio::completion_token_t const &, Args&&... args)
+    static constexpr auto initiate(Initiation&& i,
+                                   ::exec::asio::detail::completion_token::token<Mutex> const &,
+                                   Args&&... args)
     {
       return ::exec::asio::detail::completion_token::sender<
+        Mutex,
         ::exec::asio::detail::completion_token::completion_signatures<Signatures...>,
         std::remove_cvref_t<Initiation>,
         Args...>(static_cast<Initiation&&>(i), static_cast<Args&&>(args)...);
     }
   };
 
-  template <typename Signatures, typename Receiver, typename Executor>
+  template <typename Mutex, typename Signatures, typename Receiver, typename Executor>
   struct associated_executor<
-    ::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver>,
+    ::exec::asio::detail::completion_token::completion_handler<Mutex, Signatures, Receiver>,
     Executor>
   {
-    using type = ::exec::asio::detail::completion_token::executor<Signatures, Receiver, Executor>;
+    using type =
+      ::exec::asio::detail::completion_token::executor<Mutex, Signatures, Receiver, Executor>;
 
-    static type
-    get(::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver> const & h,
-        Executor const & ex) noexcept
+    static type get(::exec::asio::detail::completion_token::completion_handler<Mutex,
+                                                                               Signatures,
+                                                                               Receiver> const & h,
+                    Executor const & ex) noexcept
     {
       return type(h.state(), ex);
     }
   };
 
-  template <typename Signatures, typename Receiver, typename Allocator>
-    requires requires(Receiver const & r) { ::STDEXEC::get_allocator(::STDEXEC::get_env(r)); }
+  template <typename Mutex, typename Signatures, typename Receiver, typename Allocator>
+    requires ::STDEXEC::__callable<::STDEXEC::get_allocator_t, ::STDEXEC::env_of_t<Receiver>>
   struct associated_allocator<
-    ::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver>,
+    ::exec::asio::detail::completion_token::completion_handler<Mutex, Signatures, Receiver>,
     Allocator>
   {
     using type = std::remove_cvref_t<decltype(::STDEXEC::get_allocator(
       ::STDEXEC::get_env(std::declval<Receiver const &>())))>;
 
-    static type
-    get(::exec::asio::detail::completion_token::completion_handler<Signatures, Receiver> const & h,
-        ::STDEXEC::__ignore = {}) noexcept
+    static type get(::exec::asio::detail::completion_token::completion_handler<Mutex,
+                                                                               Signatures,
+                                                                               Receiver> const & h,
+                    ::STDEXEC::__ignore = {}) noexcept
     {
       return ::STDEXEC::get_allocator(::STDEXEC::get_env(h.state().r_));
     }
