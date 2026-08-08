@@ -15,14 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures.hpp"  // IWYU pragma: export
-#include "__connect.hpp"                // IWYU pragma: export
-#include "__sender_concepts.hpp"        // IWYU pragma: export
+#  include "__completion_signatures.hpp"  // IWYU pragma: export
+#  include "__connect.hpp"                // IWYU pragma: export
+#  include "__sender_concepts.hpp"        // IWYU pragma: export
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -44,10 +52,11 @@ namespace STDEXEC
     using __nofail_t = _Error;
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sig>
   using __signature_tag_t = decltype(__detail::__signature_tag_v<_Sig>);
 
-  template <class _Sender, class _SetSig, class... _Env>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class _SetSig, class... _Env>
   concept sender_of =
     sender_in<_Sender, _Env...>
     && __same_as<__mlist<_SetSig>,
@@ -61,6 +70,7 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // early sender type-checking
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   concept __well_formed_sender = sender_in<_Sender> || dependent_sender<_Sender>;
 
@@ -69,4 +79,5 @@ namespace STDEXEC
   {}
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

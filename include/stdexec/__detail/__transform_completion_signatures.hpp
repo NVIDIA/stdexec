@@ -15,24 +15,32 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "../functional.hpp"
-#include "__completion_signatures.hpp"
-#include "__completion_signatures_of.hpp"
-#include "__concepts.hpp"
-#include "__debug.hpp"  // IWYU pragma: keep
-#include "__get_completion_signatures.hpp"
-#include "__meta.hpp"
+#  include "../functional.hpp"
+#  include "__completion_signatures.hpp"
+#  include "__completion_signatures_of.hpp"
+#  include "__concepts.hpp"
+#  include "__debug.hpp"  // IWYU pragma: keep
+#  include "__get_completion_signatures.hpp"
+#  include "__meta.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
   namespace __cmplsigs
   {
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
     // Without constexpr exceptions, we cannot always produce a valid
     // completion_signatures type. We must permit get_completion_signatures to return an
     // error type because we can't throw it.
@@ -41,12 +49,12 @@ namespace STDEXEC
                                             || STDEXEC_IS_BASE_OF(STDEXEC::dependent_sender_error,
                                                                   _Completions)
                                             || __is_instance_of<_Completions, _ERROR_>;
-#else
+#  else
     // When we have constexpr exceptions, we can require that get_completion_signatures
     // always produces a valid completion_signatures type.
     template <class _Completions>
     concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>;
-#endif
+#  endif
   }  // namespace __cmplsigs
 
   using __cmplsigs::get_completion_signatures_t;
@@ -133,6 +141,7 @@ namespace STDEXEC
     constexpr auto __transform_reduce_sigs(__undefined<completion_signatures<_Sigs...>> *)
       -> _Variant<__transform_sig_t<_Sigs, _SetVal, _SetErr, _SetStp>..., _More...>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _Values>
     using __default_set_value = completion_signatures<set_value_t(_Values...)>;
 
@@ -153,6 +162,7 @@ namespace STDEXEC
     decltype(__cmplsigs::__transform_reduce_sigs<_SetVal, _SetErr, _SetStp, _Variant, _More...>(
       static_cast<__undefined<_Sigs> *>(nullptr)));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs,
             class _MoreSigs                           = completion_signatures<>,
             template <class...> class _ValueTransform = __cmplsigs::__default_set_value,
@@ -166,6 +176,7 @@ namespace STDEXEC
                                                __mtry_q<__concat_completion_signatures_t>::__f,
                                                _MoreSigs>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sndr,
             class _Env                                = env<>,
             class _MoreSigs                           = completion_signatures<>,
@@ -296,6 +307,7 @@ namespace STDEXEC
   //! * __ignore_completion
   //! * __transform_arguments
   //! * __decay_arguments
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag>
   struct __keep_completion
   {
@@ -306,6 +318,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __ignore_completion
   {
     template <class...>
@@ -315,6 +328,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag, class _Fn, class... _AlgoTag>
   struct __transform_arguments
   {
@@ -350,6 +364,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _SetTag, class... _AlgoTag>
   struct __decay_arguments
   {
@@ -482,6 +497,7 @@ namespace STDEXEC
   //! \endcode
   //!
   //! \note This function is evaluated at compile-time (consteval).
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Completions,
             class _ValueFn   = __keep_completion<set_value_t>,
             class _ErrorFn   = __keep_completion<set_error_t>,
@@ -534,7 +550,7 @@ namespace STDEXEC
   using __nothrow_decay_copyable_results_t =
     __cmplsigs::__partitions_of_t<_Completions>::__nothrow_decay_copyable::__all;
 
-#define STDEXEC_TRANSFORM_COMPLETION_SIGNATURES_DEPRECATION_MESSAGE \
+#  define STDEXEC_TRANSFORM_COMPLETION_SIGNATURES_DEPRECATION_MESSAGE \
   "Please migrate to the exec::transform_completion_signatures API in <exec/completion_signatures.hpp>"
 
   // Deprecated interfaces:
@@ -567,4 +583,5 @@ namespace STDEXEC
                                           _StoppedSigs>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

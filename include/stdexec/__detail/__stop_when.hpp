@@ -208,6 +208,7 @@ namespace STDEXEC
   ///        into its child sender such that the sender responds to stop
   ///        requests from both the given stop token and the receiver's token
   /// @hideinitializer
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __stop_when_t __stop_when{};
 
   template <>

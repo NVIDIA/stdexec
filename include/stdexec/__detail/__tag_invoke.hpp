@@ -16,13 +16,20 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__type_traits.hpp"
 
-#define STDEXEC_TAG_INVOKE_DEPRECATED_MSG                                                          \
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__type_traits.hpp"
+
+#  define STDEXEC_TAG_INVOKE_DEPRECATED_MSG                                                        \
   "The use of tag_invoke as a means of customization is deprecated. Please use member functions "  \
   "instead."
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -31,6 +38,7 @@ namespace STDEXEC
   {
     constexpr void tag_invoke();
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Tag, class... _Args>
     concept __tag_invocable = requires(_Tag __tag, _Args &&...__args) {
       tag_invoke(static_cast<_Tag &&>(__tag), static_cast<_Args &&>(__args)...);
@@ -43,6 +51,7 @@ namespace STDEXEC
       };
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Tag, class... _Args>
     concept __nothrow_tag_invocable = __tag_invocable<_Tag, _Args...>
                                    && requires(_Tag __tag, _Args &&...__args) {
@@ -52,6 +61,7 @@ namespace STDEXEC
                                         } noexcept;
                                       };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Tag, class... _Args>
     using __tag_invoke_result_t = decltype(tag_invoke(__declval<_Tag>(), __declval<_Args>()...));
 
@@ -85,17 +95,22 @@ namespace STDEXEC
 
   namespace __ti
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     inline constexpr __tag_invoke_t __tag_invoke{};
 
     [[deprecated(STDEXEC_TAG_INVOKE_DEPRECATED_MSG)]]
     inline constexpr __tag_invoke_t tag_invoke = __tag_invoke;
   }  // namespace __ti
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using namespace __ti;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __dispatch::__tag_invocable;
   using __dispatch::__tag_invocable_r;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __dispatch::__nothrow_tag_invocable;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __dispatch::__tag_invoke_result_t;
   using __dispatch::__tag_invoke_result;
 
@@ -121,4 +136,5 @@ namespace STDEXEC
   = __decay_t<decltype(_Tag)>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

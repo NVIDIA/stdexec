@@ -15,14 +15,22 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
 
-#include "__completion_signatures_of.hpp"
-#include "__concepts.hpp"
-#include "__tuple.hpp"
-#include "__type_traits.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
-#include "__prologue.hpp"
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
+
+#  include "__completion_signatures_of.hpp"
+#  include "__concepts.hpp"
+#  include "__tuple.hpp"
+#  include "__type_traits.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -83,10 +91,12 @@ namespace STDEXEC
     };
   }  // namespace __clsur
 
+  STDEXEC_MODULE_EXPORT
   template <__class _Dp>
   struct sender_adaptor_closure : __clsur::__sender_adaptor_closure_base
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class... _As>
   struct __closure : sender_adaptor_closure<__closure<_Fn, _As...>>
   {
@@ -127,4 +137,5 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __closure(_Fn, _As...) -> __closure<_Fn, _As...>;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

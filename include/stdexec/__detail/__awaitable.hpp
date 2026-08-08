@@ -15,21 +15,30 @@
  */
 #pragma once
 
-#include "../functional.hpp"
-#include "__concepts.hpp"
 #include "__config.hpp"
-#include "__meta.hpp"
 
-#include "__prologue.hpp"
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "../functional.hpp"
+#  include "__concepts.hpp"
+#  include "__config.hpp"
+#  include "__meta.hpp"
+
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
-#if !STDEXEC_NO_STDCPP_COROUTINES()
+#  if !STDEXEC_NO_STDCPP_COROUTINES()
   // Define some concepts and utilities for working with awaitables
   template <class _Tp>
   concept __await_suspend_result = __one_of<_Tp, void, bool>
                                 || __is_instance_of<_Tp, __std::coroutine_handle>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaiter, class... _Promise>
   concept __awaiter = requires(_Awaiter &__awaiter, __std::coroutine_handle<_Promise...> __h) {
     __awaiter.await_ready() ? 1 : 0;
@@ -74,6 +83,7 @@ namespace STDEXEC
   template <class _Awaitable>
   using __awaiter_of_t = decltype(STDEXEC::__get_awaiter(__declval<_Awaitable>()));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   concept __awaitable = requires(_Awaitable &&__awaitable, _Promise &...__promise) {
     {
@@ -85,6 +95,7 @@ namespace STDEXEC
   template <class _Tp>
   constexpr auto __as_lvalue(_Tp &&) -> _Tp &;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   struct __await_result
   {
@@ -95,20 +106,24 @@ namespace STDEXEC
                            .await_resume());
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = __t<__await_result<_Awaitable, _Promise...>>;
 
-#else
+#  else
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
   concept __awaitable = false;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Awaitable, class... _Promise>
     requires __awaitable<_Awaitable, _Promise...>
   using __await_result_t = void;
 
-#endif
+#  endif
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -352,6 +352,7 @@ namespace STDEXEC
 
   // A run_loop with an empty environment. This is a struct instead of a type alias to give
   // it a simpler type name that is easier to read in diagnostics.
+  STDEXEC_MODULE_EXPORT
   struct run_loop : __run_loop::__basic_run_loop<run_loop, env<>>
   {
     run_loop() = default;

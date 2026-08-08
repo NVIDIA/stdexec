@@ -15,16 +15,22 @@
  */
 #pragma once
 
+#include <catch2/catch_all.hpp>
+
 #if __has_include(<unistd.h>) && __has_include(<sys/wait.h>)
 #  include <sys/wait.h>
 #  include <unistd.h>
 #  define REQUIRE_TERMINATE __require_terminate
 #endif
 
-#include <cstdlib>
-#include <exception>
+#include <stdexec/__detail/__config.hpp>
 
-#include <test_common/catch2.hpp>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <cstdlib>
+#  include <exception>
+#endif
 
 #ifdef REQUIRE_TERMINATE
 namespace

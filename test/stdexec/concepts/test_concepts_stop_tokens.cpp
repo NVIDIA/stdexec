@@ -15,10 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
 
-#include <type_traits>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <type_traits>
+#endif
 
 namespace
 {
@@ -28,17 +33,21 @@ namespace
     void operator()() && noexcept {}
   };
 
-  static_assert(::STDEXEC::stoppable_token<::STDEXEC::never_stop_token>);
-  static_assert(::STDEXEC::unstoppable_token<::STDEXEC::never_stop_token>);
-  static_assert(::STDEXEC::stoppable_token<::STDEXEC::inplace_stop_token>);
-  static_assert(!::STDEXEC::unstoppable_token<::STDEXEC::inplace_stop_token>);
-  static_assert(
-    std::is_same_v<::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
-                   ::STDEXEC::never_stop_token::callback_type<on_stop_request>>);
+  TEST_CASE("(un)stoppable_token correctly categorizes various standard stop token types",
+            "[concepts]")
+  {
+    STATIC_REQUIRE(::STDEXEC::stoppable_token<::STDEXEC::never_stop_token>);
+    STATIC_REQUIRE(::STDEXEC::unstoppable_token<::STDEXEC::never_stop_token>);
+    STATIC_REQUIRE(::STDEXEC::stoppable_token<::STDEXEC::inplace_stop_token>);
+    STATIC_REQUIRE(!::STDEXEC::unstoppable_token<::STDEXEC::inplace_stop_token>);
+    STATIC_REQUIRE(
+      std::is_same_v<::STDEXEC::stop_callback_for_t<::STDEXEC::never_stop_token, on_stop_request>,
+                     ::STDEXEC::never_stop_token::callback_type<on_stop_request>>);
 
 #if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
-  static_assert(::STDEXEC::stoppable_token<std::stop_token>);
-  static_assert(std::is_same_v<::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
-                               std::stop_callback<on_stop_request>>);
+    STATIC_REQUIRE(::STDEXEC::stoppable_token<std::stop_token>);
+    STATIC_REQUIRE(std::is_same_v<::STDEXEC::stop_callback_for_t<std::stop_token, on_stop_request>,
+                                  std::stop_callback<on_stop_request>>);
 #endif
+  }
 }  // namespace

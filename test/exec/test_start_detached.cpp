@@ -220,7 +220,7 @@ namespace
   }
 
 #if !STDEXEC_NO_STDCPP_MEMORY_RESOURCE()                                                           \
-  && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 2019'02L)
+  && (defined(__cpp_lib_polymorphic_allocator) && __cpp_lib_polymorphic_allocator >= 201902L)
 
   struct counting_resource : std::pmr::memory_resource
   {
