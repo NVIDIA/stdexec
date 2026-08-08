@@ -124,7 +124,9 @@ jobs:
             ;
 
           # Compile
-          cmake --build build -v -j 512;
+          # Run a serial build if we're building the modular build because it tends
+          # to result in fewer Clang ICEs.
+          cmake --build build -v -j ${{ contains(matrix.name, 'modules') && 1 || 512 }};
 
           # Print sccache stats
           sccache -s;
