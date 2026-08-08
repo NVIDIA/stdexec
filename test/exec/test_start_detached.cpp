@@ -293,6 +293,19 @@ namespace
   struct env
   {};
 
+  struct move_only_env
+  {
+    move_only_env() = default;
+    move_only_env(move_only_env&&) noexcept = default;
+    move_only_env(move_only_env const &) = delete;
+  };
+
+  TEST_CASE("start_detached works with a move-only environment",
+            "[consumers][start_detached]")
+  {
+    exec::start_detached(ex::just(), move_only_env{});
+  }
+
   TEST_CASE("ex::on can be passed to start_detached with env", "[adaptors][ex::on]")
   {
     ex::run_loop loop;
