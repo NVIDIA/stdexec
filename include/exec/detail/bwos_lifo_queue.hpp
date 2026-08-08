@@ -17,16 +17,23 @@
 #pragma once
 
 #include "../../stdexec/__detail/__config.hpp"
-#include "../../stdexec/__detail/__spin_loop_pause.hpp"
 
-#include "../../stdexec/__detail/__atomic.hpp"
-#include <bit>
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <utility>
-#include <vector>
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#else
+#  include "../../stdexec/__detail/__spin_loop_pause.hpp"
+
+#  include "../../stdexec/__detail/__atomic.hpp"
+
+#  if !STDEXEC_USE_MODULES()
+#    include <bit>
+#    include <cassert>
+#    include <cstddef>
+#    include <cstdint>
+#    include <memory>
+#    include <utility>
+#    include <vector>
+#  endif
 
 /**
  * This is an implementation of the BWOS queue as described in
@@ -64,6 +71,7 @@
  * - Block synchronization via head_/steal_tail_ swaps and acquire/release ordering
  */
 
+STDEXEC_MODULE_EXPORT
 namespace experimental::execution::bwos
 {
   inline constexpr std::size_t hardware_destructive_interference_size  = 64;
@@ -640,3 +648,4 @@ namespace experimental::execution::bwos
 }  // namespace experimental::execution::bwos
 
 namespace exec = experimental::execution;
+#endif

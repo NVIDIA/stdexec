@@ -18,9 +18,8 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_USE_MODULES()
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import stdexec;
-#  include "../stdexec/__detail/__diagnostic_macros.hpp"
 #else
 #  include "../stdexec/__detail/__execution_fwd.hpp"
 
@@ -40,15 +39,14 @@ import stdexec;
 #  include "../stdexec/__detail/__type_traits.hpp"
 #  include "../stdexec/__detail/__utility.hpp"
 #  include "../stdexec/stop_token.hpp"
-#endif
 
-#include "completion_signatures.hpp"
+#  include "completion_signatures.hpp"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
+#  define STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION                                                   \
   "A sequence sender must provide a `subscribe` member function that takes a receiver as an\n"     \
   "argument and returns an object whose type satisfies `" STDEXEC_PP_STRINGIZE(STDEXEC)            \
   "::operation_state`,\n"                                                                          \
@@ -86,13 +84,13 @@ STDEXEC_PRAGMA_IGNORE_EDG(not_used_in_template_function_params)
   "  };\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER                                        \
+#  define STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER                                        \
   "\n"                                                                                             \
   "FAILURE: No usable subscribe customization was found.\n"                                        \
   "\n" STDEXEC_ERROR_SEQUENCE_SENDER_DEFINITION
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE                                    \
+#  define STDEXEC_ERROR_SUBSCRIBE_DOES_NOT_RETURN_OPERATION_STATE                                    \
   "\n"                                                                                             \
   "FAILURE: The subscribe customization did not return an `" STDEXEC_PP_STRINGIZE(STDEXEC)         \
   "::operation_state`.\n"                                                                          \
@@ -114,6 +112,7 @@ namespace experimental::execution
   template <class... _Sequences>
   using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
 
+  STDEXEC_MODULE_EXPORT
   struct sequence_sender_tag : STDEXEC::sender_tag
   {};
 
@@ -145,6 +144,7 @@ namespace experimental::execution
     // connected to a receiver. Since calling `set_next` usually involves constructing senders it
     // is allowed to throw an exception, which needs to be handled by a calling sequence-operation.
     // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
+    STDEXEC_MODULE_EXPORT
     struct set_next_t
     {
       template <receiver _Receiver, sender _Item>
@@ -175,9 +175,12 @@ namespace experimental::execution
     };
   }  // namespace __sequence_sndr
 
+  STDEXEC_MODULE_EXPORT
   using __sequence_sndr::set_next_t;
+  STDEXEC_MODULE_EXPORT
   inline constexpr set_next_t set_next{};
 
+  STDEXEC_MODULE_EXPORT
   template <class _Receiver, class _Sender>
   using next_sender_of_t =
     decltype(exec::set_next(STDEXEC::__declval<STDEXEC::__decay_t<_Receiver>&>(),
@@ -234,6 +237,7 @@ namespace experimental::execution
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
 
+  STDEXEC_MODULE_EXPORT
   template <class... _Senders>
   struct item_types
   {
@@ -512,7 +516,7 @@ namespace experimental::execution
   template <class _Sequence, class... _Env>
   static constexpr auto __diagnose_sequence_sender_concept_failure();
 
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+#  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
   // completion signatures wrapper enforces that at compile time.
@@ -529,11 +533,11 @@ namespace experimental::execution
     requires sequence_sender<_Sequence, _Env...>
   using item_types_of_t = decltype(exec::__checked_item_types(STDEXEC::__declval<_Sequence>(),
                                                               STDEXEC::__declval<_Env>()...));
-#else
+#  else
   template <class _Sequence, class... _Env>
     requires sequence_sender_in<_Sequence, _Env...>
   using item_types_of_t = __item_types_of_t<_Sequence, _Env...>;
-#endif
+#  endif
 
   template <class _Data, class... _What>
   struct __sequence_type_check_failure : STDEXEC::__compile_time_error
@@ -559,7 +563,7 @@ namespace experimental::execution
     _Data __data_{};
   };
 
-#if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   template <class... _What, class... _Values>
   [[nodiscard]]
@@ -568,7 +572,7 @@ namespace experimental::execution
     return STDEXEC::__mexception<_What...>();
   }
 
-#else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
   template <class _What, class... _More, class... _Values>
@@ -590,7 +594,7 @@ namespace experimental::execution
     }
   }
 
-#endif  // ^^^ constexpr exceptions ^^^
+#  endif  // ^^^ constexpr exceptions ^^^
 
   template <class... _What>
   [[nodiscard]]
@@ -623,6 +627,7 @@ namespace experimental::execution
     { exec::__try_items<STDEXEC::__decay_t<_Receiver>>(__items) } -> STDEXEC::__ok;
   };
 
+  STDEXEC_MODULE_EXPORT
   template <class _Receiver, class _SequenceItems>
   concept sequence_receiver_of = STDEXEC::receiver<_Receiver>
                               && __sequence_receiver_of<_Receiver, _SequenceItems>;
@@ -797,9 +802,9 @@ namespace experimental::execution
                       "The first argument to exec::subscribe must be a sequence sender");
         static_assert(receiver<_Receiver>,
                       "The second argument to exec::subscribe must be a receiver");
-#if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+#  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
         static_assert(__type_check_arguments<__tfx_seq_t, _Receiver>());
-#endif
+#  endif
 
         if constexpr (__next_connectable<__tfx_seq_t, _Receiver>)
         {
@@ -976,21 +981,21 @@ namespace experimental::execution
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_ENABLE_SEQUENCE_SENDER_IS_FALSE                                              \
+#  define STDEXEC_ERROR_ENABLE_SEQUENCE_SENDER_IS_FALSE                                              \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "Trying to compute the sequences's item types resulted in an error. See\n"                       \
   "the rest of the compiler diagnostic for clues. Look for the string \"_ERROR_\".\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR                                             \
+#  define STDEXEC_ERROR_GET_ITEM_TYPES_RETURNED_AN_ERROR                                             \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "Trying to compute the sequences's item types resulted in an error. See\n"                       \
   "the rest of the compiler diagnostic for clues. Look for the string \"_ERROR_\".\n"
 
 ////////////////////////////////////////////////////////////////////////////////
-#define STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE                                       \
+#  define STDEXEC_ERROR_GET_ITEM_TYPES_HAS_INVALID_RETURN_TYPE                                       \
   "\n"                                                                                             \
   "\n"                                                                                             \
   "The member function `get_item_types` of the sequence returned an\n"                             \
@@ -1152,3 +1157,4 @@ namespace experimental::execution
 namespace exec = experimental::execution;
 
 STDEXEC_PRAGMA_POP()
+#endif

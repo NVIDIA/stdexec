@@ -187,6 +187,7 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __type_index
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __type_index
   {
     __type_index() = default;

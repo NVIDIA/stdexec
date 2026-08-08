@@ -400,10 +400,13 @@ namespace STDEXEC::__parallel_scheduler_default_impl
   };
 
 #  if STDEXEC_ENABLE_LIBDISPATCH
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __parallel_scheduler_backend_impl = __generic_impl<exec::libdispatch_queue>;
 #  elif STDEXEC_ENABLE_WINDOWS_THREAD_POOL
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __parallel_scheduler_backend_impl = __generic_impl<exec::windows_thread_pool>;
 #  else
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
 #  endif
 

@@ -6,9 +6,19 @@ module;
 #include <cstdio>
 #include <cstdlib>
 
-export module stdexec;
+#if __has_include(<dispatch/dispatch.h>)
+#  include <dispatch/dispatch.h>
+#endif
 
 #define STDEXEC_IN_MODULE_PURVIEW
+
+#include <stdexec/__detail/__config.hpp>
+
+#if STDEXEC_ENABLE_NUMA
+#  include <numa.h>
+#endif
+
+export module stdexec;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winclude-angled-in-module-purview"

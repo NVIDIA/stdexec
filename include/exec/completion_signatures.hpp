@@ -15,10 +15,15 @@
  */
 #pragma once
 
-#include "../stdexec/__detail/__get_completion_signatures.hpp"
-#include "../stdexec/__detail/__meta.hpp"
-#include "../stdexec/__detail/__sender_concepts.hpp"
-#include "../stdexec/__detail/__transform_completion_signatures.hpp"
+#include "../stdexec/__detail/__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#else
+#  include "../stdexec/__detail/__get_completion_signatures.hpp"
+#  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__sender_concepts.hpp"
+#  include "../stdexec/__detail/__transform_completion_signatures.hpp"
 
 namespace experimental::execution
 {
@@ -42,7 +47,11 @@ namespace experimental::execution
     using make_completion_signatures_t = decltype(detail::make_unique(
       detail::normalize(static_cast<Sigs*>(nullptr))...));
   }  // namespace detail
+}
 
+STDEXEC_MODULE_EXPORT
+namespace experimental::execution
+{
   //! Creates a compile-time completion signatures type from explicit and deduced signature types.
   //!
   //! This function is a compile-time helper that constructs a completion signatures type
@@ -234,3 +243,4 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+#endif

@@ -18,7 +18,7 @@
 
 #include "../../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_USE_MODULES()
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import std;
 import stdexec;
 #else
@@ -33,15 +33,16 @@ import stdexec;
 #  include "../../stdexec/__detail/__schedulers.hpp"
 #  include "../../stdexec/__detail/__sender_concepts.hpp"
 
-#  include <exception>
-#  include <ranges>
-#endif
+#  if !STDEXEC_USE_MODULES()
+#    include <exception>
+#    include <ranges>
+#  endif
 
-#include "../detail/basic_sequence.hpp"
-#include "../sender_for.hpp"
-#include "../sequence.hpp"
-#include "../sequence_senders.hpp"
-#include "../trampoline_scheduler.hpp"
+#  include "../detail/basic_sequence.hpp"
+#  include "../sender_for.hpp"
+#  include "../sequence.hpp"
+#  include "../sequence_senders.hpp"
+#  include "../trampoline_scheduler.hpp"
 
 namespace experimental::execution
 {
@@ -187,6 +188,7 @@ namespace experimental::execution
       _Receiver __rcvr_;
     };
 
+    STDEXEC_MODULE_EXPORT
     struct iterate_t
     {
       template <std::ranges::forward_range _Range>
@@ -249,8 +251,10 @@ namespace experimental::execution
     };
   }  // namespace __iterate
 
+  STDEXEC_MODULE_EXPORT
   using __iterate::iterate_t;
   inline constexpr iterate_t iterate{};
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+#endif

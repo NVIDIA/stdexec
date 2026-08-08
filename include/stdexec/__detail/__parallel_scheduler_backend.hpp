@@ -58,6 +58,7 @@ namespace STDEXEC
   {
     /// Interface for completing a sender operation. Backend will call frontend though
     /// this interface for completing the `schedule` and `schedule_bulk` operations.
+    STDEXEC_MODULE_EXPORT_AUTHORING
     class receiver_proxy
     {
      public:
@@ -83,6 +84,7 @@ namespace STDEXEC
 
     inline constexpr receiver_proxy::~receiver_proxy() = default;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     struct bulk_item_receiver_proxy : receiver_proxy
     {
       virtual constexpr void execute(size_t, size_t) noexcept = 0;
@@ -141,6 +143,7 @@ namespace STDEXEC
       }
     };
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     struct parallel_scheduler_backend : __any::__iabstract<__iparallel_scheduler_backend>
     {};
   }  // namespace parallel_scheduler_replacement

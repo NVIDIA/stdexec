@@ -811,7 +811,7 @@ namespace STDEXEC
 
 #  include "__epilogue.hpp"
 
-#  if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
+#  if defined(STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY) || STDEXEC_USE_MODULES()
 #    define STDEXEC_PARALLEL_SCHEDULER_INLINE inline
 #    include "__parallel_scheduler_default_impl_entry.hpp"
 #  elif defined(STDEXEC_SYSTEM_CONTEXT_HEADER_ONLY)

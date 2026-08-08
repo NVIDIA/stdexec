@@ -21,9 +21,18 @@
 
 #pragma once
 
-#include <cstdint>
-#include <random>
+#include "../../stdexec/__detail/__config.hpp"
 
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#else
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstdint>
+#    include <random>
+#  endif
+
+STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
 
@@ -84,3 +93,4 @@ namespace experimental::execution
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
+#endif

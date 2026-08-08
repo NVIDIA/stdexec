@@ -972,9 +972,10 @@ namespace STDEXEC
 #define STDEXEC_MODULE_EXPORT_META      STDEXEC_MODULE_EXPORT
 #define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT
 
-STDEXEC_MODULE_EXPORT
+#if !STDEXEC_USE_MODULES()
 namespace STDEXEC
 {
   namespace parallel_scheduler_replacement
   {}
 }  // namespace STDEXEC
+#endif
