@@ -20,6 +20,55 @@
 
 #include <chrono>
 
+namespace STDEXEC::__timed_scheduler_fallback
+{
+  struct __tag
+  {};
+
+  template <class _Scheduler, class _Sender>
+  struct __attrs : STDEXEC::__sync_attrs<_Sender>
+  {
+    using __base_t = STDEXEC::__sync_attrs<_Sender>;
+    using __base_t::query;
+
+    constexpr __attrs(_Scheduler __sched, _Sender const & __sndr) noexcept
+      : __base_t{__sndr}
+      , __sched_{static_cast<_Scheduler &&>(__sched)}
+    {}
+
+    [[nodiscard]]
+    constexpr auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
+      -> _Scheduler
+    {
+      return __sched_;
+    }
+
+    _Scheduler __sched_;
+  };
+}  // namespace STDEXEC::__timed_scheduler_fallback
+
+namespace STDEXEC
+{
+  template <>
+  struct __sexpr_impl<__timed_scheduler_fallback::__tag> : __sexpr_defaults
+  {
+    static constexpr auto __get_attrs =
+      []<class _Scheduler, class _Sender>(__ignore,
+                                          _Scheduler const & __sched,
+                                          _Sender const &    __sndr) noexcept
+    {
+      return __timed_scheduler_fallback::__attrs<_Scheduler, _Sender>{__sched, __sndr};
+    };
+
+    template <class _Sender, class... _Env>
+    static consteval auto __get_completion_signatures()
+    {
+      static_assert(__sender_for<_Sender, __timed_scheduler_fallback::__tag>);
+      return STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>();
+    }
+  };
+}  // namespace STDEXEC
+
 namespace experimental::execution
 {
   namespace __now
@@ -167,13 +216,14 @@ namespace experimental::execution
       auto
       operator()(_Scheduler &&__sched, const duration_of_t<_Scheduler> &__duration) const noexcept
       {
-        // TODO get_completion_scheduler<set_value_t>
-        return let_value(
-          just(),
-          [__sched, __duration]() noexcept(
-            __nothrow_callable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler>>
-              &&__nothrow_callable<now_t, _Scheduler const &>)
-          { return schedule_at(__sched, now(__sched) + __duration); });
+        return __make_sexpr<STDEXEC::__timed_scheduler_fallback::__tag>(
+          __sched,
+          let_value(
+            just(),
+            [__sched, __duration]() noexcept(
+              __nothrow_callable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler>>
+                &&__nothrow_callable<now_t, _Scheduler const &>)
+            { return schedule_at(__sched, now(__sched) + __duration); }));
       }
     };
   }  // namespace __schedule_after
@@ -244,11 +294,12 @@ namespace experimental::execution
       auto operator()(_Scheduler &&__sched, const time_point_of_t<_Scheduler> &__time_point) const
         noexcept(noexcept(schedule_after(__sched, __time_point - now(__sched))))
       {
-        // TODO get_completion_scheduler<set_value_t>
-        return let_value(just(),
-                         [__sched, __time_point]() noexcept(
-                           noexcept(schedule_after(__sched, __time_point - now(__sched))))
-                         { return schedule_after(__sched, __time_point - now(__sched)); });
+        return __make_sexpr<STDEXEC::__timed_scheduler_fallback::__tag>(
+          __sched,
+          let_value(just(),
+                    [__sched, __time_point]() noexcept(
+                      noexcept(schedule_after(__sched, __time_point - now(__sched))))
+                    { return schedule_after(__sched, __time_point - now(__sched)); }));
       }
     };
   }  // namespace __schedule_at

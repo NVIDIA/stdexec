@@ -31,6 +31,80 @@
 #else
 namespace
 {
+  struct schedule_after_only_scheduler
+  {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point       = std::chrono::steady_clock::time_point;
+    using duration         = time_point::duration;
+
+    struct sender;
+
+    constexpr auto operator==(schedule_after_only_scheduler const &) const noexcept -> bool =
+      default;
+
+    [[nodiscard]]
+    auto now() const noexcept -> time_point
+    {
+      return std::chrono::steady_clock::now();
+    }
+
+    [[nodiscard]]
+    auto schedule() const noexcept -> sender;
+
+    [[nodiscard]]
+    auto schedule_after(duration) const noexcept -> sender;
+  };
+
+  struct schedule_after_only_scheduler::sender
+  {
+    using sender_concept = STDEXEC::sender_tag;
+    using completion_signatures =
+      STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
+        -> schedule_after_only_scheduler
+      {
+        return {};
+      }
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        STDEXEC::set_value(static_cast<Receiver &&>(receiver_));
+      }
+
+      Receiver receiver_;
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) const -> operation<Receiver>
+    {
+      return {static_cast<Receiver &&>(receiver)};
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  auto schedule_after_only_scheduler::schedule() const noexcept -> sender
+  {
+    return {};
+  }
+
+  auto schedule_after_only_scheduler::schedule_after(duration) const noexcept -> sender
+  {
+    return {};
+  }
+
   TEST_CASE("timed_thread_scheduler - unused context",
             "[types][timed_thread_scheduler][schedulers]")
   {
@@ -78,6 +152,28 @@ namespace
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     auto                         duration  = std::chrono::milliseconds(10);
     CHECK(STDEXEC::sync_wait(exec::schedule_after(scheduler, duration)));
+  }
+
+  TEST_CASE("timed scheduler fallbacks advertise completion schedulers",
+            "[timed_scheduler][completion_scheduler]")
+  {
+    static_assert(exec::timed_scheduler<schedule_after_only_scheduler>);
+
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler timed_scheduler = context.get_scheduler();
+    auto                         after_sender = exec::schedule_after(
+      timed_scheduler, std::chrono::milliseconds(10));
+
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
+            STDEXEC::get_env(after_sender))
+          == timed_scheduler);
+
+    schedule_after_only_scheduler after_only_scheduler;
+    auto at_sender = exec::schedule_at(after_only_scheduler, exec::now(after_only_scheduler));
+
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(at_sender))
+          == after_only_scheduler);
+    CHECK(STDEXEC::sync_wait(std::move(at_sender)));
   }
 
   TEST_CASE("timed_thread_scheduler - when_any", "[timed_thread_scheduler][when_any]")
