@@ -23,6 +23,7 @@
 import std;
 import stdexec;
 #else
+#  include "../stdexec/__detail/__bulk.hpp"
 #  include "../stdexec/__detail/__domain.hpp"
 #  include "../stdexec/__detail/__execution_fwd.hpp"
 #  include "../stdexec/__detail/__execution_legacy.hpp"
