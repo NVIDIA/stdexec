@@ -26,6 +26,14 @@ namespace
     REQUIRE(executed);
   }
 
+  TEST_CASE("start_now zero", "[async_scope][start_now]")
+  {
+    async_scope scope;
+    auto        stg = start_now(scope);
+
+    REQUIRE(sync_wait(stg.async_wait()).has_value());
+  }
+
   TEST_CASE("start_now two", "[async_scope][start_now]")
   {
     bool        executedA{false};
