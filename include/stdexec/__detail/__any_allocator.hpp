@@ -67,6 +67,12 @@ namespace STDEXEC
 
     __any_allocator() = default;
 
+    // The converting constructor below accesses the private member of another
+    // specialization of this template, which is rejected by MSVC, Clang and
+    // GCC. Declare the friendship explicitly.
+    template <class>
+    friend struct __any_allocator;
+
     template <__not_same_as<__any_allocator> _Alloc>
       requires __is_not_instance_of<_Alloc, __any_allocator> && __simple_allocator<_Alloc>
     __any_allocator(_Alloc __alloc) noexcept
