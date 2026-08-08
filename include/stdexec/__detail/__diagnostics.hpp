@@ -128,6 +128,7 @@ namespace STDEXEC
   struct _WITH_METAFUNCTION_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _INVALID_ARGUMENT_
   {};
 
