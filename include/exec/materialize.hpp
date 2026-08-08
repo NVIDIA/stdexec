@@ -43,7 +43,7 @@ namespace experimental::execution
       }
 
       template <class _Error>
-      constexpr void set_error(_Error __err) noexcept
+      constexpr void set_error(_Error&& __err) noexcept
       {
         STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_),
                            set_error_t(),
