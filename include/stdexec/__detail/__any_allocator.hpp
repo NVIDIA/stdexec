@@ -67,10 +67,9 @@ namespace STDEXEC
 
     __any_allocator() = default;
 
-    // MSVC does not implement [class.access]: members of a class template
-    // cannot access private members of other specializations of the same
-    // template. The converting constructor below relies on that rule, so
-    // declare the friendship explicitly.
+    // The converting constructor below accesses the private member of another
+    // specialization of this template, which is rejected by MSVC, Clang and
+    // GCC. Declare the friendship explicitly.
     template <class>
     friend struct __any_allocator;
 

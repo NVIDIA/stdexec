@@ -22,12 +22,15 @@
 #include <utility>
 
 // The converting constructor __any_allocator(_Uy) reads the private member of
-// another specialization of the same class template. This is legal since C++17
-// ([class.access]) but MSVC rejects it with C2248; the friend declaration on
-// __any_allocator makes the conversion compile everywhere. The conversion is
-// instantiated whenever task_scheduler's type-erased backend needs to copy an
-// allocator on the heap-allocation fallback path (e.g. with an asio-based
-// scheduler), so this test guards the fix for NVIDIA/stdexec#2158.
+// another specialization of the same class template. That access is rejected by
+// all major compilers (MSVC C2248, Clang and GCC report it as accessing a
+// private member), so the constructor only compiles because it is never
+// instantiated in the upstream test matrix. It *is* instantiated whenever
+// task_scheduler's type-erased backend copies an allocator on the
+// heap-allocation fallback path (e.g. with an asio-based scheduler), breaking
+// the build on every compiler; the friend declaration makes the conversion
+// legal. This test instantiates the constructor directly and guards the fix
+// for NVIDIA/stdexec#2158.
 TEST_CASE("__any_allocator cross-specialization converting constructor compiles",
           "[detail][allocator]")
 {
