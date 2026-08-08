@@ -18,7 +18,7 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#  include "completion_behavior.hpp"
+#include "completion_behavior.hpp"
 
 #if STDEXEC_USE_MODULES()
 import std;
