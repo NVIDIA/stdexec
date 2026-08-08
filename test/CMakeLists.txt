@@ -32,8 +32,6 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
     stdexec/algos/adaptors/test_let_error.cpp
-    stdexec/algos/adaptors/test_on.cpp
-    stdexec/algos/adaptors/test_on3.cpp
     stdexec/algos/adaptors/test_sequence.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
     stdexec/algos/adaptors/test_stop_when.cpp
@@ -82,7 +80,9 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_let_stopped.cpp
     stdexec/algos/adaptors/test_let_value.cpp
+    stdexec/algos/adaptors/test_on.cpp
     stdexec/algos/adaptors/test_on2.cpp
+    stdexec/algos/adaptors/test_on3.cpp
     stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_transfer_when_all.cpp
