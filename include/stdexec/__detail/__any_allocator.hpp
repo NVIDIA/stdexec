@@ -67,6 +67,13 @@ namespace STDEXEC
 
     __any_allocator() = default;
 
+    // MSVC does not implement [class.access]: members of a class template
+    // cannot access private members of other specializations of the same
+    // template. The converting constructor below relies on that rule, so
+    // declare the friendship explicitly.
+    template <class>
+    friend struct __any_allocator;
+
     template <__not_same_as<__any_allocator> _Alloc>
       requires __is_not_instance_of<_Alloc, __any_allocator> && __simple_allocator<_Alloc>
     __any_allocator(_Alloc __alloc) noexcept
