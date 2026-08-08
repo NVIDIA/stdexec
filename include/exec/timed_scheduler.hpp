@@ -25,7 +25,20 @@ namespace STDEXEC::__timed_scheduler_fallback
   struct __tag
   {};
 
-  template <class _Scheduler, class _Sender>
+  template <class _NativeSender, class _Scheduler>
+  concept __completion_scheduler_matches =
+    __callable<get_completion_scheduler_t<set_value_t>, env_of_t<_NativeSender>>
+    && __decays_to<
+      __call_result_t<get_completion_scheduler_t<set_value_t>, env_of_t<_NativeSender>>,
+      __decay_t<_Scheduler>>;
+
+  template <class _Scheduler, class _NativeSender>
+  struct __data
+  {
+    _Scheduler __sched_;
+  };
+
+  template <class _Scheduler, class _NativeSender, class _Sender>
   struct __attrs : STDEXEC::__sync_attrs<_Sender>
   {
     using __base_t = STDEXEC::__sync_attrs<_Sender>;
@@ -39,6 +52,7 @@ namespace STDEXEC::__timed_scheduler_fallback
     [[nodiscard]]
     constexpr auto query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept
       -> _Scheduler
+      requires __completion_scheduler_matches<_NativeSender, _Scheduler>
     {
       return __sched_;
     }
@@ -53,11 +67,13 @@ namespace STDEXEC
   struct __sexpr_impl<__timed_scheduler_fallback::__tag> : __sexpr_defaults
   {
     static constexpr auto __get_attrs =
-      []<class _Scheduler, class _Sender>(__ignore,
-                                          _Scheduler const & __sched,
-                                          _Sender const &    __sndr) noexcept
+      []<class _Scheduler, class _NativeSender, class _Sender>(
+        __ignore,
+        __timed_scheduler_fallback::__data<_Scheduler, _NativeSender> const & __data,
+        _Sender const & __sndr) noexcept
     {
-      return __timed_scheduler_fallback::__attrs<_Scheduler, _Sender>{__sched, __sndr};
+      return __timed_scheduler_fallback::__attrs<_Scheduler, _NativeSender, _Sender>{
+        __data.__sched_, __sndr};
     };
 
     template <class _Sender, class... _Env>
@@ -216,8 +232,13 @@ namespace experimental::execution
       auto
       operator()(_Scheduler &&__sched, const duration_of_t<_Scheduler> &__duration) const noexcept
       {
+        using __native_sender_t =
+          __call_result_t<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>;
+
         return __make_sexpr<STDEXEC::__timed_scheduler_fallback::__tag>(
-          __sched,
+          STDEXEC::__timed_scheduler_fallback::__data<
+            STDEXEC::__decay_t<_Scheduler>,
+            __native_sender_t>{__sched},
           let_value(
             just(),
             [__sched, __duration]() noexcept(
@@ -294,8 +315,13 @@ namespace experimental::execution
       auto operator()(_Scheduler &&__sched, const time_point_of_t<_Scheduler> &__time_point) const
         noexcept(noexcept(schedule_after(__sched, __time_point - now(__sched))))
       {
+        using __native_sender_t =
+          __call_result_t<__schedule_after_base_t, _Scheduler, duration_of_t<_Scheduler> const &>;
+
         return __make_sexpr<STDEXEC::__timed_scheduler_fallback::__tag>(
-          __sched,
+          STDEXEC::__timed_scheduler_fallback::__data<
+            STDEXEC::__decay_t<_Scheduler>,
+            __native_sender_t>{__sched},
           let_value(just(),
                     [__sched, __time_point]() noexcept(
                       noexcept(schedule_after(__sched, __time_point - now(__sched))))
