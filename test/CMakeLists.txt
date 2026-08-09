@@ -42,7 +42,6 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_write_env.cpp
     stdexec/algos/consumers/test_spawn.cpp
     stdexec/algos/factories/test_just.cpp
-    stdexec/algos/factories/test_just_error.cpp
     stdexec/algos/factories/test_just_stopped.cpp
     stdexec/algos/factories/test_read.cpp
     stdexec/algos/factories/test_schedule.cpp
@@ -87,6 +86,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/algos/adaptors/test_stopped_as_error.cpp
     stdexec/algos/adaptors/test_transfer_when_all.cpp
     stdexec/algos/adaptors/test_when_all.cpp
+    stdexec/algos/factories/test_just_error.cpp
     stdexec/algos/consumers/test_sync_wait.cpp
     stdexec/detail/test_any_allocator.cpp
     stdexec/schedulers/test_parallel_scheduler.cpp
