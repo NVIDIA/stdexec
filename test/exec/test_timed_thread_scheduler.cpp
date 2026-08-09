@@ -34,13 +34,13 @@ namespace
   struct schedule_after_only_scheduler
   {
     using scheduler_concept = STDEXEC::scheduler_tag;
-    using time_point       = std::chrono::steady_clock::time_point;
-    using duration         = time_point::duration;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
 
     struct sender;
 
-    constexpr auto operator==(schedule_after_only_scheduler const &) const noexcept -> bool =
-      default;
+    constexpr auto
+    operator==(schedule_after_only_scheduler const &) const noexcept -> bool = default;
 
     [[nodiscard]]
     auto now() const noexcept -> time_point
@@ -57,9 +57,8 @@ namespace
 
   struct schedule_after_only_scheduler::sender
   {
-    using sender_concept = STDEXEC::sender_tag;
-    using completion_signatures =
-      STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
 
     struct attrs
     {
@@ -108,9 +107,8 @@ namespace
   template <class CompletionScheduler>
   struct sender_with_completion_scheduler
   {
-    using sender_concept = STDEXEC::sender_tag;
-    using completion_signatures =
-      STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+    using sender_concept        = STDEXEC::sender_tag;
+    using completion_signatures = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
 
     struct attrs
     {
@@ -149,12 +147,12 @@ namespace
   struct schedule_after_delegating_scheduler
   {
     using scheduler_concept = STDEXEC::scheduler_tag;
-    using time_point       = std::chrono::steady_clock::time_point;
-    using duration         = time_point::duration;
-    using sender           = sender_with_completion_scheduler<schedule_after_only_scheduler>;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
+    using sender            = sender_with_completion_scheduler<schedule_after_only_scheduler>;
 
-    constexpr auto operator==(schedule_after_delegating_scheduler const &) const noexcept -> bool =
-      default;
+    constexpr auto
+    operator==(schedule_after_delegating_scheduler const &) const noexcept -> bool = default;
 
     [[nodiscard]]
     auto now() const noexcept -> time_point
@@ -178,12 +176,12 @@ namespace
   struct schedule_at_delegating_scheduler
   {
     using scheduler_concept = STDEXEC::scheduler_tag;
-    using time_point       = std::chrono::steady_clock::time_point;
-    using duration         = time_point::duration;
-    using sender           = sender_with_completion_scheduler<schedule_after_only_scheduler>;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = time_point::duration;
+    using sender            = sender_with_completion_scheduler<schedule_after_only_scheduler>;
 
-    constexpr auto operator==(schedule_at_delegating_scheduler const &) const noexcept -> bool =
-      default;
+    constexpr auto
+    operator==(schedule_at_delegating_scheduler const &) const noexcept -> bool = default;
 
     [[nodiscard]]
     auto now() const noexcept -> time_point
@@ -260,11 +258,9 @@ namespace
 
     exec::timed_thread_context   context;
     exec::timed_thread_scheduler timed_scheduler = context.get_scheduler();
-    auto                         after_sender = exec::schedule_after(
-      timed_scheduler, std::chrono::milliseconds(10));
+    auto after_sender = exec::schedule_after(timed_scheduler, std::chrono::milliseconds(10));
 
-    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
-            STDEXEC::get_env(after_sender))
+    CHECK(STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(after_sender))
           == timed_scheduler);
 
     schedule_after_only_scheduler after_only_scheduler;
@@ -278,22 +274,20 @@ namespace
   TEST_CASE("timed scheduler fallbacks do not invent completion schedulers",
             "[timed_scheduler][completion_scheduler]")
   {
-    using completion_scheduler_query =
-      STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>;
+    using completion_scheduler_query = STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>;
 
     static_assert(exec::timed_scheduler<schedule_after_delegating_scheduler>);
     using at_sender_t = decltype(exec::schedule_at(
       std::declval<schedule_after_delegating_scheduler>(),
       std::declval<exec::time_point_of_t<schedule_after_delegating_scheduler> const &>()));
-    static_assert(!STDEXEC::__callable<completion_scheduler_query,
-                                        STDEXEC::env_of_t<at_sender_t>>);
+    static_assert(!STDEXEC::__callable<completion_scheduler_query, STDEXEC::env_of_t<at_sender_t>>);
 
     static_assert(exec::timed_scheduler<schedule_at_delegating_scheduler>);
     using after_sender_t = decltype(exec::schedule_after(
       std::declval<schedule_at_delegating_scheduler>(),
       std::declval<exec::duration_of_t<schedule_at_delegating_scheduler> const &>()));
-    static_assert(!STDEXEC::__callable<completion_scheduler_query,
-                                        STDEXEC::env_of_t<after_sender_t>>);
+    static_assert(
+      !STDEXEC::__callable<completion_scheduler_query, STDEXEC::env_of_t<after_sender_t>>);
 
     schedule_after_delegating_scheduler after_scheduler;
     CHECK(STDEXEC::sync_wait(exec::schedule_at(after_scheduler, exec::now(after_scheduler))));
