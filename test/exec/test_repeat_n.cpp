@@ -178,9 +178,9 @@ namespace
         Error_with_throw_copy() noexcept = default;
         Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {};
       };
-      ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_n(1);
-      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>,
-                                 std::variant<Error_with_throw_copy, std::exception_ptr>>,
+      ex::sender auto snd     = ex::just_error(Error_with_throw_copy{}) | exec::repeat_n(1);
+      using expected_errors_t = ex::__std_variant<Error_with_throw_copy, std::exception_ptr>;
+      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>, expected_errors_t>,
                     "Missing added set_error_t(std::exception_ptr)");
     }
 

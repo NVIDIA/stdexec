@@ -17,7 +17,6 @@
 
 #include "exec/repeat_until.hpp"
 #include "exec/static_thread_pool.hpp"
-#include "exec/trampoline_scheduler.hpp"
 #include "stdexec/execution.hpp"
 
 #include <test_common/receivers.hpp>
@@ -294,8 +293,8 @@ namespace
     };
     unsigned throw_after = 0;
     bool     done        = false;
-    do
-    {  // NOLINT(bugprone-infinite-loop)
+    do  // NOLINT(bugprone-infinite-loop)
+    {
       auto const tmp = throw_after;
       throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat(ex::just_error(error_type(throw_after))), receiver(done));
@@ -400,8 +399,8 @@ namespace
     };
     unsigned throw_after = 0;
     bool     done        = false;
-    do
-    {  // NOLINT(bugprone-infinite-loop)
+    do  // NOLINT(bugprone-infinite-loop)
+    {
       auto const tmp = throw_after;
       throw_after    = std::numeric_limits<unsigned>::max();
       auto op = ex::connect(exec::repeat_until(ex::just(value_type(throw_after))), receiver(done));
@@ -452,9 +451,9 @@ namespace
         Error_with_throw_copy() noexcept = default;
         Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {};
       };
-      ex::sender auto snd = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
-      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>,
-                                 std::variant<Error_with_throw_copy, std::exception_ptr>>,
+      ex::sender auto snd     = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
+      using expected_errors_t = ex::__std_variant<Error_with_throw_copy, std::exception_ptr>;
+      static_assert(std::same_as<ex::error_types_of_t<decltype(snd)>, expected_errors_t>,
                     "Missing added set_error_t(std::exception_ptr)");
     }
 
