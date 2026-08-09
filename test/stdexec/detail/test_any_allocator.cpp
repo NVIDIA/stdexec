@@ -34,7 +34,7 @@
 TEST_CASE("__any_allocator cross-specialization converting constructor compiles",
           "[detail][allocator]")
 {
-  STDEXEC::__any_allocator<int> src;
-  STDEXEC::__any_allocator<std::byte> dst(std::move(src)); // instantiates the converting ctor
+  STDEXEC::__any_allocator<int>       src;
+  STDEXEC::__any_allocator<std::byte> dst(std::move(src));  // instantiates the converting ctor
   CHECK(dst.has_value() == false);
 }
