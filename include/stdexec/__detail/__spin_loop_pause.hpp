@@ -39,7 +39,7 @@ namespace STDEXEC
 #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64)
 namespace STDEXEC
 {
-  STDEXEC_ATTRIBUTE(always_inline) inline void __spin_loop_pause() noexcept
+  STDEXEC_ATTRIBUTE(always_inline) void __spin_loop_pause() noexcept
   {
 #  if (defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__)           \
        || defined(__ARM_ARCH_6T2__) || defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__)         \

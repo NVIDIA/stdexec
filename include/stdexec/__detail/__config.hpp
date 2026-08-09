@@ -335,7 +335,11 @@ namespace STDEXEC::__std
 #elif STDEXEC_GCC()
 #  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           __attribute__((__always_inline__, __artificial__)) inline
 #else
-#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE
+// No always-inline attribute is known for this compiler, but ALWAYS_INLINE
+// must still guarantee inline linkage: header-defined functions marked with
+// it rely on the macro (not an explicit 'inline' at the use site, which
+// would be a duplicate on GCC/Clang) for ODR safety.
+#  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           inline
 #endif
 
 // __attribute__((__weak__))
