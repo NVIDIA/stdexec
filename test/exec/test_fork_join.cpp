@@ -54,6 +54,18 @@ namespace
     constexpr void operator()() const noexcept {}
   };
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct throwing_copy
+  {
+    throwing_copy() = default;
+
+    throwing_copy(throwing_copy const&) noexcept(false)
+    {
+      throw 42;
+    }
+  };
+#endif
+
   template <char ID>
   struct identifiable_domain : public STDEXEC::default_domain
   {};
@@ -121,6 +133,21 @@ namespace
 
     ::STDEXEC::sync_wait(std::move(sndr));
   }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("fork_join reports failures while caching results", "[adaptors][fork_join]")
+  {
+    auto sndr = exec::fork_join(
+      exec::just_from([](auto sink) noexcept
+                      {
+                        static throwing_copy value;
+                        return sink(value);
+                      }),
+      then([](throwing_copy const&) noexcept {}));
+
+    CHECK_THROWS_AS(sync_wait(std::move(sndr)), int);
+  }
+#endif
 
   TEST_CASE("fork_join can be nested", "[adaptors][fork_join]")
   {

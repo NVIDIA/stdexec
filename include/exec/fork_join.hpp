@@ -174,8 +174,7 @@ namespace experimental::execution
           if constexpr (!STDEXEC::__nothrow_decay_copyable<Args...>)
           {
             using _tuple_t = STDEXEC::__tuple<STDEXEC::set_error_t, ::std::exception_ptr>;
-            _cache_._results_.template emplace<_tuple_t>(STDEXEC::set_error,
-                                                         ::std::current_exception());
+            _cache_.template emplace<_tuple_t>(STDEXEC::set_error, ::std::current_exception());
           }
         }
         _child_opstate_.__destroy();
