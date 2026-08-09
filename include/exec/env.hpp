@@ -15,7 +15,13 @@
  */
 #pragma once
 
-#include "../stdexec/execution.hpp"
+#include "../stdexec/__detail/__config.hpp"
+
+#if STDEXEC_USE_MODULES()
+import stdexec;
+#else
+#  include "../stdexec/execution.hpp"
+#endif
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(1302)

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include "cpo_helpers.cuh"
 #include "test_common/receivers.hpp"
-#include <test_common/catch2.hpp>
 
 namespace
 {

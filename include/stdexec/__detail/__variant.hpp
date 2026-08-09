@@ -406,6 +406,7 @@ namespace STDEXEC
     using __variant_base_t = __variant<__indices_for<_Ts...>{}, _Ts...>;
   }  // namespace __var
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   struct __variant : __var::__variant_base_t<_Ts...>
   {

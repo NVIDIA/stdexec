@@ -78,6 +78,7 @@ namespace STDEXEC
   /////////////////////////////////////////////////////////////////////////////////////////
   // __rebind_allocator: Rebinds an allocator to a different type, unless the allocator is
   // already bound to the correct type, in which case it is returned as-is.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Alloc>
   [[nodiscard]]
   constexpr auto __rebind_allocator(_Alloc const &__alloc) noexcept

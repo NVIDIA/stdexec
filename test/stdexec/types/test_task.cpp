@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
 #include <stdexec/coroutine.hpp>
 
@@ -25,13 +26,15 @@
 #  include <exec/single_thread_context.hpp>
 #  include <exec/static_thread_pool.hpp>
 
-#  include <atomic>
-#  include <utility>
-
-#  include <test_common/catch2.hpp>
-
 #  include <test_common/allocators.hpp>
 #  include <test_common/senders.hpp>
+
+#  if STDEXEC_USE_MODULES()
+import std;
+#  else
+#    include <atomic>
+#    include <utility>
+#  endif
 
 namespace ex = STDEXEC;
 

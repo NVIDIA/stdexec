@@ -36,6 +36,7 @@ namespace STDEXEC
 {
   namespace __queue
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <auto _Next>
     class __intrusive_queue;
 
@@ -302,6 +303,7 @@ namespace STDEXEC
     };
   }  // namespace __queue
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __queue::__intrusive_queue;
 
 }  // namespace STDEXEC

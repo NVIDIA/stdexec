@@ -17,9 +17,16 @@
 
 #pragma once
 
-#include <stdexec/execution.hpp>
+#include <stdexec/__detail/__config.hpp>
 
-#include <utility>
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include <stdexec/execution.hpp>
+
+#  include <utility>
+#endif
 
 namespace
 {

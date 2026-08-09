@@ -53,6 +53,7 @@ namespace STDEXEC
 {
   namespace __tup
   {
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _Ts>
     struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
 
@@ -320,16 +321,20 @@ namespace STDEXEC
 #  undef STDEXEC_TUPLE_GET
   }  // namespace __tup
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __tup::__tuple;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __tup::__apply_t __apply{};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class _Tuple, class... _Us>
   using __apply_result_t = __call_result_t<__tup::__apply_t, _Fn, _Tuple, _Us...>;
 
   template <class _Fn, class _Tuple, class... _Us>
   concept __applicable = __callable<__tup::__apply_t::__impl_t<_Tuple>, _Fn, _Tuple, _Us...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class _Tuple, class... _Us>
   concept __nothrow_applicable =
     __nothrow_callable<__tup::__apply_t::__impl_t<_Tuple>, _Fn, _Tuple, _Us...>;
@@ -361,6 +366,7 @@ namespace STDEXEC
     }
   }  // namespace __tup
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <size_t _Index, class _Tuple>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
   constexpr auto __get(_Tuple&& __tupl) noexcept -> auto&&
@@ -415,6 +421,7 @@ namespace STDEXEC
   //
   // __decayed_tuple<Ts...>
   //
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   using __decayed_tuple = __tuple<__decay_t<_Ts>...>;
 

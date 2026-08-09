@@ -199,6 +199,7 @@ namespace STDEXEC
     __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...);
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   concept __nothrow_invocable = __invocable<_Fun, _As...> && requires(_Fun &&__f, _As &&...__as) {
     { __invoke(static_cast<_Fun &&>(__f), static_cast<_As &&>(__as)...) } noexcept;
@@ -207,6 +208,7 @@ namespace STDEXEC
   template <class _Fun, class... _As>
   using __invoke_result_t = decltype(__invoke(__declval<_Fun>(), __declval<_As>()...));
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn, class _Default>
   struct __with_default : _Fn
   {
@@ -440,6 +442,7 @@ namespace STDEXEC
   //!
   //! \returns A `__flipped<__decay_t<_Fn>>` object such that calling it with `(a, b)`
   //! calls `__fn(b, a)`.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __flip(_Fn &&__fn) noexcept(__nothrow_decay_copyable<_Fn>)

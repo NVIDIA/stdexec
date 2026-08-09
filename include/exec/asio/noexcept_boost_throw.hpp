@@ -27,8 +27,12 @@
 #  include <boost/asio/thread_pool.hpp>
 #  include <boost/throw_exception.hpp>
 
-#  include <cstdlib>
-#  include <exception>
+#  if STDEXEC_USE_MODULES()
+import std;
+#  else
+#    include <cstdlib>
+#    include <exception>
+#  endif
 
 namespace boost
 {
