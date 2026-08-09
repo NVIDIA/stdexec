@@ -27,7 +27,6 @@ import stdexec;
 
 // include these after __execution_fwd.hpp
 #  include "__awaitable.hpp"
-#  include "__completion_info.hpp"
 #  include "__completion_signatures.hpp"  // IWYU pragma: export
 #  include "__connect_awaitable.hpp"
 #  include "__diagnostics.hpp"
@@ -35,10 +34,6 @@ import stdexec;
 #  include "__meta.hpp"
 #  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
-
-#  if !STDEXEC_USE_MODULES()
-#    include <algorithm>
-#  endif
 
 #  include "__prologue.hpp"
 
@@ -527,18 +522,6 @@ namespace STDEXEC
   template <class _Tag, class _Sender, class... _Env>
   using __count_of =
     __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
-
-  template <class _Sender, class... _Env>
-  consteval auto __get_completion_info()
-  {
-    auto __cmplsigs = STDEXEC::get_completion_signatures<_Sender, _Env...>();
-    STDEXEC_IF_OK(__cmplsigs)
-    {
-      auto __cmplinfo = STDEXEC::__cmplsigs::__to_array(__cmplsigs);
-      std::ranges::for_each(__cmplinfo, &__completion_info::__populate<_Sender, _Env...>);
-      return __cmplinfo;
-    }
-  }
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
