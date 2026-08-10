@@ -171,7 +171,11 @@ namespace experimental::execution
         __intrusive_queue<&task_base::next_> tasks{};
         while (head != nullptr)
         {
-          tasks.append(head->queues_[tid].pop_all_reversed());
+          auto& queue = head->queues_[tid];
+          if (!queue.empty())
+          {
+            tasks.append(queue.pop_all_reversed());
+          }
           head = head->next_;
         }
         return tasks;
