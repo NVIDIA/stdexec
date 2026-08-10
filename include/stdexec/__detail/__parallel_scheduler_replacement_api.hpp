@@ -37,16 +37,19 @@ namespace STDEXEC::parallel_scheduler_replacement
 {
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
+  STDEXEC_MODULE_EXPORT
   STDEXEC_ATTRIBUTE(weak)
   auto query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>;
 
   /// The type of a factory that can create `parallel_scheduler_backend` instances.
   /// NOT TO SPEC
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __parallel_scheduler_backend_factory_t = std::shared_ptr<parallel_scheduler_backend> (*)();
 
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
   /// NOT TO SPEC
+  STDEXEC_MODULE_EXPORT
   [[deprecated("Replacing the parallel scheduler backend at runtime is not recommended and may "
                "lead to unexpected behavior. Use weak linking to replace the parallel scheduler at "
                "compile time instead.")]]

@@ -39,12 +39,13 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
-STDEXEC_MODULE_EXPORT namespace STDEXEC::parallel_scheduler_replacement
+STDEXEC_MODULE_EXPORT
+namespace STDEXEC::parallel_scheduler_replacement
 {
   /// Get the backend for the parallel scheduler.
   /// Users might replace this function.
-  STDEXEC_MODULE_EXPORT STDEXEC_PARALLEL_SCHEDULER_INLINE auto query_parallel_scheduler_backend()
-    -> std::shared_ptr<parallel_scheduler_backend>
+  STDEXEC_PARALLEL_SCHEDULER_INLINE auto
+  query_parallel_scheduler_backend() -> std::shared_ptr<parallel_scheduler_backend>
   {
     return STDEXEC::__parallel_scheduler_default_impl::__parallel_scheduler_backend_singleton
       .__get_current_instance();
@@ -53,7 +54,7 @@ STDEXEC_MODULE_EXPORT namespace STDEXEC::parallel_scheduler_replacement
   /// Set a factory for the parallel scheduler backend.
   /// Can be used to replace the parallel scheduler at runtime.
   /// NOT TO SPEC
-  STDEXEC_MODULE_EXPORT extern STDEXEC_PARALLEL_SCHEDULER_INLINE  //
+  extern STDEXEC_PARALLEL_SCHEDULER_INLINE  //
     auto set_parallel_scheduler_backend(__parallel_scheduler_backend_factory_t __new_factory)
       -> __parallel_scheduler_backend_factory_t
   {

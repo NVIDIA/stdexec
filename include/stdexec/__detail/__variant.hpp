@@ -74,6 +74,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __visit_t __visit{};
 
   namespace __var

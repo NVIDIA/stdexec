@@ -19,7 +19,7 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_USE_MODULES()
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import std;
 import stdexec;
 #else
@@ -37,17 +37,19 @@ import stdexec;
 #  include "../stdexec/__detail/__type_traits.hpp"
 #  include "../stdexec/__detail/__variant.hpp"
 
-#  include <compare>
-#  include <condition_variable>
-#  include <cstdint>
-#  include <exception>
-#  include <limits>
-#  include <mutex>
-#  include <random>
-#  include <span>
-#  include <thread>
-#  include <type_traits>
-#  include <vector>
+#  if !STDEXEC_USE_MODULES()
+#    include <compare>
+#    include <condition_variable>
+#    include <cstdint>
+#    include <exception>
+#    include <limits>
+#    include <mutex>
+#    include <random>
+#    include <span>
+#    include <thread>
+#    include <type_traits>
+#    include <vector>
+#  endif
 #endif
 
 #include "detail/atomic_intrusive_queue.hpp"
@@ -1839,4 +1841,5 @@ namespace experimental::execution
 
 }  // namespace experimental::execution
 
+STDEXEC_MODULE_EXPORT
 namespace exec = experimental::execution;

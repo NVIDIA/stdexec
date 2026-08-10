@@ -18,22 +18,27 @@
 
 #if __has_include(<dispatch/dispatch.h>)
 
+#  include <stdexec/execution.hpp>
+
+#  if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#  else
 // TODO: This is needed for libdispatch to compile with GCC. Need to look for
 // workaround.
-#  ifndef __has_feature
-#    define __has_feature(x) false
-#  endif
-#  ifndef __has_extension
-#    define __has_extension(x) false
-#  endif
+#    ifndef __has_feature
+#      define __has_feature(x) false
+#    endif
+#    ifndef __has_extension
+#      define __has_extension(x) false
+#    endif
 
-#  include "../stdexec/execution.hpp"
+#    include "completion_signatures.hpp"
+#    include "sender_for.hpp"
 
-#  include "completion_signatures.hpp"
-#  include "sender_for.hpp"
-
-#  include <dispatch/dispatch.h>
-#  include <vector>
+#    if !STDEXEC_USE_MODULES()
+#      include <dispatch/dispatch.h>
+#      include <vector>
+#    endif
 
 namespace experimental::execution
 {
@@ -546,4 +551,5 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
-#endif  // __has_include(<dispatch/dispatch.h>)
+#  endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+#endif    // __has_include(<dispatch/dispatch.h>)

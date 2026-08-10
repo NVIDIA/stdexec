@@ -48,6 +48,7 @@ namespace STDEXEC
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
   ////////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_error
+  STDEXEC_MODULE_EXPORT
   template <class _Error>
   struct with_error
   {
@@ -60,6 +61,7 @@ namespace STDEXEC
 
   ////////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_stopped
+  STDEXEC_MODULE_EXPORT
   struct with_stopped
   {};
 

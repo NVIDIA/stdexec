@@ -16,13 +16,19 @@
  */
 #pragma once
 
-#include "../../stdexec/__detail/__any.hpp"
 #include "../../stdexec/__detail/__config.hpp"
-#include "../scope.hpp"  // IWYU pragma: keep
 
-#include <cstddef>
-#include <thread>
-#include <vector>  // IWYU pragma: keep
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+import stdexec;
+#else
+#  include "../../stdexec/__detail/__any.hpp"
+#  include "../scope.hpp"  // IWYU pragma: keep
+
+#  if !STDEXEC_USE_MODULES()
+#    include <cstddef>
+#    include <thread>
+#    include <vector>  // IWYU pragma: keep
+#  endif
 
 namespace experimental::execution
 {
@@ -64,7 +70,11 @@ namespace experimental::execution
     };
     // NOLINTEND(modernize-use-override)
   }  // namespace _numa
+}  // namespace experimental::execution
 
+STDEXEC_MODULE_EXPORT
+namespace experimental::execution
+{
   struct numa_policy final : STDEXEC::__any::__any<exec::_numa::_ipolicy>
   {
     using numa_policy::__any::__any;
@@ -99,8 +109,11 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
-#if STDEXEC_ENABLE_NUMA
-#  include <numa.h>
+#  if STDEXEC_ENABLE_NUMA
+
+#    if !STDEXEC_USE_MODULES()
+#      include <numa.h>
+#    endif
 
 namespace experimental::execution
 {
@@ -141,7 +154,11 @@ namespace experimental::execution
       return g_node_to_thread_index.get();
     }
   };
+}  // namespace experimental::execution
 
+STDEXEC_MODULE_EXPORT
+namespace experimental::execution
+{
   struct default_numa_policy
   {
     [[nodiscard]]
@@ -297,8 +314,9 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
-#else
+#  else
 
+STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
   using default_numa_policy = no_numa_policy;
@@ -358,4 +376,5 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+#  endif
 #endif

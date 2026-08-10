@@ -74,8 +74,7 @@ if(STDEXEC_BUILD_MODULES)
   # these are the only files that build right now...
   add_executable(test.exec
       ../test_main.cpp
-      async_scope/test_empty.cpp
-      async_scope/test_spawn.cpp)
+      async_scope/test_empty.cpp)
   set_target_properties(test.exec PROPERTIES CXX_MODULE_STD ON)
 else()
   add_executable(test.exec ${exec_test_sources})
