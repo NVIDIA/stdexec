@@ -13,11 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
 
-#include <stdexec/__detail/__meta.hpp>
-#include <test_common/catch2.hpp>
+#include <stdexec/__detail/__config.hpp>
 
-#include <optional>
+#if STDEXEC_USE_MODULES()
+import std;
+import stdexec;
+#else
+#  include <stdexec/__detail/__meta.hpp>
+
+#  include <optional>
+#endif
 
 using namespace std;
 using namespace STDEXEC;

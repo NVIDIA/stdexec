@@ -40,13 +40,19 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 
 namespace STDEXEC
 {
+#  if STDEXEC_USE_MODULES()
+  template <auto _Descriptor>
+  struct __sexpr;
+#  else
   namespace
   {
     template <auto _Descriptor>
     struct __sexpr;
   }  // namespace
+#  endif
 
   // A type that describes a sender's metadata
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Data, class... _Child>
   struct __desc
   {
@@ -226,13 +232,16 @@ namespace STDEXEC
     template <class _Sender>
     using __desc_of_t = __call_result_t<__structured_apply, __get_desc, _Sender>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
     extern __undefined<_Sender> &__desc_of_v;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
       requires(__structured_binding_size_v<_Sender> >= 2)
     extern __desc_of_t<_Sender> __desc_of_v<_Sender>;
 
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <auto _Descriptor>
     extern decltype(_Descriptor()) __desc_of_v<__sexpr<_Descriptor>>;
   }  // namespace __detail
@@ -245,10 +254,12 @@ namespace STDEXEC
 
   // NOT TO SPEC: in the specification, the tparam of tag_of_t is constrained with the
   // sender concept
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
     requires enable_sender<__decay_t<_Sender>>
   using tag_of_t = __desc_of_t<_Sender>::__tag;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   using __data_of = __copy_cvref_t<_Sender, typename __desc_of_t<_Sender>::__data>;
 
@@ -262,6 +273,7 @@ namespace STDEXEC
   template <std::size_t _Ny, class _Sender>
   using __nth_child_of_c = __nth_child_of<__msize_t<_Ny>, _Sender>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   using __child_of = __children_of<_Sender, __qq<__mfront>>;
 
@@ -277,6 +289,7 @@ namespace STDEXEC
   template <auto _Descriptor>
   struct __mfor<__sexpr<_Descriptor> const &> : decltype(_Descriptor()){};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Tag>
   concept __sender_for = sender<_Sender> && __minvocable_q<tag_of_t, _Sender>
                       && (__std::same_as<tag_of_t<_Sender>, _Tag> && ...);

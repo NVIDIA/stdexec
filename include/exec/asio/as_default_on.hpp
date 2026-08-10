@@ -20,10 +20,16 @@
 
 #include <exec/asio/asio_config.hpp>
 
+#include "../../stdexec/__detail/__config.hpp"
+
 #include "executor_with_default.hpp"
 
-#include <type_traits>
-#include <utility>
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <type_traits>
+#  include <utility>
+#endif
 
 namespace experimental::execution::asio
 {

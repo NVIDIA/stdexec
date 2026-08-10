@@ -15,19 +15,27 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__awaitable.hpp"
-#include "__concepts.hpp"
-#include "__diagnostics.hpp"
-#include "__env.hpp"
-#include "__get_completion_signatures.hpp"
-#include "__meta.hpp"
-#include "__receivers.hpp"
-#include "__type_traits.hpp"
+#  include "__awaitable.hpp"
+#  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__env.hpp"
+#  include "__get_completion_signatures.hpp"
+#  include "__meta.hpp"
+#  include "__receivers.hpp"
+#  include "__type_traits.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -120,21 +128,21 @@ namespace STDEXEC
   //! @see stdexec::sender_to    — sender plus a specific receiver, with compatible signatures
   //! @see stdexec::sender_tag   — the tag type that opts a class into this concept
   //! @see stdexec::enable_sender — alternative opt-in path
-  template <class _Sender>
+  STDEXEC_MODULE_EXPORT template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>          //
                 && __environment_provider<__cref_t<_Sender>>  //
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
-#if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<std::remove_const_t<decltype(_Completions)>>;
-#else
+#  else
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<decltype(_Completions)>;
-#endif
+#  endif
 
   //! @brief A @c sender whose *completion signatures* can be computed in a
   //!        given environment.
@@ -166,12 +174,13 @@ namespace STDEXEC
   //! @see stdexec::sender                    — the base concept
   //! @see stdexec::sender_to                 — adds a specific receiver
   //! @see stdexec::get_completion_signatures — the customization point this concept depends on
-  template <class _Sender, class... _Env>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
     && sender<_Sender>      //
     && __constant_completion_signatures_v<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Receiver, class _Sender>
   concept __receiver_from =
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
@@ -199,7 +208,7 @@ namespace STDEXEC
   //! @see stdexec::sender_in     — without the receiver-compatibility check
   //! @see stdexec::receiver_of   — the receiver-side mirror of this concept
   //! @see stdexec::connect       — the operation @c sender_to validates
-  template <class _Sender, class _Receiver>
+  STDEXEC_MODULE_EXPORT template <class _Sender, class _Receiver>
   concept sender_to = __sender_to<_Sender, _Receiver>  //
                    && requires(_Sender &&__sndr, _Receiver &&__rcvr) {
                         connect(static_cast<_Sender &&>(__sndr), static_cast<_Receiver &&>(__rcvr));
@@ -231,6 +240,7 @@ namespace STDEXEC
   //! @see stdexec::sender                    — the base concept (no environment required)
   //! @see stdexec::sender_in                 — sender with a concrete environment
   //! @see stdexec::get_completion_signatures — the CPO that throws @c dependent_sender_error
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
 
@@ -309,17 +319,18 @@ namespace STDEXEC
           static_assert(__valid_completion_signatures<_Completions>,
                         STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
         }
-#if STDEXEC_MSVC() || STDEXEC_NVHPC()
+#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
         // MSVC and NVHPC need more encouragement to print the type of the
         // error.
         _Completions __what = 0;
-#endif
+#  endif
       }
     }
   }  // namespace __detail
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
   constexpr auto __diagnose_sender_concept_failure() noexcept
   {
@@ -329,4 +340,5 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

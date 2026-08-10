@@ -49,9 +49,29 @@ stdexec should follow.
     the `include/exec` directory, export them with
     `STDEXEC_MODULE_EXPORT_AUTHORING`.
 
-* The first non-comment, non-blank line in a test file should be
-  `#include <catch2/catch_all.hpp>` so as not to break the modules build.
-  If compile-time behavior needs to differ between modularized and
-  traditional builds, the next inclusion should be
-  `#include <stdexec/__detail/__config.hpp>` so that `STDEXEC_USE_MODULES()`
-  is defined and can be checked.
+* In tests, the include order should be:
+  ```c++
+  /* Copyright... */
+
+  // Catch2 must come before any potential import statements
+  #include <catch2/catch_all.hpp>
+
+  // Pull in all the macros in __config.hpp and either include all of
+  // stdexec's headers, or import stdexec, as appropriate
+  #include <stdexec/execution.hpp>
+
+  // other non-std headers, like anything in <exec/...> or in the test
+  // utility library
+  #include <exec/function.hpp>
+  #include <test_common/receivers.hpp>
+
+  // if the test has direct dependencies on std, the declarations thereof
+  // must come last, either as import std, or the usual includes. This has
+  // to come last because current compilers support including std headers
+  // *before* import std, but not *after*.
+  #if STDEXEC_USE_MODULES()
+  import std;
+  #else
+  #  include <algorithm>
+  #endif
+  ```

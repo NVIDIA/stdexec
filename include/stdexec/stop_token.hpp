@@ -263,7 +263,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   inline auto inplace_stop_source::request_stop() noexcept -> bool
   {
     if (!__try_lock_unless_stop_requested_(true))
-      return true;
+      return false;
 
     __notifying_thread_ = std::this_thread::get_id();
 
@@ -293,7 +293,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     }
 
     __state_.store(__stop_requested_flag_, STDEXEC::__std::memory_order_release);
-    return false;
+    return true;
   }
 
   inline auto inplace_stop_source::__lock_() const noexcept -> uint8_t
@@ -467,6 +467,7 @@ namespace STDEXEC
     }
   }  // namespace __stok
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _StopSource = inplace_stop_source>
   struct __forward_stop_request
   {

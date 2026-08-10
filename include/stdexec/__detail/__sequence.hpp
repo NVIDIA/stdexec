@@ -15,18 +15,26 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__connect.hpp"
-#include "__just.hpp"
-#include "__schedulers.hpp"
-#include "__senders.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__variant.hpp"
+#  include "__basic_sender.hpp"
+#  include "__connect.hpp"
+#  include "__just.hpp"
+#  include "__schedulers.hpp"
+#  include "__senders.hpp"
+#  include "__transform_completion_signatures.hpp"
+#  include "__variant.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
 STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
@@ -35,6 +43,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __sequence_t;
   struct _ALL_SENDERS_BUT_THE_LAST_MUST_BE_SENDERS_OF_VOID_;
 
@@ -52,6 +61,7 @@ namespace STDEXEC
     // Attributes for __sequence. This is a bit more complicated than the attributes for
     // other algorithms because we need to be able to query the completion scheduler (for
     // example) of the second sender from the context of the first sender's completions.
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _CvSenders>
     struct __attrs;
 
@@ -505,4 +515,5 @@ namespace STDEXEC
   }  // namespace __detail
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

@@ -56,32 +56,44 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
-  using __std_variant = __minvoke_if_c<sizeof...(_Ts) == 0,
-                                       __mconst<__detail::__not_a_variant>,
-                                       __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-                                       _Ts...>;
+  using __std_variant =
+    __minvoke_if_c<sizeof...(_Ts) == 0,
+                   __mconst<__detail::__not_a_variant>,
+                   __mtransform<__q1<__decay_t>, __munique<__msort<__qq<std::variant>>>>,
+                   _Ts...>;
 
   template <class... _Ts>
   using __nullable_std_variant =
-    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
+    __mcall<__munique<__msort<__mbind_front<__qq<std::variant>, std::monostate>>>,
+            __decay_t<_Ts>...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
   using __decayed_std_tuple = std::tuple<__decay_t<_Ts>...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct default_domain;
 
+  STDEXEC_MODULE_EXPORT
   template <class...>
   struct indeterminate_domain;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct set_value_t;
+  STDEXEC_MODULE_EXPORT
   struct set_error_t;
+  STDEXEC_MODULE_EXPORT
   struct set_stopped_t;
 
-  extern set_value_t const   set_value;
-  extern set_error_t const   set_error;
+  STDEXEC_MODULE_EXPORT
+  extern set_value_t const set_value;
+  STDEXEC_MODULE_EXPORT
+  extern set_error_t const set_error;
+  STDEXEC_MODULE_EXPORT
   extern set_stopped_t const set_stopped;
 
   enum class __disposition
@@ -93,9 +105,11 @@ namespace STDEXEC
 
   constexpr auto __invalid_disposition = static_cast<__disposition>(3);  // invalid value
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag>
   concept __completion_tag = __one_of<_Tag, set_value_t, set_error_t, set_stopped_t>;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
   extern bool const enable_receiver;
 
@@ -105,20 +119,26 @@ namespace STDEXEC
     struct cprop;
   }  // namespace __env
 
+  STDEXEC_MODULE_EXPORT
   template <class _Query, class _Value>
   struct prop;
 
+  STDEXEC_MODULE_EXPORT
   template <class... _Envs>
   struct env;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct get_env_t;
+  STDEXEC_MODULE_EXPORT
   extern get_env_t const get_env;
 
+  STDEXEC_MODULE_EXPORT
   template <class _EnvProvider>
   using env_of_t = __call_result_t<get_env_t, _EnvProvider>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   enum class forward_progress_guarantee
   {
     concurrent,
@@ -127,31 +147,48 @@ namespace STDEXEC
   };
 
   struct __execute_may_block_caller_t;
+  STDEXEC_MODULE_EXPORT
   struct get_forward_progress_guarantee_t;
+  STDEXEC_MODULE_EXPORT
   struct get_scheduler_t;
+  STDEXEC_MODULE_EXPORT
   struct get_start_scheduler_t;
+  STDEXEC_MODULE_EXPORT
   struct get_delegation_scheduler_t;
+  STDEXEC_MODULE_EXPORT
   template <__completion_tag _CPO>
   struct get_completion_scheduler_t;
+  STDEXEC_MODULE_EXPORT
   template <class _CPO = void>
   struct get_completion_domain_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <__completion_tag _CPO>
   struct __get_completion_behavior_t;
+  STDEXEC_MODULE_EXPORT
   struct get_domain_t;
+  STDEXEC_MODULE_EXPORT
   struct get_await_completion_adaptor_t;
 
   struct __debug_env_t;
 
-  extern __execute_may_block_caller_t const     __execute_may_block_caller;
+  extern __execute_may_block_caller_t const __execute_may_block_caller;
+  STDEXEC_MODULE_EXPORT
   extern get_forward_progress_guarantee_t const get_forward_progress_guarantee;
-  extern get_scheduler_t const                  get_scheduler;
-  extern get_start_scheduler_t const            get_start_scheduler;
-  extern get_delegation_scheduler_t const       get_delegation_scheduler;
+  STDEXEC_MODULE_EXPORT
+  extern get_scheduler_t const get_scheduler;
+  STDEXEC_MODULE_EXPORT
+  extern get_start_scheduler_t const get_start_scheduler;
+  STDEXEC_MODULE_EXPORT
+  extern get_delegation_scheduler_t const get_delegation_scheduler;
+  STDEXEC_MODULE_EXPORT
   template <__completion_tag _CPO>
   extern get_completion_scheduler_t<_CPO> const get_completion_scheduler;
+  STDEXEC_MODULE_EXPORT
   template <class _CPO = void>
-  extern get_completion_domain_t<_CPO> const  get_completion_domain;
-  extern get_domain_t const                   get_domain;
+  extern get_completion_domain_t<_CPO> const get_completion_domain;
+  STDEXEC_MODULE_EXPORT
+  extern get_domain_t const get_domain;
+  STDEXEC_MODULE_EXPORT
   extern get_await_completion_adaptor_t const get_await_completion_adaptor;
 
   template <class _Tag, class _Attrs, class... _Env>
@@ -160,6 +197,7 @@ namespace STDEXEC
                                                    _Attrs,
                                                    _Env const &...>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env>
   concept __is_debug_env = __callable<__debug_env_t, _Env>;
 
@@ -171,9 +209,13 @@ namespace STDEXEC
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // concept tag types:
+  STDEXEC_MODULE_EXPORT
   struct sender_tag;
+  STDEXEC_MODULE_EXPORT
   struct operation_state_tag;
+  STDEXEC_MODULE_EXPORT
   struct scheduler_tag;
+  STDEXEC_MODULE_EXPORT
   struct receiver_tag;
 
   // concept tag aliases for backwards compatibility:
@@ -190,6 +232,7 @@ namespace STDEXEC
   using __domain_of_t = __decay_t<__call_result_t<get_domain_t, _Env>>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   template <class... _Sigs>
   struct completion_signatures;
 
@@ -197,17 +240,21 @@ namespace STDEXEC
   concept __valid_completion_signatures = __ok<_Completions>
                                        && __is_instance_of<_Completions, completion_signatures>;
 
+  STDEXEC_MODULE_EXPORT
   struct dependent_sender_error;
 
   namespace __cmplsigs
   {
+    STDEXEC_MODULE_EXPORT
     struct get_completion_signatures_t;
   }  // namespace __cmplsigs
 
+  STDEXEC_MODULE_EXPORT
   using __cmplsigs::get_completion_signatures_t;
 
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What, class... _Values>
   [[nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>;
@@ -226,123 +273,185 @@ namespace STDEXEC
   consteval auto __throw_compile_time_error(__mexception<_What...>);
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct connect_t;
+  STDEXEC_MODULE_EXPORT
   extern connect_t const connect;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Receiver>
   using connect_result_t = __call_result_t<connect_t, _Sender, _Receiver>;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Sender>
   extern bool const enable_sender;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct start_t;
+  STDEXEC_MODULE_EXPORT
   extern start_t const start;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct schedule_t;
+  STDEXEC_MODULE_EXPORT
   extern schedule_t const schedule;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct as_awaitable_t;
+  STDEXEC_MODULE_EXPORT
   extern as_awaitable_t const as_awaitable;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct transform_sender_t;
+  STDEXEC_MODULE_EXPORT
   extern transform_sender_t const transform_sender;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Sender, class... _Env>
   using transform_sender_result_t = __call_result_t<transform_sender_t, _Sender, _Env...>;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct starts_on_t;
+  STDEXEC_MODULE_EXPORT
   extern starts_on_t const starts_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct schedule_from_t;
+  STDEXEC_MODULE_EXPORT
   extern schedule_from_t const schedule_from;
 
+  STDEXEC_MODULE_EXPORT
   struct continues_on_t;
+  STDEXEC_MODULE_EXPORT
   extern continues_on_t const continues_on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct bulk_t;
+  STDEXEC_MODULE_EXPORT
   struct bulk_chunked_t;
+  STDEXEC_MODULE_EXPORT
   struct bulk_unchunked_t;
 
-  extern bulk_t const           bulk;
-  extern bulk_chunked_t const   bulk_chunked;
+  STDEXEC_MODULE_EXPORT
+  extern bulk_t const bulk;
+  STDEXEC_MODULE_EXPORT
+  extern bulk_chunked_t const bulk_chunked;
+  STDEXEC_MODULE_EXPORT
   extern bulk_unchunked_t const bulk_unchunked;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  STDEXEC_MODULE_EXPORT struct just_t;
+  STDEXEC_MODULE_EXPORT
+  struct just_t;
+  STDEXEC_MODULE_EXPORT
   extern just_t const just;
 
+  STDEXEC_MODULE_EXPORT
   struct just_error_t;
+  STDEXEC_MODULE_EXPORT
   extern just_error_t const just_error;
 
+  STDEXEC_MODULE_EXPORT
   struct just_stopped_t;
+  STDEXEC_MODULE_EXPORT
   extern just_stopped_t const just_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct then_t;
+  STDEXEC_MODULE_EXPORT
   extern then_t const then;
 
+  STDEXEC_MODULE_EXPORT
   struct upon_error_t;
+  STDEXEC_MODULE_EXPORT
   extern upon_error_t const upon_error;
 
+  STDEXEC_MODULE_EXPORT
   struct upon_stopped_t;
+  STDEXEC_MODULE_EXPORT
   extern upon_stopped_t const upon_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct let_value_t;
+  STDEXEC_MODULE_EXPORT
   extern let_value_t const let_value;
 
+  STDEXEC_MODULE_EXPORT
   struct let_error_t;
+  STDEXEC_MODULE_EXPORT
   extern let_error_t const let_error;
 
+  STDEXEC_MODULE_EXPORT
   struct let_stopped_t;
+  STDEXEC_MODULE_EXPORT
   extern let_stopped_t const let_stopped;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct when_all_t;
+  STDEXEC_MODULE_EXPORT
   extern when_all_t const when_all;
 
+  STDEXEC_MODULE_EXPORT
   struct when_all_with_variant_t;
+  STDEXEC_MODULE_EXPORT
   extern when_all_with_variant_t const when_all_with_variant;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   struct __read_env_t;
+  STDEXEC_MODULE_EXPORT
   extern __read_env_t const read_env;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __write_env_t;
+  STDEXEC_MODULE_EXPORT
   extern __write_env_t const write_env;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct into_variant_t;
+  STDEXEC_MODULE_EXPORT
   extern into_variant_t const into_variant;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct on_t;
+  STDEXEC_MODULE_EXPORT
   extern on_t const on;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct affine_t;
+  STDEXEC_MODULE_EXPORT
   extern affine_t const affine;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   struct stopped_as_error_t;
+  STDEXEC_MODULE_EXPORT
   extern stopped_as_error_t const stopped_as_error;
 
+  STDEXEC_MODULE_EXPORT
   struct stopped_as_optional_t;
+  STDEXEC_MODULE_EXPORT
   extern stopped_as_optional_t const stopped_as_optional;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
+  STDEXEC_MODULE_EXPORT
   template <__class _Derived>
   struct sender_adaptor_closure;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // deprecated interfaces (see __deprecations.hpp):
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_just_t;
   extern __transfer_just_t const __transfer_just;
 }  // namespace STDEXEC
@@ -364,29 +473,44 @@ namespace experimental::execution
 namespace exec = experimental::execution;
 
 STDEXEC_P2300_NAMESPACE_BEGIN()
+  STDEXEC_MODULE_EXPORT
   struct forwarding_query_t;
+  STDEXEC_MODULE_EXPORT
   struct get_allocator_t;
+  STDEXEC_MODULE_EXPORT
   struct get_stop_token_t;
 
+  STDEXEC_MODULE_EXPORT
   extern forwarding_query_t const forwarding_query;
-  extern get_allocator_t const    get_allocator;
-  extern get_stop_token_t const   get_stop_token;
+  STDEXEC_MODULE_EXPORT
+  extern get_allocator_t const get_allocator;
+  STDEXEC_MODULE_EXPORT
+  extern get_stop_token_t const get_stop_token;
 
+  STDEXEC_MODULE_EXPORT
   template <class _Env>
   using stop_token_of_t = STDEXEC::__decay_t<STDEXEC::__call_result_t<get_stop_token_t, _Env>>;
 
+  STDEXEC_MODULE_EXPORT
   struct never_stop_token;
+  STDEXEC_MODULE_EXPORT
   class inplace_stop_source;
+  STDEXEC_MODULE_EXPORT
   class inplace_stop_token;
+  STDEXEC_MODULE_EXPORT
   template <class _Fn>
   class inplace_stop_callback;
 STDEXEC_P2300_NAMESPACE_END()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
+  STDEXEC_MODULE_EXPORT
   struct sync_wait_t;
+  STDEXEC_MODULE_EXPORT
   struct sync_wait_with_variant_t;
-  extern sync_wait_t const              sync_wait;
+  STDEXEC_MODULE_EXPORT
+  extern sync_wait_t const sync_wait;
+  STDEXEC_MODULE_EXPORT
   extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
 

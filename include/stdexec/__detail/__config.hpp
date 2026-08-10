@@ -38,15 +38,15 @@
 
 #include "__preprocessor.hpp"
 
+#if __has_include(<version>)
+#  include <version>
+#else
+#  include <ciso646>  // For stdlib feature-test macros when <version> is not available
+#endif
+
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#  if __has_include(<version>)
-#    include <version>
-#  else
-#    include <ciso646>  // For stdlib feature-test macros when <version> is not available
-#  endif
-
 #  include <cassert>
 #  include <cstdlib>
 #  include <type_traits>  // IWYU pragma: keep
@@ -935,7 +935,7 @@ namespace STDEXEC
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-#if !defined(STDEXEC_DEMANGLE_SENDER_NAMES) && STDEXEC_MSVC()
+#if !defined(STDEXEC_DEMANGLE_SENDER_NAMES) && (STDEXEC_MSVC() || STDEXEC_USE_MODULES())
 #  define STDEXEC_DEMANGLE_SENDER_NAMES
 #endif
 
@@ -967,4 +967,15 @@ namespace STDEXEC
 #  define STDEXEC_MODULE_EXPORT
 #endif
 
-STDEXEC_MODULE_EXPORT namespace STDEXEC {}
+// Placeholder until stdexec.meta / stdexec.authoring exist as separate
+// modules; these currently just export into stdexec itself. See #2139
+// (https://github.com/NVIDIA/stdexec/issues/2139)
+#define STDEXEC_MODULE_EXPORT_META      STDEXEC_MODULE_EXPORT
+#define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT
+
+STDEXEC_MODULE_EXPORT
+namespace STDEXEC
+{
+  namespace parallel_scheduler_replacement
+  {}
+}  // namespace STDEXEC

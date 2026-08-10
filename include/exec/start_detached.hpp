@@ -251,7 +251,10 @@ namespace experimental::execution
     {
       auto __env2      = STDEXEC::__as_root_env(static_cast<_Env&&>(__env));
       using __domain_t = __compl_domain_t<_Sender, STDEXEC::__as_root_env_t<_Env>>;
-      STDEXEC::apply_sender(__domain_t{}, *this, static_cast<_Sender&&>(__sndr), __env2);
+      STDEXEC::apply_sender(__domain_t{},
+                            *this,
+                            static_cast<_Sender&&>(__sndr),
+                            static_cast<decltype(__env2)&&>(__env2));
     }
 
     // Below is the default implementation for `start_detached`.

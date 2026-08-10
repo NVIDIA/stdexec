@@ -56,6 +56,7 @@ namespace STDEXEC::__sync_wait
   /////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait]
   // [exec.sync.wait.var]
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __env
   {
     template <__one_of<get_scheduler_t, get_start_scheduler_t, get_delegation_scheduler_t> _Query>
@@ -117,6 +118,16 @@ namespace STDEXEC::__sync_wait
     template <class _Error>
     constexpr void set_error(_Error __err) noexcept
     {
+#  if STDEXEC_NO_STDCPP_EXCEPTIONS()
+      // sync_wait's only way to deliver an error to its caller is to rethrow
+      // it. Without exception support, std::make_exception_ptr returns a null
+      // exception_ptr, which the rethrow path would silently skip -- turning
+      // an error completion into an empty optional, indistinguishable from a
+      // stopped completion. Errors must not masquerade as cancellation:
+      // terminate loudly instead.
+      (void) __err;
+      STDEXEC_TERMINATE();
+#  else
       if constexpr (__same_as<_Error, std::exception_ptr>)
       {
         STDEXEC_ASSERT(__err != nullptr);  // std::exception_ptr must not be null.
@@ -131,6 +142,7 @@ namespace STDEXEC::__sync_wait
         __state_->__eptr_ = std::make_exception_ptr(static_cast<_Error&&>(__err));
       }
       __state_->__loop_.finish();
+#  endif
     }
 
     constexpr void set_stopped() noexcept

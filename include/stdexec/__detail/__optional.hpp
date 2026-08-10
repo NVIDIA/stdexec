@@ -63,6 +63,7 @@ namespace STDEXEC
     } __nullopt{};
 
     // A simplified version of std::optional for better compile times
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Tp>
     struct __optional
     {
@@ -261,6 +262,7 @@ namespace STDEXEC
     };
   }  // namespace __opt
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using __opt::__optional;
   using __opt::__bad_optional_access;
   using __opt::__nullopt;

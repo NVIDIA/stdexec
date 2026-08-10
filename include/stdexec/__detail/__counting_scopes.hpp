@@ -725,6 +725,7 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.scope.simple.counting]
+  STDEXEC_MODULE_EXPORT
   class simple_counting_scope : private __counting_scopes::__base_scope
   {
    public:
@@ -800,6 +801,7 @@ namespace STDEXEC
 
   /////////////////////////////////////////////////////////////////////////////
   // [exec.scope.counting]
+  STDEXEC_MODULE_EXPORT
   class counting_scope : private __counting_scopes::__base_scope
   {
    public:

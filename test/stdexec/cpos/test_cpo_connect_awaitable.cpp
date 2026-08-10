@@ -14,17 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <catch2/catch_all.hpp>
+
 #include <stdexec/coroutine.hpp>
 
 #if !STDEXEC_NO_STDCPP_COROUTINES()
 
+#  include <stdexec/execution.hpp>
+
 #  include "test_common/receivers.hpp"
 #  include "test_common/type_helpers.hpp"
-#  include <stdexec/execution.hpp>
-#  include <test_common/catch2.hpp>
 
-#  include <stdexcept>
-#  include <type_traits>
+#  if STDEXEC_USE_MODULES()
+import std;
+#  else
+#    include <stdexcept>
+#    include <type_traits>
+#  endif
 
 namespace ex = STDEXEC;
 

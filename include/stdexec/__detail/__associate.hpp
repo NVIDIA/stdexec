@@ -155,6 +155,7 @@ namespace STDEXEC
     __associate_data(_Token, _Sender&&) -> __associate_data<_Token, _Sender>;
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
+    STDEXEC_MODULE_EXPORT
     struct associate_t
     {
       template <sender _Sender, scope_token _Token>
@@ -283,11 +284,13 @@ namespace STDEXEC
     };
   }  // namespace __associate
 
+  STDEXEC_MODULE_EXPORT
   using __associate::associate_t;
 
   /// @brief The associate sender adaptor, which associates a sender with the
   ///        async scope referred to by the given token
   /// @hideinitializer
+  STDEXEC_MODULE_EXPORT
   inline constexpr associate_t associate{};
 
   template <>

@@ -33,6 +33,7 @@
 #  include "sender_for.hpp"
 
 #  include <dispatch/dispatch.h>
+#  include <vector>
 
 namespace experimental::execution
 {

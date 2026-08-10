@@ -15,20 +15,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-#include "__completion_signatures_of.hpp"  // IWYU pragma: keep for the sender concept
-#include "__concepts.hpp"
-#include "__config.hpp"
-#include "__domain.hpp"
-#include "__env.hpp"
-#include "__query.hpp"
-#include "__sender_concepts.hpp"
-#include "__type_traits.hpp"
-#include "__utility.hpp"
+#  include "__completion_signatures_of.hpp"  // IWYU pragma: keep for the sender concept
+#  include "__concepts.hpp"
+#  include "__config.hpp"
+#  include "__domain.hpp"
+#  include "__env.hpp"
+#  include "__query.hpp"
+#  include "__sender_concepts.hpp"
+#  include "__type_traits.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -203,12 +211,14 @@ namespace STDEXEC
   //! @see stdexec::starts_on      — adaptor that runs a sender on a scheduler
   //! @see stdexec::continues_on   — adaptor that transfers to a scheduler mid-pipeline
   //! @see stdexec::schedule_result_t — the sender type returned by @c schedule(s)
+  STDEXEC_MODULE_EXPORT
   template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
                    && __std::equality_comparable<__decay_t<_Scheduler>>
                    && __std::copy_constructible<__decay_t<_Scheduler>>
                    && __nothrow_move_constructible<__decay_t<_Scheduler>>;
 
+  STDEXEC_MODULE_EXPORT
   template <scheduler _Scheduler>
   using schedule_result_t = __call_result_t<schedule_t, _Scheduler>;
 
@@ -509,10 +519,10 @@ namespace STDEXEC
   inline constexpr get_start_scheduler_t            get_start_scheduler{};
   inline constexpr get_delegation_scheduler_t       get_delegation_scheduler{};
 
-#if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
+#  if !STDEXEC_GCC() || defined(__OPTIMIZE_SIZE__)
   template <__completion_tag _Query>
   inline constexpr get_completion_scheduler_t<_Query> get_completion_scheduler{};
-#else
+#  else
   template <>
   inline constexpr get_completion_scheduler_t<set_value_t> get_completion_scheduler<set_value_t>{};
   template <>
@@ -520,7 +530,7 @@ namespace STDEXEC
   template <>
   inline constexpr get_completion_scheduler_t<set_stopped_t>
     get_completion_scheduler<set_stopped_t>{};
-#endif
+#  endif
 
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
@@ -689,13 +699,16 @@ namespace STDEXEC
                                 && __infallible_sender<__result_of<schedule, _Scheduler>, _Env...>;
 
   // Deprecated interfaces
+  STDEXEC_MODULE_EXPORT_AUTHORING
   using get_delegatee_scheduler_t
     [[deprecated("get_delegatee_scheduler_t has been renamed "
                  "get_delegation_scheduler_t")]] = get_delegation_scheduler_t;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr auto &get_delegatee_scheduler [[deprecated("get_delegatee_scheduler has been "
                                                               "renamed get_delegation_scheduler")]]
   = get_delegation_scheduler;
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)

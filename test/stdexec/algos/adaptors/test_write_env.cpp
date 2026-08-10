@@ -16,15 +16,20 @@
  * limitations under the License.
  */
 
-#include <test_common/catch2.hpp>
+#include <catch2/catch_all.hpp>
 
-#include <type_traits>
-#include <utility>
+#include <stdexec/execution.hpp>
 
 #include <exec/completion_signatures.hpp>
 #include <exec/single_thread_context.hpp>
-#include <stdexec/execution.hpp>
 #include <test_common/receivers.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <type_traits>
+#  include <utility>
+#endif
 
 namespace
 {

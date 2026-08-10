@@ -16,20 +16,28 @@
  */
 #pragma once
 
-#include "__execution_fwd.hpp"
+#include "__config.hpp"
+
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
+
+import stdexec;
+
+#else
+
+#  include "__execution_fwd.hpp"
 
 // include these after execution_fwd.hpp
-#include "__basic_sender.hpp"
-#include "__optional.hpp"
-#include "__schedulers.hpp"
-#include "__sender_adaptor_closure.hpp"
-#include "__senders.hpp"
-#include "__storage.hpp"
-#include "__transform_completion_signatures.hpp"
-#include "__tuple.hpp"
-#include "__utility.hpp"
+#  include "__basic_sender.hpp"
+#  include "__optional.hpp"
+#  include "__schedulers.hpp"
+#  include "__sender_adaptor_closure.hpp"
+#  include "__senders.hpp"
+#  include "__storage.hpp"
+#  include "__transform_completion_signatures.hpp"
+#  include "__tuple.hpp"
+#  include "__utility.hpp"
 
-#include "__prologue.hpp"
+#  include "__prologue.hpp"
 
 namespace STDEXEC
 {
@@ -42,6 +50,7 @@ namespace STDEXEC
   struct _THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_;
   struct _INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __finally_t
   {
     template <sender _Initial, sender _Final>
@@ -69,6 +78,7 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __finally_t __finally_{};
 
   namespace __final
@@ -388,4 +398,5 @@ namespace STDEXEC
   };
 }  // namespace STDEXEC
 
-#include "__epilogue.hpp"
+#  include "__epilogue.hpp"
+#endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
