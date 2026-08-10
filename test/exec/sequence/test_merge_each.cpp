@@ -204,13 +204,28 @@ namespace
   template <ex::sender Sender>
   struct as_sequence_t : Sender
   {
-    using sender_concept = sequence_sender_tag;
-    using item_types     = exec::item_types<Sender>;
-    auto subscribe(auto receiver)
+    using sender_concept        = sequence_sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+    using item_types            = exec::item_types<Sender>;
+    auto subscribe(auto receiver) &&
     {
-      return connect(set_next(receiver, *static_cast<Sender*>(this)), receiver);
+      return ex::connect(exec::set_next(receiver, static_cast<Sender&&>(*this)), receiver);
     }
   };
+
+  TEST_CASE("merge_each - accepts a move-only nested sequence sender",
+            "[sequence_senders][merge_each]")
+  {
+    using item_sender_t = decltype(fallible_just{empty_sequence()});
+
+    STATIC_REQUIRE_FALSE(std::copy_constructible<item_sender_t>);
+
+    auto sequences = as_sequence_t<item_sender_t>{fallible_just{empty_sequence()}};
+    auto merged    = merge_each(std::move(sequences));
+
+    [[maybe_unused]]
+    auto op = subscribe(std::move(merged), null_receiver{});
+  }
 
   TEST_CASE("merge_each - merge two sequence senders of no elements",
             "[sequence_senders][merge_each][empty_sequence]")

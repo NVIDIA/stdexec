@@ -1145,7 +1145,7 @@ namespace experimental::execution
                                               _NestedSequenceSender>) -> next_sender auto
       {
         return __next_sequence_sender_t<_NestedSequenceSender>{__op_,
-                                                               static_cast<_NestedSequenceSender>(
+                                                               static_cast<_NestedSequenceSender&&>(
                                                                  __nested_sequence)};
       }
 
