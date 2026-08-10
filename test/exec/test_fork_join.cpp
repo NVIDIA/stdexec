@@ -59,10 +59,12 @@ namespace
   {
     throwing_copy() = default;
 
-    throwing_copy(throwing_copy const&) noexcept(false)
+    throwing_copy(throwing_copy const &) noexcept(false)
     {
       throw 42;
     }
+
+    int value = 0;
   };
 #endif
 
@@ -137,13 +139,13 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("fork_join reports failures while caching results", "[adaptors][fork_join]")
   {
-    auto sndr = exec::fork_join(
-      exec::just_from([](auto sink) noexcept
-                      {
-                        static throwing_copy value;
-                        return sink(value);
-                      }),
-      then([](throwing_copy const&) noexcept {}));
+    auto sndr = exec::fork_join(exec::just_from(
+                                  [](auto sink) noexcept
+                                  {
+                                    static throwing_copy value;
+                                    return sink(value);
+                                  }),
+                                then([](throwing_copy const &) noexcept {}));
 
     CHECK_THROWS_AS(sync_wait(std::move(sndr)), int);
   }
