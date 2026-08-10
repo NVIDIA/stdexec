@@ -106,7 +106,7 @@ namespace nv::execution::_strm
               status == cudaSuccess)
           {
             opstate_.defer_temp_storage_destruction(d_result);
-            opstate_.propagate_completion_signal(STDEXEC::set_value, *d_result);
+            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
           }
           else
           {
@@ -131,19 +131,24 @@ namespace nv::execution::_strm
   struct upon_stopped_sender : stream_sender_base
   {
     using sender_concept = STDEXEC::sender_tag;
-    using _set_error_t   = completion_signatures<set_error_t(std::exception_ptr)>;
 
     template <class Receiver>
     using receiver_t = _upon_stopped::receiver<Receiver, Fun>;
 
     template <class Self, class... Env>
+    using __error_completions_t =
+      __minvoke_q<__concat_completion_signatures_t,
+                  __with_error_invoke_t<__mbind_front_q<__callable_error_t, upon_stopped_t>,
+                                        set_stopped_t,
+                                        Fun,
+                                        __copy_cvref_t<Self, Sender>,
+                                        Env...>,
+                  completion_signatures<set_error_t(cudaError_t)>>;
+
+    template <class Self, class... Env>
     using completion_signatures = __transform_completion_signatures_t<
       __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      __with_error_invoke_t<__mbind_front_q<__callable_error_t, upon_stopped_t>,
-                            set_stopped_t,
-                            Fun,
-                            __copy_cvref_t<Self, Sender>,
-                            Env...>,
+      __error_completions_t<Self, Env...>,
       __cmplsigs::__default_set_value,
       __cmplsigs::__default_set_error,
       __set_value_from_t<Fun>>;
