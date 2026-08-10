@@ -70,16 +70,17 @@ namespace experimental::execution
       template <class... _Booleans>
       constexpr void set_value(_Booleans &&...__bools) noexcept
       {
+        auto *__state = __state_;
         if constexpr ((__is_bool_constant<_Booleans, true> && ...))
         {
           // Always done:
-          __state_->__cleanup();
-          STDEXEC::set_value(std::move(__state_->__rcvr_));
+          __state->__cleanup();
+          STDEXEC::set_value(std::move(__state->__rcvr_));
         }
         else if constexpr ((__is_bool_constant<_Booleans, false> && ...))
         {
           // Never done:
-          __state_->__repeat();
+          __state->__repeat();
         }
         else
         {
@@ -91,20 +92,20 @@ namespace experimental::execution
             bool const __done = (static_cast<bool>(static_cast<_Booleans &&>(__bools)) && ...);
             if (__done)
             {
-              __state_->__cleanup();
-              STDEXEC::set_value(std::move(__state_->__rcvr_));
+              __state->__cleanup();
+              STDEXEC::set_value(std::move(__state->__rcvr_));
             }
             else
             {
-              __state_->__repeat();
+              __state->__repeat();
             }
           }
           STDEXEC_CATCH_ALL
           {
             if constexpr (!__is_nothrow)
             {
-              __state_->__cleanup();
-              STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+              __state->__cleanup();
+              STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
             }
           }
         }
@@ -113,26 +114,28 @@ namespace experimental::execution
       template <class _Error>
       constexpr void set_error(_Error &&__err) noexcept
       {
+        auto *__state = __state_;
         STDEXEC_TRY
         {
           auto __err_copy = static_cast<_Error &&>(__err);  // make a local copy of the error...
-          __state_->__cleanup();  // ... because this could potentially invalidate it.
-          STDEXEC::set_error(std::move(__state_->__rcvr_), static_cast<_Error &&>(__err_copy));
+          __state->__cleanup();  // ... because this could potentially invalidate it.
+          STDEXEC::set_error(std::move(__state->__rcvr_), static_cast<_Error &&>(__err_copy));
         }
         STDEXEC_CATCH_ALL
         {
           if constexpr (!__nothrow_decay_copyable<_Error>)
           {
-            __state_->__cleanup();
-            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+            __state->__cleanup();
+            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
           }
         }
       }
 
       constexpr void set_stopped() noexcept
       {
-        __state_->__cleanup();
-        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+        auto *__state = __state_;
+        __state->__cleanup();
+        STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
       [[nodiscard]]

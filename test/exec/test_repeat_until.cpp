@@ -26,6 +26,8 @@
 
 #include <test_common/catch2.hpp>
 
+#include "test_repeat_receiver_lifetime.hpp"
+
 #include <concepts>
 #include <cstddef>
 #include <limits>
@@ -38,6 +40,40 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  namespace lifetime_test = repeat_receiver_lifetime_test;
+
+  struct send_true
+  {
+    using signature = ex::set_value_t(std::true_type);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_value(static_cast<Receiver &&>(rcvr), std::true_type{});
+    }
+  };
+
+  struct send_error
+  {
+    using signature = ex::set_error_t(int);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_error(static_cast<Receiver &&>(rcvr), 42);
+    }
+  };
+
+  struct send_stopped
+  {
+    using signature = ex::set_stopped_t();
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_stopped(static_cast<Receiver &&>(rcvr));
+    }
+  };
 
   struct boolean_sender
   {
@@ -152,6 +188,40 @@ namespace
     auto snd = ex::just_stopped() | exec::repeat_until();
     auto op  = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
+  }
+
+  TEST_CASE("repeat_until does not access its child receiver after cleanup",
+            "[adaptors][repeat_until]")
+  {
+    SECTION("set_value")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_true{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_void_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_error")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_error{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_error_receiver{42});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_stopped")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_stopped{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
   }
 
   TEST_CASE("running deeply recursing algo on repeat_until doesn't blow the stack",

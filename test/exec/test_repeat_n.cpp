@@ -25,10 +25,36 @@
 
 #include <test_common/catch2.hpp>
 
+#include "test_repeat_receiver_lifetime.hpp"
+
 using namespace STDEXEC;
 
 namespace
 {
+  namespace lifetime_test = repeat_receiver_lifetime_test;
+
+  struct send_error
+  {
+    using signature = ex::set_error_t(int);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_error(static_cast<Receiver &&>(rcvr), 42);
+    }
+  };
+
+  struct send_stopped
+  {
+    using signature = ex::set_stopped_t();
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_stopped(static_cast<Receiver &&>(rcvr));
+    }
+  };
+
   TEST_CASE("repeat_n returns a sender", "[adaptors][repeat_n]")
   {
     auto snd = exec::repeat_n(ex::just() | then([] {}), 10);
@@ -113,6 +139,29 @@ namespace
     auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
     CHECK(count == 1);
+  }
+
+  TEST_CASE("repeat_n does not access its child receiver after cleanup", "[adaptors][repeat_n]")
+  {
+    SECTION("set_error")
+    {
+      bool invalidated = false;
+      auto snd         = lifetime_test::invalidate_on_destroy_sender{send_error{}, &invalidated}
+               | exec::repeat_n(1);
+      auto op = ex::connect(std::move(snd), expect_error_receiver{42});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_stopped")
+    {
+      bool invalidated = false;
+      auto snd         = lifetime_test::invalidate_on_destroy_sender{send_stopped{}, &invalidated}
+               | exec::repeat_n(1);
+      auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
   }
 
   TEST_CASE("running deeply recursing algo on repeat_n doesn't blow the stack",
