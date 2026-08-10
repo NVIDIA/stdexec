@@ -11,6 +11,57 @@ using namespace exec;
 namespace
 {
 
+  struct noncopyable_error
+  {
+    noncopyable_error()                                     = default;
+    noncopyable_error(noncopyable_error const &)            = delete;
+    noncopyable_error& operator=(noncopyable_error const &) = delete;
+  };
+
+  struct error_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_error_t(noncopyable_error&)>;
+
+    template <class Receiver>
+    struct operation
+    {
+      noncopyable_error* error_;
+      Receiver           receiver_;
+
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(receiver_), *error_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver receiver) const noexcept -> operation<Receiver>
+    {
+      return {error_, static_cast<Receiver&&>(receiver)};
+    }
+
+    noncopyable_error* error_;
+  };
+
+  struct error_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value(ex::set_error_t, noncopyable_error& error) && noexcept
+    {
+      *called_ = &error == expected_;
+    }
+
+    void set_stopped() && noexcept
+    {
+      *called_ = false;
+    }
+
+    noncopyable_error* expected_;
+    bool*              called_;
+  };
+
   template <class _Tag, class... _Args>
     requires __completion_tag<std::decay_t<_Tag>>
   using __dematerialize_value = completion_signatures<std::decay_t<_Tag>(_Args...)>;
@@ -60,6 +111,21 @@ namespace
     auto just_stop = materialize(just_stopped());
     auto [tag]     = *sync_wait(just_stop);
     static_assert(std::same_as<decltype(tag), set_stopped_t>);
+  }
+
+  TEST_CASE("materialize preserves error references", "[adaptors][materialize]")
+  {
+    noncopyable_error error;
+    bool              called = false;
+    auto              sndr   = materialize(error_sender{&error});
+
+    static_assert(
+      set_equivalent<completion_signatures_of_t<decltype(sndr)>,
+                     completion_signatures<set_value_t(set_error_t, noncopyable_error&)>>);
+
+    auto op = connect(std::move(sndr), error_receiver{&error, &called});
+    start(op);
+    CHECK(called);
   }
 
   TEST_CASE("dematerialize value", "[adaptors][materialize]")
