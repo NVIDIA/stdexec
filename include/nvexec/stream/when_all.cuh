@@ -202,7 +202,7 @@ namespace nv::execution::_strm
       using when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
       using receiver_t        = __decay_t<CvReceiver>;
       using sender_t          = __m_at_c<Index, Senders...>;
-      using completions_t     = when_all_sender::_completions_t<env_of_t<receiver_t>, CvReceiver>;
+      using completions_t     = when_all_sender::_completions_t<CvReceiver, env_of_t<receiver_t>>;
       using local_env_t =
         STDEXEC::env<STDEXEC::prop<get_stop_token_t, inplace_stop_token>, env_of_t<receiver_t>>;
       using env_t = make_terminal_stream_env_t<local_env_t>;
@@ -290,7 +290,7 @@ namespace nv::execution::_strm
       friend struct receiver;
 
       using _env_t              = env_of_t<_receiver_t>;
-      using _completions_t      = when_all_sender::_completions_t<_env_t, CvReceiver>;
+      using _completions_t      = when_all_sender::_completions_t<CvReceiver, _env_t>;
       using _indices_t          = __indices_for<Senders...>;
       using _stream_providers_t = std::array<stream_provider, sizeof...(Senders)>;
       using _stop_callback_t =
