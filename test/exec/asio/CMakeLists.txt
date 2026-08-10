@@ -16,13 +16,15 @@
 
 set(asioexec_test_sources
     ../../test_main.cpp
-    test_completion_token.cpp
     test_use_sender.cpp
 )
 
 if(NOT STDEXEC_BUILD_MODULES)
     # this test doesn't build with modules, yet
-    list(APPEND asioexec_test_sources test_asio_thread_pool.cpp)
+    list(APPEND
+      asioexec_test_sources
+      test_asio_thread_pool.cpp
+      test_completion_token.cpp)
 endif()
 
 add_executable(test.asioexec ${asioexec_test_sources})
