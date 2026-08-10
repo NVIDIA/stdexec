@@ -74,6 +74,15 @@ namespace
     ::STDEXEC::start(op);
   }
 
+  TEST_CASE("request_stop reports whether it made a stop request", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source source;
+
+    CHECK(source.request_stop());
+    CHECK(source.stop_requested());
+    CHECK_FALSE(source.request_stop());
+  }
+
   TEST_CASE("No op when the associated stop token is unstoppable", "[unless_stop_requested]")
   {
     static_assert(::exec::__unless_stop_requested::__unstoppable_env<::STDEXEC::env<>>);
