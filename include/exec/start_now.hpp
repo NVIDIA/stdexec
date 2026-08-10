@@ -77,6 +77,7 @@ namespace experimental::execution
 
       constexpr __storage_base(_Env&& __env, std::size_t __pending)
         : __pending_(__pending)
+        , __joiner_(__pending == 0 ? nullptr : &__empty_joiner_)
         , __env_(__mkenv(static_cast<_Env&&>(__env), __source_))
       {}
 
