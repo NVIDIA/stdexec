@@ -154,7 +154,7 @@ namespace experimental::execution
       return g_node_to_thread_index.get();
     }
   };
-}
+}  // namespace experimental::execution
 
 STDEXEC_MODULE_EXPORT
 namespace experimental::execution

@@ -47,7 +47,7 @@ namespace experimental::execution
     using make_completion_signatures_t = decltype(detail::make_unique(
       detail::normalize(static_cast<Sigs*>(nullptr))...));
   }  // namespace detail
-}
+}  // namespace experimental::execution
 
 STDEXEC_MODULE_EXPORT
 namespace experimental::execution
