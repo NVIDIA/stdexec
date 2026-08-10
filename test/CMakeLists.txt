@@ -32,7 +32,6 @@ set(stdexec_test_sources
     stdexec/algos/adaptors/test_continues_on.cpp
     stdexec/algos/adaptors/test_finally.cpp
     stdexec/algos/adaptors/test_into_variant.cpp
-    stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_sequence.cpp
     stdexec/algos/adaptors/test_spawn_future.cpp
     stdexec/algos/adaptors/test_starts_on.cpp
@@ -75,7 +74,6 @@ set(stdexec_test_sources
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
-    stdexec/schedulers/test_parallel_scheduler.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/types/test_counting_scopes.cpp
     stdexec/types/test_task.cpp
@@ -84,6 +82,7 @@ set(stdexec_test_sources
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
   list(APPEND stdexec_test_sources
+    stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_let_stopped.cpp
     stdexec/algos/adaptors/test_let_value.cpp
     stdexec/algos/adaptors/test_on.cpp
@@ -94,6 +93,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
+    stdexec/schedulers/test_parallel_scheduler.cpp
     )
 endif()
 
