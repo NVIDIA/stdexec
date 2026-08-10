@@ -58,14 +58,16 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
-  using __std_variant = __minvoke_if_c<sizeof...(_Ts) == 0,
-                                       __mconst<__detail::__not_a_variant>,
-                                       __mtransform<__q1<__decay_t>, __munique<__qq<std::variant>>>,
-                                       _Ts...>;
+  using __std_variant =
+    __minvoke_if_c<sizeof...(_Ts) == 0,
+                   __mconst<__detail::__not_a_variant>,
+                   __mtransform<__q1<__decay_t>, __munique<__msort<__qq<std::variant>>>>,
+                   _Ts...>;
 
   template <class... _Ts>
   using __nullable_std_variant =
-    __mcall<__munique<__mbind_front<__qq<std::variant>, std::monostate>>, __decay_t<_Ts>...>;
+    __mcall<__munique<__msort<__mbind_front<__qq<std::variant>, std::monostate>>>,
+            __decay_t<_Ts>...>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Ts>
