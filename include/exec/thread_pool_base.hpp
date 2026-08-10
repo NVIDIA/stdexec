@@ -321,6 +321,7 @@ namespace experimental::execution
             STDEXEC_CATCH_ALL
             {
               STDEXEC::set_error(std::move(state.rcvr_), std::current_exception());
+              return;
             }
           }
           else
