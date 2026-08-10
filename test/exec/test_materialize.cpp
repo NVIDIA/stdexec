@@ -13,15 +13,15 @@ namespace
 
   struct noncopyable_error
   {
-    noncopyable_error() = default;
-    noncopyable_error(noncopyable_error const &) = delete;
+    noncopyable_error()                                     = default;
+    noncopyable_error(noncopyable_error const &)            = delete;
     noncopyable_error& operator=(noncopyable_error const &) = delete;
   };
 
   struct error_sender
   {
-    using sender_concept = ex::sender_tag;
-    using completion_signatures = ex::completion_signatures<ex::set_error_t(noncopyable_error &)>;
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_error_t(noncopyable_error&)>;
 
     template <class Receiver>
     struct operation
@@ -59,7 +59,7 @@ namespace
     }
 
     noncopyable_error* expected_;
-    bool*             called_;
+    bool*              called_;
   };
 
   template <class _Tag, class... _Args>
@@ -119,9 +119,9 @@ namespace
     bool              called = false;
     auto              sndr   = materialize(error_sender{&error});
 
-    static_assert(set_equivalent<completion_signatures_of_t<decltype(sndr)>,
-                                 completion_signatures<set_value_t(set_error_t,
-                                                                    noncopyable_error &)>>);
+    static_assert(
+      set_equivalent<completion_signatures_of_t<decltype(sndr)>,
+                     completion_signatures<set_value_t(set_error_t, noncopyable_error&)>>);
 
     auto op = connect(std::move(sndr), error_receiver{&error, &called});
     start(op);
