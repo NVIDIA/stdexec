@@ -160,7 +160,7 @@ namespace nv::execution::_strm
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr),
         [&](_strm::opstate_base<Receiver>& stream_provider) -> _receiver_t<Receiver>
-        { return _receiver_t<Receiver>(self.fun_, stream_provider); });
+        { return _receiver_t<Receiver>(static_cast<Self&&>(self).fun_, stream_provider); });
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
