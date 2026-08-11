@@ -102,9 +102,8 @@ TEST_CASE("constrained static_thread_pool scheduler selects eligible workers",
           "[types][static_thread_pool]")
 {
   constexpr std::size_t const num_of_threads = 4;
-  exec::static_thread_pool    pool{
-    num_of_threads, {}, exec::numa_policy{two_node_numa_policy{}}};
-  exec::nodemask constraints{};
+  exec::static_thread_pool    pool{num_of_threads, {}, exec::numa_policy{two_node_numa_policy{}}};
+  exec::nodemask              constraints{};
   constraints.set(0);
   auto scheduler = pool.get_constrained_scheduler(&constraints);
 
