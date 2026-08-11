@@ -21,7 +21,6 @@
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
 
-#include <algorithm>
 #include <numeric>
 #include <vector>
 
