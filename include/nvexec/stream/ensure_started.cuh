@@ -209,6 +209,7 @@ namespace nv::execution::_strm
 
         if (data_)
         {
+          data_->~variant_t();
           STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
