@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
 
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
 
+#include <algorithm>
 #include <numeric>
 #include <vector>
 
