@@ -91,11 +91,11 @@ namespace
       {
         if (counter_ == 0)
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), true);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), true);
         }
         else
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), false);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), false);
         }
       }
     };
@@ -103,7 +103,7 @@ namespace
     template <ex::receiver_of<completion_signatures> Receiver>
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
-      return {static_cast<Receiver&&>(rcvr), --*counter_};
+      return {static_cast<Receiver &&>(rcvr), --*counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
@@ -325,10 +325,10 @@ namespace
   {
     struct error_type
     {
-      explicit error_type(unsigned& throw_after) noexcept
+      explicit error_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      error_type(error_type const & other)
+      error_type(error_type const &other)
         : throw_after_(other.throw_after_)
       {
         if (!throw_after_)
@@ -337,7 +337,7 @@ namespace
         }
         --throw_after_;
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
     };
     struct receiver
     {
@@ -359,7 +359,7 @@ namespace
         CHECK(!done_);
         done_ = true;
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;
@@ -435,15 +435,15 @@ namespace
         --throw_after_;
       }
      public:
-      explicit value_type(unsigned& throw_after) noexcept
+      explicit value_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      value_type(value_type const & other)
+      value_type(value_type const &other)
         : throw_after_(other.throw_after_)
       {
         maybe_throw_();
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
                 operator bool() &&
       {
         maybe_throw_();
@@ -465,7 +465,7 @@ namespace
       {
         CHECK(!done_);
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;
