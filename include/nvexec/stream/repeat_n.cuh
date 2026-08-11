@@ -155,7 +155,7 @@ namespace nv::execution::_strm
       using sender_concept = STDEXEC::sender_tag;
 
       template <class...>
-      using _set_value_t = STDEXEC::completion_signatures<STDEXEC::set_value_t()>;
+      using _set_value_t = STDEXEC::completion_signatures<>;
 
       template <class Error>
       using _set_error_t =
