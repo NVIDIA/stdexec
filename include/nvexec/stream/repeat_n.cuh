@@ -154,13 +154,26 @@ namespace nv::execution::_strm
     {
       using sender_concept = STDEXEC::sender_tag;
 
-      template <class>
-      static consteval auto get_completion_signatures()
+      template <class...>
+      using _set_value_t = STDEXEC::completion_signatures<>;
+
+      template <class Error>
+      using _set_error_t =
+        STDEXEC::completion_signatures<STDEXEC::set_error_t(STDEXEC::__decay_t<Error>)>;
+
+      template <class Env>
+      using completions_t = STDEXEC::__transform_completion_signatures_t<
+        STDEXEC::__completion_signatures_of_t<CvSender, Env>,
+        STDEXEC::completion_signatures<STDEXEC::set_value_t(),
+                                       STDEXEC::set_error_t(std::exception_ptr),
+                                       STDEXEC::set_error_t(cudaError_t)>,
+        _set_value_t,
+        _set_error_t>;
+
+      template <class Env>
+      static consteval auto get_completion_signatures() -> completions_t<Env>
       {
-        return STDEXEC::completion_signatures<STDEXEC::set_value_t(),
-                                              STDEXEC::set_stopped_t(),
-                                              STDEXEC::set_error_t(std::exception_ptr),
-                                              STDEXEC::set_error_t(cudaError_t)>();
+        return {};
       }
 
       explicit sender(CvSender&& sndr, std::size_t count)

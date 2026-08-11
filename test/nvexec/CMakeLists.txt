@@ -32,6 +32,7 @@ set(nvexec_test_sources
     test_main.cpp
     then.cpp
     reduce.cpp
+    repeat_n.cpp
     split.cpp
     start_detached.cpp
     transfer.cpp
