@@ -892,8 +892,10 @@ namespace experimental::execution
       }
 
       std::size_t const thread_index = random_thread_index_with_constraints(constraints);
-      queue.queues_[thread_index].push_front(task);
-      thread_states_[thread_index]->notify();
+      if (queue.queues_[thread_index].push_front(task))
+      {
+        thread_states_[thread_index]->notify();
+      }
     }
 
     inline void _static_thread_pool::enqueue(remote_queue& queue,
@@ -901,8 +903,10 @@ namespace experimental::execution
                                              std::size_t   thread_index) noexcept
     {
       thread_index %= thread_count_;
-      queue.queues_[thread_index].push_front(task);
-      thread_states_[thread_index]->notify();
+      if (queue.queues_[thread_index].push_front(task))
+      {
+        thread_states_[thread_index]->notify();
+      }
     }
 
     template <std::derived_from<task_base> Task>
