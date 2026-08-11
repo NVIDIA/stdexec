@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <algorithm>
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
 #include <test_common/type_helpers.hpp>
