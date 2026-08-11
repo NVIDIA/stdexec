@@ -853,8 +853,8 @@ namespace experimental::execution
     {
       thread_local std::uint64_t start_index{std::uint64_t(std::random_device{}())};
       start_index += 1;
-      std::size_t target_index = start_index % thread_count_;
-      std::size_t n_threads    = num_threads(constraints);
+      std::size_t const n_threads    = num_threads(constraints);
+      std::size_t       target_index = start_index % (n_threads == 0 ? thread_count_ : n_threads);
       if (n_threads != 0)
       {
         for (std::size_t node_index = 0; node_index < numa_.num_nodes(); ++node_index)

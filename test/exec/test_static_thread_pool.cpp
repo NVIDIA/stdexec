@@ -31,6 +31,35 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  thread_local int current_numa_node = -1;
+
+  struct two_node_numa_policy
+  {
+    [[nodiscard]]
+    constexpr auto num_nodes() const noexcept -> std::size_t
+    {
+      return 2;
+    }
+
+    [[nodiscard]]
+    constexpr auto num_cpus(int) const noexcept -> std::size_t
+    {
+      return 2;
+    }
+
+    auto bind_to_node(int node) const noexcept -> int
+    {
+      current_numa_node = node;
+      return 0;
+    }
+
+    [[nodiscard]]
+    constexpr auto thread_index_to_node(std::size_t index) const noexcept -> int
+    {
+      return index < 2 ? 1 : 0;
+    }
+  };
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   struct throwing_set_next_receiver
   {
@@ -68,6 +97,24 @@ namespace
   };
 #endif
 }  // namespace
+
+TEST_CASE("constrained static_thread_pool scheduler selects eligible workers",
+          "[types][static_thread_pool]")
+{
+  constexpr std::size_t const num_of_threads = 4;
+  exec::static_thread_pool    pool{num_of_threads, {}, exec::numa_policy{two_node_numa_policy{}}};
+  exec::nodemask              constraints{};
+  constraints.set(0);
+  auto scheduler = pool.get_constrained_scheduler(&constraints);
+
+  for (std::size_t i = 0; i < num_of_threads; ++i)
+  {
+    auto [node] = ex::sync_wait(ex::schedule(scheduler)
+                                | ex::then([]() noexcept { return current_numa_node; }))
+                    .value();
+    CHECK(node == 0);
+  }
+}
 
 TEST_CASE("static_thread_pool::get_scheduler_on_thread Test start on a specific thread",
           "[types][static_thread_pool]")
