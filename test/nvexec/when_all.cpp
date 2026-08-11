@@ -11,6 +11,14 @@ using nvexec::is_on_gpu;
 
 namespace
 {
+  inline constexpr struct value_query_t : ex::forwarding_query_t
+  {
+    template <class Env>
+    auto operator()(Env const & env) const noexcept -> decltype(env.query(*this))
+    {
+      return env.query(*this);
+    }
+  } value_query;
 
   TEST_CASE("nvexec when_all returns a sender", "[cuda][stream][adaptors][when_all]")
   {
@@ -63,6 +71,19 @@ namespace
 
     REQUIRE(v1 == 24);
     REQUIRE(v2 == 42);
+  }
+
+  TEST_CASE("nvexec when_all supports environment-dependent senders",
+            "[cuda][stream][adaptors][when_all]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    auto child = ex::read_env(value_query) | ex::continues_on(stream_ctx.get_scheduler());
+    auto snd   = ex::when_all(std::move(child)) | ex::write_env(ex::prop{value_query, 42});
+
+    auto [value] = STDEXEC::sync_wait(std::move(snd)).value();
+
+    REQUIRE(value == 42);
   }
 
   TEST_CASE("nvexec when_all with many senders", "[cuda][stream][adaptors][when_all]")
