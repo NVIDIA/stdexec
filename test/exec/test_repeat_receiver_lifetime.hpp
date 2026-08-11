@@ -17,8 +17,6 @@
 
 #include "stdexec/execution.hpp"
 
-#include <utility>
-
 namespace repeat_receiver_lifetime_test
 {
   namespace ex = STDEXEC;
@@ -71,4 +69,8 @@ namespace repeat_receiver_lifetime_test
     Completion completion_;
     bool      *invalidated_;
   };
+
+  template <class Completion>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+  invalidate_on_destroy_sender(Completion, bool *) -> invalidate_on_destroy_sender<Completion>;
 }  // namespace repeat_receiver_lifetime_test
