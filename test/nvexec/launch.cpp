@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
+#include <test_common/type_helpers.hpp>
 
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
@@ -48,6 +49,16 @@ namespace
       std::iota(input.begin(), input.end(), 1);
       std::ranges::transform(input, input.begin(), [](int i) { return i * scaling; });
       return std::accumulate(input.begin(), input.end(), 0);
+    }
+
+    TEST_CASE("nvexec launch advertises CUDA launch errors", "[cuda][stream][adaptors][launch]")
+    {
+      nvexec::stream_context stream{};
+
+      auto snd = STDEXEC::just() | STDEXEC::continues_on(stream.get_scheduler())
+               | nvexec::launch([](cudaStream_t) {});
+
+      check_err_types<ex::__mset<cudaError_t>>(snd);
     }
 
     TEST_CASE("nvexec launch executes on GPU", "[cuda][stream][adaptors][launch]")
