@@ -26,6 +26,8 @@
 
 #include <test_common/catch2.hpp>
 
+#include "test_repeat_receiver_lifetime.hpp"
+
 #include <concepts>
 #include <cstddef>
 #include <limits>
@@ -38,6 +40,40 @@ namespace ex = STDEXEC;
 
 namespace
 {
+  namespace lifetime_test = repeat_receiver_lifetime_test;
+
+  struct send_true
+  {
+    using signature = ex::set_value_t(std::true_type);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_value(static_cast<Receiver &&>(rcvr), std::true_type{});
+    }
+  };
+
+  struct send_error
+  {
+    using signature = ex::set_error_t(int);
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_error(static_cast<Receiver &&>(rcvr), 42);
+    }
+  };
+
+  struct send_stopped
+  {
+    using signature = ex::set_stopped_t();
+
+    template <class Receiver>
+    void operator()(Receiver &&rcvr) const noexcept
+    {
+      ex::set_stopped(static_cast<Receiver &&>(rcvr));
+    }
+  };
 
   struct boolean_sender
   {
@@ -55,11 +91,11 @@ namespace
       {
         if (counter_ == 0)
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), true);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), true);
         }
         else
         {
-          ex::set_value(static_cast<Receiver&&>(rcvr_), false);
+          ex::set_value(static_cast<Receiver &&>(rcvr_), false);
         }
       }
     };
@@ -67,7 +103,7 @@ namespace
     template <ex::receiver_of<completion_signatures> Receiver>
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
-      return {static_cast<Receiver&&>(rcvr), --*counter_};
+      return {static_cast<Receiver &&>(rcvr), --*counter_};
     }
 
     std::shared_ptr<int> counter_ = std::make_shared<int>(1000);
@@ -152,6 +188,40 @@ namespace
     auto snd = ex::just_stopped() | exec::repeat_until();
     auto op  = ex::connect(std::move(snd), expect_stopped_receiver{});
     ex::start(op);
+  }
+
+  TEST_CASE("repeat_until does not access its child receiver after cleanup",
+            "[adaptors][repeat_until]")
+  {
+    SECTION("set_value")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_true{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_void_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_error")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_error{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_error_receiver{42});
+      ex::start(op);
+      CHECK(invalidated);
+    }
+
+    SECTION("set_stopped")
+    {
+      bool invalidated = false;
+      auto snd         = exec::repeat_until(
+        lifetime_test::invalidate_on_destroy_sender{send_stopped{}, &invalidated});
+      auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+      ex::start(op);
+      CHECK(invalidated);
+    }
   }
 
   TEST_CASE("running deeply recursing algo on repeat_until doesn't blow the stack",
@@ -255,10 +325,10 @@ namespace
   {
     struct error_type
     {
-      explicit error_type(unsigned& throw_after) noexcept
+      explicit error_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      error_type(error_type const & other)
+      error_type(error_type const &other)
         : throw_after_(other.throw_after_)
       {
         if (!throw_after_)
@@ -267,7 +337,7 @@ namespace
         }
         --throw_after_;
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
     };
     struct receiver
     {
@@ -289,7 +359,7 @@ namespace
         CHECK(!done_);
         done_ = true;
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;
@@ -365,15 +435,15 @@ namespace
         --throw_after_;
       }
      public:
-      explicit value_type(unsigned& throw_after) noexcept
+      explicit value_type(unsigned &throw_after) noexcept
         : throw_after_(throw_after)
       {}
-      value_type(value_type const & other)
+      value_type(value_type const &other)
         : throw_after_(other.throw_after_)
       {
         maybe_throw_();
       }
-      unsigned& throw_after_;
+      unsigned &throw_after_;
                 operator bool() &&
       {
         maybe_throw_();
@@ -395,7 +465,7 @@ namespace
       {
         CHECK(!done_);
       }
-      bool& done_;
+      bool &done_;
     };
     unsigned throw_after = 0;
     bool     done        = false;

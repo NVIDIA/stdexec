@@ -76,25 +76,27 @@ namespace experimental::execution
       template <class _Error>
       constexpr void set_error(_Error &&__err) noexcept
       {
+        auto *__state = __state_;
         STDEXEC_TRY
         {
           auto __err_copy = static_cast<_Error &&>(__err);  // make a copy of the error...
-          __state_->__cleanup();  // ... because this could potentially invalidate it.
-          STDEXEC::set_error(std::move(__state_->__rcvr_), std::move(__err_copy));
+          __state->__cleanup();  // ... because this could potentially invalidate it.
+          STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__err_copy));
         }
         STDEXEC_CATCH_ALL
         {
           if constexpr (!__nothrow_decay_copyable<_Error>)
           {
-            STDEXEC::set_error(std::move(__state_->__rcvr_), std::current_exception());
+            STDEXEC::set_error(std::move(__state->__rcvr_), std::current_exception());
           }
         }
       }
 
       constexpr void set_stopped() noexcept
       {
-        __state_->__cleanup();
-        STDEXEC::set_stopped(std::move(__state_->__rcvr_));
+        auto *__state = __state_;
+        __state->__cleanup();
+        STDEXEC::set_stopped(std::move(__state->__rcvr_));
       }
 
       [[nodiscard]]
