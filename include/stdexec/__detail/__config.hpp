@@ -617,6 +617,12 @@ namespace STDEXEC
 #  define STDEXEC_NO_STDCPP_PACK_INDEXING() 1
 #endif  // no pack indexing
 
+#if __cpp_impl_reflection >= 202506L && __cpp_lib_reflection >= 202506L
+#  define STDEXEC_NO_STDCPP_REFLECTION() 0
+#else
+#  define STDEXEC_NO_STDCPP_REFLECTION() 1
+#endif
+
 #if STDEXEC_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)
 #  define STDEXEC_TSAN() 1
 #else
