@@ -215,6 +215,15 @@ namespace STDEXEC
     inline constexpr bool __has_get_completion_signatures_v<_Tag, _Self, _Env> = requires {
       __sexpr_impl<_Tag>::template __get_completion_signatures<_Self, _Env>();
     };
+
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+    template <class _Tag, class _Self, class... _Env>
+    concept __has_get_completion_signatures_type = requires {
+      {
+        __sexpr_impl<_Tag>::template __get_completion_signatures_type<_Self, _Env...>()
+      } -> __std::same_as<std::meta::info>;
+    };
+#  endif
   }  // namespace __detail
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -345,7 +354,21 @@ namespace STDEXEC
       using namespace __detail;
       static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
       using __self_t = __copy_cvref_t<_Self, __sexpr>;
-      if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+      // Reflection-native implementations: return the std::meta::info and let
+      // STDEXEC::get_completion_signatures splice it (P4357).
+      if constexpr (__has_get_completion_signatures_type<__tag_t, __self_t, _Env...>)
+      {
+        return __sexpr_impl<__tag_t>::template __get_completion_signatures_type<__self_t,
+                                                                                _Env...>();
+      }
+      else if constexpr (__has_get_completion_signatures_type<__tag_t, __self_t>)
+      {
+        return __sexpr_impl<__tag_t>::template __get_completion_signatures_type<__self_t>();
+      }
+      else
+#  endif
+        if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
       {
         return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t, _Env...>();
       }

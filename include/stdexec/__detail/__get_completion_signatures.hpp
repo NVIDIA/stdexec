@@ -35,6 +35,10 @@ import stdexec;
 #  include "__meta.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+#    include <meta>
+#  endif
+
 #  include "__prologue.hpp"
 
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
@@ -155,6 +159,49 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+    // [exec.getcomplsigs] (P4357): a sender's get_completion_signatures member
+    // may return a std::meta::info reflecting its completion signatures.
+    template <class _Sender, class... _Env>
+    concept __with_reflection_static_member =  //
+      requires {
+        { STDEXEC_GET_COMPLSIGS(_Sender, _Env...) } -> __std::same_as<std::meta::info>;
+      };
+
+    template <class _Sender, class _Env>
+    concept __with_reflection_static_member_with_env =  //
+      __non_sender<_Env> && __with_reflection_static_member<_Sender, _Env>;
+
+    template <class _Sender, class... _Env>
+    consteval bool __reflection_static_member_does_not_throw() noexcept
+    try
+    {
+      (void) STDEXEC_GET_COMPLSIGS(_Sender, _Env...);
+      return true;
+    }
+    catch (...)
+    {
+      return false;
+    }
+
+    // typename [:get-complsigs<Sndr, Env...>():]() if the evaluation does not
+    // exit via an exception, otherwise
+    // (get-complsigs<Sndr, Env...>(), completion_signatures()).
+    template <class _Sender, class... _Env>
+    consteval auto __get_reflected_completion_signatures()
+    {
+      if constexpr (__reflection_static_member_does_not_throw<_Sender, _Env...>())
+      {
+        constexpr std::meta::info __completions = STDEXEC_GET_COMPLSIGS(_Sender, _Env...);
+        return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env...), typename[:__completions:]());
+      }
+      else
+      {
+        (void) STDEXEC_GET_COMPLSIGS(_Sender, _Env...);
+        return completion_signatures<>();
+      }
+    }
+#  endif
     template <class _Sender>
     [[nodiscard]]
     consteval auto __get_completion_signatures_helper()
@@ -163,6 +210,12 @@ namespace STDEXEC
       {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender), __legacy_member_alias_t<_Sender>());
       }
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+      else if constexpr (__with_reflection_static_member<_Sender>)
+      {
+        return __cmplsigs::__get_reflected_completion_signatures<_Sender>();
+      }
+#  endif
       else if constexpr (__with_consteval_static_member<_Sender>)
       {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender), STDEXEC_GET_COMPLSIGS(_Sender));
@@ -195,6 +248,16 @@ namespace STDEXEC
       {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __legacy_member_alias_t<_Sender>());
       }
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+      else if constexpr (__with_reflection_static_member_with_env<_Sender, _Env>)
+      {
+        return __cmplsigs::__get_reflected_completion_signatures<_Sender, _Env>();
+      }
+      else if constexpr (__with_reflection_static_member<_Sender>)
+      {
+        return __cmplsigs::__get_reflected_completion_signatures<_Sender>();
+      }
+#  endif
       else if constexpr (__with_consteval_static_member_with_env<_Sender, _Env>)
       {
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), STDEXEC_GET_COMPLSIGS(_Sender, _Env));
@@ -300,6 +363,19 @@ namespace STDEXEC
   //! used by simple senders whose signatures don't depend on the
   //! environment.
   //!
+  //! When C++26 reflection is available, the member template may instead
+  //! return a @c std::meta::info reflecting a @c completion_signatures
+  //! specialization (P4357). The reflection is spliced into a
+  //! @c completion_signatures object here, and an exception thrown while
+  //! computing it is propagated as for any other form:
+  //!
+  //! @code{.cpp}
+  //! template <class Self, class... Env>
+  //! static consteval std::meta::info get_completion_signatures() {
+  //!   return ^^stdexec::completion_signatures<stdexec::set_value_t(int)>;
+  //! }
+  //! @endcode
+  //!
   //! Awaitable types (coroutine-style awaitables) get their completion
   //! signatures synthesized automatically: @c set_value_t with the
   //! @c co_await result type, @c set_error_t(std::exception_ptr) for
@@ -314,6 +390,8 @@ namespace STDEXEC
   //!                                            environment
   //! @see stdexec::transform_sender           — domain-customization run before
   //!                                            signature computation
+  //! @see stdexec::get_completion_signatures_type — the reflection of the
+  //!                                                result (P4357)
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
   consteval auto get_completion_signatures()
