@@ -83,11 +83,20 @@ namespace nv::execution::_strm
             storage->template emplace<tuple_t>(Tag(), static_cast<Args&&>(args)...);
           }
 
+          auto complete_error = [storage, &opstate = opstate_](cudaError_t status) noexcept
+          {
+            if constexpr (!construct_on_device)
+            {
+              storage->~storage_t();
+            }
+            opstate.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+          };
+
           int dev_id{};
           if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaGetDevice(&dev_id));
               status != cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            complete_error(std::move(status));
             return;
           }
 
@@ -98,7 +107,7 @@ namespace nv::execution::_strm
                                        dev_id));
               status != cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            complete_error(std::move(status));
             return;
           }
 
@@ -110,7 +119,7 @@ namespace nv::execution::_strm
                   cudaMemPrefetchAsync(storage, sizeof(storage_t), dev_id, stream));
                 status != cudaSuccess)
             {
-              opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+              complete_error(std::move(status));
               return;
             }
           }
@@ -123,7 +132,7 @@ namespace nv::execution::_strm
             if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
                 status != cudaSuccess)
             {
-              opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+              complete_error(std::move(status));
               return;
             }
           }
