@@ -33,6 +33,7 @@ import stdexec;
 #  include "__domain.hpp"
 #  include "__env.hpp"
 #  include "__into_variant.hpp"
+#  include "__just.hpp"
 #  include "__meta.hpp"
 #  include "__optional.hpp"
 #  include "__schedulers.hpp"
