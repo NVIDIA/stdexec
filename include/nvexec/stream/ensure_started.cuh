@@ -78,12 +78,17 @@ namespace nv::execution::_strm
 
         if constexpr (stream_sender<Sender, env_t>)
         {
-          cudaStream_t stream   = shared_state_->stream_provider_.own_stream_.value();
-          shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
-          copy_kernel<Tag, Args&&...>
-            <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<Args&&>(args)...);
-          shared_state_->stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
-            cudaEventRecord(shared_state_->event_, stream));
+          if (shared_state_->stream_provider_.status_ == cudaSuccess)
+          {
+            cudaStream_t stream   = shared_state_->stream_provider_.own_stream_.value();
+            shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
+            copy_kernel<Tag, Args&&...>
+              <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<Args&&>(args)...);
+            shared_state_->completion_copy_started_ = true;
+            shared_state_->stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
+              cudaEventRecord(shared_state_->event_, stream));
+            shared_state_->event_recorded_ = shared_state_->stream_provider_.status_ == cudaSuccess;
+          }
         }
         else
         {
@@ -174,6 +179,7 @@ namespace nv::execution::_strm
         {
           stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
             cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+          event_created_ = stream_provider_.status_ == cudaSuccess;
         }
 
         STDEXEC::start(opstate2_);
@@ -199,9 +205,21 @@ namespace nv::execution::_strm
 
       ~sh_state()
       {
-        if (stream_provider_.status_ == cudaSuccess)
+        if constexpr (stream_sender<Sender, env_t>)
         {
-          if constexpr (stream_sender<Sender, env_t>)
+          if (completion_copy_started_)
+          {
+            if (event_recorded_)
+            {
+              STDEXEC_ASSERT_CUDA_API(cudaEventSynchronize(event_));
+            }
+            else
+            {
+              STDEXEC_ASSERT_CUDA_API(cudaStreamSynchronize(stream_provider_.own_stream_.value()));
+            }
+          }
+
+          if (event_created_)
           {
             STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event_));
           }
@@ -209,6 +227,7 @@ namespace nv::execution::_strm
 
         if (data_)
         {
+          data_->~variant_t();
           STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
@@ -232,6 +251,9 @@ namespace nv::execution::_strm
       context                      ctx_;
       stream_provider              stream_provider_;
       cudaEvent_t                  event_{};
+      bool                         event_created_{false};
+      bool                         event_recorded_{false};
+      bool                         completion_copy_started_{false};
       unsigned int                 index_{0};
       variant_t*                   data_{nullptr};
       task_t*                      task_{nullptr};
