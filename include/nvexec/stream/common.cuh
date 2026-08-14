@@ -663,7 +663,7 @@ namespace nv::execution
 
       opstate_base(OuterReceiver rcvr, context ctx)
         : ctx_(ctx)
-        , rcvr_(rcvr)
+        , rcvr_(static_cast<OuterReceiver&&>(rcvr))
         , stream_provider_(borrows_stream, ctx)
       {}
 
