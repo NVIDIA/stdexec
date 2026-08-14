@@ -54,7 +54,7 @@ function(add_relacy_test target_name)
 endfunction()
 
 set(relacy_tests async_scope bwos_lifo_queue intrusive_mpsc_queue split
-                 sync_wait)
+                 static_thread_pool_remote_poll sync_wait)
 
 foreach(test ${relacy_tests})
   add_relacy_test(${test})

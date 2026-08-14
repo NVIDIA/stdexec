@@ -1137,7 +1137,7 @@ namespace experimental::execution
         if (state_.compare_exchange_weak(expected,
                                          state::sleeping,
                                          __std::memory_order_relaxed,
-                                         __std::memory_order_acquire))
+                                         __std::memory_order_relaxed))
         {
           result = try_remote(true);
           if (result.task)
@@ -1158,7 +1158,7 @@ namespace experimental::execution
         {
           lock.unlock();
         }
-        state_.store(state::running, __std::memory_order_relaxed);
+        state_.exchange(state::running, __std::memory_order_acquire);
         result = try_pop();
       }
       return result;
