@@ -45,8 +45,11 @@ namespace
 
     stop_source.request_stop();
 
-    auto snd = ex::schedule(stream_ctx.get_scheduler()) | ex::then([flags] { flags.set(); })
-             | exec::split() | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})
+    auto snd = ex::schedule(stream_ctx.get_scheduler())                              //
+             | ex::then([flags] { flags.set(); })                                    //
+             | exec::split()                                                         //
+             | ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()})  //
+             | ex::then([] { return 0; })                                            //
              | ex::upon_stopped([] { return 42; });
 
     auto [value] = STDEXEC::sync_wait(std::move(snd)).value();
