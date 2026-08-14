@@ -19,13 +19,15 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
-#include <cstddef>
-#include <exception>
-#include <type_traits>
+
+#include "../../exec/completion_signatures.hpp"
+
+#include "common.cuh"
 
 #include <cuda/std/utility>
 
-#include "common.cuh"
+#include <cstddef>
+#include <type_traits>
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)
@@ -125,6 +127,15 @@ namespace nv::execution::_strm
       Fun                            fun_;
       _strm::opstate_base<Receiver>& opstate_;
     };
+
+    template <class Fun>
+    consteval auto _get_completions_fun() noexcept
+    {
+      return []() noexcept
+      {
+        return __set_value_from_t<Fun>();
+      };
+    }
   }  // namespace _upon_stopped
 
   template <class Sender, class Fun>
@@ -133,25 +144,7 @@ namespace nv::execution::_strm
     using sender_concept = STDEXEC::sender_tag;
 
     template <class Receiver>
-    using receiver_t = _upon_stopped::receiver<Receiver, Fun>;
-
-    template <class Self, class... Env>
-    using __error_completions_t =
-      __minvoke_q<__concat_completion_signatures_t,
-                  __with_error_invoke_t<__mbind_front_q<__callable_error_t, upon_stopped_t>,
-                                        set_stopped_t,
-                                        Fun,
-                                        __copy_cvref_t<Self, Sender>,
-                                        Env...>,
-                  completion_signatures<set_error_t(cudaError_t)>>;
-
-    template <class Self, class... Env>
-    using completion_signatures = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      __error_completions_t<Self, Env...>,
-      __cmplsigs::__default_set_value,
-      __cmplsigs::__default_set_error,
-      __set_value_from_t<Fun>>;
+    using _receiver_t = _upon_stopped::receiver<Receiver, Fun>;
 
     explicit upon_stopped_sender(Sender sndr, Fun fun)
       noexcept(__nothrow_move_constructible<Sender, Fun>)
@@ -160,22 +153,26 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<upon_stopped_sender> Self, STDEXEC::receiver Receiver>
-      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
+      -> stream_opstate_t<__copy_cvref_t<Self, Sender>, _receiver_t<Receiver>, Receiver>
     {
       return stream_opstate<__copy_cvref_t<Self, Sender>>(
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr),
-        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
-        { return receiver_t<Receiver>(self.fun_, stream_provider); });
+        [&](_strm::opstate_base<Receiver>& stream_provider) -> _receiver_t<Receiver>
+        { return _receiver_t<Receiver>(self.fun_, stream_provider); });
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<upon_stopped_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        {},
+        {},
+        _upon_stopped::_get_completions_fun<Fun>(),
+        _cuda_error_completion_t());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>

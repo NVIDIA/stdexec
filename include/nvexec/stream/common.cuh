@@ -1013,6 +1013,13 @@ namespace nv::execution
     template <class Fun, class... Args>
     using __f = STDEXEC::__msize_t<_sizeof_v<STDEXEC::__call_result_t<Fun, Args...>>>;
   };
+
+  using _cuda_error_completion_t =
+    STDEXEC::completion_signatures<STDEXEC::set_error_t(cudaError_t)>;
+
+  template <class _NoExcept>
+  using _cuda_error_completion_unless_t =
+    STDEXEC::__if<_NoExcept, STDEXEC::completion_signatures<>, _cuda_error_completion_t>;
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;

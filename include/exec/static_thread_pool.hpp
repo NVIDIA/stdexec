@@ -62,6 +62,9 @@ import stdexec;
 #include "sequence/iterate.hpp"
 #include "sequence_senders.hpp"
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
+
 namespace experimental::execution
 {
   struct bwos_params
@@ -1843,3 +1846,5 @@ namespace experimental::execution
 
 STDEXEC_MODULE_EXPORT
 namespace exec = experimental::execution;
+
+STDEXEC_PRAGMA_POP()

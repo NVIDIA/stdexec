@@ -31,6 +31,9 @@
 
 #  include <algorithm>
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
+
 template <class Policy>
 auto is_gpu_policy([[maybe_unused]] Policy&& policy) -> bool
 {
@@ -80,5 +83,7 @@ void run_stdpar(float            dt,
                        writer();
                      });
 }
+
+STDEXEC_PRAGMA_POP()
 
 #endif  // !STDEXEC_NO_STDCPP_PARALLEL_ALGORITHMS()
