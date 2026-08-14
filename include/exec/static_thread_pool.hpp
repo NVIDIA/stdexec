@@ -1134,11 +1134,19 @@ namespace experimental::execution
           return result;
         }
         state expected = state::running;
-        if (state_.compare_exchange_weak(expected, state::sleeping, __std::memory_order_relaxed))
+        if (state_.compare_exchange_weak(expected,
+                                         state::sleeping,
+                                         __std::memory_order_relaxed,
+                                         __std::memory_order_acquire))
         {
           result = try_remote(true);
           if (result.task)
           {
+            state expected_sleeping = state::sleeping;
+            state_.compare_exchange_strong(expected_sleeping,
+                                           state::running,
+                                           __std::memory_order_relaxed,
+                                           __std::memory_order_relaxed);
             return result;
           }
           set_sleeping();
@@ -1158,7 +1166,7 @@ namespace experimental::execution
 
     inline auto _static_thread_pool::thread_state::notify() -> bool
     {
-      if (state_.exchange(state::notified, __std::memory_order_relaxed) == state::sleeping)
+      if (state_.exchange(state::notified, __std::memory_order_release) == state::sleeping)
       {
         {
           std::lock_guard lock{mut_};

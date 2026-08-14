@@ -16,17 +16,21 @@
 
 #include <exec/sequence/ignore_all_values.hpp>
 #include <exec/sequence/transform_each.hpp>
+#include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
 #include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>  // IWYU pragma: keep
 
 #include <atomic>
+#include <chrono>
 #include <exception>
+#include <latch>
 #include <mutex>
 #include <ranges>
 #include <stdexcept>
 #include <thread>
 #include <unordered_set>
+#include <vector>
 namespace ex = STDEXEC;
 
 namespace
@@ -228,4 +232,87 @@ TEST_CASE("bulk on static_thread_pool executes on multiple threads, take 2",
                          });
   ex::sync_wait(std::move(sender));
   REQUIRE(thread_ids.size() == num_of_threads);
+}
+
+TEST_CASE("static_thread_pool drains remote work after idle transitions",
+          "[types][static_thread_pool][stress]")
+{
+  constexpr std::size_t num_producers = 4;
+  constexpr std::size_t rounds        = 10'000;
+
+  std::latch                         ready{num_producers};
+  std::atomic<bool>                  start{false};
+  std::atomic<bool>                  stop{false};
+  std::vector<std::atomic<std::size_t>> completed(num_producers);
+  std::vector<std::thread>                producers;
+  producers.reserve(num_producers);
+  for (auto& count: completed)
+  {
+    count.store(0, std::memory_order_relaxed);
+  }
+
+  exec::static_thread_pool pool{1};
+  auto                     scheduler = pool.get_scheduler();
+
+  for (std::size_t producer = 0; producer < num_producers; ++producer)
+  {
+    producers.emplace_back([&, producer]
+    {
+      ready.count_down();
+      while (!start.load(std::memory_order_acquire))
+      {
+        std::this_thread::yield();
+      }
+
+      auto* const producer_completed = &completed[producer];
+      std::size_t expected            = 0;
+      for (std::size_t round = 0; round < rounds && !stop.load(std::memory_order_relaxed);
+           ++round)
+      {
+        std::size_t const batch_size = (round % 4 == 0) ? 2 : 1;
+        expected += batch_size;
+        for (std::size_t i = 0; i < batch_size; ++i)
+        {
+          exec::start_detached(
+            ex::schedule(scheduler)
+            | ex::then([producer_completed]
+                       { producer_completed->fetch_add(1, std::memory_order_relaxed); }));
+        }
+
+        while (!stop.load(std::memory_order_relaxed)
+               && producer_completed->load(std::memory_order_relaxed) < expected)
+        {
+          std::this_thread::yield();
+        }
+        std::this_thread::yield();
+      }
+    });
+  }
+
+  ready.wait();
+  start.store(true, std::memory_order_release);
+
+  auto const expected = num_producers * rounds + num_producers * ((rounds + 3) / 4);
+  auto const deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+  auto       completed_total = [&]
+  {
+    std::size_t result = 0;
+    for (auto const& count: completed)
+    {
+      result += count.load(std::memory_order_relaxed);
+    }
+    return result;
+  };
+
+  while (completed_total() < expected && std::chrono::steady_clock::now() < deadline)
+  {
+    std::this_thread::yield();
+  }
+  stop.store(true, std::memory_order_release);
+  for (auto& producer: producers)
+  {
+    producer.join();
+  }
+
+  CHECK(completed_total() == expected);
 }
