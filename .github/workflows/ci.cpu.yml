@@ -129,6 +129,14 @@ jobs:
           # to result in fewer Clang ICEs.
           cmake --build build -v -j ${{ contains(matrix.name, 'modules') && 1 || 512 }};
 
+          # Verify that public headers are self-contained. Header
+          # verification is independent of the rest of the build matrix, so
+          # it only needs to run once; pick a single plain (non-modules,
+          # non-sanitizer) Debug build to run it in.
+          if [ "${{ matrix.name }}" = "CPU (clang 22, Debug)" ]; then
+            cmake --build build -v --target all_verify_interface_header_sets;
+          fi
+
           # Print sccache stats
           sccache -s;
 
