@@ -39,6 +39,9 @@
 #  include "nvexec/detail/throw_on_cuda_error.cuh"
 #endif
 
+STDEXEC_PRAGMA_PUSH()
+STDEXEC_PRAGMA_IGNORE_EDG(is_constant_evaluated_in_nonconstexpr_context)
+
 struct deleter_t
 {
   bool on_gpu{};
@@ -538,3 +541,5 @@ auto value(std::map<std::string_view, std::size_t> const &params,
   }
   return default_value;
 }
+
+STDEXEC_PRAGMA_POP()
