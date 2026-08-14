@@ -2,8 +2,8 @@
  * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
+ * (the "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
  *
  *   https://llvm.org/LICENSE.txt
  *
@@ -18,9 +18,15 @@
 
 #include <atomic>
 
-struct remote_queue_node
+struct task_node
 {
-  remote_queue_node* next_ = nullptr;
+  task_node* next_ = nullptr;
+};
+
+struct remote_queue
+{
+  remote_queue*           next_ = nullptr;
+  std::atomic<task_node*> head_{nullptr};
 };
 
 struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote_poll, 3>
@@ -29,31 +35,68 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
   static constexpr int sleeping = 1;
   static constexpr int notified = 2;
 
-  std::atomic<int>                state_{running};
-  std::atomic<remote_queue_node*> head_{nullptr};
-  std::atomic<bool>               first_notification_published_{false};
-  remote_queue_node               first_{};
-  remote_queue_node               second_{};
-  bool                            worker_would_sleep_ = false;
+  enum class remote_poll_mode
+  {
+    speculative,
+    before_sleep
+  };
+
+  struct poll_result
+  {
+    bool any    = false;
+    bool second = false;
+  };
+
+  std::atomic<int>           state_{running};
+  std::atomic<remote_queue*> remote_head_{nullptr};
+  std::atomic<bool>          first_notification_published_{false};
+  remote_queue               first_queue_{};
+  remote_queue               second_queue_{};
+  task_node                  first_task_{};
+  task_node                  first_extra_task_{};
+  task_node                  second_task_{};
+  bool                       worker_would_sleep_ = false;
 
   void before()
   {
     state_.store(running, std::memory_order_relaxed);
-    head_.store(nullptr, std::memory_order_relaxed);
+    remote_head_.store(nullptr, std::memory_order_relaxed);
     first_notification_published_.store(false, std::memory_order_relaxed);
-    first_.next_        = nullptr;
-    second_.next_       = nullptr;
-    worker_would_sleep_ = false;
+    first_queue_.next_  = nullptr;
+    second_queue_.next_ = nullptr;
+    first_queue_.head_.store(nullptr, std::memory_order_relaxed);
+    second_queue_.head_.store(nullptr, std::memory_order_relaxed);
+    first_task_.next_       = nullptr;
+    first_extra_task_.next_ = nullptr;
+    second_task_.next_      = nullptr;
+    worker_would_sleep_     = false;
   }
 
-  void publish(remote_queue_node& node)
+  void publish_remote_queue(remote_queue& queue)
   {
-    auto* old_head = head_.load(std::memory_order_relaxed);
+    auto* old_head = remote_head_.load(std::memory_order_acquire);
     do
     {
-      node.next_ = old_head;
+      queue.next_ = old_head;
     }
-    while (!head_.compare_exchange_weak(old_head, &node, std::memory_order_acq_rel));
+    while (!remote_head_.compare_exchange_weak(old_head,
+                                               &queue,
+                                               std::memory_order_acq_rel,
+                                               std::memory_order_acquire));
+  }
+
+  auto push(remote_queue& queue, task_node& task) -> bool
+  {
+    auto* old_head = queue.head_.load(std::memory_order_relaxed);
+    do
+    {
+      task.next_ = old_head;
+    }
+    while (!queue.head_.compare_exchange_weak(old_head,
+                                              &task,
+                                              std::memory_order_acq_rel,
+                                              std::memory_order_acquire));
+    return old_head == nullptr;
   }
 
   void notify()
@@ -61,23 +104,61 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
     state_.exchange(notified, std::memory_order_release);
   }
 
-  auto sees_second_node() -> bool
+  void enqueue(remote_queue& queue, task_node& task)
   {
-    for (auto* node = head_.load(std::memory_order_acquire); node != nullptr; node = node->next_)
+    bool const was_empty = push(queue, task);
+    if (was_empty)
     {
-      if (node == &second_)
-      {
-        return true;
-      }
+      notify();
     }
-    return false;
+  }
+
+  auto drain(remote_queue& queue) -> task_node*
+  {
+    auto* old_head = queue.head_.load(std::memory_order_relaxed);
+    while (!queue.head_.compare_exchange_weak(old_head,
+                                              nullptr,
+                                              std::memory_order_acq_rel,
+                                              std::memory_order_acquire))
+    {
+    }
+    return old_head;
+  }
+
+  auto poll_remote(remote_poll_mode mode) -> poll_result
+  {
+    poll_result result{};
+    auto*       queue = remote_head_.load(std::memory_order_acquire);
+    while (queue != nullptr)
+    {
+      if (mode == remote_poll_mode::before_sleep
+          || queue->head_.load(std::memory_order_relaxed) != nullptr)
+      {
+        for (auto* task = drain(*queue); task != nullptr; task = task->next_)
+        {
+          result.any    = true;
+          result.second = result.second || task == &second_task_;
+        }
+      }
+      queue = queue->next_;
+    }
+    return result;
   }
 
   void worker_poll()
   {
-    if (sees_second_node())
+    auto result = poll_remote(remote_poll_mode::speculative);
+    if (result.second)
     {
       return;
+    }
+    if (result.any)
+    {
+      result = poll_remote(remote_poll_mode::speculative);
+      if (result.second)
+      {
+        return;
+      }
     }
 
     int expected = running;
@@ -86,12 +167,19 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
                                       std::memory_order_relaxed,
                                       std::memory_order_relaxed))
     {
-      // This acquire RMW must consume a preceding notification or leave a
-      // later notification visible to the next sleep transition.
       state_.exchange(running, std::memory_order_acquire);
-      if (sees_second_node())
+      result = poll_remote(remote_poll_mode::speculative);
+      if (result.second)
       {
         return;
+      }
+      if (result.any)
+      {
+        result = poll_remote(remote_poll_mode::speculative);
+        if (result.second)
+        {
+          return;
+        }
       }
 
       expected = running;
@@ -104,7 +192,8 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
       }
     }
 
-    if (sees_second_node())
+    result = poll_remote(remote_poll_mode::before_sleep);
+    if (result.any)
     {
       int expected_sleeping = sleeping;
       state_.compare_exchange_strong(expected_sleeping,
@@ -121,8 +210,9 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
   {
     if (thread_id == 0)
     {
-      publish(first_);
-      notify();
+      publish_remote_queue(first_queue_);
+      enqueue(first_queue_, first_task_);
+      enqueue(first_queue_, first_extra_task_);
       first_notification_published_.store(true, std::memory_order_release);
     }
     else if (thread_id == 1)
@@ -130,8 +220,8 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
       while (!first_notification_published_.load(std::memory_order_acquire))
       {
       }
-      publish(second_);
-      notify();
+      publish_remote_queue(second_queue_);
+      enqueue(second_queue_, second_task_);
     }
     else
     {

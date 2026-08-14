@@ -23,7 +23,6 @@
 #include <barrier>
 #include <chrono>
 #include <cmath>
-#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -121,10 +120,6 @@ void my_main(int argc, char** argv, exec::numa_policy policy = exec::get_numa_po
     nthreads = std::atoi(argv[1]);
   }
   std::size_t total_scheds = 10'000'000;
-  if (argc > 2)
-  {
-    total_scheds = static_cast<std::size_t>(std::strtoull(argv[2], nullptr, 10));
-  }
 #ifndef STDEXEC_NO_MONOTONIC_BUFFER_RESOURCE
   std::vector<std::unique_ptr<char, numa_deleter>> buffers;
 #endif
