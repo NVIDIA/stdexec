@@ -165,14 +165,15 @@ namespace experimental::execution
         }
       }
 
-      auto pop_all_reversed(std::size_t tid) noexcept -> __intrusive_queue<&task_base::next_>
+      auto pop_all_reversed(std::size_t tid, bool force) noexcept
+        -> __intrusive_queue<&task_base::next_>
       {
         remote_queue*                        head = head_.load(__std::memory_order_acquire);
         __intrusive_queue<&task_base::next_> tasks{};
         while (head != nullptr)
         {
           auto& queue = head->queues_[tid];
-          if (!queue.empty())
+          if (force || !queue.empty())
           {
             tasks.append(queue.pop_all_reversed());
           }
@@ -649,7 +650,7 @@ namespace experimental::execution
         };
 
         auto try_pop() -> pop_result;
-        auto try_remote() -> pop_result;
+        auto try_remote(bool force = false) -> pop_result;
         auto try_steal(std::span<workstealing_victim> victims) -> pop_result;
         auto try_steal_near() -> pop_result;
         auto try_steal_any() -> pop_result;
@@ -975,10 +976,12 @@ namespace experimental::execution
     }
 
     inline auto
-    _static_thread_pool::thread_state::try_remote() -> _static_thread_pool::thread_state::pop_result
+    _static_thread_pool::thread_state::try_remote(bool force)
+      -> _static_thread_pool::thread_state::pop_result
     {
       pop_result                           result{.task = nullptr, .queue_index = index_};
-      __intrusive_queue<&task_base::next_> remotes = pool_->remotes_.pop_all_reversed(index_);
+      __intrusive_queue<&task_base::next_> remotes =
+        pool_->remotes_.pop_all_reversed(index_, force);
       pending_queue_.append(std::move(remotes));
       if (!pending_queue_.empty())
       {
@@ -1133,7 +1136,7 @@ namespace experimental::execution
         state expected = state::running;
         if (state_.compare_exchange_weak(expected, state::sleeping, __std::memory_order_relaxed))
         {
-          result = try_remote();
+          result = try_remote(true);
           if (result.task)
           {
             return result;
