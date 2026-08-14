@@ -139,6 +139,12 @@ namespace experimental::execution
       std::size_t index_{(std::numeric_limits<std::size_t>::max)()};
     };
 
+    enum class remote_poll_mode
+    {
+      speculative,
+      before_sleep
+    };
+
     struct remote_queue_list
     {
      private:
@@ -166,14 +172,15 @@ namespace experimental::execution
       }
 
       auto
-      pop_all_reversed(std::size_t tid, bool force) noexcept -> __intrusive_queue<&task_base::next_>
+      pop_all_reversed(std::size_t tid, remote_poll_mode mode) noexcept
+        -> __intrusive_queue<&task_base::next_>
       {
         remote_queue*                        head = head_.load(__std::memory_order_acquire);
         __intrusive_queue<&task_base::next_> tasks{};
         while (head != nullptr)
         {
           auto& queue = head->queues_[tid];
-          if (force || !queue.empty())
+          if (mode == remote_poll_mode::before_sleep || !queue.empty())
           {
             tasks.append(queue.pop_all_reversed());
           }
@@ -650,7 +657,7 @@ namespace experimental::execution
         };
 
         auto try_pop() -> pop_result;
-        auto try_remote(bool force = false) -> pop_result;
+        auto try_remote(remote_poll_mode mode) -> pop_result;
         auto try_steal(std::span<workstealing_victim> victims) -> pop_result;
         auto try_steal_near() -> pop_result;
         auto try_steal_any() -> pop_result;
@@ -975,12 +982,12 @@ namespace experimental::execution
       tmp.clear();
     }
 
-    inline auto _static_thread_pool::thread_state::try_remote(bool force)
+    inline auto _static_thread_pool::thread_state::try_remote(remote_poll_mode mode)
       -> _static_thread_pool::thread_state::pop_result
     {
       pop_result                           result{.task = nullptr, .queue_index = index_};
       __intrusive_queue<&task_base::next_> remotes = pool_->remotes_.pop_all_reversed(index_,
-                                                                                      force);
+                                                                                      mode);
       pending_queue_.append(std::move(remotes));
       if (!pending_queue_.empty())
       {
@@ -1000,7 +1007,7 @@ namespace experimental::execution
       {
         return result;
       }
-      return try_remote();
+      return try_remote(remote_poll_mode::speculative);
     }
 
     inline auto _static_thread_pool::thread_state::try_steal(std::span<workstealing_victim> victims)
@@ -1138,7 +1145,10 @@ namespace experimental::execution
                                          __std::memory_order_relaxed,
                                          __std::memory_order_relaxed))
         {
-          result = try_remote(true);
+          // The relaxed empty probe is safe during normal polling, but the
+          // running-to-sleeping boundary must perform the CAS dequeue so work
+          // published before the transition cannot be missed.
+          result = try_remote(remote_poll_mode::before_sleep);
           if (result.task)
           {
             state expected_sleeping = state::sleeping;
