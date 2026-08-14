@@ -34,7 +34,7 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
   std::atomic<bool>               first_notification_published_{false};
   remote_queue_node               first_{};
   remote_queue_node               second_{};
-  bool                             worker_would_sleep_ = false;
+  bool                            worker_would_sleep_ = false;
 
   void before()
   {
@@ -63,8 +63,7 @@ struct static_thread_pool_remote_poll : rl::test_suite<static_thread_pool_remote
 
   auto sees_second_node() -> bool
   {
-    for (auto* node = head_.load(std::memory_order_acquire); node != nullptr;
-         node       = node->next_)
+    for (auto* node = head_.load(std::memory_order_acquire); node != nullptr; node = node->next_)
     {
       if (node == &second_)
       {

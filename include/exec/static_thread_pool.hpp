@@ -165,8 +165,8 @@ namespace experimental::execution
         }
       }
 
-      auto pop_all_reversed(std::size_t tid, bool force) noexcept
-        -> __intrusive_queue<&task_base::next_>
+      auto
+      pop_all_reversed(std::size_t tid, bool force) noexcept -> __intrusive_queue<&task_base::next_>
       {
         remote_queue*                        head = head_.load(__std::memory_order_acquire);
         __intrusive_queue<&task_base::next_> tasks{};
@@ -975,13 +975,12 @@ namespace experimental::execution
       tmp.clear();
     }
 
-    inline auto
-    _static_thread_pool::thread_state::try_remote(bool force)
+    inline auto _static_thread_pool::thread_state::try_remote(bool force)
       -> _static_thread_pool::thread_state::pop_result
     {
       pop_result                           result{.task = nullptr, .queue_index = index_};
-      __intrusive_queue<&task_base::next_> remotes =
-        pool_->remotes_.pop_all_reversed(index_, force);
+      __intrusive_queue<&task_base::next_> remotes = pool_->remotes_.pop_all_reversed(index_,
+                                                                                      force);
       pending_queue_.append(std::move(remotes));
       if (!pending_queue_.empty())
       {
