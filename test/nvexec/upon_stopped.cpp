@@ -39,7 +39,7 @@ namespace
     {}
 
     STDEXEC_ATTRIBUTE(host, device)
-    move_only_result(move_only_result&& other) noexcept
+    move_only_result(move_only_result &&other) noexcept
       : value_(other.value_)
     {
       other.value_ = 0;
