@@ -262,6 +262,40 @@ set_target_properties(stdexec PROPERTIES VERSION "${STDEXEC_VERSION}"
 if(STDEXEC_BUILD_TESTS)
   # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES VERIFY_INTERFACE_HEADER_SETS TRUE)
+
+  # A handful of headers are not self-contained by design; exclude them from
+  # verification rather than treating that as a bug.
+
+  # These headers bracket a translation unit's warning/pragma state.
+  # __epilogue.hpp pops state that __prologue.hpp is documented to push, so it
+  # cannot compile on its own.
+  set_source_files_properties(include/stdexec/__detail/__epilogue.hpp
+                               PROPERTIES SKIP_LINTING ON)
+
+  # This header has a documented precondition that includers define
+  # STDEXEC_PARALLEL_SCHEDULER_INLINE before including it.
+  set_source_files_properties(
+    include/stdexec/__detail/__parallel_scheduler_default_impl_entry.hpp
+    PROPERTIES SKIP_LINTING ON)
+
+  # These headers require an optional external dependency that isn't present
+  # in every configuration; only verify them when the corresponding feature
+  # is actually enabled.
+  if(NOT STDEXEC_ENABLE_TBB)
+    set_source_files_properties(include/exec/tbb/tbb_thread_pool.hpp
+                                 PROPERTIES SKIP_LINTING ON)
+  endif()
+  if(NOT STDEXEC_ENABLE_TASKFLOW)
+    set_source_files_properties(include/exec/taskflow/taskflow_thread_pool.hpp
+                                 PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are Windows-only.
+  if(NOT WIN32)
+    set_source_files_properties(
+      include/exec/windows/filetime_clock.hpp
+      include/exec/windows/windows_thread_pool.hpp PROPERTIES SKIP_LINTING ON)
+  endif()
 endif()
 
 # Declare the public include directories
