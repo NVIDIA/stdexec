@@ -112,7 +112,7 @@ namespace experimental::execution
     namespace schedule_all_
     {
       template <class Range>
-      class sequence;
+      struct sequence;
     }  // namespace schedule_all_
 
     struct task_base
