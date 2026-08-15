@@ -32,6 +32,7 @@ set(nvexec_test_sources
     let_value.cpp
     test_main.cpp
     then.cpp
+    nvtx.cpp
     reduce.cpp
     repeat_n.cpp
     split.cpp
