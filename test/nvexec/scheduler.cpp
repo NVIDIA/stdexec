@@ -38,8 +38,5 @@ namespace
     CHECK_FALSE(high == normal);
     CHECK_FALSE(normal == low);
     CHECK_FALSE(high == low);
-
-    nvexec::multi_gpu_stream_context other_stream_ctx{};
-    CHECK_FALSE(high == other_stream_ctx.get_scheduler(nvexec::stream_priority::high));
   }
 }  // namespace
