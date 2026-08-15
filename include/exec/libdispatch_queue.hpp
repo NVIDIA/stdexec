@@ -305,7 +305,8 @@ namespace experimental::execution
                 _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
                 _WITH_ENVIRONMENT_(Env...)>();
             }
-            else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>)
+            else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>
+                               && __nothrow_decay_copyable<Args...>)
             {
               return completion_signatures<value_sig_t>();
             }
@@ -476,16 +477,17 @@ namespace experimental::execution
         {
           STDEXEC_TRY
           {
-            shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
+            shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
           }
           STDEXEC_CATCH_ALL
           {
             STDEXEC::set_error(std::move(shared_state_.rcvr_), std::current_exception());
+            return;
           }
         }
         else
         {
-          shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
+          shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
         }
 
         if (shared_state_.shape_)
