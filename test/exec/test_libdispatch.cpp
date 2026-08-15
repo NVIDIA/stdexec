@@ -31,7 +31,7 @@ namespace
     auto                    sch = queue.get_scheduler();
 
     std::vector<int> data{1, 2, 3, 4, 5};
-    auto             add = [](auto const & data)
+    auto             add = [](auto const &data)
     {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
@@ -53,11 +53,11 @@ namespace
 
     std::vector<int> data{1, 2, 3, 4, 5};
     auto             size                  = data.size();
-    auto             expensive_computation = [](auto i, auto& data)
+    auto             expensive_computation = [](auto i, auto &data)
     {
       data[i] = 2 * data[i];
     };
-    auto add = [](auto const & data)
+    auto add = [](auto const &data)
     {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
@@ -86,7 +86,7 @@ namespace
         throw 999;
       return 2 * data[i];
     };
-    auto add = [](auto const & data)
+    auto add = [](auto const &data)
     {
       return std::accumulate(std::begin(data), std::end(data), 0);
     };
@@ -153,5 +153,52 @@ namespace
       FAIL("invalid exception caught");
     }
   }
+
 #endif
+
+  TEST_CASE("libdispatch bulk preserves lvalue-reference value categories")
+  {
+    struct lvalue_value
+    {
+      lvalue_value()
+        : value(0)
+      {}
+
+      explicit lvalue_value(int value)
+        : value(value)
+      {}
+
+      lvalue_value(lvalue_value const &) noexcept = default;
+
+      lvalue_value(lvalue_value &&other) noexcept(false)
+        : value(other.value)
+      {
+        other.moved_from = true;
+      }
+
+      int  value;
+      bool moved_from = false;
+    } value{42};
+
+    exec::libdispatch_queue queue;
+    auto                    sch  = queue.get_scheduler();
+    int                     seen = 0;
+
+    auto sender = STDEXEC::schedule(sch)
+                | STDEXEC::then([&]() noexcept -> lvalue_value & { return value; })
+                | STDEXEC::bulk(STDEXEC::par,
+                                1,
+                                [&](int, lvalue_value &item) noexcept { seen = item.value; });
+
+    STATIC_REQUIRE(
+      set_equivalent<STDEXEC::completion_signatures_of_t<decltype(sender), STDEXEC::env<>>,
+                     STDEXEC::completion_signatures<STDEXEC::set_value_t(lvalue_value),
+                                                    STDEXEC::set_stopped_t()>>);
+
+    auto result = STDEXEC::sync_wait(std::move(sender));
+
+    REQUIRE(result.has_value());
+    CHECK(seen == 42);
+    CHECK_FALSE(value.moved_from);
+  }
 }  // namespace

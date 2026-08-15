@@ -477,7 +477,7 @@ namespace experimental::execution
         {
           STDEXEC_TRY
           {
-            shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
+            shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
           }
           STDEXEC_CATCH_ALL
           {
@@ -487,7 +487,7 @@ namespace experimental::execution
         }
         else
         {
-          shared_state_.data_.template emplace<tuple_t>(std::move(as)...);
+          shared_state_.data_.template emplace<tuple_t>(static_cast<As &&>(as)...);
         }
 
         if (shared_state_.shape_)
