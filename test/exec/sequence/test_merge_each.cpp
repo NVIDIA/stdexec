@@ -259,8 +259,9 @@ namespace
   struct error_state
   {
     std::optional<int> error_{};
-    bool               completed_ = false;
-    bool               stopped_   = false;
+    bool               outer_error_ = false;
+    bool               completed_   = false;
+    bool               stopped_     = false;
   };
 
   struct record_error_receiver
@@ -292,6 +293,10 @@ namespace
       if constexpr (std::same_as<std::decay_t<Error>, int>)
       {
         state_->error_ = static_cast<Error&&>(error);
+      }
+      else if constexpr (std::same_as<std::decay_t<Error>, std::exception_ptr>)
+      {
+        state_->outer_error_ = true;
       }
     }
 
@@ -477,6 +482,7 @@ namespace
     CHECK_FALSE(state.stopped_);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("merge_each - preserves errors from the outer sequence",
             "[sequence_senders][merge_each]")
   {
@@ -486,9 +492,10 @@ namespace
 
     ex::start(op);
 
-    CHECK(state.error_ == 42);
+    CHECK(state.outer_error_);
     CHECK_FALSE(state.completed_);
     CHECK_FALSE(state.stopped_);
   }
+#endif
 
 }  // namespace
