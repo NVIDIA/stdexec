@@ -54,11 +54,11 @@ namespace
 
     struct move_only_launch_handler
     {
-      move_only_launch_handler()                                  = default;
+      move_only_launch_handler()                                 = default;
       move_only_launch_handler(move_only_launch_handler const &) = delete;
 
       STDEXEC_ATTRIBUTE(host, device)
-      move_only_launch_handler(move_only_launch_handler &&) = default;
+      move_only_launch_handler(move_only_launch_handler&&) = default;
 
       STDEXEC_ATTRIBUTE(host, device) void operator()(cudaStream_t) const {}
     };
