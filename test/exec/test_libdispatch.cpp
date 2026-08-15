@@ -106,5 +106,50 @@ namespace
       FAIL("invalid exception caught");
     }
   }
+
+  TEST_CASE("libdispatch bulk stops after value capture fails")
+  {
+    struct value_capture_error
+    {};
+
+    struct throwing_value
+    {
+      throwing_value() = default;
+
+      throwing_value(throwing_value const &)
+      {
+        throw value_capture_error{};
+      }
+
+      throwing_value(throwing_value &&)
+      {
+        throw value_capture_error{};
+      }
+    };
+
+    exec::libdispatch_queue queue;
+    auto                    sch        = queue.get_scheduler();
+    int                     bulk_calls = 0;
+
+    auto sender = STDEXEC::schedule(sch) | STDEXEC::then([]() noexcept { return throwing_value{}; })
+                | STDEXEC::bulk(STDEXEC::par,
+                                0,
+                                [&](int, throwing_value &) noexcept { ++bulk_calls; });
+
+    STDEXEC_TRY
+    {
+      STDEXEC::sync_wait(std::move(sender));
+      CHECK(false);
+    }
+    STDEXEC_CATCH(value_capture_error const &)
+    {
+    }
+    STDEXEC_CATCH_ALL
+    {
+      FAIL("invalid exception caught");
+    }
+
+    CHECK(bulk_calls == 0);
+  }
 #endif
 }  // namespace

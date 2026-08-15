@@ -481,6 +481,7 @@ namespace experimental::execution
           STDEXEC_CATCH_ALL
           {
             STDEXEC::set_error(std::move(shared_state_.rcvr_), std::current_exception());
+            return;
           }
         }
         else
