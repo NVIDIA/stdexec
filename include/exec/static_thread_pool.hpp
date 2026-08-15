@@ -1652,7 +1652,7 @@ namespace experimental::execution
       struct opstate_base_with_receiver : opstate_base<Range>
       {
         explicit opstate_base_with_receiver(Range range, _static_thread_pool& pool, Receiver rcvr)
-          : opstate_base<Range>{range, pool}
+          : opstate_base<Range>{std::move(range), pool}
           , rcvr_(static_cast<Receiver&&>(rcvr))
         {}
 

@@ -168,6 +168,19 @@ TEST_CASE("schedule_all on static_thread_pool handles empty ranges", "[types][st
   CHECK(ex::sync_wait(std::move(sender)));
 }
 
+TEST_CASE("schedule_all on static_thread_pool accepts move-only ranges",
+          "[types][static_thread_pool]")
+{
+  exec::static_thread_pool pool{1};
+  int                      sum = 0;
+  auto sender = exec::schedule_all(pool, std::views::all(std::vector<int>{1, 2, 3}))
+              | exec::transform_each(ex::then([&sum](int value) noexcept { sum += value; }))
+              | exec::ignore_all_values();
+
+  CHECK(ex::sync_wait(std::move(sender)));
+  CHECK(sum == 6);
+}
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 TEST_CASE("schedule_all on static_thread_pool sends errors from set_next",
           "[types][static_thread_pool]")
