@@ -38,7 +38,7 @@ namespace nv::execution
 
       auto operator==(multi_gpu_stream_scheduler const & other) const noexcept -> bool
       {
-        return ctx_.hub_ == other.ctx_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_ && ctx_.priority_ == other.ctx_.priority_;
       }
 
       [[nodiscard]]

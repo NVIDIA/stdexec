@@ -25,6 +25,7 @@ set(nvexec_test_sources
     split.cpp
     upon_stopped.cpp
     transfer.cpp
+    scheduler.cpp
     launch.cpp
     let_error.cpp
     let_stopped.cpp

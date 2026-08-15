@@ -75,7 +75,7 @@ namespace nv::execution
 
       auto operator==(stream_scheduler const & other) const noexcept -> bool
       {
-        return ctx_.hub_ == other.ctx_.hub_;
+        return ctx_.hub_ == other.ctx_.hub_ && ctx_.priority_ == other.ctx_.priority_;
       }
 
       STDEXEC_ATTRIBUTE(nodiscard, host, device) auto schedule() const noexcept
