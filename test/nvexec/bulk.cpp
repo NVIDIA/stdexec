@@ -24,8 +24,7 @@ namespace
   TEST_CASE("nvexec bulk supports const lvalue senders", "[cuda][stream][adaptors][bulk]")
   {
     nvexec::stream_context stream_ctx{};
-    auto const snd = ex::schedule(stream_ctx.get_scheduler())
-                   | ex::bulk(ex::par, 1, [](int) {});
+    auto const snd = ex::schedule(stream_ctx.get_scheduler()) | ex::bulk(ex::par, 1, [](int) {});
 
     REQUIRE(STDEXEC::sync_wait(snd).has_value());
   }
