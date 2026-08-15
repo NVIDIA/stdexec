@@ -305,7 +305,8 @@ namespace experimental::execution
                 _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
                 _WITH_ENVIRONMENT_(Env...)>();
             }
-            else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>)
+            else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>
+                               && __nothrow_decay_copyable<Args...>)
             {
               return completion_signatures<value_sig_t>();
             }

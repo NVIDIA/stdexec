@@ -17,6 +17,7 @@
 #include "exec/libdispatch_queue.hpp"
 #include "stdexec/execution.hpp"
 #include "test_common/catch2.hpp"
+#include "test_common/type_helpers.hpp"
 
 #include <numeric>
 #include <utility>
@@ -128,13 +129,16 @@ namespace
     };
 
     exec::libdispatch_queue queue;
-    auto                    sch        = queue.get_scheduler();
-    int                     bulk_calls = 0;
+    auto                    sch = queue.get_scheduler();
 
     auto sender = STDEXEC::schedule(sch) | STDEXEC::then([]() noexcept { return throwing_value{}; })
-                | STDEXEC::bulk(STDEXEC::par,
-                                0,
-                                [&](int, throwing_value &) noexcept { ++bulk_calls; });
+                | STDEXEC::bulk(STDEXEC::par, 0, [](int, throwing_value &) noexcept {});
+
+    STATIC_REQUIRE(
+      set_equivalent<STDEXEC::completion_signatures_of_t<decltype(sender), STDEXEC::env<>>,
+                     STDEXEC::completion_signatures<STDEXEC::set_value_t(throwing_value),
+                                                    STDEXEC::set_error_t(std::exception_ptr),
+                                                    STDEXEC::set_stopped_t()>>);
 
     STDEXEC_TRY
     {
@@ -148,8 +152,6 @@ namespace
     {
       FAIL("invalid exception caught");
     }
-
-    CHECK(bulk_calls == 0);
   }
 #endif
 }  // namespace
