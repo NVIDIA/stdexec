@@ -150,7 +150,11 @@ namespace nv::execution::_strm
     template <class Sender>
     struct sh_state
     {
-      using variant_t          = variant_storage_t<Sender, env_t>;
+      using variant_t = __for_each_completion_signature_t<
+        __concat_completion_signatures_t<__completion_signatures_of_t<Sender, env_t>,
+                                         completion_signatures<set_stopped_t()>>,
+        decayed_tuple_t,
+        __munique<__q<_nullable_variant_t>>::__f>;
       using inner_receiver_t   = receiver<Sender, sh_state>;
       using task_t             = continuation_task<inner_receiver_t, variant_t>;
       using enqueue_receiver_t = stream_enqueue_receiver<env_t, variant_t>;
@@ -165,6 +169,7 @@ namespace nv::execution::_strm
         , data_(malloc_managed<variant_t>(stream_provider_.status_))
         , opstate2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this}))
       {
+        _initialize_stopped();
         if (stream_provider_.status_ == cudaSuccess)
         {
           stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
@@ -186,7 +191,9 @@ namespace nv::execution::_strm
         , env_(host_allocate(this->stream_provider_.status_, ctx_.pinned_resource_, make_env()))
         , opstate2_(connect(static_cast<Sender&&>(sndr),
                             enqueue_receiver_t{env_.get(), data_, task_, ctx.hub_->producer()}))
-      {}
+      {
+        _initialize_stopped();
+      }
 
       ~sh_state()
       {
@@ -211,6 +218,16 @@ namespace nv::execution::_strm
       auto make_env() const noexcept -> env_t
       {
         return _split::_make_env(stop_source_, &const_cast<stream_provider&>(stream_provider_));
+      }
+
+      void _initialize_stopped() noexcept
+      {
+        if (data_)
+        {
+          using tuple_t = decayed_tuple_t<set_stopped_t>;
+          index_        = __mapply<__mfind_i<tuple_t>, variant_t>::value;
+          data_->template emplace<tuple_t>(set_stopped_t());
+        }
       }
 
       void notify() noexcept
@@ -359,7 +376,7 @@ namespace nv::execution::_strm
       return STDEXEC::__transform_completion_signatures_of_t<
         Sender,
         STDEXEC::prop<get_stop_token_t, inplace_stop_token>,
-        STDEXEC::completion_signatures<set_error_t(cudaError_t const &)>,
+        STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>,
         _set_value_t,
         _set_error_t>();
     }
