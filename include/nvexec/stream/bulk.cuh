@@ -138,7 +138,8 @@ namespace nv::execution::_strm
         static_cast<Receiver&&>(rcvr),
         [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Receiver>
         {
-          return receiver_t<Receiver>(self.shape_, static_cast<Fun&&>(self.fun_), stream_provider);
+          return receiver_t<Receiver>(
+            self.shape_, static_cast<Self&&>(self).fun_, stream_provider);
         });
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
