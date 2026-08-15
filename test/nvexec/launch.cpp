@@ -18,6 +18,8 @@
 #include <test_common/catch2.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <type_traits>
+
 #include "common.cuh"
 #include "nvexec/stream_context.cuh"
 
@@ -48,6 +50,31 @@ namespace
       std::iota(input.begin(), input.end(), 1);
       std::ranges::transform(input, input.begin(), [](int i) { return i * scaling; });
       return std::accumulate(input.begin(), input.end(), 0);
+    }
+
+    struct move_only_launch_handler
+    {
+      move_only_launch_handler()                                 = default;
+      move_only_launch_handler(move_only_launch_handler const &) = delete;
+
+      STDEXEC_ATTRIBUTE(host, device)
+      move_only_launch_handler(move_only_launch_handler&&) = default;
+
+      STDEXEC_ATTRIBUTE(host, device) void operator()(cudaStream_t) const {}
+    };
+
+    static_assert(std::is_trivially_copyable_v<move_only_launch_handler>);
+    static_assert(!std::is_copy_constructible_v<move_only_launch_handler>);
+
+    TEST_CASE("nvexec launch supports move-only function objects",
+              "[cuda][stream][adaptors][launch]")
+    {
+      nvexec::stream_context stream_ctx{};
+
+      auto snd = STDEXEC::just() | STDEXEC::continues_on(stream_ctx.get_scheduler())
+               | nvexec::launch(move_only_launch_handler{});
+
+      REQUIRE(STDEXEC::sync_wait(std::move(snd)).has_value());
     }
 
     TEST_CASE("nvexec launch advertises CUDA launch errors", "[cuda][stream][adaptors][launch]")
