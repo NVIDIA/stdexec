@@ -171,8 +171,7 @@ namespace experimental::execution
         }
       }
 
-      auto
-      pop_all_reversed(std::size_t tid, remote_poll_mode mode) noexcept
+      auto pop_all_reversed(std::size_t tid, remote_poll_mode mode) noexcept
         -> __intrusive_queue<&task_base::next_>
       {
         remote_queue*                        head = head_.load(__std::memory_order_acquire);
@@ -986,8 +985,7 @@ namespace experimental::execution
       -> _static_thread_pool::thread_state::pop_result
     {
       pop_result                           result{.task = nullptr, .queue_index = index_};
-      __intrusive_queue<&task_base::next_> remotes = pool_->remotes_.pop_all_reversed(index_,
-                                                                                      mode);
+      __intrusive_queue<&task_base::next_> remotes = pool_->remotes_.pop_all_reversed(index_, mode);
       pending_queue_.append(std::move(remotes));
       if (!pending_queue_.empty())
       {
