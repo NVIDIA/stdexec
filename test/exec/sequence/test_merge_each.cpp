@@ -33,6 +33,7 @@
 #include <test_common/type_helpers.hpp>
 
 #include <array>
+#include <exception>
 #include <optional>
 
 using namespace std::chrono_literals;
@@ -258,10 +259,10 @@ namespace
 
   struct error_state
   {
-    std::optional<int> error_{};
-    bool               outer_error_ = false;
-    bool               completed_   = false;
-    bool               stopped_     = false;
+    std::optional<int> nested_error_{};
+    std::exception_ptr outer_error_{};
+    bool               completed_ = false;
+    bool               stopped_   = false;
   };
 
   struct record_error_receiver
@@ -275,7 +276,7 @@ namespace
       {
         if constexpr (std::same_as<std::decay_t<Error>, int>)
         {
-          state->error_ = static_cast<Error&&>(error);
+          state->nested_error_ = static_cast<Error&&>(error);
         }
       };
       return ex::upon_stopped(ex::upon_error(static_cast<Item&&>(item), record_error),
@@ -292,11 +293,11 @@ namespace
     {
       if constexpr (std::same_as<std::decay_t<Error>, int>)
       {
-        state_->error_ = static_cast<Error&&>(error);
+        state_->nested_error_ = static_cast<Error&&>(error);
       }
       else if constexpr (std::same_as<std::decay_t<Error>, std::exception_ptr>)
       {
-        state_->outer_error_ = true;
+        state_->outer_error_ = static_cast<Error&&>(error);
       }
     }
 
@@ -463,7 +464,7 @@ namespace
 
     ex::start(op);
 
-    CHECK(state.error_ == 42);
+    CHECK(state.nested_error_ == 42);
     CHECK(state.completed_);
     CHECK_FALSE(state.stopped_);
   }
@@ -477,7 +478,7 @@ namespace
 
     ex::start(op);
 
-    CHECK(state.error_ == 42);
+    CHECK(state.nested_error_ == 42);
     CHECK(state.completed_);
     CHECK_FALSE(state.stopped_);
   }
@@ -492,7 +493,18 @@ namespace
 
     ex::start(op);
 
-    CHECK(state.outer_error_);
+    CHECK(state.outer_error_ != nullptr);
+    bool caught = false;
+    try
+    {
+      std::rethrow_exception(state.outer_error_);
+    }
+    catch (int error)
+    {
+      caught = true;
+      CHECK(error == 42);
+    }
+    CHECK(caught);
     CHECK_FALSE(state.completed_);
     CHECK_FALSE(state.stopped_);
   }
