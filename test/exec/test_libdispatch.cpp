@@ -30,8 +30,8 @@ namespace
     using sender_concept = STDEXEC::sender_tag;
 
     template <class, class...>
-    static consteval auto get_completion_signatures()
-      -> STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>
+    static consteval auto
+    get_completion_signatures() -> STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>
     {
       return {};
     }

@@ -537,8 +537,8 @@ namespace experimental::execution
 
       bulk_op_state(libdispatch_queue &queue, Shape shape, Fun fun, CvSender &&sndr, Receiver rcvr)
         : shared_state_(std::move(rcvr), shape, fun)
-        , inner_op_{STDEXEC::connect(static_cast<CvSender &&>(sndr),
-                                     bulk_rcvr{shared_state_, queue})}
+        , inner_op_{
+            STDEXEC::connect(static_cast<CvSender &&>(sndr), bulk_rcvr{shared_state_, queue})}
       {}
 
       void start() & noexcept
