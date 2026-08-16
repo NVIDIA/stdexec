@@ -34,32 +34,26 @@ namespace experimental::execution
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
-    template <class... _Ts>
-    using __nothrow_decay_copyable_and_move_constructible_t = __mbool<(
-      (__nothrow_decay_copyable<_Ts> && __nothrow_move_constructible<__decay_t<_Ts>>) && ...)>;
-
     template <class... Args>
     using __as_rvalues = set_value_t (*)(__decay_t<Args>...);
 
     template <class... E>
-    using __as_error = set_error_t (*)(E...);
+    using __as_error = set_error_t (*)(__decay_t<E>...);
 
-    // Here we convert all set_value(Args...) to set_value(__decay_t<Args>...). Note, we keep all
-    // error types as they are and unconditionally add set_stopped(). The indirection through the
-    // __completions_fn is to avoid a pack expansion bug in nvc++.
+    // Here we convert all set_value(Args...) and set_error(Args...) to use decayed arguments and
+    // unconditionally add set_stopped(). The indirection through the __completions_fn is to avoid
+    // a pack expansion bug in nvc++.
     template <class... _Env>
     struct __completions_fn
     {
       template <class... _CvSenders>
-      using __all_value_args_nothrow_decay_copyable =
-        __minvoke_q<__mand_t,
-                    __value_types_t<__completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
-                                    __qq<__nothrow_decay_copyable_and_move_constructible_t>,
-                                    __qq<__mand_t>>...>;
+      using __all_nothrow_decay_copyable_results =
+        __mand<__nothrow_decay_copyable_results_t<
+          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>>...>;
 
       template <class... _CvSenders>
       using __f = __mtry_q<__concat_completion_signatures_t>::__f<
-        __eptr_completion_unless_t<__all_value_args_nothrow_decay_copyable<_CvSenders...>>,
+        __eptr_completion_unless_t<__all_nothrow_decay_copyable_results<_CvSenders...>>,
         completion_signatures<set_stopped_t()>,
         __transform_reduce_completion_signatures_t<
           __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
