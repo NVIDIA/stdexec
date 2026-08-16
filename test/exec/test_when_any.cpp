@@ -39,8 +39,8 @@ namespace
     using sender_concept = ex::sender_tag;
 
     template <class...>
-    static consteval auto get_completion_signatures() noexcept
-      -> ex::completion_signatures<ex::set_error_t(error&)>
+    static consteval auto
+    get_completion_signatures() noexcept -> ex::completion_signatures<ex::set_error_t(error&)>
     {
       return {};
     }
@@ -94,7 +94,7 @@ namespace
   {
     copy_noexcept_move_throws() = default;
 
-    copy_noexcept_move_throws(copy_noexcept_move_throws const&) noexcept = default;
+    copy_noexcept_move_throws(copy_noexcept_move_throws const &) noexcept = default;
 
     copy_noexcept_move_throws(copy_noexcept_move_throws&&) noexcept(false) {}
   };
@@ -113,7 +113,7 @@ namespace
     template <class Receiver>
     struct operation
     {
-      Receiver                   rcvr_;
+      Receiver                  rcvr_;
       copy_noexcept_move_throws error_;
 
       void start() & noexcept
@@ -170,7 +170,7 @@ namespace
       : throw_on_copy_{throw_on_copy}
     {}
 
-    throwing_error(throwing_error const& other)
+    throwing_error(throwing_error const & other)
       : throw_on_copy_{other.throw_on_copy_}
     {
       if (*throw_on_copy_)
@@ -398,12 +398,12 @@ namespace
   TEST_CASE("when_any decays error completion arguments", "[adaptors][when_any]")
   {
     auto snd = exec::when_any(error_ref_sender{});
-    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
-                                 completion_signatures<set_error_t(error_ref_sender::error),
-                                                       set_stopped_t()>>);
+    static_assert(
+      set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                     completion_signatures<set_error_t(error_ref_sender::error), set_stopped_t()>>);
 
     bool lvalue_error = false;
-    auto op = ex::connect(std::move(snd), error_ref_receiver{&lvalue_error});
+    auto op           = ex::connect(std::move(snd), error_ref_receiver{&lvalue_error});
     ex::start(op);
     CHECK_FALSE(lvalue_error);
   }
@@ -412,15 +412,15 @@ namespace
   TEST_CASE("when_any reports errors from throwing error decay", "[adaptors][when_any]")
   {
     bool throw_on_copy = false;
-    auto snd = exec::when_any(throwing_error_sender{&throw_on_copy});
+    auto snd           = exec::when_any(throwing_error_sender{&throw_on_copy});
     static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
                                  completion_signatures<set_error_t(throwing_error),
                                                        set_error_t(std::exception_ptr),
                                                        set_stopped_t()>>);
 
     bool got_exception = false;
-    auto op = ex::connect(std::move(snd), throwing_error_receiver{&got_exception});
-    throw_on_copy = true;
+    auto op            = ex::connect(std::move(snd), throwing_error_receiver{&got_exception});
+    throw_on_copy      = true;
     ex::start(op);
     CHECK(got_exception);
   }
@@ -428,7 +428,7 @@ namespace
   TEST_CASE("when_any reports errors for potentially throwing value moves", "[adaptors][when_any]")
   {
     copy_noexcept_move_throws value;
-    auto                    snd = exec::when_any(just_ref{value});
+    auto                      snd = exec::when_any(just_ref{value});
     static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
                                  completion_signatures<set_value_t(copy_noexcept_move_throws),
                                                        set_stopped_t(),
@@ -437,9 +437,10 @@ namespace
     bool got_value     = false;
     bool got_error     = false;
     bool got_exception = false;
-    auto op = ex::connect(std::move(snd),
-                          throwing_move_receiver<copy_noexcept_move_throws>{
-                            &got_value, &got_error, &got_exception});
+    auto op            = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{&got_value,
+                                                                                       &got_error,
+                                                                                       &got_exception});
     ex::start(op);
     CHECK(got_value);
     CHECK_FALSE(got_error);
@@ -457,9 +458,10 @@ namespace
     bool got_value     = false;
     bool got_error     = false;
     bool got_exception = false;
-    auto op = ex::connect(std::move(snd),
-                          throwing_move_receiver<copy_noexcept_move_throws>{
-                            &got_value, &got_error, &got_exception});
+    auto op            = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{&got_value,
+                                                                                       &got_error,
+                                                                                       &got_exception});
     ex::start(op);
     CHECK_FALSE(got_value);
     CHECK(got_error);

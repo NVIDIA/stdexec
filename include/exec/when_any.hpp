@@ -50,12 +50,12 @@ namespace experimental::execution
       using __raw_completions_t = __completion_signatures_of_t<_CvSender, __env_t<_Env>...>;
 
       template <class _CvSender>
-      using __decayed_completions_t = __transform_reduce_completion_signatures_t<
-        __raw_completions_t<_CvSender>,
-        __as_rvalues,
-        __as_error,
-        set_stopped_t (*)(),
-        __completion_signature_ptrs_t>;
+      using __decayed_completions_t =
+        __transform_reduce_completion_signatures_t<__raw_completions_t<_CvSender>,
+                                                   __as_rvalues,
+                                                   __as_error,
+                                                   set_stopped_t (*)(),
+                                                   __completion_signature_ptrs_t>;
 
       template <class... _CvSenders>
       using __all_nothrow_decay_copyable_results =
