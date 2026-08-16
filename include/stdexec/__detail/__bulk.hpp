@@ -283,8 +283,7 @@ namespace STDEXEC
           {
             if (__shape_t{} < __state.__data_.__shape_)
             {
-              __state.__data_.__fun_(
-                __shape_t(), __shape_t(__state.__data_.__shape_), __args...);
+              __state.__data_.__fun_(__shape_t(), __shape_t(__state.__data_.__shape_), __args...);
             }
             STDEXEC::set_value(static_cast<_State&&>(__state).__rcvr_,
                                static_cast<_Args&&>(__args)...);
