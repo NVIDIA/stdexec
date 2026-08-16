@@ -25,6 +25,42 @@
 
 namespace
 {
+  struct lvalue_connect_sender
+  {
+    using sender_concept = STDEXEC::sender_tag;
+
+    template <class, class...>
+    static consteval auto get_completion_signatures()
+      -> STDEXEC::completion_signatures<STDEXEC::set_value_t(int)>
+    {
+      return {};
+    }
+
+    auto get_env() const noexcept -> STDEXEC::env<>
+    {
+      return {};
+    }
+
+    template <STDEXEC::receiver Receiver>
+    struct operation
+    {
+      using operation_state_concept = STDEXEC::operation_state_tag;
+
+      Receiver receiver_;
+
+      void start() & noexcept
+      {
+        STDEXEC::set_value(std::move(receiver_), 42);
+      }
+    };
+
+    template <STDEXEC::receiver Receiver>
+    auto connect(Receiver receiver) & noexcept -> operation<Receiver>
+    {
+      return {std::move(receiver)};
+    }
+  };
+
   TEST_CASE("libdispatch queue should be able to process tasks")
   {
     exec::libdispatch_queue queue;
@@ -200,5 +236,18 @@ namespace
     REQUIRE(result.has_value());
     CHECK(seen == 42);
     CHECK_FALSE(value.moved_from);
+  }
+
+  TEST_CASE("libdispatch bulk connects an lvalue child sender as an lvalue")
+  {
+    exec::libdispatch_queue queue;
+    auto                    fun = [](int, int &) noexcept {};
+    using sender_t = exec::__libdispatch::bulk_sender<lvalue_connect_sender, int, decltype(fun)>;
+
+    sender_t sender{queue, lvalue_connect_sender{}, 0, std::move(fun)};
+    auto     result = STDEXEC::sync_wait(sender);
+
+    REQUIRE(result.has_value());
+    CHECK(std::get<0>(*result) == 42);
   }
 }  // namespace
