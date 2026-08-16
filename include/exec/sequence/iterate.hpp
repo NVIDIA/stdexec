@@ -178,7 +178,12 @@ namespace experimental::execution
     struct __subscribe_fn
     {
       template <class _Range>
-      constexpr auto operator()(__ignore, _Range&& __range) noexcept
+      constexpr auto operator()(__ignore, _Range&& __range) noexcept(
+        noexcept(std::ranges::begin(static_cast<_Range&&>(__range)))
+        && noexcept(std::ranges::end(static_cast<_Range&&>(__range)))
+        && __nothrow_move_constructible<std::ranges::iterator_t<_Range>,
+                                        std::ranges::sentinel_t<_Range>,
+                                        _Receiver>)
       {
         return __operation{std::ranges::begin(static_cast<_Range&&>(__range)),
                            std::ranges::end(static_cast<_Range&&>(__range)),

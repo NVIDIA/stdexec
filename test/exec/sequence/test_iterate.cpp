@@ -25,6 +25,26 @@
 namespace
 {
 
+  struct begin_error
+  {};
+
+  struct begin_throws_range
+  {
+    using iterator = std::array<int, 1>::iterator;
+
+    iterator begin()
+    {
+      throw begin_error{};
+    }
+
+    iterator end() noexcept
+    {
+      return values.end();
+    }
+
+    std::array<int, 1> values{0};
+  };
+
   template <class Receiver>
   struct sum_item_rcvr
   {
@@ -138,6 +158,15 @@ namespace
     auto op   = exec::subscribe(iterate, sum_receiver<Env>{.sum_ = sum, .env_ = env});
     STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44 + 1));
+  }
+
+  TEST_CASE("iterate - subscribe propagates begin exceptions", "[sequence_senders][iterate]")
+  {
+    auto iterate = exec::iterate(begin_throws_range{});
+    int  sum     = 0;
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
+    CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
   }
 
 }  // namespace
