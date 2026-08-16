@@ -15,6 +15,7 @@
  */
 
 #include "exec/just_from.hpp"
+#include "test_common/receivers.hpp"
 #include "test_common/tuple.hpp"
 #include "test_common/type_helpers.hpp"
 
@@ -26,13 +27,19 @@ namespace
 
   struct throwing_move_callable
   {
-    throwing_move_callable()                                        = default;
-    throwing_move_callable(throwing_move_callable const &) noexcept = default;
-    throwing_move_callable(throwing_move_callable &&other) noexcept(false)
+    explicit throwing_move_callable(bool& should_throw) noexcept
+      : should_throw_(&should_throw)
+    {}
+
+    throwing_move_callable(throwing_move_callable const &other) noexcept
+      : should_throw_(other.should_throw_)
+    {}
+
+    throwing_move_callable(throwing_move_callable&& other) noexcept(false)
       : should_throw_(other.should_throw_)
     {
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-      if (should_throw_)
+      if (*should_throw_)
       {
         throw 42;
       }
@@ -45,7 +52,7 @@ namespace
       return sink();
     }
 
-    bool should_throw_{false};
+    bool* should_throw_;
   };
 
   TEST_CASE("just_from is a sender", "[just_from]")
@@ -94,12 +101,27 @@ namespace
     };
     STATIC_REQUIRE(noexcept(exec::just_from(nothrow_fn)));
 
-    throwing_move_callable fn;
+    bool                   should_throw = false;
+    throwing_move_callable fn{should_throw};
     STATIC_REQUIRE_FALSE(noexcept(exec::just_from(fn)));
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-    fn.should_throw_ = true;
+    should_throw = true;
     CHECK_THROWS_AS(exec::just_from(fn), int);
+#endif
+  }
+
+  TEST_CASE("just_from submit is conditionally noexcept", "[just_from]")
+  {
+    bool should_throw = false;
+    auto s            = exec::just_from(throwing_move_callable{should_throw});
+
+    STATIC_REQUIRE_FALSE(noexcept(static_cast<decltype(s)&&>(s).submit(empty_recv::recv0{})));
+    STATIC_REQUIRE(noexcept(s.submit(empty_recv::recv0{})));
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+    should_throw = true;
+    CHECK_THROWS_AS(static_cast<decltype(s)&&>(s).submit(empty_recv::recv0{}), int);
 #endif
   }
 

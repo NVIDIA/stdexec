@@ -172,7 +172,7 @@ namespace experimental::execution
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto submit(Rcvr rcvr) && noexcept -> void
+      auto submit(Rcvr rcvr) && noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn>) -> void
       {
         auto op = static_cast<_sndr_base&&>(*this).connect(static_cast<Rcvr&&>(rcvr));
         STDEXEC::start(op);
@@ -180,7 +180,8 @@ namespace experimental::execution
 
       template <class Rcvr>
       STDEXEC_ATTRIBUTE(host, device)
-      auto submit(Rcvr rcvr) const & noexcept -> void
+      auto submit(Rcvr rcvr) const & noexcept(STDEXEC::__nothrow_decay_copyable<Rcvr, Fn const &>)
+        -> void
       {
         auto op = this->connect(static_cast<Rcvr&&>(rcvr));
         STDEXEC::start(op);
