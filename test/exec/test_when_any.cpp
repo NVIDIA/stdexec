@@ -90,6 +90,77 @@ namespace
   };
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct copy_noexcept_move_throws
+  {
+    copy_noexcept_move_throws() = default;
+
+    copy_noexcept_move_throws(copy_noexcept_move_throws const&) noexcept = default;
+
+    copy_noexcept_move_throws(copy_noexcept_move_throws&&) noexcept(false) {}
+  };
+
+  struct throwing_move_error_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class...>
+    static consteval auto get_completion_signatures() noexcept
+      -> ex::completion_signatures<ex::set_error_t(copy_noexcept_move_throws&)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver                   rcvr_;
+      copy_noexcept_move_throws error_;
+
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(rcvr_), error_);
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(rcvr), {}};
+    }
+  };
+
+  template <class Type>
+  struct throwing_move_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    bool* got_value_;
+    bool* got_error_;
+    bool* got_exception_;
+
+    void set_value(Type&&) noexcept
+    {
+      *got_value_ = true;
+    }
+
+    void set_error(Type&&) noexcept
+    {
+      *got_error_ = true;
+    }
+
+    void set_error(std::exception_ptr) noexcept
+    {
+      *got_exception_ = true;
+    }
+
+    void set_stopped() noexcept {}
+
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+  };
+
   struct error_copy_error
   {};
 
@@ -352,6 +423,47 @@ namespace
     throw_on_copy = true;
     ex::start(op);
     CHECK(got_exception);
+  }
+
+  TEST_CASE("when_any reports errors for potentially throwing value moves", "[adaptors][when_any]")
+  {
+    copy_noexcept_move_throws value;
+    auto                    snd = exec::when_any(just_ref{value});
+    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                                 completion_signatures<set_value_t(copy_noexcept_move_throws),
+                                                       set_stopped_t(),
+                                                       set_error_t(std::exception_ptr)>>);
+
+    bool got_value     = false;
+    bool got_error     = false;
+    bool got_exception = false;
+    auto op = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{
+                            &got_value, &got_error, &got_exception});
+    ex::start(op);
+    CHECK(got_value);
+    CHECK_FALSE(got_error);
+    CHECK_FALSE(got_exception);
+  }
+
+  TEST_CASE("when_any reports errors for potentially throwing error moves", "[adaptors][when_any]")
+  {
+    auto snd = exec::when_any(throwing_move_error_sender{});
+    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
+                                 completion_signatures<set_error_t(copy_noexcept_move_throws),
+                                                       set_error_t(std::exception_ptr),
+                                                       set_stopped_t()>>);
+
+    bool got_value     = false;
+    bool got_error     = false;
+    bool got_exception = false;
+    auto op = ex::connect(std::move(snd),
+                          throwing_move_receiver<copy_noexcept_move_throws>{
+                            &got_value, &got_error, &got_exception});
+    ex::start(op);
+    CHECK_FALSE(got_value);
+    CHECK(got_error);
+    CHECK_FALSE(got_exception);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 

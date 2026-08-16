@@ -46,21 +46,27 @@ namespace experimental::execution
     template <class... _Env>
     struct __completions_fn
     {
+      template <class _CvSender>
+      using __raw_completions_t = __completion_signatures_of_t<_CvSender, __env_t<_Env>...>;
+
+      template <class _CvSender>
+      using __decayed_completions_t = __transform_reduce_completion_signatures_t<
+        __raw_completions_t<_CvSender>,
+        __as_rvalues,
+        __as_error,
+        set_stopped_t (*)(),
+        __completion_signature_ptrs_t>;
+
       template <class... _CvSenders>
       using __all_nothrow_decay_copyable_results =
-        __mand<__nothrow_decay_copyable_results_t<
-          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>>...>;
+        __mand<__nothrow_decay_copyable_results_t<__raw_completions_t<_CvSenders>>...,
+               __nothrow_decay_copyable_results_t<__decayed_completions_t<_CvSenders>>...>;
 
       template <class... _CvSenders>
       using __f = __mtry_q<__concat_completion_signatures_t>::__f<
         __eptr_completion_unless_t<__all_nothrow_decay_copyable_results<_CvSenders...>>,
         completion_signatures<set_stopped_t()>,
-        __transform_reduce_completion_signatures_t<
-          __completion_signatures_of_t<_CvSenders, __env_t<_Env>...>,
-          __as_rvalues,
-          __as_error,
-          set_stopped_t (*)(),
-          __completion_signature_ptrs_t>...>;
+        __decayed_completions_t<_CvSenders>...>;
     };
 
     template <class _Env, class... _CvSenders>
