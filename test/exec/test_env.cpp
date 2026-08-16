@@ -34,7 +34,7 @@ namespace
       : throw_on_move_{throw_on_move}
     {}
 
-    throwing_default(throwing_default const&) noexcept = default;
+    throwing_default(throwing_default const &) noexcept = default;
 
     throwing_default(throwing_default&& other)
       : throw_on_move_{other.throw_on_move_}
@@ -102,7 +102,7 @@ namespace
   TEST_CASE("read_with_default connect propagates default move exceptions", "[env]")
   {
     bool throw_on_move = false;
-    auto sndr = exec::read_with_default(missing_query{}, throwing_default{&throw_on_move});
+    auto sndr     = exec::read_with_default(missing_query{}, throwing_default{&throw_on_move});
     throw_on_move = true;
 
     STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(read_with_default_receiver{})));
