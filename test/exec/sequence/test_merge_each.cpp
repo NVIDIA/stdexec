@@ -33,6 +33,8 @@
 #include <test_common/type_helpers.hpp>
 
 #include <array>
+#include <exception>
+#include <optional>
 
 using namespace std::chrono_literals;
 using namespace exec;
@@ -227,6 +229,91 @@ namespace
     auto op = subscribe(std::move(merged), null_receiver{});
   }
 
+  template <class Error>
+  struct error_sequence
+  {
+    using sender_concept        = sequence_sender_tag;
+    using item_types            = exec::item_types<>;
+    using completion_signatures = ex::completion_signatures<ex::set_error_t(Error)>;
+
+    template <ex::receiver Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        ex::set_error(static_cast<Receiver&&>(receiver_), static_cast<Error&&>(error_));
+      }
+
+      Receiver receiver_;
+      Error    error_;
+    };
+
+    template <ex::receiver Receiver>
+    auto subscribe(Receiver receiver) && noexcept -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(receiver), static_cast<Error&&>(error_)};
+    }
+
+    Error error_;
+  };
+
+  struct error_state
+  {
+    std::optional<int> nested_error_{};
+    std::exception_ptr outer_error_{};
+    bool               completed_ = false;
+    bool               stopped_   = false;
+  };
+
+  struct record_error_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    template <ex::sender Item>
+    auto set_next(Item&& item) &
+    {
+      auto record_error = [state = state_]<class Error>(Error&& error) noexcept
+      {
+        if constexpr (std::same_as<std::decay_t<Error>, int>)
+        {
+          state->nested_error_ = static_cast<Error&&>(error);
+        }
+      };
+      return ex::upon_stopped(ex::upon_error(static_cast<Item&&>(item), record_error),
+                              []() noexcept {});
+    }
+
+    void set_value() noexcept
+    {
+      state_->completed_ = true;
+    }
+
+    template <class Error>
+    void set_error(Error&& error) noexcept
+    {
+      if constexpr (std::same_as<std::decay_t<Error>, int>)
+      {
+        state_->nested_error_ = static_cast<Error&&>(error);
+      }
+      else if constexpr (std::same_as<std::decay_t<Error>, std::exception_ptr>)
+      {
+        state_->outer_error_ = static_cast<Error&&>(error);
+      }
+    }
+
+    void set_stopped() noexcept
+    {
+      state_->stopped_ = true;
+    }
+
+    auto get_env() const noexcept -> ex::env<>
+    {
+      return {};
+    }
+
+    error_state* state_;
+  };
+
   TEST_CASE("merge_each - merge two sequence senders of no elements",
             "[sequence_senders][merge_each][empty_sequence]")
   {
@@ -368,31 +455,59 @@ namespace
     CHECK(v.has_value() == true);
   }
 
-// TODO - fix problem with stopping
-#if 0
-  TEST_CASE(
-    "merge_each - merge_each sender stops when a nested sequence fails",
-    "[sequence_senders][static_thread_pool][merge_each][merge][iterate]") {
+  TEST_CASE("merge_each - preserves errors from nested value senders",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(ex::just(ex::just_error(42)));
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
 
-    auto sequences = merge(
-      log_start(range(100, 120), "range 100-120"),
-      ex::just(emits_error(std::runtime_error{"failed sequence "})),
-      log_start(range(200, 220), "range 200-220")
-      );
+    ex::start(op);
 
-    [[maybe_unused]] auto merged = merge_each(std::move(sequences));
-
-    int count = 0;
-
-    auto v = ex::sync_wait(ignore_all_values(merged | then_each([&count](int x){
-      ++count;
-      UNSCOPED_INFO("item: " << x
-        << ", on thread id: " << std::this_thread::get_id());
-    })));
-
-    CHECK(count == 20);
-    CHECK(v.has_value() == false);
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
   }
-#endif  // 0
+
+  TEST_CASE("merge_each - preserves errors from nested sequences", "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        nested_sequence = error_sequence<int>{42};
+    auto        merged          = merge_each(ex::just(std::move(nested_sequence)));
+    auto        op              = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.nested_error_ == 42);
+    CHECK(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("merge_each - preserves errors from the outer sequence",
+            "[sequence_senders][merge_each]")
+  {
+    error_state state{};
+    auto        merged = merge_each(error_sequence<int>{42});
+    auto        op     = subscribe(std::move(merged), record_error_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.outer_error_ != nullptr);
+    bool caught = false;
+    try
+    {
+      std::rethrow_exception(state.outer_error_);
+    }
+    catch (int error)
+    {
+      caught = true;
+      CHECK(error == 42);
+    }
+    CHECK(caught);
+    CHECK_FALSE(state.completed_);
+    CHECK_FALSE(state.stopped_);
+  }
+#endif
 
 }  // namespace

@@ -383,16 +383,12 @@ namespace experimental::execution
       }
       void set_break() noexcept
       {
-        switch (__completion_.exchange(__completion_t::__stopped))
+        auto __expected = __completion_t::__started;
+        if (__completion_.compare_exchange_strong(__expected, __completion_t::__stopped))
         {
-        case __completion_t::__started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We transitioned from started to stopped, so we must request stop. When the state is
+          // already error or stopped, stop has already been requested.
           __nested_stop_.request_stop();
-          break;
-        case __completion_t::__stopped:
-          [[fallthrough]];              // We're already in the "stopped" state. Ignore the break.
-        case __completion_t::__error:;  // We're already in the "error" state. Ignore the break.
         }
       }
 
@@ -455,8 +451,9 @@ namespace experimental::execution
       }
       void error_complete() noexcept override
       {
-        // do not double report error
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        // The error has been delivered as an item. Complete the sequence so the consumer can
+        // publish it, unless the operation was independently stopped.
+        exec::__set_value_unless_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
       void complete_if_none_active() noexcept
