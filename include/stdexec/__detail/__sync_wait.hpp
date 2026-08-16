@@ -216,68 +216,64 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   ////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait]
 
-  //! @brief A sender consumer that synchronously blocks the calling thread
-  //!        until a sender completes and returns its result.
+  //! @brief A sender consumer that synchronously blocks the calling thread until a sender
+  //!        completes and returns its result.
   //!
-  //! @c sync_wait is the bridge from the asynchronous sender world back into
-  //! synchronous code. You give it a sender; it connects the sender to a
-  //! built-in receiver, starts the resulting operation, then drives an
-  //! internal @c run_loop on the calling thread until the operation
-  //! completes. The result is returned as a <tt>std::optional</tt> of a
-  //! tuple of the value-completion datums.
+  //! @c sync_wait is the bridge from the asynchronous sender world back into synchronous
+  //! code. You give it a sender; it connects the sender to a built-in receiver, starts
+  //! the resulting operation, then drives an internal @c run_loop on the calling thread
+  //! until the operation completes. The result is returned as a <tt>std::optional</tt> of
+  //! a tuple of the value-completion datums.
   //!
-  //! This is the most common way to "run" a sender in a top-level program or
-  //! a test — it's what you reach for in a @c main() or when synchronously
-  //! waiting on a single sub-pipeline. For fire-and-forget execution, prefer
-  //! @c exec::start_detached or @c stdexec::spawn.
+  //! This is the most common way to "run" a sender in a top-level program or a test —
+  //! it's what you reach for in a @c main() or when synchronously waiting on a single
+  //! sub-pipeline. For fire-and-forget execution, prefer @c stdexec::spawn with a
+  //! counting scope.
   //!
   //! @code{.cpp}
   //! auto [v] = stdexec::sync_wait(stdexec::just(42)).value();
   //! // v == 42
   //! @endcode
   //!
-  //! See [exec.sync.wait] in the C++26 working draft for the normative
-  //! specification.
+  //! See [exec.sync.wait] in the C++26 working draft for the normative specification.
   //!
   //! **Completion behavior.**
   //!
   //! Given an input sender @c sndr that, in some environment, completes with
   //! exactly one of:
   //!
-  //! | Sender completion             | What @c sync_wait does                                          |
-  //! | ----------------------------- | --------------------------------------------------------------- |
-  //! | @c set_value_t(Vs...)         | Returns @c std::optional<std::tuple<Vs...>> engaged.            |
-  //! | @c set_error_t(std::exception_ptr) | Rethrows the exception via @c std::rethrow_exception.     |
-  //! | @c set_error_t(std::error_code)    | Throws @c std::system_error(error_code).                  |
-  //! | @c set_error_t(E)             | Throws @c E directly.                                           |
-  //! | @c set_stopped_t()            | Returns an empty (disengaged) @c std::optional.                 |
+  //! | Sender completion                  | What @c sync_wait does                                |
+  //! | -----------------------------      | ----------------------------------------------------- |
+  //! | @c set_value_t(Vs...)              | Returns @c std::optional<std::tuple<Vs...>> engaged.  |
+  //! | @c set_error_t(std::exception_ptr) | Rethrows the exception via @c std::rethrow_exception. |
+  //! | @c set_error_t(std::error_code)    | Throws @c std::system_error(error_code).              |
+  //! | @c set_error_t(E)                  | Throws @c E directly.                                 |
+  //! | @c set_stopped_t()                 | Returns an empty (disengaged) @c std::optional.       |
   //!
   //! **Single-value-completion requirement.**
   //!
-  //! @c sync_wait *mandates* that its argument sender have exactly one
-  //! @c set_value_t completion signature. A sender that can succeed in more
-  //! than one way (e.g. <tt>just(1) | when_all(just(std::string{"x"}))</tt>
-  //! yielding two distinct tuples) requires @c sync_wait_with_variant
-  //! instead. The static assertion in @c sync_wait will point this out at
-  //! compile time, with a hint to use the variant form.
+  //! @c sync_wait *mandates* that its argument sender have exactly one @c set_value_t
+  //! completion signature. A sender that can succeed in more than one way (e.g.
+  //! <tt>schedule(get_parallel_scheduler()) | let_stopped([] { return just(42); })</tt>
+  //! yielding two distinct value completions) requires @c sync_wait_with_variant instead.
+  //! The static assertion in @c sync_wait will point this out at compile time, with a
+  //! hint to use the variant form.
   //!
   //! **Delegation scheduler.**
   //!
-  //! The internal @c run_loop is exposed via @c get_delegation_scheduler on
-  //! the receiver's environment, so senders that need to enqueue work back
-  //! onto the waiting thread (e.g. continuations after an I/O wait) can do
-  //! so safely. This is what enables algorithms like @c continues_on to
-  //! return execution to the calling thread of @c sync_wait.
+  //! The internal @c run_loop is exposed via @c get_delegation_scheduler on the
+  //! receiver's environment, so senders that need to enqueue work back onto the waiting
+  //! thread (e.g. continuations after an I/O wait) can do so safely. This is useful to
+  //! guarantee that parallel work will make forward progress.
   //!
   //! **When *not* to use** @c sync_wait **:**
-  //! - On any thread that participates in an event loop or executor — you
-  //!   will block it. @c sync_wait is for top-level synchronization
-  //!   (main, tests, leaf utilities), not pipeline composition.
-  //! - When you don't need the result. Use @c exec::start_detached or
-  //!   @c stdexec::spawn for fire-and-forget.
+  //! - On any thread that participates in an event loop or executor — you will block it.
+  //!   @c sync_wait is for top-level synchronization (main, tests, leaf utilities), not
+  //!   pipeline composition.
+  //! - When you don't need the result. Use @c stdexec::spawn with a counting scope for
+  //!   fire-and-forget.
   //!
-  //! @see stdexec::sync_wait_with_variant  — sync_wait for multi-completion senders
-  //! @see exec::start_detached             — fire-and-forget consumer (no result)
+  //! @see stdexec::sync_wait_with_variant  — @c sync_wait for multi-completion senders
   //! @see stdexec::spawn                   — fire-and-forget into a scope
   //! @see stdexec::spawn_future            — spawn into a scope and observe via a sender
   struct sync_wait_t
