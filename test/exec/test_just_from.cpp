@@ -31,7 +31,7 @@ namespace
       : should_throw_(&should_throw)
     {}
 
-    throwing_move_callable(throwing_move_callable const &other) noexcept
+    throwing_move_callable(throwing_move_callable const & other) noexcept
       : should_throw_(other.should_throw_)
     {}
 
@@ -163,7 +163,7 @@ namespace
     global_int = 42;
     auto s     = exec::just_from([](auto sink) noexcept { return sink(global_int); })
            | ex::then(
-               [](int &i) noexcept
+               [](int& i) noexcept
                {
                  CHECK(&i == &global_int);
                  return std::ref(i);
