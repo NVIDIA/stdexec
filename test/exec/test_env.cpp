@@ -20,6 +20,51 @@
 
 namespace
 {
+  struct missing_query : STDEXEC::__query<missing_query>
+  {
+    using STDEXEC::__query<missing_query>::operator();
+  };
+
+  struct default_move_error
+  {};
+
+  struct throwing_default
+  {
+    explicit throwing_default(bool* throw_on_move) noexcept
+      : throw_on_move_{throw_on_move}
+    {}
+
+    throwing_default(throwing_default const&) noexcept = default;
+
+    throwing_default(throwing_default&& other)
+      : throw_on_move_{other.throw_on_move_}
+    {
+      if (*throw_on_move_)
+      {
+        throw default_move_error{};
+      }
+    }
+
+    bool* throw_on_move_;
+  };
+
+  struct read_with_default_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    template <class _Value>
+    void set_value(_Value&&) noexcept
+    {}
+
+    void set_error(std::exception_ptr) noexcept {}
+    void set_stopped() noexcept {}
+
+    auto get_env() const noexcept -> STDEXEC::env<>
+    {
+      return {};
+    }
+  };
+
   // Two dummy properties:
   constexpr struct Foo
     : STDEXEC::__query<Foo>
@@ -52,5 +97,15 @@ namespace
     auto e4 = exec::without(e3, foo);
     STATIC_REQUIRE(!std::invocable<Foo, decltype(e4)>);
     CHECK(bar(e4) == 43);
+  }
+
+  TEST_CASE("read_with_default connect propagates default move exceptions", "[env]")
+  {
+    bool throw_on_move = false;
+    auto sndr = exec::read_with_default(missing_query{}, throwing_default{&throw_on_move});
+    throw_on_move = true;
+
+    STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(read_with_default_receiver{})));
+    CHECK_THROWS_AS(std::move(sndr).connect(read_with_default_receiver{}), default_move_error);
   }
 }  // namespace

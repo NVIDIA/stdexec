@@ -177,7 +177,10 @@ namespace experimental::execution
 
       template <__decays_to<__sender> _Self, class _Receiver>
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr)
-        noexcept(std::is_nothrow_move_constructible_v<_Receiver>)
+        noexcept(__nothrow_constructible_from<
+          __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>,
+          __default_t<env_of_t<_Receiver>>,
+          _Receiver>)
           -> __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>
       {
         using __opstate_t = __opstate<_Query, __default_t<env_of_t<_Receiver>>, _Receiver>;
