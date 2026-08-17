@@ -701,6 +701,26 @@ namespace
     ex::start(op);
   }
 
+  TEST_CASE("bulk_chunked function is not called with a zero shape", "[adaptors][bulk]")
+  {
+    int called{};
+
+    auto snd = ex::just() | ex::bulk_chunked(ex::seq, 0, [&called](int, int) { called++; });
+    ex::sync_wait(std::move(snd));
+
+    CHECK(called == 0);
+  }
+
+  TEST_CASE("bulk_chunked function is not called with a negative shape", "[adaptors][bulk]")
+  {
+    int called{};
+
+    auto snd = ex::just() | ex::bulk_chunked(ex::seq, -1, [&called](int, int) { called++; });
+    ex::sync_wait(std::move(snd));
+
+    CHECK(called == 0);
+  }
+
   TEST_CASE("bulk_unchunked function in not called on stop", "[adaptors][bulk]")
   {
     constexpr int n = 2;
