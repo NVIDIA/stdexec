@@ -210,6 +210,19 @@ endif()
 file(GLOB_RECURSE exec_headers CONFIGURE_DEPENDS include/exec/*.hpp)
 file(GLOB_RECURSE stdexec_headers CONFIGURE_DEPENDS include/stdexec/*.hpp)
 
+# exec/asio/*.hpp isn't really part of stdexec's own interface: it requires
+# Boost.Asio (or standalone Asio), and that dependency is only ever wired
+# onto the separate asioexec INTERFACE library (see
+# cmake/Modules/ConfigureASIO.cmake), never onto stdexec itself. Leaving
+# these files in stdexec's FILE_SET would make VERIFY_INTERFACE_HEADER_SETS
+# try to compile them without the include paths they need - and since
+# SKIP_LINTING is a per-file property, not a per-target one, excluding them
+# there would also suppress the real, correctly-scoped verification that
+# ConfigureASIO.cmake sets up on the asioexec target itself. asioexec's own
+# install() rule already covers these files, so dropping them from stdexec's
+# FILE_SET here doesn't remove them from anywhere a consumer would look.
+list(FILTER exec_headers EXCLUDE REGEX "/exec/asio/")
+
 target_sources(
   stdexec
   PUBLIC FILE_SET
