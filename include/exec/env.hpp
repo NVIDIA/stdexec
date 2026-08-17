@@ -61,16 +61,20 @@ namespace experimental::execution
     struct __without_t
     {
       template <class _Env, class _Query>
-      constexpr auto operator()(_Env&& __env, _Query) const noexcept
+        requires STDEXEC::__queryable_with<_Env, _Query>
+      constexpr auto operator()(_Env&& __env, _Query) const
+        noexcept(STDEXEC::__nothrow_constructible_from<__without<_Env, _Query>, _Env>)
+          -> __without<_Env, _Query>
       {
-        if constexpr (STDEXEC::__queryable_with<_Env, _Query>)
-        {
-          return __without<_Env, _Query>{static_cast<_Env&&>(__env)};
-        }
-        else
-        {
-          return static_cast<_Env&&>(__env);
-        }
+        return __without<_Env, _Query>{static_cast<_Env&&>(__env)};
+      }
+
+      template <class _Env, class _Query>
+        requires(!STDEXEC::__queryable_with<_Env, _Query>)
+      constexpr auto operator()(_Env&& __env, _Query) const
+        noexcept(STDEXEC::__nothrow_constructible_from<_Env, _Env>) -> _Env
+      {
+        return static_cast<_Env&&>(__env);
       }
     };
 
