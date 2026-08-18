@@ -70,9 +70,8 @@ namespace experimental::execution
       }
 
       template <class _Env, class _Query>
-        requires(!STDEXEC::__queryable_with<_Env, _Query>)
       constexpr auto operator()(_Env&& __env, _Query) const
-        noexcept(STDEXEC::__nothrow_constructible_from<_Env, _Env>) -> _Env
+        noexcept(STDEXEC::__nothrow_move_constructible<_Env>) -> _Env
       {
         return static_cast<_Env&&>(__env);
       }
