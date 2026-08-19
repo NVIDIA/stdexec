@@ -439,7 +439,8 @@ namespace nv::execution
         return get_stream_provider(env)->own_stream_.value();
       }
 
-      STDEXEC_ATTRIBUTE(host, device) auto operator()() const noexcept
+      STDEXEC_ATTRIBUTE(host, device)
+      auto operator()() const noexcept
       {
         return STDEXEC::read_env(*this);
       }

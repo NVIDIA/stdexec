@@ -1,8 +1,12 @@
-#include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
 
+#include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 namespace ex = STDEXEC;
 
@@ -36,7 +40,7 @@ namespace
                    }
                    return ex::just();
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -61,7 +65,7 @@ namespace
                    }
                    return ex::just();
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -87,7 +91,7 @@ namespace
                    }
                    return ex::just();
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -98,7 +102,7 @@ namespace
 
     auto snd = ex::schedule(stream_ctx.get_scheduler())
              | ex::let_value([=]() { return ex::just(is_on_gpu()); });
-    auto const [result] = STDEXEC::sync_wait(std::move(snd)).value();
+    auto const [result] = ex::sync_wait(std::move(snd)).value();
 
     REQUIRE(result == 1);
   }
@@ -130,7 +134,7 @@ namespace
                      flags.set(1);
                    }
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -153,7 +157,7 @@ namespace
 
                    return ex::schedule(sch);
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -165,7 +169,9 @@ namespace
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
-    auto snd = ex::schedule(sch) | ex::let_value([] { return nvexec::get_stream(); })
+    auto snd = ex::schedule(sch)                                                                //
+             | ex::let_value([] { return nvexec::get_stream(); })                               //
+             | exec::write_attrs(ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch})  //
              | ex::then(
                  [flags](cudaStream_t stream)
                  {
@@ -175,7 +181,7 @@ namespace
                    }
                    return stream;
                  });
-    auto [stream] = STDEXEC::sync_wait(std::move(snd)).value();
+    auto [stream] = ex::sync_wait(std::move(snd)).value();
     static_assert(std::same_as<decltype(+stream), cudaStream_t>);
 
     REQUIRE(flags_storage.all_set_once());
