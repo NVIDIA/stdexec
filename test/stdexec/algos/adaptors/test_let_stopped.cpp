@@ -15,6 +15,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 #include <stdexec/execution.hpp>
 
 #include <exec/env.hpp>
@@ -231,10 +232,11 @@ namespace
 
   TEST_CASE("let_stopped can be customized", "[adaptors][let_stopped]")
   {
-    basic_inline_scheduler<let_stopped_test_domain> sched;
+    auto attrs = ex::prop{ex::get_completion_domain<ex::set_stopped_t>, let_stopped_test_domain{}};
 
     // The customization will return a different stopped
-    auto snd = ex::just(std::string{"hello"}) | ex::continues_on(sched)
+    auto snd = ex::schedule(ex::get_parallel_scheduler())  //
+             | exec::write_attrs(attrs)                    //
              | ex::let_stopped([] { return ex::just(std::string{"stopped"}); });
     wait_for_value(std::move(snd), std::string{"Don't stop me now"});
   }
