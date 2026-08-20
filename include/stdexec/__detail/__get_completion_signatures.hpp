@@ -35,6 +35,10 @@ import stdexec;
 #  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+#    include <meta>
+#  endif
+
 #  include "__prologue.hpp"
 
 namespace STDEXEC
@@ -61,6 +65,16 @@ namespace STDEXEC
   STDEXEC_PRAGMA_IGNORE_MSVC(4913)
 
   struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION;
+
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender>
+  consteval std::meta::info get_completion_signatures_type();
+
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender, class _Env>
+  consteval std::meta::info get_completion_signatures_type();
+#  endif
 
   namespace __cmplsigs
   {
@@ -162,6 +176,28 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+    template <class _Sender, class... _Env>
+    concept __has_get_completion_signatures_type = requires {
+      {
+        STDEXEC_REMOVE_REFERENCE(_Sender)
+        ::template get_completion_signatures_type<_Sender, _Env...>()
+      } -> __std::same_as<std::meta::info>;
+    };
+
+    template <class _Sender, class... _Env>
+    consteval bool __nothrow_get_completion_signatures_type() noexcept
+    try
+    {
+      (void) STDEXEC::get_completion_signatures_type<_Sender, _Env...>();
+      return true;
+    }
+    catch (...)
+    {
+      return false;
+    }
+#  endif
+
     template <class _Sender, class _Env>
     concept __with = __with_legacy_static_member<_Sender, _Env>              //
                   || __with_legacy_member<_Sender, _Env>                     //
@@ -170,7 +206,11 @@ namespace STDEXEC
                   || __with_consteval_static_member<_Sender>                 //
                   || __with_legacy_tag_invoke<_Sender, _Env>                 //
                   || __with_legacy_non_dependent_tag_invoke<_Sender, _Env>   //
-                  || __with_co_await<_Sender, _Env>;
+                  || __with_co_await<_Sender, _Env>
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+                  || __has_get_completion_signatures_type<_Sender, _Env>
+#  endif
+      ;
   }  // namespace __cmplsigs
 
   template <class _Sender, class _Env>
@@ -354,7 +394,26 @@ namespace STDEXEC
   template <class _Sender>
   consteval auto get_completion_signatures()
   {
-    return __cmplsigs::__get_completion_signatures_helper<_Sender>();
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+    if constexpr (__cmplsigs::__has_get_completion_signatures_type<_Sender>)
+    {
+      if constexpr (__cmplsigs::__nothrow_get_completion_signatures_type<_Sender>())
+      {
+        constexpr std::meta::info __completions =
+          STDEXEC::get_completion_signatures_type<_Sender>();
+        return typename[:__completions:]{};
+      }
+      else
+      {
+        (void) STDEXEC::get_completion_signatures_type<_Sender>();
+        return completion_signatures<>{};
+      }
+    }
+    else
+#  endif
+    {
+      return __cmplsigs::__get_completion_signatures_helper<_Sender>();
+    }
   }
 
   //! @brief Overload of @ref get_completion_signatures that takes an
@@ -377,8 +436,62 @@ namespace STDEXEC
   {
     using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
     static_assert(!__merror<__new_sndr_t>);
-    return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+    if constexpr (__cmplsigs::__has_get_completion_signatures_type<__new_sndr_t, _Env>)
+    {
+      if constexpr (__cmplsigs::__nothrow_get_completion_signatures_type<_Sender, _Env>())
+      {
+        constexpr std::meta::info __completions =
+          STDEXEC::get_completion_signatures_type<_Sender, _Env>();
+        return typename[:__completions:]{};
+      }
+      else
+      {
+        (void) STDEXEC::get_completion_signatures_type<_Sender, _Env>();
+        return completion_signatures<>{};
+      }
+    }
+    else
+#  endif
+    {
+      return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
+    }
   }
+
+#  if !STDEXEC_NO_STDCPP_REFLECTION()
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender>
+  consteval std::meta::info get_completion_signatures_type()
+  {
+    if constexpr (__cmplsigs::__has_get_completion_signatures_type<_Sender>)
+    {
+      return STDEXEC_REMOVE_REFERENCE(_Sender)::template get_completion_signatures_type<_Sender>();
+    }
+    else
+    {
+      auto __completions = STDEXEC::get_completion_signatures<_Sender>();
+      return ^^decltype(__completions);
+    }
+  }
+
+  STDEXEC_MODULE_EXPORT
+  template <class _Sender, class _Env>
+  consteval std::meta::info get_completion_signatures_type()
+  {
+    using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
+    static_assert(!__merror<__new_sndr_t>);
+    if constexpr (__cmplsigs::__has_get_completion_signatures_type<__new_sndr_t, _Env>)
+    {
+      return STDEXEC_REMOVE_REFERENCE(
+        __new_sndr_t)::template get_completion_signatures_type<__new_sndr_t, _Env>();
+    }
+    else
+    {
+      auto __completions = STDEXEC::get_completion_signatures<_Sender, _Env>();
+      return ^^decltype(__completions);
+    }
+  }
+#  endif
 
   // Legacy interface:
   STDEXEC_MODULE_EXPORT_AUTHORING
