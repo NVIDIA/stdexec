@@ -210,6 +210,19 @@ endif()
 file(GLOB_RECURSE exec_headers CONFIGURE_DEPENDS include/exec/*.hpp)
 file(GLOB_RECURSE stdexec_headers CONFIGURE_DEPENDS include/stdexec/*.hpp)
 
+# exec/asio/*.hpp isn't really part of stdexec's own interface: it requires
+# Boost.Asio (or standalone Asio), and that dependency is only ever wired
+# onto the separate asioexec INTERFACE library (see
+# cmake/Modules/ConfigureASIO.cmake), never onto stdexec itself. Leaving
+# these files in stdexec's FILE_SET would make VERIFY_INTERFACE_HEADER_SETS
+# try to compile them without the include paths they need - and since
+# SKIP_LINTING is a per-file property, not a per-target one, excluding them
+# there would also suppress the real, correctly-scoped verification that
+# ConfigureASIO.cmake sets up on the asioexec target itself. asioexec's own
+# install() rule already covers these files, so dropping them from stdexec's
+# FILE_SET here doesn't remove them from anywhere a consumer would look.
+list(FILTER exec_headers EXCLUDE REGEX "/exec/asio/")
+
 target_sources(
   stdexec
   PUBLIC FILE_SET
@@ -262,6 +275,40 @@ set_target_properties(stdexec PROPERTIES VERSION "${STDEXEC_VERSION}"
 if(STDEXEC_BUILD_TESTS)
   # Test that headers are self-contained
   set_target_properties(stdexec PROPERTIES VERIFY_INTERFACE_HEADER_SETS TRUE)
+
+  # A handful of headers are not self-contained by design; exclude them from
+  # verification rather than treating that as a bug.
+
+  # These headers bracket a translation unit's warning/pragma state.
+  # __epilogue.hpp pops state that __prologue.hpp is documented to push, so it
+  # cannot compile on its own.
+  set_source_files_properties(include/stdexec/__detail/__epilogue.hpp
+                               PROPERTIES SKIP_LINTING ON)
+
+  # This header has a documented precondition that includers define
+  # STDEXEC_PARALLEL_SCHEDULER_INLINE before including it.
+  set_source_files_properties(
+    include/stdexec/__detail/__parallel_scheduler_default_impl_entry.hpp
+    PROPERTIES SKIP_LINTING ON)
+
+  # These headers require an optional external dependency that isn't present
+  # in every configuration; only verify them when the corresponding feature
+  # is actually enabled.
+  if(NOT STDEXEC_ENABLE_TBB)
+    set_source_files_properties(include/exec/tbb/tbb_thread_pool.hpp
+                                 PROPERTIES SKIP_LINTING ON)
+  endif()
+  if(NOT STDEXEC_ENABLE_TASKFLOW)
+    set_source_files_properties(include/exec/taskflow/taskflow_thread_pool.hpp
+                                 PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are Windows-only.
+  if(NOT WIN32)
+    set_source_files_properties(
+      include/exec/windows/filetime_clock.hpp
+      include/exec/windows/windows_thread_pool.hpp PROPERTIES SKIP_LINTING ON)
+  endif()
 endif()
 
 # Declare the public include directories

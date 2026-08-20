@@ -113,6 +113,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ matrix.build }} \
             -DCMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" \
             -DSTDEXEC_ENABLE_TBB:BOOL=${{ !contains(matrix.cxxflags, '-fsanitize') && !contains(matrix.name, 'modules') }} \
+            -DSTDEXEC_ENABLE_TASKFLOW:BOOL=${{ matrix.name == 'CPU (clang 22, Debug)' }} \
             -DSTDEXEC_ENABLE_ASIO:BOOL=TRUE \
             -DSTDEXEC_ASIO_IMPLEMENTATION:STRING=boost \
             -DCMAKE_CXX_STANDARD:STRING=${{ matrix.cxxstd }} \
@@ -127,6 +128,23 @@ jobs:
           # Run a serial build if we're building the modular build because it tends
           # to result in fewer Clang ICEs.
           cmake --build build -v -j ${{ contains(matrix.name, 'modules') && 1 || 512 }};
+
+          # Verify that public headers are self-contained. This alone doesn't
+          # depend on the rest of the build matrix, but the SKIP_LINTING
+          # exclusions in CMakeLists.txt for optional-dependency and
+          # platform-specific headers do: run it only here and it would
+          # silently never compile exec/taskflow/taskflow_thread_pool.hpp,
+          # exec/windows/filetime_clock.hpp, or exec/windows/windows_thread_pool.hpp
+          # anywhere in CI, defeating the point of checking them at all. So:
+          # Taskflow is force-enabled above just for this one job (verified
+          # locally that STDEXEC_ENABLE_TASKFLOW builds clean via CPM, same as
+          # the existing Boost/ASIO fetch), which covers the TBB and Taskflow
+          # exclusions between them; the Windows-only headers are covered
+          # separately by the equivalent step added to test-windows.ps1, which
+          # runs on an actual Windows job where WIN32 is true.
+          if [ "${{ matrix.name }}" = "CPU (clang 22, Debug)" ]; then
+            cmake --build build -v --target all_verify_interface_header_sets;
+          fi
 
           # Print sccache stats
           sccache -s;

@@ -174,6 +174,29 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER AND NOT STDEXEC_ENABLE_CUDA)
                        30)
 endif()
 
+# __detail/__parallel_scheduler_default_impl_entry.hpp is excluded from
+# VERIFY_INTERFACE_HEADER_SETS because it has a documented precondition
+# (includers must define STDEXEC_PARALLEL_SCHEDULER_INLINE first) that the
+# automatic verification can't express. Compile it here instead, with that
+# precondition satisfied.
+#
+# This is a plain (non-EXCLUDE_FROM_ALL) OBJECT library rather than a
+# dependency hooked onto all_verify_interface_header_sets: CMake creates that
+# aggregate target itself only once the whole build has been configured
+# (confirmed directly - `if(TARGET all_verify_interface_header_sets)` is
+# still false at this point in test/CMakeLists.txt, even though the property
+# enabling it was set earlier in the root CMakeLists.txt), so there's no
+# handle to attach a dependency to from here. Building it unconditionally is
+# simpler and just as effective: it's one small translation unit, so the
+# added cost per build is negligible.
+add_library(verify_parallel_scheduler_default_impl_entry OBJECT
+            stdexec/detail/verify_parallel_scheduler_default_impl_entry.cpp)
+target_link_libraries(verify_parallel_scheduler_default_impl_entry
+                      PRIVATE STDEXEC::stdexec)
+set_target_properties(
+  verify_parallel_scheduler_default_impl_entry
+  PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+
 add_subdirectory(exec)
 
 if(STDEXEC_ENABLE_CUDA)
