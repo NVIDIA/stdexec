@@ -839,6 +839,7 @@ namespace STDEXEC
   struct __assertion_failure
   {};
 
+  STDEXEC_ATTRIBUTE(noreturn, host, device)
   inline void __throw_assertion_failure()
   {
     STDEXEC_THROW(__assertion_failure{});
