@@ -25,6 +25,7 @@
 namespace
 {
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   struct begin_error
   {};
 
@@ -44,6 +45,7 @@ namespace
 
     std::array<int, 1> values{0};
   };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   template <class Receiver>
   struct sum_item_rcvr
@@ -160,6 +162,7 @@ namespace
     CHECK(sum == (42 + 43 + 44 + 1));
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("iterate - subscribe propagates begin exceptions", "[sequence_senders][iterate]")
   {
     auto iterate = exec::iterate(begin_throws_range{});
@@ -168,5 +171,6 @@ namespace
     STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
   }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
 }  // namespace
