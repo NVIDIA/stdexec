@@ -20,6 +20,7 @@
 
 namespace
 {
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   struct missing_query : STDEXEC::__query<missing_query>
   {
     using STDEXEC::__query<missing_query>::operator();
@@ -64,6 +65,7 @@ namespace
       return {};
     }
   };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   // Two dummy properties:
   constexpr struct Foo
@@ -99,6 +101,7 @@ namespace
     CHECK(bar(e4) == 43);
   }
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("read_with_default connect propagates default move exceptions", "[env]")
   {
     bool throw_on_move = false;
@@ -108,4 +111,5 @@ namespace
     STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(read_with_default_receiver{})));
     CHECK_THROWS_AS(std::move(sndr).connect(read_with_default_receiver{}), default_move_error);
   }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 }  // namespace
