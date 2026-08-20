@@ -36,9 +36,24 @@ namespace asioexec
                                         "exec::asio::completion_token_t "
                                         "instead.")]] = exec::asio::completion_token_t;
 
+  using thread_unsafe_completion_token_t
+    [[deprecated("asioexec::thread_unsafe_completion_token_t "
+                 "is deprecated. Please use "
+                 "exec::asio::thread_unsafe_completion_token_"
+                 "t instead.")]] = exec::asio::thread_unsafe_completion_token_t;
+
   inline constexpr auto const & completion_token [[deprecated("asioexec::completion_token is "
                                                               "deprecated. Please use "
                                                               "exec::asio::completion_token "
                                                               "instead.")]]
   = exec::asio::completion_token;
+
+  inline constexpr auto const & thread_unsafe_completion_token [[deprecated("asioexec::thread_"
+                                                                            "unsafe_completion_"
+                                                                            "token is deprecated. "
+                                                                            "Please use "
+                                                                            "exec::asio::thread_"
+                                                                            "unsafe_completion_"
+                                                                            "token instead.")]]
+  = exec::asio::thread_unsafe_completion_token;
 }  // namespace asioexec
