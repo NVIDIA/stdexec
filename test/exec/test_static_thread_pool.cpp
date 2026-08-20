@@ -173,7 +173,9 @@ TEST_CASE("schedule_all on static_thread_pool accepts move-only ranges",
 {
   exec::static_thread_pool pool{1};
   int                      sum = 0;
-  auto sender = exec::schedule_all(pool, std::views::all(std::vector<int>{1, 2, 3}))
+  auto sender = exec::schedule_all(
+    pool,
+    std::ranges::owning_view<std::vector<int>>{std::vector<int>{1, 2, 3}})
               | exec::transform_each(ex::then([&sum](int value) noexcept { sum += value; }))
               | exec::ignore_all_values();
 
