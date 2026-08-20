@@ -142,11 +142,46 @@ jobs:
           path: /tmp/sccache*.log
           compression-level: 9
 
+  valgrind-run-loop:
+    runs-on: ubuntu-latest
+    name: CPU (gcc 14, Valgrind run_loop)
+    container:
+      options: -u root
+      image: rapidsai/devcontainers:26.08-cpp-gcc14-cuda12.9
+    steps:
+      - name: Checkout stdexec
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Valgrind
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends valgrind
+
+      - name: Build run_loop reproducer
+        run: |
+          cmake -S . -B build -GNinja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_EXTENSIONS=OFF \
+            -DSTDEXEC_BUILD_TESTS=ON
+          cmake --build build --target test.run_loop_finish_repro -v
+
+      - name: Run run_loop reproducer under Valgrind
+        run: |
+          timeout 60s valgrind \
+            --fair-sched=no \
+            --error-exitcode=1 \
+            --quiet \
+            ./build/test/test.run_loop_finish_repro
+
   ci-cpu:
     runs-on: ubuntu-latest
     name: CI (CPU)
     needs:
       - build-cpu
+      - valgrind-run-loop
     steps:
       - run: echo "CI (CPU) success"
 

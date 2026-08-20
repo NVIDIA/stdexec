@@ -69,8 +69,21 @@ namespace STDEXEC
         }
         // drain the queue, taking care to execute any tasks that get added while
         // executing the remaining tasks (also wait for other tasks that might still be in flight):
-        while (__execute_all() || __task_count_.load(__std::memory_order_acquire) > 0)
-          ;
+        while (true)
+        {
+          if (__execute_all())
+          {
+            continue;
+          }
+
+          if (__task_count_.load(__std::memory_order_acquire) == 0)
+          {
+            break;
+          }
+
+          // Another thread still has work in flight. Let it make progress.
+          std::this_thread::yield();
+        }
       }
 
       STDEXEC_ATTRIBUTE(host, device)

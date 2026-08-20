@@ -120,6 +120,15 @@ target_compile_options(
     $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
 target_link_libraries(common_test_settings
                       INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+
+add_executable(test.run_loop_finish_repro EXCLUDE_FROM_ALL
+               run_loop_finish_repro.cpp)
+add_compile_diagnostics(test.run_loop_finish_repro)
+target_link_libraries(
+  test.run_loop_finish_repro
+  PUBLIC STDEXEC::stdexec stdexec_executable_flags
+  PRIVATE common_test_settings)
+
 # target_compile_definitions( common_test_settings INTERFACE
 # $<$<NOT:$<AND:$<CXX_COMPILER_ID:NVHPC>,$<COMPILE_LANGUAGE:CXX>>>:STDEXEC_ENABLE_EXTRA_TYPE_CHECKING>)
 
