@@ -10,22 +10,56 @@ namespace
 {
   class pinned_memory_resource_t : public std::pmr::memory_resource
   {
+    std::size_t allocations_{};
+    std::size_t deallocations_{};
+
     void* do_allocate(std::size_t bytes, std::size_t) override
     {
       void* storage{};
       STDEXEC_TRY_CUDA_API(cudaMallocHost(&storage, bytes));
+      ++allocations_;
       return storage;
     }
 
     void do_deallocate(void* storage, std::size_t, std::size_t) override
     {
       STDEXEC_ASSERT_CUDA_API(cudaFreeHost(storage));
+      ++deallocations_;
     }
 
     auto do_is_equal(std::pmr::memory_resource const & other) const noexcept -> bool override
     {
       return this == &other;
     }
+
+   public:
+    auto allocations() const noexcept -> std::size_t
+    {
+      return allocations_;
+    }
+
+    auto deallocations() const noexcept -> std::size_t
+    {
+      return deallocations_;
+    }
+  };
+
+  struct noop_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    auto get_env() const noexcept -> STDEXEC::env<>
+    {
+      return {};
+    }
+
+    void set_value() noexcept {}
+
+    template <class Error>
+    void set_error(Error&&) noexcept
+    {}
+
+    void set_stopped() noexcept {}
   };
 
   class destruction_probe_t
@@ -66,6 +100,24 @@ namespace
     auto sndr = STDEXEC::just() | STDEXEC::continues_on(ctx.get_scheduler());
 
     STDEXEC::sync_wait(std::move(sndr));
+  }
+
+  TEST_CASE("continues_on frees its task when the operation is not started",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    pinned_memory_resource_t pinned_memory;
+    nvexec::stream_context   ctx;
+    auto                     scheduler = ctx.get_scheduler();
+    scheduler.ctx_.pinned_resource_    = &pinned_memory;
+
+    auto sndr = STDEXEC::just() | STDEXEC::continues_on(scheduler);
+    {
+      auto op = STDEXEC::connect(std::move(sndr), noop_receiver{});
+      (void) op;
+    }
+
+    REQUIRE(pinned_memory.allocations() > 0);
+    REQUIRE(pinned_memory.allocations() == pinned_memory.deallocations());
   }
 
   TEST_CASE("continues on after schedule", "[cuda][stream][adaptors][continues_on]")
