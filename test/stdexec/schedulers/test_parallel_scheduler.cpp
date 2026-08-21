@@ -140,6 +140,13 @@ TEST_CASE("simple chain task on parallel scheduler", "[scheduler][parallel_sched
   (void) snd2;
 }
 
+TEST_CASE("parallel scheduler used in an already scheduled environment",
+          "[scheduler][parallel_scheduler]")
+{
+  auto snd = ex::schedule(ex::get_parallel_scheduler());
+  ex::sync_wait(ex::starts_on(ex::get_parallel_scheduler(), snd));
+}
+
 TEST_CASE("checks stop_token before starting the work", "[scheduler][parallel_scheduler]")
 {
   STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
@@ -303,15 +310,15 @@ TEST_CASE("bulk_chunked on parallel_scheduler performs chunking", "[scheduler][p
 
   STDEXEC::parallel_scheduler sched    = STDEXEC::get_parallel_scheduler();
   auto                        bulk_snd = ex::bulk_chunked(ex::schedule(sched),
-                                   ex::par,
-                                   10'000,
-                                   [&](int b, int e)
-                                   {
+                                                          ex::par,
+                                                          10'000,
+                                                          [&](int b, int e)
+                                                          {
                                      if (e - b > 1)
                                      {
                                        has_chunking = true;
                                      }
-                                   });
+                                                          });
   ex::sync_wait(std::move(bulk_snd));
 
   REQUIRE(has_chunking.load());
@@ -325,15 +332,15 @@ TEST_CASE("bulk_chunked on parallel_scheduler covers the entire range",
 
   STDEXEC::parallel_scheduler sched    = STDEXEC::get_parallel_scheduler();
   auto                        bulk_snd = ex::bulk_chunked(ex::schedule(sched),
-                                   ex::par,
-                                   num_tasks,
-                                   [&](size_t b, size_t e)
-                                   {
+                                                          ex::par,
+                                                          num_tasks,
+                                                          [&](size_t b, size_t e)
+                                                          {
                                      for (auto i = b; i < e; ++i)
                                      {
                                        covered[i] = true;
                                      }
-                                   });
+                                                          });
   ex::sync_wait(std::move(bulk_snd));
 
   for (size_t i = 0; i < num_tasks; ++i)
@@ -350,14 +357,14 @@ TEST_CASE("bulk_chunked with seq on parallel_scheduler doesn't do chunking",
 
   STDEXEC::parallel_scheduler sched    = STDEXEC::get_parallel_scheduler();
   auto                        bulk_snd = ex::bulk_chunked(ex::schedule(sched),
-                                   ex::seq,
-                                   num_tasks,
-                                   [&](size_t b, size_t e)
-                                   {
+                                                          ex::seq,
+                                                          num_tasks,
+                                                          [&](size_t b, size_t e)
+                                                          {
                                      REQUIRE(b == 0);
                                      REQUIRE(e == num_tasks);
                                      execution_count++;
-                                   });
+                                                          });
   ex::sync_wait(std::move(bulk_snd));
 
   REQUIRE(execution_count.load() == 1);
@@ -422,7 +429,7 @@ struct terminal_bulk_scheduler_backend_impl : scr::parallel_scheduler_backend
 {
   explicit terminal_bulk_scheduler_backend_impl(bulk_completion_kind completion) noexcept
     : completion_(completion)
-  {}
+  { }
 
   void schedule(scr::receiver_proxy& r, std::span<std::byte>) noexcept override
   {
@@ -475,7 +482,7 @@ struct backend_factory_guard
 {
   explicit backend_factory_guard(scr::__parallel_scheduler_backend_factory_t factory)
     : old_factory_(scr::set_parallel_scheduler_backend(factory))
-  {}
+  { }
 
   ~backend_factory_guard()
   {
@@ -555,7 +562,7 @@ struct tracked_value_sender
   tracked_value_sender(STDEXEC::parallel_scheduler sched, std::shared_ptr<std::atomic<int>> live)
     : sched_(std::move(sched))
     , value_(std::move(live))
-  {}
+  { }
 
   auto get_env() const noexcept -> env
   {
@@ -624,7 +631,7 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values",
   {
     auto sched = STDEXEC::get_parallel_scheduler();
     auto snd   = tracked_value_sender{sched, live}
-             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+               | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept { });
 
     auto result = ex::sync_wait(std::move(snd));
     REQUIRE(result.has_value());
@@ -642,8 +649,8 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after e
 
   {
     STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
-    auto                        snd   = tracked_value_sender{sched, live}
-             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+    auto snd = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept { });
 
     CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
   }
@@ -660,8 +667,8 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after s
 
   {
     STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
-    auto                        snd   = tracked_value_sender{sched, live}
-             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept {});
+    auto snd = tracked_value_sender{sched, live}
+             | ex::bulk(ex::par, 16, [](std::size_t, destructor_tracked_value&) noexcept { });
 
     auto result = ex::sync_wait(std::move(snd));
     CHECK_FALSE(result.has_value());
@@ -675,13 +682,13 @@ TEST_CASE("empty environment always returns nullopt for any query",
 {
   struct my_receiver : scr::receiver_proxy
   {
-    void __query_env(ex::__type_index, ex::__type_index, void*) const noexcept override {}
+    void __query_env(ex::__type_index, ex::__type_index, void*) const noexcept override { }
 
-    void set_value() noexcept override {}
+    void set_value() noexcept override { }
 
-    void set_error(std::exception_ptr) noexcept override {}
+    void set_error(std::exception_ptr) noexcept override { }
 
-    void set_stopped() noexcept override {}
+    void set_stopped() noexcept override { }
   };
 
   my_receiver rcvr{};
@@ -696,11 +703,11 @@ TEST_CASE("environment with a stop token can expose its stop token",
 {
   struct my_receiver : ex::parallel_scheduler_replacement::receiver_proxy
   {
-    void set_value() noexcept override {}
+    void set_value() noexcept override { }
 
-    void set_error(std::exception_ptr) noexcept override {}
+    void set_error(std::exception_ptr) noexcept override { }
 
-    void set_stopped() noexcept override {}
+    void set_stopped() noexcept override { }
 
    protected:
     void
