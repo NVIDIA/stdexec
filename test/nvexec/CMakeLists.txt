@@ -16,6 +16,7 @@
 
 set(nvexec_test_sources
     continues_on.cpp
+    device_allocate.cpp
     bulk.cpp
     ensure_started.cpp
     start_detached.cpp
