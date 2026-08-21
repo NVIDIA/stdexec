@@ -140,6 +140,13 @@ TEST_CASE("simple chain task on parallel scheduler", "[scheduler][parallel_sched
   (void) snd2;
 }
 
+TEST_CASE("parallel scheduler used in an already scheduled environment",
+          "[scheduler][parallel_scheduler]")
+{
+  auto snd = ex::schedule(ex::get_parallel_scheduler());
+  ex::sync_wait(ex::starts_on(ex::get_parallel_scheduler(), snd));
+}
+
 TEST_CASE("checks stop_token before starting the work", "[scheduler][parallel_scheduler]")
 {
   STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();

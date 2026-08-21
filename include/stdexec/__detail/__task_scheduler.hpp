@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -847,14 +847,32 @@ namespace STDEXEC
       if (__value_type == __mtypeid<task_scheduler>)
       {
         auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
-        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
+
+        constexpr bool may_as_task_scheduler = []
         {
-          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
-        }
-        else
+          if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
+          {
+            return __std::constructible_from<
+              task_scheduler,
+              __call_result_t<get_start_scheduler_t, env_of_t<_Rcvr>>>;
+          }
+          else
+          {
+            return false;
+          }
+        }();
+
+        if constexpr (may_as_task_scheduler)
         {
-          __val.emplace(inline_scheduler{});
+          try
+          {
+            __val.emplace(get_start_scheduler(get_env(__rcvr_)));
+            return;
+          }
+          catch (...)
+          {}
         }
+        __val.emplace(inline_scheduler{});
       }
     }
   }  // namespace __detail
