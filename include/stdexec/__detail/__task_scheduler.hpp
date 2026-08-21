@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -308,7 +308,7 @@ namespace STDEXEC
                                        _Rcvr                        __rcvr) noexcept
         : __rcvr_proxy_(std::move(__rcvr))
         , __backend_(std::move(__backend))
-      {}
+      { }
 
       constexpr void start() noexcept
       {
@@ -329,7 +329,7 @@ namespace STDEXEC
 
       constexpr explicit __sender(task_scheduler __sch) noexcept
         : __attrs_{std::move(__sch)}
-      {}
+      { }
 
       template <class _Rcvr>
       [[nodiscard]]
@@ -507,7 +507,7 @@ namespace STDEXEC
         , __fn_(std::move(__fn))
         , __shape_(__shape)
         , __backend_(std::move(__backend))
-      {}
+      { }
 
       constexpr void set_value() noexcept final
       {
@@ -566,7 +566,7 @@ namespace STDEXEC
                                         __any_task_scheduler_backend __backend)
         : __state_{std::move(__rcvr), __shape, std::move(__fn), std::move(__backend)}
         , __opstate1_(STDEXEC::connect(static_cast<_Sndr&&>(__sndr), __rcvr_t{&__state_}))
-      {}
+      { }
 
       constexpr void start() noexcept
       {
@@ -591,7 +591,7 @@ namespace STDEXEC
       constexpr explicit __bulk_sender(_Sndr __sndr, task_scheduler __sch)
         : __sndr_(std::move(__sndr))
         , __attrs_{std::move(__sch)}
-      {}
+      { }
 
       template <class _Rcvr>
       constexpr auto connect(_Rcvr __rcvr) &&
@@ -690,7 +690,7 @@ namespace STDEXEC
         : _Alloc(std::move(__alloc))
         , __opstate_(STDEXEC::connect(std::move(__sndr),
                                       __receiver_t{__rcvr, this, __destroy_pfn_[__in_situ]}))
-      {}
+      { }
 
       __opstate(__opstate&&) = delete;
 
@@ -751,11 +751,11 @@ namespace STDEXEC
         bool const     __in_situ = __storage.size() >= sizeof(__opstate_t);
         _Alloc const & __alloc   = *this;
         auto&          __opstate = __task::__emplace_into<__opstate_t>(__storage,
-                                                              __alloc,
-                                                              __alloc,
-                                                              static_cast<_Sndr&&>(__sndr),
-                                                              __rcvr_proxy,
-                                                              __in_situ);
+                                                                       __alloc,
+                                                                       __alloc,
+                                                                       static_cast<_Sndr&&>(__sndr),
+                                                                       __rcvr_proxy,
+                                                                       __in_situ);
         STDEXEC::start(__opstate);
       }
       STDEXEC_CATCH_ALL
@@ -775,7 +775,7 @@ namespace STDEXEC
     constexpr explicit __backend_for(_Sch __sch, _Alloc __alloc) noexcept
       : _Alloc(std::move(__alloc))
       , __sch_(std::move(__sch))
-    {}
+    { }
 
     constexpr void schedule(parallel_scheduler_replacement::receiver_proxy& __rcvr_proxy,
                             std::span<std::byte>                            __storage) noexcept
@@ -847,14 +847,32 @@ namespace STDEXEC
       if (__value_type == __mtypeid<task_scheduler>)
       {
         auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
-        if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
+
+        constexpr bool may_as_task_scheduler = []
         {
-          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
-        }
-        else
+          if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
+          {
+            return __std::constructible_from<
+              task_scheduler,
+              __call_result_t<get_start_scheduler_t, env_of_t<_Rcvr>>>;
+          }
+          else
+          {
+            return false;
+          }
+        }();
+
+        if constexpr (may_as_task_scheduler)
         {
-          __val.emplace(inline_scheduler{});
+          try
+          {
+            __val.emplace(get_start_scheduler(get_env(__rcvr_)));
+            return;
+          }
+          catch (...)
+          { }
         }
+        __val.emplace(inline_scheduler{});
       }
     }
   }  // namespace __detail
