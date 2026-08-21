@@ -5,6 +5,7 @@
 #include "nvexec/stream_context.cuh"
 
 #include <memory_resource>
+#include <new>
 
 namespace
 {
@@ -12,9 +13,16 @@ namespace
   {
     std::size_t allocations_{};
     std::size_t deallocations_{};
+    std::size_t fail_after_{};
+    bool        fail_enabled_{};
 
     void* do_allocate(std::size_t bytes, std::size_t) override
     {
+      if (fail_enabled_ && allocations_ == fail_after_)
+      {
+        throw std::bad_alloc();
+      }
+
       void* storage{};
       STDEXEC_TRY_CUDA_API(cudaMallocHost(&storage, bytes));
       ++allocations_;
@@ -42,6 +50,12 @@ namespace
     {
       return deallocations_;
     }
+
+    void fail_after(std::size_t allocation) noexcept
+    {
+      fail_after_   = allocation;
+      fail_enabled_ = true;
+    }
   };
 
   struct noop_receiver
@@ -58,6 +72,27 @@ namespace
     template <class Error>
     void set_error(Error&&) noexcept
     {}
+
+    void set_stopped() noexcept {}
+  };
+
+  struct error_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    cudaError_t* error_;
+
+    auto get_env() const noexcept -> STDEXEC::env<>
+    {
+      return {};
+    }
+
+    void set_value() noexcept {}
+
+    void set_error(cudaError_t error) noexcept
+    {
+      *error_ = error;
+    }
 
     void set_stopped() noexcept {}
   };
@@ -117,6 +152,28 @@ namespace
     }
 
     REQUIRE(pinned_memory.allocations() > 0);
+    REQUIRE(pinned_memory.allocations() == pinned_memory.deallocations());
+  }
+
+  TEST_CASE("schedule_from frees its task when setup fails",
+            "[cuda][stream][adaptors][schedule_from]")
+  {
+    pinned_memory_resource_t pinned_memory;
+    pinned_memory.fail_after(2);
+
+    nvexec::stream_context ctx;
+    auto                   scheduler = ctx.get_scheduler();
+    scheduler.ctx_.pinned_resource_  = &pinned_memory;
+
+    cudaError_t error = cudaSuccess;
+    auto        sndr  = STDEXEC::schedule_from(STDEXEC::schedule(scheduler));
+    {
+      auto op = STDEXEC::connect(std::move(sndr), error_receiver{&error});
+      STDEXEC::start(op);
+    }
+
+    REQUIRE(error == cudaErrorMemoryAllocation);
+    REQUIRE(pinned_memory.allocations() == 2);
     REQUIRE(pinned_memory.allocations() == pinned_memory.deallocations());
   }
 
