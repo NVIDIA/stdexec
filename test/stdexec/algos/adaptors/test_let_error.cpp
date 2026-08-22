@@ -100,6 +100,16 @@ namespace
     STDEXEC::sync_wait(std::move(snd));
   }
 
+  TEST_CASE("let_error can be followed by upon_error", "[adaptors][let_error]")
+  {
+    auto snd = ex::just_error(2)
+             | ex::let_error([](int n) noexcept { return ex::just_error(n * 10); })
+             | ex::upon_error([](int n) noexcept { return n + 3; });
+    auto opt = ex::sync_wait(std::move(snd));
+    REQUIRE(opt.has_value());
+    CHECK(std::get<0>(*opt) == 23);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("let_error can be used to produce values (error to value)", "[adaptors][let_error]")
   {
