@@ -25,6 +25,28 @@
 namespace
 {
 
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct begin_error
+  {};
+
+  struct begin_throws_range
+  {
+    using iterator = std::array<int, 1>::iterator;
+
+    iterator begin()
+    {
+      throw begin_error{};
+    }
+
+    iterator end() noexcept
+    {
+      return values.end();
+    }
+
+    std::array<int, 1> values{0};
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
   template <class Receiver>
   struct sum_item_rcvr
   {
@@ -139,5 +161,16 @@ namespace
     STDEXEC::start(op);
     CHECK(sum == (42 + 43 + 44 + 1));
   }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("iterate - subscribe propagates begin exceptions", "[sequence_senders][iterate]")
+  {
+    auto iterate = exec::iterate(begin_throws_range{});
+    int  sum     = 0;
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
+    CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
 }  // namespace
