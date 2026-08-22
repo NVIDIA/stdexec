@@ -930,8 +930,10 @@ namespace experimental::execution
       for (std::uint32_t i = 0; i < tasks.size(); ++i)
       {
         std::uint32_t index = i % this->available_parallelism();
-        queue.queues_[index].push_front(&tasks[i]);
-        thread_states_[index]->notify();
+        if (queue.queues_[index].push_front(&tasks[i]))
+        {
+          thread_states_[index]->notify();
+        }
       }
       // At this point the calling thread can exit and the pool will take over.
       // Ultimately, the last completing thread passes the result forward.

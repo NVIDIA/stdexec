@@ -48,7 +48,7 @@ import stdexec;
 STDEXEC_PRAGMA_IGNORE_GNU("-Wredundant-consteval-if")
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
-// NOLINTBEGIN(moderize-use-override)
+// NOLINTBEGIN(modernize-use-override)
 
 STDEXEC_MODULE_EXPORT_AUTHORING
 namespace STDEXEC::__any
@@ -2283,7 +2283,7 @@ namespace STDEXEC::__any
 
 }  // namespace STDEXEC::__any
 
-// NOLINTEND(moderize-use-override)
+// NOLINTEND(modernize-use-override)
 
 #  include "__epilogue.hpp"
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
