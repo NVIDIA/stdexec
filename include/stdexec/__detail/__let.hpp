@@ -567,6 +567,24 @@ namespace STDEXEC
             }
             else if constexpr (__nothrow_decay_copyable<_Args...>
                                && __nothrow_invocable<_Fun, __decay_t<_Args>&...>
+                               && sizeof...(_Env) == 0)
+            {
+              auto __completions =
+                STDEXEC::get_completion_signatures<__sndr2_t, __env2_t<_Child, _Env>...>();
+              STDEXEC_IF_OK(__completions)
+              {
+                if constexpr (__completions.template __contains<__eptr_sig_t>())
+                {
+                  return __completions;
+                }
+                else
+                {
+                  return STDEXEC::__throw_dependent_sender_error<__sndr2_t>();
+                }
+              }
+            }
+            else if constexpr (__nothrow_decay_copyable<_Args...>
+                               && __nothrow_invocable<_Fun, __decay_t<_Args>&...>
                                && (__nothrow_connectable<__sndr2_t, __rcvr2_t<_Child, _Env>>
                                    || ...))
             {
