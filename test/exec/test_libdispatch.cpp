@@ -19,6 +19,7 @@
 #include "test_common/catch2.hpp"
 #include "test_common/type_helpers.hpp"
 
+#include <atomic>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -106,6 +107,92 @@ namespace
     CHECK(completion_scheduler == sch);
     auto [res] = STDEXEC::sync_wait(sender).value();
     CHECK(res == 30);
+  }
+
+  TEST_CASE("libdispatch queue bulk_chunked uses one task per index for parallel policies")
+  {
+    exec::libdispatch_queue queue;
+    auto                    sch = queue.get_scheduler();
+
+    std::vector<int> visited(5, 0);
+    std::atomic<int> chunks{0};
+
+    auto sender = STDEXEC::schedule(sch)
+                | STDEXEC::bulk_chunked(STDEXEC::par,
+                                        5,
+                                        [&](int begin, int end)
+                                        {
+                                          ++chunks;
+                                          for (; begin != end; ++begin)
+                                            visited[begin] = 1;
+                                        });
+
+    REQUIRE(STDEXEC::sync_wait(std::move(sender)).has_value());
+
+    CHECK(chunks.load() == 5);
+    CHECK(visited == std::vector<int>{1, 1, 1, 1, 1});
+  }
+
+  TEST_CASE("libdispatch queue runs a non-parallel bulk_chunked in a single task")
+  {
+    exec::libdispatch_queue queue;
+    auto                    sch = queue.get_scheduler();
+
+    std::vector<int> bounds;
+
+    auto sender = STDEXEC::schedule(sch)
+                | STDEXEC::bulk_chunked(STDEXEC::seq,
+                                        5,
+                                        [&](int begin, int end)
+                                        {
+                                          bounds.push_back(begin);
+                                          bounds.push_back(end);
+                                        });
+
+    REQUIRE(STDEXEC::sync_wait(std::move(sender)).has_value());
+
+    // `seq` forbids splitting the index space, so a single chunk covers all of it
+    CHECK(bounds == std::vector<int>{0, 5});
+  }
+
+  TEST_CASE("libdispatch queue bulk_unchunked should call callback function with every index")
+  {
+    exec::libdispatch_queue queue;
+    auto                    sch = queue.get_scheduler();
+
+    std::vector<int> data{1, 2, 3, 4, 5};
+    auto             size                  = data.size();
+    auto             expensive_computation = [](auto i, auto &data)
+    {
+      data[i] = 2 * data[i];
+    };
+    auto add = [](auto const &data)
+    {
+      return std::accumulate(std::begin(data), std::end(data), 0);
+    };
+    auto sender = STDEXEC::just(std::move(data)) | STDEXEC::continues_on(sch)
+                | STDEXEC::bulk_unchunked(STDEXEC::par, size, expensive_computation)
+                | STDEXEC::then(add);
+
+    auto [res] = STDEXEC::sync_wait(sender).value();
+    CHECK(res == 30);
+  }
+
+  TEST_CASE("libdispatch queue runs a non-parallel bulk_unchunked in a single task")
+  {
+    exec::libdispatch_queue queue;
+    auto                    sch = queue.get_scheduler();
+
+    std::vector<int> indices;
+
+    auto sender = STDEXEC::schedule(sch)
+                | STDEXEC::bulk_unchunked(STDEXEC::seq,
+                                          4,
+                                          [&](int idx) { indices.push_back(idx); });
+
+    REQUIRE(STDEXEC::sync_wait(std::move(sender)).has_value());
+
+    CHECK(indices == std::vector<int>{0, 1, 2, 3});
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -241,10 +328,11 @@ namespace
   TEST_CASE("libdispatch bulk connects an lvalue child sender as an lvalue")
   {
     exec::libdispatch_queue queue;
-    auto                    fun = [](int, int &) noexcept {};
-    using sender_t = exec::__libdispatch::bulk_sender<lvalue_connect_sender, int, decltype(fun)>;
+    auto                    fun = [](int, int, int &) noexcept {};
+    using sender_t =
+      exec::__libdispatch::bulk_sender<lvalue_connect_sender, int, decltype(fun), true>;
 
-    sender_t sender{queue, lvalue_connect_sender{}, 0, std::move(fun)};
+    sender_t sender{queue, lvalue_connect_sender{}, 0, std::move(fun), true};
     auto     result = STDEXEC::sync_wait(sender);
 
     REQUIRE(result.has_value());
