@@ -227,15 +227,12 @@ namespace experimental::execution
         [[nodiscard]]
         auto num_agents_required() const -> std::uint32_t
         {
-          if (!parallelize_)
-          {
-            return 1;
-          }
+          auto const parallelism = parallelize_ ? pool_.available_parallelism()
+                                                : static_cast<std::uint32_t>(1);
 
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
           // than we can actually deal with at one time?
-          return static_cast<std::uint32_t>(
-            (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())));
+          return static_cast<std::uint32_t>((std::min) (shape_, static_cast<Shape>(parallelism)));
         }
 
         template <class F>
