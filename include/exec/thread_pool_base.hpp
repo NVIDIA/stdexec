@@ -28,6 +28,7 @@ import stdexec;
 #else
 #  include "../stdexec/__detail/__execution_fwd.hpp"
 
+#  include "../stdexec/__detail/__bulk.hpp"
 #  include "../stdexec/__detail/__connect.hpp"
 #  include "../stdexec/__detail/__env.hpp"
 #  include "../stdexec/__detail/__meta.hpp"
@@ -81,7 +82,9 @@ namespace experimental::execution
 
     struct domain : STDEXEC::default_domain
     {
-      template <sender_for<STDEXEC::bulk_chunked_t> Sender, class Env>
+      template <class Sender, class Env>
+        requires sender_for<Sender, STDEXEC::bulk_chunked_t>
+              || sender_for<Sender, STDEXEC::bulk_unchunked_t>
       static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env)
       {
         auto& [tag, data, child] = sndr;
@@ -91,12 +94,33 @@ namespace experimental::execution
         {
           auto sch =
             STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(child), env);
-          using sender_t =
-            scheduler::template bulk_sender_t<decltype(child), decltype(shape), decltype(fun)>;
-          return sender_t{*sch.pool_,
-                          STDEXEC::__forward_like<Sender>(child),
-                          shape,
-                          STDEXEC::__forward_like<Sender>(fun)};
+
+          using policy_type = STDEXEC::__decay_t<decltype(pol.__get())>;
+          constexpr bool parallelize =
+            STDEXEC::__same_as<policy_type, STDEXEC::parallel_policy>
+            || STDEXEC::__same_as<policy_type, STDEXEC::parallel_unsequenced_policy>;
+
+          if constexpr (sender_for<Sender, STDEXEC::bulk_chunked_t>)
+          {
+            using sender_t =
+              scheduler::template bulk_sender_t<decltype(child), decltype(shape), decltype(fun)>;
+            return sender_t{*sch.pool_,
+                            STDEXEC::__forward_like<Sender>(child),
+                            shape,
+                            STDEXEC::__forward_like<Sender>(fun),
+                            parallelize};
+          }
+          else
+          {
+            using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<STDEXEC::__decay_t<decltype(fun)>>;
+            using sender_t =
+              scheduler::template bulk_sender_t<decltype(child), decltype(shape), fun_t>;
+            return sender_t{*sch.pool_,
+                            STDEXEC::__forward_like<Sender>(child),
+                            shape,
+                            fun_t{STDEXEC::__forward_like<Sender>(fun)},
+                            parallelize};
+          }
         }
         else
         {
@@ -110,9 +134,6 @@ namespace experimental::execution
             STDEXEC::_WITH_ENVIRONMENT_(Env)>();
         }
       }
-
-      template <sender_for<STDEXEC::bulk_unchunked_t> Sender, class Env>
-      static constexpr auto transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env);
     };
 
     struct scheduler
@@ -197,6 +218,7 @@ namespace experimental::execution
         Receiver         rcvr_;
         Shape            shape_;
         Fun              fun_;
+        bool             parallelize_;
 
         std::atomic<std::uint32_t> finished_threads_{0};
         std::atomic<std::uint32_t> thread_with_exception_{0};
@@ -205,6 +227,11 @@ namespace experimental::execution
         [[nodiscard]]
         auto num_agents_required() const -> std::uint32_t
         {
+          if (!parallelize_)
+          {
+            return 1;
+          }
+
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
           // than we can actually deal with at one time?
           return static_cast<std::uint32_t>(
@@ -219,11 +246,16 @@ namespace experimental::execution
                      data_);
         }
 
-        explicit bulk_shared_state(DerivedPoolType& pool, Receiver rcvr, Shape shape, Fun fun)
+        explicit bulk_shared_state(DerivedPoolType& pool,
+                                   Receiver         rcvr,
+                                   Shape            shape,
+                                   Fun              fun,
+                                   bool             parallelize)
           : pool_(pool)
           , rcvr_{static_cast<Receiver&&>(rcvr)}
           , shape_{shape}
           , fun_{fun}
+          , parallelize_{parallelize}
           , thread_with_exception_{num_agents_required()}
         {
           this->execute_ = [](_pool_::task_base* t, std::uint32_t tid) noexcept
@@ -379,8 +411,13 @@ namespace experimental::execution
           STDEXEC::start(inner_op_);
         }
 
-        bulk_opstate(DerivedPoolType& pool, Shape shape, Fun fun, CvSender&& sndr, Receiver rcvr)
-          : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun)
+        bulk_opstate(DerivedPoolType& pool,
+                     Shape            shape,
+                     Fun              fun,
+                     bool             parallelize,
+                     CvSender&&       sndr,
+                     Receiver         rcvr)
+          : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun, parallelize)
           , inner_op_{STDEXEC::connect(static_cast<CvSender&&>(sndr), bulk_rcvr{shared_state_})}
         {}
 
@@ -414,11 +451,16 @@ namespace experimental::execution
         using bulk_opstate_t =
           bulk_opstate<STDEXEC::__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>;
 
-        explicit bulk_sender(DerivedPoolType& pool, Sender sndr, Shape shape, Fun fun)
+        explicit bulk_sender(DerivedPoolType& pool,
+                             Sender           sndr,
+                             Shape            shape,
+                             Fun              fun,
+                             bool             parallelize)
           : pool_(pool)
           , sndr_(std::move(sndr))
           , shape_(shape)
           , fun_(std::move(fun))
+          , parallelize_(parallelize)
         {}
 
         template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
@@ -436,6 +478,7 @@ namespace experimental::execution
           return bulk_opstate_t<Self, Receiver>{self.pool_,
                                                 self.shape_,
                                                 static_cast<Self&&>(self).fun_,
+                                                self.parallelize_,
                                                 static_cast<Self&&>(self).sndr_,
                                                 static_cast<Receiver&&>(rcvr)};
         }
@@ -473,6 +516,7 @@ namespace experimental::execution
         Sender           sndr_;
         Shape            shape_;
         Fun              fun_;
+        bool             parallelize_;
       };
 
       template <STDEXEC::sender Sender, std::integral Shape, class Fun>
