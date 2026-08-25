@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -372,11 +372,9 @@ namespace STDEXEC
   //! See @ref get_completion_signatures() for the full description.
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Env>
-    requires __has_get_completion_signatures<_Sender, _Env>
   consteval auto get_completion_signatures()
   {
     using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
-    static_assert(!__merror<__new_sndr_t>);
     return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
   }
 
