@@ -229,12 +229,12 @@ namespace experimental::execution
                                                          STDEXEC::__std::memory_order_relaxed);
         return;
       }
-      if (command_queue_.push_back(op))
+      command_queue_.push_back(op);
       {
         std::scoped_lock lock{ready_mutex_};
         ready_ = true;
-        cv_.notify_one();
       }
+      cv_.notify_one();
       n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
     }
 
