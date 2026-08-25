@@ -135,7 +135,7 @@ namespace experimental::execution
     struct __opstate
     {
       constexpr explicit __opstate(_Default&& __default, _Receiver&& __rcvr)
-        noexcept(__nothrow_move_constructible<_Default>)
+        noexcept(__nothrow_move_constructible<_Default> && __nothrow_move_constructible<_Receiver>)
         : __default_(static_cast<_Default&&>(__default))
         , __rcvr_(static_cast<_Receiver&&>(__rcvr))
       {}

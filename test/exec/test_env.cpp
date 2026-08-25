@@ -32,6 +32,9 @@ namespace
   struct default_move_error
   {};
 
+  struct receiver_move_error
+  {};
+
   struct throwing_default
   {
     explicit throwing_default(bool* throw_on_move) noexcept
@@ -67,6 +70,40 @@ namespace
     {
       return {};
     }
+  };
+
+  struct throwing_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    explicit throwing_receiver(bool* throw_on_move) noexcept
+      : throw_on_move_{throw_on_move}
+    {}
+
+    throwing_receiver(throwing_receiver const &) noexcept = default;
+
+    throwing_receiver(throwing_receiver&& other)
+      : throw_on_move_{other.throw_on_move_}
+    {
+      if (*throw_on_move_)
+      {
+        throw receiver_move_error{};
+      }
+    }
+
+    template <class _Value>
+    void set_value(_Value&&) noexcept
+    {}
+
+    void set_error(std::exception_ptr) noexcept {}
+    void set_stopped() noexcept {}
+
+    auto get_env() const noexcept -> STDEXEC::env<>
+    {
+      return {};
+    }
+
+    bool* throw_on_move_;
   };
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -113,6 +150,17 @@ namespace
 
     STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(read_with_default_receiver{})));
     CHECK_THROWS_AS(std::move(sndr).connect(read_with_default_receiver{}), default_move_error);
+  }
+
+  TEST_CASE("read_with_default connect propagates receiver move exceptions", "[env]")
+  {
+    bool              throw_on_move = false;
+    auto              sndr          = exec::read_with_default(missing_query{}, 42);
+    throwing_receiver rcvr{&throw_on_move};
+    throw_on_move = true;
+
+    STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(rcvr)));
+    CHECK_THROWS_AS(std::move(sndr).connect(rcvr), receiver_move_error);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
