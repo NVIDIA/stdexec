@@ -79,13 +79,6 @@ namespace STDEXEC
 
     struct __stop_when_impl : __sexpr_defaults
     {
-      template <class _Sender, class... _Env>
-      static consteval auto __get_completion_signatures()
-      {
-        static_assert(__sender_for<_Sender, __stop_when_t>);
-        return get_completion_signatures<__child_of<_Sender>, _Env...>();
-      };
-
       static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
       {
         return __env::__join(prop(get_stop_token, __state.__token_),
@@ -198,6 +191,34 @@ namespace STDEXEC
         auto __new_token                = __make_token_fn{}(STDEXEC::__forward_like<_Self>(__token),
                                              get_stop_token(STDEXEC::get_env(__rcvr)));
         return __state{std::move(__new_token), std::move(__rcvr)};
+      };
+
+      template <class _Sender, class... _Env>
+      static consteval auto __get_completion_signatures()
+      {
+        static_assert(__sender_for<_Sender, __stop_when_t>);
+
+        auto __sender_token = [](_Sender&& s)
+        {
+          auto& [__tag, __token, __child] = s;
+          return __token;
+        };
+
+        auto __new_token = [&](_Sender&& s, auto&& e)
+        {
+          return __make_token_fn{}(__sender_token(std::forward<_Sender>(s)), get_stop_token(e));
+        };
+
+        auto __child_env = [&]<class Env>(_Sender&& s, Env&& e)
+        {
+          return __env::__join(prop(get_stop_token,
+                                    __new_token(std::forward<_Sender>(s), std::forward<Env>(e))),
+                               std::forward<Env>(e));
+        };
+
+        return get_completion_signatures<__child_of<_Sender>,
+                                         decltype(__child_env(std::declval<_Sender>(),
+                                                              std::declval<_Env>()))...>();
       };
     };
   }  // namespace __stop_when_

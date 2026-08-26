@@ -230,7 +230,7 @@ namespace STDEXEC
 
       using __op_t = connect_result_t<__future_spawned_sender<_Sender, _Env>, __receiver_t>;
 
-      using __base = __spawn_future_state_base<completion_signatures_of_t<_Sender, _Env>>;
+      using __base = typename __spawn_future_state::__spawn_future_state_base;
 
       __spawn_future_state(_Alloc __alloc, _Sender&& __sndr, _Token __token, _Env __env)
         : __base(__do_try_cancel, __do_complete)
