@@ -358,7 +358,13 @@ namespace nv::execution
       {
         if (!borrows_stream)
         {
-          std::tie(own_stream_, status_) = context_.borrow_stream();
+          cudaStream_t stream{};
+          std::tie(stream, status_) = context_.borrow_stream();
+
+          if (status_ == cudaSuccess)
+          {
+            own_stream_ = stream;
+          }
         }
       }
 

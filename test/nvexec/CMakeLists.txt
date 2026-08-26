@@ -47,6 +47,7 @@ set(nvexec_test_sources
 
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
   set_source_files_properties(${nvexec_test_sources} PROPERTIES LANGUAGE CUDA)
+  set_source_files_properties(stream_pool.cpp PROPERTIES LANGUAGE CUDA)
 endif()
 
 add_executable(test.nvexec ${nvexec_test_sources})
@@ -60,6 +61,18 @@ target_link_libraries(test.nvexec STDEXEC::nvexec stdexec_executable_flags
                       Catch2::Catch2WithMain nvexec_executable_flags)
 
 catch_discover_tests(test.nvexec PROPERTIES TIMEOUT 30)
+
+add_executable(test.nvexec.stream_pool stream_pool.cpp test_main.cpp)
+set_target_properties(
+  test.nvexec.stream_pool
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
+target_include_directories(test.nvexec.stream_pool PRIVATE ${CMAKE_CURRENT_LIST_DIR}/..)
+target_link_libraries(test.nvexec.stream_pool STDEXEC::nvexec stdexec_executable_flags
+                      Catch2::Catch2WithMain nvexec_executable_flags)
+
+catch_discover_tests(test.nvexec.stream_pool PROPERTIES TIMEOUT 30)
 
 icm_add_build_failure_test(
   NAME
