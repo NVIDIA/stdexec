@@ -162,25 +162,6 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
-    template <class _Sender, class _Env>
-    concept __with = __with_legacy_static_member<_Sender, _Env>              //
-                  || __with_legacy_member<_Sender, _Env>                     //
-                  || __with_legacy_member_alias<_Sender>                     //
-                  || __with_consteval_static_member_with_env<_Sender, _Env>  //
-                  || __with_consteval_static_member<_Sender>                 //
-                  || __with_legacy_tag_invoke<_Sender, _Env>                 //
-                  || __with_legacy_non_dependent_tag_invoke<_Sender, _Env>   //
-                  || __with_co_await<_Sender, _Env>;
-  }  // namespace __cmplsigs
-
-  template <class _Sender, class _Env>
-  concept __has_get_completion_signatures = requires(__declfn_t<_Sender &&> __sndr,
-                                                     __declfn_t<_Env &&>    __env) {
-    { transform_sender(__sndr(), __env()) } -> __cmplsigs::__with<_Env>;
-  };
-
-  namespace __cmplsigs
-  {
     template <class _Sender>
     [[nodiscard]]
     consteval auto __get_completion_signatures_helper()
