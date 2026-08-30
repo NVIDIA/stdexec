@@ -31,12 +31,38 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 namespace ex = STDEXEC;
 
 namespace
 {
   thread_local int current_numa_node = -1;
+
+  struct move_only_range
+  {
+    explicit move_only_range(std::vector<int> values)
+      : values_(std::move(values))
+    {}
+
+    move_only_range(move_only_range&&) noexcept                    = default;
+    move_only_range(move_only_range const &)                       = delete;
+    auto operator=(move_only_range&&) noexcept -> move_only_range& = default;
+    auto operator=(move_only_range const &) -> move_only_range&    = delete;
+
+    auto begin() noexcept
+    {
+      return values_.begin();
+    }
+
+    auto end() noexcept
+    {
+      return values_.end();
+    }
+
+   private:
+    std::vector<int> values_;
+  };
 
   struct two_node_numa_policy
   {
@@ -174,7 +200,7 @@ TEST_CASE("schedule_all on static_thread_pool accepts move-only ranges",
   exec::static_thread_pool pool{1};
   int                      sum    = 0;
   auto                     sender = exec::schedule_all(pool,
-                                   std::ranges::owning_view<std::vector<int>>{
+                                   move_only_range{
                                      std::vector<int>{1, 2, 3}
   })
               | exec::transform_each(ex::then([&sum](int value) noexcept { sum += value; }))
