@@ -766,6 +766,9 @@ namespace STDEXEC
       }
 
       static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+        -> __if_c<_State::__uses_stop_source,
+                  __stoppable_env_t<env_of_t<typename _State::__receiver_t const &>>,
+                  env_of_t<typename _State::__receiver_t const &>>
       {
         if constexpr (_State::__uses_stop_source)
         {
