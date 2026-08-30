@@ -625,7 +625,7 @@ namespace STDEXEC
         using __child_t    = __child_of<_CvSender>;
         auto __completions = STDEXEC::get_completion_signatures<__child_t, _Env...>();
 
-        if constexpr (STDEXEC::sender_in<__child_t, _Env...>)
+        STDEXEC_IF_OK(__completions)
         {
           auto __transform = __get_transform_fn<__fn_t<_CvSender>, __child_t, _Env...>();
           if constexpr (!__decay_copyable<_CvSender>)
@@ -645,10 +645,6 @@ namespace STDEXEC
           {
             return STDEXEC::__transform_completion_signatures(__completions, {}, {}, __transform);
           }
-        }
-        else
-        {
-          return __completions;
         }
       }
 
