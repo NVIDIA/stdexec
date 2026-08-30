@@ -37,6 +37,7 @@ import stdexec;
 
 #    if !STDEXEC_USE_MODULES()
 #      include <dispatch/dispatch.h>
+#      include <utility>
 #      include <vector>
 #    endif
 
@@ -54,16 +55,16 @@ namespace experimental::execution
     template <class Receiver>
     struct operation;
 
-    template <class Sender, std::integral Shape, class Fun>
+    template <class Sender, std::integral Shape, class Fun, bool IsChunked>
     struct bulk_sender;
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct bulk_shared_state;
 
     template <class Fun, class Shape, class... Args>
-      requires STDEXEC::__callable<Fun, Shape, STDEXEC::__decay_t<Args> &...>
+      requires STDEXEC::__callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
     using bulk_non_throwing_t =
-      STDEXEC::__mbool<STDEXEC::__nothrow_callable<Fun, Shape, STDEXEC::__decay_t<Args> &...>
+      STDEXEC::__mbool<STDEXEC::__nothrow_callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
                        && STDEXEC::__nothrow_decay_copyable<Args...>>;
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
@@ -74,16 +75,36 @@ namespace experimental::execution
 
     struct transform_bulk
     {
-      template <class Data, class Sender>
-      auto operator()(STDEXEC::bulk_t, Data &&data, Sender &&sndr)
+      template <STDEXEC::__one_of<STDEXEC::bulk_chunked_t, STDEXEC::bulk_unchunked_t> Tag,
+                class Data,
+                class Sender>
+      auto operator()(Tag, Data &&data, Sender &&sndr)
       {
         auto [pol, shape, fun] = static_cast<Data &&>(data);
-        // TODO: handle non-par execution policies
-        return bulk_sender<STDEXEC::__decay_t<Sender>, decltype(shape), decltype(fun)>{
-          queue_,
-          static_cast<Sender &&>(sndr),
-          shape,
-          std::move(fun)};
+        using policy_type      = STDEXEC::__decay_t<decltype(pol.__get())>;
+        constexpr bool parallelize =
+          STDEXEC::__same_as<policy_type, STDEXEC::parallel_policy>
+          || STDEXEC::__same_as<policy_type, STDEXEC::parallel_unsequenced_policy>;
+
+        if constexpr (STDEXEC::__same_as<Tag, STDEXEC::bulk_chunked_t>)
+        {
+          return bulk_sender<STDEXEC::__decay_t<Sender>, decltype(shape), decltype(fun), true>{
+            queue_,
+            static_cast<Sender &&>(sndr),
+            shape,
+            std::move(fun),
+            parallelize};
+        }
+        else
+        {
+          using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
+          return bulk_sender<STDEXEC::__decay_t<Sender>, decltype(shape), fun_t, false>{
+            queue_,
+            static_cast<Sender &&>(sndr),
+            shape,
+            fun_t{std::move(fun)},
+            parallelize};
+        }
       }
 
       libdispatch_queue &queue_;
@@ -101,7 +122,9 @@ namespace experimental::execution
     struct domain
     {
       // transform the generic bulk sender into a parallel libdispatch bulk sender
-      template <sender_for<STDEXEC::bulk_t> Sender, class Env>
+      template <class Sender, class Env>
+        requires sender_for<Sender, STDEXEC::bulk_chunked_t>
+              || sender_for<Sender, STDEXEC::bulk_unchunked_t>
       auto transform_sender(STDEXEC::set_value_t, Sender &&sndr, Env const &env) const noexcept
       {
         if constexpr (STDEXEC::__completes_on<Sender, libdispatch_scheduler, Env>)
@@ -117,7 +140,7 @@ namespace experimental::execution
           return STDEXEC::__not_a_sender<
             STDEXEC::_WHAT_(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_LIBDISPATCH_SCHEDULER),
             STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_LIBDISPATCH_SCHEDULER_IN_THE_ENVIRONMENT),
-            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::bulk_t),
+            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
             STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_LIBDISPATCH_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
             STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
@@ -257,7 +280,7 @@ namespace experimental::execution
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // What follows is the implementation for parallel bulk execution on
     // libdispatch queue.
-    template <class Sender, std::integral Shape, class Fun>
+    template <class Sender, std::integral Shape, class Fun, bool IsChunked>
     struct bulk_sender
     {
       using sender_concept = STDEXEC::sender_tag;
@@ -278,6 +301,7 @@ namespace experimental::execution
         return bulk_op_state_t<Self, Receiver>{self.queue_,
                                                self.shape_,
                                                self.fun_,
+                                               self.parallelize_,
                                                std::forward<Self>(self).sndr_,
                                                std::forward<Receiver>(rcvr)};
       }
@@ -291,16 +315,14 @@ namespace experimental::execution
           STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
           []<class... Args>()
           {
+            using bulk_tag_t  = std::conditional_t<IsChunked, bulk_chunked_t, bulk_unchunked_t>;
             using value_sig_t = set_value_t(__decay_t<Args>...);
-            using arg_pack_t  = __tuple<Shape, __decay_t<Args> &...>;
-            // using arg_pack_t  = __if_c<__same_as<_AlgoTag, bulk_chunked_t>,
-            //                             __tuple<Shape, Shape, Args&...>,
-            //                             __tuple<Shape, Args&...>>;
+            using arg_pack_t  = __tuple<Shape, Shape, __decay_t<Args> &...>;
             if constexpr (!__decay_copyable<Args...>)
             {
               return exec::throw_compile_time_error<
                 _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                _WHERE_(_IN_ALGORITHM_, bulk_t),
+                _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
                 _WITH_ARGUMENTS_(Args...),
                 _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
                 _WITH_ENVIRONMENT_(Env...)>();
@@ -318,7 +340,7 @@ namespace experimental::execution
             {
               return STDEXEC::__throw_compile_time_error<
                 _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
-                _WHERE_(_IN_ALGORITHM_, bulk_t),
+                _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
                 _WITH_FUNCTION_(Fun &),
                 __mapply<__qf<_WITH_ARGUMENTS_>, arg_pack_t>>();
             }
@@ -335,6 +357,7 @@ namespace experimental::execution
       Sender             sndr_;
       Shape              shape_;
       Fun                fun_;
+      bool               parallelize_;
     };
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
@@ -355,9 +378,19 @@ namespace experimental::execution
             auto  task_id     = static_cast<bulk_task *>(t)->task_id_;
             auto  total_tasks = static_cast<std::uint32_t>(sh_state.num_tasks());
 
-            auto computation = [&sh_state, task_id](auto &...args)
+            auto computation = [&sh_state, task_id, total_tasks](auto &...args)
             {
-              sh_state.fun_(task_id, args...);
+              static_cast<void>(total_tasks);
+              if (!sh_state.parallelize_)
+              {
+                // There should only be a single task
+                STDEXEC_ASSERT(task_id == 0 && total_tasks == 1);
+                sh_state.fun_(static_cast<Shape>(0), sh_state.shape_, args...);
+              }
+              else
+              {
+                sh_state.fun_(task_id, task_id + static_cast<Shape>(1), args...);
+              }
             };
 
             auto completion = [&](auto &...args)
@@ -419,16 +452,17 @@ namespace experimental::execution
                                                     STDEXEC::__q<STDEXEC::__decayed_std_tuple>,
                                                     STDEXEC::__q<STDEXEC::__std_variant>>;
 
-      bulk_shared_state(Receiver rcvr, Shape shape, Fun fun)
+      bulk_shared_state(Receiver rcvr, Shape shape, Fun fun, bool parallelize)
         : rcvr_{std::move(rcvr)}
         , shape_{shape}
         , fun_{fun}
+        , parallelize_{parallelize}
         , task_with_exception_{static_cast<std::uint32_t>(num_tasks())}
       {}
 
-      Shape num_tasks() const
+      Shape num_tasks() const noexcept
       {
-        return shape_;
+        return parallelize_ ? shape_ : (std::min) (shape_, static_cast<Shape>(1));
       }
 
       template <class F>
@@ -443,6 +477,7 @@ namespace experimental::execution
       Receiver  rcvr_;
       Shape     shape_;
       Fun       fun_;
+      bool      parallelize_;
 
       STDEXEC::__std::atomic<std::uint32_t> finished_tasks_{0};
       STDEXEC::__std::atomic<std::uint32_t> task_with_exception_{0};
@@ -459,9 +494,10 @@ namespace experimental::execution
 
       void enqueue() noexcept
       {
-        using bulk_task = shared_state::bulk_task;
-        shared_state_.tasks_.reserve(static_cast<std::size_t>(shared_state_.shape_));
-        for (Shape i{}; i != shared_state_.shape_; ++i)
+        using bulk_task        = shared_state::bulk_task;
+        auto const total_tasks = shared_state_.num_tasks();
+        shared_state_.tasks_.reserve(static_cast<std::size_t>(total_tasks));
+        for (Shape i{}; i != total_tasks; ++i)
         {
           shared_state_.tasks_.push_back(bulk_task(&shared_state_, i));
           queue_.submit(&(shared_state_.tasks_.back()));
@@ -535,8 +571,13 @@ namespace experimental::execution
       using shared_state   = bulk_shared_state<CvSender, Receiver, Shape, Fun, may_throw>;
       using inner_op_state = STDEXEC::connect_result_t<CvSender, bulk_rcvr>;
 
-      bulk_op_state(libdispatch_queue &queue, Shape shape, Fun fun, CvSender &&sndr, Receiver rcvr)
-        : shared_state_(std::move(rcvr), shape, fun)
+      bulk_op_state(libdispatch_queue &queue,
+                    Shape              shape,
+                    Fun                fun,
+                    bool               parallelize,
+                    CvSender         &&sndr,
+                    Receiver           rcvr)
+        : shared_state_(std::move(rcvr), shape, fun, parallelize)
         , inner_op_{
             STDEXEC::connect(static_cast<CvSender &&>(sndr), bulk_rcvr{shared_state_, queue})}
       {}
