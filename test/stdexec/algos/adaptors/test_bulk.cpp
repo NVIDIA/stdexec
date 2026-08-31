@@ -27,6 +27,7 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
+#  include <atomic>
 #  include <exception>
 #  include <numeric>
 #  include <vector>
@@ -716,6 +717,19 @@ namespace
     int called{};
 
     auto snd = ex::just() | ex::bulk_chunked(ex::seq, -1, [&called](int, int) { called++; });
+    ex::sync_wait(std::move(snd));
+
+    CHECK(called == 0);
+  }
+
+  TEST_CASE("bulk_chunked function is not called with a negative shape on a static thread pool",
+            "[adaptors][bulk]")
+  {
+    exec::static_thread_pool pool{4};
+    std::atomic<int>         called{};
+
+    auto snd = ex::just() | ex::continues_on(pool.get_scheduler())
+             | ex::bulk_chunked(ex::par, -1, [&called](int, int) { called.fetch_add(1); });
     ex::sync_wait(std::move(snd));
 
     CHECK(called == 0);

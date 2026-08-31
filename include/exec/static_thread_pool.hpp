@@ -1378,8 +1378,10 @@ namespace experimental::execution
       {
         if constexpr (Parallelize)
         {
-          return static_cast<std::uint32_t>(
-            __umin({std::size_t(shape_), std::size_t(pool_.available_parallelism())}));
+          return Shape{} < shape_
+                 ? static_cast<std::uint32_t>(
+                     __umin({std::size_t(shape_), std::size_t(pool_.available_parallelism())}))
+                 : 0;
         }
         else
         {
@@ -1491,7 +1493,7 @@ namespace experimental::execution
           }
         }
 
-        if (shared_state_.shape_)
+        if (Shape{} < shared_state_.shape_)
         {
           enqueue();
         }
