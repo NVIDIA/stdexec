@@ -729,9 +729,7 @@ namespace
     std::atomic<int>         called{};
 
     auto snd = ex::just() | ex::continues_on(pool.get_scheduler())
-             | ex::bulk_chunked(ex::par,
-                                -1,
-                                [&called](int, int) { called.fetch_add(1); });
+             | ex::bulk_chunked(ex::par, -1, [&called](int, int) { called.fetch_add(1); });
     ex::sync_wait(std::move(snd));
 
     CHECK(called == 0);

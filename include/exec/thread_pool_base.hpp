@@ -208,9 +208,9 @@ namespace experimental::execution
           // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
           // than we can actually deal with at one time?
           return Shape{} < shape_
-               ? static_cast<std::uint32_t>(
-                   (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())))
-               : 0;
+                 ? static_cast<std::uint32_t>(
+                     (std::min) (shape_, static_cast<Shape>(pool_.available_parallelism())))
+                 : 0;
         }
 
         template <class F>

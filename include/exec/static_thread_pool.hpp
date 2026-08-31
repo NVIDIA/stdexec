@@ -1379,9 +1379,9 @@ namespace experimental::execution
         if constexpr (Parallelize)
         {
           return Shape{} < shape_
-               ? static_cast<std::uint32_t>(
-                   __umin({std::size_t(shape_), std::size_t(pool_.available_parallelism())}))
-               : 0;
+                 ? static_cast<std::uint32_t>(
+                     __umin({std::size_t(shape_), std::size_t(pool_.available_parallelism())}))
+                 : 0;
         }
         else
         {
