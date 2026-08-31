@@ -624,23 +624,27 @@ namespace STDEXEC
         static_assert(__sender_for<_CvSender, _LetTag>);
         using __child_t    = __child_of<_CvSender>;
         auto __completions = STDEXEC::get_completion_signatures<__child_t, _Env...>();
-        auto __transform   = __get_transform_fn<__fn_t<_CvSender>, __child_t, _Env...>();
-        if constexpr (!__decay_copyable<_CvSender>)
+
+        STDEXEC_IF_OK(__completions)
         {
-          return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                     _WITH_PRETTY_SENDER_<_CvSender>>();
-        }
-        else if constexpr (__t<_LetTag>() == STDEXEC::set_value)
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, __transform);
-        }
-        else if constexpr (__t<_LetTag>() == STDEXEC::set_error)
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, {}, __transform);
-        }
-        else
-        {
-          return STDEXEC::__transform_completion_signatures(__completions, {}, {}, __transform);
+          auto __transform = __get_transform_fn<__fn_t<_CvSender>, __child_t, _Env...>();
+          if constexpr (!__decay_copyable<_CvSender>)
+          {
+            return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
+                                                       _WITH_PRETTY_SENDER_<_CvSender>>();
+          }
+          else if constexpr (__t<_LetTag>() == STDEXEC::set_value)
+          {
+            return STDEXEC::__transform_completion_signatures(__completions, __transform);
+          }
+          else if constexpr (__t<_LetTag>() == STDEXEC::set_error)
+          {
+            return STDEXEC::__transform_completion_signatures(__completions, {}, __transform);
+          }
+          else
+          {
+            return STDEXEC::__transform_completion_signatures(__completions, {}, {}, __transform);
+          }
         }
       }
 
