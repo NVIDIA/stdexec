@@ -846,14 +846,14 @@ namespace STDEXEC
     {
       if (__value_type == __mtypeid<task_scheduler>)
       {
-        auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
         if constexpr (__callable<get_start_scheduler_t, env_of_t<_Rcvr>>)
         {
-          __val.emplace(get_start_scheduler(get_env(__rcvr_)));
-        }
-        else
-        {
-          __val.emplace(inline_scheduler{});
+          using __sched_t = __call_result_t<get_start_scheduler_t, env_of_t<_Rcvr>>;
+          if constexpr (__std::constructible_from<task_scheduler, __sched_t>)
+          {
+            auto& __val = *static_cast<std::optional<task_scheduler>*>(__dest);
+            __val.emplace(get_start_scheduler(get_env(__rcvr_)));
+          }
         }
       }
     }
