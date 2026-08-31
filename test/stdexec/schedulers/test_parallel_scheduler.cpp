@@ -94,6 +94,13 @@ TEST_CASE("trivial schedule task on parallel scheduler", "[scheduler][parallel_s
   ex::sync_wait(ex::schedule(sched));
 }
 
+TEST_CASE("can schedule from parallel scheduler to parallel scheduler",
+          "[scheduler][parallel_scheduler]")
+{
+  auto sched = ex::get_parallel_scheduler();
+  ex::sync_wait(ex::starts_on(sched, ex::starts_on(sched, ex::just())));
+}
+
 TEST_CASE("simple schedule task on parallel scheduler", "[scheduler][parallel_scheduler]")
 {
   std::thread::id             this_id = std::this_thread::get_id();

@@ -125,5 +125,24 @@ namespace
     CHECK(bulk_calls == 0);
     CHECK(pool.enqueued_ == 1);
   }
+
+  TEST_CASE("thread_pool_base bulk does not invoke the function with a negative shape",
+            "[thread_pool_base][bulk]")
+  {
+    inline_test_thread_pool pool;
+    completion_state        state;
+    int                     bulk_calls = 0;
+
+    auto sndr = ex::schedule(pool.get_scheduler())
+              | ex::bulk_chunked(ex::par, -1, [&](int, int) noexcept { ++bulk_calls; });
+    auto op = ex::connect(std::move(sndr), counting_receiver{&state});
+
+    ex::start(op);
+
+    CHECK(state.completions_ == 1);
+    CHECK_FALSE(state.error_);
+    CHECK(bulk_calls == 0);
+    CHECK(pool.enqueued_ == 1);
+  }
 }  // namespace
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
