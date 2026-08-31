@@ -183,7 +183,8 @@ namespace STDEXEC
     };
 
     template <class _Child1, class _Child2, class... _Rest>
-    struct __attrs<_Child1, _Child2, _Rest...> : __attrs<__sndr<_Child1, _Child2>, _Rest...>
+    struct __attrs<_Child1, _Child2, _Rest...>
+      : __attrs<__sndr<__decay_t<_Child1>, __decay_t<_Child2>>, __decay_t<_Rest>...>
     {};
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -378,18 +379,26 @@ namespace STDEXEC
       static consteval auto get_completion_signatures()
       {
         using __cv_sender1_t = __copy_cvref_t<_Self, _Sender1>;
+        // Decay the first sender type for completion-signature queries.
+        // When __sequence recursively nests (__seq::__sndr held by const& in
+        // __attrs), __copy_cvref_t can propagate a reference qualifier into
+        // _Sender1. Reference types never satisfy derived_from, which breaks
+        // type-erased senders (e.g. any_sender). Completion signatures are
+        // pure type information and don't depend on value category, so
+        // decaying is safe here. The connect path still uses __cv_sender1_t.
+        using __sig_sender1_t = __decay_t<__cv_sender1_t>;
 
         if constexpr (!__decay_copyable<_Self>)
         {
           return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
                                                      _WITH_PRETTY_SENDER_<_Self>>();
         }
-        else if constexpr (!__sends<set_value_t, __cv_sender1_t, __fwd_env_t<_Env>...>)
+        else if constexpr (!__sends<set_value_t, __sig_sender1_t, __fwd_env_t<_Env>...>)
         {
           // If the first sender has no set_value completions, then the second sender will
           // never be started, so just return the (error and stopped) completions of the
           // first sender.
-          return STDEXEC::get_completion_signatures<__cv_sender1_t, __fwd_env_t<_Env>...>();
+          return STDEXEC::get_completion_signatures<__sig_sender1_t, __fwd_env_t<_Env>...>();
         }
         else
         {
@@ -398,7 +407,7 @@ namespace STDEXEC
 
           auto __completions1 =  //
             STDEXEC::__transform_completion_signatures(
-              STDEXEC::get_completion_signatures<__cv_sender1_t, __fwd_env_t<_Env>...>(),
+              STDEXEC::get_completion_signatures<__sig_sender1_t, __fwd_env_t<_Env>...>(),
               __eat_value_signatures<_Self>{});
 
           auto __completions2 =
