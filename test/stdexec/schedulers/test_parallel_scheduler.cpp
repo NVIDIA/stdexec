@@ -517,7 +517,7 @@ struct destructor_tracked_value
 
   ~destructor_tracked_value()
   {
-    live_->fetch_sub(1, std::memory_order_relaxed);
+    live_->fetch_sub(1, std::memory_order_acq_rel);
   }
 
   std::shared_ptr<std::atomic<int>> live_;
@@ -637,7 +637,7 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values",
     REQUIRE(result.has_value());
   }
 
-  CHECK(live->load(std::memory_order_relaxed) == 0);
+  CHECK(live->load(std::memory_order_acquire) == 0);
 }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -655,7 +655,7 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after e
     CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
   }
 
-  CHECK(live->load(std::memory_order_relaxed) == 0);
+  CHECK(live->load(std::memory_order_acquire) == 0);
 }
 #endif
 
@@ -674,7 +674,7 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after s
     CHECK_FALSE(result.has_value());
   }
 
-  CHECK(live->load(std::memory_order_relaxed) == 0);
+  CHECK(live->load(std::memory_order_acquire) == 0);
 }
 
 TEST_CASE("empty environment always returns nullopt for any query",
