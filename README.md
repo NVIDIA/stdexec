@@ -82,6 +82,15 @@ Requires `-std=c++20` or later.
 > [!NOTE]
 > `stdexec` does not yet support NVIDIA's `nvcc` compiler.
 
+### Modular builds
+
+Building `stdexec` as a C++20 module (`-DSTDEXEC_BUILD_MODULES=ON`) is supported
+on a smaller set of toolchains than the traditional header-based build:
+
+| Compiler | Minimum version | Notes |
+|---|---|---|
+| Clang | 23 | |
+
 ## Installation
 
 Pick whichever fits your project.
