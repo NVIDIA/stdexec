@@ -35,7 +35,7 @@ import stdexec;
 #  include "__stop_token.hpp"
 
 #  if !STDEXEC_USE_MODULES()
-#    include <type_traits>
+#    include <functional>
 #    include <utility>
 #  endif
 
@@ -62,142 +62,139 @@ namespace STDEXEC
     struct __stop_when_t
     {
       template <sender _Sender, unstoppable_token _Token>
-      constexpr _Sender&& operator()(_Sender&& __sndr, _Token&&) const noexcept
+      constexpr auto operator()(_Sender&& __sndr, _Token&&) const
+        noexcept(__nothrow_move_constructible<_Sender>) -> _Sender
       {
         return static_cast<_Sender&&>(__sndr);
       }
 
       template <sender _Sender, stoppable_token _Token>
       constexpr auto operator()(_Sender&& __sndr, _Token&& __token) const
-        noexcept(__nothrow_constructible_from<std::remove_cvref_t<_Sender>, _Sender>
-                 && __nothrow_constructible_from<std::remove_cvref_t<_Token>, _Token>)
+        noexcept(__nothrow_decay_copyable<_Sender> && __nothrow_decay_copyable<_Token>)
       {
         return __make_sexpr<__stop_when_t>(static_cast<_Token&&>(__token),
                                            static_cast<_Sender&&>(__sndr));
       }
     };
 
+    template <class _Token1, class _Token2>
+    struct __fused_token
+    {
+      friend constexpr bool operator==(__fused_token const &, __fused_token const &) = default;
+
+      [[nodiscard]]
+      bool stop_requested() const noexcept
+      {
+        return __tkn1_.stop_requested() || __tkn2_.stop_requested();
+      }
+
+      [[nodiscard]]
+      bool stop_possible() const noexcept
+      {
+        return __tkn1_.stop_possible() || __tkn2_.stop_possible();
+      }
+
+      template <class _Fn>
+      struct callback_type : private __immovable
+      {
+        template <__decays_to<__fused_token> _FusedToken, class _Cb>
+          requires __std::constructible_from<_Fn, _Cb>
+        explicit callback_type(_FusedToken&& __ftkn, _Cb&& __fn)
+          noexcept(__nothrow_constructible_from<_Fn, _Cb>)
+          : __fn_(static_cast<_Cb&&>(__fn))
+          , __cb1_(static_cast<_FusedToken&&>(__ftkn).__tkn1_, __cb_t(*this))
+          , __cb2_(static_cast<_FusedToken&&>(__ftkn).__tkn2_, __cb_t(*this))
+        {}
+
+        void operator()() noexcept
+        {
+          if (!__called_.exchange(true, __std::memory_order_relaxed))
+          {
+            __fn_();
+          }
+        }
+
+       private:
+        using __cb_t  = std::reference_wrapper<callback_type>;
+        using __cb1_t = _Token1::template callback_type<__cb_t>;
+        using __cb2_t = _Token2::template callback_type<__cb_t>;
+
+        _Fn                 __fn_;
+        __cb1_t             __cb1_;
+        __cb2_t             __cb2_;
+        __std::atomic<bool> __called_{false};
+      };
+
+      _Token1 __tkn1_;
+      _Token2 __tkn2_;
+    };
+
+    struct __fuse_token_fn
+    {
+      template <stoppable_token _SenderToken, unstoppable_token _ReceiverToken>
+      [[nodiscard]]
+      constexpr auto
+      operator()(_SenderToken __sndr_token, _ReceiverToken __rcvr_token) const noexcept
+        -> _SenderToken
+      {
+        // when the receiver's stop token is unstoppable, the net token is just the
+        // sender's captured token
+        return __sndr_token;
+      }
+
+      template <stoppable_token _SenderToken, stoppable_token _ReceiverToken>
+      [[nodiscard]]
+      constexpr auto
+      operator()(_SenderToken __sndr_token, _ReceiverToken __rcvr_token) const noexcept
+        -> __fused_token<_SenderToken, _ReceiverToken>
+      {
+        // when the receiver's stop token is stoppable, the net token must be a fused
+        // token that responds to signals from both the sender's captured token and the
+        // receiver's token
+        return __fused_token<_SenderToken, _ReceiverToken>{
+          static_cast<_SenderToken&&>(__sndr_token),
+          static_cast<_ReceiverToken&&>(__rcvr_token)};
+      }
+    };
+
+    struct __mk_env2_fn
+    {
+      template <class _FusedToken, class _Env>
+      [[nodiscard]]
+      constexpr auto operator()(_FusedToken __fused_token, _Env&& __env) const noexcept
+        -> __join_env_t<prop<get_stop_token_t, _FusedToken>, _Env>
+      {
+        return __env::__join(prop(get_stop_token, static_cast<_FusedToken&&>(__fused_token)),
+                             static_cast<_Env&&>(__env));
+      }
+    };
+
     struct __stop_when_impl : __sexpr_defaults
     {
+      static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
+      {
+        return __mk_env2_fn()(__state.__token_, STDEXEC::get_env(__state.__rcvr_));
+      };
+
+      static constexpr auto __get_state =
+        []<class _Sender, class _Receiver>(_Sender&& __self, _Receiver __rcvr) noexcept
+      {
+        auto& [__tag, __token, __child] = __self;
+        auto __new_token = __fuse_token_fn()(STDEXEC::__forward_like<_Sender>(__token),
+                                             get_stop_token(STDEXEC::get_env(__rcvr)));
+        return __state{std::move(__new_token), std::move(__rcvr)};
+      };
+
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Sender, __stop_when_t>);
-        return get_completion_signatures<__child_of<_Sender>, _Env...>();
-      };
-
-      static constexpr auto __get_env = [](__ignore, auto const & __state) noexcept
-      {
-        return __env::__join(prop(get_stop_token, __state.__token_),
-                             STDEXEC::get_env(__state.__rcvr_));
-      };
-
-      template <stoppable_token _Token1, stoppable_token _Token2>
-      struct __fused_token
-      {
-        _Token1 __tkn1_;
-        _Token2 __tkn2_;
-
-        friend constexpr bool operator==(__fused_token const &, __fused_token const &) = default;
-
-        [[nodiscard]]
-        bool stop_requested() const noexcept
-        {
-          return __tkn1_.stop_requested() || __tkn2_.stop_requested();
-        }
-
-        [[nodiscard]]
-        bool stop_possible() const noexcept
-        {
-          return __tkn1_.stop_possible() || __tkn2_.stop_possible();
-        }
-
-        template <class _Fn>
-        struct callback_type
-        {
-          template <class _Cb>
-            requires __std::constructible_from<_Fn, _Cb>
-          explicit callback_type(__fused_token&& __ftkn, _Cb&& __fn)
-            noexcept(__nothrow_constructible_from<_Fn, _Cb>)
-            : __fn_(static_cast<_Cb&&>(__fn))
-            , __cb1_(std::move(__ftkn.__tkn1_), __cb(this))
-            , __cb2_(std::move(__ftkn.__tkn2_), __cb(this))
-          {}
-
-          template <class _Cb>
-            requires __std::constructible_from<_Fn, _Cb>
-          explicit callback_type(__fused_token const & __ftkn, _Cb&& __fn)
-            noexcept(__nothrow_constructible_from<_Fn, _Cb>)
-            : __fn_(static_cast<_Cb&&>(__fn))
-            , __cb1_(__ftkn.__tkn1_, __cb(this))
-            , __cb2_(__ftkn.__tkn2_, __cb(this))
-          {}
-
-          callback_type(callback_type&&) = delete;
-
-         private:
-          struct __cb
-          {
-            callback_type* __self;
-
-            void operator()() noexcept
-            {
-              (*__self)();
-            }
-          };
-
-          using __cb1_t = _Token1::template callback_type<__cb>;
-          using __cb2_t = _Token2::template callback_type<__cb>;
-
-          void operator()() noexcept
-          {
-            if (!__called_.exchange(true, __std::memory_order_relaxed))
-            {
-              __fn_();
-            }
-          }
-
-          _Fn                 __fn_;
-          __std::atomic<bool> __called_{false};
-          __cb1_t             __cb1_;
-          __cb2_t             __cb2_;
-        };
-      };
-
-      struct __make_token_fn
-      {
-        template <class _SenderToken, class _ReceiverToken>
-          requires stoppable_token<std::remove_cvref_t<_SenderToken>>
-                && stoppable_token<std::remove_cvref_t<_ReceiverToken>>
-        [[nodiscard]]
-        auto operator()(_SenderToken&& __sndr_token, _ReceiverToken&& __rcvr_token) const noexcept
-        {
-          if constexpr (unstoppable_token<std::remove_cvref_t<_ReceiverToken>>)
-          {
-            // when the receiver's stop token is unstoppable, the net token is just
-            // the sender's captured token
-            return __sndr_token;
-          }
-          else
-          {
-            // when the receiver's stop token is stoppable, the net token must be
-            // a fused token that responds to signals from both the sender's captured
-            // token and the receiver's token
-            return __fused_token<std::remove_cvref_t<_SenderToken>,
-                                 std::remove_cvref_t<_ReceiverToken>>{
-              static_cast<_SenderToken&&>(__sndr_token),
-              static_cast<_ReceiverToken&&>(__rcvr_token)};
-          }
-        }
-      };
-
-      static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept
-      {
-        auto& [__tag, __token, __child] = __self;
-        auto __new_token                = __make_token_fn{}(STDEXEC::__forward_like<_Self>(__token),
-                                             get_stop_token(STDEXEC::get_env(__rcvr)));
-        return __state{std::move(__new_token), std::move(__rcvr)};
+        using __token_t = __decay_t<__data_of<_Sender>>;
+        return get_completion_signatures<
+          __child_of<_Sender>,
+          __call_result_t<__mk_env2_fn,
+                          __call_result_t<__fuse_token_fn, __token_t, stop_token_of_t<_Env>>,
+                          _Env>...>();
       };
     };
   }  // namespace __stop_when_

@@ -224,16 +224,14 @@ namespace STDEXEC
           // NOT TO SPEC: see https://github.com/cplusplus/sender-receiver/issues/356
           completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>>
     {
-      using __sigs_t = completion_signatures_of_t<__future_spawned_sender<_Sender, _Env>, env<>>;
-
+      using __sender_t   = __future_spawned_sender<_Sender, _Env>;
+      using __sigs_t     = completion_signatures_of_t<__sender_t, env<>>;
+      using __base_t     = __spawn_future_state_base<__sigs_t>;
       using __receiver_t = __spawn_future_receiver<__sigs_t>;
-
-      using __op_t = connect_result_t<__future_spawned_sender<_Sender, _Env>, __receiver_t>;
-
-      using __base = __spawn_future_state_base<completion_signatures_of_t<_Sender, _Env>>;
+      using __opstate_t  = connect_result_t<__sender_t, __receiver_t>;
 
       __spawn_future_state(_Alloc __alloc, _Sender&& __sndr, _Token __token, _Env __env)
-        : __base(__do_try_cancel, __do_complete)
+        : __base_t(__do_try_cancel, __do_complete)
         , __alloc_(std::move(__alloc))
         , __op_(STDEXEC::connect(write_env(__stop_when(static_cast<_Sender&&>(__sndr),
                                                        __stop_source_.get_token()),
@@ -354,7 +352,7 @@ namespace STDEXEC
 
       _Alloc              __alloc_;
       inplace_stop_source __stop_source_;
-      __op_t              __op_;
+      __opstate_t         __op_;
       __assoc_t           __assoc_;
       // Type-erased receiver. Several possible values:
       //   1. `nullptr` means "unset"
@@ -395,7 +393,7 @@ namespace STDEXEC
         std::move(this->__result_).__complete(__rcvr);
       }
 
-      static void __do_complete(__base* __base_ptr) noexcept
+      static void __do_complete(__base_t* __base_ptr) noexcept
       {
         auto* __self = static_cast<__spawn_future_state*>(__base_ptr);
 

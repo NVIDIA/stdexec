@@ -27,11 +27,13 @@ namespace
   TEST_CASE("stop-when of an unstoppable token is the identity", "[adaptors][stop-when]")
   {
     auto snd           = ex::just(42);
-    auto checkIdentity = [](auto&& snd)
+    auto checkIdentity = []<class Sender>(Sender&& snd)
     {
-      auto&& result = ex::__stop_when(std::forward<decltype(snd)>(snd), ex::never_stop_token{});
-
-      REQUIRE(&snd == &result);
+      auto&& result = ex::__stop_when(std::forward<Sender>(snd), ex::never_stop_token{});
+      REQUIRE((!std::is_reference_v<Sender> || &snd == &result));
+      auto [tag, tupl] = result;
+      auto [value]     = tupl;
+      REQUIRE(value == 42);
     };
 
     checkIdentity(snd);
