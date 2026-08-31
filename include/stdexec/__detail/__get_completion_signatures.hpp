@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2021-2024 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
@@ -162,25 +162,6 @@ namespace STDEXEC
     template <class _Sender, class... _Env>
     concept __with_co_await = __awaitable<_Sender, __detail::__promise<_Env>...>;
 
-    template <class _Sender, class _Env>
-    concept __with = __with_legacy_static_member<_Sender, _Env>              //
-                  || __with_legacy_member<_Sender, _Env>                     //
-                  || __with_legacy_member_alias<_Sender>                     //
-                  || __with_consteval_static_member_with_env<_Sender, _Env>  //
-                  || __with_consteval_static_member<_Sender>                 //
-                  || __with_legacy_tag_invoke<_Sender, _Env>                 //
-                  || __with_legacy_non_dependent_tag_invoke<_Sender, _Env>   //
-                  || __with_co_await<_Sender, _Env>;
-  }  // namespace __cmplsigs
-
-  template <class _Sender, class _Env>
-  concept __has_get_completion_signatures = requires(__declfn_t<_Sender &&> __sndr,
-                                                     __declfn_t<_Env &&>    __env) {
-    { transform_sender(__sndr(), __env()) } -> __cmplsigs::__with<_Env>;
-  };
-
-  namespace __cmplsigs
-  {
     template <class _Sender>
     [[nodiscard]]
     consteval auto __get_completion_signatures_helper()
@@ -372,11 +353,9 @@ namespace STDEXEC
   //! See @ref get_completion_signatures() for the full description.
   STDEXEC_MODULE_EXPORT
   template <class _Sender, class _Env>
-    requires __has_get_completion_signatures<_Sender, _Env>
   consteval auto get_completion_signatures()
   {
     using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
-    static_assert(!__merror<__new_sndr_t>);
     return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
   }
 
