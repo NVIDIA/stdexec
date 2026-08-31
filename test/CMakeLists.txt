@@ -15,13 +15,17 @@
 # =============================================================================
 include(CheckCompilerFlag)
 check_compiler_flag(CXX -Wno-c2y-extensions HAVE_C2Y_EXTENSIONS_WARNING)
+# Clang 23 adds -Wunused-template (enabled by -Wall) and fires it on
+# several templates defined in headers in test_common.
+check_compiler_flag(CXX -Wno-unused-template HAVE_UNUSED_TEMPLATE_WARNING)
 
 function(add_compile_diagnostics TARGET)
   if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     target_compile_options(
       ${TARGET}
       PRIVATE -Wall -Wextra -Wpedantic -Werror
-              $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>)
+              $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>
+              $<$<BOOL:${HAVE_UNUSED_TEMPLATE_WARNING}>:-Wno-unused-template>)
   endif()
 endfunction()
 
