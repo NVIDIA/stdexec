@@ -551,14 +551,14 @@ namespace STDEXEC
           if constexpr (_BulkState::__is_unchunked)
           {
             __scheduler->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1,
-                                                *__r,
-                                                __storage);
+                                                 *__r,
+                                                 __storage);
           }
           else
           {
             __scheduler->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1,
-                                              *__r,
-                                              __storage);
+                                               *__r,
+                                               __storage);
           }
         }
         STDEXEC_CATCH_ALL
