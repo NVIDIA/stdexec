@@ -21,8 +21,8 @@
 // can produce a reference type. any_sender's get_completion_signatures
 // constraint (derived_from<Self, interface>) then fails for reference types.
 
-#include <exec/sequence.hpp>
 #include <exec/any_sender_of.hpp>
+#include <exec/sequence.hpp>
 #include <stdexec/execution.hpp>
 
 #include <test_common/catch2.hpp>
@@ -75,9 +75,8 @@ TEST_CASE("sequence with 4 any_senders compiles and runs", "[sequence][any_sende
   CHECK(result == 42);
 }
 
-TEST_CASE(
-  "sequence with mixed concrete and any_senders compiles and runs",
-  "[sequence][any_sender]")
+TEST_CASE("sequence with mixed concrete and any_senders compiles and runs",
+          "[sequence][any_sender]")
 {
   using SigsVoid =
     ex::completion_signatures<ex::set_value_t(), ex::set_error_t(std::exception_ptr)>;
@@ -88,7 +87,7 @@ TEST_CASE(
   using AnyInt  = exec::any_sender<exec::any_receiver<SigsInt, exec::queries<>>>;
 
   AnyVoid s1 = ex::just();
-  auto    s2 = ex::just(); // concrete sender
+  auto    s2 = ex::just();  // concrete sender
   AnyInt  s3 = ex::just(42);
 
   auto seq = exec::sequence(std::move(s1), std::move(s2), std::move(s3));
