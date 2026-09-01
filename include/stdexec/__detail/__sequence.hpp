@@ -69,41 +69,41 @@ namespace STDEXEC
     struct __attrs<> : __just::__attrs<set_value_t>
     {};
 
-    template <class _CvSender>
-    struct __attrs<_CvSender>
+    template <class _Sender>
+    struct __attrs<_Sender>
     {
       template <class _Query, class... _Args>
-        requires __queryable_with<env_of_t<_CvSender>, _Query, _Args...>
+        requires __queryable_with<env_of_t<_Sender>, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_CvSender>, _Query, _Args...>)
-          -> __query_result_t<env_of_t<_CvSender>, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
+          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
       {
         return __query<_Query>()(STDEXEC::get_env(__sndr_), static_cast<_Args &&>(__args)...);
       }
 
-      _CvSender __sndr_;
+      _Sender __sndr_;
     };
 
-    template <sender _CvSender1, class _CvSender2>
-    struct __attrs<_CvSender1, _CvSender2>
+    template <sender _Sender1, class _Sender2>
+    struct __attrs<_Sender1, _Sender2>
     {
      private:
-      using __joined_t = env<env_of_t<_CvSender2>, env_of_t<_CvSender1>>;
+      using __joined_t = env<env_of_t<_Sender2>, env_of_t<_Sender1>>;
 
       // The env to use when querying _CvSender2:
       template <class _Env>
-      using __env2_t = __secondary_env_t<_CvSender1 const &, _Env, set_value_t>;
+      using __env2_t = __secondary_env_t<_Sender1, _Env, set_value_t>;
 
       template <class _Env>
       constexpr auto __mk_env2(_Env &__env) const noexcept -> __env2_t<_Env>
       {
-        return __mk_env2_t()(__cp{}, __sndr1_, __env);
+        return __mk_env2_t()(__sndr1_, __env);
       }
 
      public:
       template <class... _Env>
-        requires __has_completion_scheduler_for<set_value_t, _CvSender2, __env2_t<_Env>...>
+        requires __has_completion_scheduler_for<set_value_t, _Sender2, __env2_t<_Env>...>
       [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<set_value_t>, _Env &&...__env) const noexcept
       {
@@ -114,12 +114,12 @@ namespace STDEXEC
       // We only know the error or stopped completion scheduler if exactly one of the two
       // senders knows its error/stopped completion scheduler.
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
-        requires(__has_completion_scheduler_for<_Tag, _CvSender1, __fwd_env_t<_Env>...>
-                 != __has_completion_scheduler_for<_Tag, _CvSender2, __env2_t<_Env>...>)
+        requires(__has_completion_scheduler_for<_Tag, _Sender1, __fwd_env_t<_Env>...>
+                 != __has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
       [[nodiscard]]
       constexpr auto query(get_completion_scheduler_t<_Tag>, _Env &&...__env) const noexcept
       {
-        if constexpr (__has_completion_scheduler_for<_Tag, _CvSender2, __env2_t<_Env>...>)
+        if constexpr (__has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
         {
           return STDEXEC::get_completion_scheduler<_Tag>(STDEXEC::get_env(__sndr2_),
                                                          __mk_env2(__env)...);
@@ -138,7 +138,7 @@ namespace STDEXEC
       constexpr auto query(get_completion_domain_t<set_value_t>, _Env &&...) const noexcept
       {
         using __domain_t =
-          __completion_domain_t<set_value_t, env_of_t<_CvSender2>, __env2_t<_Env>...>;
+          __completion_domain_t<set_value_t, env_of_t<_Sender2>, __env2_t<_Env>...>;
         return __domain_t();
       }
 
@@ -149,8 +149,8 @@ namespace STDEXEC
       constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
       {
         using __domain_t =
-          __common_domain_t<__completion_domain_t<_Tag, env_of_t<_CvSender1>, __fwd_env_t<_Env>...>,
-                            __completion_domain_t<_Tag, env_of_t<_CvSender2>, __env2_t<_Env>...>>;
+          __common_domain_t<__completion_domain_t<_Tag, env_of_t<_Sender1>, __fwd_env_t<_Env>...>,
+                            __completion_domain_t<_Tag, env_of_t<_Sender2>, __env2_t<_Env>...>>;
         return __domain_t();
       }
 
@@ -161,8 +161,8 @@ namespace STDEXEC
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env &&...) const noexcept
       {
         return __completion_behavior::__common(
-          STDEXEC::__get_completion_behavior<_Tag, _CvSender1, __fwd_env_t<_Env>...>(),
-          STDEXEC::__get_completion_behavior<_Tag, _CvSender2, __env2_t<_Env>...>());
+          STDEXEC::__get_completion_behavior<_Tag, _Sender1, __fwd_env_t<_Env>...>(),
+          STDEXEC::__get_completion_behavior<_Tag, _Sender2, __env2_t<_Env>...>());
       }
 
       // For queries that are not related to completion schedulers, domains, or behaviors,
@@ -178,13 +178,12 @@ namespace STDEXEC
                                  static_cast<_Args &&>(__args)...);
       }
 
-      _CvSender1 __sndr1_;
-      _CvSender2 __sndr2_;
+      _Sender1 __sndr1_;
+      _Sender2 __sndr2_;
     };
 
     template <class _Child1, class _Child2, class... _Rest>
-    struct __attrs<_Child1, _Child2, _Rest...>
-      : __attrs<__sndr<__decay_t<_Child1>, __decay_t<_Child2>>, __decay_t<_Rest>...>
+    struct __attrs<_Child1, _Child2, _Rest...> : __attrs<__sndr<_Child1, _Child2>, _Rest...>
     {};
 
     //////////////////////////////////////////////////////////////////////////////////////
@@ -278,11 +277,9 @@ namespace STDEXEC
     template <class _CvSender1, class _Sender2, class _Receiver>
     struct __opstate final : __state<_Receiver, __env2_t<_CvSender1, env_of_t<_Receiver>>>
     {
-      using __cv_fn = __copy_cvref_fn<_CvSender1>;
-
       constexpr explicit __opstate(_CvSender1 &&__sndr1, _Sender2 __sndr2, _Receiver __rcvr)
         noexcept(__nothrow_constructible)
-        : __opstate(__sndr1, __sndr2, __rcvr, __mk_env2_t()(__cv_fn{}, __sndr1, get_env(__rcvr)))
+        : __opstate(__sndr1, __sndr2, __rcvr, __mk_env2_t()(__sndr1, get_env(__rcvr)))
       {}
 
       STDEXEC_IMMOVABLE(__opstate);
@@ -370,7 +367,7 @@ namespace STDEXEC
       using __env2_t = __join_env_t<__seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, _Env> const &,
                                     __fwd_env_t<_Env>>;
 
-      using __attrs_t = __attrs<_Sender1 const &, _Sender2 const &>;
+      using __attrs_t = __attrs<_Sender1, _Sender2>;
 
       template <class _Self, class... _Env>
         requires(sizeof...(_Env) != 0)  //
@@ -379,26 +376,18 @@ namespace STDEXEC
       static consteval auto get_completion_signatures()
       {
         using __cv_sender1_t = __copy_cvref_t<_Self, _Sender1>;
-        // Decay the first sender type for completion-signature queries.
-        // When __sequence recursively nests (__seq::__sndr held by const& in
-        // __attrs), __copy_cvref_t can propagate a reference qualifier into
-        // _Sender1. Reference types never satisfy derived_from, which breaks
-        // type-erased senders (e.g. any_sender). Completion signatures are
-        // pure type information and don't depend on value category, so
-        // decaying is safe here. The connect path still uses __cv_sender1_t.
-        using __sig_sender1_t = __decay_t<__cv_sender1_t>;
 
         if constexpr (!__decay_copyable<_Self>)
         {
           return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
                                                      _WITH_PRETTY_SENDER_<_Self>>();
         }
-        else if constexpr (!__sends<set_value_t, __sig_sender1_t, __fwd_env_t<_Env>...>)
+        else if constexpr (!__sends<set_value_t, __cv_sender1_t, __fwd_env_t<_Env>...>)
         {
           // If the first sender has no set_value completions, then the second sender will
           // never be started, so just return the (error and stopped) completions of the
           // first sender.
-          return STDEXEC::get_completion_signatures<__sig_sender1_t, __fwd_env_t<_Env>...>();
+          return STDEXEC::get_completion_signatures<__cv_sender1_t, __fwd_env_t<_Env>...>();
         }
         else
         {
@@ -407,7 +396,7 @@ namespace STDEXEC
 
           auto __completions1 =  //
             STDEXEC::__transform_completion_signatures(
-              STDEXEC::get_completion_signatures<__sig_sender1_t, __fwd_env_t<_Env>...>(),
+              STDEXEC::get_completion_signatures<__cv_sender1_t, __fwd_env_t<_Env>...>(),
               __eat_value_signatures<_Self>{});
 
           auto __completions2 =
@@ -452,11 +441,10 @@ namespace STDEXEC
 
     struct __impls : __sexpr_defaults
     {
-      static constexpr auto __get_attrs =                                   //
-        []<class... _Child>(auto, auto, _Child const &...__child) noexcept  //
-        -> __attrs<_Child const &...>
+      static constexpr auto __get_attrs =  //
+        []<class... _Child>(auto, auto, _Child const &...__child) noexcept -> __attrs<_Child...>
       {
-        return __attrs<_Child const &...>{__child...};
+        return __attrs<_Child...>{__child...};
       };
 
       template <class _Self>

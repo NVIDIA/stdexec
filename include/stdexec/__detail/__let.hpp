@@ -169,16 +169,15 @@ namespace STDEXEC
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
 
-      template <class _CvFn, class _Sender>
+      template <class _Sender>
       constexpr explicit __opstate_base(_SetTag,
-                                        _CvFn           __cv,
                                         _Sender const & __sndr,
                                         _Fun            __fn,
                                         _Receiver&&     __rcvr) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
-        , __env2_(__mk_secondary_env_t<_SetTag>()(__cv, __sndr, STDEXEC::get_env(__rcvr_)))
+        , __env2_(__mk_secondary_env_t<_SetTag>()(__sndr, STDEXEC::get_env(__rcvr_)))
       {}
 
       STDEXEC_IMMOVABLE(__opstate_base);
@@ -305,7 +304,6 @@ namespace STDEXEC
         noexcept(__nothrow_connectable<_CvChild, __first_rcvr_t>
                  && __nothrow_move_constructible<_Fun>)
         : __opstate::__opstate_base(_SetTag(),
-                                    __copy_cvref_fn<_CvChild>{},
                                     __child,
                                     static_cast<_Fun&&>(__fn),
                                     static_cast<_Receiver&&>(__rcvr))

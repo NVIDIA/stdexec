@@ -617,38 +617,6 @@ namespace STDEXEC
     }
   }
 
-  namespace __detail
-  {
-    template <class... _SetTags>
-    struct __mk_secondary_env_impl
-    {
-      template <class _CvFn, sender _Sender, class _Env>
-      constexpr auto operator()(_CvFn, _Sender const &__sndr, _Env const &__env) const noexcept
-      {
-        using __domain_t = __make_domain_t<__completion_domain_of_t<_SetTags, _Sender, _Env>...>;
-        // We can only know the scheduler that the secondary sender is started on if there
-        // is exactly one kind of completion that starts the secondary sender.
-        STDEXEC_CONSTEXPR_LOCAL bool __has_completion_scheduler =
-          sizeof...(_SetTags) == 1
-          && (__has_completion_scheduler_for<_SetTags, __mcall1<_CvFn, _Sender>, _Env> || ...);
-
-        if constexpr (__has_completion_scheduler)
-        {
-          auto __sch = (get_completion_scheduler<_SetTags>(get_env(__sndr), __fwd_env(__env)), ...);
-          return STDEXEC::__mk_sch_env(__sch, __fwd_env(__env));
-        }
-        else if constexpr (__not_same_as<__domain_t, indeterminate_domain<>>)
-        {
-          return __env::cprop<get_domain_t, __domain_t{}>();
-        }
-        else
-        {
-          return env{};
-        }
-      }
-    };
-  }  // namespace __detail
-
   //! This environment is for when one sender is started from the completion of another
   //! sender. In that case, the completion scheduler/domain for the first sender should
   //! be used as the scheduler/domain for the second sender.
@@ -667,23 +635,55 @@ namespace STDEXEC
   template <class... _SetTags>
   struct __mk_secondary_env_t
   {
+   private:
+    template <class... _SetTags2>
+    struct __impl
+    {
+      template <sender _Sender, class _Env>
+      constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
+      {
+        using __domain_t =
+          __detail::__make_domain_t<__completion_domain_of_t<_SetTags2, _Sender, _Env>...>;
+        // We can only know the scheduler that the secondary sender is started on if there
+        // is exactly one kind of completion that starts the secondary sender.
+        STDEXEC_CONSTEXPR_LOCAL bool __has_completion_scheduler =
+          sizeof...(_SetTags2) == 1
+          && (__has_completion_scheduler_for<_SetTags2, _Sender, _Env> || ...);
+
+        if constexpr (__has_completion_scheduler)
+        {
+          auto __sch = (get_completion_scheduler<_SetTags2>(get_env(__sndr), __fwd_env(__env)),
+                        ...);
+          return STDEXEC::__mk_sch_env(__sch, __fwd_env(__env));
+        }
+        else if constexpr (__not_same_as<__domain_t, indeterminate_domain<>>)
+        {
+          return __env::cprop<get_domain_t, __domain_t{}>();
+        }
+        else
+        {
+          return env{};
+        }
+      }
+    };
+
+   public:
     template <class _Sender, class _Env>
     using __impl_t =
       __minvoke<__mremove_if<__mbind_back_q<__never_sends_t, _Sender, __fwd_env_t<_Env const &>>,
-                             __qq<__detail::__mk_secondary_env_impl>>,
+                             __qq<__impl>>,
                 _SetTags...>;
 
-    template <class _CvFn, class _Sender, class _Env>
-    constexpr auto operator()(_CvFn __cv, _Sender const &__sndr, _Env const &__env) const noexcept
-      -> __call_result_t<__impl_t<_Sender, _Env>, _CvFn, _Sender const &, _Env const &>
+    template <class _Sender, class _Env>
+    constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
+      -> __call_result_t<__impl_t<_Sender, _Env>, _Sender const &, _Env const &>
     {
-      return __impl_t<_Sender, _Env>()(__cv, __sndr, __env);
+      return __impl_t<_Sender, _Env>()(__sndr, __env);
     }
   };
 
   template <class _CvSender, class _Env, class... _SetTags>
-  using __secondary_env_t =
-    __call_result_t<__mk_secondary_env_t<_SetTags...>, __copy_cvref_fn<_CvSender>, _CvSender, _Env>;
+  using __secondary_env_t = __call_result_t<__mk_secondary_env_t<_SetTags...>, _CvSender, _Env>;
 
   //////////////////////////////////////////////////////////////////////////////////////////
   // __infallible_scheduler
