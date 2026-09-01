@@ -205,10 +205,7 @@ TEST_CASE("bulk task on parallel scheduler following a variant sender",
                 | ex::continues_on(sched)  //
                 | ex::bulk(ex::par,
                            num_tasks,
-                           [&](size_t id, auto&)
-                           {
-                             pool_ids[id] = std::this_thread::get_id();
-                           })
+                           [&](size_t id, auto&) { pool_ids[id] = std::this_thread::get_id(); })
                 | ex::then([](auto data) { return int(data); });
 
   auto [result] = ex::sync_wait(std::move(bulk_snd)).value();
