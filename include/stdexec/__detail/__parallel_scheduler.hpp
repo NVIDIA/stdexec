@@ -181,7 +181,7 @@ namespace STDEXEC
     - __bulk_state_base::__fun_ (_Fn) -- 0 (assuming empty function)
     - __bulk_state_base::__rcvr_ (_Rcvr) -- 0 (assuming empty receiver)
     - __forward_args_receiver::__vtable -- 8
-    - __forward_args_receiver::__arguments_data_ (array of bytes) -- 8 (depending on previous sender)
+    - __forward_args_receiver::__arguments_ (variant of tuples) -- 8 (depending on previous sender)
     - __bulk_state_base::__prepare_storage_for_backend (fun ptr) -- 8
     - __bulk_state_base::__size_ (_Size) -- 4
     - __bulk_state::__preallocated_ (__preallocated_) -- 152
@@ -531,31 +531,43 @@ namespace STDEXEC
           return;
         }
 
-        // Store the input data in the shared state.
-        using __typed_forward_args_receiver_t =
-          __typed_forward_args_receiver<_Previous, _BulkState, _As...>;
-        auto __r = new (&__state_.__forward_args_helper_)
-          __typed_forward_args_receiver_t(std::forward<_As>(__as)...);
-
-        auto __scheduler = __sched_;
-        auto __size      = static_cast<size_t>(__state_.__size_);
-
-        auto __storage = __state_.__prepare_storage_for_backend(&__state_);
-        // This might destroy the `this` object.
-
-        // Schedule the bulk work on the system scheduler. This will invoke `execute` on
-        // our receiver multiple times, and then a completion signal (e.g., `set_value`).
-        if constexpr (_BulkState::__is_unchunked)
+        STDEXEC_TRY
         {
-          __scheduler->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1,
-                                               *__r,
-                                               __storage);
+          // Store the input data in the shared state. Could throw if the types are not
+          // nothrow decay-copyable.
+          using __typed_forward_args_receiver_t =
+            __typed_forward_args_receiver<_Previous, _BulkState, _As...>;
+          auto __r = ::new (&__state_.__forward_args_helper_)
+            __typed_forward_args_receiver_t(std::forward<_As>(__as)...);
+
+          auto __scheduler = __sched_;
+          auto __size      = static_cast<size_t>(__state_.__size_);
+
+          auto __storage = __state_.__prepare_storage_for_backend(&__state_);
+          // This might destroy the `this` object.
+
+          // Schedule the bulk work on the system scheduler. This will invoke `execute` on
+          // our receiver multiple times, and then a completion signal (e.g., `set_value`).
+          if constexpr (_BulkState::__is_unchunked)
+          {
+            __scheduler->schedule_bulk_unchunked(_BulkState::__parallelize ? __size : 1,
+                                                *__r,
+                                                __storage);
+          }
+          else
+          {
+            __scheduler->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1,
+                                              *__r,
+                                              __storage);
+          }
         }
-        else
+        STDEXEC_CATCH_ALL
         {
-          __scheduler->schedule_bulk_chunked(_BulkState::__parallelize ? __size : 1,
-                                             *__r,
-                                             __storage);
+          if constexpr (!__nothrow_decay_copyable<_As...>)
+          {
+            STDEXEC::set_error(std::move(__state_.__rcvr_), std::current_exception());
+            return;
+          }
         }
       }
 
@@ -568,7 +580,7 @@ namespace STDEXEC
 
       /// Invoked when the previous sender completes with error to forward the error to
       /// the connected receiver.
-      template <typename _Error>
+      template <class _Error>
       void set_error(_Error&& __error) noexcept
       {
         STDEXEC::set_error(std::move(__state_.__rcvr_), std::forward<_Error>(__error));
