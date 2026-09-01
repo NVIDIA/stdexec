@@ -26,7 +26,7 @@ import stdexec;
 #  include "../stdexec/__detail/__bulk.hpp"
 #  include "../stdexec/__detail/__domain.hpp"
 #  include "../stdexec/__detail/__execution_fwd.hpp"
-#  include "../stdexec/__detail/__execution_legacy.hpp"
+#  include "../stdexec/__detail/__execution_legacy.hpp"  // IWYU pragma: keep
 #  include "../stdexec/__detail/__get_completion_signatures.hpp"
 #  include "../stdexec/__detail/__intrusive_queue.hpp"
 #  include "../stdexec/__detail/__manual_lifetime.hpp"
@@ -1656,7 +1656,7 @@ namespace experimental::execution
       struct opstate_base_with_receiver : opstate_base<Range>
       {
         explicit opstate_base_with_receiver(Range range, _static_thread_pool& pool, Receiver rcvr)
-          : opstate_base<Range>{range, pool}
+          : opstate_base<Range>{std::move(range), pool}
           , rcvr_(static_cast<Receiver&&>(rcvr))
         {}
 

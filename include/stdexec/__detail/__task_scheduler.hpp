@@ -32,7 +32,6 @@ import stdexec;
 #  include "__diagnostics.hpp"
 #  include "__domain.hpp"
 #  include "__env.hpp"
-#  include "__inline_scheduler.hpp"
 #  include "__just.hpp"
 #  include "__memory.hpp"
 #  include "__meta.hpp"

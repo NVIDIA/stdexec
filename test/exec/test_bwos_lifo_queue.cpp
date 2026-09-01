@@ -384,6 +384,10 @@ TEST_CASE("exec::bwos::lifo_queue - high contention stress", "[bwos]")
           {
             break;
           }
+          else
+          {
+            std::this_thread::yield();
+          }
         }
         thiefCounts[t] = localCount;
       });
