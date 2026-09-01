@@ -21,6 +21,7 @@
 #include <exec/async_scope.hpp>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <exec/variant_sender.hpp>
 #include <test_common/receivers.hpp>
 
 #if STDEXEC_USE_MODULES()
@@ -181,6 +182,34 @@ TEST_CASE("simple bulk task on parallel scheduler", "[scheduler][parallel_schedu
                            [&](size_t id) { pool_ids[id] = std::this_thread::get_id(); });
 
   ex::sync_wait(std::move(bulk_snd));
+
+  for (auto pool_id: pool_ids)
+  {
+    REQUIRE(pool_id != std::thread::id{});
+    REQUIRE(this_id != pool_id);
+  }
+}
+
+TEST_CASE("bulk task on parallel scheduler following a variant sender",
+          "[scheduler][parallel_scheduler]")
+{
+  std::thread::id             this_id   = std::this_thread::get_id();
+  constexpr size_t            num_tasks = 16;
+  std::thread::id             pool_ids[num_tasks];
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+  using sndr1_t                     = decltype(ex::just(42));
+  using sndr2_t                     = decltype(ex::just(42.0));
+  exec::variant_sender<sndr1_t, sndr2_t> var_snd{ex::just(42)};
+
+  auto bulk_snd = std::move(var_snd)       //
+                | ex::continues_on(sched)  //
+                | ex::bulk(ex::par,
+                           num_tasks,
+                           [&](size_t id, auto&) { pool_ids[id] = std::this_thread::get_id(); })
+                | ex::then([](auto data) { return int(data); });
+
+  auto [result] = ex::sync_wait(std::move(bulk_snd)).value();
+  CHECK(result == 42);
 
   for (auto pool_id: pool_ids)
   {

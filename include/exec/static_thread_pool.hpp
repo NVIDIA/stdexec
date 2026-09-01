@@ -26,7 +26,7 @@ import stdexec;
 #  include "../stdexec/__detail/__bulk.hpp"
 #  include "../stdexec/__detail/__domain.hpp"
 #  include "../stdexec/__detail/__execution_fwd.hpp"
-#  include "../stdexec/__detail/__execution_legacy.hpp"
+#  include "../stdexec/__detail/__execution_legacy.hpp"  // IWYU pragma: keep
 #  include "../stdexec/__detail/__get_completion_signatures.hpp"
 #  include "../stdexec/__detail/__intrusive_queue.hpp"
 #  include "../stdexec/__detail/__manual_lifetime.hpp"
