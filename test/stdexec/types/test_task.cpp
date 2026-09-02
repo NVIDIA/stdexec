@@ -33,7 +33,10 @@
 import std;
 #  else
 #    include <atomic>
+#    include <system_error>
+#    include <tuple>
 #    include <utility>
+#    include <variant>
 #  endif
 
 namespace ex = STDEXEC;
@@ -364,6 +367,145 @@ namespace
   }
 #    endif
 #  endif
+
+  // Regression test for NVIDIA/stdexec#2222: when a task is given an environment
+  // that declares custom error_types, the task's completion signatures -- and the
+  // errors it delivers when connected to a receiver -- must use those types
+  // rather than always reporting/delivering std::exception_ptr.
+  struct error_code_env
+  {
+    using error_types = ex::completion_signatures<ex::set_error_t(std::error_code)>;
+  };
+
+  auto test_task_yields_error_code() noexcept -> ex::task<int, error_code_env>
+  {
+    co_yield ex::with_error{std::make_error_code(std::errc::invalid_argument)};
+    co_return 1;
+  }
+
+#  if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("task's completion signatures and errors honor custom error_types", "[types][task]")
+  {
+    // This is the repro from issue 2222: it only compiles (and produces the
+    // error_code value at runtime) if the task's error is reported and delivered
+    // as std::error_code, not as std::exception_ptr:
+    auto s = test_task_yields_error_code() | ex::upon_error([](auto err) noexcept { return err; })
+           | ex::into_variant();
+    auto [r] = ex::sync_wait(std::move(s)).value();
+    CHECK(std::holds_alternative<std::tuple<std::error_code>>(r));
+    CHECK(std::get<std::tuple<std::error_code>>(r)
+          == std::make_tuple(std::make_error_code(std::errc::invalid_argument)));
+  }
+#  endif
+
+  // A receiver that can be connected to a task whose environment declares
+  // set_error_t(std::error_code):
+  struct task_connect_env
+  {
+    ex::run_loop *__loop_;
+
+    template <
+      ex::__one_of<ex::get_scheduler_t, ex::get_start_scheduler_t, ex::get_delegation_scheduler_t>
+        _Query>
+    [[nodiscard]]
+    constexpr auto query(_Query) const noexcept -> ex::run_loop::scheduler
+    {
+      return __loop_->get_scheduler();
+    }
+  };
+
+  struct error_code_task_receiver
+  {
+    using receiver_concept = ex::receiver_t;
+
+    struct completion
+    {
+      enum class kind
+      {
+        none,
+        value,
+        error_code,
+        exception_ptr,
+        stopped
+      };
+
+      kind            __kind_  = kind::none;
+      int             __value_ = 0;
+      std::error_code __error_ = {};
+    };
+
+    void set_value(int __value) noexcept
+    {
+      __completion_->__kind_  = completion::kind::value;
+      __completion_->__value_ = __value;
+    }
+
+    void set_error(std::error_code __error) noexcept
+    {
+      __completion_->__kind_  = completion::kind::error_code;
+      __completion_->__error_ = __error;
+    }
+
+    void set_error(std::exception_ptr) noexcept
+    {
+      __completion_->__kind_ = completion::kind::exception_ptr;
+    }
+
+    void set_stopped() noexcept
+    {
+      __completion_->__kind_ = completion::kind::stopped;
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept -> task_connect_env
+    {
+      return {__loop_};
+    }
+
+    completion   *__completion_;
+    ex::run_loop *__loop_;
+  };
+
+  auto test_task_connect_value() noexcept -> ex::task<int, error_code_env>
+  {
+    co_return 42;
+  }
+
+  auto test_task_connect_stopped() noexcept -> ex::task<int, error_code_env>
+  {
+    co_yield ex::with_stopped();
+    co_return 1;
+  }
+
+  TEST_CASE("connecting a task delivers its declared error types to the receiver", "[types][task]")
+  {
+    ex::run_loop loop;
+
+    {
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_connect_value(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::value);
+      CHECK(completion.__value_ == 42);
+    }
+    {
+      // The error must be delivered as std::error_code, not std::exception_ptr:
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_yields_error_code(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::error_code);
+      CHECK(completion.__error_ == std::make_error_code(std::errc::invalid_argument));
+    }
+    {
+      error_code_task_receiver::completion completion;
+      auto                                 op = ex::connect(test_task_connect_stopped(),
+                            error_code_task_receiver{&completion, &loop});
+      ex::start(op);
+      CHECK(completion.__kind_ == error_code_task_receiver::completion::kind::stopped);
+    }
+  }
 
   struct error_as_value
   {
