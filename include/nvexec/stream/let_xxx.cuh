@@ -72,8 +72,7 @@ namespace nv::execution::_strm
     inline constexpr auto _mk_sch_env =
       []<class CvSender, class Receiver, class SetTag>(CvSender&& sndr, Receiver&& rcvr, SetTag)
     {
-      using cv_fn = __copy_cvref_fn<CvSender>;
-      return __mk_secondary_env_t<SetTag>()(cv_fn{}, sndr, STDEXEC::get_env(rcvr));
+      return __mk_secondary_env_t<SetTag>()(sndr, STDEXEC::get_env(rcvr));
     };
 
     template <class CvSender, class Receiver, class SetTag>
