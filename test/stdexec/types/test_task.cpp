@@ -425,6 +425,31 @@ namespace
     CHECK(i == 42);
   }
 
+  auto noop_task() -> ex::task<>
+  {
+    co_return;
+  }
+
+  auto test_task_awaits_starts_on_task() -> ex::task<>
+  {
+    auto sched = co_await ex::read_env(ex::get_start_scheduler);
+    co_await ex::starts_on(sched, noop_task());
+  }
+
+  TEST_CASE("test starts_on(task_scheduler, task) advertises task_scheduler_domain and can be "
+            "sync_wait'ed",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    ex::task_scheduler          sched{ctx.get_scheduler()};
+    auto                        snd = ex::starts_on(sched, test_task_awaits_starts_on_task());
+    using attrs_t                   = ex::env_of_t<decltype(snd)>;
+    using domain_t =
+      ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>, attrs_t, ex::env<>>;
+    STATIC_REQUIRE(std::same_as<domain_t, ex::task_scheduler_domain>);
+    CHECK(ex::sync_wait(std::move(snd)).has_value());
+  }
+
   // Test affinity with a run_loop scheduler, which is infallible but not inline:
   struct test_env2
   {
