@@ -21,7 +21,9 @@
 
 #include <stdexec/execution.hpp>
 
+#include <cstddef>
 #include <memory>
+#include <memory_resource>
 
 namespace ex = STDEXEC;
 
@@ -247,20 +249,44 @@ namespace
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
   }
 
+  struct counting_resource : std::pmr::memory_resource
+  {
+    std::size_t count = 0;
+
+    void *do_allocate(std::size_t bytes, std::size_t alignment) override
+    {
+      ++count;
+      return std::pmr::get_default_resource()->allocate(bytes, alignment);
+    }
+
+    void do_deallocate(void *p, std::size_t bytes, std::size_t alignment) override
+    {
+      std::pmr::get_default_resource()->deallocate(p, bytes, alignment);
+    }
+
+    bool do_is_equal(std::pmr::memory_resource const &other) const noexcept override
+    {
+      return &other == this;
+    }
+  };
+
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
+    counting_resource               res;
     exec::function<bool() noexcept> sndr(
-      []() noexcept
+      [&res]() noexcept
       {
         return ex::read_env(exec::get_frame_allocator)
              | ex::then(
-                 [](auto alloc) noexcept
+                 [&res](auto alloc) noexcept
                  {
-                   return std::same_as<std::pmr::polymorphic_allocator<std::byte>, decltype(alloc)>;
+                   auto count = res.count;
+                   alloc.deallocate(alloc.allocate(16), 16);
+                   return res.count > count;
                  });
       });
 
-    std::pmr::polymorphic_allocator<std::byte> alloc;
+    std::pmr::polymorphic_allocator<std::byte> alloc{&res};
 
     auto [ret] = ex::sync_wait(std::move(sndr)
                                | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))

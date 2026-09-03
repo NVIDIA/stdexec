@@ -141,14 +141,15 @@ namespace experimental::execution
       using __receiver_t   = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
       using __prop_t       = __receiver_t::__prop_t;
       using __stop_token_t = stop_token_of_t<env_of_t<__receiver_t>>;
-      using __adaptee_t    = decltype(__choose_frame_allocator(__declval<_Receiver const &>()));
+      using __adaptee_t    = decltype(__choose_frame_allocator(
+        __declval<env_of_t<_Receiver> const &>()));
 
       __memory_resource_adaptor_t<__adaptee_t> __resource_;
       __prop_t                                 __env_;
       _any::_state<_Receiver, __stop_token_t>  __rcvr_;
 
       explicit __opstate_base(_Receiver __rcvr)
-        : __resource_(__choose_frame_allocator(std::as_const(__rcvr)))
+        : __resource_(__choose_frame_allocator(STDEXEC::get_env(std::as_const(__rcvr))))
         , __env_(__make_env())
         , __rcvr_(static_cast<_Receiver &&>(__rcvr))
       {}
