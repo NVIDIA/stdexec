@@ -972,8 +972,7 @@ namespace STDEXEC
 
       static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
       {
-        __std::coroutine_handle<> const __continuation =
-          __coro.promise().__state_->__completed();
+        __std::coroutine_handle<> const __continuation = __coro.promise().__state_->__completed();
 #    ifdef STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
         __continuation.resume();
 #    else
