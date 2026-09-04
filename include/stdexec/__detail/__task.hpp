@@ -65,6 +65,10 @@ namespace STDEXEC
   struct with_stopped
   {};
 
+  struct _THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_;
+  struct _THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_;
+  struct _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_;
+
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
@@ -230,14 +234,10 @@ namespace STDEXEC
     };
 
     template <class _ParentEnv, class _Scheduler, class _Alloc>
-    concept __has_compatible_scheduler =                                   //
-      requires(_ParentEnv const & __parent_env, _Alloc const & __alloc) {  //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc);   //
-      } ||                                                                 //
-      requires(_ParentEnv const & __parent_env) {                          //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env));            //
-      } ||                                                                 //
-      requires { _Scheduler{}; };
+    concept __has_compatible_scheduler =
+      __has_scheduler_compatible_with<_ParentEnv, _Scheduler, _Alloc>
+      || __has_scheduler_compatible_with<_ParentEnv, _Scheduler>
+      || __std::default_initializable<_Scheduler>;
 
     template <class _ParentEnv, class _TaskEnv>
     concept __has_compatible_environment_with =
@@ -343,13 +343,34 @@ namespace STDEXEC
       return __attrs{};
     }
 
-    template <class _Self = task, class _Env = void>
-      requires __task::__has_compatible_environment_with<_Env, _TaskEnv>
+    template <class _Self, class _Env>
     static consteval auto get_completion_signatures()
     {
-      return __concat_completion_signatures_t<
-        completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
-        error_types>{};
+      if constexpr (__task::__has_compatible_environment_with<_Env, _TaskEnv>)
+      {
+        return __concat_completion_signatures_t<
+          completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
+          error_types>{};
+      }
+      else if constexpr (!__task::__has_compatible_allocator<_Env, allocator_type>)
+      {
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(_THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_),
+          _WITH_ALLOCATOR_(allocator_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else
+      {
+        static_assert(
+          !__task::__has_compatible_scheduler<_Env, start_scheduler_type, allocator_type>);
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(
+            _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_),
+          _WITH_SCHEDULER_(start_scheduler_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
     }
 
     // This transforms a task into an __awaiter that can perform symmetric transfer when
@@ -373,7 +394,7 @@ namespace STDEXEC
     template <class _Receiver>
       requires __task::__has_compatible_environment_with<env_of_t<_Receiver>, _TaskEnv>
     [[nodiscard]]
-    constexpr auto connect(_Receiver __rcvr) && noexcept(__nothrow_move_constructible<_Receiver>)
+    constexpr auto connect(_Receiver __rcvr) && noexcept
     {
       return __opstate<_Receiver>(static_cast<task&&>(*this), static_cast<_Receiver&&>(__rcvr));
     }
@@ -638,23 +659,22 @@ namespace STDEXEC
         // stop token to the task's stop source, then resume the task's coroutine.
         auto& __task_promise    = this->__handle().promise();
         __task_promise.__state_ = this;
-        if constexpr (__nothrow_callback_registration<env_of_t<_Receiver>>)
+        STDEXEC_TRY
         {
           this->__register_callback(STDEXEC::get_env(__rcvr_), __task_promise.__stop_);
           STDEXEC::__coroutine_resume_nothrow(this->__handle());
         }
-        else
+        STDEXEC_CATCH_ALL
         {
-          // The stop callback is not known to construct without throwing, so it may
-          // throw. In that case the task's coroutine never starts: destroy it and
-          // report the failure to the receiver as an exception.
-          STDEXEC_TRY
+          if constexpr (__nothrow_callback_registration<env_of_t<_Receiver>>)
           {
-            this->__register_callback(STDEXEC::get_env(__rcvr_), __task_promise.__stop_);
-            STDEXEC::__coroutine_resume_nothrow(this->__handle());
+            __std::unreachable();
           }
-          STDEXEC_CATCH_ALL
+          else
           {
+            // The stop callback is not known to construct without throwing, so it may
+            // throw. In that case the task's coroutine never starts: destroy it and
+            // report the failure to the receiver as an exception.
             auto const __coro = std::exchange(this->__task_.__coro_, {});
             STDEXEC::__coroutine_destroy_nothrow(__coro);
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
@@ -681,12 +701,9 @@ namespace STDEXEC
           // error with its declared type -- not as an std::exception_ptr:
           auto const __coro = std::exchange(this->__task_.__coro_, {});
           STDEXEC::__coroutine_destroy_nothrow(__coro);
-          __visit(
-            [&]<class _Error>(_Error&& __error) noexcept -> void
-            {
-              STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__error));
-            },
-            std::move(this->__errors_));
+          __visit(STDEXEC::set_error,
+                  std::move(this->__errors_),
+                  static_cast<_Receiver&&>(__rcvr_));
         }
         else
         {
@@ -706,15 +723,13 @@ namespace STDEXEC
             // required to outlive the task (just as for the value returned from
             // await_resume). Copy the reference out of the coroutine before
             // destroying it, then deliver it to the receiver:
-            using __reference_t   = std::remove_reference_t<_Ty>&;
-            __reference_t __value = __promise.__result();
+            _Ty& __value = __promise.__result();
             STDEXEC::__coroutine_destroy_nothrow(__coro);
-            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), __value);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_Ty>(__value));
           }
           else
           {
-            using __rvalue_ref_t = std::add_rvalue_reference_t<_Ty>;
-            auto __value         = static_cast<__rvalue_ref_t>(__promise.__result());
+            auto __value = static_cast<_Ty&&>(__promise.__result());
             STDEXEC::__coroutine_destroy_nothrow(__coro);
             STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), std::move(__value));
           }
