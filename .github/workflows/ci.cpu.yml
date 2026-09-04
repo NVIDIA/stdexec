@@ -25,8 +25,13 @@ jobs:
           - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (clang 22, Debug)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
-          # Reenable this with clang-23 once we get it working in CI
-          # - { name: "CPU (clang 22, Debug, modules)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
+          # Clang 23 is the only supported toolchain for modular builds (see
+          # "Modular builds" in the README). rapidsai/devcontainers does not
+          # publish an llvm23 image yet, so this job installs Clang 23 from
+          # apt.llvm.org on top of the llvm22 image. To de-hack once the image
+          # exists: drop `llvm: "23"` and set tag: llvm23-cuda13.2 -- the
+          # install step below then no-ops.
+          - { name: "CPU (clang 23, Debug, modules)",         build: "Debug",   tag: llvm22-cuda13.2, llvm: "23", cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release, noexcept)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++ -fno-exceptions" }
           - { name: "CPU (gcc 12, Debug)",           build: "Debug",   tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
@@ -61,8 +66,29 @@ jobs:
           persist-credentials: false
       - name: Setup environment
         run: |
-          echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
+          echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}${{ matrix.llvm && format('-llvm{0}', matrix.llvm) || '' }}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
+      - if: ${{ matrix.llvm != '' && !startsWith(matrix.tag, format('llvm{0}-', matrix.llvm)) }}
+        name: Install Clang ${{ matrix.llvm }} from apt.llvm.org
+        # Runs as root: the workflow default shell (`su coder`) is overridden.
+        shell: bash
+        run: |
+          set -ex
+          . /etc/os-release
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+            -o /etc/apt/trusted.gpg.d/apt-llvm.asc
+          echo "deb http://apt.llvm.org/${VERSION_CODENAME}/ llvm-toolchain-${VERSION_CODENAME}-${{ matrix.llvm }} main" \
+            > /etc/apt/sources.list.d/llvm-${{ matrix.llvm }}.list
+          apt-get update
+          # NB: libc++-N-dev Conflicts with the image's libc++-22-dev and will
+          # replace it. That is fine here -- this job builds only with Clang
+          # ${{ matrix.llvm }} -- but it is why this cannot be a shared setup step.
+          apt-get install -y --no-install-recommends \
+            clang-${{ matrix.llvm }} \
+            libc++-${{ matrix.llvm }}-dev \
+            libc++abi-${{ matrix.llvm }}-dev
+          /usr/lib/llvm-${{ matrix.llvm }}/bin/clang++ --version
+
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -122,7 +148,8 @@ jobs:
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             -DSTDEXEC_BUILD_EXAMPLES:BOOL=${{ !contains(matrix.name, 'modules') }} \
             -DSTDEXEC_BUILD_MODULES:BOOL=${{ contains(matrix.name, 'modules') }} \
-            -DCMAKE_CXX_STDLIB_MODULES_JSON=/usr/lib/llvm-22/lib/libc++.modules.json \
+            ${{ matrix.llvm && format('-DCMAKE_CXX_COMPILER=/usr/lib/llvm-{0}/bin/clang++', matrix.llvm) || '' }} \
+            -DCMAKE_CXX_STDLIB_MODULES_JSON=/usr/lib/llvm-${{ matrix.llvm || '22' }}/lib/libc++.modules.json \
             ;
 
           # Compile

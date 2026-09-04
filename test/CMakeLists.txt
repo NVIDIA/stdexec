@@ -15,13 +15,17 @@
 # =============================================================================
 include(CheckCompilerFlag)
 check_compiler_flag(CXX -Wno-c2y-extensions HAVE_C2Y_EXTENSIONS_WARNING)
+# Clang 23 adds -Wunused-template (enabled by -Wall) and fires it on
+# several templates defined in headers in test_common.
+check_compiler_flag(CXX -Wno-unused-template HAVE_UNUSED_TEMPLATE_WARNING)
 
 function(add_compile_diagnostics TARGET)
   if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     target_compile_options(
       ${TARGET}
       PRIVATE -Wall -Wextra -Wpedantic -Werror
-              $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>)
+              $<$<BOOL:${HAVE_C2Y_EXTENSIONS_WARNING}>:-Wno-c2y-extensions>
+              $<$<BOOL:${HAVE_UNUSED_TEMPLATE_WARNING}>:-Wno-unused-template>)
   endif()
 endfunction()
 
@@ -79,21 +83,15 @@ set(stdexec_test_sources
     stdexec/types/test_task.cpp
     )
 
+# The rest of these built cleanly once the modular build moved to Clang 23; the
+# Clang 22 ICE that forced a longer exclusion list here is documented under
+# "Modular builds" in the README.
 if(NOT STDEXEC_BUILD_MODULES)
-  # these tests don't build in modules mode, yet
+  # Fails in modules mode on every supported compiler: __any_allocator is
+  # reachable but not exported from the stdexec module, so it needs a
+  # STDEXEC_MODULE_EXPORT annotation before this can be enabled.
   list(APPEND stdexec_test_sources
-    stdexec/algos/adaptors/test_let_error.cpp
-    stdexec/algos/adaptors/test_let_stopped.cpp
-    stdexec/algos/adaptors/test_let_value.cpp
-    stdexec/algos/adaptors/test_on.cpp
-    stdexec/algos/adaptors/test_on2.cpp
-    stdexec/algos/adaptors/test_on3.cpp
-    stdexec/algos/adaptors/test_when_all.cpp
-    stdexec/algos/factories/test_just_error.cpp
-    stdexec/cpos/test_cpo_bulk.cpp
-    stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
-    stdexec/schedulers/test_parallel_scheduler.cpp
     )
 endif()
 
