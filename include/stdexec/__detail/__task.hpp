@@ -65,6 +65,10 @@ namespace STDEXEC
   struct with_stopped
   {};
 
+  struct _THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_;
+  struct _THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_;
+  struct _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_;
+
   namespace __task
   {
     ////////////////////////////////////////////////////////////////////////////////
@@ -230,14 +234,10 @@ namespace STDEXEC
     };
 
     template <class _ParentEnv, class _Scheduler, class _Alloc>
-    concept __has_compatible_scheduler =                                   //
-      requires(_ParentEnv const & __parent_env, _Alloc const & __alloc) {  //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env), __alloc);   //
-      } ||                                                                 //
-      requires(_ParentEnv const & __parent_env) {                          //
-        _Scheduler(STDEXEC::get_start_scheduler(__parent_env));            //
-      } ||                                                                 //
-      requires { _Scheduler{}; };
+    concept __has_compatible_scheduler =
+      __has_scheduler_compatible_with<_ParentEnv, _Scheduler, _Alloc>
+      || __has_scheduler_compatible_with<_ParentEnv, _Scheduler>
+      || __std::default_initializable<_Scheduler>;
 
     template <class _ParentEnv, class _TaskEnv>
     concept __has_compatible_environment_with =
@@ -343,6 +343,36 @@ namespace STDEXEC
       return __attrs{};
     }
 
+    template <class _Self, class _Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (__task::__has_compatible_environment_with<_Env, _TaskEnv>)
+      {
+        return __concat_completion_signatures_t<
+          completion_signatures<__single_value_sig_t<_Ty>, set_stopped_t()>,
+          error_types>{};
+      }
+      else if constexpr (!__task::__has_compatible_allocator<_Env, allocator_type>)
+      {
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(_THE_ALLOCATOR_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ALLOCATOR_),
+          _WITH_ALLOCATOR_(allocator_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+      else
+      {
+        static_assert(
+          !__task::__has_compatible_scheduler<_Env, start_scheduler_type, allocator_type>);
+        return __throw_compile_time_error<
+          _WHAT_(_THE_CURRENT_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_ENVIRONMENT_),
+          _WHY_(
+            _THE_START_SCHEDULER_IN_THE_ENVIRONMENT_IS_INCOMPATIBLE_WITH_THE_TASK_START_SCHEDULER_),
+          _WITH_SCHEDULER_(start_scheduler_type),
+          _WITH_ENVIRONMENT_(_Env)>();
+      }
+    }
+
     // This transforms a task into an __awaiter that can perform symmetric transfer when
     // co_awaited.
     template <class _ParentPromise>
@@ -351,6 +381,22 @@ namespace STDEXEC
     constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept
     {
       return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
+    }
+
+    // Connecting a task to a receiver, like co_awaiting it, requires the receiver's
+    // environment to be compatible with the task's configuration (allocator, start
+    // scheduler, stop token, ...). Unlike co_awaiting a task — which reports errors
+    // by throwing them as exceptions at the await point — connecting a task to a
+    // receiver delivers the task's errors with their declared types directly to the
+    // receiver, rather than always delivering them as std::exception_ptr. (The
+    // completion signatures advertised by get_completion_signatures above describe
+    // exactly what the operation state returned from this member delivers.)
+    template <class _Receiver>
+      requires __task::__has_compatible_environment_with<env_of_t<_Receiver>, _TaskEnv>
+    [[nodiscard]]
+    constexpr auto connect(_Receiver __rcvr) && noexcept
+    {
+      return __opstate<_Receiver>(static_cast<task&&>(*this), static_cast<_Receiver&&>(__rcvr));
     }
 
    private:
@@ -586,6 +632,126 @@ namespace STDEXEC
       _ParentPromise& __parent_;
     };
 
+    // The operation state produced by connecting a task to a receiver. Like __awaiter,
+    // it drives the task's coroutine to completion; unlike __awaiter, it has no parent
+    // coroutine to symmetrically transfer control back to, so instead it completes the
+    // receiver directly. Because the task's errors are stored (typed) in the error
+    // variant below, they can be delivered to the receiver with their declared types
+    // instead of being converted to exceptions and caught as std::exception_ptr.
+    template <class _Receiver>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __opstate final
+      : __own_env_box<env_of_t<_Receiver>>
+      , __awaiter_base
+      , __stop_callback_box_t<env_of_t<_Receiver>>
+    {
+      constexpr explicit __opstate(task&& __task, _Receiver&& __rcvr)
+        noexcept(__nothrow_move_constructible<_Receiver>)
+        : __opstate::__own_env_box{__mk_own_env(STDEXEC::get_env(__rcvr))}
+        , __awaiter_base(static_cast<task&&>(__task), STDEXEC::get_env(__rcvr), this->__own_env_)
+        , __rcvr_(static_cast<_Receiver&&>(__rcvr))
+      {}
+
+      STDEXEC_IMMOVABLE(__opstate);
+
+      void start() & noexcept
+      {
+        // Register a stop callback that forwards stop requests from the receiver's
+        // stop token to the task's stop source, then resume the task's coroutine.
+        auto& __task_promise    = this->__handle().promise();
+        __task_promise.__state_ = this;
+        STDEXEC_TRY
+        {
+          this->__register_callback(STDEXEC::get_env(__rcvr_), __task_promise.__stop_);
+          STDEXEC::__coroutine_resume_nothrow(this->__handle());
+        }
+        STDEXEC_CATCH_ALL
+        {
+          if constexpr (__nothrow_callback_registration<env_of_t<_Receiver>>)
+          {
+            __std::unreachable();
+          }
+          else
+          {
+            // The stop callback is not known to construct without throwing, so it may
+            // throw. In that case the task's coroutine never starts: destroy it and
+            // report the failure to the receiver as an exception.
+            auto const __coro = std::exchange(this->__task_.__coro_, {});
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
+        }
+      }
+
+      [[nodiscard]]
+      auto __completed() noexcept -> __std::coroutine_handle<> final
+      {
+        // Destroy the stop callback before completing the receiver:
+        this->__reset_callback();
+        if (this->__stopped_)
+        {
+          // The task completed with with_stopped: destroy the coroutine and report
+          // the stopped completion.
+          auto const __coro = std::exchange(this->__task_.__coro_, {});
+          STDEXEC::__coroutine_destroy_nothrow(__coro);
+          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        }
+        else if (!this->__errors_.__is_valueless())
+        {
+          // The task completed with an error. Destroy the coroutine and deliver the
+          // error with its declared type -- not as an std::exception_ptr:
+          auto const __coro = std::exchange(this->__task_.__coro_, {});
+          STDEXEC::__coroutine_destroy_nothrow(__coro);
+          __visit(STDEXEC::set_error,
+                  std::move(this->__errors_),
+                  static_cast<_Receiver&&>(__rcvr_));
+        }
+        else
+        {
+          // The task completed successfully. Move/copy the result out of the
+          // coroutine before destroying it:
+          auto const __coro    = std::exchange(this->__task_.__coro_, {});
+          auto&      __promise = __coro.promise();
+          if constexpr (std::is_void_v<_Ty>)
+          {
+            __promise.__result();
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+          }
+          else if constexpr (std::is_reference_v<_Ty>)
+          {
+            // A reference-valued task does not own its result; the referent is
+            // required to outlive the task (just as for the value returned from
+            // await_resume). Copy the reference out of the coroutine before
+            // destroying it, then deliver it to the receiver:
+            _Ty& __value = __promise.__result();
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_Ty>(__value));
+          }
+          else
+          {
+            auto __value = static_cast<_Ty&&>(__promise.__result());
+            STDEXEC::__coroutine_destroy_nothrow(__coro);
+            STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), std::move(__value));
+          }
+        }
+        return __std::noop_coroutine();
+      }
+
+      [[nodiscard]]
+      auto __canceled() noexcept -> __std::coroutine_handle<> final
+      {
+        // The task was stopped while awaiting a child operation. Destroy the
+        // coroutine and report the stopped completion to the receiver.
+        this->__reset_callback();
+        auto const __coro = std::exchange(this->__task_.__coro_, {});
+        STDEXEC::__coroutine_destroy_nothrow(__coro);
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+        return __std::noop_coroutine();
+      }
+
+      _Receiver __rcvr_;
+    };
+
     struct __attrs
     {
       template <class _Tag, class... _OtherEnv>
@@ -786,8 +952,17 @@ namespace STDEXEC
    private:
     template <class>
     friend struct __awaiter;
+    template <class>
+    friend struct __opstate;
     friend struct __awaiter_base;
 
+    // On MSVC prior to 14.50, the compiler stores the coroutine handle returned
+    // from await_suspend in the suspended coroutine's frame, so when a connected
+    // task's __opstate::__completed destroys that frame before await_suspend
+    // returns, symmetric transfer would resume a use-after-free. See
+    // https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric-/1659260
+    // Resume the continuation directly instead: a plain nested resume rather than
+    // a tail call, at the cost of stack growth in deeply chained tasks.
     struct __completed_awaiter
     {
       static constexpr bool await_ready() noexcept
@@ -795,10 +970,14 @@ namespace STDEXEC
         return false;
       }
 
-      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept  //
-        -> __std::coroutine_handle<>
+      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
       {
-        return __coro.promise().__state_->__completed();
+        __std::coroutine_handle<> const __continuation = __coro.promise().__state_->__completed();
+#    ifdef STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+        __continuation.resume();
+#    else
+        return __continuation;
+#    endif
       }
 
       static constexpr void await_resume() noexcept {}

@@ -16,7 +16,7 @@
 #pragma once
 
 #include "__config.hpp"
-#include "__diagnostic_macros.hpp"
+#include "__diagnostic_macros.hpp"  // IWYU pragma: export
 
 #if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 
@@ -108,6 +108,9 @@ namespace STDEXEC
   {};
 
   struct _WITH_SCHEDULER_
+  {};
+
+  struct _WITH_ALLOCATOR_
   {};
 
   STDEXEC_MODULE_EXPORT_AUTHORING
