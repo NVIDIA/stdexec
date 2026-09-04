@@ -956,6 +956,13 @@ namespace STDEXEC
     friend struct __opstate;
     friend struct __awaiter_base;
 
+    // On MSVC prior to 14.50, the compiler stores the coroutine handle returned
+    // from await_suspend in the suspended coroutine's frame, so when a connected
+    // task's __opstate::__completed destroys that frame before await_suspend
+    // returns, symmetric transfer would resume a use-after-free. See
+    // https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric-/1659260
+    // Resume the continuation directly instead: a plain nested resume rather than
+    // a tail call, at the cost of stack growth in deeply chained tasks.
     struct __completed_awaiter
     {
       static constexpr bool await_ready() noexcept
@@ -963,10 +970,15 @@ namespace STDEXEC
         return false;
       }
 
-      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept  //
-        -> __std::coroutine_handle<>
+      static constexpr auto await_suspend(__std::coroutine_handle<__promise> __coro) noexcept
       {
-        return __coro.promise().__state_->__completed();
+        __std::coroutine_handle<> const __continuation =
+          __coro.promise().__state_->__completed();
+#    ifdef STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
+        __continuation.resume();
+#    else
+        return __continuation;
+#    endif
       }
 
       static constexpr void await_resume() noexcept {}

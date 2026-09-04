@@ -615,9 +615,13 @@ namespace
 
   // In debug GCC builds, this test can cause a stack overflow due to
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
-  // transfer failing to be a tail call.
+  // transfer failing to be a tail call. Likewise, when
+  // STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND is defined (MSVC prior to 14.50),
+  // task's final suspend resumes its continuation directly instead of performing
+  // a symmetric transfer, which grows the stack with each nested task completion.
 #  if !STDEXEC_GCC()                                                                               \
     || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
+#    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   auto sync() -> ex::task<int>
   {
     co_return 42;
@@ -651,6 +655,7 @@ namespace
     auto [i] = ex::sync_wait(std::move(t)).value();
     CHECK(i == 84'000'042);
   }
+#    endif  // !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
 #  endif
 
   struct my_env
