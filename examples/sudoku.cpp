@@ -223,7 +223,7 @@ bool examine_potentials(board_element *b, bool *progress)
     if (b[i].solved_element == 0 && b[i].potential_set == 0)  // empty set
       return false;
     // Check if potential_set is a power of 2 (only one bit set)
-    if (b[i].potential_set != 0 && std::popcount(b[i].potential_set) == 1)
+    if (std::popcount(b[i].potential_set) == 1)
     {
       // It's a singleton - solve it
       // countr_zero gives the bit position (0-indexed), add 1 to get the element value
