@@ -654,6 +654,20 @@ namespace
     CHECK(!res.has_value());
   }
 
+  TEST_CASE("test completion domain of task", "[types][task]")
+  {
+    // task is scheduler affine but not inline. Regardless, its completion domain is the
+    // same as the start scheduler's completion domain.
+    using attrs_t = ex::env_of_t<ex::task<int>>;
+    using env_t   = ex::prop<ex::get_start_scheduler_t, ex::parallel_scheduler>;
+    using sched_t =
+      std::invoke_result_t<ex::get_completion_scheduler_t<ex::set_value_t>, attrs_t, env_t>;
+    using domain_t =
+      std::invoke_result_t<ex::get_completion_domain_t<ex::set_value_t>, attrs_t, env_t>;
+    STATIC_REQUIRE(std::same_as<sched_t, ex::parallel_scheduler>);
+    STATIC_REQUIRE(std::same_as<domain_t, ex::__parallel_scheduler_domain>);
+  }
+
   TEST_CASE("repro for NVIDIA/stdexec#2041", "[types][task]")
   {
     auto task = []() -> ex::task<void>

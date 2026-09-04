@@ -427,7 +427,7 @@ namespace STDEXEC
       // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
       // the environment for the current scheduler and return that (after checking the
       // scheduler for _its_ completion scheduler).
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         using __result_t = __call_result_t<__recurse_query_t,
@@ -461,7 +461,7 @@ namespace STDEXEC
       // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
       // the environment for the current scheduler and return that (after checking the
       // scheduler for _its_ completion scheduler).
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && __callable<get_start_scheduler_t, _Env const &...>)
       {
         return __check_domain<_Attrs, _Env...>(
@@ -604,7 +604,7 @@ namespace STDEXEC
   template <class _Sch, class _Env>
   constexpr auto __mk_sch_env([[maybe_unused]] _Sch __sch, _Env const &__env) noexcept
   {
-    if constexpr (__completes_inline<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env>
+    if constexpr (__completes_where_it_starts<set_value_t, env_of_t<schedule_result_t<_Sch>>, _Env>
                   && __callable<get_start_scheduler_t, _Env const &>)
     {
       auto __sch2 = get_completion_scheduler<set_value_t>(get_start_scheduler(__env),

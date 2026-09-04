@@ -243,8 +243,8 @@ namespace STDEXEC
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __hide_query(_Env &&, _Queries...) -> __hide_query<_Env, _Queries...>;
 
-  //! @brief A wrapper around an environment that hides the get_start_scheduler and get_domain
-  //! queries.
+  //! @brief A wrapper around an environment that hides the get_start_scheduler and
+  //! get_domain queries.
   template <class _Env>
   struct __hide_scheduler : __hide_query<_Env, get_start_scheduler_t>
   {
@@ -304,7 +304,8 @@ namespace STDEXEC
     static consteval auto __check_domain(_Domain) noexcept -> _Domain
     {
       // Sanity check: if a completion scheduler can be determined from the attributes
-      // (not the environment), then its domain must match the domain returned by the attributes.
+      // (not the environment), then its domain must match the domain returned by the
+      // attributes.
       if constexpr (!__same_as<_Tag, void>)
       {
         if constexpr (__callable<get_completion_scheduler_t<_Tag>, _Attrs const &, _Env const &...>)
@@ -330,8 +331,9 @@ namespace STDEXEC
       {
         using __domain_t = __call_result_t<__read_query_t, _Attrs const &, _Env const &...>;
         return __check_domain<_Attrs, _Env...>(__domain_t{});
-        // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion domain:
       }
+      // Otherwise, if _Tag is void, fall back to querying for the set_value_t completion
+      // domain:
       else if constexpr (__same_as<_Tag, void>)
       {
         if constexpr (__callable<get_completion_domain_t<set_value_t>,
@@ -347,8 +349,8 @@ namespace STDEXEC
           return void();
         }
       }
-      // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for its
-      // completion domain.
+      // Otherwise, if __attrs has a completion scheduler, we can ask that scheduler for
+      // its completion domain.
       else if constexpr (__callable<get_completion_scheduler_t<_Tag>,
                                     _Attrs const &,
                                     _Env const &...>)
@@ -362,29 +364,32 @@ namespace STDEXEC
           using __domain_t = __call_result_t<__read_query_t, __sch_t, _Env const &...>;
           return __domain_t{};
         }
-        // Otherwise, if the scheduler's sender indicates that it completes inline, we can ask
-        // the environment for its domain.
-        else if constexpr (__completes_inline<_Tag,
-                                              env_of_t<__call_result_t<schedule_t, __sch_t>>,
-                                              _Env...>
+        // Otherwise, if the scheduler's sender indicates that it completes where it
+        // starts, we can ask the environment for its domain.
+        else if constexpr (__completes_where_it_starts<
+                             _Tag,
+                             env_of_t<__call_result_t<schedule_t, __sch_t>>,
+                             _Env...>
                            && __callable<get_domain_t, _Env const &...>)
         {
           return __call_result_t<get_domain_t, _Env const &...>{};
         }
-        // Otherwise, if we are asking "late" (with an environment), return the default_domain
+        // Otherwise, if we are asking "late" (with an environment), return the
+        // default_domain
         else if constexpr (sizeof...(_Env) != 0)
         {
           return default_domain{};
         }
       }
-      // Otherwise, if the attributes indicates that the sender completes inline, we can ask
-      // the environment for its domain.
-      else if constexpr (__completes_inline<_Tag, _Attrs, _Env...>
+      // Otherwise, if the attributes indicates that the sender completes where it starts,
+      // we can ask the environment for its domain.
+      else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && __callable<get_domain_t, _Env const &...>)
       {
         return __call_result_t<get_domain_t, _Env const &...>{};
       }
-      // Otherwise, if we are asking "late" (with an environment), return the default_domain
+      // Otherwise, if we are asking "late" (with an environment), return the
+      // default_domain
       else if constexpr (sizeof...(_Env) != 0)
       {
         return default_domain{};
