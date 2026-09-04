@@ -319,6 +319,58 @@ namespace
     ex::sender auto                snd = ex::starts_on(is, ex::just()) | ex::then([] {});
     ex::sync_wait(std::move(snd));
   }
+
+  // A sender that completes asynchronously on the same execution context that started it
+  struct affine_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    struct attrs
+    {
+      template <class Tag, class... Env>
+      static auto query(ex::__get_completion_behavior_t<Tag>, Env&&...) noexcept
+      {
+        return ex::__completion_behavior::__asynchronous_affine;
+      }
+    };
+
+    template <class Receiver>
+    static auto connect(Receiver rcvr)
+    {
+      return ex::connect(ex::just(), static_cast<Receiver&&>(rcvr));
+    }
+
+    [[nodiscard]]
+    static auto get_env() noexcept -> attrs
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("starts_on completion domain agrees with its completion scheduler when the child "
+            "completes where it starts",
+            "[adaptors][starts_on]")
+  {
+    exec::static_thread_pool pool{1};
+    auto                     sched = pool.get_scheduler();
+    using sched_t                  = decltype(sched);
+    using sched_domain_t =
+      ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>, sched_t, ex::env<>>;
+
+    auto snd      = ex::starts_on(sched, affine_sender{});
+    using attrs_t = ex::env_of_t<decltype(snd)>;
+
+    using cmpl_sched_t =
+      ex::__call_result_t<ex::get_completion_scheduler_t<ex::set_value_t>, attrs_t, ex::env<>>;
+    using cmpl_domain_t =
+      ex::__call_result_t<ex::get_completion_domain_t<ex::set_value_t>, attrs_t, ex::env<>>;
+    STATIC_REQUIRE(std::same_as<cmpl_sched_t, sched_t>);
+    STATIC_REQUIRE(std::same_as<cmpl_domain_t, sched_domain_t>);
+    CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd), ex::env<>{}) == sched);
+
+    ex::sync_wait(std::move(snd));
+  }
 }  // namespace
 
 STDEXEC_PRAGMA_POP()

@@ -65,32 +65,9 @@ namespace STDEXEC
         , __attr_(__attr)
       {}
 
-      // Query for completion scheduler to use for algorithm dispatching.
-      // NOT TO SPEC
-      template <class... _Env>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_domain_t<>, _Env&&...) const noexcept
-        -> __completion_domain_of_t<set_value_t, _Scheduler, _Env...>
-      {
-        return {};
-      }
-
-      // Query for completion scheduler
-      template <class _SetTag, class... _Env>
-        requires __completes_where_it_starts<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(get_completion_scheduler_t<_SetTag>, _Env&&...) const noexcept
-        -> _Scheduler
-      {
-        // If the child completes where it starts, then starts_on(Sch,Child) completes on
-        // scheduler Sch.
-        return __sched_;
-      }
-
       // Query for completion scheduler - delegates to child's env with augmented
       // environment
       template <class _SetTag, class... _Env>
-        requires(!__completes_where_it_starts<_SetTag, env_of_t<_Child>, __env2_t<_Env>...>)
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag> __query,
                            _Env&&... __env) const noexcept
