@@ -192,7 +192,7 @@ namespace experimental::execution
           while (
             !n_submissions_in_flight_.compare_exchange_weak(expected,
                                                             context_closed,
-                                                            STDEXEC::__std::memory_order_relaxed))
+                                                            STDEXEC::__std::memory_order_acquire))
           {
             STDEXEC::__spin_loop_pause();
             expected = 0;
@@ -229,13 +229,13 @@ namespace experimental::execution
                                                          STDEXEC::__std::memory_order_relaxed);
         return;
       }
-      if (command_queue_.push_back(op))
+      command_queue_.push_back(op);
       {
         std::scoped_lock lock{ready_mutex_};
         ready_ = true;
-        cv_.notify_one();
       }
-      n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
+      cv_.notify_one();
+      n_submissions_in_flight_.fetch_sub(1, STDEXEC::__std::memory_order_release);
     }
 
     void request_stop()
