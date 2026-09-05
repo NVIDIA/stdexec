@@ -137,15 +137,15 @@ namespace
     STDEXEC::sync_wait(std::move(sndr));
   }
 
-  TEST_CASE("continues_on frees its task when the operation is not started",
-            "[cuda][stream][adaptors][continues_on]")
+  TEST_CASE("schedule_from frees its task when the operation is not started",
+            "[cuda][stream][adaptors][schedule_from]")
   {
     pinned_memory_resource_t pinned_memory;
     nvexec::stream_context   ctx;
     auto                     scheduler = ctx.get_scheduler();
     scheduler.ctx_.pinned_resource_    = &pinned_memory;
 
-    auto sndr = STDEXEC::just() | STDEXEC::continues_on(scheduler);
+    auto sndr = STDEXEC::schedule_from(STDEXEC::schedule(scheduler));
     {
       auto op = STDEXEC::connect(std::move(sndr), noop_receiver{});
       (void) op;
