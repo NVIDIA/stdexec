@@ -39,7 +39,8 @@ namespace
                      flags.set();
                    }
                    return ex::just();
-                 });
+                 })
+             | exec::completes_on(stream_ctx.get_scheduler());
     ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -64,7 +65,8 @@ namespace
                      }
                    }
                    return ex::just();
-                 });
+                 })
+             | exec::completes_on(stream_ctx.get_scheduler());
     ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -90,7 +92,8 @@ namespace
                      }
                    }
                    return ex::just();
-                 });
+                 })
+             | exec::completes_on(stream_ctx.get_scheduler());
     ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -101,7 +104,8 @@ namespace
     nvexec::stream_context stream_ctx{};
 
     auto snd = ex::schedule(stream_ctx.get_scheduler())
-             | ex::let_value([=]() { return ex::just(is_on_gpu()); });
+             | ex::let_value([=]() { return ex::just(is_on_gpu()); })
+             | exec::completes_on(stream_ctx.get_scheduler());
     auto const [result] = ex::sync_wait(std::move(snd)).value();
 
     REQUIRE(result == 1);
@@ -126,6 +130,7 @@ namespace
 
                    return ex::just();
                  })
+             | exec::completes_on(stream_ctx.get_scheduler())
              | a_sender(
                  [flags]
                  {
@@ -156,7 +161,8 @@ namespace
                    }
 
                    return ex::schedule(sch);
-                 });
+                 })
+             | exec::completes_on(sch);
     ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -169,9 +175,9 @@ namespace
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
-    auto snd = ex::schedule(sch)                                                                //
-             | ex::let_value([] { return nvexec::get_stream(); })                               //
-             | exec::write_attrs(ex::prop{ex::get_completion_scheduler<ex::set_value_t>, sch})  //
+    auto snd = ex::schedule(sch)                                   //
+             | ex::let_value([] { return nvexec::get_stream(); })  //
+             | exec::completes_on(sch)                             //
              | ex::then(
                  [flags](cudaStream_t stream)
                  {
