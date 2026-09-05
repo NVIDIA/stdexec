@@ -15,6 +15,7 @@
  */
 #include <catch2/catch_all.hpp>
 
+#define STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY 1
 #include <stdexec/execution.hpp>
 
 #include <exec/env.hpp>
@@ -400,11 +401,12 @@ namespace
 
   TEST_CASE("let_error can be customized", "[adaptors][let_error]")
   {
-    basic_inline_scheduler<let_error_test_domain> sched{};
+    auto attrs = ex::prop{ex::get_completion_domain<ex::set_error_t>, let_error_test_domain{}};
 
-    // The customization will return a different value
-    auto snd = ex::just(std::string{"hello"})
-             | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"err"}); });
-    wait_for_value(ex::starts_on(sched, std::move(snd)), std::string{"what error?"});
+    // The customization will return a different stopped
+    auto snd = ex::schedule(ex::get_parallel_scheduler())  //
+             | exec::write_attrs(attrs)                    //
+             | ex::let_error([](std::exception_ptr) { return ex::just(std::string{"stopped"}); });
+    wait_for_value(std::move(snd), std::string{"what error?"});
   }
 }  // namespace
