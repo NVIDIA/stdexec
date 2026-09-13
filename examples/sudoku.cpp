@@ -24,6 +24,7 @@
 #include <cstdlib>
 
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <chrono>
 #include <string_view>
@@ -221,67 +222,13 @@ bool examine_potentials(board_element *b, bool *progress)
   {
     if (b[i].solved_element == 0 && b[i].potential_set == 0)  // empty set
       return false;
-    switch (b[i].potential_set)
+    // Check if potential_set is a power of 2 (only one bit set)
+    if (std::popcount(b[i].potential_set) == 1)
     {
-    case 1:
-    {
-      b[i].solved_element = 1;
+      // It's a singleton - solve it
+      // countr_zero gives the bit position (0-indexed), add 1 to get the element value
+      b[i].solved_element = std::countr_zero(b[i].potential_set) + 1;
       singletons          = true;
-      break;
-    }
-    case 2:
-    {
-      b[i].solved_element = 2;
-      singletons          = true;
-      break;
-    }
-    case 4:
-    {
-      b[i].solved_element = 3;
-      singletons          = true;
-      break;
-    }
-    case 8:
-    {
-      b[i].solved_element = 4;
-      singletons          = true;
-      break;
-    }
-    case 16:
-    {
-      b[i].solved_element = 5;
-      singletons          = true;
-      break;
-    }
-    case 32:
-    {
-      b[i].solved_element = 6;
-      singletons          = true;
-      break;
-    }
-    case 64:
-    {
-      b[i].solved_element = 7;
-      singletons          = true;
-      break;
-    }
-    case 128:
-    {
-      b[i].solved_element = 8;
-      singletons          = true;
-      break;
-    }
-    case 256:
-    {
-      b[i].solved_element = 9;
-      singletons          = true;
-      break;
-    }
-    default:
-    {
-      assert(!"potential set is not a power of 2");
-      break;
-    }
     }
   }
   *progress = singletons;
