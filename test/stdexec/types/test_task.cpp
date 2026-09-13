@@ -725,6 +725,81 @@ namespace
                                 }));
   }
 
+  // Regression test for https://github.com/NVIDIA/stdexec/issues/2239: a task
+  // whose custom env type is built from the enclosing environment must observe
+  // queries written by write_env, even when a let_value sits between
+  // starts_on and the task.
+  struct query_2239_t
+  {
+    static constexpr bool query(ex::forwarding_query_t) noexcept
+    {
+      return true;
+    }
+
+    template <class Env>
+    auto operator()(Env const &env) const noexcept -> decltype(env.query(*this))
+    {
+      return env.query(*this);
+    }
+  };
+
+  inline constexpr query_2239_t query_2239{};
+
+  struct own_env_2239
+  {
+    template <class ParentEnv>
+      requires std::invocable<query_2239_t, ParentEnv const &>
+    explicit own_env_2239(ParentEnv const &parent)
+      : value(query_2239(parent))
+    {}
+
+    int value = -1;
+  };
+
+  struct task_env_2239
+  {
+    template <class ParentEnv>
+    using env_type = own_env_2239;
+
+    explicit task_env_2239(own_env_2239 const &own) noexcept
+      : value(own.value)
+    {}
+
+    [[nodiscard]]
+    auto query(query_2239_t) const noexcept -> int
+    {
+      return value;
+    }
+
+    int value;
+  };
+
+  auto task_with_env_2239() -> ex::task<void, task_env_2239>
+  {
+    int value = co_await ex::read_env(query_2239);
+    CHECK(value == 7);
+    co_return;
+  }
+
+  TEST_CASE("task env built from the enclosing environment observes write_env across let_value",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    auto                        q = ex::prop{query_2239, 7};
+    // The arrangement from issue #2239: write_env outside starts_on, with a
+    // let_value between starts_on and the task.
+    ex::sync_wait(ex::starts_on(ctx.get_scheduler(), ex::just() | ex::let_value(task_with_env_2239))
+                  | ex::write_env(q));
+  }
+
+  TEST_CASE("task env built from the enclosing environment observes write_env on a direct child",
+            "[types][task]")
+  {
+    exec::single_thread_context ctx;
+    auto                        q = ex::prop{query_2239, 7};
+    ex::sync_wait(ex::starts_on(ctx.get_scheduler(), task_with_env_2239()) | ex::write_env(q));
+  }
+
   constinit int global_int = 0;
 
   constexpr auto wrap_ref = ex::then([](auto &i) noexcept { return std::ref(i); });
