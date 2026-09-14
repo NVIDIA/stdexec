@@ -30,7 +30,6 @@ import stdexec;
 #  include "__optional.hpp"
 #  include "__schedulers.hpp"
 #  include "__task_scheduler.hpp"
-#  include "__with_awaitable_senders.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstddef>
@@ -217,6 +216,13 @@ namespace STDEXEC
 
     template <class _TaskEnv, class _ParentEnv>
     using __environment_type = __minvoke_or_q<__environment_t, env<>, _TaskEnv, _ParentEnv>;
+
+    template <class _Promise>
+    concept __stoppable_promise = requires(_Promise& __promise) {
+      {
+        __promise.unhandled_stopped()
+      } noexcept -> __std::convertible_to<__std::coroutine_handle<>>;
+    };
 
     template <class _ParentEnv, class _Alloc>
     concept __has_allocator_compatible_with = requires(_ParentEnv const & __parent_env) {
@@ -457,6 +463,9 @@ namespace STDEXEC
     [[nodiscard]]
     constexpr auto as_awaitable(_ParentPromise& __parent) && noexcept -> __awaiter<_ParentPromise>
     {
+      static_assert(__task::__stoppable_promise<_ParentPromise>,
+                    "Cannot await task from this coroutine: the promise type of the parent "
+                    "coroutine does not implement unhandled_stopped().");
       static_assert(__task::__has_compatible_allocator<env_of_t<_ParentPromise&>, allocator_type>,
                     "Cannot await task from this coroutine: the allocator in the parent "
                     "coroutine's environment is incompatible with the task's allocator.");
@@ -572,7 +581,7 @@ namespace STDEXEC
       constexpr explicit __awaiter(task&& __task, _ParentPromise& __parent) noexcept
         : __awaiter::__own_env_box{__task::__mk_own_env<_TaskEnv>(STDEXEC::get_env(__parent))}
         , __awaiter_base(static_cast<task&&>(__task), STDEXEC::get_env(__parent), this->__own_env_)
-        , __parent_(__parent)
+        , __continuation_(__std::coroutine_handle<_ParentPromise>::from_promise(__parent))
       {}
 
       static constexpr auto await_ready() noexcept -> bool
@@ -584,9 +593,9 @@ namespace STDEXEC
         noexcept(__nothrow_callback_registration<env_of_t<_ParentPromise>>)
           -> __std::coroutine_handle<>
       {
+        STDEXEC_ASSERT(__continuation == this->__continuation_);
         auto& __task_promise    = this->__handle().promise();
         __task_promise.__state_ = this;
-        __task_promise.set_continuation(__continuation);
         // If the following throws, the coroutine is immediately resumed and the exception
         // is rethrown at the suspension point.
         this->__register_callback(STDEXEC::get_env(__continuation.promise()),
@@ -615,20 +624,20 @@ namespace STDEXEC
           return STDEXEC::__coroutine_unhandled_stopped(this->__handle());
         }
         this->__reset_callback();
-        return this->__handle().promise().continuation().handle();
+        return this->__continuation_;
       }
 
       [[nodiscard]]
       auto __canceled() noexcept -> __std::coroutine_handle<> final
       {
         this->__reset_callback();
-        auto const __continuation = this->__handle().promise().continuation();
-        auto const __coro         = std::exchange(this->__task_.__coro_, {});
+        auto&      __parent = this->__continuation_.promise();
+        auto const __coro   = std::exchange(this->__task_.__coro_, {});
         STDEXEC::__coroutine_destroy_nothrow(__coro);
-        return __continuation.unhandled_stopped();
+        return __parent.unhandled_stopped();
       }
 
-      _ParentPromise& __parent_;
+      __std::coroutine_handle<_ParentPromise> __continuation_;
     };
 
     // The operation state produced by connecting a task to a receiver. Like __awaiter,
@@ -774,7 +783,6 @@ namespace STDEXEC
   template <class _Ty, class _TaskEnv>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _TaskEnv>::__promise
     : __task::__promise_base<__promise, _Ty>
-    , with_awaitable_senders<__promise>
   {
    private:
     struct __env;
