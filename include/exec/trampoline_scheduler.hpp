@@ -111,6 +111,8 @@ namespace experimental::execution
       std::size_t __max_recursion_size_;
 
      public:
+      using scheduler_concept = scheduler_tag;
+
       constexpr __scheduler() noexcept
         : __attrs{16}
         , __max_recursion_size_(4096)

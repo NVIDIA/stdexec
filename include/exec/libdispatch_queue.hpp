@@ -117,6 +117,8 @@ namespace experimental::execution
 
   struct libdispatch_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     bool operator==(libdispatch_scheduler const &) const = default;
 
     struct domain

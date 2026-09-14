@@ -891,6 +891,7 @@ namespace experimental::execution::__win32
   class windows_thread_pool::scheduler
   {
    public:
+    using scheduler_concept = STDEXEC::scheduler_tag;
     using time_point = filetime_clock::time_point;
 
     [[nodiscard]]

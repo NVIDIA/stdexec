@@ -138,6 +138,8 @@ namespace experimental::execution
 
     struct scheduler
     {
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
      private:
       template <class DerivedPoolType_, class Receiver>
       friend struct _pool_::opstate;

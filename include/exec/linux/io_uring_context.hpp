@@ -1226,6 +1226,8 @@ namespace experimental::execution
     class __scheduler
     {
      public:
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       __context* __context_;
 
       auto operator==(__scheduler const &) const -> bool = default;
