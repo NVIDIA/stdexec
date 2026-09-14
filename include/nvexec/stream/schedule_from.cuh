@@ -19,9 +19,8 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+#include <memory>
 #include <utility>
-
-#include "../detail/cuda_atomic.cuh"  // IWYU pragma: keep
 
 #include "common.cuh"
 
@@ -71,21 +70,34 @@ namespace nv::execution
           opstate& opstate_;
         };
 
+        struct task_deleter
+        {
+          void operator()(task_t* task) const noexcept
+          {
+            if (task != nullptr)
+            {
+              task->free_(task);
+            }
+          }
+        };
+
+        using task_ptr_t = std::unique_ptr<task_t, task_deleter>;
+
         opstate(Sender&& sndr, Receiver&& rcvr, context ctx)
           : _strm::opstate_base<Receiver>(static_cast<Receiver&&>(rcvr), ctx)
           , ctx_(ctx)
           , storage_(host_allocate<variant_t>(this->status_, ctx.pinned_resource_))
-          , task_(host_allocate<task_t>(this->status_,
-                                        ctx.pinned_resource_,
-                                        receiver{*this},
-                                        storage_.get(),
-                                        this->get_stream(),
-                                        ctx.pinned_resource_)
-                    .release())
+          , task_(task_ptr_t{host_allocate<task_t>(this->status_,
+                                                   ctx.pinned_resource_,
+                                                   receiver{*this},
+                                                   storage_.get(),
+                                                   this->get_stream(),
+                                                   ctx.pinned_resource_)
+                               .release()})
           , env_(host_allocate(this->status_, ctx_.pinned_resource_, this->make_env()))
-          , inner_op_{
-              connect(static_cast<Sender&&>(sndr),
-                      enqueue_receiver_t{env_.get(), storage_.get(), task_, ctx_.hub_->producer()})}
+          , inner_op_{connect(
+              static_cast<Sender&&>(sndr),
+              enqueue_receiver_t{env_.get(), storage_.get(), task_.get(), ctx_.hub_->producer()})}
         {
           if (this->status_ == cudaSuccess)
           {
@@ -97,8 +109,6 @@ namespace nv::execution
 
         void start() & noexcept
         {
-          started_.test_and_set(::cuda::std::memory_order::relaxed);
-
           if (status_ != cudaSuccess)
           {
             // Couldn't allocate memory for operation state, complete with error
@@ -106,14 +116,14 @@ namespace nv::execution
             return;
           }
 
+          task_.release();
           STDEXEC::start(inner_op_);
         }
 
         cudaError_t                  status_{cudaSuccess};
         context                      ctx_;
         host_ptr_t<variant_t>        storage_;
-        task_t*                      task_;
-        ::cuda::std::atomic_flag     started_{};
+        task_ptr_t                   task_;
         host_ptr_t<__decay_t<env_t>> env_{};
         inner_opstate_t              inner_op_;
       };
