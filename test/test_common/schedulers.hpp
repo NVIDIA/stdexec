@@ -43,7 +43,7 @@ namespace
   template <class Scheduler, ex::__completion_tag... Tags>
   struct sched_attrs
   {
-    sched_attrs(Scheduler sched, Tags...)
+    explicit sched_attrs(Scheduler sched, Tags...)
       : scheduler_(std::move(sched))
     {}
 
