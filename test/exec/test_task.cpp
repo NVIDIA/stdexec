@@ -381,17 +381,16 @@ namespace
   TEST_CASE("task - can be started on a static_thread_pool scheduler", "[types][task]")
   {
     exec::static_thread_pool pool{2};
-    bool ran = false;
+    bool                     ran = false;
     // Keep the closure a temporary inside the full expression: the task is
     // lazy, so the closure (and its by-reference capture) must outlive the
     // point at which the pool thread resumes the coroutine.
-    auto op_state =
-      STDEXEC::sync_wait(STDEXEC::starts_on(pool.get_scheduler(),
-                          [&]() -> exec::task<void>
-                          {
-                            ran = true;
-                            co_return;
-                          }()));
+    auto op_state = STDEXEC::sync_wait(STDEXEC::starts_on(pool.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
     REQUIRE(op_state);
     CHECK(ran);
   }
@@ -399,14 +398,13 @@ namespace
   TEST_CASE("task - can be started on a timed_thread_context scheduler", "[types][task]")
   {
     exec::timed_thread_context ctx;
-    bool ran = false;
-    auto op_state =
-      STDEXEC::sync_wait(STDEXEC::starts_on(ctx.get_scheduler(),
-                          [&]() -> exec::task<void>
-                          {
-                            ran = true;
-                            co_return;
-                          }()));
+    bool                       ran      = false;
+    auto                       op_state = STDEXEC::sync_wait(STDEXEC::starts_on(ctx.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
     REQUIRE(op_state);
     CHECK(ran);
   }
