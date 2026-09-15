@@ -341,6 +341,8 @@ namespace experimental::execution
 
       struct scheduler
       {
+        using scheduler_concept = scheduler_tag;
+
        private:
         template <class Receiver>
         friend struct _opstate;

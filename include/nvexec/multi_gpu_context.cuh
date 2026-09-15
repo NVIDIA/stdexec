@@ -31,6 +31,8 @@ namespace nv::execution
   {
     struct multi_gpu_stream_scheduler : private stream_scheduler_env<multi_gpu_stream_scheduler>
     {
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       multi_gpu_stream_scheduler(int num_devices, context ctx)
         : num_devices_(num_devices)
         , ctx_(ctx)

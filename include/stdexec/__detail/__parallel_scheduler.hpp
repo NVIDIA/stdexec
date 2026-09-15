@@ -293,6 +293,8 @@ namespace STDEXEC
   class parallel_scheduler
   {
    public:
+    using scheduler_concept = scheduler_tag;
+
     parallel_scheduler() = delete;
 
     /// Returns `true` iff `*this` refers to the same scheduler as the argument.

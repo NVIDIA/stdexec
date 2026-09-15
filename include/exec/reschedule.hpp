@@ -48,6 +48,8 @@ namespace experimental::execution
 
     struct __scheduler
     {
+      using scheduler_concept = scheduler_tag;
+
       struct __sender
       {
         using sender_concept = sender_tag;

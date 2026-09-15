@@ -21,7 +21,9 @@
 #  include <exec/async_scope.hpp>
 #  include <exec/sender_for.hpp>
 #  include <exec/single_thread_context.hpp>
+#  include <exec/static_thread_pool.hpp>
 #  include <exec/task.hpp>
+#  include <exec/timed_thread_scheduler.hpp>
 
 #  include <test_common/schedulers.hpp>
 
@@ -370,6 +372,42 @@ namespace
     CHECK(count == 3);
   }
 #  endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // Regression tests for https://github.com/NVIDIA/stdexec/issues/2134: the
+  // schedulers of exec::static_thread_pool and exec::timed_thread_context used
+  // to be missing the `scheduler_concept` nested alias required by the
+  // scheduler concept, which made exec::task's internal __any_scheduler
+  // conversion fail to compile when such a task was co_started on them.
+  TEST_CASE("task - can be started on a static_thread_pool scheduler", "[types][task]")
+  {
+    exec::static_thread_pool pool{2};
+    bool                     ran = false;
+    // Keep the closure a temporary inside the full expression: the task is
+    // lazy, so the closure (and its by-reference capture) must outlive the
+    // point at which the pool thread resumes the coroutine.
+    auto op_state = STDEXEC::sync_wait(STDEXEC::starts_on(pool.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
+    REQUIRE(op_state);
+    CHECK(ran);
+  }
+
+  TEST_CASE("task - can be started on a timed_thread_context scheduler", "[types][task]")
+  {
+    exec::timed_thread_context ctx;
+    bool                       ran      = false;
+    auto                       op_state = STDEXEC::sync_wait(STDEXEC::starts_on(ctx.get_scheduler(),
+                                                          [&]() -> exec::task<void>
+                                                          {
+                                                            ran = true;
+                                                            co_return;
+                                                          }()));
+    REQUIRE(op_state);
+    CHECK(ran);
+  }
 }  // namespace
 
 #endif

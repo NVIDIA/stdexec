@@ -69,6 +69,8 @@ namespace nv::execution
 
     struct stream_scheduler : private stream_scheduler_env<stream_scheduler>
     {
+      using scheduler_concept = STDEXEC::scheduler_tag;
+
       explicit stream_scheduler(context ctx) noexcept
         : ctx_(ctx)
       {}

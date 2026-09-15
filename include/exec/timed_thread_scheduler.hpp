@@ -365,8 +365,9 @@ namespace experimental::execution
   class timed_thread_scheduler
   {
    public:
-    using time_point = std::chrono::steady_clock::time_point;
-    using duration   = std::chrono::steady_clock::duration;
+    using scheduler_concept = STDEXEC::scheduler_tag;
+    using time_point        = std::chrono::steady_clock::time_point;
+    using duration          = std::chrono::steady_clock::duration;
 
     class schedule_at_sender
     {
