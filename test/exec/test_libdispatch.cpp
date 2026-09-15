@@ -339,8 +339,7 @@ namespace
     CHECK(std::get<0>(*result) == 42);
   }
 
-  TEST_CASE("libdispatch scheduler provides scheduler_concept",
-            "[types][libdispatch][schedulers]")
+  TEST_CASE("libdispatch scheduler provides scheduler_concept", "[types][libdispatch][schedulers]")
   {
     // regression guard for issue #2134: per [exec.sched], schedulers must
     // provide the scheduler_concept nested alias
