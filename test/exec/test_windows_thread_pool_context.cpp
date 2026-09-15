@@ -24,6 +24,15 @@
 
 using namespace std::chrono_literals;
 
+TEST_CASE("windows_thread_pool scheduler provides scheduler_concept",
+          "[types][windows_thread_pool][schedulers]")
+{
+  // regression guard for issue #2134: per [exec.sched], schedulers must
+  // provide the scheduler_concept nested alias
+  STATIC_REQUIRE(
+    std::same_as<exec::windows_thread_pool::scheduler::scheduler_concept, STDEXEC::scheduler_tag>);
+}
+
 TEST_CASE("windows_thread_pool: construct_destruct", "[types][windows_thread_pool][schedulers]")
 {
   exec::windows_thread_pool tp;
