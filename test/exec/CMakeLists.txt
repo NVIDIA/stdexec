@@ -42,6 +42,7 @@ set(exec_test_sources
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING}>:test_io_uring_context.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_WINDOWS_THREAD_POOL}>:test_windows_thread_pool_context.cpp>
     test_trampoline_scheduler.cpp
+    test_scheduler_concept.cpp
     test_sequence_senders.cpp
     test_static_thread_pool.cpp
     test_just_from.cpp
