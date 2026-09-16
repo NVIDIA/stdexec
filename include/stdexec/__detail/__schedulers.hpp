@@ -183,6 +183,18 @@ namespace STDEXEC
   /////////////////////////////////////////////////////////////////////////////
   // [exec.sched]
 
+  //! @brief SFINAE-safe check that @c schedule(s) is valid and returns a
+  //!        @em stdexec sender.
+  //!
+  //! Unlike @c __callable<schedule_t, _Scheduler>, this does not hard-error
+  //! for types whose @c schedule() returns something that is not a stdexec
+  //! sender (e.g., a scheduler belonging to a different execution framework);
+  //! it simply evaluates to @c false. See NVIDIA/stdexec#1406.
+  template <class _Scheduler>
+  concept __returns_stdexec_sender = requires(_Scheduler &&__sched) {
+    { schedule(static_cast<_Scheduler &&>(__sched)) } -> sender;
+  };
+
   //! @brief A lightweight handle to an *execution context* — the
   //!        abstraction over things that can run sender pipelines.
   //!
@@ -194,9 +206,10 @@ namespace STDEXEC
   //!
   //! Concretely, a type @c S satisfies @c scheduler if:
   //!
-  //! 1. @c schedule(s) is well-formed and returns a @c sender. This is
-  //!    the *defining* operation; everything else is value-semantics
-  //!    plumbing.
+  //! 1. @c schedule(s) is well-formed and returns a @c sender — a @em
+  //!    stdexec sender, not merely any type a foreign framework might
+  //!    call a sender. This is the *defining* operation; everything else
+  //!    is value-semantics plumbing.
   //! 2. @c S's decayed type is equality-comparable (two schedulers compare
   //!    equal iff they refer to the same execution resource — used for
   //!    optimization decisions such as elision of redundant
@@ -214,6 +227,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   template <class _Scheduler>
   concept scheduler = __callable<schedule_t, _Scheduler>  //
+                   && __returns_stdexec_sender<_Scheduler>
                    && __std::equality_comparable<__decay_t<_Scheduler>>
                    && __std::copy_constructible<__decay_t<_Scheduler>>
                    && __nothrow_move_constructible<__decay_t<_Scheduler>>;

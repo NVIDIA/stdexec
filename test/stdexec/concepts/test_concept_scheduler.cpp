@@ -158,6 +158,93 @@ namespace
   {
     REQUIRE(!ex::scheduler<noeq_sched>);
   }
+
+  // A scheduler from a foreign execution framework: it has a .schedule()
+  // member, but that member does not return a stdexec sender. Evaluating
+  // ex::scheduler<S> for such a type must simply be false — it must not be
+  // a hard error, and it must not be a false positive.
+  // See NVIDIA/stdexec#1406.
+  struct my_foreign_sender
+  {};
+
+  struct my_foreign_scheduler
+  {
+    [[nodiscard]]
+    auto schedule() const noexcept -> my_foreign_sender
+    {
+      return {};
+    }
+
+    friend auto operator==(my_foreign_scheduler, my_foreign_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_foreign_scheduler, my_foreign_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("type whose schedule() returns a non-stdexec sender doesn't model scheduler",
+            "[concepts][scheduler]")
+  {
+    REQUIRE(!ex::scheduler<my_foreign_scheduler>);
+    REQUIRE(!ex::scheduler<my_foreign_scheduler &>);
+    REQUIRE(!ex::scheduler<my_foreign_scheduler const &>);
+  }
+
+  struct my_void_schedule_scheduler
+  {
+    [[nodiscard]]
+    auto schedule() const noexcept -> void
+    {}
+
+    friend auto operator==(my_void_schedule_scheduler, my_void_schedule_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_void_schedule_scheduler, my_void_schedule_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("type whose schedule() returns void doesn't model scheduler", "[concepts][scheduler]")
+  {
+    REQUIRE(!ex::scheduler<my_void_schedule_scheduler>);
+  }
+
+  // A type from a foreign framework that is not declared as a stdexec
+  // scheduler in any way (notably, no scheduler_concept alias) but whose
+  // .schedule() returns a genuine stdexec sender: it should model
+  // ex::scheduler based on its behavior alone.
+  struct my_behavioral_scheduler
+  {
+    [[nodiscard]]
+    auto schedule() const -> decltype(ex::just())
+    {
+      return ex::just();
+    }
+
+    friend auto operator==(my_behavioral_scheduler, my_behavioral_scheduler) noexcept -> bool
+    {
+      return true;
+    }
+
+    friend auto operator!=(my_behavioral_scheduler, my_behavioral_scheduler) noexcept -> bool
+    {
+      return false;
+    }
+  };
+
+  TEST_CASE("foreign type returning a stdexec sender from schedule() models scheduler",
+            "[concepts][scheduler]")
+  {
+    REQUIRE(ex::scheduler<my_behavioral_scheduler>);
+    REQUIRE(ex::sender<decltype(ex::schedule(my_behavioral_scheduler{}))>);
+  }
 }  // namespace
 
 STDEXEC_PRAGMA_POP()
