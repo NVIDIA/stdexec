@@ -615,24 +615,76 @@ namespace STDEXEC::__any
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
+  // __storage_ref
+  union __storage_ref
+  {
+    [[nodiscard]]
+    constexpr bool __empty() const noexcept
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        return *__root_ptr_ptr == nullptr;
+      }
+      else
+      {
+        return *__std::start_lifetime_as<__tagged_ptr>(__buffer.data()) == nullptr;
+      }
+    }
+
+    __iroot            **__root_ptr_ptr;  //< Used in consteval contexts
+    std::span<std::byte> __buffer;        //< Used in runtime contexts
+  };
+
+  template <std::size_t _Size, std::size_t _Align>
+  union __storage
+  {
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr __storage() noexcept
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        __root_ptr = nullptr;
+      }
+      else
+      {
+        *__std::start_lifetime_as<__tagged_ptr>(__buffer) = __tagged_ptr();
+      }
+    }
+
+    inline constexpr /*implicit*/ operator __storage_ref() const noexcept
+    {
+      STDEXEC_IF_CONSTEVAL
+      {
+        return __storage_ref{.__root_ptr_ptr = &__root_ptr};
+      }
+      else
+      {
+        return __storage_ref{.__buffer = __buffer};
+      }
+    }
+
+    mutable __iroot *__root_ptr;                        //< Used in consteval contexts
+    alignas(_Align) mutable std::byte __buffer[_Size];  //< Used in runtime contexts
+  };
+
+  //////////////////////////////////////////////////////////////////////////////////////////
   // __emplace_into
   template <class _Model, class _Allocator, class... _Args>
-  constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const    &__alloc,
-                                   [[maybe_unused]] __iroot            *&__root_ptr,
-                                   [[maybe_unused]] std::span<std::byte> __buff,
+  constexpr _Model &__emplace_into([[maybe_unused]] _Allocator const &__alloc,
+                                   __storage_ref                      __storage,
                                    _Args &&...__args)
   {
     static_assert(__decays_to<_Model, _Model>);
     STDEXEC_IF_CONSTEVAL
     {
-      __root_ptr = ::new _Model(static_cast<_Args &&>(__args)...);
-      return *static_cast<_Model *>(__root_ptr);
+      *__storage.__root_ptr_ptr = ::new _Model(static_cast<_Args &&>(__args)...);
+      return *static_cast<_Model *>(*__storage.__root_ptr_ptr);
     }
     else
     {
-      if (STDEXEC::__any::__is_small<_Model>(__buff.size()))
+      if (STDEXEC::__any::__is_small<_Model>(__storage.__buffer.size()))
       {
-        return *std::construct_at(reinterpret_cast<_Model *>(__buff.data()),
+        return *std::construct_at(reinterpret_cast<_Model *>(__storage.__buffer.data()),
                                   static_cast<_Args &&>(__args)...);
       }
       else
@@ -645,7 +697,7 @@ namespace STDEXEC::__any
         __traits_t::construct(__alloc2, __model, static_cast<_Args &&>(__args)...);
         __guard.__dismiss();
 
-        *__std::start_lifetime_as<__tagged_ptr>(__buff.data()) = __tagged_ptr(__model);
+        *__std::start_lifetime_as<__tagged_ptr>(__storage.__buffer.data()) = __tagged_ptr(__model);
         return *__model;
       }
     }
@@ -653,14 +705,12 @@ namespace STDEXEC::__any
 
   template <int = 0, class _CvRefValue, class _Allocator, class _Value = std::decay_t<_CvRefValue>>
   STDEXEC_ATTRIBUTE(always_inline)
-  constexpr _Value &__emplace_into(_Allocator const    &__alloc,
-                                   __iroot            *&__root_ptr,
-                                   std::span<std::byte> __buff,
-                                   _CvRefValue        &&__val)
+  constexpr _Value &__emplace_into(_Allocator const &__alloc,
+                                   __storage_ref     __storage,
+                                   _CvRefValue     &&__val)
   {
     return STDEXEC::__any::__emplace_into<_Value>(__alloc,
-                                                  __root_ptr,
-                                                  __buff,
+                                                  __storage,
                                                   static_cast<_CvRefValue &&>(__val));
   }
 
@@ -717,13 +767,12 @@ namespace STDEXEC::__any
 
     // This is a virtual override if _Interface extends __imovable
     //! @pre __is_small<__value_model>(__buff.size())
-    constexpr void __move_to(__iroot *&__ptr, std::span<std::byte> __buff) noexcept
+    constexpr void __move_to(__storage_ref __storage) noexcept
     {
       static_assert(__extension_of<__iabstract<_Interface>, __imovable>);
-      STDEXEC_ASSERT(STDEXEC::__any::__is_small<__value_model>(__buff.size()));
+      STDEXEC_ASSERT(STDEXEC::__any::__is_small<__value_model>(__storage.__buffer.size()));
       STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
-                                                    __ptr,
-                                                    __buff,
+                                                    __storage,
                                                     std::allocator_arg,
                                                     this->__get_allocator(),
                                                     __value(std::move(*this)));
@@ -731,13 +780,12 @@ namespace STDEXEC::__any
     }
 
     // This is a virtual override if _Interface extends __icopyable
-    constexpr void __copy_to(__iroot *&__ptr, std::span<std::byte> __buff) const
+    constexpr void __copy_to(__storage_ref __storage) const
     {
       static_assert(__extension_of<__iabstract<_Interface>, __icopyable>);
       STDEXEC_ASSERT(!__empty(*this));
       STDEXEC::__any::__emplace_into<__value_model>(this->__get_allocator(),
-                                                    __ptr,
-                                                    __buff,
+                                                    __storage,
                                                     std::allocator_arg,
                                                     this->__get_allocator(),
                                                     __value(*this));
@@ -931,18 +979,7 @@ namespace STDEXEC::__any
     static constexpr bool __movable  = __extension_of<__iabstract<_Interface>, __imovable>;
     static constexpr bool __copyable = __extension_of<__iabstract<_Interface>, __icopyable>;
 
-    STDEXEC_ATTRIBUTE(always_inline)
-    constexpr __value_proxy_root() noexcept
-    {
-      STDEXEC_IF_CONSTEVAL
-      {
-        __root_ptr_ = nullptr;
-      }
-      else
-      {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
-      }
-    }
+    constexpr __value_proxy_root() noexcept = default;
 
     constexpr __value_proxy_root(__value_proxy_root &&__other) noexcept
       requires __movable
@@ -956,7 +993,7 @@ namespace STDEXEC::__any
       : __value_proxy_root()
     {
       if (!__empty(__other))
-        __value(__other).__copy_to(__root_ptr_, __buff_);
+        __value(__other).__copy_to(__storage_);
     }
 
     constexpr ~__value_proxy_root()
@@ -988,15 +1025,15 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        std::swap(__root_ptr_, __other.__root_ptr_);
+        std::swap(__storage_.__root_ptr, __other.__storage_.__root_ptr);
       }
       else
       {
         if (this == std::addressof(__other))
           return;
 
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
 
         // This also covers the case where both __this_ptr and __that_ptr are null.
         if (__this_ptr.__is_tagged() && __that_ptr.__is_tagged())
@@ -1037,7 +1074,7 @@ namespace STDEXEC::__any
       }
       else
       {
-        return !(*__std::start_lifetime_as<__tagged_ptr>(__buff_)).__is_tagged();
+        return !(*__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer)).__is_tagged();
       }
     }
 
@@ -1054,8 +1091,7 @@ namespace STDEXEC::__any
       using __model_type = __value_model<_Interface, _Value, _Allocator>;
       auto &__model      =  //
         STDEXEC::__any::__emplace_into<__model_type>(__alloc,
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      std::allocator_arg,
                                                      __alloc,
                                                      static_cast<_Args &&>(__args)...);
@@ -1079,8 +1115,7 @@ namespace STDEXEC::__any
       using __model_type = __value_model<_Interface, __value_type, _Allocator>;
       auto &__model      =  //
         STDEXEC::__any::__emplace_into<__model_type>(__alloc,
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      std::allocator_arg,
                                                      __alloc,
                                                      __in_place_from,
@@ -1111,14 +1146,14 @@ namespace STDEXEC::__any
       STDEXEC_IF_CONSTEVAL
       {
         return static_cast<__interface_ref_t>(
-          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__root_ptr_));
+          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__storage_.__root_ptr));
       }
       else
       {
-        auto const __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__buff_);
+        auto const __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__storage_.__buffer);
         STDEXEC_ASSERT(__ptr != nullptr);
-        auto *__root_ptr = static_cast<__root_ptr_t>(__ptr.__is_tagged() ? __ptr.__get()
-                                                                         : __self.__buff_);
+        auto *__root_ptr = static_cast<__root_ptr_t>(
+          __ptr.__is_tagged() ? __ptr.__get() : __self.__storage_.__buffer);
         return static_cast<__interface_ref_t>(
           *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__root_ptr));
       }
@@ -1127,14 +1162,7 @@ namespace STDEXEC::__any
     [[nodiscard]]
     constexpr bool __empty_() const noexcept final
     {
-      STDEXEC_IF_CONSTEVAL
-      {
-        return __root_ptr_ == nullptr;
-      }
-      else
-      {
-        return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
-      }
+      return __storage_ref(__storage_).__empty();
     }
 
     constexpr void __move_to_empty(__value_proxy_root &__other) noexcept
@@ -1142,21 +1170,21 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        __other.__root_ptr_ = std::exchange(__root_ptr_, nullptr);
+        __other.__storage_.__root_ptr = std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
         STDEXEC_ASSERT(!__empty(*this));
         STDEXEC_ASSERT(__empty(__other));
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
         if (__this_ptr.__is_tagged())
         {
           __that_ptr = std::exchange(__this_ptr, nullptr);
         }
         else
         {
-          __value(*this).__move_to(__other.__root_ptr_, __other.__buff_);
+          __value(*this).__move_to(__other.__storage_);
           __reset(*this);
         }
       }
@@ -1167,11 +1195,11 @@ namespace STDEXEC::__any
     {
       STDEXEC_IF_CONSTEVAL
       {
-        delete std::exchange(__root_ptr_, nullptr);
+        delete std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
-        auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+        auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
         if (__ptr == nullptr)
           return;
         else if (!__ptr.__is_tagged())
@@ -1195,11 +1223,7 @@ namespace STDEXEC::__any
       return __empty_() ? nullptr : __data(__value(*this));
     }
 
-    union
-    {
-      __iroot *__root_ptr_ = nullptr;                                //!< Used in consteval context
-      alignas(__buffer_alignment) std::byte __buff_[__buffer_size];  //!< Used in runtime context
-    };
+    __storage<__buffer_size, __buffer_alignment> __storage_;
   };
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -1391,17 +1415,7 @@ namespace STDEXEC::__any
     using __interface_type = __iabstract<_Interface>;
     using __reference_proxy_root::__box_root_kind::__box_kind;
 
-    constexpr __reference_proxy_root() noexcept
-    {
-      STDEXEC_IF_CONSTEVAL
-      {
-        __root_ptr_ = nullptr;
-      }
-      else
-      {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
-      }
-    }
+    constexpr __reference_proxy_root() noexcept = default;
 
     // __reference_proxy_root is not movable or copyable to preserve const-correctness of
     // __any_cptr. Dereferencing an __any_cptr returns an lvalue reference to a const
@@ -1419,7 +1433,7 @@ namespace STDEXEC::__any
       }
       else
       {
-        std::memcpy(__buff_, __other.__buff_, sizeof(__buff_));
+        std::memcpy(__storage_.__buffer, __other.__storage_.__buffer, sizeof(__storage_.__buffer));
       }
     }
 
@@ -1435,11 +1449,11 @@ namespace STDEXEC::__any
 
       STDEXEC_IF_CONSTEVAL
       {
-        std::swap(__root_ptr_, __other.__root_ptr_);
+        std::swap(__storage_.__root_ptr, __other.__storage_.__root_ptr);
       }
       else
       {
-        std::swap(__buff_, __other.__buff_);
+        std::swap(__storage_.__buffer, __other.__storage_.__buffer);
       }
     }
 
@@ -1459,7 +1473,7 @@ namespace STDEXEC::__any
           //! address of __value(__other) directly in __result as a tagged ptr instead of
           //! introducing an indirection.
           //! @post __is_tagged() == true
-          auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__buff_);
+          auto &__ptr = *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer);
           __ptr = static_cast<__interface_type *>(std::addressof(STDEXEC::__unconst(__model)));
         }
         else
@@ -1480,8 +1494,7 @@ namespace STDEXEC::__any
       if constexpr (_CvModel::__root_kind == __root_kind::__reference)
       {
         STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      __model.__get_value_ptr_(),
                                                      __model.__get_root_ptr_());
       }
@@ -1489,8 +1502,7 @@ namespace STDEXEC::__any
       {
         __iroot *__root_ptr = std::addressof(STDEXEC::__unconst(__model));
         STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                     __root_ptr_,
-                                                     __buff_,
+                                                     __storage_,
                                                      static_cast<__value_type *>(nullptr),
                                                      STDEXEC_DECAY_COPY(__root_ptr));
       }
@@ -1502,8 +1514,7 @@ namespace STDEXEC::__any
       static_assert(!__extension_of<_CvValue, _Interface>);
       using __model_type = __reference_model<_Interface, _CvValue>;
       STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
-                                                   __root_ptr_,
-                                                   __buff_,
+                                                   __storage_,
                                                    std::addressof(__val),
                                                    static_cast<__iroot *>(nullptr));
     }
@@ -1518,14 +1529,14 @@ namespace STDEXEC::__any
       STDEXEC_IF_CONSTEVAL
       {
         return static_cast<__interface_ref_t>(
-          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__root_ptr_));
+          *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__self.__storage_.__root_ptr));
       }
       else
       {
         STDEXEC_ASSERT(!__empty(__self));
-        auto const  __ptr      = *__std::start_lifetime_as<__tagged_ptr>(__self.__buff_);
-        auto *const __root_ptr = static_cast<__root_ptr_t>(__ptr.__is_tagged() ? __ptr.__get()
-                                                                               : __self.__buff_);
+        auto const  __ptr = *__std::start_lifetime_as<__tagged_ptr>(__self.__storage_.__buffer);
+        auto *const __root_ptr = static_cast<__root_ptr_t>(
+          __ptr.__is_tagged() ? __ptr.__get() : __self.__storage_.__buffer);
         return static_cast<__interface_ref_t>(
           *STDEXEC::__polymorphic_downcast<__interface_ptr_t>(__root_ptr));
       }
@@ -1534,25 +1545,18 @@ namespace STDEXEC::__any
     [[nodiscard]]
     constexpr bool __empty_() const noexcept final
     {
-      STDEXEC_IF_CONSTEVAL
-      {
-        return __root_ptr_ == nullptr;
-      }
-      else
-      {
-        return *__std::start_lifetime_as<__tagged_ptr>(__buff_) == nullptr;
-      }
+      return __storage_ref(__storage_).__empty();
     }
 
     constexpr void __reset_() noexcept final
     {
       STDEXEC_IF_CONSTEVAL
       {
-        delete std::exchange(__root_ptr_, nullptr);
+        delete std::exchange(__storage_.__root_ptr, nullptr);
       }
       else
       {
-        *__std::start_lifetime_as<__tagged_ptr>(__buff_) = __tagged_ptr();
+        *__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer) = __tagged_ptr();
       }
     }
 
@@ -1577,17 +1581,12 @@ namespace STDEXEC::__any
       }
       else
       {
-        return !(*__std::start_lifetime_as<__tagged_ptr>(__buff_)).__is_tagged();
+        return !(*__std::start_lifetime_as<__tagged_ptr>(__storage_.__buffer)).__is_tagged();
       }
     }
 
    private:
-    union
-    {
-      __iroot *__root_ptr_ = nullptr;  //!< Used in consteval context
-      // storage for one vtable __ptr and one pointer for the referant
-      mutable std::byte __buff_[2 * sizeof(void *)];  //!< Used in runtime context
-    };
+    __storage<2 * sizeof(void *), alignof(void *)> __storage_;
   };  // struct __reference_proxy_root
 
   //////////////////////////////////////////////////////////////////////////////////////////
@@ -1802,7 +1801,7 @@ namespace STDEXEC::__any
   {
     using __imovable::__interface_base::__interface_base;
 
-    constexpr virtual void __move_to(__iroot *&, std::span<std::byte>) noexcept
+    constexpr virtual void __move_to(__storage_ref) noexcept
     {
       STDEXEC::__die(__pure_virt_msg, "__move_to");
     }
@@ -1815,7 +1814,7 @@ namespace STDEXEC::__any
   {
     using __icopyable::__interface_base::__interface_base;
 
-    constexpr virtual void __copy_to(__iroot *&, std::span<std::byte>) const
+    constexpr virtual void __copy_to(__storage_ref) const
     {
       STDEXEC::__die(__pure_virt_msg, "__copy_to");
     }
@@ -1957,12 +1956,12 @@ namespace STDEXEC::__any
       }
       else STDEXEC_IF_CONSTEVAL
       {
-        (*this).__root_ptr_ = std::exchange(__other.__root_ptr_, nullptr);
+        (*this).__storage_.__root_ptr = std::exchange(__other.__storage_.__root_ptr, nullptr);
       }
       else
       {
-        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>((*this).__buff_);
-        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__buff_);
+        auto &__this_ptr = *__std::start_lifetime_as<__tagged_ptr>((*this).__storage_.__buffer);
+        auto &__that_ptr = *__std::start_lifetime_as<__tagged_ptr>(__other.__storage_.__buffer);
         __this_ptr       = std::exchange(__that_ptr, nullptr);
       }
     }
