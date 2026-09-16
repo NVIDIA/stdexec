@@ -83,6 +83,10 @@ namespace
   {
     STATIC_REQUIRE(timed_scheduler<io_uring_scheduler>);
     STATIC_REQUIRE_FALSE(std::is_move_assignable_v<io_uring_context>);
+
+    // regression guard for issue #2134: per [exec.sched], schedulers must
+    // provide the scheduler_concept nested alias
+    STATIC_REQUIRE(std::same_as<io_uring_scheduler::scheduler_concept, STDEXEC::scheduler_tag>);
   }
 
   TEST_CASE("io_uring_context Schedule runs in io thread", "[types][io_uring][schedulers]")

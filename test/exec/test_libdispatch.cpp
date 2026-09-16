@@ -338,4 +338,12 @@ namespace
     REQUIRE(result.has_value());
     CHECK(std::get<0>(*result) == 42);
   }
+
+  TEST_CASE("libdispatch scheduler provides scheduler_concept", "[types][libdispatch][schedulers]")
+  {
+    // regression guard for issue #2134: per [exec.sched], schedulers must
+    // provide the scheduler_concept nested alias
+    STATIC_REQUIRE(
+      std::same_as<exec::libdispatch_scheduler::scheduler_concept, STDEXEC::scheduler_tag>);
+  }
 }  // namespace

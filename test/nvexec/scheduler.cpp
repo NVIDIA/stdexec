@@ -39,4 +39,17 @@ namespace
     CHECK_FALSE(normal == low);
     CHECK_FALSE(high == low);
   }
+
+  TEST_CASE("nvexec stream schedulers provide scheduler_concept", "[cuda][stream][scheduler]")
+  {
+    // regression guard for issue #2134: per [exec.sched], schedulers must
+    // provide the scheduler_concept nested alias
+    STATIC_REQUIRE(
+      std::same_as<nvexec::stream_scheduler::scheduler_concept, STDEXEC::scheduler_tag>);
+    STATIC_REQUIRE(
+      std::same_as<nvexec::multi_gpu_stream_scheduler::scheduler_concept, STDEXEC::scheduler_tag>);
+
+    nvexec::stream_context stream_ctx{};
+    STATIC_REQUIRE(std::same_as<decltype(stream_ctx.get_scheduler()), nvexec::stream_scheduler>);
+  }
 }  // namespace
