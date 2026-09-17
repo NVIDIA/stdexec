@@ -188,8 +188,7 @@ namespace STDEXEC
     {};
 
     template <class... _Sigs>
-    using __partition_completion_signatures_t =
-      typename __partition_helper<__partitions<>, _Sigs...>::type;
+    using __partition_completion_signatures_t = __partition_helper<__partitions<>, _Sigs...>::type;
 
     template <class _Completions>
     using __partitions_of_t = _Completions::__partitioned::__t;
