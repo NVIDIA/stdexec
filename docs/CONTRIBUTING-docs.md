@@ -21,7 +21,34 @@ Documenting a CPO touches up to three files:
 
 The build pipeline is `CMake → Doxygen → Sphinx (with Breathe)`. Doxygen
 parses C++ headers into XML; Breathe pulls those XML entries into
-Sphinx via directives in the `.rst` files. To rebuild locally:
+Sphinx via directives in the `.rst` files.
+
+### Prerequisites
+
+Before building the docs, install the system tools and Python packages
+they need. The full Python dependency list lives in
+[`docs/requirements.txt`](./requirements.txt), which mirrors what the
+[docs CI workflow](../.github/workflows/gh-pages.yml) installs.
+
+System packages:
+
+- **Doxygen** (1.9 or newer) — parses the C++ headers into XML
+  (`brew install doxygen`, `apt-get install doxygen`, …).
+- **Graphviz** — required by the `sphinx.ext.graphviz` extension.
+  (`brew install graphviz`, `apt-get install graphviz`, …).
+- **Perl** — runs the `eelis_link_filter.pl` Doxygen input filter. Present
+  by default on macOS and most Linux distributions.
+- A C++ compiler toolchain, as for any stdexec build.
+
+Python packages:
+
+```sh
+python3 -m pip install -r docs/requirements.txt
+```
+
+### Building the docs
+
+To rebuild locally:
 
 ```sh
 cmake -B build/docs -S . -DSTDEXEC_BUILD_DOCS=ON \
@@ -29,6 +56,10 @@ cmake -B build/docs -S . -DSTDEXEC_BUILD_DOCS=ON \
 cmake --build build/docs --target docs
 # Output: build/docs/docs/index.html
 ```
+
+If CMake reports that it cannot find Doxygen or Sphinx, revisit the
+prerequisites above — those checks run at configure time, so a missing
+tool fails fast with a clear message.
 
 ## The CPO doc anatomy
 
