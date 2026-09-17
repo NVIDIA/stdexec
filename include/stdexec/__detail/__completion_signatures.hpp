@@ -156,53 +156,40 @@ namespace STDEXEC
       };
     };
 
-    template <class _Tag>
-    struct __partitioned_fold_fn;
+    template <class _Partition, class... _Sigs>
+    struct __partition_helper;
 
-    template <>
-    struct __partitioned_fold_fn<set_value_t>
+    template <class _Partition>
+    struct __partition_helper<_Partition>
     {
-      template <class... _ValueTuples, class _Errors, class _Stopped, class _Values>
-      constexpr auto operator()(__partitions<__mlist<_ValueTuples...>, _Errors, _Stopped>&,
-                                __undefined<_Values>&) const
-        -> __undefined<__partitions<__mlist<_ValueTuples..., _Values>, _Errors, _Stopped>>&;
+      using type = _Partition;
     };
 
-    template <>
-    struct __partitioned_fold_fn<set_error_t>
-    {
-      template <class _Values, class... _Errors, class _Stopped, class _Error>
-      constexpr auto operator()(__partitions<_Values, __mlist<_Errors...>, _Stopped>&,
-                                __undefined<__mlist<_Error>>&) const
-        -> __undefined<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>&;
-    };
+    template <class... _PrevValues, class _Errors, class _Stopped, class... _Values, class... _Sigs>
+    struct __partition_helper<__partitions<__mlist<_PrevValues...>, _Errors, _Stopped>,
+                              set_value_t(_Values...),
+                              _Sigs...>
+      : __partition_helper<
+          __partitions<__mlist<_PrevValues..., __mlist<_Values...>>, _Errors, _Stopped>,
+          _Sigs...>
+    {};
 
-    template <>
-    struct __partitioned_fold_fn<set_stopped_t>
-    {
-      template <class _Values, class _Errors, class _Stopped>
-      constexpr auto operator()(__partitions<_Values, _Errors, _Stopped>&, __ignore) const
-        -> __undefined<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>>&;
-    };
+    template <class _Values, class... _PrevErrors, class _Stopped, class _Error, class... _Sigs>
+    struct __partition_helper<__partitions<_Values, __mlist<_PrevErrors...>, _Stopped>,
+                              set_error_t(_Error),
+                              _Sigs...>
+      : __partition_helper<__partitions<_Values, __mlist<_PrevErrors..., _Error>, _Stopped>,
+                           _Sigs...>
+    {};
 
-    // The following overload of binary operator* is used to build up the cache of completion
-    // signatures. We fold over operator*, accumulating the completion signatures in the
-    // cache. `__undefined` is used here to prevent the instantiation of the intermediate
-    // types.
-    template <class _Partitioned, class _Tag, class... _Args>
-    constexpr auto operator*(__undefined<_Partitioned>&, _Tag (*)(_Args...))
-      -> __call_result_t<__partitioned_fold_fn<_Tag>,
-                         _Partitioned&,
-                         __undefined<__mlist<_Args...>>&>;
-
-    // This function declaration is used to extract the cache from the `__undefined` type.
-    template <class _Partitioned>
-    constexpr auto __unpack_partitioned_completions(__undefined<_Partitioned>&) -> _Partitioned;
+    template <class _Values, class _Errors, class _Stopped, class... _Sigs>
+    struct __partition_helper<__partitions<_Values, _Errors, _Stopped>, set_stopped_t(), _Sigs...>
+      : __partition_helper<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>, _Sigs...>
+    {};
 
     template <class... _Sigs>
-    using __partition_completion_signatures_t =  //
-      decltype(__cmplsigs::__unpack_partitioned_completions(
-        (__declval<__undefined<__partitions<>>&>() * ... * static_cast<_Sigs*>(nullptr))));
+    using __partition_completion_signatures_t =
+      typename __partition_helper<__partitions<>, _Sigs...>::type;
 
     template <class _Completions>
     using __partitions_of_t = _Completions::__partitioned::__t;
