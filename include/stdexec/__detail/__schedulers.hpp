@@ -364,8 +364,8 @@ namespace STDEXEC
     };
 
    private:
-    // A scheduler might have a completion scheduler different from itself; for example, an
-    // inline_scheduler completes wherever the scheduler's sender is started. So we
+    // A scheduler might have a completion scheduler different from itself; for example,
+    // an inline_scheduler completes wherever the scheduler's sender is started. So we
     // recursively ask the scheduler for its completion scheduler until we find one whose
     // completion scheduler is equal to itself (or it doesn't have one).
     struct __recurse_query_t
@@ -428,8 +428,8 @@ namespace STDEXEC
     template <class _Attrs, class... _Env>
     static consteval auto __get_declfn() noexcept
     {
-      // If __attrs has a completion scheduler, then return it (after checking the scheduler
-      // for _its_ completion scheduler):
+      // If __attrs has a completion scheduler, then return it (after checking the
+      // scheduler for _its_ completion scheduler):
       if constexpr (__callable<__read_query_t, _Attrs const &, _Env const &...>)
       {
         using __result_t =
@@ -438,19 +438,24 @@ namespace STDEXEC
                           _Env const &...>;
         return __declfn<__result_t>();
       }
-      // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
-      // the environment for the current scheduler and return that (after checking the
-      // scheduler for _its_ completion scheduler).
+      // NOT TO SPEC: Otherwise, if __attrs indicates that its sender completes inline,
+      // then we can ask the environment for the current scheduler and return that (after
+      // checking the scheduler for _its_ completion scheduler).
       else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
                          && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         using __result_t = __call_result_t<__recurse_query_t,
-                                           __call_result_t<get_start_scheduler_t, _Env const &>...,
+                                           __call_result_t<get_start_scheduler_t, _Env const &...>,
                                            _Env const &...>;
         return __declfn<__result_t>();
       }
       // Otherwise, if we are asking a scheduler for a completion scheduler, return the
-      // scheduler itself.
+      // scheduler itself, but only if _Env... is not empty. (If
+      // `sched.query(get_completion_scheduler<...>)` is ill-formed, then it is possible
+      // that we need to ask again later with an env; e.g., if `sched` is an
+      // `inline_scheduler`. If instead we fall back to simply returning `sched`, then we
+      // end up with different answers for the `get_completion_scheduler<...>` query
+      // depending on whether we ask with an environment or not. That would be weird.)
       else if constexpr (scheduler<_Attrs> && sizeof...(_Env) != 0)
       {
         return __declfn<__decay_t<_Attrs>>();
@@ -472,16 +477,16 @@ namespace STDEXEC
         return __check_domain<_Attrs, _Env...>(
           __recurse_query_t{}(__read_query_t{}(__attrs, __env...), __env...));
       }
-      // Otherwise, if __attrs indicates that its sender completes inline, then we can ask
-      // the environment for the current scheduler and return that (after checking the
-      // scheduler for _its_ completion scheduler).
+      // NOT TO SPEC: Otherwise, if __attrs indicates that its sender completes inline,
+      // then we can ask the environment for the current scheduler and return that (after
+      // checking the scheduler for _its_ completion scheduler).
       else if constexpr (__completes_where_it_starts<_Tag, _Attrs, _Env...>
-                         && __callable<get_start_scheduler_t, _Env const &...>)
+                         && (__callable<get_start_scheduler_t, _Env const &> || ...))
       {
         return __check_domain<_Attrs, _Env...>(
           __recurse_query_t{}(get_start_scheduler(__env...), __hide_scheduler{__env}...));
       }
-      // Otherwise, if we are asking a scheduler for a completion scheduler, return the
+      // Otherwise, we are asking a scheduler for a completion scheduler, so return the
       // scheduler itself.
       else
       {
