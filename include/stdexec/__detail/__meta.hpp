@@ -539,49 +539,86 @@ namespace STDEXEC
     using __f = __minvoke<_Continuation, __minvoke<_Fn, _Args>...>;
   };
 
-  template <bool>
-  struct __mfold_right_
-  {
-    template <class _Fn, class _State, class _Head, class... _Tail>
-    using __f =
-      __minvoke<__mfold_right_<sizeof...(_Tail) == 0>, _Fn, __minvoke<_Fn, _State, _Head>, _Tail...>;
-  };
+#  define _M0(_Iy, _Ty) , class _Ty ## _Iy
+#  define _M1(_Iy, _Fn) __mcall2<_Fn,
+#  define _M2(_Iy, _Ty) , _Ty ## _Iy>
 
-  template <>
-  struct __mfold_right_<true>
-  {  // empty pack
-    template <class _Fn, class _State, class...>
-    using __f = _State;
-  };
-
-  template <class _Init, class _Fn>
-  struct __mfold_right
-  {
-    template <class... _Args>
-    using __f = __minvoke<__mfold_right_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
-  };
-
-  template <bool>
+  template <std::size_t _Size>
   struct __mfold_left_
   {
-    template <class _Fn, class _State, class _Head, class... _Tail>
-    using __f =
-      __minvoke<_Fn, __minvoke<__mfold_left_<sizeof...(_Tail) == 0>, _Fn, _State, _Tail...>, _Head>;
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(8, _M0, _T), class... _Rest>
+    using __f = __minvoke<__mfold_left_<sizeof...(_Rest)>,
+                          _Fn,
+                          STDEXEC_PP_REPEAT(8, _M1, _Fn) _State STDEXEC_PP_REPEAT(8, _M2, _T),
+                          _Rest...>;
   };
 
   template <>
-  struct __mfold_left_<true>
-  {  // empty pack
-    template <class _Fn, class _State, class...>
+  struct __mfold_left_<0>
+  {
+    template <class, class _State>
     using __f = _State;
+  };
+
+  template <>
+  struct __mfold_left_<1>
+  {
+    template <class _Fn, class _State, class _T0>
+    using __f = __mcall2<_Fn, _State, _T0>;
+  };
+
+  template <>
+  struct __mfold_left_<2>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(2, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(2, _M1, _Fn) _State STDEXEC_PP_REPEAT(2, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<3>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(3, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(3, _M1, _Fn) _State STDEXEC_PP_REPEAT(3, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<4>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(4, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(4, _M1, _Fn) _State STDEXEC_PP_REPEAT(4, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<5>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(5, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(5, _M1, _Fn) _State STDEXEC_PP_REPEAT(5, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<6>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(6, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(6, _M1, _Fn) _State STDEXEC_PP_REPEAT(6, _M2, _T);
+  };
+
+  template <>
+  struct __mfold_left_<7>
+  {
+    template <class _Fn, class _State STDEXEC_PP_REPEAT(7, _M0, _T)>
+    using __f = STDEXEC_PP_REPEAT(7, _M1, _Fn) _State STDEXEC_PP_REPEAT(7, _M2, _T);
   };
 
   template <class _Init, class _Fn>
   struct __mfold_left
   {
     template <class... _Args>
-    using __f = __minvoke<__mfold_left_<sizeof...(_Args) == 0>, _Fn, _Init, _Args...>;
+    using __f = __minvoke<__mfold_left_<sizeof...(_Args)>, _Fn, _Init, _Args...>;
   };
+
+#  undef _M2
+#  undef _M1
+#  undef _M0
 
   // for:: [a] -> (a -> b) -> [b]
   template <class _Tp>
