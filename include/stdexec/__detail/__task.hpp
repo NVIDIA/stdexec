@@ -301,7 +301,7 @@ namespace STDEXEC
 
     template <class _TaskEnv, class _Env>
     [[nodiscard]]
-    static auto __mk_alloc(_Env const & __env) noexcept -> __allocator_type<_TaskEnv>
+    auto __mk_alloc(_Env const & __env) noexcept -> __allocator_type<_TaskEnv>
     {
       using __allocator_t = __allocator_type<_TaskEnv>;
 
@@ -323,8 +323,7 @@ namespace STDEXEC
 
     template <class _TaskEnv, class _Env>
     [[nodiscard]]
-    static auto
-    __mk_sched(_Env const & __env, __allocator_type<_TaskEnv> const & __alloc) noexcept  //
+    auto __mk_sched(_Env const & __env, __allocator_type<_TaskEnv> const & __alloc) noexcept  //
       -> __start_scheduler_type<_TaskEnv>
     {
       using __allocator_t       = __allocator_type<_TaskEnv>;
@@ -356,7 +355,7 @@ namespace STDEXEC
 
     template <class _TaskEnv, class _Env>
     [[nodiscard]]
-    static auto __mk_own_env(_Env const & __env) noexcept
+    auto __mk_own_env(_Env const & __env) noexcept
     {
       using __own_env_t = __environment_type<_TaskEnv, _Env>;
       if constexpr (__std::constructible_from<__own_env_t, _Env>)
@@ -371,8 +370,7 @@ namespace STDEXEC
 
     template <class _TaskEnv, class _Env>
     [[nodiscard]]
-    static auto
-    __mk_env(_Env const & __env, __environment_type<_TaskEnv, _Env> const & __own_env) noexcept
+    auto __mk_env(_Env const & __env, __environment_type<_TaskEnv, _Env> const & __own_env) noexcept
       -> _TaskEnv
     {
       if constexpr (__std::constructible_from<_TaskEnv, __environment_type<_TaskEnv, _Env> const &>)

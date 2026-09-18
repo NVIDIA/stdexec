@@ -107,6 +107,7 @@ namespace STDEXEC
 
   /// The execution domain of the parallel_scheduler, used for the purposes of customizing
   /// sender algorithms such as `bulk_chunked` and `bulk_unchunked`.
+  STDEXEC_MODULE_EXPORT
   struct __parallel_scheduler_domain : default_domain
   {
     template <__bulk_chunked_or_unchunked _Sender, class _Env>

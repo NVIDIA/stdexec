@@ -219,10 +219,10 @@ namespace STDEXEC
   struct receiver_tag;
 
   // concept tag aliases for backwards compatibility:
-  using sender_t          = sender_tag;
-  using operation_state_t = operation_state_tag;
-  using scheduler_t       = scheduler_tag;
-  using receiver_t        = receiver_tag;
+  STDEXEC_MODULE_EXPORT using sender_t          = sender_tag;
+  STDEXEC_MODULE_EXPORT using operation_state_t = operation_state_tag;
+  STDEXEC_MODULE_EXPORT using scheduler_t       = scheduler_tag;
+  STDEXEC_MODULE_EXPORT using receiver_t        = receiver_tag;
 
   template <class _Tag, class _Sndr, class... _Env>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
