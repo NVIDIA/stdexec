@@ -217,6 +217,11 @@ namespace
     STATIC_REQUIRE(ex::sender_of<my_sender_int, ex::set_value_t(int)>);
   }
 
+  TEST_CASE("sender that has an exception_ptr error completion signature", "[concepts][sender]")
+  {
+    STATIC_REQUIRE(ex::__has_eptr_completion<my_sender0>);
+  }
+
   struct multival_sender
   {
     using sender_concept        = STDEXEC::sender_tag;
