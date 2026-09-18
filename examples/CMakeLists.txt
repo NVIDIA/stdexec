@@ -87,8 +87,11 @@ foreach(example ${stdexec_examples})
 endforeach()
 
 if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  target_link_libraries(example.hello_world PUBLIC STDEXEC::parallel_scheduler)
   target_link_libraries(example.sudoku PRIVATE STDEXEC::parallel_scheduler)
 else()
+  target_compile_definitions(example.hello_world
+                             PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
   target_compile_definitions(example.sudoku
                              PRIVATE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 endif()
