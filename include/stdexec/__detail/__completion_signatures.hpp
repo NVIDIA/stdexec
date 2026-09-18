@@ -156,39 +156,29 @@ namespace STDEXEC
       };
     };
 
-    template <class _Partition, class... _Sigs>
-    struct __partition_helper;
+    template <class _Sig, class _PartitionsDeclFn>
+    extern __undefined<_Sig, _PartitionsDeclFn> __partition_declfn;
 
-    template <class _Partition>
-    struct __partition_helper<_Partition>
-    {
-      using type = _Partition;
-    };
+    template <class... _Args, class... _Values, class _Errors, class _Stopped>
+    extern __declfn_t<__partitions<__mlist<_Values..., __mlist<_Args...>>, _Errors, _Stopped>>
+      __partition_declfn<set_value_t(_Args...),
+                         __declfn_t<__partitions<__mlist<_Values...>, _Errors, _Stopped>>>;
 
-    template <class... _PrevValues, class _Errors, class _Stopped, class... _Values, class... _Sigs>
-    struct __partition_helper<__partitions<__mlist<_PrevValues...>, _Errors, _Stopped>,
-                              set_value_t(_Values...),
-                              _Sigs...>
-      : __partition_helper<
-          __partitions<__mlist<_PrevValues..., __mlist<_Values...>>, _Errors, _Stopped>,
-          _Sigs...>
-    {};
+    template <class _Error, class _Values, class... _Errors, class _Stopped>
+    extern __declfn_t<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>
+      __partition_declfn<set_error_t(_Error),
+                         __declfn_t<__partitions<_Values, __mlist<_Errors...>, _Stopped>>>;
 
-    template <class _Values, class... _PrevErrors, class _Stopped, class _Error, class... _Sigs>
-    struct __partition_helper<__partitions<_Values, __mlist<_PrevErrors...>, _Stopped>,
-                              set_error_t(_Error),
-                              _Sigs...>
-      : __partition_helper<__partitions<_Values, __mlist<_PrevErrors..., _Error>, _Stopped>,
-                           _Sigs...>
-    {};
+    template <class _Values, class _Errors, class _Stopped>
+    extern __declfn_t<__partitions<_Values, _Errors, __mlist<__mlist<>>>>
+      __partition_declfn<set_stopped_t(), __declfn_t<__partitions<_Values, _Errors, _Stopped>>>;
 
-    template <class _Values, class _Errors, class _Stopped, class... _Sigs>
-    struct __partition_helper<__partitions<_Values, _Errors, _Stopped>, set_stopped_t(), _Sigs...>
-      : __partition_helper<__partitions<_Values, _Errors, __mlist<set_stopped_t()>>, _Sigs...>
-    {};
+    template <class _PartitionsDeclFn, class _Sig>
+    using __partitions_declfn_t = decltype(__partition_declfn<_Sig, _PartitionsDeclFn>);
 
     template <class... _Sigs>
-    using __partition_completion_signatures_t = __partition_helper<__partitions<>, _Sigs...>::type;
+    using __partition_completion_signatures_t = __call_result_t<
+      __mcall<__mfold_left<__declfn_t<__partitions<>>, __q2<__partitions_declfn_t>>, _Sigs...>>;
 
     template <class _Completions>
     using __partitions_of_t = _Completions::__partitioned::__t;
