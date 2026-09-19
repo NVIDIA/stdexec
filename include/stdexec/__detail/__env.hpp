@@ -142,10 +142,13 @@ namespace STDEXEC
 
     struct __root_t : __query<__root_t>
     {
+      // This is a forwarding query so that the "rootness" of an environment survives
+      // being wrapped by environment-adapting senders like `write_env`. Rootness is a
+      // property of the root of a connect tree; it holds for every operation within it.
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       static consteval auto query(forwarding_query_t) noexcept -> bool
       {
-        return false;
+        return true;
       }
     };
 
