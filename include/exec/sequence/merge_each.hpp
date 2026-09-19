@@ -860,7 +860,7 @@ namespace experimental::execution
       template <class _Sequence, class _Sender, class... _Env>
       using __nested_sequences_from_item_type_t =
         STDEXEC::__minvoke<__gather_sequences_t<_Sequence, _Sender, _Env...>,
-                           STDEXEC::__completion_signatures_of_t<_Sender, _Env...>>;
+                           __sequence_aware_completion_signatures_of_t<_Sender, _Env...>>;
 
       template <class _Sequence, class... _Env>
       struct __nested_sequences_fn
@@ -901,8 +901,9 @@ namespace experimental::execution
       struct __error_types_fn
       {
         template <class _Sender>
-        using __f = STDEXEC::__error_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                             STDEXEC::__qq<STDEXEC::__mlist>>;
+        using __f =
+          STDEXEC::__error_types_t<__sequence_aware_completion_signatures_of_t<_Sender, _Env...>,
+                                   STDEXEC::__qq<STDEXEC::__mlist>>;
       };
 
       template <class _Senders, class... _Env>
@@ -1283,10 +1284,11 @@ namespace experimental::execution
       struct __completions_fn
       {
         template <class... _Sequences>
-        using __f = __minvoke_q<__concat_completion_signatures_t,
-                                completion_signatures<set_stopped_t()>,
-                                __completion_signatures_of_t<__child_of<_Self>, _Env...>,
-                                __completion_signatures_of_t<_Sequences, _Env...>...>;
+        using __f =
+          __minvoke_q<__concat_completion_signatures_t,
+                      completion_signatures<set_stopped_t()>,
+                      __sequence_aware_completion_signatures_of_t<__child_of<_Self>, _Env...>,
+                      __sequence_aware_completion_signatures_of_t<_Sequences, _Env...>...>;
       };
 
       template <class _Self, class... _Env>
