@@ -23,11 +23,17 @@
 
 #include <exec/any_sender_of.hpp>
 #include <exec/sequence.hpp>
+#include <exec/sequence/any_sequence_of.hpp>
+#include <exec/sequence/iterate.hpp>
+#include <exec/sequence/transform_each.hpp>
 #include <stdexec/execution.hpp>
 
 #include <test_common/catch2.hpp>
 
 #include <exception>
+#include <ranges>
+#include <type_traits>
+#include <vector>
 
 namespace ex = STDEXEC;
 
@@ -52,6 +58,29 @@ TEST_CASE("sequence with 3 any_senders compiles and runs", "[sequence][any_sende
 
   auto [result] = *ex::sync_wait(std::move(seq));
   CHECK(result == 42);
+}
+
+// Regression test for https://github.com/NVIDIA/stdexec/issues/2111:
+// composing an erased sequence sender with transform_each used to fail to
+// compile when STDEXEC_ENABLE_EXTRA_TYPE_CHECKING is ON, because the
+// type-checking paths instantiated __debug_sender for sequence senders (via
+// completion_signatures_of_t) and transformed the (immovable) child
+// environment by value.
+TEST_CASE("any_sequence_sender composed with transform_each under extra type checking",
+          "[sequence][any_sender]")
+{
+  using SigsInt = ex::completion_signatures<ex::set_value_t(int),
+                                            ex::set_error_t(std::exception_ptr),
+                                            ex::set_stopped_t()>;
+
+  using AnySeqInt = exec::any_sequence_sender<exec::any_sequence_receiver<SigsInt>>;
+
+  std::vector<int> values{1, 2};
+  AnySeqInt        seq = exec::iterate(std::views::all(values));
+
+  auto composed = std::move(seq) | exec::transform_each(ex::then([](int v) { return v + 1; }));
+
+  STATIC_REQUIRE(exec::sequence_sender_in<decltype(composed), ex::env<>>);
 }
 
 TEST_CASE("sequence with 4 any_senders compiles and runs", "[sequence][any_sender]")
