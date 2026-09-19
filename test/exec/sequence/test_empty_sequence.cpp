@@ -33,8 +33,8 @@ namespace
     [[maybe_unused]]
     auto cs = __sequence_completion_signatures_of<empty_t, env<>>();
     STATIC_REQUIRE(std::same_as<decltype(cs), completion_signatures<set_value_t()>>);
-    STATIC_REQUIRE(
-      std::same_as<completion_signatures_of_t<empty_t>, completion_signatures<set_value_t()>>);
+    STATIC_REQUIRE(std::same_as<exec::__sequence_aware_completion_signatures_of_t<empty_t>,
+                                completion_signatures<set_value_t()>>);
     STATIC_REQUIRE(std::same_as<item_types_of_t<empty_t, env<>>, item_types<>>);
   }
 

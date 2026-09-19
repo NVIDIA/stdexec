@@ -217,11 +217,10 @@ namespace experimental::execution
       }
 
       template <class _Sexpr>
-      static auto get_env(_Sexpr const & __sexpr) noexcept -> env_of_t<__child_of<_Sexpr>>
+      static decltype(auto) get_env(_Sexpr const & __sexpr) noexcept
       {
-        static_assert(sender_for<_Sexpr, transform_each_t>);
         return __apply([]<class _Child>(__ignore, __ignore, _Child const & __child)
-                       { return STDEXEC::get_env(__child); },
+                         -> decltype(auto) { return STDEXEC::get_env(__child); },
                        __sexpr);
       }
     };

@@ -327,14 +327,15 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(
+      ex::__ok<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -366,14 +367,15 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     [[maybe_unused]]
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(ex::__ok<STDEXEC::completion_signatures_of_t<merged_t, ex::env<>>>);
+    STATIC_REQUIRE(
+      ex::__ok<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>>);
 
     STATIC_REQUIRE(ex::__callable<subscribe_t, merged_t, null_receiver>);
 
@@ -399,7 +401,7 @@ namespace
     using range_sequence_t = STDEXEC::__call_result_t<decltype(range), int, int>;
     STATIC_REQUIRE(__well_formed_sequence_sender<range_sequence_t>);
     STATIC_REQUIRE_FALSE(std::same_as<item_types_of_t<range_sequence_t>, item_types<>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<range_sequence_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<range_sequence_t>,
                                 ex::completion_signatures<ex::set_error_t(std::exception_ptr),
                                                           ex::set_stopped_t(),
                                                           ex::set_value_t()>>);
@@ -411,7 +413,7 @@ namespace
     using empty_sequence_t = STDEXEC::__call_result_t<empty_sequence_t>;
     STATIC_REQUIRE(__well_formed_sequence_sender<empty_sequence_t>);
     STATIC_REQUIRE(std::same_as<item_types_of_t<empty_sequence_t>, item_types<>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<empty_sequence_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<empty_sequence_t>,
                                 ex::completion_signatures<ex::set_value_t()>>);
 
     using just_empty_sender_t = ex::__call_result_t<ex::just_t, empty_sequence_t>;
@@ -424,21 +426,22 @@ namespace
     using sequences_t = decltype(sequences);
 
     STATIC_REQUIRE(ex::__ok<__item_types_of_t<sequences_t>>);
-    STATIC_REQUIRE(ex::__ok<ex::completion_signatures_of_t<sequences_t>>);
+    STATIC_REQUIRE(ex::__ok<exec::__sequence_aware_completion_signatures_of_t<sequences_t>>);
 
     STATIC_REQUIRE(__equivalent<__item_types_of_t<sequences_t>,
                                 item_types<just_range_sender_t, just_empty_sender_t>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<sequences_t>,
+    STATIC_REQUIRE(__equivalent<exec::__sequence_aware_completion_signatures_of_t<sequences_t>,
                                 ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t()>>);
 
     auto merged    = merge_each(sequences);
     using merged_t = decltype(merged);
 
     STATIC_REQUIRE(ex::__ok<__item_types_of_t<merged_t, ex::env<>>>);
-    STATIC_REQUIRE(__equivalent<ex::completion_signatures_of_t<merged_t, ex::env<>>,
-                                ex::completion_signatures<ex::set_error_t(std::exception_ptr),
-                                                          ex::set_stopped_t(),
-                                                          ex::set_value_t()>>);
+    STATIC_REQUIRE(
+      __equivalent<exec::__sequence_aware_completion_signatures_of_t<merged_t, ex::env<>>,
+                   ex::completion_signatures<ex::set_error_t(std::exception_ptr),
+                                             ex::set_stopped_t(),
+                                             ex::set_value_t()>>);
 
     int count = 0;
 
