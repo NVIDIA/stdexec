@@ -269,23 +269,36 @@ namespace experimental::execution
     {
       template <class _Sender, class _Attrs>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto operator()(_Sender snd, _Attrs __attrs_) const -> __sender<_Sender, _Attrs>
+      constexpr auto operator()(_Sender snd, _Attrs __attrs) const -> __sender<_Sender, _Attrs>
       {
         return __sender<_Sender, _Attrs>{static_cast<_Sender&&>(snd),
-                                         static_cast<_Attrs&&>(__attrs_)};
+                                         static_cast<_Attrs&&>(__attrs)};
       }
 
       template <class _Attrs>
       STDEXEC_ATTRIBUTE(host, device)
-      constexpr auto operator()(_Attrs __attrs_) const
+      constexpr auto operator()(_Attrs __attrs) const
       {
-        return STDEXEC::__closure(*this, static_cast<_Attrs&&>(__attrs_));
+        return STDEXEC::__closure(*this, static_cast<_Attrs&&>(__attrs));
       }
     };
   }  // namespace __write_attrs
 
   inline constexpr __write_attrs::__write_attrs_t write_attrs{};
 
+  template <class Tag = STDEXEC::set_value_t, STDEXEC::scheduler Scheduler>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto completes_on(Scheduler sched) noexcept
+  {
+    return exec::write_attrs(STDEXEC::prop{STDEXEC::get_completion_scheduler<Tag>, sched});
+  }
+
+  template <class Tag = STDEXEC::set_value_t, STDEXEC::sender Sender, STDEXEC::scheduler Scheduler>
+  STDEXEC_ATTRIBUTE(host, device)
+  constexpr auto completes_on(Sender sndr, Scheduler sched) noexcept
+  {
+    return exec::completes_on<Tag>(sched)(std::move(sndr));
+  }
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
