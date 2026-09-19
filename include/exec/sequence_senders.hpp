@@ -508,8 +508,12 @@ namespace experimental::execution
 
   namespace __debug
   {
-    template <class _Env = STDEXEC::env<>, class _Sequence>
-    constexpr void __debug_sequence_sender(_Sequence&& __sequence, _Env const & = {});
+    // N.B. the template parameter list here must match the definition of
+    // __debug_sequence_sender below (at the end of this header); otherwise the
+    // declaration and definition are distinct function templates and every
+    // odr-use of this function is ill-formed (no definition).
+    template <class _CvSequence, class _Env = STDEXEC::env<>>
+    constexpr void __debug_sequence_sender(_CvSequence&& __sequence, _Env const & = {});
   }  // namespace __debug
   using __debug::__debug_sequence_sender;
 
@@ -517,6 +521,33 @@ namespace experimental::execution
   static constexpr auto __diagnose_sequence_sender_concept_failure();
 
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+  // Sequence-aware version of the extra-type-checking hooks. For types that
+  // opted into being sequence senders, this runs __debug_sequence_sender
+  // (subscribe/set_next-based introspection) instead of the regular
+  // __debug_sender (which would try to connect() a sequence sender).
+  template <class _Sender>
+  concept __is_sequence_sender_for_debug = enable_sequence_sender<STDEXEC::__decay_t<_Sender>>;
+
+  template <class _Sender, class... _Env>
+  auto __checked_sequence_completion_signatures(_Sender&& __sndr, _Env&&... __env) noexcept
+  {
+    using __completions_t = STDEXEC::__completion_signatures_of_t<_Sender, _Env...>;
+    if constexpr (__is_sequence_sender_for_debug<_Sender>)
+    {
+      exec::__debug_sequence_sender(static_cast<_Sender&&>(__sndr), __env...);
+    }
+    else
+    {
+      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), __env...);
+    }
+    return __completions_t{};
+  }
+
+  template <class _Sender, class... _Env>
+  using __sequence_aware_completion_signatures_of_t =
+    decltype(__checked_sequence_completion_signatures(STDEXEC::__declval<_Sender>(),
+                                                      STDEXEC::__declval<_Env>()...));
+
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
   // completion signatures wrapper enforces that at compile time.
@@ -537,6 +568,12 @@ namespace experimental::execution
   template <class _Sequence, class... _Env>
     requires sequence_sender_in<_Sequence, _Env...>
   using item_types_of_t = __item_types_of_t<_Sequence, _Env...>;
+
+  // With extra type checking disabled, this is a plain alias for the
+  // unchecked completion signatures.
+  template <class _Sender, class... _Env>
+  using __sequence_aware_completion_signatures_of_t =
+    STDEXEC::__completion_signatures_of_t<_Sender, _Env...>;
 #  endif
 
   template <class _Data, class... _What>
@@ -697,7 +734,7 @@ namespace experimental::execution
     sequence_sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>>  //
     && STDEXEC::receiver_of<
       _Receiver,
-      STDEXEC::completion_signatures_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>>;
+      __sequence_completion_signatures_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>>;
 
   template <class _Receiver, class _Sequence>
   concept __stopped_means_break_receiver_from =  //
@@ -765,11 +802,15 @@ namespace experimental::execution
       {
         if constexpr (sequence_sender_in<_Sequence, env_of_t<_Receiver>>)
         {
-          // Instantiate __debug_sender via completion_signatures_of_t and
-          // item_types_of_t to check that the actual completions and item_types
-          // match the expected completions and values.
-          using __checked_signatures
-            [[maybe_unused]] = completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
+          // Instantiate the sequence completion signatures and item_types to
+          // check that the actual completions and item_types match the
+          // expected completions and values. (N.B. don't use
+          // completion_signatures_of_t here: sequence senders are not regular
+          // senders, and with STDEXEC_ENABLE_EXTRA_TYPE_CHECKING=ON that
+          // alias would instantiate __debug_sender, which tries to connect()
+          // the sequence sender.)
+          using __checked_signatures [[maybe_unused]] =
+            __sequence_completion_signatures_of_t<_Sequence, env_of_t<_Receiver>>;
           using __checked_item_types
             [[maybe_unused]] = item_types_of_t<_Sequence, env_of_t<_Receiver>>;
         }
