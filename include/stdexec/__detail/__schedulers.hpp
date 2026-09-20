@@ -540,6 +540,7 @@ namespace STDEXEC
     get_completion_scheduler<set_stopped_t>{};
 #  endif
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, sender _Sender, class... _Env>
     requires __sends<_Tag, _Sender, _Env...>
   using __completion_scheduler_of_t =
@@ -648,7 +649,7 @@ namespace STDEXEC
     template <class... _SetTags2>
     struct __impl
     {
-      template <sender _Sender, class _Env>
+      template <class _Env, sender_in<_Env> _Sender>
       constexpr auto operator()(_Sender const &__sndr, _Env const &__env) const noexcept
       {
         using __domain_t =
