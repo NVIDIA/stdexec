@@ -74,6 +74,7 @@ set(stdexec_test_sources
     stdexec/queries/test_forwarding_queries.cpp
     stdexec/queries/test_get_completion_behavior.cpp
     stdexec/queries/test_get_forward_progress_guarantee.cpp
+    stdexec/queries/test_get_start_scheduler.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/types/test_counting_scopes.cpp
     stdexec/types/test_task.cpp

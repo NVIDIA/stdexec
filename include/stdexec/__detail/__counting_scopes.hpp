@@ -116,7 +116,7 @@ namespace STDEXEC
         {
           return STDEXEC::__throw_compile_time_error<
             _WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
-            _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+            _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
             _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
             _WITH_PRETTY_SENDER_<_Sender>,
             _WITH_ENVIRONMENT_(_Env)>();
