@@ -59,9 +59,9 @@ namespace STDEXEC
         , __env2_(__mk_secondary_env_t<set_value_t>()(__child, get_env(__rcvr_)))
       {}
 
-      _Receiver   __rcvr_;
-      __env2_t    __env2_;
-      __storage_t __data_;
+      _Receiver      __rcvr_;
+      __env2_t const __env2_;
+      __storage_t    __data_;
     };
 
     // This receiver is to be completed on the execution context associated with the
@@ -74,6 +74,7 @@ namespace STDEXEC
     {
       using receiver_concept = receiver_tag;
       using __env2_t         = __state_base<_Sender, _Receiver>::__env2_t;
+      using __sch_env_t      = __join_env_t<__env2_t const &, env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
       {
@@ -93,9 +94,9 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> __env2_t const &
+      constexpr auto get_env() const noexcept -> __sch_env_t
       {
-        return __state_->__env2_;
+        return __env::__join(__state_->__env2_, STDEXEC::get_env(__state_->__rcvr_));
       }
 
       __state_base<_Sender, _Receiver>* __state_;
@@ -125,11 +126,14 @@ namespace STDEXEC
      private:
       template <class _Env>
       using __env2_t = __secondary_env_t<_Sender, _Env, set_value_t>;
+      template <class _Env>
+      using __sch_env_t = __join_env_t<__env2_t<_Env>, _Env>;
 
       template <class _Env>
-      constexpr auto __mk_env2(_Env&& __env) const noexcept -> __env2_t<_Env>
+      constexpr auto __mk_sch_env(_Env&& __env) const noexcept -> __sch_env_t<_Env>
       {
-        return __mk_secondary_env_t<set_value_t>()(__sndr_, static_cast<_Env&&>(__env));
+        return __env::__join(__mk_secondary_env_t<set_value_t>()(__sndr_, __env),
+                             static_cast<_Env&&>(__env));
       }
 
       //! @brief Returns `true` when:
@@ -184,14 +188,14 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __env2_t<_Env>...>
+        -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __sch_env_t<_Env>...>
       {
-        return get_completion_scheduler<_SetTag>(__sch_, __mk_env2(__env)...);
+        return get_completion_scheduler<_SetTag>(__sch_, __mk_sch_env(__env)...);
       }
 
       //! @overload
       template <class _SetTag, class... _Env>
-        requires __never_sends<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>
+        requires __never_sends<_SetTag, schedule_result_t<_Scheduler>, __sch_env_t<_Env>...>
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
