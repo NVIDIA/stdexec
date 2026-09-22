@@ -93,6 +93,44 @@ namespace
     CHECK(count == 0);
   }
 
+  TEST_CASE("repeat_n works with an error-only sender", "[adaptors][repeat_n]")
+  {
+    auto count = GENERATE(0, 1, 3);
+    auto snd   = exec::repeat_n(just_error(42), count);
+    check_val_types<ex::__mset<pack<>>>(snd);
+    check_err_types<ex::__mset<int>>(snd);
+    check_sends_stopped<false>(snd);
+
+    if (count == 0)
+    {
+      wait_for_value(std::move(snd) | then([] { return 1; }), 1);
+    }
+    else
+    {
+      auto op = ex::connect(std::move(snd), expect_error_receiver{42});
+      ex::start(op);
+    }
+  }
+
+  TEST_CASE("repeat_n works with a stopped-only sender", "[adaptors][repeat_n]")
+  {
+    auto count = GENERATE(0, 1, 3);
+    auto snd   = exec::repeat_n(just_stopped(), count);
+    check_val_types<ex::__mset<pack<>>>(snd);
+    check_err_types<ex::__mset<>>(snd);
+    check_sends_stopped<true>(snd);
+
+    if (count == 0)
+    {
+      wait_for_value(std::move(snd) | then([] { return 1; }), 1);
+    }
+    else
+    {
+      auto op = ex::connect(std::move(snd), expect_stopped_receiver{});
+      ex::start(op);
+    }
+  }
+
   TEST_CASE("repeat_n works with a single repetition", "[adaptors][repeat_n]")
   {
     std::size_t     count = 0;
