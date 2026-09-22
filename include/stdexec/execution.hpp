@@ -23,10 +23,10 @@ import stdexec;
 
 #else
 
+// IWYU pragma: begin_exports
 #  include "__detail/__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
-// IWYU pragma: begin_exports
 #  include "__detail/__as_awaitable.hpp"
 #  include "__detail/__associate.hpp"
 #  include "__detail/__basic_sender.hpp"
