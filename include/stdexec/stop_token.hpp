@@ -132,6 +132,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
     auto request_stop() noexcept -> bool;
 
+    static constexpr auto stop_possible() noexcept -> bool
+    {
+      return true;
+    }
+
     auto stop_requested() const noexcept -> bool
     {
       return (__state_.load(STDEXEC::__std::memory_order_acquire) & __stop_requested_flag_) != 0;
