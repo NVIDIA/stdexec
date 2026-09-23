@@ -134,7 +134,7 @@ namespace STDEXEC
                 && __std::move_constructible<__decay_t<_Sender>>
                 && __std::constructible_from<__decay_t<_Sender>, _Sender>;
 
-#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1300
+#  if STDEXEC_GCC() && STDEXEC_GCC_VERSION < 1303
   template <auto _Completions>
   inline constexpr bool __constant_completion_signatures_v =
     __valid_completion_signatures<std::remove_const_t<decltype(_Completions)>>;
