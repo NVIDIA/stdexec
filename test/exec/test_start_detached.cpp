@@ -143,6 +143,7 @@ namespace
 
       [[nodiscard]]
       auto get_env() const noexcept
+        -> ex::prop<ex::get_completion_scheduler_t<ex::set_value_t>, custom_scheduler>
       {
         return ex::prop{ex::get_completion_scheduler<ex::set_value_t>, custom_scheduler{called}};
       }
