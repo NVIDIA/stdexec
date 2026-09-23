@@ -221,7 +221,10 @@ namespace experimental::execution
                 _WITH_PRETTY_SENDER_<__child_t &>>();
           },
           // transform for set_error completions:
-          decay_arguments<set_error_t, repeat_n_t>());
+          decay_arguments<set_error_t, repeat_n_t>(),
+          keep_completion<set_stopped_t>(),
+          // Zero repetitions complete successfully without starting the child.
+          completion_signatures<set_value_t()>());
 
         STDEXEC_IF_OK(__completions)
         {
