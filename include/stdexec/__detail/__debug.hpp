@@ -78,7 +78,7 @@ namespace STDEXEC
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Env>
-    using __env_t = env<prop<__debug_env_t, bool>, _Env>;
+    using __env_t = env<prop<__debug_env_t, bool>, __root_env, _Env>;
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _CvSender, class _Env, class... _Sigs>

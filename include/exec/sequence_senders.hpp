@@ -521,6 +521,33 @@ namespace experimental::execution
   static constexpr auto __diagnose_sequence_sender_concept_failure();
 
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+  // Sequence-aware version of the extra-type-checking hooks. For types that
+  // opted into being sequence senders, this runs __debug_sequence_sender
+  // (subscribe/set_next-based introspection) instead of the regular
+  // __debug_sender (which would try to connect() a sequence sender).
+  template <class _Sender>
+  concept __is_sequence_sender_for_debug = enable_sequence_sender<STDEXEC::__decay_t<_Sender>>;
+
+  template <class _Sender, class... _Env>
+  auto __checked_sequence_completion_signatures(_Sender&& __sndr, _Env&&... __env) noexcept
+  {
+    using __completions_t = STDEXEC::__completion_signatures_of_t<_Sender, _Env...>;
+    if constexpr (__is_sequence_sender_for_debug<_Sender>)
+    {
+      exec::__debug_sequence_sender(static_cast<_Sender&&>(__sndr), __env...);
+    }
+    else
+    {
+      STDEXEC::__debug_sender(static_cast<_Sender&&>(__sndr), __env...);
+    }
+    return __completions_t{};
+  }
+
+  template <class _Sender, class... _Env>
+  using __sequence_aware_completion_signatures_of_t =
+    decltype(__checked_sequence_completion_signatures(STDEXEC::__declval<_Sender>(),
+                                                      STDEXEC::__declval<_Env>()...));
+
   // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
   // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
   // completion signatures wrapper enforces that at compile time.
@@ -541,6 +568,12 @@ namespace experimental::execution
   template <class _Sequence, class... _Env>
     requires sequence_sender_in<_Sequence, _Env...>
   using item_types_of_t = __item_types_of_t<_Sequence, _Env...>;
+
+  // With extra type checking disabled, this is a plain alias for the
+  // unchecked completion signatures.
+  template <class _Sender, class... _Env>
+  using __sequence_aware_completion_signatures_of_t =
+    STDEXEC::__completion_signatures_of_t<_Sender, _Env...>;
 #  endif
 
   template <class _Data, class... _What>
