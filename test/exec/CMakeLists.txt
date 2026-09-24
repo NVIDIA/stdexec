@@ -73,24 +73,19 @@ set_source_files_properties(
   test_any_sender.cpp PROPERTIES COMPILE_FLAGS
                                  $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 
-if(STDEXEC_BUILD_MODULES)
-  # these are the only files that build right now...
-  add_executable(test.exec
-      ../test_main.cpp
-      async_scope/test_empty.cpp)
-  set_target_properties(test.exec PROPERTIES CXX_MODULE_STD ON)
-else()
+if(NOT STDEXEC_BUILD_MODULES)
+  # None of the exec tests build successfully as modules yet.
   add_executable(test.exec ${exec_test_sources})
+
+  add_compile_diagnostics(test.exec)
+  target_link_libraries(
+    test.exec
+    PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
+    PRIVATE common_test_settings)
+
+  # Discover the Catch2 test built by the application
+  catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 endif()
-
-add_compile_diagnostics(test.exec)
-target_link_libraries(
-  test.exec
-  PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
-  PRIVATE common_test_settings)
-
-# Discover the Catch2 test built by the application
-catch_discover_tests(test.exec PROPERTIES TIMEOUT 30)
 
 if(STDEXEC_ENABLE_ASIO)
   add_subdirectory(asio)
