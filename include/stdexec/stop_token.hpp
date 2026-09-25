@@ -259,6 +259,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     STDEXEC_ATTRIBUTE(no_unique_address) _Fun __fun_;
   };
 
+  template <class _Fun>
+  inplace_stop_callback(inplace_stop_token, _Fun) -> inplace_stop_callback<_Fun>;
+
   inline inplace_stop_source::~inplace_stop_source()
   {
     STDEXEC_ASSERT((__state_.load(STDEXEC::__std::memory_order_relaxed) & __locked_flag_) == 0);
