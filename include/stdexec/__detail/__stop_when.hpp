@@ -134,8 +134,8 @@ namespace STDEXEC
       template <stoppable_token _SenderToken, unstoppable_token _ReceiverToken>
       [[nodiscard]]
       constexpr auto
-      operator()(_SenderToken __sndr_token, _ReceiverToken __rcvr_token) const noexcept
-        -> _SenderToken
+      operator()(_SenderToken                    __sndr_token,
+                 [[maybe_unused]] _ReceiverToken __rcvr_token) const noexcept -> _SenderToken
       {
         // when the receiver's stop token is unstoppable, the net token is just the
         // sender's captured token
