@@ -36,8 +36,19 @@ namespace asioexec
                                   "exec::asio::use_sender_t "
                                   "instead.")]] = exec::asio::use_sender_t;
 
+  using thread_unsafe_use_sender_t [[deprecated(
+    "asioexec::thread_unsafe_use_sender_t is deprecated. Please use "
+    "exec::asio::thread_unsafe_use_sender_t instead.")]] = exec::asio::thread_unsafe_use_sender_t;
+
   inline constexpr auto const & use_sender [[deprecated("asioexec::use_sender is deprecated. "
                                                         "Please use exec::asio::use_sender "
                                                         "instead.")]]
   = exec::asio::use_sender;
+
+  inline constexpr auto const & thread_unsafe_use_sender [[deprecated("asioexec::thread_unsafe_use_"
+                                                                      "sender is deprecated. "
+                                                                      "Please use "
+                                                                      "exec::asio::thread_unsafe_"
+                                                                      "use_sender instead.")]]
+  = exec::asio::thread_unsafe_use_sender;
 }  // namespace asioexec
