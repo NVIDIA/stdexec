@@ -26,7 +26,10 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#  include "__basic_sender.hpp"
 #  include "__concepts.hpp"
+#  include "__diagnostics.hpp"
+#  include "__domain.hpp"
 #  include "__just.hpp"
 #  include "__let.hpp"
 #  include "__sender_adaptor_closure.hpp"
@@ -38,6 +41,19 @@ namespace STDEXEC
 {
   /////////////////////////////////////////////////////////////////////////////
   // [exec.stopped.err]
+  namespace __sae
+  {
+    template <class _Error>
+    struct __just_error_fn
+    {
+      constexpr auto operator()() noexcept(__nothrow_move_constructible<_Error>)
+      {
+        return just_error(static_cast<_Error&&>(__err_));
+      }
+
+      _Error __err_;
+    };
+  }  // namespace __sae
 
   //! @brief A pipeable sender adaptor that converts a predecessor's stopped
   //!        completion into an error completion carrying a user-supplied
@@ -60,12 +76,17 @@ namespace STDEXEC
   //!
   //! **Equivalence.**
   //!
-  //! <tt>stopped_as_error(sndr, err)</tt> is implemented (and is
-  //! observationally equivalent to)
+  //! <tt>stopped_as_error(sndr, err)</tt> is lowered (via
+  //! @c transform_sender) to, and is observationally equivalent to,
   //! <tt>let_stopped(sndr, [err]{ return just_error(err); })</tt>.
   //! Use this adaptor whenever you would have written that pattern by
-  //! hand — it is shorter, clearer at the call site, and the
-  //! implementation can be specialized more efficiently in the future.
+  //! hand — it is shorter and clearer at the call site.
+  //!
+  //! **Customization.**
+  //!
+  //! The sender returned by @c stopped_as_error has tag type
+  //! @c stopped_as_error_t, so a domain can customize it by providing a
+  //! @c transform_sender overload for senders of that tag.
   //!
   //! **Completion signatures.**
   //!
@@ -122,10 +143,8 @@ namespace STDEXEC
     template <sender _Sender, __movable_value _Error>
     constexpr auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto
     {
-      return let_stopped(static_cast<_Sender&&>(__sndr),
-                         [__err2 = static_cast<_Error&&>(__err)]() mutable noexcept(
-                           __nothrow_move_constructible<_Error>)
-                         { return just_error(static_cast<_Error&&>(__err2)); });
+      return __make_sexpr<stopped_as_error_t>(static_cast<_Error&&>(__err),
+                                              static_cast<_Sender&&>(__sndr));
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.
@@ -138,6 +157,25 @@ namespace STDEXEC
     {
       return __closure(*this, static_cast<_Error&&>(__err));
     }
+
+    template <__decay_copyable _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
+    {
+      static_assert(__sender_for<_Sender, stopped_as_error_t>);
+      auto& [__tag, __err, __child] = __sndr;
+      using __error_t               = __decay_t<decltype(__err)>;
+      return let_stopped(STDEXEC::__forward_like<_Sender>(__child),
+                         __sae::__just_error_fn<__error_t>{
+                           STDEXEC::__forward_like<_Sender>(__err)});
+    }
+
+    template <class _Sender>
+    static constexpr auto transform_sender(set_value_t, _Sender&&, __ignore)
+    {
+      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
+                            _WHERE_(_IN_ALGORITHM_, stopped_as_error_t),
+                            _WITH_PRETTY_SENDER_<_Sender>>{};
+    }
   };
 
   //! @brief The customization point object for the @c stopped_as_error sender adaptor.
@@ -147,6 +185,18 @@ namespace STDEXEC
   //!
   //! @hideinitializer
   inline constexpr stopped_as_error_t stopped_as_error{};
+
+  template <>
+  struct __sexpr_impl<stopped_as_error_t> : __sexpr_defaults
+  {
+    template <class _Sender, class... _Env>
+    static consteval auto __get_completion_signatures()
+    {
+      using __sndr_t =
+        __detail::__transform_sender_result_t<stopped_as_error_t, set_value_t, _Sender, env<>>;
+      return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
+    }
+  };
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
