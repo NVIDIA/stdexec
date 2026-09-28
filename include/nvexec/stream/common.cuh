@@ -460,13 +460,13 @@ namespace nv::execution
     template <class Sender>
     struct stream_sender_attrs
     {
-      template <__forwarding_query Query>
-        requires __queryable_with<env_of_t<Sender>, Query>
+      template <class _Env2 = env_of_t<Sender>, __forwarding_query Query>
+        requires __queryable_with<_Env2, Query>
       STDEXEC_ATTRIBUTE(nodiscard)
-      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<env_of_t<Sender>, Query>)
-        -> __query_result_t<env_of_t<Sender>, Query>
+      constexpr auto query(Query) const noexcept(__nothrow_queryable_with<_Env2, Query>)
+        -> __query_result_t<_Env2, Query>
       {
-        return STDEXEC::__query<Query>()(STDEXEC::get_env(*child_));
+        return STDEXEC::get_env(*child_).query(Query());
       }
 
       Sender const * child_{};
