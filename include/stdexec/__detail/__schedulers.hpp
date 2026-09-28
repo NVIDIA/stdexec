@@ -150,25 +150,6 @@ namespace STDEXEC
                     "schedule() member functions must return a sender");
       return static_cast<_Scheduler &&>(__sched).schedule();
     }
-
-    //! @brief Deprecated overload: obtain a schedule-sender via @c tag_invoke.
-    //!
-    //! @deprecated The @c tag_invoke-based customization of @c schedule is
-    //!             deprecated in favor of the <tt>sched.schedule()</tt>
-    //!             member-function form. New scheduler types should provide
-    //!             a member @c .schedule() instead of a @c tag_invoke
-    //!             overload for @c schedule_t.
-    template <class _Scheduler>
-      requires __has_schedule_member<_Scheduler> || __tag_invocable<schedule_t, _Scheduler>
-    [[deprecated("the use of tag_invoke for schedule is deprecated")]]
-    STDEXEC_ATTRIBUTE(host, device, always_inline)  //
-      auto operator()(_Scheduler &&__sched) const
-      noexcept(__nothrow_tag_invocable<schedule_t, _Scheduler>)
-        -> __tag_invoke_result_t<schedule_t, _Scheduler>
-    {
-      static_assert(sender<__tag_invoke_result_t<schedule_t, _Scheduler>>);
-      return __tag_invoke(*this, static_cast<_Scheduler &&>(__sched));
-    }
   };
 
   //! @brief The customization point object for the @c schedule sender factory.

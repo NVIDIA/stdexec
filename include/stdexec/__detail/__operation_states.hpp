@@ -27,7 +27,6 @@ import stdexec;
 
 // include these after __execution_fwd.hpp
 #  include "__concepts.hpp"
-#  include "__tag_invoke.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    include <type_traits>
@@ -117,9 +116,6 @@ namespace STDEXEC
   //! handle exceptions. It must also return @c void. The dispatch site
   //! enforces both with static asserts.
   //!
-  //! @c tag_invoke-based customization is supported via a deprecated
-  //! overload, retained for backwards compatibility.
-  //!
   //! @see stdexec::connect           — the CPO that produces operation states
   //! @see stdexec::operation_state   — the concept this CPO drives
   //! @see stdexec::set_value         — one of the completions @c start eventually triggers
@@ -141,16 +137,6 @@ namespace STDEXEC
       static_assert(noexcept(__op.start()), "start() members must be noexcept");
       static_assert(__same_as<decltype(__op.start()), void>, "start() members must return void");
       __op.start();
-    }
-
-    template <class _Op>
-      requires __has_start_member<_Op> || __tag_invocable<start_t, _Op &>
-    [[deprecated("the use of tag_invoke for start is deprecated")]]
-    STDEXEC_ATTRIBUTE(always_inline)  //
-      constexpr void operator()(_Op &__op) const noexcept
-    {
-      static_assert(__nothrow_tag_invocable<start_t, _Op &>);
-      (void) __tag_invoke(start_t{}, __op);
     }
   };
 

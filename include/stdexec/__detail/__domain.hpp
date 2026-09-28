@@ -448,16 +448,6 @@ namespace STDEXEC
       }
     }
 
-    // Query with tag_invoke (legacy):
-    template <class _Env>
-      requires __tag_invocable<get_domain_t, _Env const &>
-    [[deprecated("use a query member function instead of tag_invoke for queries")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const &) const noexcept
-    {
-      return __decay_t<__tag_invoke_result_t<get_domain_t, _Env const &>>{};
-    }
-
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     static consteval auto query(forwarding_query_t) noexcept -> bool
     {

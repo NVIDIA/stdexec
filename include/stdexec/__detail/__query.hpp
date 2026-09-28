@@ -28,7 +28,6 @@ import stdexec;
 // // include these after __execution_fwd.hpp
 #  include "__concepts.hpp"
 #  include "__meta.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__utility.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -104,22 +103,6 @@ namespace STDEXEC
         _Query::template __validate<_Env, _Args...>();
       }
       return __env.query(_Query(), static_cast<_Args &&>(__args)...);
-    }
-
-    // Query with tag_invoke (legacy):
-    template <class _Qy = _Query, class _Env, class... _Args>
-      requires __tag_invocable<_Qy, _Env const &, _Args...>
-    [[deprecated("the use of tag_invoke for queries is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const &__env, _Args &&...__args) const
-      noexcept(__nothrow_tag_invocable<_Qy, _Env const &, _Args...>)
-        -> __mcall1<_Transform, __tag_invoke_result_t<_Qy, _Env const &, _Args...>>
-    {
-      if constexpr (__has_validation<_Query, _Env, _Args...>)
-      {
-        _Query::template __validate<_Env, _Args...>();
-      }
-      return __tag_invoke(_Query(), __env, static_cast<_Args &&>(__args)...);
     }
   };
 

@@ -28,7 +28,6 @@ import stdexec;
 // include these after __execution_fwd.hpp
 #  include "__completion_signatures_of.hpp"
 #  include "__connect_awaitable.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__transform_sender.hpp"
 #  include "__type_traits.hpp"
 
@@ -56,13 +55,9 @@ namespace STDEXEC
     concept __with_co_await = __awaitable<_Sender, __connect_await::__promise<_Sender, _Receiver>>;
 
     template <class _Sender, class _Receiver>
-    concept __with_legacy_tag_invoke = __tag_invocable<connect_t, _Sender, _Receiver>;
-
-    template <class _Sender, class _Receiver>
     concept __with_any_connect = __with_static_member<_Sender, _Receiver>
                               || __with_member<_Sender, _Receiver>
-                              || __with_co_await<_Sender, _Receiver>
-                              || __with_legacy_tag_invoke<_Sender, _Receiver>;
+                              || __with_co_await<_Sender, _Receiver>;
 
 #  if !STDEXEC_MSVC()
 
@@ -95,16 +90,6 @@ namespace STDEXEC
       __connect_declfn_v<_Sender, _Receiver, true>;
 
     template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver>  //
-            || __with_member<_Sender, _Receiver>         //
-            || __with_co_await<_Sender, _Receiver>       //
-            || __with_legacy_tag_invoke<_Sender, _Receiver>
-    extern STDEXEC_CONNECT_DECLFN_FOR(__tag_invoke(connect,
-                                                   __declval<_Sender>(),
-                                                   __declval<_Receiver>()))
-      __connect_declfn_v<_Sender, _Receiver, true>;
-
-    template <class _Sender, class _Receiver>
       requires __with_static_member<_Sender, _Receiver>
     extern __declfn_t<decltype(STDEXEC_REMOVE_REFERENCE(_Sender)  //
                                ::__static_connect(__declval<_Sender>(), __declval<_Receiver>())),
@@ -122,14 +107,6 @@ namespace STDEXEC
             || __with_member<_Sender, _Receiver>         //
             || __with_co_await<_Sender, _Receiver>
     extern __declfn_t<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>
-      __connect_declfn_v<_Sender, _Receiver, false>;
-
-    template <class _Sender, class _Receiver>
-      requires __with_static_member<_Sender, _Receiver>  //
-            || __with_member<_Sender, _Receiver>         //
-            || __with_co_await<_Sender, _Receiver>       //
-            || __with_legacy_tag_invoke<_Sender, _Receiver>
-    extern __declfn_t<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>
       __connect_declfn_v<_Sender, _Receiver, false>;
 
     template <class _Sender, class _Receiver>
@@ -169,11 +146,6 @@ namespace STDEXEC
         {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
         }
-        else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>)
-        {
-          return STDEXEC_CONNECT_DECLFN_FOR(
-            __tag_invoke(connect, __declval<_Sender>(), __declval<_Receiver>()));
-        }
         else
         {
           return __declfn<void, false>();
@@ -201,10 +173,6 @@ namespace STDEXEC
         else if constexpr (__with_co_await<_Sender, _Receiver>)
         {
           return __declfn<__call_result_t<__connect_awaitable_t, _Sender, _Receiver>, false>();
-        }
-        else if constexpr (__with_legacy_tag_invoke<_Sender, _Receiver>)
-        {
-          return __declfn<__tag_invoke_result_t<connect_t, _Sender, _Receiver>, false>();
         }
         else
         {
@@ -247,9 +215,8 @@ namespace STDEXEC
   //! Most user code does not call it directly — @c sync_wait, @c spawn,
   //! and the various adaptors do — but it is the operation a sender
   //! author *must* support, either by exposing a `.connect(receiver)`
-  //! member, by being a coroutine awaitable (so the fallback awaitable
-  //! adapter applies), or — historically — via @c tag_invoke (now
-  //! deprecated).
+  //! member or by being a coroutine awaitable (so the fallback awaitable
+  //! adapter applies).
   //!
   //! See [exec.connect] in the C++26 working draft for the normative
   //! specification.
@@ -270,8 +237,6 @@ namespace STDEXEC
   //! 3. The awaitable fallback: if @c sndr is awaitable in stdexec's
   //!    receiver-promise type, an adapter operation state is synthesized.
   //!    This is what makes coroutines work as senders.
-  //! 4. <tt>tag_invoke(connect, sndr, rcvr)</tt> — deprecated, retained
-  //!    for backwards compatibility.
   //!
   //! **Customization.**
   //!
@@ -345,16 +310,10 @@ namespace STDEXEC
       {
         return static_cast<__new_sndr_t&&>(__new_sndr).connect(static_cast<_Receiver&&>(__rcvr));
       }
-      else if constexpr (__connect::__with_co_await<__new_sndr_t, _Receiver>)
+      else
       {
         return __connect_awaitable(static_cast<__new_sndr_t&&>(__new_sndr),
                                    static_cast<_Receiver&&>(__rcvr));
-      }
-      else
-      {
-        return __tag_invoke(*this,
-                            static_cast<__new_sndr_t&&>(__new_sndr),
-                            static_cast<_Receiver&&>(__rcvr));
       }
     }
 

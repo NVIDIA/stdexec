@@ -143,48 +143,10 @@ namespace STDEXEC
 
   ////////////////////////////////////////////////////////////////////////////
   // `__debug_sender`
-  // ===============
+  // ================
 
-  // Understanding why a particular sender doesn't connect to a particular
-  // receiver is nigh impossible in the current design due to limitations in
-  // how the compiler reports overload resolution failure in the presence of
-  // constraints. `__debug_sender` is a utility to assist with the process. It
-  // gives you the deep template instantiation backtrace that you need to
-  // understand where in a chain of senders the problem is occurring.
-
-  // ```c++
-  // template <class _Sigs, class _Env = env<>, class _Sender>
-  //   void __debug_sender(_Sender&& __sndr, _Env = {});
-
-  // template <class _Env = env<>, class _Sender>
-  //   void __debug_sender(_Sender&& __sndr, _Env = {});
-  // ```
-
-  // **Usage:**
-
-  // To find out where in a chain of senders a sender is failing to connect
-  // to a receiver, pass it to `__debug_sender`, optionally with an
-  // environment argument; e.g. `__debug_sender(sndr [, env])`
-
-  // To find out why a sender will not connect to a receiver of a particular
-  // signature, specify the set of completion signatures as an explicit template
-  // argument that names an instantiation of `completion_signatures`; e.g.:
-  // `__debug_sender<completion_signatures<set_value_t(int)>>(sndr [, env])`.
-
-  // **How it works:**
-
-  // The `__debug_sender` function `connect`'s the sender to a
-  // `__debug_receiver`, whose environment is augmented with a special
-  // `__is_debug_env_t` query. An additional fall-back overload is added to
-  // the `connect` CPO that recognizes receivers whose environments respond to
-  // that query and lets them through. Then in a non-immediate context, it
-  // looks for a `tag_invoke(connect_t...)` overload for the input sender and
-  // receiver. This will recurse until it hits the `tag_invoke` call that is
-  // causing the failure.
-
-  // At least with clang, this gives me a nice backtrace, at the bottom of
-  // which is the faulty `tag_invoke` overload with a mention of the
-  // constraint that failed.
+  // Utility to check whether a sender's actual completions match its declared completion
+  // signatures.
   template <class _Sigs, class _CvSender, class _Env = env<>>
   constexpr void __debug_sender(_CvSender&& __sndr, _Env const & = {})
   {
