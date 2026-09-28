@@ -32,6 +32,7 @@ import stdexec;
 #  include "__domain.hpp"
 #  include "__just.hpp"
 #  include "__let.hpp"
+#  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 
@@ -189,6 +190,12 @@ namespace STDEXEC
   template <>
   struct __sexpr_impl<stopped_as_error_t> : __sexpr_defaults
   {
+    static constexpr auto __get_attrs =
+      []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+    {
+      return __sync_attrs{__child};
+    };
+
     template <class _Sender, class... _Env>
     static consteval auto __get_completion_signatures()
     {
