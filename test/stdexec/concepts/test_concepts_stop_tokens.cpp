@@ -33,6 +33,12 @@ namespace
     void operator()() && noexcept {}
   };
 
+  TEST_CASE("inplace_stop_callback exposes its callback type", "[stop_token]")
+  {
+    STATIC_REQUIRE(std::is_same_v<::STDEXEC::inplace_stop_callback<on_stop_request>::callback_type,
+                                  on_stop_request>);
+  }
+
   TEST_CASE("(un)stoppable_token correctly categorizes various standard stop token types",
             "[concepts]")
   {

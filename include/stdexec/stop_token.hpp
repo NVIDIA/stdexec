@@ -232,6 +232,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   class inplace_stop_callback : STDEXEC::__stok::__inplace_stop_callback_base
   {
    public:
+    using callback_type = _Fun;
+
     template <class _Fun2>
       requires STDEXEC::__std::constructible_from<_Fun, _Fun2>
     explicit inplace_stop_callback(inplace_stop_token __token, _Fun2&& __fun)
