@@ -50,4 +50,11 @@ namespace
                                   std::stop_callback<on_stop_request>>);
 #endif
   }
+
+  TEST_CASE("inplace_stop_callback supports class template argument deduction", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source   source;
+    ::STDEXEC::inplace_stop_callback cb{source.get_token(), on_stop_request{}};
+    STATIC_REQUIRE(std::is_same_v<decltype(cb), ::STDEXEC::inplace_stop_callback<on_stop_request>>);
+  }
 }  // namespace
