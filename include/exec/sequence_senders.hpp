@@ -222,6 +222,20 @@ namespace experimental::execution
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
 
+  // Sender adaptors created with `__make_sexpr` whose tag is `__write_env_t`
+  // are transparent to sequence sender semantics: `write_env` only augments the
+  // environment seen by its children; it neither adds nor removes sequence
+  // items. `__get_item_types_helper` below computes the item types of such
+  // senders from their children, and `subscribe_t` knows how to subscribe to
+  // them. Without this, wrapping a sequence sender in `write_env` (or in an
+  // algorithm that uses `write_env` internally) would hide the sequence
+  // semantics from downstream sequence-aware algorithms. See issue #2053.
+  template <auto _DescriptorFn>
+    requires STDEXEC::__same_as<
+               typename STDEXEC::__desc_of_t<STDEXEC::__sexpr<_DescriptorFn>>::__tag,
+               STDEXEC::__write_env_t>
+  inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_DescriptorFn>> = true;
+
   STDEXEC_MODULE_EXPORT
   template <class... _Senders>
   struct item_types
@@ -318,6 +332,16 @@ namespace experimental::execution
       else if constexpr (__with_consteval_static_member<_Sequence>)
       {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
+      }
+      else if constexpr (STDEXEC::__sender_for<_Sequence, STDEXEC::__write_env_t>)
+      {
+        // A `write_env` sender is transparent as a sequence sender: its item
+        // types are the item types of its child, computed in the child's
+        // environment (the written environment joined with the receiver's
+        // environment). This mirrors how `write_env` computes completion
+        // signatures from its child's signatures in the joined environment.
+        using __child_env_t = __join_env_t<__decay_t<__data_of<_Sequence>> const &, _Env...>;
+        return __get_item_types_helper<__child_of<_Sequence>, __child_env_t>();
       }
       else if constexpr (sender_in<_Sequence, _Env...>
                          && !enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>)
@@ -763,6 +787,51 @@ namespace experimental::execution
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
       _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
 
+    // Receiver wrapper used to subscribe to the child of a `write_env` sender:
+    // it forwards all completions and `set_next` calls to the wrapped receiver,
+    // but presents the written environment joined with (and shadowing) the
+    // wrapped receiver's environment. This mirrors the environment that
+    // `write_env`'s operation state presents to its child when connecting.
+    template <class _Receiver, class _Env>
+    struct __write_env_rcvr
+    {
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      template <class _Item>
+      auto set_next(_Item&& __item) & noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
+        -> next_sender_of_t<_Receiver, _Item>
+      {
+        return exec::set_next(__rcvr_, static_cast<_Item&&>(__item));
+      }
+
+      void set_value() noexcept
+      {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept
+      {
+        STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__error));
+      }
+
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, _Receiver>
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      auto get_env() const noexcept -> __join_env_t<_Env const &, env_of_t<_Receiver>>
+      {
+        return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
+      }
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Env      __env_;
+    };
+
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
       __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
@@ -831,6 +900,20 @@ namespace experimental::execution
                                   __stopped_means_break<_Receiver>>;
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
+        else if constexpr (STDEXEC::__sender_for<__tfx_seq_t, STDEXEC::__write_env_t>)
+        {
+          // A `write_env` sender is transparent to sequence sender semantics:
+          // subscribe to its child with a receiver that presents the written
+          // environment (joined with, and shadowing, the receiver's own
+          // environment). See issue #2053.
+          using __child_t   = __child_of<__tfx_seq_t>;
+          using __written_t = __decay_t<__data_of<__tfx_seq_t>>;
+          using __rcvr_t    = __write_env_rcvr<_Receiver, __written_t>;
+          using __result_t  = STDEXEC::__call_result_t<subscribe_t, __child_t, __rcvr_t>;
+          __check_operation_state<__result_t>();
+          constexpr bool __nothrow_subscribe = __nothrow_callable<subscribe_t, __child_t, __rcvr_t>;
+          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
+        }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
@@ -883,6 +966,20 @@ namespace experimental::execution
           return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
+        }
+        else if constexpr (STDEXEC::__sender_for<__tfx_seq_t, STDEXEC::__write_env_t>)
+        {
+          // `write_env` senders are transparent to sequence sender semantics;
+          // see the matching branch in __get_declfn above and issue #2053.
+          auto& [__tag, __env, __child] = __tfx_seq;
+          (void) __tag;
+          using __written_t = __decay_t<decltype(__env)>;
+          // Recurse into the CPO with the unwrapped child; each level of
+          // `write_env` nesting is unwrapped one at a time.
+          return (*this)(STDEXEC::__forward_like<__tfx_seq_t>(__child),
+                         __write_env_rcvr<_Receiver, __written_t>{
+                           static_cast<_Receiver&&>(__rcvr),
+                           STDEXEC::__forward_like<decltype(__env)>(__env)});
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {  // NOLINT(bugprone-branch-clone)
