@@ -34,7 +34,6 @@ import stdexec;
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
-#  include "../stdexec/__detail/__tag_invoke.hpp"
 #  include "../stdexec/__detail/__transform_sender.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
 #  include "../stdexec/__detail/__utility.hpp"
@@ -157,20 +156,6 @@ namespace experimental::execution
                       "The sender returned from set_next is required to complete with "
                       "set_value_t() or set_stopped_t()");
         return __rcvr.set_next(static_cast<_Item&&>(__item));
-      }
-
-      template <receiver _Receiver, sender _Item>
-        requires __has_set_next_member<_Receiver, _Item>
-              || __tag_invocable<set_next_t, _Receiver&, _Item>
-      [[deprecated("the use of tag_invoke for set_next is deprecated")]]
-      auto operator()(_Receiver& __rcvr, _Item&& __item) const
-        noexcept(__nothrow_tag_invocable<set_next_t, _Receiver&, _Item>)
-          -> __tag_invoke_result_t<set_next_t, _Receiver&, _Item>
-      {
-        static_assert(next_sender<__tag_invoke_result_t<set_next_t, _Receiver&, _Item>>,
-                      "The sender returned from set_next is required to complete with "
-                      "set_value_t() or set_stopped_t()");
-        return __tag_invoke(*this, __rcvr, static_cast<_Item&&>(__item));
       }
     };
   }  // namespace __sequence_sndr
@@ -305,9 +290,6 @@ namespace experimental::execution
       __minvocable_q<__consteval_static_member_result_t, _Sequence, _Env...>;
 
     template <class _Sequence, class... _Env>
-    concept __with_tag_invoke = __tag_invocable<get_item_types_t, _Sequence, _Env...>;
-
-    template <class _Sequence, class... _Env>
     [[nodiscard]]
     consteval auto __get_item_types_helper()
     {
@@ -336,11 +318,6 @@ namespace experimental::execution
       else if constexpr (__with_consteval_static_member<_Sequence>)
       {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
-      }
-      else if constexpr (__with_tag_invoke<_Sequence, _Env...>)
-      {
-        using __result_t = __tag_invoke_result_t<get_item_types_t, _Sequence, _Env...>;
-        return __result_t();
       }
       else if constexpr (sender_in<_Sequence, _Env...>
                          && !enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>)
@@ -790,9 +767,6 @@ namespace experimental::execution
     concept __subscribable_with_static_member =
       __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
-    template <class _Sequence, class _Receiver>
-    concept __subscribable_with_tag_invoke = __tag_invocable<subscribe_t, _Sequence, _Receiver>;
-
     struct subscribe_t
     {
      private:
@@ -940,33 +914,6 @@ namespace experimental::execution
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
         }
-      }
-
-      template <sender   _Sequence,
-                receiver _Receiver,
-                auto     _DeclFn = __get_declfn<_Sequence, _Receiver>()>
-        requires STDEXEC::__callable<decltype(_DeclFn)>
-              || STDEXEC::__tag_invocable<subscribe_t,
-                                          __transform_sender_result_t<_Sequence, _Receiver>,
-                                          _Receiver>
-      [[deprecated("the use of tag_invoke for subscribe is deprecated")]]
-      auto operator()(_Sequence&& __sequence, _Receiver __rcvr) const noexcept(
-        __nothrow_callable<transform_sender_t, _Sequence, env_of_t<_Receiver>>
-        && STDEXEC::__nothrow_tag_invocable<subscribe_t,
-                                            __transform_sender_result_t<_Sequence, _Receiver>,
-                                            _Receiver>)
-        -> STDEXEC::__tag_invoke_result_t<subscribe_t,
-                                          __transform_sender_result_t<_Sequence, _Receiver>,
-                                          _Receiver>
-      {
-        using __tfx_seq_t = __transform_sender_result_t<_Sequence, _Receiver>;
-        using __result_t  = __tag_invoke_result_t<subscribe_t, __tfx_seq_t, _Receiver>;
-        __check_operation_state<__result_t>();
-        auto&& __env     = STDEXEC::get_env(__rcvr);
-        auto&& __tfx_seq = STDEXEC::transform_sender(static_cast<_Sequence&&>(__sequence), __env);
-        return STDEXEC::__tag_invoke(subscribe_t{},
-                                     static_cast<__tfx_seq_t&&>(__tfx_seq),
-                                     static_cast<_Receiver&&>(__rcvr));
       }
 
       static constexpr auto query(STDEXEC::forwarding_query_t) noexcept -> bool

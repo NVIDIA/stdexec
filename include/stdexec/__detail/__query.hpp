@@ -28,7 +28,6 @@ import stdexec;
 // // include these after __execution_fwd.hpp
 #  include "__concepts.hpp"
 #  include "__meta.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__utility.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -43,25 +42,28 @@ namespace STDEXEC
   template <class T>
   concept __queryable = __std::destructible<T>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Query, class... _Args>
-  concept __member_queryable_with = __queryable<_Env>
-                                 && requires(_Env const   &__env,
-                                             _Query const &__query,
-                                             __declfn_t<_Args &&>... __args) {
-                                      { __env.query(__query, __args()...) };
-                                    };
+  concept __queryable_with = __queryable<_Env>
+                          && requires(_Env const   &__env,
+                                      _Query const &__query,
+                                      __declfn_t<_Args &&>... __args) {
+                               { __env.query(__query, __args()...) };
+                             };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Query, class... _Args>
-  concept __nothrow_member_queryable_with = __member_queryable_with<_Env, _Query, _Args...>
-                                         && requires(_Env const   &__env,
-                                                     _Query const &__query,
-                                                     __declfn_t<_Args &&>... __args) {
-                                              { __env.query(__query, __args()...) } noexcept;
-                                            };
+  concept __nothrow_queryable_with = __queryable_with<_Env, _Query, _Args...>
+                                  && requires(_Env const   &__env,
+                                              _Query const &__query,
+                                              __declfn_t<_Args &&>... __args) {
+                                       { __env.query(__query, __args()...) } noexcept;
+                                     };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Env, class _Qy, class... _Args>
-  using __member_query_result_t = decltype(__declval<_Env const &>().query(__declval<_Qy const &>(),
-                                                                           __declval<_Args>()...));
+  using __query_result_t = decltype(__declval<_Env const &>().query(__declval<_Qy const &>(),
+                                                                    __declval<_Args>()...));
 
   inline constexpr __none_such __no_default{};
 
@@ -93,11 +95,11 @@ namespace STDEXEC
 
     // Query with a .query member function:
     template <class _Qy = _Query, class _Env, class... _Args>
-      requires __member_queryable_with<_Env const &, _Qy, _Args...>
+      requires __queryable_with<_Env const &, _Qy, _Args...>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Env const &__env, _Args &&...__args) const
-      noexcept(__nothrow_member_queryable_with<_Env, _Qy, _Args...>)
-        -> __mcall1<_Transform, __member_query_result_t<_Env, _Qy, _Args...>>
+      noexcept(__nothrow_queryable_with<_Env, _Qy, _Args...>)
+        -> __mcall1<_Transform, __query_result_t<_Env, _Qy, _Args...>>
     {
       if constexpr (__has_validation<_Query, _Env, _Args...>)
       {
@@ -105,35 +107,7 @@ namespace STDEXEC
       }
       return __env.query(_Query(), static_cast<_Args &&>(__args)...);
     }
-
-    // Query with tag_invoke (legacy):
-    template <class _Qy = _Query, class _Env, class... _Args>
-      requires __tag_invocable<_Qy, _Env const &, _Args...>
-    [[deprecated("the use of tag_invoke for queries is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const &__env, _Args &&...__args) const
-      noexcept(__nothrow_tag_invocable<_Qy, _Env const &, _Args...>)
-        -> __mcall1<_Transform, __tag_invoke_result_t<_Qy, _Env const &, _Args...>>
-    {
-      if constexpr (__has_validation<_Query, _Env, _Args...>)
-      {
-        _Query::template __validate<_Env, _Args...>();
-      }
-      return __tag_invoke(_Query(), __env, static_cast<_Args &&>(__args)...);
-    }
   };
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Env, class _Query, class... _Args>
-  concept __queryable_with = __callable<__query<_Query>, _Env &, _Args...>;
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Env, class _Query, class... _Args>
-  concept __nothrow_queryable_with = __nothrow_callable<__query<_Query>, _Env &, _Args...>;
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Env, class _Query, class... _Args>
-  using __query_result_t = __call_result_t<__query<_Query>, _Env &, _Args...>;
 
   template <class _Env, class _Query, class... _Args>
   concept __statically_queryable_with_impl = requires(_Query __q, _Args &&...__args) {
@@ -180,7 +154,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     {
       if constexpr (STDEXEC::__queryable_with<_Query, forwarding_query_t>)
       {
-        return STDEXEC::__query<forwarding_query_t>()(_Query());
+        return _Query().query(forwarding_query_t());
       }
       else
       {

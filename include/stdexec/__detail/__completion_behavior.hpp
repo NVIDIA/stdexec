@@ -155,8 +155,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(always_inline, host, device)
     static constexpr auto __validate() noexcept
     {
-      using __result_t = __member_query_result_t<_Attrs, __get_completion_behavior_t, _Env...>;
-      static_assert(__nothrow_member_queryable_with<_Attrs, __get_completion_behavior_t, _Env...>,
+      using __result_t = __query_result_t<_Attrs, __get_completion_behavior_t, _Env...>;
+      static_assert(__nothrow_queryable_with<_Attrs, __get_completion_behavior_t, _Env...>,
                     "The __get_completion_behavior query must be noexcept.");
       static_assert(__std::convertible_to<__result_t, __completion_behavior::__behavior>,
                     "The __get_completion_behavior query must return one of the static member "
@@ -172,7 +172,7 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Attrs const &) const noexcept
     {
-      if constexpr (__member_queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
+      if constexpr (__queryable_with<_Attrs const &, __get_completion_behavior_t<_Tag>>)
       {
         return __validate<_Attrs>();
       }
@@ -186,9 +186,9 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()([[maybe_unused]] _Attrs const &__attrs, _Env const &) const noexcept
     {
-      if constexpr (__member_queryable_with<_Attrs const &,
-                                            __get_completion_behavior_t<_Tag>,
-                                            _Env const &>)
+      if constexpr (__queryable_with<_Attrs const &,
+                                     __get_completion_behavior_t<_Tag>,
+                                     _Env const &>)
       {
         return __validate<_Attrs, _Env>();
       }

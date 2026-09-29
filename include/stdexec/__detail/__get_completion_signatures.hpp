@@ -32,7 +32,6 @@ import stdexec;
 #  include "__diagnostics.hpp"
 #  include "__env.hpp"
 #  include "__meta.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
 #  include "__prologue.hpp"
@@ -145,14 +144,6 @@ namespace STDEXEC
       __non_sender<_Env>                               //
       && requires { STDEXEC_GET_COMPLSIGS(_Sender, _Env); };
 
-    template <class _Sender, class... _Env>
-    concept __with_legacy_tag_invoke =
-      __tag_invocable<get_completion_signatures_t, _Sender, _Env...>;
-
-    template <class _Sender, class... _Env>
-    concept __with_legacy_non_dependent_tag_invoke =
-      (sizeof...(_Env) == 0) && __tag_invocable<get_completion_signatures_t, _Sender, env<>>;
-
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sender>
     concept __with_legacy_member_alias = requires {
@@ -182,16 +173,6 @@ namespace STDEXEC
       else if constexpr (__with_legacy_member<_Sender>)
       {
         using __completions_t = __legacy_member_result_t<_Sender>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
-      }
-      else if constexpr (__with_legacy_tag_invoke<_Sender>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
-      }
-      else if constexpr (__with_legacy_non_dependent_tag_invoke<_Sender>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender, env<>>;
         return STDEXEC_CHECKED_COMPLSIGS((_Sender), __completions_t());
       }
       else if constexpr (__with_co_await<_Sender>)
@@ -228,11 +209,6 @@ namespace STDEXEC
       else if constexpr (__with_legacy_member<_Sender, _Env>)
       {
         using __completions_t = __legacy_member_result_t<_Sender, _Env>;
-        return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __completions_t());
-      }
-      else if constexpr (__with_legacy_tag_invoke<_Sender, _Env>)
-      {
-        using __completions_t = __tag_invoke_result_t<get_completion_signatures_t, _Sender, _Env>;
         return STDEXEC_CHECKED_COMPLSIGS((_Sender, _Env), __completions_t());
       }
       else if constexpr (__with_co_await<_Sender, _Env>)

@@ -10,8 +10,6 @@ stdexec should follow.
 * Assume that schedulers and receivers contain nothing but a pointer and
   are cheap to copy. Take them by value.
 
-* Do not use `tag_invoke` anywhere. It's deprecated.
-
 * In a sender adaptor, a reasonable way to constrain
   `ThisSender<InnerSender>::connect(OuterReceiver)` is by
   requiring `sender_to<InnerSender, ThisReceiver<OuterReceiver>>`.

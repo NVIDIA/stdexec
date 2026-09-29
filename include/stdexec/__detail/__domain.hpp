@@ -226,13 +226,13 @@ namespace STDEXEC
       : __env_{static_cast<_Env &&>(__env)}
     {}
 
-    template <__none_of<_Queries...> _Query, class... _As>
-      requires __queryable_with<_Env, _Query, _As...>
-    constexpr auto
-    operator()(_Query, _As &&...__as) const noexcept(__nothrow_queryable_with<_Env, _Query, _As...>)
-      -> __query_result_t<_Env, _Query, _As...>
+    template <class _Env2 = _Env, __none_of<_Queries...> _Query, class... _As>
+      requires __queryable_with<_Env2, _Query, _As...>
+    constexpr auto operator()(_Query, _As &&...__as) const
+      noexcept(__nothrow_queryable_with<_Env2, _Query, _As...>)
+        -> __query_result_t<_Env2, _Query, _As...>
     {
-      return __query<_Query>()(__env_, static_cast<_As &&>(__as)...);
+      return __env_.query(_Query(), static_cast<_As &&>(__as)...);
     }
 
    private:
@@ -430,9 +430,9 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
     constexpr auto operator()(_Env const &) const noexcept -> auto
     {
-      if constexpr (__member_queryable_with<_Env const &, get_domain_t>)
+      if constexpr (__queryable_with<_Env const &, get_domain_t>)
       {
-        return __decay_t<__member_query_result_t<_Env, get_domain_t>>{};
+        return __decay_t<__query_result_t<_Env, get_domain_t>>{};
       }
       else if constexpr (__callable<get_start_scheduler_t, _Env const &>)
       {
@@ -446,16 +446,6 @@ namespace STDEXEC
       {
         return default_domain{};
       }
-    }
-
-    // Query with tag_invoke (legacy):
-    template <class _Env>
-      requires __tag_invocable<get_domain_t, _Env const &>
-    [[deprecated("use a query member function instead of tag_invoke for queries")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_Env const &) const noexcept
-    {
-      return __decay_t<__tag_invoke_result_t<get_domain_t, _Env const &>>{};
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

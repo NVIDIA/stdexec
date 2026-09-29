@@ -28,7 +28,6 @@ import stdexec;
 #  include "__concepts.hpp"
 #  include "__meta.hpp"
 #  include "__query.hpp"
-#  include "__tag_invoke.hpp"
 #  include "__tuple.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -66,14 +65,14 @@ namespace STDEXEC
     {
       static_assert(__nothrow_move_constructible<_Env>);
 
-      template <__forwarding_query _Query, class... _Args>
-        requires __queryable_with<_Env, _Query, _Args...>
+      template <class _Env2 = _Env, __forwarding_query _Query, class... _Args>
+        requires __queryable_with<_Env2, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<_Env, _Query, _Args...>)
-          -> __query_result_t<_Env, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
+          -> __query_result_t<_Env2, _Query, _Args...>
       {
-        return __query<_Query>()(__env_, static_cast<_Args &&>(__args)...);
+        return __env_.query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
@@ -266,7 +265,7 @@ namespace STDEXEC
         -> __query_result_t<__1st_env_t<_Query, _Args...>, _Query, _Args...>
     {
       auto const &__env = __detail::__get_1st_env<_Query, _Args...>()(*this);
-      return __query<_Query>()(__env, static_cast<_Args &&>(__args)...);
+      return __env.query(_Query(), static_cast<_Args &&>(__args)...);
     }
   };
 
@@ -322,9 +321,6 @@ namespace STDEXEC
   //! the @c get_env CPO will return one automatically via its @c __ignore
   //! overload).
   //!
-  //! @c tag_invoke-based customization is supported via a deprecated
-  //! overload, retained for backwards compatibility.
-  //!
   //! **Environment queries.**
   //!
   //! Once you have an environment, you query it by calling the appropriate
@@ -360,19 +356,6 @@ namespace STDEXEC
     {
       static_assert(noexcept(__env_provider.get_env()), "get_env() members must be noexcept");
       return __env_provider.get_env();
-    }
-
-    template <class _EnvProvider>
-      requires __detail::__has_get_env_member<_EnvProvider const &>
-            || __tag_invocable<get_env_t, _EnvProvider const &>
-    [[deprecated("the use of tag_invoke for get_env is deprecated")]]
-    STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)  //
-      constexpr auto operator()(_EnvProvider const &__env_provider) const noexcept
-      -> __tag_invoke_result_t<get_env_t, _EnvProvider const &>
-    {
-      static_assert(__nothrow_tag_invocable<get_env_t, _EnvProvider const &>,
-                    "get_env __tag_invoke overloads must be noexcept");
-      return __tag_invoke(*this, __env_provider);
     }
 
     STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)

@@ -124,18 +124,6 @@ namespace experimental::execution
         static_assert(time_point<__decay_t<decltype(__sched.now())>>);
         return __sched.now();
       }
-
-      template <class _Scheduler>
-        requires __has_now<_Scheduler> || __tag_invocable<now_t, _Scheduler const &>
-      [[deprecated("the use of tag_invoke for exec::now() is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler const &__sched) const
-        noexcept(__nothrow_tag_invocable<now_t, _Scheduler const &>)
-          -> __decay_t<__tag_invoke_result_t<now_t, _Scheduler const &>>
-      {
-        static_assert(time_point<__decay_t<__tag_invoke_result_t<now_t, _Scheduler const &>>>);
-        return __tag_invoke(now_t{}, __sched);
-      }
     };
   }  // namespace __now
 
@@ -195,22 +183,6 @@ namespace experimental::execution
       {
         static_assert(sender<decltype(__sched.schedule_after(__duration))>);
         return __sched.schedule_after(__duration);
-      }
-
-      template <class _Scheduler>
-        requires __has_schedule_after_member<_Scheduler>
-              || __tag_invocable<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>
-      [[deprecated("the use of tag_invoke for exec::schedule_after is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler &&__sched, duration_of_t<_Scheduler> const &__duration) const
-        noexcept(
-          __nothrow_tag_invocable<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>)
-          -> __tag_invoke_result_t<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>
-      {
-        static_assert(
-          sender<
-            __tag_invoke_result_t<schedule_after_t, _Scheduler, duration_of_t<_Scheduler> const &>>);
-        return __tag_invoke(schedule_after, static_cast<_Scheduler &&>(__sched), __duration);
       }
     };
 
@@ -278,22 +250,6 @@ namespace experimental::execution
       {
         static_assert(sender<decltype(__sched.schedule_at(__time_point))>);
         return __sched.schedule_at(__time_point);
-      }
-
-      template <class _Scheduler>
-        requires __has_schedule_at_member<_Scheduler>
-              || __tag_invocable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>
-      [[deprecated("the use of tag_invoke for exec::schedule_at is deprecated")]]
-      STDEXEC_ATTRIBUTE(always_inline)  //
-        auto operator()(_Scheduler &&__sched, time_point_of_t<_Scheduler> const &__time_point) const
-        noexcept(
-          __nothrow_tag_invocable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>)
-          -> __tag_invoke_result_t<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>
-      {
-        static_assert(
-          sender<
-            __tag_invoke_result_t<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler> const &>>);
-        return __tag_invoke(schedule_at, static_cast<_Scheduler &&>(__sched), __time_point);
       }
     };
 

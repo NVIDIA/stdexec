@@ -1006,14 +1006,14 @@ namespace STDEXEC
         }
       }
 
-      template <__forwarding_query _Query, class... _Args>
-        requires __queryable_with<_TaskEnv, _Query, _Args...>
+      template <class _Env2 = _TaskEnv, __forwarding_query _Query, class... _Args>
+        requires __queryable_with<_Env2, _Query, _Args...>
       [[nodiscard]]
       constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<_TaskEnv, _Query, _Args...>)
-          -> __query_result_t<_TaskEnv, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
+          -> __query_result_t<_Env2, _Query, _Args...>
       {
-        return __query<_Query>()(__promise_->__state_->__env_, static_cast<_Args&&>(__args)...);
+        return __promise_->__state_->__env_.query(_Query(), static_cast<_Args&&>(__args)...);
       }
 
       __promise const * __promise_;

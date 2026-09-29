@@ -127,11 +127,10 @@ namespace STDEXEC
     {
       using __trnsfr_sndr_t  = __result_of<continues_on, __sender_proxy<_Child const>, _Scheduler>;
       using __clsur_result_t = __call_result_t<_Closure const &, __trnsfr_sndr_t>;
-      template <class _Env>
-      using __old_sched_t =
-        __query_result_t<env_of_t<_Child>, get_completion_scheduler_t<set_value_t>, _Env>;
-      template <class _Env>
-      using __attrs_t = __trnsfr::__attrs<__old_sched_t<_Env>, __clsur_result_t>;
+      template <class _Attrs, class _Env>
+      using __old_sched_t = __query_result_t<_Attrs, get_completion_scheduler_t<set_value_t>, _Env>;
+      template <class _Attrs, class _Env>
+      using __attrs_t = __trnsfr::__attrs<__old_sched_t<_Attrs, _Env>, __clsur_result_t>;
       using __attrs_base<_Child>::query;
 
       explicit constexpr __attrs(_Child const &   __child,
@@ -141,18 +140,18 @@ namespace STDEXEC
         , __clsur_result_(__clsur(continues_on(__sender_proxy{__child}, std::move(__sched))))
       {}
 
-      template <class _Query, class _Env>
+      template <class _Attrs = env_of_t<_Child>, class _Query, class _Env>
         requires __completion_query<_Query>  //
-              && __queryable_with<env_of_t<_Child>, get_completion_scheduler_t<set_value_t>, _Env>
-              && __queryable_with<__attrs_t<_Env>, _Query, _Env>
+              && __queryable_with<_Attrs, get_completion_scheduler_t<set_value_t>, _Env>
+              && __queryable_with<__attrs_t<_Attrs, _Env>, _Query, _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Env&& __env) const noexcept
-        -> __query_result_t<__attrs_t<_Env>, _Query, _Env>
+      constexpr auto query(_Query, _Env&& __env) const noexcept
+        -> __query_result_t<__attrs_t<_Attrs, _Env>, _Query, _Env>
       {
         auto&& __child_attrs = STDEXEC::get_env(this->__child_);
         auto   __old_sch     = get_completion_scheduler<set_value_t>(__child_attrs, __env);
-        auto   __attrs       = __attrs_t<_Env>(__old_sch, STDEXEC::get_env(__clsur_result_));
-        return __query(__attrs, static_cast<_Env&&>(__env));
+        auto   __attrs = __attrs_t<_Attrs, _Env>(__old_sch, STDEXEC::get_env(__clsur_result_));
+        return __attrs.query(_Query(), static_cast<_Env&&>(__env));
       }
 
       __clsur_result_t __clsur_result_;
@@ -170,13 +169,13 @@ namespace STDEXEC
       template <__completion_query _Query, __queryable_with<get_start_scheduler_t> _Env>
         requires __queryable_with<__attrs_t<_Env>, _Query, _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Env&& __env) const noexcept
+      constexpr auto query(_Query, _Env&& __env) const noexcept
         -> __query_result_t<__attrs_t<_Env>, _Query, _Env>
       {
         auto&& __child_attrs = STDEXEC::get_env(this->__child_);
         auto   __old_sch     = get_start_scheduler(__env);
         auto   __attrs       = __attrs_t<_Env>(__old_sch, __child_attrs_t(__sched_, __child_attrs));
-        return __query(__attrs, static_cast<_Env&&>(__env));
+        return __attrs.query(_Query(), static_cast<_Env&&>(__env));
       }
 
       _Scheduler __sched_;

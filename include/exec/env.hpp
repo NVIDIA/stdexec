@@ -51,7 +51,7 @@ namespace experimental::execution
         noexcept(STDEXEC::__nothrow_queryable_with<_Env, _OtherQuery, _Args...>)
           -> STDEXEC::__query_result_t<_Env, _OtherQuery, _Args...>
       {
-        return STDEXEC::__query<_OtherQuery>()(__env_, static_cast<_Args&&>(__args)...);
+        return __env_.query(_OtherQuery(), static_cast<_Args&&>(__args)...);
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)

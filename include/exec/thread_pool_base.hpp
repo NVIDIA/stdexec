@@ -494,13 +494,14 @@ namespace experimental::execution
 
         struct attrs
         {
-          template <STDEXEC::__forwarding_query Tag, class... As>
-            requires STDEXEC::__queryable_with<STDEXEC::env_of_t<Sender>, Tag, As...>
+          template <class _Env2 = STDEXEC::env_of_t<Sender>,
+                    STDEXEC::__forwarding_query Tag,
+                    class... As>
+            requires STDEXEC::__queryable_with<_Env2, Tag, As...>
           auto query(Tag, As&&... as) const
-            noexcept(STDEXEC::__nothrow_queryable_with<STDEXEC::env_of_t<Sender>, Tag, As...>)
-              -> decltype(auto)
+            noexcept(STDEXEC::__nothrow_queryable_with<_Env2, Tag, As...>) -> decltype(auto)
           {
-            return STDEXEC::__query<Tag>()(STDEXEC::get_env(sndr_.sndr_), static_cast<As&&>(as)...);
+            return STDEXEC::get_env(sndr_.sndr_).query(Tag(), static_cast<As&&>(as)...);
           }
 
           bulk_sender const & sndr_;

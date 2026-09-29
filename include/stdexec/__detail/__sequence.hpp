@@ -72,14 +72,14 @@ namespace STDEXEC
     template <class _Sender>
     struct __attrs<_Sender>
     {
-      template <class _Query, class... _Args>
-        requires __queryable_with<env_of_t<_Sender>, _Query, _Args...>
+      template <class _Env2 = env_of_t<_Sender>, class _Query, class... _Args>
+        requires __queryable_with<_Env2, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
-          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
+          -> __query_result_t<_Env2, _Query, _Args...>
       {
-        return __query<_Query>()(STDEXEC::get_env(__sndr_), static_cast<_Args &&>(__args)...);
+        return STDEXEC::get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       _Sender __sndr_;
@@ -174,8 +174,8 @@ namespace STDEXEC
         noexcept(__nothrow_queryable_with<__joined_t, _Query, _Args...>)
           -> __query_result_t<__joined_t, _Query, _Args...>
       {
-        return __query<_Query>()(__joined_t{STDEXEC::get_env(__sndr2_), STDEXEC::get_env(__sndr1_)},
-                                 static_cast<_Args &&>(__args)...);
+        return __joined_t{STDEXEC::get_env(__sndr2_), STDEXEC::get_env(__sndr1_)}
+          .query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       _Sender1 __sndr1_;
