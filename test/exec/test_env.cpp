@@ -57,6 +57,7 @@ namespace
     using receiver_concept = STDEXEC::receiver_tag;
 
     template <class _Value>
+    [[maybe_unused]]
     void set_value(_Value&&) noexcept
     {}
 

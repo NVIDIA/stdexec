@@ -63,6 +63,7 @@ namespace
     };
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver receiver) const noexcept -> operation<Receiver>
     {
       return {std::move(receiver)};

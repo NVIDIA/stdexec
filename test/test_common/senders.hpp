@@ -33,6 +33,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 namespace
 {
 
@@ -363,3 +365,5 @@ namespace
   };
 
 }  // namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

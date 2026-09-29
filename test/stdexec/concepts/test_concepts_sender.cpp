@@ -119,6 +119,7 @@ namespace
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver) -> oper
     {
       return {};
@@ -130,6 +131,7 @@ namespace
     using receiver_concept = STDEXEC::receiver_tag;
 
     template <class... As>
+    [[maybe_unused]]
     void set_value(As&&...) noexcept
     {
       static_assert(sizeof...(As) == ~size_t(0));  // hard error always
