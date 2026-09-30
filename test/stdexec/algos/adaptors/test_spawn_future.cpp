@@ -388,6 +388,7 @@ namespace
     using sender_concept = ex::sender_tag;
 
     template <class Sender, class... Env>
+    [[maybe_unused]]
     static consteval auto get_completion_signatures(Sender&&, Env&&...) noexcept
       -> ex::completion_signatures<ex::set_stopped_t()>
     {

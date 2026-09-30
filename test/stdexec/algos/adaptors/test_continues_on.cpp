@@ -57,6 +57,7 @@ namespace
       };
 
       template <class Receiver>
+      [[maybe_unused]]
       auto connect(Receiver receiver) const noexcept(false) -> opstate<Receiver>
       {
         return {static_cast<Receiver &&>(receiver)};
@@ -317,6 +318,7 @@ namespace
   struct test_domain_A
   {
     template <exec::sender_for<ex::continues_on_t> Sender, class Env>
+    [[maybe_unused]]
     auto transform_sender(STDEXEC::set_value_t, Sender &&, Env &&) const
     {
       return ex::just(std::string("hello"));

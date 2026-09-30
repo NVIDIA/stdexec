@@ -27,6 +27,10 @@
 
 STDEXEC_PRAGMA_PUSH()
 
+// we have some templates with internal linkage that may or may not be used; don't
+// warn the user spuriously
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-template")
+
 // Windows.h macros:
 
 #if defined(interface)
