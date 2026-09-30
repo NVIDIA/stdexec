@@ -37,6 +37,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 namespace
 {
 
@@ -611,3 +613,5 @@ namespace
       CHECK_TUPLE(res.value() == expected);
   }
 }  // namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

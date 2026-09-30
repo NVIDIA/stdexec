@@ -17,6 +17,7 @@
 
 #include <stdexec/execution.hpp>
 
+#include <exec/sender_for.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -160,5 +161,27 @@ namespace
     check_sends_stopped<false>(ex::just(1) | ex::continues_on(sched1) | ex::stopped_as_error(-1));
     check_sends_stopped<false>(ex::just(2) | ex::continues_on(sched2) | ex::stopped_as_error(-1));
     check_sends_stopped<false>(ex::just(3) | ex::continues_on(sched3) | ex::stopped_as_error(-1));
+  }
+
+  // Return a different sender when we invoke this custom defined stopped_as_error implementation
+  struct stopped_as_error_test_domain
+  {
+    template <exec::sender_for<ex::stopped_as_error_t> Sender>
+    static auto transform_sender(ex::set_value_t, Sender&& sndr, auto const & env)
+    {
+      auto next_sndr = ex::stopped_as_error.transform_sender(ex::set_value,
+                                                             static_cast<Sender&&>(sndr),
+                                                             env);
+      return std::move(next_sndr)
+           | ex::let_error([](auto) noexcept { return ex::just_error(-114514); });
+    }
+  };
+
+  TEST_CASE("stopped_as_error can be customized", "[adaptors][stopped_as_error]")
+  {
+    basic_inline_scheduler<stopped_as_error_test_domain> sched;
+    auto snd = ex::just_stopped() | ex::continues_on(sched) | ex::stopped_as_error(-1);
+    auto op  = ex::connect(std::move(snd), expect_error_receiver{-114514});
+    ex::start(op);
   }
 }  // namespace

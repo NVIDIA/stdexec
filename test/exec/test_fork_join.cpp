@@ -46,6 +46,7 @@ namespace
   struct ForwardingThen
   {
     template <typename Value>
+    [[maybe_unused]]
     constexpr decltype(auto) operator()(Value &&value) const noexcept
     {
       return std::forward<Value>(value);

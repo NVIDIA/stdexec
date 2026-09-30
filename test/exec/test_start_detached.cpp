@@ -126,6 +126,7 @@ namespace
     }
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver&&) const -> noop
     {
       static_assert(sizeof(Receiver) == 0);
@@ -154,6 +155,7 @@ namespace
       };
 
       template <class Receiver>
+      [[maybe_unused]]
       auto connect(Receiver&&) const
       {
         FAIL("this should not be called");
@@ -188,7 +190,7 @@ namespace
     }
 
     template <ex::__completion_tag Tag>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>, ex::__ignore = {}) const noexcept -> domain
     {
       return {};

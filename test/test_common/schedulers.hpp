@@ -37,6 +37,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 // Put all the test utilities in an anonymous namespace to avoid ODR violations
 namespace
 {
@@ -524,3 +526,5 @@ namespace
     }
   }  // namespace _dummy
 }  // anonymous namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

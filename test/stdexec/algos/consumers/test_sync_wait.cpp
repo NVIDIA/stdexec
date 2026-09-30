@@ -255,6 +255,7 @@ namespace
       requires ex::__mset_eq<
         ex::value_types_of_t<Sender, ex::env<>, std::type_identity_t, ex::__mmake_set>,
         ex::__mset<std::string, int>>
+    [[maybe_unused]]
     static auto apply_sender(ex::sync_wait_with_variant_t, Sender&&) -> multi_result_t
     {
       return {std::string{"ciao_multi"}};

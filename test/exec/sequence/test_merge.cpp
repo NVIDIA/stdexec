@@ -47,6 +47,7 @@ namespace
     void set_value() noexcept {}
 
     template <class _Error>
+    [[maybe_unused]]
     void set_error(_Error&&) noexcept
     {}
 
