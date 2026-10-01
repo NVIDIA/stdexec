@@ -108,7 +108,7 @@ namespace STDEXEC
         // affine. Instead, return a type describing the problem.
         return __not_a_sender<  //
           _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_),
-          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+          _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
           _WHERE_(_IN_ALGORITHM_, affine_t),
           _WITH_PRETTY_SENDER_<__cv_child_t>,
           _WITH_ENVIRONMENT_(_Env)>{};

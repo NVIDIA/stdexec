@@ -21,7 +21,7 @@ namespace experimental::execution
 {
   struct _CANNOT_RESCHEDULE_
   {};
-  using STDEXEC::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_;
+  using STDEXEC::_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_;
 
   namespace __resched
   {
@@ -31,7 +31,7 @@ namespace experimental::execution
     template <class _Env>
     using __no_scheduler_error =
       __mexception<_WHAT_(_CANNOT_RESCHEDULE_),
-                   _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
+                   _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOES_NOT_HAVE_A_START_SCHEDULER_),
                    _WHERE_(_IN_ALGORITHM_, reschedule_t),
                    _WITH_ENVIRONMENT_(_Env)>;
 
