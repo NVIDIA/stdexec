@@ -182,12 +182,12 @@ namespace experimental::execution
               if (__prev_ != nullptr)
               {
                 // was not empty
-                std::exchange(__prev_->__next_, static_cast<__opstate_base*>(this));
+                __prev_->__next_ = static_cast<__opstate_base*>(this);
               }
               else
               {
                 // was empty
-                std::exchange(__current_state->__head_, static_cast<__opstate_base*>(this));
+                __current_state->__head_ = static_cast<__opstate_base*>(this);
               }
             }
           }
