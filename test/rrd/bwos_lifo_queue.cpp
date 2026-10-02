@@ -22,7 +22,9 @@
 #include <optional>
 
 // Test 1: Owner pushes items, single thief steals.
-// Invariant: every pushed item is either popped by owner or stolen by thief exactly once.
+//
+// Invariant: every pushed item is either popped by owner or stolen by thief
+// exactly once.
 struct bwos_push_steal_no_loss : rl::test_suite<bwos_push_steal_no_loss, 2>
 {
   static constexpr std::size_t num_blocks = 2;

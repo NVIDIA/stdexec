@@ -30,7 +30,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4702)  // unreachable code
 
 namespace experimental::execution
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // async_scope
   namespace __scope
   {
@@ -87,8 +87,9 @@ namespace experimental::execution
 
       void start() & noexcept
       {
-        // must get lock before checking __active, or if the __active is drained before
-        // the waiter is queued but after __active is checked, the waiter will never be notified
+        // must get lock before checking __active, or if the __active is drained
+        // before the waiter is queued but after __active is checked, the waiter
+        // will never be notified
         std::unique_lock __guard{this->__scope_->__lock_};
         auto&            __active  = this->__scope_->__active_;
         auto&            __waiters = this->__scope_->__waiters_;
@@ -324,9 +325,10 @@ namespace experimental::execution
 #endif
 
     // NB: uses the unchecked __completion_signatures_of_t because the checked
-    // completion_signatures_of_t would probe __future<_Sender, _Env> with __debug_sender,
-    // which instantiates __future_opstate member functions that need __future_state<_Sender,
-    // _Env> complete -- but this alias is used while __future_state is being defined.
+    // completion_signatures_of_t would probe __future<_Sender, _Env> with
+    // __debug_sender, which instantiates __future_opstate member functions that
+    // need __future_state<_Sender, _Env> complete -- but this alias is used
+    // while __future_state is being defined.
     template <class _Sender, class _Env>
     using __future_completions_t = STDEXEC::__completion_signatures_of_t<__future<_Sender, _Env>>;
 
@@ -386,7 +388,8 @@ namespace experimental::execution
         }
         else if (__step_ != __future_step::__deleted)
         {
-          // completing the given sender before the future is dropped will end here
+          // completing the given sender before the future is dropped will end
+          // here
           __step_from_to_(__guard, __future_step::__future, __future_step::__deleted);
         }
       }
@@ -511,9 +514,10 @@ namespace experimental::execution
                          static_cast<_Env&&>(__env),
                          __scope)
       {
-        // If the operation completes synchronously, then the following line will cause
-        // the destruction of *this, which is not a problem because we used a delegating
-        // constructor, so *this is considered fully constructed.
+        // If the operation completes synchronously, then the following line
+        // will cause the destruction of *this, which is not a problem because
+        // we used a delegating constructor, so *this is considered fully
+        // constructed.
         __op_.submit(static_cast<_Sender&&>(__sndr),
                      __future_receiver_t<_Sender, _Env>{this, __scope});
       }
@@ -522,9 +526,9 @@ namespace experimental::execution
       submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
     };
 
-    // __future_opstate is defined after __future_state because it accesses the latter's
-    // members, and its member functions are only instantiated where __future::connect
-    // is instantiated, which is below.
+    // __future_opstate is defined after __future_state because it accesses the
+    // latter's members, and its member functions are only instantiated where
+    // __future::connect is instantiated, which is below.
     template <class _Sender, class _Env, class _Receiver>
     struct __future_opstate : __subscription
     {
@@ -540,7 +544,8 @@ namespace experimental::execution
           auto __state = std::move(__state_);
           STDEXEC_ASSERT(__state != nullptr);
           std::unique_lock __guard{__state->__mutex_};
-          // either the future is still in use or it has passed ownership to __state->__no_future_
+          // either the future is still in use or it has passed ownership to
+          // __state->__no_future_
           if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future)
           {
             // invalid state - there is a code bug in the state machine
@@ -609,8 +614,7 @@ namespace experimental::execution
           std::unique_lock __guard{__raw_state->__mutex_};
           if (__raw_state->__data_.index() > 0)
           {
-            // completed given sender
-            // state is no longer needed
+            // completed given sender. state is no longer needed.
             return;
           }
           __raw_state->__no_future_ = std::move(__state_);
@@ -793,9 +797,10 @@ namespace experimental::execution
                           static_cast<_Env&&>(__env),
                           __scope)
       {
-        // If the operation completes synchronously, then the following line will cause
-        // the destruction of *this, which is not a problem because we used a delegating
-        // constructor, so *this is considered fully constructed.
+        // If the operation completes synchronously, then the following line
+        // will cause the destruction of *this, which is not a problem because
+        // we used a delegating constructor, so *this is considered fully
+        // constructed.
         __data_.submit(static_cast<_Sender&&>(__sndr), __spawn_receiver<_Env>{this});
       }
 
@@ -837,8 +842,8 @@ namespace experimental::execution
       void spawn(_Sender&& __sndr, _Env __env = {})
       {
         using __opstate_t = __spawn_opstate<__nest_sender<__decay_t<_Sender>>, _Env>;
-        // this will connect and start the operation, after which the operation state is
-        // responsible for deleting itself after it completes.
+        // this will connect and start the operation, after which the operation
+        // state is responsible for deleting itself after it completes.
         [[maybe_unused]]
         auto* __opstate = new __opstate_t{nest(static_cast<_Sender&&>(__sndr)),
                                           static_cast<_Env&&>(__env),

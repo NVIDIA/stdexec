@@ -23,8 +23,8 @@
 
 namespace experimental::execution
 {
-  //! A forwarding query for a "frame allocator", to be used for dynamically allocating
-  //! the operation states of senders type-erased by exec::function.
+  //! A forwarding query for a "frame allocator", to be used for dynamically
+  //! allocating the operation states of senders type-erased by exec::function.
   struct get_frame_allocator_t : STDEXEC::__query<get_frame_allocator_t>
   {
     using STDEXEC::__query<get_frame_allocator_t>::operator();

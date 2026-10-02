@@ -40,7 +40,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.stopped.err]
   namespace __sae
   {
@@ -77,11 +77,10 @@ namespace STDEXEC
   //!
   //! **Equivalence.**
   //!
-  //! <tt>stopped_as_error(sndr, err)</tt> is lowered (via
-  //! @c transform_sender) to, and is observationally equivalent to,
-  //! <tt>let_stopped(sndr, [err]{ return just_error(err); })</tt>.
-  //! Use this adaptor whenever you would have written that pattern by
-  //! hand — it is shorter and clearer at the call site.
+  //! `stopped_as_error(sndr, err)` is lowered (via @c transform_sender) to, and
+  //! is observationally equivalent to, `let_stopped(sndr, [err]{ return
+  //! just_error(err); })`. Use this adaptor whenever you would have written
+  //! that pattern by hand — it is shorter and clearer at the call site.
   //!
   //! **Customization.**
   //!
@@ -99,7 +98,7 @@ namespace STDEXEC
   //! set_stopped_t()       // consumed
   //! @endcode
   //!
-  //! the sender produced by <tt>stopped_as_error(sndr, err)</tt> has
+  //! the sender produced by `stopped_as_error(sndr, err)` has
   //! completion signatures
   //!
   //! @code{.cpp}
@@ -126,9 +125,11 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::stopped_as_optional  — convert stopped into a value-channel @c std::nullopt
+  //! @see stdexec::stopped_as_optional  — convert stopped into a value-channel
+  //!                                      @c std::nullopt
   //! @see stdexec::upon_stopped         — handle stopped synchronously
-  //! @see stdexec::let_stopped          — handle stopped with a sender-returning callback
+  //! @see stdexec::let_stopped          — handle stopped with a
+  //!                                      sender-returning callback
   struct stopped_as_error_t
   {
     //! @brief Construct a sender that translates @c __sndr's @c set_stopped
@@ -136,7 +137,7 @@ namespace STDEXEC
     //!
     //! @tparam _Sender A type satisfying @c stdexec::sender.
     //! @tparam _Error  A decayed, move-constructible error datum type
-    //!                 (satisfying the internal <tt>__movable_value</tt> concept).
+    //!                 (satisfying the internal `__movable_value` concept).
     //!
     //! @param __sndr   The predecessor sender. Forwarded into the result.
     //! @param __err    The error datum to deliver if @c __sndr is stopped.
@@ -150,8 +151,8 @@ namespace STDEXEC
 
     //! @brief Construct a sender-adaptor closure for the pipe form.
     //!
-    //! <tt>sndr | stopped_as_error(__err)</tt> is equivalent to
-    //! <tt>stopped_as_error(sndr, __err)</tt>.
+    //! `sndr | stopped_as_error(__err)` is equivalent to
+    //! `stopped_as_error(sndr, __err)`.
     template <__movable_value _Error>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Error __err) const noexcept(__nothrow_move_constructible<_Error>)
@@ -179,9 +180,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c stopped_as_error sender adaptor.
+  //! @brief The customization point object for the @c stopped_as_error sender
+  //! adaptor.
   //!
-  //! @c stopped_as_error is an instance of @ref stopped_as_error_t. See
+  //! @c stopped_as_error is an instance of @c stopped_as_error_t. See
   //! @ref stopped_as_error_t for the full description and a usage example.
   //!
   //! @hideinitializer

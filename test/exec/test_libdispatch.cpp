@@ -151,7 +151,8 @@ namespace
 
     REQUIRE(STDEXEC::sync_wait(std::move(sender)).has_value());
 
-    // `seq` forbids splitting the index space, so a single chunk covers all of it
+    // `seq` forbids splitting the index space, so a single chunk covers all of
+    // it
     CHECK(bounds == std::vector<int>{0, 5});
   }
 

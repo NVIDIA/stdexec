@@ -45,7 +45,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_error
   STDEXEC_MODULE_EXPORT
   template <class _Error>
@@ -58,7 +58,7 @@ namespace STDEXEC
   template <class _Error>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE with_error(_Error) -> with_error<_Error>;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::with_stopped
   STDEXEC_MODULE_EXPORT
   struct with_stopped
@@ -70,8 +70,9 @@ namespace STDEXEC
 
   namespace __task
   {
-    ////////////////////////////////////////////////////////////////////////////////
-    // A base class for task::promise_type so it can be specialized when _Ty is void:
+    ////////////////////////////////////////////////////////////////////////////
+    // A base class for task::promise_type so it can be specialized when _Ty is
+    // void:
     template <class _Promise, class _Ty>
     struct __promise_base
     {
@@ -153,10 +154,10 @@ namespace STDEXEC
 
       void __deallocate_(void* __ptr, size_t __bytes) noexcept final
       {
-        // __bytes here is the same as __bytes passed to promise_type::operator new. We
-        // overallocated to store the allocator in the blocks immediately following the
-        // promise object. We now use that allocator to deallocate the entire block of
-        // memory:
+        // __bytes here is the same as __bytes passed to promise_type::operator
+        // new. We overallocated to store the allocator in the blocks
+        // immediately following the promise object. We now use that allocator
+        // to deallocate the entire block of memory:
         size_t const __promise_blocks = __task::__divmod(__bytes, sizeof(__memblock));
         [[maybe_unused]]
         void* const __alloc_loc = static_cast<__memblock*>(__ptr) + __promise_blocks;
@@ -164,11 +165,12 @@ namespace STDEXEC
         static constexpr size_t __alloc_blocks =
           __task::__divmod(sizeof(__task::__any_alloc<_PAlloc>), sizeof(__task::__memblock));
 
-        // Quick sanity check to make sure the allocator is where we expect it to be.
+        // Quick sanity check to make sure the allocator is where we expect it
+        // to be.
         STDEXEC_ASSERT(__alloc_loc == static_cast<void*>(this));
 
-        // Move the allocator out of the block before deallocating, in case the allocator
-        // is stateful and its destructor does something interesting:
+        // Move the allocator out of the block before deallocating, in case the
+        // allocator is stateful and its destructor does something interesting:
         auto __alloc = std::move(__alloc_);
         // Destroy self:
         std::destroy_at(this);
@@ -329,7 +331,8 @@ namespace STDEXEC
       using __allocator_t       = __allocator_type<_TaskEnv>;
       using __start_scheduler_t = __start_scheduler_type<_TaskEnv>;
 
-      // NOT TO SPEC: try constructing the scheduler with the allocator if possible.
+      // NOT TO SPEC: try constructing the scheduler with the allocator if
+      // possible.
       if constexpr (__task::__has_scheduler_compatible_with<_Env,
                                                             __start_scheduler_t,
                                                             __allocator_t>)
@@ -388,7 +391,7 @@ namespace STDEXEC
     }
   }  // namespace __task
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::task
   STDEXEC_MODULE_EXPORT
   template <class _Ty = void, class _TaskEnv = env<>>
@@ -475,14 +478,15 @@ namespace STDEXEC
       return __awaiter<_ParentPromise>(static_cast<task&&>(*this), __parent);
     }
 
-    // Connecting a task to a receiver, like co_awaiting it, requires the receiver's
-    // environment to be compatible with the task's configuration (allocator, start
-    // scheduler, stop token, ...). Unlike co_awaiting a task — which reports errors by
-    // throwing them as exceptions at the await point — connecting a task to a receiver
-    // delivers the task's errors with their declared types directly to the receiver,
-    // rather than always delivering them as std::exception_ptr. (The completion
-    // signatures advertised by get_completion_signatures above describe exactly what the
-    // operation state returned from this member delivers.)
+    // Connecting a task to a receiver, like co_awaiting it, requires the
+    // receiver's environment to be compatible with the task's configuration
+    // (allocator, start scheduler, stop token, ...). Unlike co_awaiting a task
+    // — which reports errors by throwing them as exceptions at the await point
+    // — connecting a task to a receiver delivers the task's errors with their
+    // declared types directly to the receiver, rather than always delivering
+    // them as std::exception_ptr. (The completion signatures advertised by
+    // get_completion_signatures above describe exactly what the operation state
+    // returned from this member delivers.)
     template <class _Receiver>
     [[nodiscard]]
     constexpr auto connect(_Receiver __rcvr) && noexcept -> __opstate<_Receiver>
@@ -524,12 +528,12 @@ namespace STDEXEC
         , __task_(static_cast<task&&>(__task))
       {
         auto& __promise = __task_.__coro_.promise();
-        // Set the promise's state pointer to this operation state, so it can call back
-        // into it when the coroutine completes or is stopped.
+        // Set the promise's state pointer to this operation state, so it can
+        // call back into it when the coroutine completes or is stopped.
         __promise.__state_ = this;
 
-        // Initialize the promise's stop source if translation is needed between the
-        // receiver's stop token and the task's stop token:
+        // Initialize the promise's stop source if translation is needed between
+        // the receiver's stop token and the task's stop token:
         if constexpr (__not_same_as<stop_token_type, stop_token_of_t<_ParentEnv>>)
         {
           __promise.__stop_.template emplace<0>();
@@ -594,8 +598,8 @@ namespace STDEXEC
         STDEXEC_ASSERT(__continuation == this->__continuation_);
         auto& __task_promise    = this->__handle().promise();
         __task_promise.__state_ = this;
-        // If the following throws, the coroutine is immediately resumed and the exception
-        // is rethrown at the suspension point.
+        // If the following throws, the coroutine is immediately resumed and the
+        // exception is rethrown at the suspension point.
         this->__register_callback(STDEXEC::get_env(__continuation.promise()),
                                   __task_promise.__stop_);
         return this->__handle();
@@ -638,12 +642,13 @@ namespace STDEXEC
       __std::coroutine_handle<_ParentPromise> __continuation_;
     };
 
-    // The operation state produced by connecting a task to a receiver. Like __awaiter,
-    // it drives the task's coroutine to completion; unlike __awaiter, it has no parent
-    // coroutine to symmetrically transfer control back to, so instead it completes the
-    // receiver directly. Because the task's errors are stored (typed) in the error
-    // variant below, they can be delivered to the receiver with their declared types
-    // instead of being converted to exceptions and caught as std::exception_ptr.
+    // The operation state produced by connecting a task to a receiver. Like
+    // __awaiter, it drives the task's coroutine to completion; unlike
+    // __awaiter, it has no parent coroutine to symmetrically transfer control
+    // back to, so instead it completes the receiver directly. Because the
+    // task's errors are stored (typed) in the error variant below, they can be
+    // delivered to the receiver with their declared types instead of being
+    // converted to exceptions and caught as std::exception_ptr.
     template <class _Receiver>
     struct STDEXEC_ATTRIBUTE(empty_bases) __opstate final
       : __own_env_box<env_of_t<_Receiver>>
@@ -661,8 +666,9 @@ namespace STDEXEC
 
       void start() & noexcept
       {
-        // Register a stop callback that forwards stop requests from the receiver's
-        // stop token to the task's stop source, then resume the task's coroutine.
+        // Register a stop callback that forwards stop requests from the
+        // receiver's stop token to the task's stop source, then resume the
+        // task's coroutine.
         auto& __task_promise    = this->__handle().promise();
         __task_promise.__state_ = this;
         STDEXEC_TRY
@@ -678,9 +684,10 @@ namespace STDEXEC
           }
           else
           {
-            // The stop callback is not known to construct without throwing, so it may
-            // throw. In that case the task's coroutine never starts: destroy it and
-            // report the failure to the receiver as an exception.
+            // The stop callback is not known to construct without throwing, so
+            // it may throw. In that case the task's coroutine never starts:
+            // destroy it and report the failure to the receiver as an
+            // exception.
             auto const __coro = std::exchange(this->__task_.__coro_, {});
             STDEXEC::__coroutine_destroy_nothrow(__coro);
             STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
@@ -695,16 +702,16 @@ namespace STDEXEC
         this->__reset_callback();
         if (this->__stopped_)
         {
-          // The task completed with with_stopped: destroy the coroutine and report
-          // the stopped completion.
+          // The task completed with with_stopped: destroy the coroutine and
+          // report the stopped completion.
           auto const __coro = std::exchange(this->__task_.__coro_, {});
           STDEXEC::__coroutine_destroy_nothrow(__coro);
           STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
         }
         else if (!this->__errors_.__is_valueless())
         {
-          // The task completed with an error. Destroy the coroutine and deliver the
-          // error with its declared type -- not as an std::exception_ptr:
+          // The task completed with an error. Destroy the coroutine and deliver
+          // the error with its declared type -- not as an std::exception_ptr:
           auto const __coro = std::exchange(this->__task_.__coro_, {});
           STDEXEC::__coroutine_destroy_nothrow(__coro);
           __visit(STDEXEC::set_error,
@@ -776,7 +783,7 @@ namespace STDEXEC
     __std::coroutine_handle<promise_type> __coro_;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // task<T,E>::promise_type
   template <class _Ty, class _TaskEnv>
   struct STDEXEC_ATTRIBUTE(empty_bases) task<_Ty, _TaskEnv>::__promise
@@ -930,7 +937,8 @@ namespace STDEXEC
                                                                       __promise_blocks
                                                                         + __alloc_blocks);
 
-      // construct the allocator in the blocks immediately following the promise object:
+      // construct the allocator in the blocks immediately following the promise
+      // object:
       void* const __alloc_loc = __ptr + __promise_blocks;
       std::construct_at(static_cast<__task::__any_alloc<__palloc_t>*>(__alloc_loc),
                         std::move(__palloc));
@@ -952,12 +960,13 @@ namespace STDEXEC
     friend struct __awaiter_base;
 
     // On MSVC prior to 14.50, the compiler stores the coroutine handle returned
-    // from await_suspend in the suspended coroutine's frame, so when a connected
-    // task's __opstate::__completed destroys that frame before await_suspend
-    // returns, symmetric transfer would resume a use-after-free. See
+    // from await_suspend in the suspended coroutine's frame, so when a
+    // connected task's __opstate::__completed destroys that frame before
+    // await_suspend returns, symmetric transfer would resume a use-after-free.
+    // See
     // https://developercommunity.visualstudio.com/t/Incorrect-code-generation-for-symmetric-/1659260
-    // Resume the continuation directly instead: a plain nested resume rather than
-    // a tail call, at the cost of stack growth in deeply chained tasks.
+    // Resume the continuation directly instead: a plain nested resume rather
+    // than a tail call, at the cost of stack growth in deeply chained tasks.
     struct __completed_awaiter
     {
       static constexpr bool await_ready() noexcept

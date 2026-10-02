@@ -95,7 +95,7 @@ namespace STDEXEC
     struct __scope_join_t
     {};
 
-    /////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // [exec.counting.scopes.general] paragraph 4
     struct __scope_join_impl : __sexpr_defaults
     {
@@ -168,8 +168,10 @@ namespace STDEXEC
                               [](__join_state_base* __base) noexcept
                               {
                                 auto* __self = static_cast<__join_state*>(__base);
-                                // if the schedule-sender is no-throw connectable with __rcvr_ then
-                                // we could save some storage by deferring connection to this point
+                                // if the schedule-sender is no-throw
+                                // connectable with __rcvr_ then we could save
+                                // some storage by deferring connection to this
+                                // point
                                 STDEXEC::start(__self->__op_);
                               })
           , __rcvr_(std::move(__rcvr))
@@ -204,7 +206,7 @@ namespace STDEXEC
       };
     };
 
-    /////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // [exec.counting.scopes.general] paragraph 5
     //
     // this class template doesn't really *need* to know the concrete type of
@@ -260,12 +262,13 @@ namespace STDEXEC
 
     struct __base_scope
     {
-      // we represent the (count, state) pair in a single std::size_t by allocating
-      // the lower three bits to state, leaving all the rest of the bits for count;
-      // the result is that we can count up to MAX_SIZE_T >> 3 outstanding ops.
+      // we represent the (count, state) pair in a single std::size_t by
+      // allocating the lower three bits to state, leaving all the rest of the
+      // bits for count; the result is that we can count up to MAX_SIZE_T >> 3
+      // outstanding ops.
       //
-      // The extra parens around the function name are to work around windows.h defining
-      // a function-like macro named max.
+      // The extra parens around the function name are to work around windows.h
+      // defining a function-like macro named max.
       static constexpr std::size_t max_associations = (std::numeric_limits<std::size_t>::max)()
                                                    >> 3;
 
@@ -274,27 +277,30 @@ namespace STDEXEC
       // [exec.simple.counting.ctor] paragraph 1
       // Postconditions: count is 0 and state is unused.
       //
-      // NOTE: we rely on the __bits_ initializer to meet the postconditions
+      // @note we rely on the __bits_ initializer to meet the postconditions
       __base_scope(__base_scope&&) = delete;
 
       ~__base_scope()
       {
         // [exec.simple.counting.ctor] paragraph 2
-        // Effects: If state is not one of joined, unused, or unused-and-closed, invokes
-        // terminate. Otherwise, has no effects.
         //
-        // NOTE: we check the termination conditions in __destructible()
+        // Effects: If state is not one of joined, unused, or unused-and-closed,
+        // invokes terminate. Otherwise, has no effects.
+        //
+        // @note we check the termination conditions in __destructible()
         //
         // Regarding memory ordering, there are three cases to consider here:
-        //  1. we're about to terminate, in which case memory ordering is irrelevant;
-        //  2. the scope is unused, which means there were never any associated operations
-        //     to synchronize with, which again means the ordering doesn't matter; or
-        //  3. the scope was used and has been joined.
+        // 1. we're about to terminate, in which case memory ordering is
+        //    irrelevant;
+        // 2. the scope is unused, which means there were never any associated
+        //    operations to synchronize with, which again means the ordering
+        //    doesn't matter; or
+        // 3. the scope was used and has been joined.
         //
-        // In the third case, any threads that completed a join-sender have synchronized
-        // with all the now-completed associated operations but the scope may be destroyed
-        // on yet another thread so we ought to execute a load-acquire to ensure the
-        // current thread has properly synchronized.
+        // In the third case, any threads that completed a join-sender have
+        // synchronized with all the now-completed associated operations but the
+        // scope may be destroyed on yet another thread so we ought to execute a
+        // load-acquire to ensure the current thread has properly synchronized.
         auto __bits = __bits_.load(__std::memory_order_acquire);
         if (!__destructible(__bits))
         {
@@ -311,14 +317,14 @@ namespace STDEXEC
         //  (2.3) -- open-and-joining, then changes state to closed-and-joining
         //  (2.4) -- otherwise, no effect.
         //
-        // NOTE: Given our choice of representation, the implementation is simply
-        //       "set the __closed bit" so we don't have to check anything before
-        //       updating our state.
+        // @note Given our choice of representation, the implementation is
+        //       simply "set the __closed bit" so we don't have to check
+        //       anything before updating our state.
         //
-        // we need store-release semantics to ensure this closure happens-before
+        // We need store-release semantics to ensure this closure happens-before
         // any subsequent calls to __try_associate that must fail as a result of
-        // this closure; we don't use acquire-release semantics because the caller
-        // is *sending* a signal, not receiving one
+        // this closure; we don't use acquire-release semantics because the
+        // caller is *sending* a signal, not receiving one
         __bits_.fetch_or(__closed, __std::memory_order_release);
       }
 
@@ -337,18 +343,19 @@ namespace STDEXEC
           //  (5.1) -- unused, then increments count and changes state to open;
           //  (5.2) -- open or open-and-joining, then increments count;
           //
-          // NOTE: we represent "open" with __join_needed, and "open-and-joining"
-          //       with (__join_needed | __join_running) so we can implement the
-          //       update to state by simply ensuring the __join_needed bit is
-          //       set; incrementing count is done in the obvious way.
+          // @note we represent "open" with __join_needed, and
+          //       "open-and-joining" with (__join_needed | __join_running) so
+          //       we can implement the update to state by simply ensuring the
+          //       __join_needed bit is set; incrementing count is done in the
+          //       obvious way.
           return __make_bits(__count(__bits) + 1ul, __state(__bits) | __join_needed);
         };
 
-        // we might be about to observe that the scope has been closed; we should
-        // establish that the closure happened-before this attempt to associate
-        // so this needs to be a load-acquire
+        // we might be about to observe that the scope has been closed; we
+        // should establish that the closure happened-before this attempt to
+        // associate so this needs to be a load-acquire
         auto        __old_bits = __bits_.load(__std::memory_order_acquire);
-        std::size_t __new_bits;  //intentionally uninitialized
+        std::size_t __new_bits;  // intentionally uninitialized
 
         do
         {
@@ -358,12 +365,14 @@ namespace STDEXEC
           //  ...
           //  (5.3) -- otherwise, no effect.
           //
-          // NOTE: Paragraph 5.3 applies when state is closed, closed-and-joining,
-          //       or joined, all of which can be detected by checking the closed bit
+          // @note Paragraph 5.3 applies when state is closed,
+          // closed-and-joining, or joined, all of which can be detected by
+          // checking the closed bit
           if (__is_closed(__old_bits) || __count(__old_bits) == max_associations)
           {
-            // Paragraph 6 (the Returns clause) says we return assoc-t() "otherwise",
-            // which applies when count is not incremented, i.e. right here.
+            // Paragraph 6 (the Returns clause) says we return assoc-t()
+            // "otherwise", which applies when count is not incremented, i.e.
+            // right here.
             return false;
           }
 
@@ -372,27 +381,28 @@ namespace STDEXEC
         while (!__bits_.compare_exchange_weak(
           __old_bits,
           __new_bits,
-          // on success we only need store-relaxed because we're "just" incrementing
-          // a reference count but on failure we need load-acquire to synchronize
-          // with the thread that closed the scope if we happen to observe that; it's
-          // UB for the on-failure ordering to be weaker than the on-success ordering
-          // so we have to use acquire for both.
+          // on success we only need store-relaxed because we're "just"
+          // incrementing a reference count but on failure we need load-acquire
+          // to synchronize with the thread that closed the scope if we happen
+          // to observe that; it's UB for the on-failure ordering to be weaker
+          // than the on-success ordering so we have to use acquire for both.
           __std::memory_order_acquire));
 
         // [exec.simple.counting.mem] paragraph 6
-        // Returns: If count was incremented, an object of type assoc-t that is engaged
-        // and associated with *this, and assoc-t() otherwise.
         //
-        // NOTE: we only break out of the while loop and execute this return statement
-        //       if the CAS succeeded, the side effect of which is to increment count,
-        //       so we must return "an object of type assoc-t that is engaged and
-        //       associated with *this" here.
+        // Returns: If count was incremented, an object of type assoc-t that is
+        // engaged and associated with *this, and assoc-t() otherwise.
+        //
+        // @note we only break out of the while loop and execute this return
+        //       statement if the CAS succeeded, the side effect of which is to
+        //       increment count, so we must return "an object of type assoc-t
+        //       that is engaged and associated with *this" here.
         return true;
       }
 
       void __disassociate() noexcept
       {
-        // NOTE: The spec says, "Decrements count. If count is zero after
+        // @note The spec says, "Decrements count. If count is zero after
         //       decrementing and state is [joining] then changes state to
         //       joined...", which could be transliterated to code like so:
         //
@@ -412,12 +422,13 @@ namespace STDEXEC
           // [exec.simple.counting.mem] paragraph 8
           // Effects: Decrements count. ...
           auto const __new_count = __count(__bits) - 1ul;
-          // ... If count is zero after decrementing and state is open-and-joining
-          // or closed-and-joining, changes state to joined...
+          // ... If count is zero after decrementing and state is
+          // open-and-joining or closed-and-joining, changes state to joined...
           //
-          // NOTE: We can check for both open-and-joining and closed-and-joining by
-          //       checking the joining bit; it doesn't matter whether the scope is
-          //       open or closed, only whether a join-sender is pending or not.
+          // @note We can check for both open-and-joining and closed-and-joining
+          //       by checking the joining bit; it doesn't matter whether the
+          //       scope is open or closed, only whether a join-sender is
+          //       pending or not.
           auto const __new_state = (__new_count == 0ul && __is_joining(__bits) ? __closed
                                                                                : __state(__bits));
 
@@ -426,8 +437,9 @@ namespace STDEXEC
           return __make_bits(__new_count, __new_state);
         };
 
-        // relaxed is sufficient here because the CAS loop we're about to run won't
-        // complete until we've synchronized with acquire-release semantics
+        // relaxed is sufficient here because the CAS loop we're about to run
+        // won't complete until we've synchronized with acquire-release
+        // semantics
         auto        __old_bits = __bits_.load(__std::memory_order_relaxed);
         std::size_t __new_bits;  // intentionally uninitialized
 
@@ -442,20 +454,21 @@ namespace STDEXEC
         while (!__bits_.compare_exchange_weak(
           __old_bits,
           __new_bits,
-          // on success, we need store-release semantics to publish the consequences
-          // of the just-finished operation to other scope users, and we also need
-          // load-acquire semantics in case we're the last associated operation to
-          // complete and thus initiate the tear-down of the scope
+          // on success, we need store-release semantics to publish the
+          // consequences of the just-finished operation to other scope users,
+          // and we also need load-acquire semantics in case we're the last
+          // associated operation to complete and thus initiate the tear-down of
+          // the scope
           __std::memory_order_acq_rel,
-          // on failure, we're going to immediately try to synchronize again so we
-          // can get away with relaxed semantics
+          // on failure, we're going to immediately try to synchronize again so
+          // we can get away with relaxed semantics
           __std::memory_order_relaxed));
 
         if (__is_joined(__new_bits))
         {
           // [exec.simple.counting.mem] paragraph 8 continued...
-          // [state has been updated to joined so] call complete() on all objects
-          // registered with *this
+          // [state has been updated to joined so] call complete() on all
+          // objects registered with *this
           __complete_registered_join_operations();
         }
         else
@@ -475,7 +488,7 @@ namespace STDEXEC
           // [exec.simple.counting.mem] para (9.1)
           // unused, unused-and-closed, or joined -> joined
           //
-          // NOTE: there's a spec bug; we need to move to the joined
+          // @note there's a spec bug; we need to move to the joined
           //       state and return true when count is zero, regardless
           //       of state
           if (__count(__old_bits) == 0ul)
@@ -488,10 +501,10 @@ namespace STDEXEC
             if (__bits_.compare_exchange_weak(
                   __old_bits,
                   __new_bits,
-                  // on success, we need to publish to future callers of try_associate
-                  // that the scope is closed and consume from all the now-completed
-                  // associated operations any updates they made so we need
-                  // acquire-release semantics
+                  // on success, we need to publish to future callers of
+                  // try_associate that the scope is closed and consume from all
+                  // the now-completed associated operations any updates they
+                  // made so we need acquire-release semantics
                   __std::memory_order_acq_rel,
                   // on failure, relaxed is fine because we'll loop back and try
                   // again to synchronize
@@ -500,10 +513,10 @@ namespace STDEXEC
               return true;
             }
           }
-          // [exec.simple.counting.mem] para (9.2)
-          // open or open-and-joining -> open-and-joining
-          // [exec.simple.counting.mem] para (9.3)
-          // closed or closed-and-joining -> closed-and-joining
+          // - [exec.simple.counting.mem] para (9.2)
+          //   open or open-and-joining -> open-and-joining
+          // - [exec.simple.counting.mem] para (9.3)
+          //   closed or closed-and-joining -> closed-and-joining
           else
           {
             STDEXEC_ASSERT(__is_join_needed(__old_bits));
@@ -516,15 +529,19 @@ namespace STDEXEC
             if (__bits_.compare_exchange_weak(
                   __old_bits,
                   __new_bits,
-                  // on success, relaxed is sufficient because __register will further synchronize;
-                  // it's fine for the joining thread to synchronize with associated operations on
-                  // __registered_join_ops_ and not on __bits because __disassociate decrements the
-                  // outstanding operation count with acquire-release semantics and then the last
-                  // decrementer dequeues the list of registered joiners with acquire-release
-                  // semantics, establishing that all decrements strongly happen-before the
-                  // completion of any join operation.
+                  // on success, relaxed is sufficient because __register will
+                  // further synchronize; it's fine for the joining thread to
+                  // synchronize with associated operations on
+                  // __registered_join_ops_ and not on __bits because
+                  // __disassociate decrements the outstanding operation count
+                  // with acquire-release semantics and then the last
+                  // decrementer dequeues the list of registered joiners with
+                  // acquire-release semantics, establishing that all decrements
+                  // strongly happen-before the completion of any join
+                  // operation.
                   //
-                  // on failure, relaxed is sufficient because we'll loop around and try again
+                  // on failure, relaxed is sufficient because we'll loop around
+                  // and try again
                   __std::memory_order_relaxed))
             {
               return !__register(__join_op);
@@ -555,12 +572,12 @@ namespace STDEXEC
 
       // An intrusive singly-linked list of join-sender operation states;
       // elements of the list have been "registered" to be completed when the
-      // last outstanding associated operation completes. The value can be
-      // the possibly-null pointer to the head of the list (where nullptr
-      // means the list is empty) or `this`, which is the sentinel value that
-      // indicates that the last associated operation has been disassociated
-      // and any previously-registered join operations have been (or are about
-      // to be) completed.
+      // last outstanding associated operation completes. The value can be the
+      // possibly-null pointer to the head of the list (where nullptr means the
+      // list is empty) or `this`, which is the sentinel value that indicates
+      // that the last associated operation has been disassociated and any
+      // previously-registered join operations have been (or are about to be)
+      // completed.
       __std::atomic<void*> __registered_join_ops_{nullptr};
 
       // returns true in the unused and unused-and-closed states; since the bit
@@ -584,10 +601,10 @@ namespace STDEXEC
         return !__is_open(__bits);
       }
 
-      // returns true in the joined state, which shares a representation with the
-      // unused-and-closed state; for the scope to be fully joined, the number of
-      // outstanding associated operations must be zero, so we check for exact
-      // equality with __closed rather than using it as a bit mask
+      // returns true in the joined state, which shares a representation with
+      // the unused-and-closed state; for the scope to be fully joined, the
+      // number of outstanding associated operations must be zero, so we check
+      // for exact equality with __closed rather than using it as a bit mask
       static constexpr bool __is_joined(std::size_t __bits) noexcept
       {
         return __bits == __closed;
@@ -629,8 +646,8 @@ namespace STDEXEC
         return __bits & 7ul;
       }
 
-      // composes ___new_count and __new_state into the packed representation we store
-      // in __bits
+      // composes ___new_count and __new_state into the packed representation we
+      // store in __bits
       static constexpr std::size_t
       __make_bits(std::size_t ___new_count, std::size_t __new_state) noexcept
       {
@@ -645,10 +662,11 @@ namespace STDEXEC
 
       bool __register(__join_state_base& __join_op) noexcept
       {
-        // we need acquire semantics in case the join operation being started is about to
-        // observe that the last decrement has already happened; in that case, we need to
-        // establish that all of the now-completed associated operations happen-before the
-        // completion of this join operation
+        // we need acquire semantics in case the join operation being started is
+        // about to observe that the last decrement has already happened; in
+        // that case, we need to establish that all of the now-completed
+        // associated operations happen-before the completion of this join
+        // operation
         auto* __head = __registered_join_ops_.load(__std::memory_order_acquire);
 
         do
@@ -659,9 +677,10 @@ namespace STDEXEC
             return false;
           }
 
-          // make __join_op's __next_ point to the current head; note that, on the first
-          // iteration of this loop, this assignment is the first write to __next_ that
-          // establishes a non-indeterminate value for the variable
+          // make __join_op's __next_ point to the current head; note that, on
+          // the first iteration of this loop, this assignment is the first
+          // write to __next_ that establishes a non-indeterminate value for the
+          // variable
           __join_op.__next_ = static_cast<__join_state_base*>(__head);
         }
         while (
@@ -669,14 +688,15 @@ namespace STDEXEC
           !__registered_join_ops_.compare_exchange_weak(
             __head,
             std::addressof(__join_op),
-            // on success, we need at least release semantics to ensure that the final
-            // disassociation can see the full join operation when it dequeues the list
-            // of registered operations with acquire semantics; however, the on-success
-            // ordering has to be at least as strong as the on-failure ordering, for
-            // which we need acquire semantics, so on-success has to be acquire-release.
+            // on success, we need at least release semantics to ensure that the
+            // final disassociation can see the full join operation when it
+            // dequeues the list of registered operations with acquire
+            // semantics; however, the on-success ordering has to be at least as
+            // strong as the on-failure ordering, for which we need acquire
+            // semantics, so on-success has to be acquire-release.
             __std::memory_order_acq_rel,
-            // on failure, we need acquire semantics in case we're about to observe the
-            // sentinel value and return early without trying again
+            // on failure, we need acquire semantics in case we're about to
+            // observe the sentinel value and return early without trying again
             __std::memory_order_acquire));
 
         return true;
@@ -684,21 +704,21 @@ namespace STDEXEC
 
       __join_state_base* __dequeue_registered_join_operations() noexcept
       {
-        // leave __registered_join_ops_ pointing at *this, which we use as a sentinel;
-        // any join operations that start after this exchange will observe the
-        // sentinel, conclude that the scope has already been joined, and thus
-        // complete inline
+        // leave __registered_join_ops_ pointing at *this, which we use as a
+        // sentinel; any join operations that start after this exchange will
+        // observe the sentinel, conclude that the scope has already been
+        // joined, and thus complete inline
         //
         // we need acquire semantics to establish that this dequeue operation
         // happens-after all the now-completed associated operations, and we
         // need release semantics to ensure that any future join-senders that
-        // observe the sentinel value perform that observation with a happens-after
-        // relationship with the current update
+        // observe the sentinel value perform that observation with a
+        // happens-after relationship with the current update
         void* __waiting_ops = __registered_join_ops_.exchange(this, __std::memory_order_acq_rel);
 
-        // at this point, __waiting_ops had better be either nullptr or the address
-        // of a join operation waiting to be completed; otherwise, the upcoming
-        // static_cast is UB
+        // at this point, __waiting_ops had better be either nullptr or the
+        // address of a join operation waiting to be completed; otherwise, the
+        // upcoming static_cast is UB
         STDEXEC_ASSERT(__waiting_ops != this);
 
         return static_cast<__join_state_base*>(__waiting_ops);
@@ -710,8 +730,8 @@ namespace STDEXEC
         {
           // completing an async operation is likely to lead to the end of that
           // operation's lifetime so make sure we advance the cursor before we
-          // invoke __complete on the current list element; otherwise, it may
-          // be UB to access __next_
+          // invoke __complete on the current list element; otherwise, it may be
+          // UB to access __next_
           auto* __op = std::exchange(__ops, __ops->__next_);
           __op->__complete();
         }
@@ -723,7 +743,7 @@ namespace STDEXEC
   struct __sexpr_impl<__counting_scopes::__scope_join_t> : __counting_scopes::__scope_join_impl
   {};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.scope.simple.counting]
   STDEXEC_MODULE_EXPORT
   class simple_counting_scope : private __counting_scopes::__base_scope
@@ -731,7 +751,7 @@ namespace STDEXEC
    public:
     using __assoc_t = __counting_scopes::__association_t<simple_counting_scope>;
 
-    /////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // [exec.simple.counting.token]
     struct token
     {
@@ -799,7 +819,7 @@ namespace STDEXEC
     }
   };
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.scope.counting]
   STDEXEC_MODULE_EXPORT
   class counting_scope : private __counting_scopes::__base_scope

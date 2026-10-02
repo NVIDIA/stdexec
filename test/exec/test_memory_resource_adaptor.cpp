@@ -29,8 +29,8 @@ namespace ex = STDEXEC;
 
 namespace
 {
-  // this is a trivial class template that satisfies __simple_allocator but isn't
-  // exactly std::allocator
+  // this is a trivial class template that satisfies __simple_allocator but
+  // isn't exactly std::allocator
   template <class T>
   struct custom_allocator : std::allocator<T>
   {};
@@ -105,9 +105,9 @@ namespace
     {
       auto* p = alloc.allocate_bytes(10, Alignment);
 
-      // this inlines std::is_sufficiently_aligned<Alignment>(p) so that failures read
-      // more clearly in the output (the actual and expected alignment show up in the
-      // output this way, instead of "false").
+      // this inlines std::is_sufficiently_aligned<Alignment>(p) so that
+      // failures read more clearly in the output (the actual and expected
+      // alignment show up in the output this way, instead of "false").
       REQUIRE(std::countr_zero(std::bit_cast<std::uintptr_t>(p)) >= std::countr_zero(Alignment));
 
       alloc.deallocate_bytes(p, 10, Alignment);

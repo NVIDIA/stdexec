@@ -50,7 +50,8 @@ namespace
                 | ex::then(
                   [&](auto&& envAlloc) noexcept
                   {
-                    // check that the allocator provided to spawn is in our environment
+                    // check that the allocator provided to spawn is in our
+                    // environment
                     REQUIRE(alloc == envAlloc);
                     // check that we actually allocated something to run this op
                     REQUIRE(rsc.allocated() > 0);
@@ -74,7 +75,8 @@ namespace
                 | ex::then(
                   [&](auto&& envAlloc) noexcept
                   {
-                    // we should've pulled the scope's allocator into our environment
+                    // we should've pulled the scope's allocator into our
+                    // environment
                     REQUIRE(alloc == envAlloc);
 
                     // we should've allocated some memory for this operation
@@ -110,12 +112,14 @@ namespace
                 | ex::then(
                   [&](auto& envAlloc) noexcept
                   {
-                    // the allocator in the environment should be the one provided to spawn
-                    // as an explicit argument and not the one provided by the scope
+                    // the allocator in the environment should be the one
+                    // provided to spawn as an explicit argument and not the one
+                    // provided by the scope
                     REQUIRE(alloc1 != envAlloc);
                     REQUIRE(alloc2 == envAlloc);
 
-                    // we should have allocated some memory for the op from rsc2 but not from rsc
+                    // we should have allocated some memory for the op from rsc2
+                    // but not from rsc
                     REQUIRE(rsc1.allocated() == 0);
                     REQUIRE(rsc2.allocated() > 0);
                   }),

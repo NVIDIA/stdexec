@@ -34,7 +34,7 @@ import stdexec;
 namespace STDEXEC
 {
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // A very simple std::declval replacement that doesn't handle void
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, bool _Noexcept = true>
@@ -64,7 +64,7 @@ namespace STDEXEC
   using __declfn = __declfn_t<_Tp, _Noexcept>;
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __decay_t: An efficient implementation for std::decay
 #  if STDEXEC_HAS_BUILTIN(__decay) && (!STDEXEC_CLANG() || STDEXEC_CLANG_VERSION >= 2100)
   namespace __tt
@@ -89,7 +89,7 @@ namespace STDEXEC
   using __decay_t = std::decay_t<_Ty>;
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __copy_cvref_t: For copying cvref from one type to another
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __cp
@@ -173,9 +173,10 @@ namespace STDEXEC
   template <class _Ty>
   using __cref_t = decltype(__cref_fn{}(__declval<_Ty>()));
 
-  // Because of nvc++ nvbugs#4679848, we can't make __mbool a simple alias for __mconstant,
-  // and because of nvc++ nvbugs#4668709 it can't be a simple alias for std::bool_constant,
-  // either. :-(
+  // Because of nvc++ nvbugs#4679848, we can't make __mbool a simple alias for
+  // __mconstant, and because of nvc++ nvbugs#4668709 it can't be a simple alias
+  // for std::bool_constant, either. :-(
+  //
   // template <bool _Bp>
   // using __mbool = __mconstant<_Bp>;
 

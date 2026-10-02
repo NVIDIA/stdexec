@@ -163,7 +163,8 @@ namespace experimental::execution
       [[nodiscard]]
       constexpr auto get_env() const noexcept
       {
-        // Extract the tags from the completion signatures and use them to construct the attributes.
+        // Extract the tags from the completion signatures and use them to
+        // construct the attributes.
         return STDEXEC::__mapply<
           STDEXEC::__mtransform<STDEXEC::__q1<STDEXEC::__signature_tag_t>,
                                 STDEXEC::__munique<STDEXEC::__qq<_just_from::_attrs>>>,
@@ -216,19 +217,21 @@ namespace experimental::execution
     }
   };
 
-  //! @brief `just_from(fn)` creates a sender that completes inline by passing a "sink" function to
-  //! `fn`. Calling the sink function with arguments sends the arguments as values to the receiver.
+  //! @brief `just_from(fn)` creates a sender that completes inline by passing a
+  //! "sink" function to `fn`. Calling the sink function with arguments sends
+  //! the arguments as values to the receiver.
   //!
   //! @post The sink function passed to `fn` must be called exactly once.
   //!
   //! @param fn The callable to be invoked when the sender is started.
   //!
   //! @par
-  //! The function passed to `just_from` must return an instance of a specialization of
-  //! `STDEXEC::completion_signatures<>` that describes the ways the sink function might be
-  //! invoked. The sink function returns such a specialization of `STDEXEC::completion_signatures<>`
-  //! corresponding to the arguments passed to it, but if your function uses the sink function
-  //! in several different ways, you must specify the return type explicitly.
+  //! The function passed to `just_from` must return an instance of a
+  //! specialization of `STDEXEC::completion_signatures<>` that describes the
+  //! ways the sink function might be invoked. The sink function returns such a
+  //! specialization of `STDEXEC::completion_signatures<>` corresponding to the
+  //! arguments passed to it, but if your function uses the sink function in
+  //! several different ways, you must specify the return type explicitly.
   //!
   //! @par Example:
   //! @code
@@ -257,9 +260,9 @@ namespace experimental::execution
     {};
   };
 
-  //! @brief `just_error_from(fn)` creates a sender that completes inline by passing a "sink"
-  //! function to `fn`. Calling the sink function with an argument sends that argument as an error
-  //! to the receiver.
+  //! @brief `just_error_from(fn)` creates a sender that completes inline by
+  //! passing a "sink" function to `fn`. Calling the sink function with an
+  //! argument sends that argument as an error to the receiver.
   //!
   //! @sa just_from
   struct just_error_from_t : _just_from<just_error_from_t>
@@ -269,9 +272,9 @@ namespace experimental::execution
     {};
   };
 
-  //! @brief `just_stopped_from(fn)` creates a sender that completes inline by passing a "sink"
-  //! function to `fn`. Calling the sink function with no arguments sends a stopped signal to the
-  //! receiver.
+  //! @brief `just_stopped_from(fn)` creates a sender that completes inline by
+  //! passing a "sink" function to `fn`. Calling the sink function with no
+  //! arguments sends a stopped signal to the receiver.
   //!
   //! @sa just_from
   struct just_stopped_from_t : _just_from<just_stopped_from_t>

@@ -417,8 +417,8 @@ namespace
 
   TEST_CASE("completion_signature specification is order-independent", "[types][function]")
   {
-    // by specifying the completions with a function signature, it's up to the library what
-    // order the completion signatures are specified in
+    // by specifying the completions with a function signature, it's up to the
+    // library what order the completion signatures are specified in
     using func1_t = exec::function<int(int) noexcept>;
     // this declaration chooses value before stopped
     using func2_t =
@@ -705,7 +705,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, ex::just_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_value_t, domain>>);
     }
 
@@ -718,7 +719,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, int, ex::just_error_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(
         std::constructible_from<function, int, domain_sender_t<ex::set_error_t, domain>>);
     }
@@ -732,7 +734,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, ex::just_stopped_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_stopped_t, domain>>);
     }
   }
@@ -795,8 +798,8 @@ namespace
 
     SECTION("sender attributes other than completion domain queries don't break")
     {
-      // TODO: it's not obvious that it makes sense to support sender attributes other than
-      //       completion domain queries so this may be silly....
+      // TODO: it's not obvious that it makes sense to support sender attributes
+      //       other than completion domain queries so this may be silly....
       auto query = [](auto const &)
       {
         return 0;

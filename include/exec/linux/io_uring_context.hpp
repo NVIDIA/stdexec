@@ -106,7 +106,8 @@ namespace experimental::execution
       return memory_mapped_region{__ptr, __size};
     }
 
-    // This base class maps the Linux kernel's io_uring data structures into the process.
+    // This base class maps the Linux kernel's io_uring data structures into the
+    // process.
     struct __context_base : STDEXEC::__immovable
     {
       explicit __context_base(unsigned __entries, unsigned __flags = 0)
@@ -154,22 +155,22 @@ namespace experimental::execution
     // Each io operation provides the following interface:
     struct __task_vtable
     {
-      // If this function returns true, the __submit_ function will not be called.
-      // The task is marked ready to be completed and will be returned by the
-      // by the context's completion queue.
-      // If this function returns false, the __submit_ function will be called.
+      // If this function returns true, the __submit_ function will not be
+      // called. The task is marked ready to be completed and will be returned
+      // by the by the context's completion queue. If this function returns
+      // false, the __submit_ function will be called.
       bool (*__ready_)(__task*) noexcept;
-      // This function is called to submit the task to the io_uring.
-      // Its purpose is to fill the io_uring_sqe structure to describe the io
-      // operation and its completion condition.
+      // This function is called to submit the task to the io_uring. Its purpose
+      // is to fill the io_uring_sqe structure to describe the io operation and
+      // its completion condition.
       void (*__submit_)(__task*, ::io_uring_sqe&) noexcept;
-      // This function is called when the io operation is completed.
-      // The status of the operation is passed as a parameter.
+      // This function is called when the io operation is completed. The status
+      // of the operation is passed as a parameter.
       void (*__complete_)(__task*, ::io_uring_cqe const &) noexcept;
     };
 
-    // This is the base class for all io operations.
-    // It provides the vtable and the next pointer for the intrusive queues.
+    // This is the base class for all io operations. It provides the vtable and
+    // the next pointer for the intrusive queues.
     struct __task : STDEXEC::__immovable
     {
       __task_vtable const * __vtable_;
@@ -229,10 +230,11 @@ namespace experimental::execution
 
       // Each task that is ready to be completed is moved to the __ready queue.
       // If the submission queue gets full before all tasks are submitted, the
-      // remaining tasks are moved to the __pending queue.
-      // If is_stopped is true, no new tasks are submitted to the io_uring unless it is a cancellation.
-      // If is_stopped is true and a task is not ready to be completed, the task is completed with
-      // an io_uring_cqe object with the result field set to -ECANCELED.
+      // remaining tasks are moved to the __pending queue. If is_stopped is
+      // true, no new tasks are submitted to the io_uring unless it is a
+      // cancellation. If is_stopped is true and a task is not ready to be
+      // completed, the task is completed with an io_uring_cqe object with the
+      // result field set to -ECANCELED.
       auto submit(__task_queue __tasks, __u32 __max_submissions, bool __is_stopped) noexcept
         -> __submission_result
       {
@@ -305,9 +307,10 @@ namespace experimental::execution
         , __mask_{*__at_offset_as<__u32*>(__region.data(), __params.cq_off.ring_mask)}
       {}
 
-      // This function first completes all tasks that are ready in the completion queue of the io_uring.
-      // Then it completes all tasks that are ready in the given queue of ready tasks.
-      // The function returns the number of previously submitted completed tasks.
+      // This function first completes all tasks that are ready in the
+      // completion queue of the io_uring. Then it completes all tasks that are
+      // ready in the given queue of ready tasks. The function returns the
+      // number of previously submitted completed tasks.
       auto complete(STDEXEC::__intrusive_queue<&__task::__next_> __ready = __task_queue{}) noexcept
         -> int
       {
@@ -424,7 +427,7 @@ namespace experimental::execution
         }
       }
 
-      /// @brief Resets the io context to its initial state.
+      //! @brief Resets the io context to its initial state.
       void reset()
       {
         if (__is_running_.load(STDEXEC::__std::memory_order_relaxed) || __n_total_submitted_ > 0)
@@ -458,23 +461,27 @@ namespace experimental::execution
         return __is_running_.load(STDEXEC::__std::memory_order_relaxed);
       }
 
-      /// @brief  Breaks out of the run loop of the io context without stopping the context.
+      //! @brief  Breaks out of the run loop of the io context without stopping
+      //! the context.
       void finish()
       {
         __break_loop_.store(true, STDEXEC::__std::memory_order_release);
         wakeup();
       }
 
-      /// \brief Submits the given task to the io_uring.
-      /// \returns true if the task was submitted, false if this io context and this task is have been stopped.
+      //! @brief Submits the given task to the io_uring. @returns true if the
+      //! task was submitted, false if this io context and this task is have
+      //! been stopped.
       auto submit(__task* __op) noexcept -> bool
       {
-        // As long as the number of in-flight submissions is not __no_new_submissions, we can
-        // increment the counter and push the operation onto the queue.
-        // If the number of in-flight submissions is __no_new_submissions, we have already
-        // finished the stop operation of the io context and we can immediately stop the operation inline.
-        // Remark: As long as the stopping is in progress we can still submit new operations.
-        // But no operation will be submitted to io uring unless it is a cancellation operation.
+        // As long as the number of in-flight submissions is not
+        // __no_new_submissions, we can increment the counter and push the
+        // operation onto the queue. If the number of in-flight submissions is
+        // __no_new_submissions, we have already finished the stop operation of
+        // the io context and we can immediately stop the operation inline.
+        // Remark: As long as the stopping is in progress we can still submit
+        // new operations. But no operation will be submitted to io uring unless
+        // it is a cancellation operation.
         int __n = 0;
         while (__n != __no_new_submissions
                && !__n_submissions_in_flight_.compare_exchange_weak(
@@ -499,9 +506,10 @@ namespace experimental::execution
         }
       }
 
-      /// @brief Submit any pending tasks and complete any ready tasks.
-      ///
-      /// This function is not thread-safe and must only be called from the thread that drives the io context.
+      //! @brief Submit any pending tasks and complete any ready tasks.
+      //!
+      //! This function is not thread-safe and must only be called from the
+      //! thread that drives the io context.
       void run_some() noexcept
       {
         __n_total_submitted_ -= __completion_queue_.complete();
@@ -553,12 +561,14 @@ namespace experimental::execution
           if (__in_flight == __no_new_submissions)
           {
             __stop_source_.emplace();
-            // Make emplacement of stop source visible to other threads and open the door for new submissions.
+            // Make emplacement of stop source visible to other threads and open
+            // the door for new submissions.
             __n_submissions_in_flight_.store(0, STDEXEC::__std::memory_order_release);
           }
           else
           {
-            // This can only happen for the very first pass of run_until_stopped()
+            // This can only happen for the very first pass of
+            // run_until_stopped()
             __wakeup_operation_.start();
           }
         }
@@ -611,8 +621,8 @@ namespace experimental::execution
           }
           STDEXEC_ASSERT(__n_submissions_in_flight_.load(STDEXEC::__std::memory_order_relaxed)
                          == __no_new_submissions);
-          // There could have been requests in flight. Complete all of them
-          // and then stop it, finally.
+          // There could have been requests in flight. Complete all of them and
+          // then stop it, finally.
           __pending_.append(__requests_.pop_all_reversed());
           __submission_result __result = __submission_queue_.submit(static_cast<__task_queue&&>(
                                                                       __pending_),
@@ -724,8 +734,8 @@ namespace experimental::execution
      private:
       friend struct __wakeup_operation;
 
-      // This constant is used for __n_submissions_in_flight to indicate that no new submissions
-      // to this context will be completed by this context.
+      // This constant is used for __n_submissions_in_flight to indicate that no
+      // new submissions to this context will be completed by this context.
       static constexpr int __no_new_submissions = -1;
 
       STDEXEC::__std::atomic<bool>                __is_running_{false};

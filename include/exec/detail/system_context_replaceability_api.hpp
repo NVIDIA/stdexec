@@ -36,14 +36,14 @@ namespace experimental::execution
   {
     using STDEXEC::parallel_scheduler_replacement::__parallel_scheduler_backend_factory_t;
 
-    /// Interface for the parallel scheduler backend.
+    //! Interface for the parallel scheduler backend.
     using parallel_scheduler_backend                                                             //
       [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)                                          //
                    "::parallel_scheduler_replacement::parallel_scheduler_backend instead.")]] =  //
       STDEXEC::parallel_scheduler_replacement::parallel_scheduler_backend;
 
-    /// Get the backend for the parallel scheduler.
-    /// Users might replace this function.
+    //! Get the backend for the parallel scheduler.
+    //! Users might replace this function.
     [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement::query_"
                                                       "parallel_scheduler_backend "
                                                       "instead.")]]
@@ -53,9 +53,9 @@ namespace experimental::execution
       return STDEXEC::parallel_scheduler_replacement::query_parallel_scheduler_backend();
     }
 
-    /// Set a factory for the parallel scheduler backend.
-    /// Can be used to replace the parallel scheduler at runtime.
-    /// Out of spec.
+    //! Set a factory for the parallel scheduler backend.
+    //! Can be used to replace the parallel scheduler at runtime.
+    //! Out of spec.
     [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC) "::parallel_scheduler_replacement::set_"
                                                       "parallel_scheduler_backend "
                                                       "instead.")]]
@@ -65,13 +65,14 @@ namespace experimental::execution
       return STDEXEC::parallel_scheduler_replacement::set_parallel_scheduler_backend(__new_factory);
     }
 
-    /// Interface for completing a sender operation. Backend will call frontend though this interface
-    /// for completing the `schedule` and `schedule_bulk` operations.
+    //! Interface for completing a sender operation. Backend will call frontend
+    //! though this interface for completing the `schedule` and `schedule_bulk`
+    //! operations.
     using receiver [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)                              //
                                 "::parallel_scheduler_replacement::receiver_proxy instead.")]] =  //
       STDEXEC::parallel_scheduler_replacement::receiver_proxy;
 
-    /// Receiver for bulk scheduling operations.
+    //! Receiver for bulk scheduling operations.
     using bulk_item_receiver [[deprecated("Use " STDEXEC_PP_STRINGIZE(STDEXEC)  //
                                           "::parallel_scheduler_replacement::bulk_item_receiver_"
                                           "proxy instead.")]] =  //

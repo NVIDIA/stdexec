@@ -245,7 +245,8 @@ TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_sc
 
   std::optional<std::tuple<std::thread::id>> res = ex::sync_wait(std::move(bulk_snd));
 
-  // Assert: first `schedule` is run on a different thread than the current thread.
+  // Assert: first `schedule` is run on a different thread than the current
+  // thread.
   REQUIRE(pool_id != std::thread::id{});
   REQUIRE(this_id != pool_id);
   // Assert: bulk items are run and they propagate the received value.
@@ -255,7 +256,8 @@ TEST_CASE("simple bulk chaining on parallel scheduler", "[scheduler][parallel_sc
     REQUIRE(propagated_pool_ids[i] == pool_id);
     REQUIRE(this_id != pool_ids[i]);
   }
-  // Assert: the result of the bulk operation is the same as the result of the first `schedule`.
+  // Assert: the result of the bulk operation is the same as the result of the
+  // first `schedule`.
   CHECK(res.has_value());
   CHECK(std::get<0>(res.value()) == pool_id);
 }

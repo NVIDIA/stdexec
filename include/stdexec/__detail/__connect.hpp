@@ -35,7 +35,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.connect]
   namespace __connect
   {
@@ -198,7 +198,7 @@ namespace STDEXEC
     { transform_sender(__sndr(), get_env(__rcvr())) } -> __connect::__with_any_connect<_Receiver>;
   };
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // connect_t
 
   //! @brief Customization point object that *connects* a sender to a
@@ -230,9 +230,9 @@ namespace STDEXEC
   //!
   //! @c connect then dispatches by trying, in order:
   //!
-  //! 1. A static member: <tt>S::__static_connect(sndr, rcvr)</tt>
+  //! 1. A static member: `S::__static_connect(sndr, rcvr)`
   //!    (an stdexec-internal extension point).
-  //! 2. A non-static member: <tt>sndr.connect(rcvr)</tt>. This is the
+  //! 2. A non-static member: `sndr.connect(rcvr)`. This is the
   //!    standard way sender authors customize @c connect in C++26.
   //! 3. The awaitable fallback: if @c sndr is awaitable in stdexec's
   //!    receiver-promise type, an adapter operation state is synthesized.
@@ -262,16 +262,20 @@ namespace STDEXEC
   //! **Concept checks.**
   //!
   //! @c connect(s, r) is only well-formed when both
-  //! `sender_in<S, env_of_t<R>>` and `receiver_of<R, completion_signatures_of_t<S, env_of_t<R>>>`
+  //! `sender_in<S, env_of_t<R>>` and
+  //! `receiver_of<R, completion_signatures_of_t<S, env_of_t<R>>>`
   //! hold. The diagnostics for failures here are intentionally focused —
   //! stdexec emits messages that name the specific completion signal or
   //! environment query the receiver doesn't accept.
   //!
-  //! @see stdexec::start             — what you call on the returned operation state
+  //! @see stdexec::start             — what you call on the returned operation
+  //!                                   state
   //! @see stdexec::operation_state   — the concept the result satisfies
   //! @see stdexec::sender_to         — the concept this CPO drives
-  //! @see stdexec::set_value         — one of the completions the operation eventually delivers
-  //! @see stdexec::transform_sender  — the domain-customization step run before dispatch
+  //! @see stdexec::set_value         — one of the completions the operation
+  //!                                   eventually delivers
+  //! @see stdexec::transform_sender  — the domain-customization step run before
+  //!                                   dispatch
   struct connect_t
   {
     //! @brief Connect @c __sndr to @c __rcvr, returning an operation state.
@@ -326,7 +330,7 @@ namespace STDEXEC
   //! @brief The customization point object for connecting a sender to a
   //!        receiver.
   //!
-  //! @c connect is an instance of @ref connect_t. See @ref connect_t for
+  //! @c connect is an instance of @c connect_t. See @ref connect_t for
   //! the full description, the lookup order, and customization examples.
   //!
   //! @hideinitializer

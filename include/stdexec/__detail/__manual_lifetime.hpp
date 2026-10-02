@@ -36,68 +36,71 @@ import stdexec;
 
 namespace STDEXEC
 {
-  //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`, `__destry()`,
-  //! and `__get()` the `_Ty` without regard for usual lifetime rules.
+  //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`,
+  //! `__destry()`, and `__get()` the `_Ty` without regard for usual lifetime
+  //! rules.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty>
   class __manual_lifetime
   {
    public:
-    //! Constructor does nothing: It's on you to call `__construct(...)` or `__construct_from(...)`
-    //! if you want the `_Ty`'s lifetime to begin.
+    //! Constructor does nothing: It's on you to call `__construct(...)` or
+    //! `__construct_from(...)` if you want the `_Ty`'s lifetime to begin.
     constexpr __manual_lifetime() noexcept = default;
 
-    //! Destructor does nothing: It's on you to call `__destroy()` if you mean to.
+    //! Destructor does nothing: It's on you to call `__destroy()` if you mean
+    //! to.
     constexpr ~__manual_lifetime() {}
 
     STDEXEC_IMMOVABLE(__manual_lifetime);
 
-    //! Construct the `_Ty` in place.
-    //! There are no safeties guarding against the case that there's already one there.
+    //! Construct the `_Ty` in place. There are no safeties guarding against the
+    //! case that there's already one there.
     template <class... _Args>
     constexpr auto __construct(_Args&&... __args)
       noexcept(STDEXEC::__nothrow_constructible_from<_Ty, _Args...>) -> _Ty&
     {
-      // Use placement new instead of std::construct_at to support aggregate initialization with
-      // brace elision.
+      // Use placement new instead of std::construct_at to support aggregate
+      // initialization with brace elision.
       return *std::launder(::new (static_cast<void*>(__buffer_))
                              _Ty{static_cast<_Args&&>(__args)...});
     }
 
-    //! Construct the `_Ty` in place from the result of calling `func`.
-    //! There are no safeties guarding against the case that there's already one there.
+    //! Construct the `_Ty` in place from the result of calling `func`. There
+    //! are no safeties guarding against the case that there's already one
+    //! there.
     template <class _Func, class... _Args>
     constexpr auto __construct_from(_Func&& func, _Args&&... __args) -> _Ty&
     {
-      // Use placement new instead of std::construct_at in case the function returns an immovable
-      // type.
+      // Use placement new instead of std::construct_at in case the function
+      // returns an immovable type.
       return *std::launder(::new (static_cast<void*>(__buffer_))
                              _Ty{static_cast<_Func&&>(func)(static_cast<_Args&&>(__args)...)});
     }
 
     //! End the lifetime of the contained `_Ty`.
-    //! \pre The lifetime has started.
+    //! @pre The lifetime has started.
     constexpr void __destroy() noexcept
     {
       std::destroy_at(&__get());
     }
 
     //! Get access to the `_Ty`.
-    //! \pre The lifetime has started.
+    //! @pre The lifetime has started.
     constexpr auto __get() & noexcept -> _Ty&
     {
       return *reinterpret_cast<_Ty*>(__buffer_);
     }
 
     //! Get access to the `_Ty`.
-    //! \pre The lifetime has started.
+    //! @pre The lifetime has started.
     constexpr auto __get() && noexcept -> _Ty&&
     {
       return static_cast<_Ty&&>(*reinterpret_cast<_Ty*>(__buffer_));
     }
 
     //! Get access to the `_Ty`.
-    //! \pre The lifetime has started.
+    //! @pre The lifetime has started.
     constexpr auto __get() const & noexcept -> _Ty const &
     {
       return *reinterpret_cast<_Ty const *>(__buffer_);
