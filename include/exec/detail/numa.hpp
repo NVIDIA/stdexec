@@ -138,8 +138,8 @@ namespace experimental::execution
   {
     static std::vector<int> const &get() noexcept
     {
-      // This leaks one memory block at shutdown, but it's fine. Clang's and gcc's leak
-      // sanitizer do not report it.
+      // This leaks one memory block at shutdown, but it's fine. Clang's and
+      // gcc's leak sanitizer do not report it.
       static STDEXEC::__indestructible<std::vector<int>> const g_node_to_thread_index{
         []
         {

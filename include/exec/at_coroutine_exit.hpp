@@ -156,31 +156,33 @@ namespace experimental::execution
         return false;
       }
 
-      //! \brief Splice the cleanup action into the chain of continuations.
-      //! \param __parent The coroutine that is registering an action to be performed at
-      //! coroutine exit; i.e., the coroutine that is co_await-ing the result of calling
-      //! at_coroutine_exit.
+      //! @brief Splice the cleanup action into the chain of continuations.
+      //! @param __parent The coroutine that is registering an action to be
+      //! performed at coroutine exit; i.e., the coroutine that is co_await-ing
+      //! the result of calling at_coroutine_exit.
       template <__has_continuation _Promise>
       auto await_suspend(__std::coroutine_handle<_Promise> __parent) -> bool
       {
-        // Set the cleanup task's scheduler to the parent coroutine's scheduler, if present
+        // Set the cleanup task's scheduler to the parent coroutine's scheduler,
+        // if present
         if constexpr (requires { get_start_scheduler(get_env(__parent.promise())); })
         {
           __coro_.promise().__scheduler_ = get_start_scheduler(get_env(__parent.promise()));
         }
-        // This causes the parent to be resumed after the cleanup action is performed.
+        // This causes the parent to be resumed after the cleanup action is
+        // performed.
         __coro_.promise().set_continuation(__parent.promise().continuation());
-        // This causes the parent to invoke the cleanup action when it performs the final
-        // suspend. Also, the parent is now responsible for destroying the cleanup
-        // coroutine.
+        // This causes the parent to invoke the cleanup action when it performs
+        // the final suspend. Also, the parent is now responsible for destroying
+        // the cleanup coroutine.
         __parent.promise().set_continuation(__coro_);
         return false;  // i.e., do not suspend, call await_resume immediately
       }
 
       auto await_resume() noexcept -> std::tuple<_Ts&...>
       {
-        // Release the cleanup coroutine. It is now responsible for destroying itself in
-        // its final suspend.
+        // Release the cleanup coroutine. It is now responsible for destroying
+        // itself in its final suspend.
         return std::exchange(__coro_, {}).promise().__args_;
       }
 
@@ -192,7 +194,7 @@ namespace experimental::execution
           return false;
         }
 
-        //! \param __h The coroutine created by __co_impl below.
+        //! @param __h The coroutine created by __co_impl below.
         static auto await_suspend(__std::coroutine_handle<__promise> __h) noexcept  //
           -> __std::coroutine_handle<>
         {

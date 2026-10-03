@@ -40,7 +40,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Some utilities for debugging senders
   struct __debug_env_t : __query<__debug_env_t>
   {
@@ -141,12 +141,12 @@ namespace STDEXEC
     };
   }  // namespace __debug
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // `__debug_sender`
   // ================
 
-  // Utility to check whether a sender's actual completions match its declared completion
-  // signatures.
+  // Utility to check whether a sender's actual completions match its declared
+  // completion signatures.
   template <class _Sigs, class _CvSender, class _Env = env<>>
   constexpr void __debug_sender(_CvSender&& __sndr, _Env const & = {})
   {

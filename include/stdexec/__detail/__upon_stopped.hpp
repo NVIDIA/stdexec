@@ -36,7 +36,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
   namespace __upon_stopped
   {
@@ -75,7 +75,7 @@ namespace STDEXEC
     };
   }  // namespace __upon_stopped
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that handles a predecessor sender's
   //!        stopped completion by invoking a nullary callable.
   //!
@@ -106,7 +106,7 @@ namespace STDEXEC
   //! set_stopped_t()                  // (must be present)
   //! @endcode
   //!
-  //! the sender produced by <tt>upon_stopped(sndr, f)</tt> has completion signatures
+  //! the sender produced by `upon_stopped(sndr, f)` has completion signatures
   //!
   //! @code{.cpp}
   //! set_value_t(Vs...)               // forwarded unchanged from sndr
@@ -154,7 +154,8 @@ namespace STDEXEC
   //!
   //! @see stdexec::then         — adapt the value channel
   //! @see stdexec::upon_error   — adapt the error channel
-  //! @see stdexec::let_stopped  — adapt the stopped channel with a sender-returning function
+  //! @see stdexec::let_stopped  — adapt the stopped channel with a
+  //!                              sender-returning function
   struct upon_stopped_t
   {
     //! @brief Construct a sender that handles a stopped completion of @c __sndr
@@ -172,7 +173,8 @@ namespace STDEXEC
     //! @returns A sender that, when connected to a receiver and started, drives
     //!          @c __sndr and reacts to its @c set_stopped completion by
     //!          invoking @c __fun and forwarding the result via @c set_value.
-    //!          The value and error channels of @c __sndr are forwarded unchanged.
+    //!          The value and error channels of @c __sndr are forwarded
+    //!          unchanged.
     //!
     //! @pre @c __fun must be invocable with no arguments (the @c requires
     //!      clause enforces this). Otherwise the call is not viable.
@@ -184,19 +186,19 @@ namespace STDEXEC
                                           static_cast<_Sender&&>(__sndr));
     }
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a sender,
-    //!        produces <tt>upon_stopped(sndr, __fun)</tt>.
+    //! @brief Construct a sender-adaptor closure that, when applied to a
+    //!        sender, produces `upon_stopped(sndr, __fun)`.
     //!
-    //! This overload enables the pipe syntax: <tt>sndr | upon_stopped(__fun)</tt>
-    //! is equivalent to <tt>upon_stopped(sndr, __fun)</tt>.
+    //! This overload enables the pipe syntax: `sndr | upon_stopped(__fun)`
+    //! is equivalent to `upon_stopped(sndr, __fun)`.
     //!
     //! @tparam _Fun  A decayed, move-constructible, *nullary* callable type.
     //! @param __fun  The callable to invoke on the predecessor's stopped
     //!               completion when the closure is later applied to a sender.
     //!
-    //! @returns A sender-adaptor closure object that captures @c __fun by value.
-    //!          When piped against a sender @c sndr, it yields the sender
-    //!          <tt>upon_stopped(sndr, std::move(__fun))</tt>.
+    //! @returns A sender-adaptor closure object that captures @c __fun by
+    //!          value. When piped against a sender @c sndr, it yields the
+    //!          sender `upon_stopped(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
       requires __callable<_Fun>
     STDEXEC_ATTRIBUTE(always_inline)
@@ -206,9 +208,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c upon_stopped sender adaptor.
+  //! @brief The customization point object for the @c upon_stopped sender
+  //!        adaptor.
   //!
-  //! @c upon_stopped is an instance of @ref upon_stopped_t. See
+  //! @c upon_stopped is an instance of @c upon_stopped_t. See
   //! @ref upon_stopped_t for the full description, completion-signature
   //! transformation rules, exception and cancellation behavior, and a usage
   //! example.

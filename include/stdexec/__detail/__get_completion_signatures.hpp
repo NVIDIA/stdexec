@@ -49,26 +49,26 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.getcomplsigs]
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // get_completion_signatures
   STDEXEC_PRAGMA_PUSH()
-  // warning C4913: user defined binary operator ',' exists but no overload could convert all operands,
-  // default built-in binary operator ',' used
+  // warning C4913: user defined binary operator ',' exists but no overload
+  // could convert all operands, default built-in binary operator ',' used
   STDEXEC_PRAGMA_IGNORE_MSVC(4913)
 
   struct _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION;
 
   namespace __cmplsigs
   {
-#  define STDEXEC_GET_COMPLSIGS(...)                                                                 \
-  STDEXEC_REMOVE_REFERENCE(                                                                        \
+#  define STDEXEC_GET_COMPLSIGS(...)                                                                \
+  STDEXEC_REMOVE_REFERENCE(                                                                         \
     STDEXEC_PP_FRONT(__VA_ARGS__))::template get_completion_signatures<__VA_ARGS__>()
 
-#  define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                      \
-  STDEXEC::__cmplsigs::__checked_complsigs(                                                        \
+#  define STDEXEC_CHECKED_COMPLSIGS(_ARGS, ...)                                                     \
+  STDEXEC::__cmplsigs::__checked_complsigs(                                                         \
     __VA_ARGS__, static_cast<__mlist<STDEXEC_PP_EXPAND _ARGS>*>(nullptr))
 
     template <class _Ty>
@@ -303,10 +303,15 @@ namespace STDEXEC
   //! @c co_await result type, @c set_error_t(std::exception_ptr) for
   //! any exceptions, and @c set_stopped_t for stop-token cancellation.
   //!
-  //! @see stdexec::completion_signatures   — the pack-of-signatures container
-  //! @see stdexec::completion_signatures_of_t — convenience type alias around this
-  //! @see stdexec::sender_in               — the concept built on top of this
-  //! @see stdexec::transform_sender        — domain-customization run before signature computation
+  //! @see stdexec::completion_signatures      — the pack-of-signatures
+  //!  container
+  //! @see stdexec::completion_signatures_of_t — type alias for the result of
+  //!                                            @c get_completion_signatures
+  //! @see stdexec::sender_in                  — concept that tests whether a
+  //!                                            type is a sender in a given
+  //!                                            environment
+  //! @see stdexec::transform_sender           — domain-customization run before
+  //!                                            signature computation
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
   consteval auto get_completion_signatures()
@@ -344,7 +349,7 @@ namespace STDEXEC
     return STDEXEC::get_completion_signatures<_Sender, _Env...>();
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // An minimally constrained alias for the result of get_completion_signatures:
 #  if STDEXEC_GCC()
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -373,10 +378,10 @@ namespace STDEXEC
 
 #  elif STDEXEC_MSVC()
 
-  // MSVC cannot handle a __completion_signatures_of_t alias template that requires
-  // get_completion_signatures to be a constant expression, even if we wrap the call to
-  // get_completion_signatures in an integral_constant like we do for EDG. So we skip
-  // checking the requirement.
+  // MSVC cannot handle a __completion_signatures_of_t alias template that
+  // requires get_completion_signatures to be a constant expression, even if we
+  // wrap the call to get_completion_signatures in an integral_constant like we
+  // do for EDG. So we skip checking the requirement.
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class... _Env>
@@ -393,7 +398,7 @@ namespace STDEXEC
     __mtypeof<STDEXEC::get_completion_signatures<_Sender, _Env...>()>;
 #  endif
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __get_child_completion_signatures
   template <class _Parent, class _Child, class... _Env>
   [[nodiscard]]

@@ -38,7 +38,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
   namespace __upon_error
   {
@@ -103,7 +103,7 @@ namespace STDEXEC
     };
   }  // namespace __upon_error
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that handles a predecessor sender's
   //!        error completion by invoking a callable on the error datum.
   //!
@@ -135,12 +135,13 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged (if present)
   //! @endcode
   //!
-  //! the sender produced by <tt>upon_error(sndr, f)</tt> has completion signatures
+  //! the sender produced by `upon_error(sndr, f)` has completion signatures
   //!
   //! @code{.cpp}
   //! set_value_t(Vs...)               // forwarded unchanged from sndr
-  //! set_value_t(R)                   // R = decltype(std::invoke(f, E))  for each E
-  //!                                  // (or set_value_t() when R is void)
+  //! set_value_t(R)                   // R = decltype(std::invoke(f, E)) for
+  //!                                  // each E (or set_value_t() when R is
+  //!                                  // void)
   //! set_error_t(std::exception_ptr)  // added when invoking f may throw
   //! set_stopped_t()                  // forwarded unchanged from sndr
   //! @endcode
@@ -184,15 +185,16 @@ namespace STDEXEC
   //!
   //! @see stdexec::then          — adapt the value channel
   //! @see stdexec::upon_stopped  — adapt the stopped channel
-  //! @see stdexec::let_error     — adapt the error channel with a sender-returning function
+  //! @see stdexec::let_error     — adapt the error channel with a
+  //!                               sender-returning function
   struct upon_error_t
   {
-    //! @brief Construct a sender that handles each error completion of @c __sndr
-    //!        by invoking @c __fun on the error datum.
+    //! @brief Construct a sender that handles each error completion of
+    //!        @c __sndr by invoking @c __fun on the error datum.
     //!
     //! @tparam _Sender A type satisfying the @c stdexec::sender concept.
     //! @tparam _Fun    A decayed, move-constructible callable type
-    //!                 (satisfying the internal <tt>__movable_value</tt> concept).
+    //!                 (satisfying the internal `__movable_value` concept).
     //!
     //! @param __sndr   The predecessor sender whose error-completions are to be
     //!                 adapted. Perfect-forwarded into the resulting sender.
@@ -203,7 +205,8 @@ namespace STDEXEC
     //! @returns A sender that, when connected to a receiver and started, drives
     //!          @c __sndr and routes each of its error-completions through
     //!          @c __fun, delivering the result on the value channel. The
-    //!          value and stopped channels of @c __sndr are forwarded unchanged.
+    //!          value and stopped channels of @c __sndr are forwarded
+    //!          unchanged.
     //!
     //! @pre @c __fun must be invocable with every error type of @c __sndr
     //!      (with appropriate value categories). Otherwise the program is
@@ -215,19 +218,19 @@ namespace STDEXEC
       return __make_sexpr<upon_error_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
     }
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a sender,
-    //!        produces <tt>upon_error(sndr, __fun)</tt>.
+    //! @brief Construct a sender-adaptor closure that, when applied to a
+    //!        sender, produces `upon_error(sndr, __fun)`.
     //!
-    //! This overload enables the pipe syntax: <tt>sndr | upon_error(__fun)</tt>
-    //! is equivalent to <tt>upon_error(sndr, __fun)</tt>.
+    //! This overload enables the pipe syntax: `sndr | upon_error(__fun)`
+    //! is equivalent to `upon_error(sndr, __fun)`.
     //!
     //! @tparam _Fun  A decayed, move-constructible callable type.
     //! @param __fun  The callable to invoke on the predecessor's error
     //!               completions when the closure is later applied to a sender.
     //!
-    //! @returns A sender-adaptor closure object that captures @c __fun by value.
-    //!          When piped against a sender @c sndr, it yields the sender
-    //!          <tt>upon_error(sndr, std::move(__fun))</tt>.
+    //! @returns A sender-adaptor closure object that captures @c __fun by
+    //!          value. When piped against a sender @c sndr, it yields the
+    //!          sender `upon_error(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
@@ -236,9 +239,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c upon_error sender adaptor.
+  //! @brief The customization point object for the @c upon_error sender
+  //! adaptor.
   //!
-  //! @c upon_error is an instance of @ref upon_error_t. See @ref upon_error_t
+  //! @c upon_error is an instance of @c upon_error_t. See @ref upon_error_t
   //! for the full description, completion-signature transformation rules,
   //! exception and cancellation behavior, and a usage example.
   //!

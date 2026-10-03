@@ -265,14 +265,16 @@ namespace
       ex::start(op);
       // The function is called immediately after starting the operation
       CHECK(fun_called);
-      // As the returned sender didn't complete yet, the parameter must still be alive
+      // As the returned sender didn't complete yet, the parameter must still be
+      // alive
       CHECK_FALSE(param_destructed);
       CHECK(res == 0);
 
       // Now, tell the scheduler to execute the final operation
       sched.start_next();
 
-      // As the main operation is still valid, the parameter is not yet destructed
+      // As the main operation is still valid, the parameter is not yet
+      // destructed
       CHECK_FALSE(param_destructed);
     }
 
@@ -388,7 +390,8 @@ namespace
                               | ex::let_error([](std::exception_ptr) { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined let_error implementation
+  // Return a different sender when we invoke this custom defined let_error
+  // implementation
   struct let_error_test_domain
   {
     template <exec::sender_for<ex::let_error_t> Sender>

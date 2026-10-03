@@ -70,7 +70,8 @@ namespace
     auto              snd = ex::starts_on(sched, ex::just(13));
     auto              op  = ex::connect(std::move(snd), expect_value_receiver_ex{recv_value});
     ex::start(op);
-    // Up until this point, the scheduler didn't start any task; no effect expected
+    // Up until this point, the scheduler didn't start any task; no effect
+    // expected
     CHECK(recv_value == 0);
 
     // Tell the scheduler to start executing one task
@@ -211,7 +212,8 @@ namespace
     check_sends_stopped<true>(ex::starts_on(sched3, ex::just(3)));
   }
 
-  // Return a different sender when we invoke this custom defined starts_on implementation
+  // Return a different sender when we invoke this custom defined starts_on
+  // implementation
   struct starts_on_test_domain
   {
     template <exec::sender_for<ex::starts_on_t> Sender>

@@ -71,7 +71,8 @@ namespace
     auto              snd = ex::on(sched, ex::just(13));
     auto              op  = ex::connect(std::move(snd), expect_value_receiver_ex{env, recv_value});
     ex::start(op);
-    // Up until this point, the scheduler didn't start any task; no effect expected
+    // Up until this point, the scheduler didn't start any task; no effect
+    // expected
     CHECK(recv_value == 0);
 
     // Tell the scheduler to start executing one task

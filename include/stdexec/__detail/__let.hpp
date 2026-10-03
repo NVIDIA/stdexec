@@ -99,9 +99,9 @@ namespace STDEXEC
     template <class...>
     struct _NESTED_ERROR_;
 
-    // BUGBUG: when get_completion_signatures is using constexpr exceptions, this
-    // __try_completion_signatures_of_t machinery hides the nested error from trying to
-    // compute the result senders.
+    // BUGBUG: when get_completion_signatures is using constexpr exceptions,
+    // this __try_completion_signatures_of_t machinery hides the nested error
+    // from trying to compute the result senders.
     template <class _Sender, class... _Env>
     using __try_completion_signatures_of_t =
       __minvoke_or_q<__completion_signatures_of_t,
@@ -127,8 +127,9 @@ namespace STDEXEC
     concept __potentially_valid_sender_in = sender_in<_Sender, _JoinEnv2...>
                                          || (sender<_Sender> && (sizeof...(_JoinEnv2) == 0));
 
-    //! Metafunction creating the operation state needed to connect the result of calling
-    //! the sender factory function, `_Fun`, and passing its result to a receiver.
+    //! Metafunction creating the operation state needed to connect the result
+    //! of calling the sender factory function, `_Fun`, and passing its result
+    //! to a receiver.
     template <class _Receiver, class _Fun, class _SetTag, class _Env2>
     struct __submit_datum_for
     {
@@ -139,8 +140,9 @@ namespace STDEXEC
         submit_result<__invoke_result_t<_Fun, __decay_t<_Args>&...>, __rcvr_env<_Receiver, _Env2>>;
     };
 
-    // A metafunction to check whether the predecessor's completion results are nothrow
-    // decay-copyable and whether connecting the secondary sender is nothrow.
+    // A metafunction to check whether the predecessor's completion results are
+    // nothrow decay-copyable and whether connecting the secondary sender is
+    // nothrow.
     template <class _Fn, class _Env2>
     struct __has_nothrow_completions_fn
     {
@@ -161,8 +163,8 @@ namespace STDEXEC
       __has_nothrow_completions_fn<_Fn, __result_env_t<_SetTag, _Child, _Env>>,
       __qq<__mand_t>>;
 
-    //! The core of the operation state for `let_*`.
-    //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
+    //! The core of the operation state for `let_*`. This gets bundled up into a
+    //! larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
     struct __opstate_base
     {
@@ -221,7 +223,8 @@ namespace STDEXEC
       _Fun      __fn_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env2     __env2_;
-      //! Variant to hold the child sender's results before passing them to the function:
+      //! Variant to hold the child sender's results before passing them to the
+      //! function:
       __variant<_Tuples...> __args_{__no_init};
     };
 
@@ -282,8 +285,8 @@ namespace STDEXEC
       __op.submit(static_cast<__sender_t&&>(__sndr), static_cast<__second_rcvr_t&&>(__rcvr2));
     };
 
-    //! The core of the operation state for `let_*`.
-    //! This gets bundled up into a larger operation state (`__detail::__op_state<...>`).
+    //! The core of the operation state for `let_*`. This gets bundled up into a
+    //! larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _CvChild, class _Fun, class _Receiver, class... _Tuples>
     struct __opstate final
       : __opstate_base<_SetTag,
@@ -333,7 +336,8 @@ namespace STDEXEC
         }
       }
 
-      //! Variant type for holding the operation state of the currently in flight operation
+      //! Variant type for holding the operation state of the currently in
+      //! flight operation
       __op_state_variant_t __storage_{__no_init};
     };
 
@@ -504,7 +508,8 @@ namespace STDEXEC
     //   }
     // };
 
-    //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g., `set_value_t` for `let_value`.
+    //! Implementation of the `let_*_t` types, where `_SetTag` is, e.g.,
+    //! `set_value_t` for `let_value`.
     template <class _LetTag>
     struct __let_t
     {
@@ -682,10 +687,10 @@ namespace STDEXEC
   //!
   //! @code{.cpp}
   //! template <sender Sender, movable-value Fun>
-  //!   auto operator()(Sender&& sndr, Fun fun) const -> sender auto;   // direct
+  //!   auto operator()(Sender&& sndr, Fun fun) const -> sender auto; // direct
   //!
   //! template <class Fun>
-  //!   auto operator()(Fun fun) const;                                 // closure
+  //!   auto operator()(Fun fun) const;                               // closure
   //! @endcode
   //!
   //! The two forms are expression-equivalent. See [exec.let] in the
@@ -701,11 +706,11 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged (if present)
   //! @endcode
   //!
-  //! the sender produced by <tt>let_value(sndr, f)</tt> has completion
+  //! the sender produced by `let_value(sndr, f)` has completion
   //! signatures equal to the *union* of:
   //!
   //! - the completion signatures of every sender returned by an invocation
-  //!   <tt>std::invoke(f, vs...)</tt> for each value-completion argument pack
+  //!   `std::invoke(f, vs...)` for each value-completion argument pack
   //!   @c (vs...) of @c sndr, *plus*
   //! - the @c set_error_t completions of @c sndr (forwarded unchanged),
   //! - the @c set_stopped_t completion of @c sndr (forwarded unchanged), and
@@ -757,9 +762,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::then          — adapt the value channel with a value-returning function
-  //! @see stdexec::let_error     — adapt the error channel with a sender-returning function
-  //! @see stdexec::let_stopped   — adapt the stopped channel with a sender-returning function
+  //! @see stdexec::then          — adapt the value channel with a
+  //!                               value-returning function
+  //! @see stdexec::let_error     — adapt the error channel with a
+  //!                               sender-returning function
+  //! @see stdexec::let_stopped   — adapt the stopped channel with a
+  //!                               sender-returning function
   struct let_value_t : __let::__let_t<let_value_t>
   {
     using __t     = set_value_t;
@@ -795,12 +803,12 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged (if present)
   //! @endcode
   //!
-  //! the sender produced by <tt>let_error(sndr, f)</tt> has completion
+  //! the sender produced by `let_error(sndr, f)` has completion
   //! signatures equal to the *union* of:
   //!
   //! - the @c set_value_t completions of @c sndr (forwarded unchanged),
   //! - the completion signatures of every sender returned by an invocation
-  //!   <tt>std::invoke(f, e)</tt> for each error type @c e of @c sndr,
+  //!   `std::invoke(f, e)` for each error type @c e of @c sndr,
   //! - the @c set_stopped_t completion of @c sndr (forwarded unchanged), and
   //! - @c set_error_t(std::exception_ptr) if invoking @c f or connecting its
   //!   returned sender may throw.
@@ -844,9 +852,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::upon_error   — adapt the error channel with a value-returning function
-  //! @see stdexec::let_value    — adapt the value channel with a sender-returning function
-  //! @see stdexec::let_stopped  — adapt the stopped channel with a sender-returning function
+  //! @see stdexec::upon_error   — adapt the error channel with a
+  //!                              value-returning function
+  //! @see stdexec::let_value    — adapt the value channel with a
+  //!                              sender-returning function
+  //! @see stdexec::let_stopped  — adapt the stopped channel with a
+  //!                              sender-returning function
   struct let_error_t : __let::__let_t<let_error_t>
   {
     using __t     = set_error_t;
@@ -883,13 +894,13 @@ namespace STDEXEC
   //! set_stopped_t()                  // (must be present)
   //! @endcode
   //!
-  //! the sender produced by <tt>let_stopped(sndr, f)</tt> has completion
+  //! the sender produced by `let_stopped(sndr, f)` has completion
   //! signatures equal to the *union* of:
   //!
   //! - the @c set_value_t completions of @c sndr (forwarded unchanged),
   //! - the @c set_error_t completions of @c sndr (forwarded unchanged),
   //! - the completion signatures of the sender returned by
-  //!   <tt>std::invoke(f)</tt>, and
+  //!   `std::invoke(f)`, and
   //! - @c set_error_t(std::exception_ptr) if invoking @c f or connecting its
   //!   returned sender may throw.
   //!
@@ -933,9 +944,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::upon_stopped — adapt the stopped channel with a value-returning function
-  //! @see stdexec::let_value    — adapt the value channel with a sender-returning function
-  //! @see stdexec::let_error    — adapt the error channel with a sender-returning function
+  //! @see stdexec::upon_stopped — adapt the stopped channel with a
+  //!                              value-returning function
+  //! @see stdexec::let_value    — adapt the value channel with a
+  //!                              sender-returning function
+  //! @see stdexec::let_error    — adapt the error channel with a
+  //!                              sender-returning function
   struct let_stopped_t : __let::__let_t<let_stopped_t>
   {
     using __t       = set_stopped_t;
@@ -944,7 +958,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c let_value sender adaptor.
   //!
-  //! @c let_value is an instance of @ref let_value_t. See @ref let_value_t
+  //! @c let_value is an instance of @c let_value_t. See @ref let_value_t
   //! for the full description, completion-signature transformation rules,
   //! exception and cancellation behavior, and a usage example.
   //!
@@ -953,16 +967,17 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c let_error sender adaptor.
   //!
-  //! @c let_error is an instance of @ref let_error_t. See @ref let_error_t
+  //! @c let_error is an instance of @c let_error_t. See @ref let_error_t
   //! for the full description and example.
   //!
   //! @hideinitializer
   inline constexpr let_error_t let_error{};
 
-  //! @brief The customization point object for the @c let_stopped sender adaptor.
+  //! @brief The customization point object for the @c let_stopped sender
+  //! adaptor.
   //!
-  //! @c let_stopped is an instance of @ref let_stopped_t. See @ref let_stopped_t
-  //! for the full description and example.
+  //! @c let_stopped is an instance of @c let_stopped_t. See
+  //! @ref let_stopped_t for the full description and example.
   //!
   //! @hideinitializer
   inline constexpr let_stopped_t let_stopped{};

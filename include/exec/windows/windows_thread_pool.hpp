@@ -128,7 +128,7 @@ namespace experimental::execution::__win32
     PTP_POOL threadPool_;
   };
 
-  /////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Non-cancellable schedule() operation
 
   class windows_thread_pool::schedule_op_base
@@ -169,7 +169,7 @@ namespace experimental::execution::__win32
     Rcvr rcvr_;
   };
 
-  ///////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Cancellable schedule() operation
 
   template <class StopToken>
@@ -354,11 +354,11 @@ namespace experimental::execution::__win32
       if ((prevState & submit_complete_flag) != 0)
       {
         // start() has finished calling SubmitThreadpoolWork() and the work has
-        // not yet started executing the work so it's safe for this method to now
-        // try and cancel the work. While it's possible that the work callback
-        // will start executing concurrently on a thread-pool thread, we are
-        // guaranteed that it will see our write of the stop_requested_flag and
-        // will promptly return without blocking.
+        // not yet started executing the work so it's safe for this method to
+        // now try and cancel the work. While it's possible that the work
+        // callback will start executing concurrently on a thread-pool thread,
+        // we are guaranteed that it will see our write of the
+        // stop_requested_flag and will promptly return without blocking.
         complete_with_done();
       }
       else
@@ -366,8 +366,8 @@ namespace experimental::execution::__win32
         // Otherwise, as the start() method has not yet finished calling
         // SubmitThreadpoolWork() we can't safely call
         // WaitForThreadpoolWorkCallbacks(). In this case we are delegating
-        // responsibility for calling complete_with_done() to start() method when
-        // it eventually returns from SubmitThreadpoolWork().
+        // responsibility for calling complete_with_done() to start() method
+        // when it eventually returns from SubmitThreadpoolWork().
       }
     }
 
@@ -399,7 +399,7 @@ namespace experimental::execution::__win32
       }
     };
 
-    /////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Flags to use for state_ member
 
     // Initial state. start() not yet called.
@@ -466,7 +466,7 @@ namespace experimental::execution::__win32
     Rcvr rcvr_;
   };
 
-  ////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // schedule senders' attributes
   struct windows_thread_pool::attrs
   {
@@ -477,7 +477,7 @@ namespace experimental::execution::__win32
     windows_thread_pool *pool_;
   };
 
-  ////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // schedule() sender
 
   class windows_thread_pool::schedule_sender
@@ -521,7 +521,7 @@ namespace experimental::execution::__win32
     windows_thread_pool *pool_;
   };
 
-  /////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // time_schedule_op
 
   template <class StopToken>
@@ -700,7 +700,7 @@ namespace experimental::execution::__win32
       }
     };
 
-    /////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Flags to use for state_ member
 
     // Initial state. start() not yet called.
@@ -727,7 +727,7 @@ namespace experimental::execution::__win32
       stopCallback_;
   };
 
-  /////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // schedule_at() operation
 
   template <class Rcvr>
@@ -805,7 +805,7 @@ namespace experimental::execution::__win32
     filetime_clock::time_point dueTime_;
   };
 
-  //////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // schedule_after()
 
   template <class Duration, class Rcvr>
@@ -885,7 +885,7 @@ namespace experimental::execution::__win32
     Duration             duration_;
   };
 
-  /////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // scheduler
 
   class windows_thread_pool::scheduler
@@ -945,7 +945,7 @@ namespace experimental::execution::__win32
     return scheduler{*pool_};
   }
 
-  /////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // scheduler methods
 
   inline auto windows_thread_pool::get_scheduler() noexcept -> windows_thread_pool::scheduler
@@ -953,7 +953,7 @@ namespace experimental::execution::__win32
     return scheduler{*this};
   }
 
-  /////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   inline windows_thread_pool::windows_thread_pool() noexcept
     : threadPool_(nullptr)

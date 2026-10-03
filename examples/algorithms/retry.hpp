@@ -26,7 +26,7 @@ using _copy_cvref_t = stdexec::__copy_cvref_t<From, To>;
 template <class From, class To>
 concept _decays_to = std::same_as<std::decay_t<From>, To>;
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // retry algorithm:
 
 // _conv needed so we can emplace construct non-movable types into
@@ -50,7 +50,8 @@ struct _conv
 template <class S, class R>
 struct _op;
 
-// pass through all customizations except set_error, which retries the operation.
+// pass through all customizations except set_error, which retries the
+// operation.
 template <class S, class R>
 struct _retry_receiver : exec::receiver_adaptor<_retry_receiver<S, R>>
 {

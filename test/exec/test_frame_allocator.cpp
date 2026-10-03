@@ -123,8 +123,8 @@ namespace
 
     if (std::is_pointer_v<TestType>)
     {
-      // std::pmr::polymorphic_allocator and the static equivalent do uses-allocator
-      // construction
+      // std::pmr::polymorphic_allocator and the static equivalent do
+      // uses-allocator construction
       REQUIRE(p->usedAllocator);
     }
     else
@@ -174,8 +174,8 @@ namespace
 
     if (std::is_pointer_v<TestType>)
     {
-      // std::pmr::polymorphic_allocator and the static equivalent do uses-allocator
-      // construction
+      // std::pmr::polymorphic_allocator and the static equivalent do
+      // uses-allocator construction
       REQUIRE(p->usedAllocator);
     }
     else

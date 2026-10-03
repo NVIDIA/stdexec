@@ -39,7 +39,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
 
   //! @brief Tag type used to opt a class into the @c stdexec::sender concept.
@@ -124,9 +124,12 @@ namespace STDEXEC
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!
-  //! @see stdexec::sender_in    — sender plus a specific environment, with computable signatures
-  //! @see stdexec::sender_to    — sender plus a specific receiver, with compatible signatures
-  //! @see stdexec::sender_tag   — the tag type that opts a class into this concept
+  //! @see stdexec::sender_in    — sender plus a specific environment, with
+  //!                              computable signatures
+  //! @see stdexec::sender_to    — sender plus a specific receiver, with
+  //!                              compatible signatures
+  //! @see stdexec::sender_tag   — the tag type that opts a class into this
+  //!                              concept
   //! @see stdexec::enable_sender — alternative opt-in path
   STDEXEC_MODULE_EXPORT template <class _Sender>
   concept sender = enable_sender<__decay_t<_Sender>>          //
@@ -173,7 +176,8 @@ namespace STDEXEC
   //!
   //! @see stdexec::sender                    — the base concept
   //! @see stdexec::sender_to                 — adds a specific receiver
-  //! @see stdexec::get_completion_signatures — the customization point this concept depends on
+  //! @see stdexec::get_completion_signatures — the customization point this
+  //!                                           concept depends on
   STDEXEC_MODULE_EXPORT template <class _Sender, class... _Env>
   concept sender_in =
     (sizeof...(_Env) <= 1)  //
@@ -185,7 +189,7 @@ namespace STDEXEC
   concept __receiver_from =
     receiver_of<_Receiver, __completion_signatures_of_t<_Sender, env_of_t<_Receiver>>>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd]
   template <class _Sender, class _Receiver>
   concept __sender_to = receiver<_Receiver>                      //
@@ -237,9 +241,12 @@ namespace STDEXEC
   //!
   //! See [exec.snd.concepts] in the C++26 working draft.
   //!
-  //! @see stdexec::sender                    — the base concept (no environment required)
-  //! @see stdexec::sender_in                 — sender with a concrete environment
-  //! @see stdexec::get_completion_signatures — the CPO that throws @c dependent_sender_error
+  //! @see stdexec::sender                    — the base concept (no environment
+  //!                                           required)
+  //! @see stdexec::sender_in                 — sender with a concrete
+  //!                                           environment
+  //! @see stdexec::get_completion_signatures — the CPO that throws
+  //!                                           @c dependent_sender_error
   STDEXEC_MODULE_EXPORT
   template <class _Sender>
   concept dependent_sender = sender<_Sender> && __is_dependent_sender<_Sender>;
@@ -252,7 +259,8 @@ namespace STDEXEC
       __mcall<__if_c<(sizeof...(_Ts) == 1), __q<__decay_t>, __qq<__decayed_std_tuple>>, _Ts...>;
   };
 
-  //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26 working draft.
+  //! See @c single-sender-value-type in [exec.snd.concepts] in the C++26
+  //! working draft.
   template <class _Sender, class... _Env>
   using __single_sender_value_t =  //
     __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,

@@ -368,10 +368,11 @@ namespace
 #    endif
 #  endif
 
-  // Regression test for NVIDIA/stdexec#2222: when a task is given an environment
-  // that declares custom error_types, the task's completion signatures -- and the
-  // errors it delivers when connected to a receiver -- must use those types
-  // rather than always reporting/delivering std::exception_ptr.
+  // Regression test for NVIDIA/stdexec#2222: when a task is given an
+  // environment that declares custom error_types, the task's completion
+  // signatures -- and the errors it delivers when connected to a receiver --
+  // must use those types rather than always reporting/delivering
+  // std::exception_ptr.
   struct error_code_env
   {
     using error_types = ex::completion_signatures<ex::set_error_t(std::error_code)>;
@@ -387,8 +388,8 @@ namespace
   TEST_CASE("task's completion signatures and errors honor custom error_types", "[types][task]")
   {
     // This is the repro from issue 2222: it only compiles (and produces the
-    // error_code value at runtime) if the task's error is reported and delivered
-    // as std::error_code, not as std::exception_ptr:
+    // error_code value at runtime) if the task's error is reported and
+    // delivered as std::error_code, not as std::exception_ptr:
     auto s = test_task_yields_error_code() | ex::upon_error([](auto err) noexcept { return err; })
            | ex::into_variant();
     auto [r] = ex::sync_wait(std::move(s)).value();
@@ -592,7 +593,8 @@ namespace
     CHECK(ex::sync_wait(std::move(snd)).has_value());
   }
 
-  // Test affinity with a run_loop scheduler, which is infallible but not inline:
+  // Test affinity with a run_loop scheduler, which is infallible but not
+  // inline:
   struct test_env2
   {
     using scheduler_type = ex::run_loop::scheduler;
@@ -642,8 +644,9 @@ namespace
   // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=94794, results in a symmetric
   // transfer failing to be a tail call. Likewise, when
   // STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND is defined (MSVC prior to 14.50),
-  // task's final suspend resumes its continuation directly instead of performing
-  // a symmetric transfer, which grows the stack with each nested task completion.
+  // task's final suspend resumes its continuation directly instead of
+  // performing a symmetric transfer, which grows the stack with each nested
+  // task completion.
 #  if !STDEXEC_GCC()                                                                               \
     || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
 #    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
@@ -903,8 +906,8 @@ namespace
 
   TEST_CASE("test completion domain of task", "[types][task]")
   {
-    // task is scheduler affine but not inline. Regardless, its completion domain is the
-    // same as the start scheduler's completion domain.
+    // task is scheduler affine but not inline. Regardless, its completion
+    // domain is the same as the start scheduler's completion domain.
     using attrs_t = ex::env_of_t<ex::task<int>>;
     using env_t   = ex::prop<ex::get_start_scheduler_t, ex::parallel_scheduler>;
     using sched_t =

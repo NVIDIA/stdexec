@@ -79,8 +79,10 @@ namespace experimental::execution
         auto *__state = __state_;
         STDEXEC_TRY
         {
-          auto __err_copy = static_cast<_Error &&>(__err);  // make a copy of the error...
-          __state->__cleanup();  // ... because this could potentially invalidate it.
+          // make a copy of the error...
+          auto __err_copy = static_cast<_Error &&>(__err);
+          // ... because this could potentially invalidate it.
+          __state->__cleanup();
           STDEXEC::set_error(std::move(__state->__rcvr_), std::move(__err_copy));
         }
         STDEXEC_CATCH_ALL

@@ -26,24 +26,26 @@
 
 //! Defines template <class _Delegate> exec::__frame_allocator_t
 //!
-//! The intended use for __frame_allocator_t is the dynamic allocation of operation
-//! states and/or coroutine frames. __frame_allocator_t models the Allocator named
-//! requirement in terms of its type parameter, _Delegate.
+//! The intended use for __frame_allocator_t is the dynamic allocation of
+//! operation states and/or coroutine frames. __frame_allocator_t models the
+//! Allocator named requirement in terms of its type parameter, _Delegate.
 //!
 //! _Delegate may be one of:
-//!  - Another allocator, in which case __frame_allocator_t<_Delegate> is just _Delegate
-//!    rebound to std::byte;
-//!  - std::pmr::memory_resource*, in which case __frame_allocator_t<_Delegate> is just
-//!    std::pmr::polymorphic_allocator<std::byte>; or
-//!  - T* for some T that inherits from std::pmr::memor_resource, in which case
-//!    __frame_allocator_t is an allocator that behaves like
-//!    std::pmr::polymorphic_allocator<std::byte>, but knows the concrete type of its
-//!    memory_resource and so therefore may be able to avoid virtual dispatch.
+//! - Another allocator, in which case __frame_allocator_t<_Delegate> is just
+//!   _Delegate rebound to std::byte;
+//! - std::pmr::memory_resource*, in which case __frame_allocator_t<_Delegate>
+//!   is just std::pmr::polymorphic_allocator<std::byte>; or
+//! - T* for some T that inherits from std::pmr::memor_resource, in which case
+//!   __frame_allocator_t is an allocator that behaves like
+//!   std::pmr::polymorphic_allocator<std::byte>, but knows the concrete type of
+//!   its memory_resource and so therefore may be able to avoid virtual
+//!   dispatch.
 //!
-//! Given that __frame_allocator_t<_Delegate> is just an alias to _Delegate when _Delegate
-//! is an allocator type, it's up to that type whether its construct member function does
-//! "uses-allocator construction". When _Delegate is a pointer to a memory_resource,
-//! __frame_allocator_t<_Delegate>::construct does "uses-allocator construction".
+//! Given that __frame_allocator_t<_Delegate> is just an alias to _Delegate when
+//! _Delegate is an allocator type, it's up to that type whether its construct
+//! member function does "uses-allocator construction". When _Delegate is a
+//! pointer to a memory_resource, __frame_allocator_t<_Delegate>::construct does
+//! "uses-allocator construction".
 namespace experimental::execution
 {
   namespace __fa
@@ -55,8 +57,8 @@ namespace experimental::execution
 
     //! Handle the case that _Delegate is an allocator already
     //!
-    //! In this case, __frame_allocator_t<Delegate> is just an alias to _Delegate but
-    //! rebound to std::byte.
+    //! In this case, __frame_allocator_t<Delegate> is just an alias to
+    //! _Delegate but rebound to std::byte.
     template <class _Delegate>
       requires __simple_allocator<_Delegate>
     struct __frame_allocator<_Delegate>
@@ -79,10 +81,11 @@ namespace experimental::execution
     //! Handle the case that _Delegate is a pointer to a type that derives from
     //! std::pmr::memory_resource
     //!
-    //! In this case, __frame_allocator_t<_Delegate> is an allocator that behaves like
-    //! std::pmr::polymorphic_allocator<std::byte> except that it knows the concrete type
-    //! of its memory resource. In other words, allocation and deallocation are delegated
-    //! to the given resource, construct does uses-allocator construction, etc.
+    //! In this case, __frame_allocator_t<_Delegate> is an allocator that
+    //! behaves like std::pmr::polymorphic_allocator<std::byte> except that it
+    //! knows the concrete type of its memory resource. In other words,
+    //! allocation and deallocation are delegated to the given resource,
+    //! construct does uses-allocator construction, etc.
     template <class _Delegate>
       requires __std::derived_from<_Delegate, std::pmr::memory_resource>
     struct __frame_allocator<_Delegate *>
@@ -93,8 +96,8 @@ namespace experimental::execution
         using value_type = _Ty;
         using pointer    = value_type *;
 
-        // polymorphic_allocator's default constructor grabs the default memory resource,
-        // which we can't do because there's no default for _Delegate
+        // polymorphic_allocator's default constructor grabs the default memory
+        // resource, which we can't do because there's no default for _Delegate
 
         /*implicit*/ constexpr type(_Delegate *__resource) noexcept
           : __resource_(__resource)

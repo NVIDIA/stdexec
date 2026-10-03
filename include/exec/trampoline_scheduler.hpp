@@ -296,9 +296,10 @@ namespace experimental::execution
       {
         // pop the head of the list
 #  if STDEXEC_NVHPC()
-        // there appears to be a codegen bug in nvhpc where the optimizer does not see the
-        // assign to __head_ that happens in the std::exchange call below, causing it to
-        // erroneously optimize away the `if (__head_ != nullptr)` check later on.
+        // there appears to be a codegen bug in nvhpc where the optimizer does
+        // not see the assign to __head_ that happens in the std::exchange call
+        // below, causing it to erroneously optimize away the `if (__head_ !=
+        // nullptr)` check later on.
         _Operation* __op = __head_;
         __head_          = __head_->__next_;
 #  else

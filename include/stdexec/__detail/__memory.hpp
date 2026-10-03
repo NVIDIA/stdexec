@@ -75,9 +75,10 @@ namespace STDEXEC
     return std::unique_ptr<_Ty, __deleter_t>(__ptr, __deleter_t{__alloc2});
   }
 
-  /////////////////////////////////////////////////////////////////////////////////////////
-  // __rebind_allocator: Rebinds an allocator to a different type, unless the allocator is
-  // already bound to the correct type, in which case it is returned as-is.
+  //////////////////////////////////////////////////////////////////////////////
+  // __rebind_allocator: Rebinds an allocator to a different type, unless the
+  // allocator is already bound to the correct type, in which case it is
+  // returned as-is.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ty, class _Alloc>
   [[nodiscard]]
@@ -101,7 +102,7 @@ namespace STDEXEC
   [[nodiscard]]
   constexpr auto __rebind_allocator(_Alloc const &&) noexcept = delete;
 
-  /////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __allocator_aware_forward: https://eel.is/c++draft/exec#snd.expos-49
   template <class _Alloc>
   struct __obj_using_alloc_fn

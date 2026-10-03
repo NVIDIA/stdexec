@@ -34,8 +34,9 @@ import stdexec;
 
 namespace STDEXEC
 {
-  // A wrapper around a sender to be used when an adaptor with a sender transform wants to
-  // query the transformed sender's attributes without actually transforming the sender.
+  // A wrapper around a sender to be used when an adaptor with a sender
+  // transform wants to query the transformed sender's attributes without
+  // actually transforming the sender.
   template <class _Sender>
   struct __sender_proxy
   {
@@ -62,8 +63,8 @@ namespace STDEXEC
   template <class _Sender>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sender_proxy(_Sender&) -> __sender_proxy<_Sender>;
 
-  // A reference wrapper around a multi-shot sender. Useful in adaptors like `repeat_n`
-  // where we want to repeatedly connect to the same sender.
+  // A reference wrapper around a multi-shot sender. Useful in adaptors like
+  // `repeat_n` where we want to repeatedly connect to the same sender.
   template <class _Sender>
   struct __sender_ref
   {

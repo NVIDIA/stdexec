@@ -213,7 +213,8 @@ namespace STDEXEC
   STDEXEC_PRAGMA_PUSH()
   STDEXEC_PRAGMA_IGNORE_GNU("-Wold-style-cast")
 
-  // A derived-to-base cast that works even when the base is not accessible from derived.
+  // A derived-to-base cast that works even when the base is not accessible from
+  // derived.
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __c_upcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
@@ -223,7 +224,8 @@ namespace STDEXEC
     return (__copy_cvref_t<_Up&&, _Tp>) static_cast<_Up&&>(u);
   }
 
-  // A base-to-derived cast that works even when the base is not accessible from derived.
+  // A base-to-derived cast that works even when the base is not accessible from
+  // derived.
   template <class _Tp, class _Up>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr auto __c_downcast(_Up&& u) noexcept -> __copy_cvref_t<_Up&&, _Tp>
@@ -278,7 +280,7 @@ namespace STDEXEC
 #    define STDEXEC_DECAY_COPY(...) (true ? (__VA_ARGS__) : STDEXEC::__decay_copy(__VA_ARGS__))
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __unconst
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class T>
@@ -288,7 +290,7 @@ namespace STDEXEC
     return const_cast<T&>(t);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // _as_const_if
   template <bool Const, class T>
   STDEXEC_ATTRIBUTE(nodiscard, always_inline)
@@ -300,7 +302,7 @@ namespace STDEXEC
       return t;
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __polymorphic_downcast
   template <class _ResultPtr, class _CvInterface>
   [[nodiscard]]
@@ -332,7 +334,7 @@ namespace STDEXEC
 
   namespace __std
   {
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // start_lifetime_as
 #  if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 202207L
     using std::start_lifetime_as;
@@ -352,7 +354,7 @@ namespace STDEXEC
     }
 #  endif
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // unreachable
 #  if defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
     STDEXEC_MODULE_EXPORT_AUTHORING
@@ -374,7 +376,9 @@ namespace STDEXEC
     std::fflush(stdout);
   }
 
-  template <class...>  // To avoid gcc error about va_list not being usable in a constexpr function
+  // A template to avoid gcc error about va_list not being usable in a constexpr
+  // function:
+  template <class...>
   inline void __debug_printf(char const * __fmt, ...) noexcept
   {
     va_list __args;
@@ -389,8 +393,9 @@ namespace STDEXEC
   {
     STDEXEC_IF_CONSTEVAL
     {
-      // The following `if constexpr` is needed to keep compilers from complaining that
-      // neither branch of the `if consteval` (above) is a constant expression.
+      // The following `if constexpr` is needed to keep compilers from
+      // complaining that neither branch of the `if consteval` (above) is a
+      // constant expression.
       if constexpr (!__mnever<_Return>)
       {
         __std::unreachable();

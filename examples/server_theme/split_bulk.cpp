@@ -146,8 +146,8 @@ auto handle_edge_detection_request(http_request const & req) -> ex::sender auto
   // ex::sender auto multi_shot_img = exec::split(in_img_sender);
   auto& multi_shot_img = in_img_sender;
 
-  // Apply the three methods of edge detection on the same input image, in parallel.
-  // Then, join the results and generate the HTTP response
+  // Apply the three methods of edge detection on the same input image, in
+  // parallel. Then, join the results and generate the HTTP response
   return ex::when_all(multi_shot_img | ex::then(apply_canny),
                       multi_shot_img | ex::then(apply_sobel),
                       multi_shot_img | ex::then(apply_prewitt))

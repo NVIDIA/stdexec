@@ -37,7 +37,7 @@ STDEXEC_PRAGMA_IGNORE_EDG(type_qualifiers_ignored_on_reference)
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd.transform]
   namespace __detail
   {
@@ -167,13 +167,13 @@ namespace STDEXEC
 
   inline constexpr transform_sender_t transform_sender{};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   template <class _Tag, class _Domain, class _Sender, class... _Args>
   concept __has_implementation_for =
     __detail::__has_apply_sender<_Domain, _Tag, _Sender, _Args...>
     || __detail::__has_apply_sender<default_domain, _Tag, _Sender, _Args...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.snd.apply]
   STDEXEC_MODULE_EXPORT inline constexpr struct apply_sender_t
   {
@@ -201,7 +201,7 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT template <class _Domain, class _Tag, class _Sender, class... _Args>
   using apply_sender_result_t = __call_result_t<apply_sender_t, _Domain, _Tag, _Sender, _Args...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender, class _Scheduler, class _Env, class _Tag = set_value_t>
   concept __completes_on =

@@ -62,7 +62,8 @@ namespace
     auto              snd = ex::transfer_just(sched, 13);
     auto              op  = ex::connect(snd, expect_value_receiver_ex{recv_value});
     ex::start(op);
-    // Up until this point, the scheduler didn't start any task; no effect expected
+    // Up until this point, the scheduler didn't start any task; no effect
+    // expected
     CHECK(recv_value == 0);
 
     // Tell the scheduler to start executing one task
@@ -194,7 +195,8 @@ namespace
             == sched3);
   }
 
-  // Modify the value when we invoke this custom defined transfer_just implementation
+  // Modify the value when we invoke this custom defined transfer_just
+  // implementation
   struct transfer_just_test_domain
   {
     template <exec::sender_for<ex::__transfer_just_t> Sender>

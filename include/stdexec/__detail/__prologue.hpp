@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-// NO include guard or `#pragma once` here (this file is included multiple times)
+// NO include guard or `#pragma once` here (this file is included multiple
+// times)
 
 #if defined(STDEXEC_PROLOGUE_INCLUDED)
 #  error                                                                                           \

@@ -53,7 +53,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // STDEXEC::as_awaitable [exec.as.awaitable]
 
   namespace __as_awaitable
@@ -124,16 +124,18 @@ namespace STDEXEC
 
       constexpr auto await_resume() -> _Value
       {
-        // If the operation completed with set_stopped (as denoted by the result variant
-        // being valueless), we should not be resuming this coroutine at all.
+        // If the operation completed with set_stopped (as denoted by the result
+        // variant being valueless), we should not be resuming this coroutine at
+        // all.
         STDEXEC_ASSERT(!__result_.__is_valueless());
         if (__result_.index() == 1)
         {
-          // The operation completed with set_error, so we need to rethrow the exception.
+          // The operation completed with set_error, so we need to rethrow the
+          // exception.
           std::rethrow_exception(std::move(__var::__get<1>(__result_)));
         }
-        // The operation completed with set_value, so we can just return the value, which
-        // may be void.
+        // The operation completed with set_value, so we can just return the
+        // value, which may be void.
         using __reference_t = std::add_rvalue_reference_t<_Value>;
         return static_cast<__reference_t>(__var::__get<0>(__result_));
       }
@@ -141,9 +143,9 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto __get_continuation() const noexcept -> __std::coroutine_handle<>
       {
-        // If the operation was stopped (__result_ is valueless), we should use the
-        // unhandled_stopped() continuation. Otherwise, should resume the __continuation_
-        // as normal.
+        // If the operation was stopped (__result_ is valueless), we should use
+        // the unhandled_stopped() continuation. Otherwise, should resume the
+        // __continuation_ as normal.
         if (__result_.__is_valueless())
         {
           return STDEXEC::__coroutine_unhandled_stopped(__continuation_);
@@ -158,28 +160,30 @@ namespace STDEXEC
       __expected_t<_Value> __result_{__no_init};
     };
 
-    // When the sender is not statically known to complete inline, we need to use atomic
-    // state to guard against too many inline completions causing a stack overflow.
+    // When the sender is not statically known to complete inline, we need to
+    // use atomic state to guard against too many inline completions causing a
+    // stack overflow.
     template <class _Value>
     struct __sender_awaiter_base<_Value, false> : __sender_awaiter_base<_Value, true>
     {
-      // This is used to coordinate between await_suspend (T1) and the receiver (T2).
-      // It can hold three different values:
+      // This is used to coordinate between await_suspend (T1) and the receiver
+      // (T2). It can hold three different values:
       //
-      //  T1_id  - await_suspend stored the awaiting thread's id before calling start().
-      //           The receiver has not completed yet.
+      //  T1_id  - await_suspend stored the awaiting thread's id before calling
+      //           start(). The receiver has not completed yet.
       //
       //  {}     - The empty/cleared state. Two cases depending on who wrote it:
-      //           (a) The receiver completed on the same thread: await_suspend should
-      //               resume the continuation directly.
-      //           (b) await_suspend wrote it after start() returned (its last frame
-      //               write): a cross-thread receiver that is spinning will observe
-      //               this and proceed to call resume().
+
+      //           (a) The receiver completed on the same thread: await_suspend
+      //               should resume the continuation directly.
+      //           (b) await_suspend wrote it after start() returned (its last
+      //               frame write): a cross-thread receiver that is spinning
+      //               will observe this and proceed to call resume().
       //
-      //  T2_id  - A cross-thread receiver (T2 != T1) wrote its own id here before
-      //           await_suspend did its exchange. T2 is spinning on load() until it
-      //           observes {} (written by T1's exchange). No notify_one is used;
-      //           the value change itself is the signal.
+      //  T2_id  - A cross-thread receiver (T2 != T1) wrote its own id here
+      //           before await_suspend did its exchange. T2 is spinning on
+      //           load() until it observes {} (written by T1's exchange). No
+      //           notify_one is used; the value change itself is the signal.
       __std::atomic<std::thread::id> __thread_id_{std::this_thread::get_id()};
     };
 
@@ -228,8 +232,8 @@ namespace STDEXEC
 
       void set_stopped() noexcept
       {
-        // no-op: the __result_ variant will remain valueless, which signals that the
-        // operation was stopped.
+        // no-op: the __result_ variant will remain valueless, which signals
+        // that the operation was stopped.
       }
 
       // Forward get_env query to the coroutine promise
@@ -242,7 +246,8 @@ namespace STDEXEC
       }
     };
 
-    // The receiver type used to connect to senders that could complete asynchronously.
+    // The receiver type used to connect to senders that could complete
+    // asynchronously.
     template <class _Promise, class _Value>
     struct __async_receiver : __sync_receiver<_Promise, _Value>
     {
@@ -280,21 +285,24 @@ namespace STDEXEC
           __std::memory_order_relaxed);
         if (__current_id == __awaiting_id)
         {
-          // Completed on the same thread as the awaiter. Clear __thread_id_ so that
-          // await_suspend sees {} after start() returns and resumes the continuation.
-          // This cannot race with await_suspend because await_suspend is still on the same thread.
+          // Completed on the same thread as the awaiter. Clear __thread_id_ so
+          // that await_suspend sees {} after start() returns and resumes the
+          // continuation. This cannot race with await_suspend because
+          // await_suspend is still on the same thread.
           __awaiter.__thread_id_.store(std::thread::id{}, __std::memory_order_relaxed);
           return;
         }
-        // Completing on a different thread. Write our id so await_suspend knows we already ran.
+        // Completing on a different thread. Write our id so await_suspend knows
+        // we already ran.
         std::thread::id const __old_id =
           __awaiter.__thread_id_.exchange(__current_id, __std::memory_order_acquire);
         if (__old_id != std::thread::id{})
         {
-          // await_suspend is between start() returning and its own exchange({}).
-          // That exchange is T1's last write to the frame. Spin until we observe
-          // it so that we don't call resume() while T1 is still touching the frame.
-          // The window is just a few instructions, so a yield-spin is fine.
+          // await_suspend is between start() returning and its own
+          // exchange({}). That exchange is T1's last write to the frame. Spin
+          // until we observe it so that we don't call resume() while T1 is
+          // still touching the frame. The window is just a few instructions, so
+          // a yield-spin is fine.
           while (__awaiter.__thread_id_.load(__std::memory_order_acquire) != std::thread::id{})
           {
             STDEXEC::__spin_loop_pause();
@@ -311,9 +319,9 @@ namespace STDEXEC
     template <class _Sender, class _Promise>
     using __async_receiver_t = __async_receiver<_Promise, __value_t<_Sender, _Promise>>;
 
-    //////////////////////////////////////////////////////////////////////////////////////
-    // __sender_awaiter: awaitable type returned by as_awaitable when given a sender
-    // that does not have an as_awaitable member function
+    ////////////////////////////////////////////////////////////////////////////
+    // __sender_awaiter: awaitable type returned by as_awaitable when given a
+    // sender that does not have an as_awaitable member function
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
     struct __sender_awaiter : __sender_awaiter_base<__value_t<_Sender, _Promise>, false>
     {
@@ -336,12 +344,14 @@ namespace STDEXEC
         STDEXEC::start(__opstate_);
 
         // We need to do two things:
-        // 1) Check if we already completed inline (receiver wrote {} to __thread_id_)
-        // In that case, the receiver has already returned and we can just resume the continuation
-        // 2) Otherwise, we need signal to the (potentially spin-waiting) receiver that we are
-        // finished and won't access the frame anymore.
-        // We do this with an exchange({}), except on buggy MSVC versions, where we have to delay
-        // the signaling until we exited this function.
+        // 1) Check if we already completed inline (receiver wrote {} to
+        //    __thread_id_) In that case, the receiver has already returned and
+        //    we can just resume the continuation
+        // 2) Otherwise, we need signal to the (potentially spin-waiting)
+        //    receiver that we are finished and won't access the frame anymore.
+        //    We do this with an exchange({}), except on buggy MSVC versions,
+        //    where we have to delay the signaling until we exited this
+        //    function.
 #    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
         bool const __done =  //
           this->__thread_id_.exchange(std::thread::id{}, __std::memory_order_release)
@@ -360,8 +370,8 @@ namespace STDEXEC
       connect_result_t<_Sender, __receiver_t> __opstate_;
     };
 
-    // When the sender is known to complete inline, we can connect and start the operation
-    // in await_suspend.
+    // When the sender is known to complete inline, we can connect and start the
+    // operation in await_suspend.
     template <class _Promise, sender_in<env_of_t<_Promise&>> _Sender>
       requires __completes_inline<_Sender, env_of_t<_Promise&>>
     struct __sender_awaiter<_Promise, _Sender>
@@ -382,8 +392,8 @@ namespace STDEXEC
         STDEXEC_ASSERT(this->__continuation_.handle() == __continuation);
         {
           auto __opstate = STDEXEC::connect(static_cast<_Sender&&>(__sndr_), __receiver_t(*this));
-          // The following call to start will complete synchronously, writing its result
-          // into the __result_ variant.
+          // The following call to start will complete synchronously, writing
+          // its result into the __result_ variant.
           STDEXEC::start(__opstate);
         }
 
@@ -455,9 +465,9 @@ namespace STDEXEC
             STDEXEC::transform_sender(static_cast<_Tp&&>(__t), STDEXEC::get_env(__promise))),
           __std::coroutine_handle<_Promise>::from_promise(__promise)});
 
-    // NOT TO SPEC: It's a sender, but it isn't a sender in the current promise's
-    // environment, so we can return the error type that results from trying to
-    // compute the sender's value type:
+    // NOT TO SPEC: It's a sender, but it isn't a sender in the current
+    // promise's environment, so we can return the error type that results from
+    // trying to compute the sender's value type:
     inline constexpr auto __with_incompatible_sender =  //
       []<class _Promise, __incompatible_sender<_Promise> _Tp>(_Tp&&, _Promise&)
     {

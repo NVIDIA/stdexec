@@ -41,7 +41,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // completion_signatures
   namespace __cmplsigs
   {
@@ -62,10 +62,11 @@ namespace STDEXEC
 
   namespace __cmplsigs
   {
-    // The following code is used to normalize completion signatures. "Normalization" means that
-    // that rvalue-references are stripped from the types in the completion signatures. For example,
-    // the completion signature `set_value_t(int &&)` would be normalized to `set_value_t(int)`,
-    // but `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
+    // The following code is used to normalize completion signatures.
+    // "Normalization" means that that rvalue-references are stripped from the
+    // types in the completion signatures. For example, the completion signature
+    // `set_value_t(int &&)` would be normalized to `set_value_t(int)`, but
+    // `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
     template <class _Tag, class... _Args>
     constexpr auto __normalize_sig_impl(_Args&&...) -> _Tag (*)(_Args...);
 
@@ -97,9 +98,9 @@ namespace STDEXEC
   namespace __cmplsigs
   {
     // __partitions is a cache of completion signatures for fast access. The
-    // completion_signatures<Sigs...>::__partitioned nested struct contains an alias to a
-    // __partitions specialization. If the cache is never accessed, it is never
-    // instantiated.
+    // completion_signatures<Sigs...>::__partitioned nested struct contains an
+    // alias to a __partitions specialization. If the cache is never accessed,
+    // it is never instantiated.
     template <class _ValueTuplesList = __mlist<>,
               class _ErrorsList      = __mlist<>,
               class _StoppedList     = __mlist<>>
@@ -184,7 +185,7 @@ namespace STDEXEC
     using __partitions_of_t = _Completions::__partitioned::__t;
   }  // namespace __cmplsigs
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // completion signatures type traits
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs,
@@ -213,7 +214,7 @@ namespace STDEXEC
   STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
   STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // concat_completion_signatures
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Sigs>
@@ -236,8 +237,8 @@ namespace STDEXEC
       [[nodiscard]]
       consteval auto operator()(Errors...) const noexcept
       {
-        // NB: this uses an overloaded comma operator on the _ERROR_ type to find an error
-        // in a pack of types.
+        // NB: this uses an overloaded comma operator on the _ERROR_ type to
+        // find an error in a pack of types.
         using __error_t = decltype(+(Errors{}, ...));
         static_assert(__merror<__error_t>);
         return STDEXEC::__throw_compile_time_error(__error_t());
@@ -261,14 +262,14 @@ namespace STDEXEC
 
   struct _IN_COMPLETION_SIGNATURES_APPLY_;
 
-  //! @brief Represents a set of completion signatures for senders in the CUDA C++ execution
-  //! model.
+  //! @brief Represents a set of completion signatures for senders in the CUDA
+  //! C++ execution model.
   //!
-  //! The `completion_signatures` class template is used to describe the possible ways a
-  //! sender may complete. Each signature is a function type of the form
-  //! `set_value_t(Ts...)`, `set_error_t(E)`, or `set_stopped_t()`. This type provides
-  //! compile-time utilities for querying, combining, and transforming sets of completion
-  //! signatures.
+  //! The `completion_signatures` class template is used to describe the
+  //! possible ways a sender may complete. Each signature is a function type of
+  //! the form `set_value_t(Ts...)`, `set_error_t(E)`, or `set_stopped_t()`.
+  //! This type provides compile-time utilities for querying, combining, and
+  //! transforming sets of completion signatures.
   //!
   //! @tparam _Sigs... The completion signature types to include in this set.
   //!
@@ -276,7 +277,9 @@ namespace STDEXEC
   //!
   //! Example usage:
   //! @code
-  //! constexpr auto sigs = completion_signatures<set_value_t(int), set_error_t(float), set_stopped_t()>{};
+  //! constexpr auto sigs = completion_signatures<set_value_t(int),
+  //!                                             set_error_t(float),
+  //!                                             set_stopped_t()>{};
   //! static_assert(sigs.size() == 3);
   //! static_assert(sigs.contains<set_value_t(int)>());
   //! @endcode
@@ -286,19 +289,20 @@ namespace STDEXEC
     static_assert((__completion_signature<_Sigs> && ...),
                   "All types in completion_signatures must be valid completion signatures.");
 
-    //! @brief Partitioned view of the completion signatures for efficient querying.
+    //! @brief Partitioned view of the completion signatures for efficient
+    //! querying.
     struct __partitioned
     {
-      // This is defined in a nested struct to avoid computing these types if they are not
-      // needed.
+      // This is defined in a nested struct to avoid computing these types if
+      // they are not needed.
       using __t = __cmplsigs::__partition_completion_signatures_t<_Sigs...>;
     };
 
     //! @brief Type set view of the completion signatures for set operations.
     struct __type_set
     {
-      // This is defined in a nested struct to avoid computing this type if it is not
-      // needed.
+      // This is defined in a nested struct to avoid computing this type if it
+      // is not needed.
       using __t = __mmake_set<_Sigs...>;
     };
 
@@ -361,12 +365,12 @@ namespace STDEXEC
       }
     }
 
-    //! @brief Filters the set using a predicate, returning a new set with only matching
-    //! signatures.
-    //! @tparam _Fn The predicate type. Must be empty and trivially constructible. Must
-    //! satisfy `(std::predicate<_Fn, _Sigs*> &&...)`.
-    //! @return A new completion_signatures set with only the signatures for which the
-    //! predicate returns true.
+    //! @brief Filters the set using a predicate, returning a new set with only
+    //! matching signatures.
+    //! @tparam _Fn The predicate type. Must be empty and trivially
+    //! constructible. Must satisfy `(std::predicate<_Fn, _Sigs*> &&...)`.
+    //! @return A new completion_signatures set with only the signatures for
+    //! which the predicate returns true.
     template <class _Fn>
     [[nodiscard]]
     static consteval auto __filter(_Fn)
@@ -377,9 +381,10 @@ namespace STDEXEC
     }
 
     //! @brief Selects all signatures with the given tag.
-    //! @tparam _Tag The tag to select (e.g., set_value, set_error, set_stopped).
-    //! @return A new completion_signatures set containing only signatures with the given
-    //! tag.
+    //! @tparam _Tag The tag to select (e.g., set_value, set_error,
+    //! set_stopped).
+    //! @return A new completion_signatures set containing only signatures with
+    //! the given tag.
     template <__completion_tag _Tag>
     [[nodiscard]]
     static consteval auto __select(_Tag) noexcept
@@ -495,7 +500,7 @@ namespace STDEXEC
     return STDEXEC::__throw_compile_time_error<_What...>();
   }
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __gather_completions_t
   namespace __detail
   {
@@ -546,12 +551,12 @@ namespace STDEXEC
       __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
   }  // namespace __detail
 
-  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used to check
-  // that an expression's type is not an __mexception type.
+  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used
+  // to check that an expression's type is not an __mexception type.
 
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
-#    define STDEXEC_IF_OK(_ID)                        \
+#    define STDEXEC_IF_OK(_ID)                      \
     if constexpr (STDEXEC::__merror<decltype(_ID)>) \
     {                                               \
       return _ID;                                   \

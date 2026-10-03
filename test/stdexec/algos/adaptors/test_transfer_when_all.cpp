@@ -28,11 +28,13 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4996)  // 'foo': was declared deprecated
 
 namespace ex = STDEXEC;
 
-// For testing `transfer_when_all` we assume that, the main implementation is based on `transfer`
-// and `when_all`. As both of these are tested independently, we provide fewer tests here.
+// For testing `transfer_when_all` we assume that, the main implementation is
+// based on `transfer` and `when_all`. As both of these are tested
+// independently, we provide fewer tests here.
 
-// For testing `transfer_when_all_with_variant`, we just check a couple of examples, check
-// customization, and we assume it's implemented in terms of `transfer_when_all`.
+// For testing `transfer_when_all_with_variant`, we just check a couple of
+// examples, check customization, and we assume it's implemented in terms of
+// `transfer_when_all`.
 
 namespace
 {
