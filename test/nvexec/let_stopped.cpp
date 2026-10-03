@@ -38,7 +38,8 @@ namespace
                    }
 
                    return ex::just();
-                 });
+                 })
+             | exec::completes_on(stream_ctx.get_scheduler());
     STDEXEC::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
@@ -52,7 +53,8 @@ namespace
     flags_storage_t<2> flags_storage{};
     auto               flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler())
+    auto snd = ex::just_stopped()                            //
+             | ex::continues_on(stream_ctx.get_scheduler())  //
              | ex::let_stopped(
                  [flags]
                  {
@@ -63,6 +65,7 @@ namespace
 
                    return ex::just();
                  })
+             | exec::completes_on(stream_ctx.get_scheduler())
              | a_sender(
                  [flags]
                  {
@@ -83,7 +86,9 @@ namespace
     flags_storage_t          flags_storage{};
     auto                     flags = flags_storage.get();
 
-    auto snd = ex::just_stopped() | ex::continues_on(sch) | a_sender([]() noexcept {})
+    auto snd = ex::just_stopped()          //
+             | ex::continues_on(sch)       //
+             | a_sender([]() noexcept {})  //
              | ex::let_stopped(
                  [=]
                  {
@@ -93,7 +98,8 @@ namespace
                    }
 
                    return ex::schedule(sch);
-                 });
+                 })
+             | exec::completes_on(sch);
 
     STDEXEC::sync_wait(std::move(snd));
 
