@@ -135,8 +135,8 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("tbb_thread_pool exceptions", "[tbb_thread_pool]")
   {
-    // I know tbb::task_groups do cancellation with exceptions, which leaves them in a not-restartable
-    // state. We'd better have it act normally here.
+    // I know tbb::task_groups do cancellation with exceptions, which leaves
+    // them in a not-restartable state. We'd better have it act normally here.
     using namespace STDEXEC;
 
     exec::tbb::tbb_thread_pool tbb_pool;

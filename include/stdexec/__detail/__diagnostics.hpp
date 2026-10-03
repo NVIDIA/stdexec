@@ -250,8 +250,8 @@ namespace STDEXEC
     }
   };
 
-  // A specialization of _ERROR_ to be used to report dependent sender. It inherits
-  // from dependent_sender_error.
+  // A specialization of _ERROR_ to be used to report dependent sender. It
+  // inherits from dependent_sender_error.
   template <class... _What>
   struct _ERROR_<dependent_sender_error, _What...> : dependent_sender_error
   {
@@ -296,8 +296,8 @@ namespace STDEXEC
 
   static_assert(__structural<_ERROR_<dependent_sender_error>>);
 
-  // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure that
-  // it will get propagated correctly through various metafunctions.
+  // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure
+  // that it will get propagated correctly through various metafunctions.
   template <class _Sender>
   using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_PRETTY_SENDER_<_Sender>>;
 

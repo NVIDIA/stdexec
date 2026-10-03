@@ -57,10 +57,11 @@ namespace STDEXEC
     template <class... _Senders>
     struct __sndr;
 
-    //////////////////////////////////////////////////////////////////////////////////////
-    // Attributes for __sequence. This is a bit more complicated than the attributes for
-    // other algorithms because we need to be able to query the completion scheduler (for
-    // example) of the second sender from the context of the first sender's completions.
+    ////////////////////////////////////////////////////////////////////////////
+    // Attributes for __sequence. This is a bit more complicated than the
+    // attributes for other algorithms because we need to be able to query the
+    // completion scheduler (for example) of the second sender from the context
+    // of the first sender's completions.
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class... _CvSenders>
     struct __attrs;
@@ -111,8 +112,8 @@ namespace STDEXEC
                                                               __mk_env2(__env)...);
       }
 
-      // We only know the error or stopped completion scheduler if exactly one of the two
-      // senders knows its error/stopped completion scheduler.
+      // We only know the error or stopped completion scheduler if exactly one
+      // of the two senders knows its error/stopped completion scheduler.
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
         requires(__has_completion_scheduler_for<_Tag, _Sender1, __fwd_env_t<_Env>...>
                  != __has_completion_scheduler_for<_Tag, _Sender2, __env2_t<_Env>...>)
@@ -131,8 +132,8 @@ namespace STDEXEC
         }
       }
 
-      // The value completion domain is the domain of the second sender, started from the
-      // completing context of the first sender.
+      // The value completion domain is the domain of the second sender, started
+      // from the completing context of the first sender.
       template <class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<set_value_t>, _Env &&...) const noexcept
@@ -142,8 +143,8 @@ namespace STDEXEC
         return __domain_t();
       }
 
-      // The set_error/set_stopped completion domains are the common domain of the two
-      // senders.
+      // The set_error/set_stopped completion domains are the common domain of
+      // the two senders.
       template <__one_of<set_error_t, set_stopped_t> _Tag, class... _Env>
       [[nodiscard]]
       constexpr auto query(get_completion_domain_t<_Tag>, _Env &&...) const noexcept
@@ -165,8 +166,8 @@ namespace STDEXEC
           STDEXEC::__get_completion_behavior<_Tag, _Sender2, __env2_t<_Env>...>());
       }
 
-      // For queries that are not related to completion schedulers, domains, or behaviors,
-      // we can just check _CvSender2 and then _CvSender1.
+      // For queries that are not related to completion schedulers, domains, or
+      // behaviors, we can just check _CvSender2 and then _CvSender1.
       template <__forwarding_query _Query, class... _Args>
         requires(!__completion_query<_Query>) && __queryable_with<__joined_t, _Query, _Args...>
       [[nodiscard]]
@@ -186,7 +187,7 @@ namespace STDEXEC
     struct __attrs<_Child1, _Child2, _Rest...> : __attrs<__sndr<_Child1, _Child2>, _Rest...>
     {};
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __state: the part of the opstate that is referenced by __rcvr2.
     template <class _Receiver, class _Env2>
     struct __state
@@ -203,7 +204,7 @@ namespace STDEXEC
       _Env2 const __env_;
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __rcvr2: the receiver that is connected to the successor sender.
     template <class _Receiver, class _Env2>
     struct __rcvr2
@@ -344,16 +345,17 @@ namespace STDEXEC
       template <class... _Args>
       constexpr auto operator()() const noexcept
       {
-        // This fold over the comma operator returns completion_signatures{} if _Args is
-        // empty, and otherwise results in a compile-time error. The predecessor sender
-        // should be a sender of void, so it's an error if _Args is not empty.
+        // This fold over the comma operator returns completion_signatures{} if
+        // _Args is empty, and otherwise results in a compile-time error. The
+        // predecessor sender should be a sender of void, so it's an error if
+        // _Args is not empty.
         return (completion_signatures{},
                 ...,
                 STDEXEC::__throw_compile_time_error(__error_t<_Args>()));
       }
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Default implementation of the __sequence sender algorithm.
     template <class _Sender1, class _Sender2>
     struct __sndr<_Sender1, _Sender2>
@@ -384,9 +386,9 @@ namespace STDEXEC
         }
         else if constexpr (!__sends<set_value_t, __cv_sender1_t, __fwd_env_t<_Env>...>)
         {
-          // If the first sender has no set_value completions, then the second sender will
-          // never be started, so just return the (error and stopped) completions of the
-          // first sender.
+          // If the first sender has no set_value completions, then the second
+          // sender will never be started, so just return the (error and
+          // stopped) completions of the first sender.
           return STDEXEC::get_completion_signatures<__cv_sender1_t, __fwd_env_t<_Env>...>();
         }
         else
@@ -499,8 +501,8 @@ namespace STDEXEC
   struct __sexpr_impl<__sequence_t> : __seq::__impls
   {};
 
-  // __seq::__sndr is the result of a sender transform. It should not be transformed
-  // further.
+  // __seq::__sndr is the result of a sender transform. It should not be
+  // transformed further.
   template <class... _Senders>
   inline constexpr auto __structured_binding_size_v<__seq::__sndr<_Senders...>> = -1;
 

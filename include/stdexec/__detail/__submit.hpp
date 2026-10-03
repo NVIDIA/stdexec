@@ -47,14 +47,16 @@ namespace STDEXEC
       __decay_t<_Sender>::submit(__sndr(), __rcvr());
     };
 
-    // submit is a combination of connect and start. it is customizable for times when it
-    // can be done more efficiently than by calling connect and start directly.
+    // submit is a combination of connect and start. it is customizable for
+    // times when it can be done more efficiently than by calling connect and
+    // start directly.
     struct __submit_t
     {
       struct __void
       {};
 
-      // This implementation is used if the sender has a non-static submit member function.
+      // This implementation is used if the sender has a non-static submit
+      // member function.
       template <class _Sender, class _Receiver, class _Default = __void>
         requires sender_to<_Sender, _Receiver> && __submit::__has_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(host, device, always_inline)
@@ -75,7 +77,8 @@ namespace STDEXEC
         }
       }
 
-      // This implementation is used if the sender has a static submit member function.
+      // This implementation is used if the sender has a static submit member
+      // function.
       template <class _Sender, class _Receiver, class _Default = __void>
         requires sender_to<_Sender, _Receiver> && __submit::__has_static_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(host, device, always_inline)

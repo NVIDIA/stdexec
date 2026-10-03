@@ -283,7 +283,8 @@ namespace
               optional_set_error_sig>;
 
     // will transform the original "exception_ptr" into optional<exception_ptr>
-    // then will add the other "error_code" as specified in the additional signatures
+    // then will add the other "error_code" as specified in the additional
+    // signatures
     expect_err_types<cs, error_code, optional<exception_ptr>>();
   }
 

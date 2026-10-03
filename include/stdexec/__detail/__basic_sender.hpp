@@ -49,7 +49,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
 
 #  if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
@@ -351,10 +351,10 @@ namespace STDEXEC
   namespace
   {
 #  endif
-    //! A struct template to aid in creating senders. This struct resembles P2300's
-    //! [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24), but is not an exact
-    //! implementation. Note: The struct named `__basic_sender` is just a dummy type and
-    //! is also not _`basic-sender`_.
+    //! A struct template to aid in creating senders. This struct resembles
+    //! P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
+    //! but is not an exact implementation. Note: The struct named
+    //! `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
     template <auto _DescriptorFn>
     struct __sexpr : __minvoke<decltype(_DescriptorFn()), __qq<__tuple>>
     {
@@ -450,7 +450,7 @@ namespace STDEXEC
   }  // anonymous namespace
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __make_sexpr
   //! A tagged function-object
   //! Takes data and children and
@@ -474,8 +474,8 @@ namespace STDEXEC
   template <class _Tag>
   inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
 
-  // The __demangle_t utility defined below is used to pretty-print the type names of
-  // senders in compiler diagnostics.
+  // The __demangle_t utility defined below is used to pretty-print the type
+  // names of senders in compiler diagnostics.
   namespace __detail
   {
     template <class _Tag, class _Data, class... _Child>

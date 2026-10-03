@@ -152,23 +152,24 @@ namespace experimental::execution::bwos
 
       auto reduce_round() noexcept -> void;
 
-      // Block-level synchronization state (each on separate cache line to avoid false sharing)
+      // Block-level synchronization state (each on separate cache line to avoid
+      // false sharing)
 
-      // Combined round (upper 32 bits) and index (lower 32 bits) for owner-side access.
-      // Swapped with steal_tail_ during takeover()/grant() operations.
+      // Combined round (upper 32 bits) and index (lower 32 bits) for owner-side
+      // access. Swapped with steal_tail_ during takeover()/grant() operations.
       alignas(hardware_destructive_interference_size) STDEXEC::__std::atomic<std::uint64_t> head_{};
 
-      // Current tail position for owner push/pop operations (plain index, no round).
-      // Modified only by owner thread.
+      // Current tail position for owner push/pop operations (plain index, no
+      // round). Modified only by owner thread.
       alignas(hardware_destructive_interference_size) STDEXEC::__std::atomic<std::uint64_t> tail_{};
 
-      // Count of completed steal operations. Used to synchronize with thieves during reclaim().
-      // Incremented by thieves after successful steal.
+      // Count of completed steal operations. Used to synchronize with thieves
+      // during reclaim(). Incremented by thieves after successful steal.
       alignas(hardware_destructive_interference_size)
         STDEXEC::__std::atomic<std::uint64_t> steal_count_{};
-      // Combined round (upper 32 bits) and steal position (lower 32 bits) for thief access.
-      // When lower bits == block_size(), the block is exhausted for stealing.
-      // Swapped with head_ during takeover()/grant() operations.
+      // Combined round (upper 32 bits) and steal position (lower 32 bits) for
+      // thief access. When lower bits == block_size(), the block is exhausted
+      // for stealing. Swapped with head_ during takeover()/grant() operations.
       alignas(
         hardware_destructive_interference_size) STDEXEC::__std::atomic<std::uint64_t> steal_tail_{};
 
@@ -182,25 +183,27 @@ namespace experimental::execution::bwos
     auto increase_block_counter(std::size_t counter) const noexcept -> std::size_t;
     auto decrease_block_counter(std::size_t counter) const noexcept -> std::size_t;
 
-    // Block counter (round in upper 32 bits, index in lower bits) for the most recent
-    // block owned by push/pop operations. Modified only by the owner thread.
+    // Block counter (round in upper 32 bits, index in lower bits) for the most
+    // recent block owned by push/pop operations. Modified only by the owner
+    // thread.
     alignas(hardware_destructive_interference_size) STDEXEC::__std::atomic<std::size_t> last_block_{
       0};
 
-    // Block counter for the oldest block available for stealing.
-    // Modified only by the owner thread when it advances to a new block and needs to
-    // reclaim the block at start_block_ position.
+    // Block counter for the oldest block available for stealing. Modified only
+    // by the owner thread when it advances to a new block and needs to reclaim
+    // the block at start_block_ position.
     alignas(
       hardware_destructive_interference_size) STDEXEC::__std::atomic<std::size_t> start_block_{0};
 
-    // Circular array of blocks. Size is always a power of 2 for efficient masking.
+    // Circular array of blocks. Size is always a power of 2 for efficient
+    // masking.
     std::vector<block_type, allocator_of_t<block_type>> blocks_{};
 
     // Bitmask (blocks_.size() - 1) for extracting block index from counters.
     std::size_t mask_{};
   };
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Implementation of lifo_queue member methods
 
   template <class Tp, class Allocator>
@@ -347,7 +350,8 @@ namespace experimental::execution::bwos
       // Cannot move backward past start_block_ - queue is empty
       return false;
     }
-    // Move to predecessor block, properly decrementing round if wrapping backward
+    // Move to predecessor block, properly decrementing round if wrapping
+    // backward
     std::size_t predecessor       = decrease_block_counter(owner);
     std::size_t predecessor_index = predecessor & mask_;
     block_type& previous_block    = blocks_[predecessor_index];
@@ -400,7 +404,7 @@ namespace experimental::execution::bwos
     return thief < last_block_.load(STDEXEC::__std::memory_order_relaxed);
   }
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Implementation of lifo_queue::block_type member methods
 
   template <class Tp, class Allocator>
@@ -537,9 +541,10 @@ namespace experimental::execution::bwos
     if (sidx == block_size())
     {
       // Block is marked as exhausted for stealing (steal_tail index == block_size)
+      //
       // Check round to distinguish between:
-      //   - done: This is the correct generation (thief_round matches)
-      //   - empty: This is a stale/future generation (round mismatch)
+      // - done: This is the correct generation (thief_round matches)
+      // - empty: This is a stale/future generation (round mismatch)
       result.status = thief_round == round ? lifo_queue_error_code::done
                                            : lifo_queue_error_code::empty;
       return result;
@@ -570,8 +575,9 @@ namespace experimental::execution::bwos
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::block_type::reduce_round() noexcept -> void
   {
-    // Decrement the round in steal_tail_ when moving backward in the block array.
-    // Called by advance_get_index() when the owner retreats to a previous block.
+    // Decrement the round in steal_tail_ when moving backward in the block
+    // array. Called by advance_get_index() when the owner retreats to a
+    // previous block.
     std::uint64_t steal_tail     = steal_tail_.load(STDEXEC::__std::memory_order_relaxed);
     std::uint32_t round          = static_cast<std::uint32_t>(steal_tail >> 32);
     std::uint64_t steal_index    = steal_tail & 0xFFFF'FFFFu;
@@ -594,10 +600,10 @@ namespace experimental::execution::bwos
   auto
   lifo_queue<Tp, Allocator>::block_type::is_writable(std::uint32_t round) const noexcept -> bool
   {
-    // Check if this block can be safely reused for the given round.
-    // The block is writable if steal_tail_ shows it's exhausted (index == block_size)
-    // and the round is from the previous generation (round - 1).
-    // This prevents reusing a block while thieves might still be accessing it.
+    // Check if this block can be safely reused for the given round. The block
+    // is writable if steal_tail_ shows it's exhausted (index == block_size) and
+    // the round is from the previous generation (round - 1). This prevents
+    // reusing a block while thieves might still be accessing it.
     std::uint64_t expanded_old_round = static_cast<std::uint64_t>(round - 1) << 32;
     std::uint64_t writeable_spos     = expanded_old_round | block_size();
     std::uint64_t spos               = steal_tail_.load(STDEXEC::__std::memory_order_relaxed);
@@ -636,13 +642,15 @@ namespace experimental::execution::bwos
   template <class Tp, class Allocator>
   void lifo_queue<Tp, Allocator>::block_type::grant() noexcept
   {
-    // Called when the owner moves forward to a new block.
-    // Makes the current block fully available for stealing by swapping head_ and steal_tail_.
-    // The old head_ becomes steal_tail_ (starting point for thieves).
-    // The old steal_tail_ (at block_size()) becomes head_ (marking end of owner's range).
+    // Called when the owner moves forward to a new block. Makes the current
+    // block fully available for stealing by swapping head_ and steal_tail_. The
+    // old head_ becomes steal_tail_ (starting point for thieves). The old
+    // steal_tail_ (at block_size()) becomes head_ (marking end of owner's
+    // range).
     std::uint64_t block_end = steal_tail_.load(STDEXEC::__std::memory_order_relaxed);
     std::uint64_t old_head  = head_.exchange(block_end, STDEXEC::__std::memory_order_relaxed);
-    // Release ordering ensures thieves see all items we wrote before starting to steal
+    // Release ordering ensures thieves see all items we wrote before starting
+    // to steal
     steal_tail_.store(old_head, STDEXEC::__std::memory_order_release);
   }
 }  // namespace experimental::execution::bwos

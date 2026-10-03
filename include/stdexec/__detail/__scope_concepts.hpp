@@ -40,14 +40,14 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.scope.concepts]
 
   //! @brief A movable handle representing successful (or failed)
   //!        registration of an operation with an async scope.
   //!
   //! Implementations of @c stdexec::scope_token return a
-  //! @c scope_association from <tt>try_associate()</tt>. It is a small,
+  //! @c scope_association from `try_associate()`. It is a small,
   //! movable value that:
   //!
   //! - Contextually converts to @c bool to indicate whether the
@@ -57,7 +57,7 @@ namespace STDEXEC
   //! - Holds onto whatever state the scope needs to track the operation
   //!   so that the operation can be deregistered at completion.
   //! - Can produce a fresh, equivalent association via
-  //!   <tt>try_associate()</tt> — used to model "re-associate with the
+  //!   `try_associate()` — used to model "re-associate with the
   //!   same scope".
   //!
   //! Concretely, @c scope_association requires the type to be movable,
@@ -126,24 +126,25 @@ namespace STDEXEC
   //!
   //! A @c scope_token is a small, copyable handle to such a scope. User
   //! code typically obtains a token from an @c exec::async_scope via
-  //! <tt>scope.get_token()</tt> and passes it into @c spawn or
+  //! `scope.get_token()` and passes it into @c spawn or
   //! @c spawn_future.
   //!
   //! Concretely, a type @c T satisfies @c scope_token if it is copyable
   //! and provides two members:
   //!
-  //! 1. <tt>token.try_associate()</tt> — attempts to register a new
+  //! 1. `token.try_associate()` — attempts to register a new
   //!    operation with the scope, returning a @c scope_association whose
   //!    boolean conversion indicates success. Fails (returns "false")
   //!    when the scope has already begun shutting down.
-  //! 2. <tt>token.wrap(sndr)</tt> — wraps a sender so that, when started
+  //! 2. `token.wrap(sndr)` — wraps a sender so that, when started
   //!    via @c spawn, its lifetime is tied to the scope.
   //!
   //! See [exec.scope.concepts] in the C++26 working draft.
   //!
   //! @see stdexec::scope_association  — the return type of @c try_associate
   //! @see stdexec::spawn              — fire-and-forget into a scope
-  //! @see stdexec::spawn_future       — spawn into a scope and observe via a sender
+  //! @see stdexec::spawn_future       — spawn into a scope and observe via a
+  //!                                    sender
   STDEXEC_MODULE_EXPORT
   template <class _Token>
   concept scope_token = __std::copyable<_Token> && requires(_Token const __token) {

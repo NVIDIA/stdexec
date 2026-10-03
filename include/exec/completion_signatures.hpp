@@ -27,7 +27,7 @@ import stdexec;
 
 namespace experimental::execution
 {
-  ////////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // make_completion_signatures
   namespace detail
   {
@@ -52,31 +52,33 @@ namespace experimental::execution
 STDEXEC_MODULE_EXPORT
 namespace experimental::execution
 {
-  //! Creates a compile-time completion signatures type from explicit and deduced signature types.
+  //! Creates a compile-time completion signatures type from explicit and
+  //! deduced signature types.
   //!
-  //! This function is a compile-time helper that constructs a completion signatures type
-  //! by combining explicitly provided signature types with those deduced from pointer
-  //! arguments.
+  //! This function is a compile-time helper that constructs a completion
+  //! signatures type by combining explicitly provided signature types with
+  //! those deduced from pointer arguments.
   //!
-  //! \tparam ExplicitSigs Explicitly specified completion signature types. Must be a pack
-  //!                      of function types, the returns types of which must be one of
-  //!                      \c set_value_t, \c set_error_t, or \c set_stopped_t.
-  //! \tparam DeducedSigs  Completion signature types to be deduced from the function
-  //!                      arguments.
-  //! \param __sigs        Pointer arguments (unused) for type deduction of
-  //!                      \c DeducedSigs. Must be a pack of function pointer types, the
-  //!                      returns types of which must be one of \c set_value_t,
-  //!                      \c set_error_t, or \c set_stopped_t.
+  //! @tparam ExplicitSigs Explicitly specified completion signature types. Must
+  //!                      be a pack of function types, the returns types of
+  //!                      which must be one of @c set_value_t, @c set_error_t,
+  //!                      or @c set_stopped_t.
+  //! @tparam DeducedSigs  Completion signature types to be deduced from the
+  //!                      function arguments.
+  //! @param __sigs        Pointer arguments (unused) for type deduction of
+  //!                      @c DeducedSigs. Must be a pack of function pointer
+  //!                      types, the returns types of which must be one of
+  //!                      @c set_value_t, @c set_error_t, or @c set_stopped_t.
   //!
-  //! \return An instance of \c STDEXEC::completion_signatures containing the combined
-  //!         signatures.
+  //! @return An instance of @c STDEXEC::completion_signatures containing the
+  //!         combined signatures.
   //!
-  //! \note This is a \c consteval function, meaning it is only callable in constant
-  //!       evaluation contexts (compile-time). It always returns a default-constructed
-  //!       instance of the result type.
+  //! @note This is a @c consteval function, meaning it is only callable in
+  //!       constant evaluation contexts (compile-time). It always returns a
+  //!       default-constructed instance of the result type.
   //!
-  //! \note The function uses pointer arguments for type deduction without requiring
-  //!       actual object instances.
+  //! @note The function uses pointer arguments for type deduction without
+  //!       requiring actual object instances.
   template <class... ExplicitSigs, class... DeducedSigs>
   [[nodiscard]]
   consteval auto make_completion_signatures([[maybe_unused]] DeducedSigs*... __sigs) noexcept
@@ -85,7 +87,7 @@ namespace experimental::execution
     return {};
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // get_child_completion_signatures
   template <STDEXEC::sender _Parent, STDEXEC::sender _Child, class... _Env>
   [[nodiscard]]
@@ -95,12 +97,12 @@ namespace experimental::execution
                                               STDEXEC::__fwd_env_t<_Env>...>();
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // concat_completion_signatures
   inline constexpr STDEXEC::__detail::__concat_completion_signatures_fn
     concat_completion_signatures{};
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // throw_compile_time_error
   template <class... What, class... Values>
   [[nodiscard]]
@@ -109,7 +111,7 @@ namespace experimental::execution
     return STDEXEC::__throw_compile_time_error<What...>(static_cast<Values&&>(vals)...);
   }
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // transform_completion_signatures
 
   template <class _SetTag>
@@ -124,50 +126,57 @@ namespace experimental::execution
   template <class _SetTag, class... _AlgoTag>
   using decay_arguments = STDEXEC::__decay_arguments<_SetTag, _AlgoTag...>;
 
-  //! \brief Transforms completion signatures using provided transformation functions.
+  //! @brief Transforms completion signatures using provided transformation
+  //!        functions.
   //!
-  //! This consteval function transforms a set of completion signatures by applying
-  //! custom transformation functions to value, error, and stopped completion cases.
-  //! The result can be augmented with additional extra signatures.
+  //! This consteval function transforms a set of completion signatures by
+  //! applying custom transformation functions to value, error, and stopped
+  //! completion cases. The result can be augmented with additional extra
+  //! signatures.
   //!
-  //! \tparam Completions The input completion signatures to transform. Must be a
-  //!                     specialization of \c STDEXEC::completion_signatures.
-  //! \tparam ValueFn     Function object that transforms set_value_t completions.
-  //!                     Defaults to keep_completion<set_value_t>.
-  //! \tparam ErrorFn     Function object that transforms set_error_t completions.
-  //!                     Defaults to keep_completion<set_error_t>.
-  //! \tparam StoppedFn   Function object that transforms set_stopped_t completions.
-  //!                     Defaults to keep_completion<set_stopped_t>.
-  //! \tparam ExtraSigs   Additional completion signatures to append to the result.
-  //!                     Must be a specialization of \c STDEXEC::completion_signatures.
-  //!                     Defaults to \c STDEXEC::completion_signatures().
+  //! @tparam Completions The input completion signatures to transform. Must be
+  //!                     a specialization of @c STDEXEC::completion_signatures.
+  //! @tparam ValueFn     Function object that transforms @c set_value_t
+  //!                     completions. Defaults to
+  //!                     @c keep_completion<set_value_t>.
+  //! @tparam ErrorFn     Function object that transforms @c set_error_t
+  //!                     completions. Defaults to
+  //!                     @c keep_completion<set_error_t>.
+  //! @tparam StoppedFn   Function object that transforms @c set_stopped_t
+  //!                     completions. Defaults to
+  //!                     @c keep_completion<set_stopped_t>.
+  //! @tparam ExtraSigs   Additional completion signatures to append to the
+  //!                     result. Must be a specialization of
+  //!                     @c STDEXEC::completion_signatures. Defaults to
+  //!                     @c STDEXEC::completion_signatures().
   //!
-  //! \param completions  The input completion signatures object.
-  //! \param value_fn     Value transformation function instance.
-  //! \param error_fn     Error transformation function instance.
-  //! \param stopped_fn   Stopped transformation function instance.
-  //! \param extra_sigs   Extra signatures to append to the result.
+  //! @param completions  The input completion signatures object.
+  //! @param value_fn     Value transformation function instance.
+  //! @param error_fn     Error transformation function instance.
+  //! @param stopped_fn   Stopped transformation function instance.
+  //! @param extra_sigs   Extra signatures to append to the result.
   //!
-  //! \return A transformed completion_signatures object combining the transformed
-  //!         input signatures with the extra signatures.
+  //! @return A transformed completion_signatures object combining the
+  //!         transformed input signatures with the extra signatures.
   //!
-  //! \par Example
+  //! @par Example
   //!
-  //! The following example demonstrates how to use \c transform_completion_signatures
-  //! to compute the completion signatures of the \c then sender.
+  //! The following example demonstrates how to use
+  //! @c transform_completion_signatures to compute the completion signatures of
+  //! the @c then sender.
   //!
-  //! \code{.cpp}
+  //! @code{.cpp}
   //! namespace ex = STDEXEC;
   //!
-  //! // A helper function to transform the value types of the child sender into the value
-  //! // types of the then sender.
+  //! // A helper function to transform the value types of the child sender into
+  //! // the value types of the then sender.
   //! template <class Fn, class... Args>
   //! consteval auto _transform_values()
   //! {
   //!   if constexpr (!std::invocable<Fn, Args...>)
   //!   {
-  //!     // If Fn cannot be invoked with the given arguments, produce a compile-time
-  //!     // error.
+  //!     // If Fn cannot be invoked with the given arguments, produce a
+  //!     // compile-time error.
   //!     return exec::throw_compile_time_error<
   //!       WHAT(FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS),
   //!       WHERE(IN_ALGORITHM, then_t),
@@ -176,8 +185,8 @@ namespace experimental::execution
   //!   }
   //!   else
   //!   {
-  //!     // transform the value types of the child sender into the value types of the
-  //!     // then sender by applying Fn to them.
+  //!     // transform the value types of the child sender into the value types
+  //!     // of the then sender by applying Fn to them.
   //!     using result_t         = std::invoke_result_t<Fn, Args...>;
   //!     constexpr bool is_void = std::is_void_v<result_t>;
   //!     constexpr bool nothrow = std::is_nothrow_invocable_v<Fn, Args...>;
@@ -210,19 +219,22 @@ namespace experimental::execution
   //!   template <class Self, class... Env>
   //!   static consteval auto get_completion_signatures()
   //!   {
-  //!     // Compute the completion signatures of the child sender, and then transform
-  //!     // them into the completion signatures of the `then` sender.
-  //!     auto child_completions = exec::get_child_completion_signatures<Self, Child, Env...>();
-  //!     auto value_fn = []<class... Args>() { return _transform_values<Fn, Args...>(); };
+  //!     // Compute the completion signatures of the child sender, and then
+  //!     // transform them into the completion signatures of the `then` sender.
+  //!     auto child_completions =
+  //!       exec::get_child_completion_signatures<Self, Child, Env...>();
+  //!     auto value_fn =
+  //!       []<class... Args>() { return _transform_values<Fn, Args...>(); };
   //!
-  //!     return exec::transform_completion_signatures(child_completions, value_fn);
+  //!     return exec::transform_completion_signatures(child_completions,
+  //!                                                  value_fn);
   //!   }
   //!
   //!   // ...
   //! };
-  //! \endcode
+  //! @endcode
   //!
-  //! \note This function is evaluated at compile-time (consteval).
+  //! @note This function is evaluated at compile-time (consteval).
   template <class Completions,
             class ValueFn   = keep_completion<STDEXEC::set_value_t>,
             class ErrorFn   = keep_completion<STDEXEC::set_error_t>,

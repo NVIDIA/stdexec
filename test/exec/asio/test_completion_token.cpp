@@ -1101,7 +1101,9 @@ namespace
     asio_impl::io_context      ctx;
     asio_impl::ip::tcp::socket socket(ctx);
     asio_impl::streambuf       buf;
-    //  With a SFINAE-unfriendly async_result<...>::initiate the below line doesn't compile because there's a hard compilation error trying to consider the async_read overload for dynamic buffers
+    // With a SFINAE-unfriendly async_result<...>::initiate the below line
+    // doesn't compile because there's a hard compilation error trying to
+    // consider the async_read overload for dynamic buffers
     //
     //  See: https://github.com/NVIDIA/stdexec/issues/1684
     auto sender = asio_impl::async_read(socket, buf, completion_token);

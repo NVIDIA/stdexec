@@ -144,7 +144,8 @@ namespace
   {
     return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
   };
-  // log_start completes with the provided sequence after printing provided string
+  // log_start completes with the provided sequence after printing provided
+  // string
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message)
   {

@@ -39,7 +39,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.factories]
   namespace __just
   {
@@ -109,7 +109,8 @@ namespace STDEXEC
   //! auto s3 = stdexec::just(std::string{"x"}, 7);  // mixed types are fine
   //! @endcode
   //!
-  //! See [exec.just] in the C++26 working draft for the normative specification.
+  //! See [exec.just] in the C++26 working draft for the normative
+  //! specification.
   //!
   //! **Completion signatures.**
   //!
@@ -152,7 +153,8 @@ namespace STDEXEC
   //!
   //! @see stdexec::just_error    — synchronously complete with an error
   //! @see stdexec::just_stopped  — synchronously complete with stopped
-  //! @see stdexec::read_env      — synchronously complete with a value read from the environment
+  //! @see stdexec::read_env      — synchronously complete with a value read
+  //!                               from the receiver's environment
   struct just_t
   {
     using __tag_t = set_value_t;
@@ -161,12 +163,12 @@ namespace STDEXEC
     //!        decay-copies of @c __ts....
     //!
     //! @tparam _Ts  Zero or more types each satisfying the internal
-    //!              <tt>__movable_value</tt> concept.
+    //!              `__movable_value` concept.
     //! @param __ts  The values to deliver. Each is decay-copied into the
     //!              resulting sender.
     //!
     //! @returns A sender with the single completion signature
-    //!          <tt>set_value_t(std::decay_t<_Ts>...)</tt>.
+    //!          `set_value_t(std::decay_t<_Ts>...)`.
     template <__movable_value... _Ts>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>)
@@ -196,7 +198,7 @@ namespace STDEXEC
   //!
   //! **Completion signatures.**
   //!
-  //! Given <tt>just_error(e)</tt> with @c E = <tt>decltype((e))</tt>, the
+  //! Given `just_error(e)` with @c E = `decltype((e))`, the
   //! resulting sender has the single completion signature:
   //!
   //! @code{.cpp}
@@ -214,7 +216,8 @@ namespace STDEXEC
   //! @see stdexec::just          — synchronously complete with values
   //! @see stdexec::just_stopped  — synchronously complete with stopped
   //! @see stdexec::upon_error    — handle the error channel
-  //! @see stdexec::let_error     — handle the error channel with a sender-returning function
+  //! @see stdexec::let_error     — handle the error channel with a
+  //!                               sender-returning function
   struct just_error_t
   {
     using __tag_t = set_error_t;
@@ -222,11 +225,11 @@ namespace STDEXEC
     //! @brief Construct a sender that synchronously error-completes with the
     //!        decay-copy of @c __err.
     //!
-    //! @tparam _Error A type satisfying the internal <tt>__movable_value</tt> concept.
+    //! @tparam _Error A type satisfying the internal `__movable_value` concept.
     //! @param __err   The error datum to deliver. Decay-copied into the sender.
     //!
     //! @returns A sender with the single completion signature
-    //!          <tt>set_error_t(std::decay_t<_Error>)</tt>.
+    //!          `set_error_t(std::decay_t<_Error>)`.
     template <__movable_value _Error>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>)
@@ -271,7 +274,8 @@ namespace STDEXEC
   //! @see stdexec::just          — synchronously complete with values
   //! @see stdexec::just_error    — synchronously complete with an error
   //! @see stdexec::upon_stopped  — handle the stopped channel
-  //! @see stdexec::let_stopped   — handle the stopped channel with a sender-returning function
+  //! @see stdexec::let_stopped   — handle the stopped channel with a
+  //!                               sender-returning function
   struct just_stopped_t
   {
     using __tag_t = set_stopped_t;
@@ -279,7 +283,7 @@ namespace STDEXEC
     //! @brief Construct a sender that synchronously stops-completes.
     //!
     //! @returns A sender with the single completion signature
-    //!          <tt>set_stopped_t()</tt>.
+    //!          `set_stopped_t()`.
     template <class _Tag = just_stopped_t>
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()() const noexcept
@@ -302,23 +306,25 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c just sender factory.
   //!
-  //! @c just is an instance of @ref just_t. See @ref just_t for the full
+  //! @c just is an instance of @c just_t. See @ref just_t for the full
   //! description, completion signatures, and a usage example.
   //!
   //! @hideinitializer
   inline constexpr just_t just{};
 
-  //! @brief The customization point object for the @c just_error sender factory.
+  //! @brief The customization point object for the @c just_error sender
+  //! factory.
   //!
-  //! @c just_error is an instance of @ref just_error_t. See @ref just_error_t
+  //! @c just_error is an instance of @c just_error_t. See @ref just_error_t
   //! for the full description, completion signatures, and a usage example.
   //!
   //! @hideinitializer
   inline constexpr just_error_t just_error{};
 
-  //! @brief The customization point object for the @c just_stopped sender factory.
+  //! @brief The customization point object for the @c just_stopped sender
+  //! factory.
   //!
-  //! @c just_stopped is an instance of @ref just_stopped_t. See
+  //! @c just_stopped is an instance of @c just_stopped_t. See
   //! @ref just_stopped_t for the full description, completion signatures,
   //! and a usage example.
   //!

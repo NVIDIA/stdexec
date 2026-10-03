@@ -755,8 +755,8 @@ namespace
       op.start();
     }
     {
-      // both .as_awaitable(promise) and .as_awaitable(promise).operator co_await() return
-      // immovable values
+      // both .as_awaitable(promise) and .as_awaitable(promise).operator
+      // co_await() return immovable values
       auto op =
         ex::connect(with_as_awaitable<with_member_co_await<ready_awaitable<void>, as_immovable>,
                                       as_immovable>{},
@@ -764,8 +764,8 @@ namespace
       op.start();
     }
     {
-      // both .as_awaitable(promise) and operator co_await(as_awaitable(promise)) return
-      // immovable values
+      // both .as_awaitable(promise) and operator
+      // co_await(as_awaitable(promise)) return immovable values
       auto op =
         ex::connect(with_as_awaitable<with_friend_co_await<ready_awaitable<void>, as_immovable>,
                                       as_immovable>{},
