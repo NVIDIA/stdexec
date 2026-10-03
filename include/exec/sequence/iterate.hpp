@@ -190,7 +190,7 @@ namespace experimental::execution
                            static_cast<_Receiver&&>(__rcvr_)};
       }
 
-      _Receiver __rcvr_;
+      _Receiver& __rcvr_;
     };
 
     STDEXEC_MODULE_EXPORT
@@ -230,8 +230,7 @@ namespace experimental::execution
           -> __apply_result_t<__subscribe_fn<_Receiver>, _SeqExpr>
       {
         static_assert(sender_for<_SeqExpr, iterate_t>);
-        return __apply(__subscribe_fn<_Receiver>{static_cast<_Receiver&&>(__rcvr)},
-                       static_cast<_SeqExpr&&>(__seq));
+        return __apply(__subscribe_fn<_Receiver>{__rcvr}, static_cast<_SeqExpr&&>(__seq));
       }
 
       template <class, class...>

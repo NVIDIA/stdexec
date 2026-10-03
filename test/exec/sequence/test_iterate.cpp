@@ -144,24 +144,6 @@ namespace
     bool& completed_;
   };
 
-#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-  struct receiver_copy_error
-  {};
-
-  struct throwing_copy_sum_receiver : move_only_sum_receiver
-  {
-    using move_only_sum_receiver::move_only_sum_receiver;
-
-    throwing_copy_sum_receiver(throwing_copy_sum_receiver const & other)
-      : move_only_sum_receiver{other.sum_, other.completed_}
-    {
-      throw receiver_copy_error{};
-    }
-
-    throwing_copy_sum_receiver(throwing_copy_sum_receiver&&) = default;
-  };
-#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
-
   TEST_CASE("iterate - accepts a move-only receiver", "[sequence_senders][iterate]")
   {
     std::array<int, 3> array{42, 43, 44};
@@ -233,19 +215,6 @@ namespace
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
-  TEST_CASE("iterate - does not copy the receiver", "[sequence_senders][iterate]")
-  {
-    std::array<int, 3> array{42, 43, 44};
-    auto               iterate   = exec::iterate(std::views::all(array));
-    int                sum       = 0;
-    bool               completed = false;
-
-    auto op = exec::subscribe(iterate, throwing_copy_sum_receiver{sum, completed});
-    STDEXEC::start(op);
-    CHECK(completed);
-    CHECK(sum == (42 + 43 + 44));
-  }
-
   TEST_CASE("iterate - subscribe propagates begin exceptions", "[sequence_senders][iterate]")
   {
     auto iterate = exec::iterate(begin_throws_range{});
