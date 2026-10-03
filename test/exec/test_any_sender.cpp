@@ -100,9 +100,12 @@ namespace
     STATIC_REQUIRE(std::is_copy_assignable_v<exec::any_receiver_ref<Sigs>>);
     STATIC_REQUIRE(std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver const &>);
     STATIC_REQUIRE(!std::is_constructible_v<exec::any_receiver_ref<Sigs>, sink_receiver &&>);
-    STATIC_REQUIRE(
-      !std::is_constructible_v<exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>,
-                               sink_receiver const &>);
+    using void_ref = exec::any_receiver_ref<ex::completion_signatures<ex::set_value_t()>>;
+    // void_ref names a deprecated partial specialization. Complete it here, inside this
+    // file's -Wdeprecated-declarations suppression; otherwise it is first completed inside
+    // libc++'s is_constructible_v, where the suppression doesn't apply.
+    static_assert(sizeof(void_ref) != 0);
+    STATIC_REQUIRE(!std::is_constructible_v<void_ref, sink_receiver const &>);
   }
 
   TEST_CASE("exec::any_receiver_ref is queryable", "[types][any_sender]")
