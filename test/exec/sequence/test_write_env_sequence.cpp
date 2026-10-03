@@ -105,7 +105,7 @@ namespace
   // `__sequence_adaptor_traits` for its tag, without any changes to the
   // sequence machinery. See issue #2053.
   struct my_adapt_t
-  { };
+  {};
 
   template <STDEXEC::sender Sndr>
   auto my_adapt(Sndr&& sndr)
@@ -125,7 +125,7 @@ namespace
 
 template <>
 struct STDEXEC::__sexpr_impl<my_adapt_t> : my_adapt_impl
-{ };
+{};
 
 template <>
 struct experimental::execution::__sequence_adaptor_traits<my_adapt_t>
