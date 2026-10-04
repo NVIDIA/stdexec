@@ -44,7 +44,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fun, class... _As>
   concept __callable = requires(_Fun &&__fun, _As &&...__as) {
@@ -57,7 +57,7 @@ namespace STDEXEC
     { static_cast<_Fun &&>(__fun)(static_cast<_As &&>(__as)...) } noexcept;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_META
   template <class...>
   struct __mlist;
@@ -67,7 +67,7 @@ namespace STDEXEC
     typename __mlist<_Ts...>;  // NOLINT
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Ap, class _Bp>
   concept __same_as = STDEXEC_IS_SAME(_Ap, _Bp);
@@ -137,8 +137,8 @@ namespace STDEXEC
   namespace __std
   {
 
-    // Make sure we're using a same_as concept that doesn't instantiate a class template
-    // (i.e., std::is_same)
+    // Make sure we're using a same_as concept that doesn't instantiate a class
+    // template (i.e., std::is_same)
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Ap, class _Bp>
     concept same_as = __same_as<_Ap, _Bp> && __same_as<_Bp, _Ap>;
@@ -198,7 +198,7 @@ namespace STDEXEC
 
   namespace __std
   {
-    //////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // Avoid using libstdc++'s object concepts because they instantiate a
     // LOT of templates.
 
@@ -366,7 +366,8 @@ namespace STDEXEC
   template <class _Ty, class _Up>
   concept __decays_to_derived_from = __std::derived_from<__decay_t<_Ty>, _Up>;
 
-  // See [allocator.requirements.general]/p99 (https://eel.is/c++draft/allocator.requirements.general#99)
+  // See [allocator.requirements.general]/p99
+  // (https://eel.is/c++draft/allocator.requirements.general#99)
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Alloc>
   concept __simple_allocator =  //

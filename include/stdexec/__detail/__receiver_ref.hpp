@@ -88,8 +88,8 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto set_next(_Item&& __item) STDEXEC_AUTO_RETURN
     (
-      // Make the type of __rcvr_ptr_ dependent on _Item to avoid forming an invalid
-      // expression when _Rcvr doesn't have set_next:
+      // Make the type of __rcvr_ptr_ dependent on _Item to avoid forming an
+      // invalid expression when _Rcvr doesn't have set_next:
       (__item, __rcvr_ptr_)->set_next(static_cast<_Item&&>(__item))
     )
     // clang-format on

@@ -65,20 +65,21 @@ namespace STDEXEC
         , __attr_(__attr)
       {}
 
-      // Query for completion scheduler - delegates to child's env with augmented
-      // environment
+      // Query for completion scheduler - delegates to child's env with
+      // augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_scheduler_t<_SetTag> __query,
                            _Env&&... __env) const noexcept
         -> __call_result_t<get_completion_scheduler_t<_SetTag>, env_of_t<_Child>, __env2_t<_Env>...>
       {
-        // If child doesn't complete inline, delegate to child's completion scheduler
+        // If child doesn't complete inline, delegate to child's completion
+        // scheduler
         return __query(__attr_, __mk_env2(__sched_, __env)...);
       }
 
-      // Query for completion domain - calculate type from child's env with augmented
-      // environment
+      // Query for completion domain - calculate type from child's env with
+      // augmented environment
       template <class _SetTag, class... _Env>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(get_completion_domain_t<_SetTag>, _Env&&...) const noexcept
@@ -89,7 +90,7 @@ namespace STDEXEC
     };
   }  // namespace __starts_on
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.starts.on]
 
   //! @brief A sender adaptor that runs a sender starting on the execution
@@ -99,14 +100,13 @@ namespace STDEXEC
   //! a sender that, when connected and started, first hops onto @c sched's
   //! execution resource and then runs @c sndr there. The completions of the
   //! produced sender are delivered to the connected receiver from @c sched's
-  //! resource — there is no "round trip" back to whatever scheduler started
-  //! the operation (compare @ref on_t).
+  //! resource — there is no "round trip" back to whatever scheduler started the
+  //! operation (compare @ref on_t).
   //!
   //! Unlike most sender adaptors in stdexec, @c starts_on has no *pipe form*:
-  //! it is always called as <tt>starts_on(sched, sndr)</tt>, never
-  //! <tt>sndr | starts_on(sched)</tt>. This reflects the spec: @c starts_on
-  //! takes the scheduler *first*, mirroring the order of operations
-  //! (schedule, then run).
+  //! it is always called as `starts_on(sched, sndr)`, never `sndr |
+  //! starts_on(sched)`. This reflects the spec: @c starts_on takes the
+  //! scheduler *first*, mirroring the order of operations (schedule, then run).
   //!
   //! @code{.cpp}
   //! auto s = stdexec::starts_on(some_sched, sndr);
@@ -117,7 +117,7 @@ namespace STDEXEC
   //!
   //! **Equivalence.**
   //!
-  //! Semantically, <tt>starts_on(sch, sndr)</tt> is equivalent to
+  //! Semantically, `starts_on(sch, sndr)` is equivalent to
   //!
   //! @code{.cpp}
   //! schedule(sch) | let_value([sndr = std::forward<Sndr>(sndr)] {
@@ -125,9 +125,9 @@ namespace STDEXEC
   //! })
   //! @endcode
   //!
-  //! stdexec's implementation is structured differently for efficiency on
-  //! GPU contexts (it avoids making @c sndr dependent on the
-  //! schedule-completion), but the observable semantics match.
+  //! stdexec's implementation is structured differently for efficiency on GPU
+  //! contexts (it avoids making @c sndr dependent on the schedule-completion),
+  //! but the observable semantics match.
   //!
   //! **Completion signatures.**
   //!
@@ -141,8 +141,8 @@ namespace STDEXEC
   //! set_stopped_t()                  // if not already present
   //! @endcode
   //!
-  //! If scheduling onto @c sch fails, an error completion is delivered to
-  //! the receiver on an *unspecified* execution agent.
+  //! If scheduling onto @c sch fails, an error completion is delivered to the
+  //! receiver on an *unspecified* execution agent.
   //!
   //! **Cancellation.**
   //!
@@ -170,9 +170,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::schedule       — the primitive that produces a schedule-sender
-  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender completes
-  //! @see stdexec::on             — run on a scheduler then transfer back to the original
+  //! @see stdexec::schedule       — the primitive that produces a
+  //!                                schedule-sender
+  //! @see stdexec::continues_on   — transfer to a scheduler *after* a sender
+  //!                                completes
+  //! @see stdexec::on             — run on a scheduler then transfer back to
+  //!                                the original context
   struct starts_on_t
   {
     //! @brief Construct a sender that runs @c __sndr on @c __sched's
@@ -201,12 +204,12 @@ namespace STDEXEC
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
       auto& [__tag, __sched, __child] = __sndr;
-      // NOT TO SPEC: the specification requires that this be implemented in terms of
-      // let_value(schedule(sch), []{ return child; }), but that implementation
-      // is inefficient on the GPU. We could customize starts_on for the GPU to use this
-      // implementation, but this is a good change to make for all platforms since it
-      // avoids unnecessarily making the child sender dependent on the completion of the
-      // schedule operation.
+      // NOT TO SPEC: the specification requires that this be implemented in
+      // terms of let_value(schedule(sch), []{ return child; }), but that
+      // implementation is inefficient on the GPU. We could customize starts_on
+      // for the GPU to use this implementation, but this is a good change to
+      // make for all platforms since it avoids unnecessarily making the child
+      // sender dependent on the completion of the schedule operation.
       return __sequence(continues_on(just(), __sched), STDEXEC::__forward_like<_Sender>(__child));
     }
 
@@ -219,8 +222,8 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c starts_on sender adaptor.
   //!
-  //! @c starts_on is an instance of @ref starts_on_t. See @ref starts_on_t
-  //! for the full description, completion signatures, and a usage example.
+  //! @c starts_on is an instance of @c starts_on_t. See @ref starts_on_t for
+  //! the full description, completion signatures, and a usage example.
   //!
   //! @hideinitializer
   inline constexpr starts_on_t starts_on{};

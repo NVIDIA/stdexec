@@ -64,10 +64,12 @@ namespace
   };
 
   // #if defined(REQUIRE_TERMINATE)
-  // // For some reason, when compiling with nvc++, the forked process dies with SIGSEGV
-  // // but the error code returned from ::wait reports success, so this test fails.
-  // TEST_CASE("running deeply recursing algo blows the stack", "[schedulers][trampoline_scheduler]") {
-
+  // // For some reason, when compiling with nvc++, the forked process dies with
+  // // SIGSEGV but the error code returned from ::wait reports success, so this
+  // // test fails.
+  // TEST_CASE("running deeply recursing algo blows the stack",
+  //           "[schedulers][trampoline_scheduler]")
+  // {
   //   auto recurse_deeply = retry(fails_alot{});
   //   REQUIRE_TERMINATE([&] { sync_wait(std::move(recurse_deeply)); });
   // }

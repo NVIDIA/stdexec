@@ -196,13 +196,13 @@ namespace experimental::execution
         virtual constexpr auto query(Query, Args... _args) const noexcept(Noexcept) -> Value
         {
           if constexpr (Indirect)
-            // This branch is used for any_sender and any_receiver, which put their
-            // queries behind a call to get_env.
+            // This branch is used for any_sender and any_receiver, which put
+            // their queries behind a call to get_env.
             return Query()(STDEXEC::get_env(STDEXEC::__any::__value(*this)),
                            static_cast<Args &&>(_args)...);
           else
-            // This branch is used for any_scheduler, which puts its queries directly on
-            // the type-erased scheduler.
+            // This branch is used for any_scheduler, which puts its queries
+            // directly on the type-erased scheduler.
             return Query()(STDEXEC::__any::__value(*this), static_cast<Args &&>(_args)...);
         }
 
@@ -316,7 +316,7 @@ namespace experimental::execution
       };
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _state_base
     template <class Receiver, class TargetStopToken>
     struct _state;
@@ -341,13 +341,13 @@ namespace experimental::execution
       }
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _state
 
-    // A specialization of _state for when the receiver's stop token is not compatible
-    // with the one required by the type-erased operation state. In this case, we use an
-    // inplace_stop_source to create a stop token that is compatible with the type-erased
-    // operation state.
+    // A specialization of _state for when the receiver's stop token is not
+    // compatible with the one required by the type-erased operation state. In
+    // this case, we use an inplace_stop_source to create a stop token that is
+    // compatible with the type-erased operation state.
     template <class Receiver>
     struct _state<Receiver, inplace_stop_token> : _state_base<Receiver, inplace_stop_token>
     {
@@ -435,7 +435,7 @@ namespace experimental::execution
     using _iopstate_base_t =
       STDEXEC::__any::__interface_base<_iopstate, Base, STDEXEC::__any::__extends<>, 64>;
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _iopstate
     template <class Base>
     struct _iopstate : _iopstate_base_t<Base>
@@ -449,16 +449,17 @@ namespace experimental::execution
       }
     };
 
-    // This type is the result of connecting a type-erased sender to a type-erased
-    // receiver ref. _any_opstate derives from this type and stores the concrete receiver
-    // so it can pass a reference to it when connecting the type-erased sender.
+    // This type is the result of connecting a type-erased sender to a
+    // type-erased receiver ref. _any_opstate derives from this type and stores
+    // the concrete receiver so it can pass a reference to it when connecting
+    // the type-erased sender.
     struct _any_opstate_base final : STDEXEC::__any::__any<_iopstate>
     {
       using STDEXEC::__any::__any<_any::_iopstate>::__any;
       STDEXEC_IMMOVABLE(_any_opstate_base);
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _any_opstate
     template <class Receiver, class TargetStopToken>
     struct _any_opstate
@@ -486,7 +487,7 @@ namespace experimental::execution
     template <class, class>
     struct _any_schedule_sender;
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _isender
     template <class AnyReceiver, class SenderQueries>
     struct _isender;
@@ -517,7 +518,8 @@ namespace experimental::execution
         template <__std::derived_from<_interface_> Self, class... Env>
         static consteval auto get_completion_signatures()
         {
-          // throw if Env does not contain the queries needed to type-erase the receiver:
+          // throw if Env does not contain the queries needed to type-erase the
+          // receiver:
           using _check_queries_t = __mfind_error<_check_query_t<Queries, Env...>...>;
           if constexpr (__merror<_check_queries_t>)
             return STDEXEC::__throw_compile_time_error(_check_queries_t{});
@@ -533,12 +535,13 @@ namespace experimental::execution
           if constexpr (Base::__box_kind == STDEXEC::__any::__box_kind::__abstract)
             __std::unreachable();
           else if constexpr (Base::__box_kind == STDEXEC::__any::__box_kind::__proxy)
-            // The result of the call to __value(*this) below is a reference to a
-            // polymophic sender. If we pass that to STDEXEC::connect, it will attempt to
-            // transform that sender, which will cause it to be sliced. Instead, we call
-            // .connect(_rcvr) directly on the contained value. transform_sender gets
-            // called when the next branch is taken, which will happen as a result of the
-            // call to .connect(_rcvr) in this branch.
+            // The result of the call to __value(*this) below is a reference to
+            // a polymophic sender. If we pass that to STDEXEC::connect, it will
+            // attempt to transform that sender, which will cause it to be
+            // sliced. Instead, we call .connect(_rcvr) directly on the
+            // contained value. transform_sender gets called when the next
+            // branch is taken, which will happen as a result of the call to
+            // .connect(_rcvr) in this branch.
             return STDEXEC::__any::__value(std::move(*this)).connect(std::move(_rcvr));
           else
             return _any_opstate_base{__in_place_from,
@@ -555,7 +558,7 @@ namespace experimental::execution
       };
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _ischeduler
     template <class AnySender, class SchedulerQueries>
     struct _ischeduler;
@@ -595,8 +598,9 @@ namespace experimental::execution
       };
     };
 
-    // Adds the get_completion_scheduler_t<set_value_t> query to the type-erased sender's
-    // attributes. This type is used for the return of any_scheduler::schedule.
+    // Adds the get_completion_scheduler_t<set_value_t> query to the type-erased
+    // sender's attributes. This type is used for the return of
+    // any_scheduler::schedule.
     template <class AnyScheduler, class AnySender>
     struct _any_schedule_sender final : AnySender
     {
@@ -652,7 +656,7 @@ namespace experimental::execution
     };
   }  // namespace _any
 
-  ////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_receiver
   template <class Sigs, class Queries>
   struct any_receiver final
@@ -672,7 +676,7 @@ namespace experimental::execution
     using _queries_t     = Queries;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_sender
   template <class AnyReceiver, class SenderQueries>
   struct any_sender final
@@ -701,7 +705,7 @@ namespace experimental::execution
     }
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_scheduler
   template <class AnyReceiver, class SenderQueries, class SchedulerQueries>
   struct any_scheduler<any_sender<AnyReceiver, SenderQueries>, SchedulerQueries> final
@@ -737,7 +741,7 @@ namespace experimental::execution
 
 #if !STDEXEC_DOXYGEN_INVOKED
 
-  ////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Legacy interfaces for type-erased senders and receivers.
 
   namespace _any

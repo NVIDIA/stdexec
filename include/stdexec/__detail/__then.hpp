@@ -38,7 +38,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.then]
   namespace __then
   {
@@ -105,15 +105,15 @@ namespace STDEXEC
     };
   }  // namespace __then
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! @brief A pipeable sender adaptor that transforms a predecessor sender's
   //!        value completion by invoking a callable on the values it produces.
   //!
-  //! @c then maps the value channel of a sender through a function while forwarding
-  //! the error and stopped channels unchanged. It is the asynchronous analogue of
-  //! applying <tt>std::invoke</tt> to the result of a synchronous computation, and
-  //! is the most common sender adaptor in practice; most sender pipelines contain at
-  //! least one @c then.
+  //! @c then maps the value channel of a sender through a function while
+  //! forwarding the error and stopped channels unchanged. It is the
+  //! asynchronous analogue of applying `std::invoke` to the result of a
+  //! synchronous computation, and is the most common sender adaptor in
+  //! practice; most sender pipelines contain at least one @c then.
   //!
   //! Both call syntaxes are supported (the second is the *pipeable* form):
   //!
@@ -135,7 +135,7 @@ namespace STDEXEC
   //! set_stopped_t()                  // optional stopped completion
   //! @endcode
   //!
-  //! the sender produced by <tt>then(sndr, f)</tt> has completion signatures
+  //! the sender produced by `then(sndr, f)` has completion signatures
   //!
   //! @code{.cpp}
   //! set_value_t(R)                   // R = decltype(std::invoke(f, Vs...))
@@ -145,10 +145,11 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged from sndr
   //! @endcode
   //!
-  //! If @c sndr has multiple value completions, @c f must be invocable with every
-  //! one of them; otherwise the program is ill-formed and the diagnostic surfaces
-  //! at the point where the resulting sender is connected to a receiver. The
-  //! resulting value-completion arity is always one: each distinct return type
+  //! If @c sndr has multiple value completions, @c f must be invocable with
+  //! every one of them; otherwise the program is ill-formed and the diagnostic
+  //! surfaces at the point where the resulting sender is connected to a
+  //! receiver. The resulting value-completion arity is always one: each
+  //! distinct return type
   //! @c R from invoking @c f contributes a @c set_value_t(R) overload.
   //!
   //! **Exception behavior.**
@@ -182,53 +183,55 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::upon_error  — adapt the error channel
+  //! @see stdexec::upon_error   — adapt the error channel
   //! @see stdexec::upon_stopped — adapt the stopped channel
-  //! @see stdexec::let_value   — adapt the value channel with a sender-returning function
+  //! @see stdexec::let_value    — adapt the value channel with a
+  //!                              sender-returning function
   struct then_t
   {
-    //! @brief Construct a sender that adapts @c __sndr by invoking @c __fun with
-    //!        each value-completion argument pack it produces.
+    //! @brief Construct a sender that adapts @c __sndr by invoking @c __fun
+    //!        with each value-completion argument pack it produces.
     //!
     //! @tparam _Sender A type satisfying the @c stdexec::sender concept.
     //! @tparam _Fun    A decayed, move-constructible callable type
-    //!                 (satisfying the internal <tt>__movable_value</tt> concept).
+    //!                 (satisfying the internal `__movable_value` concept).
     //!
     //! @param __sndr   The predecessor sender whose value-completion is to be
-    //!                 adapted. Perfect-forwarded into the resulting sender, so an
-    //!                 rvalue is moved and an lvalue copied as needed.
+    //!                 adapted. Perfect-forwarded into the resulting sender, so
+    //!                 an rvalue is moved and an lvalue copied as needed.
     //! @param __fun    The function (or callable) to invoke with each
-    //!                 value-completion of @c __sndr. Stored by value (decayed) in
-    //!                 the resulting sender.
+    //!                 value-completion of @c __sndr. Stored by value (decayed)
+    //!                 in the resulting sender.
     //!
     //! @returns A sender that, when connected to a receiver and started, drives
     //!          @c __sndr and routes each of its value-completions through
-    //!          @c __fun. The error and stopped channels are forwarded unchanged.
+    //!          @c __fun. The error and stopped channels are forwarded
+    //!          unchanged.
     //!
-    //! @pre @c __fun must be invocable with every value-completion argument pack of
-    //!      @c __sndr (with appropriate value categories). Otherwise the program
-    //!      is ill-formed at the point where the resulting sender is connected to
-    //!      a receiver.
+    //! @pre @c __fun must be invocable with every value-completion argument
+    //!      pack of @c __sndr (with appropriate value categories). Otherwise
+    //!      the program is ill-formed at the point where the resulting sender
+    //!      is connected to a receiver.
     template <sender _Sender, __movable_value _Fun>
     constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
     {
       return __make_sexpr<then_t>(static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr));
     }
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a sender,
-    //!        produces <tt>then(sndr, __fun)</tt>.
+    //! @brief Construct a sender-adaptor closure that, when applied to a
+    //!        sender, produces `then(sndr, __fun)`.
     //!
-    //! This overload enables the pipe syntax: <tt>sndr | then(__fun)</tt> is
-    //! equivalent to <tt>then(sndr, __fun)</tt>.
+    //! This overload enables the pipe syntax: `sndr | then(__fun)` is
+    //! equivalent to `then(sndr, __fun)`.
     //!
     //! @tparam _Fun  A decayed, move-constructible callable type
-    //!               (satisfying the internal <tt>__movable_value</tt> concept).
-    //! @param __fun  The callable to invoke on the predecessor's value completions
-    //!               when the closure is later applied to a sender.
+    //!               (satisfying the internal `__movable_value` concept).
+    //! @param __fun  The callable to invoke on the predecessor's value
+    //!               completions when the closure is later applied to a sender.
     //!
-    //! @returns A sender-adaptor closure object that captures @c __fun by value.
-    //!          When piped against a sender @c sndr, it yields the sender
-    //!          <tt>then(sndr, std::move(__fun))</tt>.
+    //! @returns A sender-adaptor closure object that captures @c __fun by
+    //!          value. When piped against a sender @c sndr, it yields the
+    //!          sender `then(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Fun __fun) const
@@ -239,7 +242,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c then sender adaptor.
   //!
-  //! @c then is an instance of @ref then_t. See @ref then_t for the full
+  //! @c then is an instance of @c then_t. See @ref then_t for the full
   //! description, the completion-signature transformation rules, exception and
   //! cancellation behavior, and a usage example.
   //!

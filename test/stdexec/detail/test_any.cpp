@@ -248,8 +248,8 @@ namespace
 
   TEST_CASE("size of any::__any", "[detail][any]")
   {
-    // apart from the buffer, an empty any should only contain a pointer to the vtable
-    // and a room for the _tagged_ptr to the proxy object.
+    // apart from the buffer, an empty any should only contain a pointer to the
+    // vtable and a room for the _tagged_ptr to the proxy object.
     STATIC_REQUIRE(sizeof(any::__any<iempty>) == 2 * sizeof(void *));
   }
 

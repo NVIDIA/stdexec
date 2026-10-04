@@ -57,7 +57,8 @@ namespace
     STATIC_REQUIRE(noexcept(ex::just() | ex::associate(null_token{})));
 
     // conversely, trafficking in senders with potentially-throwing copy
-    // constructors should lead to the whole expression becoming potentially-throwing
+    // constructors should lead to the whole expression becoming
+    // potentially-throwing
     auto const justString = ex::just(std::string{"Copying strings is potentially-throwing"});
     STATIC_REQUIRE(!noexcept(ex::associate(justString, null_token{})));
     STATIC_REQUIRE(!noexcept(justString | ex::associate(null_token{})));
@@ -296,6 +297,7 @@ namespace
 
   // TODO: check the pass-through nature of __sync_attrs
   // TODO: check the pass-through stop request behaviour
-  // TODO: confirm timing of destruction of opstate relative to release of association
+  // TODO: confirm timing of destruction of opstate relative to release of
+  // association
   // TODO: confirm that the TODO list is exhaustive
 }  // namespace

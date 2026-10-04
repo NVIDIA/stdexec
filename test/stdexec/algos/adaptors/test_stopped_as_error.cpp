@@ -107,8 +107,8 @@ namespace
     ex::start(op);
   }
 
-  // `stopped_as_error` is implemented in terms of `let_error`, so the tests for `let_error` cover
-  // more ground.
+  // `stopped_as_error` is implemented in terms of `let_error`, so the tests for
+  // `let_error` cover more ground.
 
   TEST_CASE("stopped_as_error keeps values_type from input sender", "[adaptors][stopped_as_error]")
   {

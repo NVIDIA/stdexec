@@ -293,7 +293,7 @@ namespace STDEXEC
     }
   };
 
-  //! \brief Helper to combine multiple function objects into one overload set
+  //! @brief Helper to combine multiple function objects into one overload set
   template <class... _Fns>
   struct __overload : _Fns...
   {
@@ -327,17 +327,19 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  //! \brief A callable that wraps a set of functions and calls the first one that is
-  //! callable with a given set of arguments.
+  //! @brief A callable that wraps a set of functions and calls the first one
+  //! that is callable with a given set of arguments.
   template <class... _Fns>
   struct __first_callable
   {
-    //! \brief Alias for the type of the first function that is callable with a given set of arguments.
+    //! @brief Alias for the type of the first function that is callable with a
+    //! given set of arguments.
     template <class _Self, class... _Args>
     using __1st_fn_t =
       __call_result_t<__detail::__get_1st_fn<_Args...>, __copy_cvref_t<_Self, _Fns>...>;
 
-    //! \brief Calls the first function that is callable with a given set of arguments.
+    //! @brief Calls the first function that is callable with a given set of
+    //! arguments.
     template <class _Self, class... _Args>
       requires __callable<__1st_fn_t<_Self, _Args...>, _Args...>
     constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Args &&...__args)
@@ -389,29 +391,31 @@ namespace STDEXEC
     return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
 
-  //! \brief A binary callable that wraps another binary callable and calls it with its
-  //! two arguments in reverse order.
+  //! @brief A binary callable that wraps another binary callable and calls it
+  //! with its two arguments in reverse order.
   //!
-  //! \tparam _Fn The wrapped binary callable.
+  //! @tparam _Fn The wrapped binary callable.
   //!
-  //! \see __flip
+  //! @see __flip
   template <class _Fn>
   struct __flipped
   {
-    //! \brief Calls the wrapped callable with the arguments transposed.
+    //! @brief Calls the wrapped callable with the arguments transposed.
     //!
-    //! The cv- and reference-qualifiers of `*this` are propagated to the wrapped
-    //! callable, so an rvalue `__flipped` invokes `_Fn` as an rvalue.
+    //! The cv- and reference-qualifiers of `*this` are propagated to the
+    //! wrapped callable, so an rvalue `__flipped` invokes `_Fn` as an rvalue.
     //!
-    //! \tparam _Self The deduced type of `*this`, including cvref-qualifiers.
-    //! \tparam _T0 The type of the first argument, forwarded as the second.
-    //! \tparam _T1 The type of the second argument, forwarded as the first.
+    //! @tparam _Self The deduced type of `*this`, including cvref-qualifiers.
+    //! @tparam _T0 The type of the first argument, forwarded as the second.
+    //! @tparam _T1 The type of the second argument, forwarded as the first.
     //!
-    //! \param __self The `__flipped` object itself.
-    //! \param __t0 The first argument; forwarded to `_Fn` as its second argument.
-    //! \param __t1 The second argument; forwarded to `_Fn` as its first argument.
+    //! @param __self The `__flipped` object itself.
+    //! @param __t0   The first argument; forwarded to `_Fn` as its second
+    //!               argument.
+    //! @param __t1   The second argument; forwarded to `_Fn` as its first
+    //!               argument.
     //!
-    //! \returns The result of `__fn_(__t1, __t0)`.
+    //! @returns The result of `__fn_(__t1, __t0)`.
     template <class _Self, class _T0, class _T1>
       requires __callable<__copy_cvref_t<_Self, _Fn>, _T1, _T0>
     STDEXEC_ATTRIBUTE(host, device)
@@ -426,22 +430,23 @@ namespace STDEXEC
     }
     STDEXEC_EXPLICIT_THIS_END(operator())
 
-    //! \brief The wrapped binary callable.
+    //! @brief The wrapped binary callable.
     _Fn __fn_;
   };
 
   template <class _Fn>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __flipped(_Fn) -> __flipped<_Fn>;
 
-  //! \brief Wraps a binary callable in a `__flipped` object that reverses the order of
-  //! its two arguments.
+  //! @brief Wraps a binary callable in a `__flipped` object that reverses the
+  //! order of its two arguments.
   //!
-  //! \tparam _Fn The type of the callable to wrap.
+  //! @tparam _Fn The type of the callable to wrap.
   //!
-  //! \param __fn The binary callable to wrap. It is decay-copied into the result.
+  //! @param __fn The binary callable to wrap. It is decay-copied into the
+  //!             result.
   //!
-  //! \returns A `__flipped<__decay_t<_Fn>>` object such that calling it with `(a, b)`
-  //! calls `__fn(b, a)`.
+  //! @returns A `__flipped<__decay_t<_Fn>>` object such that calling it with
+  //!          `(a, b)` calls `__fn(b, a)`.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Fn>
   STDEXEC_ATTRIBUTE(host, device)

@@ -38,22 +38,23 @@
 #include <cstring>
 #include <memory>
 
-// This file defines function<ReturnType(Arguments...)>, which is a type-erased sender
-// that can complete with:
+// This file defines function<ReturnType(Arguments...)>, which is a type-erased
+// sender that can complete with:
 //
 //  - set_value(ReturnType)
 //  - set_error(std::exception_ptr)
 //  - set_stopped()
 //
-// The type-erased operation state is allocated in connect; to accomplish this deferred
-// allocation, the sender holds a tuple of arguments that are passed into a sender-factory
-// in connect, which is why the template type parameter is a function type rather than
-// just a return type.
+// The type-erased operation state is allocated in connect; to accomplish this
+// deferred allocation, the sender holds a tuple of arguments that are passed
+// into a sender-factory in connect, which is why the template type parameter is
+// a function type rather than just a return type.
 //
-// The intended use case is an ABI-stable API boundary. The hope is that this is a "better
-// task" in that it represents an async function from arguments to value, just like a task
-// coroutine, but, by deferring the allocation to connect, we can use receiver environment
-// queries to pick the frame allocator from the environment without relying on TLS.
+// The intended use case is an ABI-stable API boundary. The hope is that this is
+// a "better task" in that it represents an async function from arguments to
+// value, just like a task coroutine, but, by deferring the allocation to
+// connect, we can use receiver environment queries to pick the frame allocator
+// from the environment without relying on TLS.
 namespace experimental::execution
 {
   // for specifying required sender attributes in exec::function
@@ -65,18 +66,20 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    //! given the concrete receiver's environment, choose the frame allocator; first
-    //! choice is the result of get_frame_allocator(env), second choice is
+    //! given the concrete receiver's environment, choose the frame allocator;
+    //! first choice is the result of get_frame_allocator(env), second choice is
     //! get_allocator(env), and the default is std::allocator
     inline constexpr auto __choose_frame_allocator =
       __first_callable{get_frame_allocator, get_allocator, __always{std::allocator<std::byte>()}};
 
-    //! Wrap _Receiver, which is a type-erased receiver, in a type that can extract the
-    //! concrete, to-be-erased receiver from the operation state that contains it.
+    //! Wrap _Receiver, which is a type-erased receiver, in a type that can
+    //! extract the concrete, to-be-erased receiver from the operation state
+    //! that contains it.
     //!
-    //! This wrapper exists primarily as a hook for injecting a defaulted frame allocator
-    //! when _Receiver *doesn't* have get_frame_allocator in its environment. That
-    //! injection happens in the partial specialization, below.
+    //! This wrapper exists primarily as a hook for injecting a defaulted frame
+    //! allocator when _Receiver *doesn't* have get_frame_allocator in its
+    //! environment. That injection happens in the partial specialization,
+    //! below.
     template <class _Receiver>
     struct __receiver_wrapper : public _Receiver
     {
@@ -86,18 +89,20 @@ namespace experimental::execution
       {}
     };
 
-    //! Wrap _Receiver, which is a type-erased receiver, in a type that can extract the
-    //! concrete, to-be-erased receiver from the operation state that contains it, and
-    //! inject an environment that contains a defaulted frame allocator.
+    //! Wrap _Receiver, which is a type-erased receiver, in a type that can
+    //! extract the concrete, to-be-erased receiver from the operation state
+    //! that contains it, and inject an environment that contains a defaulted
+    //! frame allocator.
     //!
-    //! This partial specialization handles the case that _Receiver doesn't have a frame
-    //! allocator in its environment, in which case we need to provide a type-erasing
-    //! frame allocator in the injected environment because we won't know the concrete
-    //! type of the allocator that's actually used as our frame allocator until we're
-    //! connected to a concrete receiver. We could provide either
-    //! std::pmr::memory_resource*, or std::pmr::polymorphic_allocator<> with basically
-    //! the same tradeoffs so we provide an allocator rather than a memory resource to
-    //! better match the name of the injected query.
+    //! This partial specialization handles the case that _Receiver doesn't have
+    //! a frame allocator in its environment, in which case we need to provide a
+    //! type-erasing frame allocator in the injected environment because we
+    //! won't know the concrete type of the allocator that's actually used as
+    //! our frame allocator until we're connected to a concrete receiver. We
+    //! could provide either std::pmr::memory_resource*, or
+    //! std::pmr::polymorphic_allocator<> with basically the same tradeoffs so
+    //! we provide an allocator rather than a memory resource to better match
+    //! the name of the injected query.
     template <class _Receiver>
       requires(!__queryable_with<env_of_t<_Receiver>, get_frame_allocator_t>)
     struct __receiver_wrapper<_Receiver> : public _Receiver
@@ -154,11 +159,11 @@ namespace experimental::execution
       {}
 
      private:
-      //! the indirection through __make_env and __make_alloc is to work around what
-      //! appears to be miscompilation with Clang 16; initializing __env_ inline
-      //! rather than delegating to these helpers results in passing an invalid
-      //! address to the polymorphic_allocator constructor instead of the address of
-      //! __resource_, leading to segfaults
+      //! the indirection through __make_env and __make_alloc is to work around
+      //! what appears to be miscompilation with Clang 16; initializing __env_
+      //! inline rather than delegating to these helpers results in passing an
+      //! invalid address to the polymorphic_allocator constructor instead of
+      //! the address of __resource_, leading to segfaults
       __prop_t __make_env()
       {
         return __prop_t(get_frame_allocator, __make_alloc());
@@ -170,11 +175,12 @@ namespace experimental::execution
       }
     };
 
-    //! The concrete operation state resulting from connecting a function<...> to a
-    //! concrete receiver of type Receiver. This type manages an _any::_any_opstate_base
-    //! instance, which is the type-erased operation state resulting from connecting the
-    //! type-erased sender to an _any::_any_receiver_ref with the given completion
-    //! signatures and queries.
+    //! The concrete operation state resulting from connecting a function<...>
+    //! to a concrete receiver of type Receiver. This type manages an
+    //! _any::_any_opstate_base instance, which is the type-erased operation
+    //! state resulting from connecting the type-erased sender to an
+    //! _any::_any_receiver_ref with the given completion signatures and
+    //! queries.
     template <class _Receiver, class _Sigs, class _Queries>
     class __opstate : public __opstate_base<_Receiver, _Sigs, _Queries>
     {
@@ -218,8 +224,8 @@ namespace experimental::execution
       : __make_domain_impl<set_value_t, _Domain(get_completion_domain_t<set_value_t>) noexcept>
     {};
 
-    //! get_completion_domain ought to be no-throw, so make it optional to specify
-    //! noexcept on the signature provided with attrs<...>
+    //! get_completion_domain ought to be no-throw, so make it optional to
+    //! specify noexcept on the signature provided with attrs<...>
     template <class _Domain, class _Tag1, class _Tag2>
     struct __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>)>
       : __make_domain_impl<_Tag1, _Domain(get_completion_domain_t<_Tag2>) noexcept>
@@ -310,10 +316,10 @@ namespace experimental::execution
       requires __one_of<_Tag, __get_completion_domain_tag_t<_Attrs>...>
     inline constexpr bool __has_completion_domain<attrs<_Attrs...>, _Tag> = true;
 
-    //! it is undefined behaviour for a sender to advertise a completion domain for a
-    //! completion channel that it never completes on so make sure there are no
-    //! completion domains required by _Attrs that correspond to completion channels
-    //! not advertised as possible by _Sigs
+    //! it is undefined behaviour for a sender to advertise a completion domain
+    //! for a completion channel that it never completes on so make sure there
+    //! are no completion domains required by _Attrs that correspond to
+    //! completion channels not advertised as possible by _Sigs
     template <class _Sigs, class _Attrs>
     concept __completion_signatures_and_domains_are_compatible =
       ((!__has_completion_domain<_Attrs, set_value_t>) || _Sigs::__count(set_value) > 0)     //
@@ -322,21 +328,21 @@ namespace experimental::execution
 
     //! the main implementation of the type-erasing sender function<...>
     //
-    //! \tparam _Sigs The supported completion signatures
+    //! @tparam _Sigs The supported completion signatures
     //!
-    //! \tparam _Queries The list of environment queries that must be supported by
-    //! the eventual receiver; it's a pack of function type like Return(Query, Args...) or
-    //! Return(Query, Args...) noexcept. The named query, when given the specified
-    //! arguments, must return a value convertible to Return, and it must be noexcept, or
-    //! not, as appropriate
+    //! @tparam _Queries The list of environment queries that must be supported
+    //! by the eventual receiver; it's a pack of function type like
+    //! Return(Query, Args...) or Return(Query, Args...) noexcept. The named
+    //! query, when given the specified arguments, must return a value
+    //! convertible to Return, and it must be noexcept, or not, as appropriate
     //!
-    //! \tparam _Args The argument types used to construct the erased sender
+    //! @tparam _Args The argument types used to construct the erased sender
     template <class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function
     {
-      // check these with asserts rather than requires because the only way to violate
-      // them is to circumvent the exec::function alias template so any violation is
-      // a user hitting themselves
+      // check these with asserts rather than requires because the only way to
+      // violate them is to circumvent the exec::function alias template so any
+      // violation is a user hitting themselves
       static_assert(__is_instance_of<_Sigs, completion_signatures>);
       static_assert(__is_instance_of<_Queries, queries>);
       static_assert(__is_instance_of<_Attrs, attrs>);
@@ -364,23 +370,23 @@ namespace experimental::execution
                                        static_cast<__receiver_t &&>(__rcvr));
       }
 
-      //! The curried arguments that will be passed to __make_sender_ from inside
-      //! __make_opstate_.
+      //! The curried arguments that will be passed to __make_sender_ from
+      //! inside __make_opstate_.
       STDEXEC_ATTRIBUTE(no_unique_address)
       __tuple<_Args...> __args_;
-      //! The type-erased operation state factory; it points to a function that knows the
-      //! concrete type of the sender factory stored in __make_sender_ so that it can
-      //! construct the desired sender on demand and connect it to the given receiver. The
-      //! expected arguments are the address of __make_sender_, the __any_receiver_ref to
-      //! connect the sender to, and the arguments to pass to __make_sender_ to construct
-      //! the sender.
+      //! The type-erased operation state factory; it points to a function that
+      //! knows the concrete type of the sender factory stored in __make_sender_
+      //! so that it can construct the desired sender on demand and connect it
+      //! to the given receiver. The expected arguments are the address of
+      //! __make_sender_, the __any_receiver_ref to connect the sender to, and
+      //! the arguments to pass to __make_sender_ to construct the sender.
       _any::_any_opstate_base (*__make_opstate_)(void *, __receiver_t, _Args &&...);
       //! Storage for the sender factory passed to our constructor template;
-      //! __make_opstate_ will reconstitute the actual factory from this bag-of-bytes with
-      //! start_lifetime_as because it internally knows the concrete type of the
-      //! user-provided sender factory. We're reserving 2 * sizeof(void *) bytes to permit
-      //! the factory to be a pointer to member function, which usually requires two
-      //! pointers.
+      //! __make_opstate_ will reconstitute the actual factory from this
+      //! bag-of-bytes with start_lifetime_as because it internally knows the
+      //! concrete type of the user-provided sender factory. We're reserving 2 *
+      //! sizeof(void *) bytes to permit the factory to be a pointer to member
+      //! function, which usually requires two pointers.
       std::byte __make_sender_[2 * sizeof(void *)]{};
 
      public:
@@ -402,13 +408,14 @@ namespace experimental::execution
         std::memcpy(__make_sender_, std::addressof(__factory), sizeof(_Factory));
       }
 
-      //! this implementation of get_completion_signatures is taken directly from the
-      //! equivalent function on any_sender_of
+      //! this implementation of get_completion_signatures is taken directly
+      //! from the equivalent function on any_sender_of
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
         static_assert(__decays_to_derived_from<_Self, __function>);
-        //! throw if _Env does not contain the queries needed to type-erase the receiver:
+        //! throw if _Env does not contain the queries needed to type-erase the
+        //! receiver:
         if constexpr (__merror<__check_queries_t<_Queries, _Env...>>)
           return __throw_compile_time_error(__check_queries_t<_Queries, _Env...>());
         else
@@ -466,18 +473,20 @@ namespace experimental::execution
       return __func::__canonicalize_splice<__types, _List>(__make_indices<__types.size()>());
     }
 
-    //! Map the type-list _Sigs to a canonical form, which sorts and uniques the contained
-    //! elements to ensure user-specified type-lists are not order-dependent.
+    //! Map the type-list _Sigs to a canonical form, which sorts and uniques the
+    //! contained elements to ensure user-specified type-lists are not
+    //! order-dependent.
     //!
-    //! \tparam _Sigs a type-list of types to be sorted and uniqued; expected to be a
-    //!         specialization of completion_signatures or queries.
+    //! @tparam _Sigs a type-list of types to be sorted and uniqued; expected to
+    //! be a specialization of completion_signatures or queries.
     template <class _Sigs>
     using __canonical_t = decltype(__func::__canonicalize(static_cast<_Sigs *>(nullptr)));
 
-    //! Given a return type and a bool indicating whether the function is noexcept,
-    //! compute the appropriate completion_signatures. The result is a set_value overload
-    //! taking either Return&& or no args when Return is void, set_stopped, and, when the
-    //! function type is not noexcept, set_error(std::exception_ptr)
+    //! Given a return type and a bool indicating whether the function is
+    //! noexcept, compute the appropriate completion_signatures. The result is a
+    //! set_value overload taking either Return&& or no args when Return is
+    //! void, set_stopped, and, when the function type is not noexcept,
+    //! set_error(std::exception_ptr)
     template <class _Return, bool _NoExcept>
     using __sigs_from_t = __canonical_t<__concat_completion_signatures_t<
       completion_signatures<__single_value_sig_t<_Return>, set_stopped_t()>,
@@ -510,11 +519,11 @@ namespace experimental::execution
       }
     };
 
-    //! computes the set of get_completion_domain queries that must be supported by any
-    //! sender that might be erased by the corresponding function
+    //! computes the set of get_completion_domain queries that must be supported
+    //! by any sender that might be erased by the corresponding function
     //!
-    //! we should support get_completion_domain<Tag> only if _Sigs contains a completion
-    //! of type Tag
+    //! we should support get_completion_domain<Tag> only if _Sigs contains a
+    //! completion of type Tag
     //!
     //! the query form should be
     //!
@@ -535,16 +544,17 @@ namespace experimental::execution
     //!       attrs<Attrs...>>
     //!
     //! where:
-    //!  - Args... is the type-erased sender factory's parameter list
-    //!  - Sigs... is the set of completion signatures that the erased sender is allowed
-    //!            to advertise
-    //!  - Queries... is the set of queries that the eventual receiver's environment must
-    //!               support
-    //!  - Attrs... is the set of attributes the type-erased sender must report; only
-    //!             supports the specification of the sender's completion domains
+    //! - Args... is the type-erased sender factory's parameter list
+    //! - Sigs... is the set of completion signatures that the erased sender is
+    //!   allowed to advertise
+    //! - Queries... is the set of queries that the eventual receiver's
+    //!   environment must support
+    //! - Attrs... is the set of attributes the type-erased sender must report;
+    //!   only supports the specification of the sender's completion domains
     //!
-    //! The order of Args... is obviously important, but Sigs..., Queries..., and Attrs...
-    //! are all canonicalized into a sorted and uniqued list to ensure order is irrelevant.
+    //! The order of Args... is obviously important, but Sigs..., Queries...,
+    //! and Attrs... are all canonicalized into a sorted and uniqued list to
+    //! ensure order is irrelevant.
     template <class...>
     class __make_function;
 
@@ -672,27 +682,29 @@ namespace experimental::execution
     };
   }  // namespace __func
 
-  //! the user-facing interface to exec::function that supports several different
-  //! declaration styles, including:
+  //! the user-facing interface to exec::function that supports several
+  //! different declaration styles, including:
   //!
   //! - function<int(bar, baz)>: a fallible function from (bar, baz) to int
-  //! - function<int(bar, baz) noexcept>: an infallible function from (bar, baz) to int
-  //! - function<sender_tag(bar, baz), completion_signatures<...>>: a function from (bar,
-  //!   baz) that completes in the ways specified by the given specialization of
-  //!   completion_signatures
-  //! - function<int(bar, baz), queries<Return(Query, Args...), ...>: a function from
-  //!   (bar, baz) to int that requires the final receiver to have an environment that
-  //!   supports the Query query, taking arguments Args..., and returning an object
-  //!   convertible to Return; queries may be required to be no-throw by declaring the
-  //!   function type noexcept
-  //! - function<sender_tag(bar, baz), completion_signatures<...>, queries<Return(Query,
-  //!   Args...)>>: a fully-specified async function that maps (bar, baz) to the specified
-  //!   completions, requiring the specified queries in the ultimate receiver's
-  //!   environment
+  //! - function<int(bar, baz) noexcept>: an infallible function from (bar, baz)
+  //!   to int
+  //! - function<sender_tag(bar, baz), completion_signatures<...>>: a function
+  //!   from (bar, baz) that completes in the ways specified by the given
+  //!   specialization of completion_signatures
+  //! - function<int(bar, baz), queries<Return(Query, Args...), ...>: a function
+  //!   from (bar, baz) to int that requires the final receiver to have an
+  //!   environment that supports the Query query, taking arguments Args..., and
+  //!   returning an object convertible to Return; queries may be required to be
+  //!   no-throw by declaring the function type noexcept
+  //! - function<sender_tag(bar, baz), completion_signatures<...>,
+  //!   queries<Return(Query, Args...)>>: a fully-specified async function that
+  //!   maps (bar, baz) to the specified completions, requiring the specified
+  //!   queries in the ultimate receiver's environment
   //!
-  //! Future: support C-style ellipsis arguments in the function signature to permit
-  //! type-erased arguments as well, like function<int(bar, baz, ...)> (a fallible
-  //! function from (bar, baz) plus unspecified, erased additional arguments to int)
+  //! Future: support C-style ellipsis arguments in the function signature to
+  //! permit type-erased arguments as well, like function<int(bar, baz, ...)> (a
+  //! fallible function from (bar, baz) plus unspecified, erased additional
+  //! arguments to int)
   template <class... _Ts>
   using function = __func::__make_function<_Ts...>::type;
 }  // namespace experimental::execution

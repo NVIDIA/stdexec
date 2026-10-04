@@ -254,7 +254,8 @@ namespace
         "Expected no errors ");
     }
 
-    // There are two main cases that will contribute set_error_t(std::exception_ptr)
+    // There are two main cases that will contribute
+    // set_error_t(std::exception_ptr)
     // 1. error's copy constructor could throw
     // 2. connect() could throw
     SECTION("error completion is added when an error's copy ctor can throw")

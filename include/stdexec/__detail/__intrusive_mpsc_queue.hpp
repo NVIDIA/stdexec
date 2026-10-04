@@ -99,8 +99,8 @@ namespace STDEXEC
         this->__tail_ = __next;
         return __tail;
       }
-      // A producer is in the middle of adding a new node since next is still nullptr
-      // and not our stub node, thus we cannot link the next node yet
+      // A producer is in the middle of adding a new node since next is still
+      // nullptr and not our stub node, thus we cannot link the next node yet
       return nullptr;
     }
   };

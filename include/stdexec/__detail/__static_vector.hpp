@@ -176,8 +176,8 @@ namespace STDEXEC
     value_type  __data_[_Capacity];
   };
 
-  // Specialization of __static_vector for zero capacity that doesn't require default
-  // constructibility of _Tp.
+  // Specialization of __static_vector for zero capacity that doesn't require
+  // default constructibility of _Tp.
   template <class _Tp>
   struct __static_vector<_Tp, 0> : __detail::__static_vector_base
   {

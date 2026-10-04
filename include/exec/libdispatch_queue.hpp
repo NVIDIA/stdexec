@@ -123,7 +123,8 @@ namespace experimental::execution
 
     struct domain
     {
-      // transform the generic bulk sender into a parallel libdispatch bulk sender
+      // transform the generic bulk sender into a parallel libdispatch bulk
+      // sender
       template <class Sender, class Env>
         requires sender_for<Sender, STDEXEC::bulk_chunked_t>
               || sender_for<Sender, STDEXEC::bulk_unchunked_t>
@@ -279,7 +280,7 @@ namespace experimental::execution
       }
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // What follows is the implementation for parallel bulk execution on
     // libdispatch queue.
     template <class Sender, std::integral Shape, class Fun, bool IsChunked>

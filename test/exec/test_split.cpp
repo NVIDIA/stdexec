@@ -246,8 +246,8 @@ namespace
     REQUIRE(counter == 2);
     REQUIRE(!called);
     sched.start_next();  // Impulse scheduler notices stop has been requested
-                         // and completes the underlying operation (just | then(...))
-                         // with "stopped".
+                         // and completes the underlying operation
+                         // (just | then(...)) with "stopped".
     REQUIRE(counter == 2);
     REQUIRE(!called);
   }

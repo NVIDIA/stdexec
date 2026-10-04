@@ -35,14 +35,15 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
-// Hide transfer_just from Doxygen since it's deprecated and we don't want to document it:
+// Hide transfer_just from Doxygen since it's deprecated and we don't want to
+// document it:
 #  if !defined(STDEXEC_DOXYGEN_INVOKED)
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   struct __transfer_just_t
   {
     template <scheduler _Scheduler, __movable_value... _Values>

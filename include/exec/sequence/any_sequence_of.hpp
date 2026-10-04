@@ -37,7 +37,7 @@ namespace experimental::execution
 
   namespace _any
   {
-    //////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _isequence_receiver
     template <class _Sigs, class _Queries>
     struct _isequence_receiver;
@@ -75,7 +75,7 @@ namespace experimental::execution
 
   namespace _any
   {
-    //////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _isequence_sender
     template <class _AnySequenceReceiver, class _SenderQueries>
     struct _isequence_sender;
@@ -108,11 +108,12 @@ namespace experimental::execution
             __std::unreachable();
           else if constexpr (_Base::__box_kind == STDEXEC::__any::__box_kind::__proxy)
             // The result of the call to _value(*this) below is a reference to a
-            // polymophic sender. If we pass that to STDEXEC::subscribe, it will attempt
-            // to transform that sender, which will cause it to be sliced. Instead, we
-            // call .subscribe(_rcvr) directly on the contained value. transform_sender
-            // gets called when the next branch is taken, which will happen as a result of
-            // the call to .subscribe(_rcvr) in this branch.
+            // polymophic sender. If we pass that to STDEXEC::subscribe, it will
+            // attempt to transform that sender, which will cause it to be
+            // sliced. Instead, we call .subscribe(_rcvr) directly on the
+            // contained value. transform_sender gets called when the next
+            // branch is taken, which will happen as a result of the call to
+            // .subscribe(_rcvr) in this branch.
             return STDEXEC::__any::__value(std::move(*this)).subscribe(std::move(_rcvr));
           else
             return _any_opstate_base{__in_place_from,
@@ -129,7 +130,7 @@ namespace experimental::execution
       };
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // _any_seq_opstate
     template <class _Receiver, class _TargetStopToken>
     struct _any_seq_opstate
@@ -155,7 +156,7 @@ namespace experimental::execution
     };
   }  // namespace _any
 
-  ////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_sequence_receiver
   template <class _Sigs, class _Queries>
   struct any_sequence_receiver final
@@ -168,7 +169,7 @@ namespace experimental::execution
     using _base_t::_base_t;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_sequence_receiver_ref
   template <class _Sigs, class _Queries>
   struct any_sequence_receiver_ref
@@ -194,7 +195,7 @@ namespace experimental::execution
                                            _any::_queries_t<_SenderQueries...>>;
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // any_sequence_sender
   template <class _Sigs, class _Queries, class _SenderQueries>
   struct any_sequence_sender<any_sequence_receiver<_Sigs, _Queries>, _SenderQueries> final

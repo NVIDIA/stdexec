@@ -44,7 +44,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.into.variant]
   namespace __into_variant
   {
@@ -117,8 +117,8 @@ namespace STDEXEC
   //!        @c std::variant-of-tuples value completion.
   //!
   //! @c into_variant takes a sender whose @c set_value_t completion can be
-  //! one of several shapes — e.g. <tt>set_value_t(int)</tt> *or*
-  //! <tt>set_value_t(std::string)</tt> — and produces a sender that always
+  //! one of several shapes — e.g. `set_value_t(int)` *or*
+  //! `set_value_t(std::string)` — and produces a sender that always
   //! value-completes with exactly one shape: a single
   //! `std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>` datum
   //! whose alternatives match the input's possible value completions.
@@ -145,13 +145,14 @@ namespace STDEXEC
   //! set_stopped_t()                  // forwarded unchanged
   //! @endcode
   //!
-  //! the sender produced by <tt>into_variant(sndr)</tt> has completion
+  //! the sender produced by `into_variant(sndr)` has completion
   //! signatures
   //!
   //! @code{.cpp}
   //! set_value_t(std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>)
   //! set_error_t(Es)...               // unchanged
-  //! set_error_t(std::exception_ptr)  // added if variant construction may throw
+  //! set_error_t(std::exception_ptr)  // added if variant construction may
+  //!                                  // throw
   //! set_stopped_t()                  // unchanged
   //! @endcode
   //!
@@ -182,9 +183,11 @@ namespace STDEXEC
   //! std::visit([](auto&& tup) { use(tup); }, v);
   //! @endcode
   //!
-  //! @see stdexec::when_all_with_variant  — applies @c into_variant to each input internally
+  //! @see stdexec::when_all_with_variant  — applies @c into_variant to each
+  //!                                        input internally
   //! @see stdexec::sync_wait_with_variant — variant-aware top-level wait
-  //! @see stdexec::sync_wait              — requires a single value-completion shape
+  //! @see stdexec::sync_wait              — requires a single value-completion
+  //!                                        shape
   struct into_variant_t
   {
     //! @brief Construct a sender that value-completes with a
@@ -204,11 +207,11 @@ namespace STDEXEC
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
-    //!        sender, produces <tt>into_variant(sndr)</tt>.
+    //!        sender, produces `into_variant(sndr)`.
     //!
     //! This overload enables the pipe syntax:
-    //! <tt>sndr | into_variant()</tt> is equivalent to
-    //! <tt>into_variant(sndr)</tt>.
+    //! `sndr | into_variant()` is equivalent to
+    //! `into_variant(sndr)`.
     //!
     //! @returns A sender-adaptor closure object.
     STDEXEC_ATTRIBUTE(always_inline)
@@ -218,9 +221,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c into_variant sender adaptor.
+  //! @brief The customization point object for the @c into_variant sender
+  //! adaptor.
   //!
-  //! @c into_variant is an instance of @ref into_variant_t. See
+  //! @c into_variant is an instance of @c into_variant_t. See
   //! @ref into_variant_t for the full description and a usage example.
   //!
   //! @hideinitializer

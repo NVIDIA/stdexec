@@ -28,7 +28,7 @@
 
 namespace experimental::execution
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   namespace __start_detached
   {
     struct __submit_receiver
@@ -116,9 +116,10 @@ namespace experimental::execution
       constexpr explicit __operation(_Sender&& __sndr, _Env __env)
         : __operation(STDEXEC::connect, static_cast<_Sender&&>(__sndr), static_cast<_Env&&>(__env))
       {
-        // If the operation completes synchronously, then the following line will cause
-        // the destruction of *this, which is not a problem because we used a delegating
-        // constructor, so *this is considered fully constructed.
+        // If the operation completes synchronously, then the following line
+        // will cause the destruction of *this, which is not a problem because
+        // we used a delegating constructor, so *this is considered fully
+        // constructed.
         __op_data_.submit(static_cast<_Sender&&>(__sndr), __receiver<_Env>{this});
       }
 
@@ -196,8 +197,10 @@ namespace experimental::execution
   //! work. If the operation observes a stop token via the environment,
   //! it can self-cancel; otherwise the work runs to natural completion.
   //!
-  //! @see stdexec::sync_wait  — top-level synchronous wait that returns the result
-  //! @see stdexec::spawn      — fire-and-forget into a scope (standardized in C++26)
+  //! @see stdexec::sync_wait    — top-level synchronous wait that returns the
+  //!                              result of the operation.
+  //! @see stdexec::spawn        — fire-and-forget into a scope (standardized in
+  //!                              C++26)
   //! @see stdexec::spawn_future — spawn into a scope and observe via a sender
   struct start_detached_t
   {
@@ -264,15 +267,16 @@ namespace experimental::execution
     {
       using __opstate_t = __start_detached::__operation<_CvSender, STDEXEC::__decay_t<_Env>>;
 
-#if !STDEXEC_APPLE_CLANG()  // There seems to be a codegen bug in apple clang that causes
-                            // `start_detached` to segfault when the code path below is
-                            // taken.
-      // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here is a
-      // conforming extension.
+#if !STDEXEC_APPLE_CLANG()
+      // There seems to be a codegen bug in apple clang that causes
+      // `start_detached` to segfault when the code path below is taken.
+      //
+      // BUGBUG NOT TO SPEC: the use of the non-standard `submit` algorithm here
+      // is a conforming extension.
       if constexpr (__start_detached::__use_submit<_CvSender, _Env>)
       {
-        // If submit(sndr, rcvr) returns void, then no state needs to be kept alive
-        // for the operation. We can just call submit and return.
+        // If submit(sndr, rcvr) returns void, then no state needs to be kept
+        // alive for the operation. We can just call submit and return.
         STDEXEC::__submit::__submit(static_cast<_CvSender&&>(__sndr),
                                     __start_detached::__submit_receiver{});
       }
@@ -284,29 +288,31 @@ namespace experimental::execution
                                                std::allocator<__opstate_t>())(__env);
         using __alloc_t    = decltype(__alloc);
         using __op_alloc_t = std::allocator_traits<__alloc_t>::template rebind_alloc<__opstate_t>;
-        // We use the allocator to allocate the op state and also to construct it.
+        // We use the allocator to allocate the op state and also to construct
+        // it.
         __op_alloc_t           __op_alloc{__alloc};
         __opstate_t*           __op = std::allocator_traits<__op_alloc_t>::allocate(__op_alloc, 1);
         STDEXEC::__scope_guard __g{
           [__op, &__op_alloc]() noexcept
           { std::allocator_traits<__op_alloc_t>::deallocate(__op_alloc, __op, 1); }};
-        // This can potentially throw. If it does, the scope guard will deallocate the
-        // storage automatically.
+        // This can potentially throw. If it does, the scope guard will
+        // deallocate the storage automatically.
         std::allocator_traits<__op_alloc_t>::construct(__op_alloc,
                                                        __op,
                                                        static_cast<_CvSender&&>(__sndr),
                                                        static_cast<_Env&&>(__env));
         // The operation state is now constructed, dismiss the scope guard.
         __g.__dismiss();
-        // The operation has now started and is responsible for deleting itself when it
-        // completes.
+        // The operation has now started and is responsible for deleting itself
+        // when it completes.
       }
     }
   };
 
-  //! @brief The customization point object for the @c start_detached sender consumer.
+  //! @brief The customization point object for the @c start_detached sender
+  //! consumer.
   //!
-  //! @c start_detached is an instance of @ref start_detached_t. See
+  //! @c start_detached is an instance of @c start_detached_t. See
   //! @ref start_detached_t for the full description and a usage example.
   //!
   //! @hideinitializer

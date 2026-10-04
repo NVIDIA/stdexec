@@ -71,7 +71,8 @@ namespace experimental::execution::asio
     }
 
     asio_impl::thread_pool pool_;
-    // Need to store implicitly the executor, thread_pool::executor() is not const
+    // Need to store implicitly the executor, thread_pool::executor() is not
+    // const
     asio_impl::thread_pool::executor_type executor_;
   };
 }  // namespace experimental::execution::asio

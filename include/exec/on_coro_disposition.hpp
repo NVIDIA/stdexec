@@ -210,8 +210,9 @@ namespace experimental::execution
       static auto __impl(_Action __action, _Ts... __ts) -> __task<_Ts...>
       {
 #if STDEXEC_EDG()
-        // This works around an EDG bug where the compiler misinterprets __get_disposition:
-        // operand to this co_await expression resolves to non-class "<unnamed>"
+        // This works around an EDG bug where the compiler misinterprets
+        // __get_disposition: operand to this co_await expression resolves to
+        // non-class "<unnamed>"
         using __get_disposition =
           std::enable_if_t<sizeof(_Action) != 0, __on_coro_disp::__get_disposition>;
 #endif

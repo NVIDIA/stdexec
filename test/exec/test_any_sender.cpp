@@ -153,8 +153,8 @@ namespace
     ref = error;
     ex::set_error(static_cast<receiver_ref &&>(ref), std::make_exception_ptr(42));
     CHECK(error.value_.index() == 2);
-    // MSVC issues a warning about unreachable code in this block, hence the warning
-    // suppression at the top of the file.
+    // MSVC issues a warning about unreachable code in this block, hence the
+    // warning suppression at the top of the file.
     CHECK_THROWS_AS(std::rethrow_exception(std::get<2>(error.value_)), int);
 #endif
     // Check set stopped
@@ -730,8 +730,8 @@ namespace
     CHECK(counting_scheduler::count == 0);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  //                                                                any_scheduler
+  //////////////////////////////////////////////////////////////////////////////
+  // any_scheduler
 
   template <auto... Queries>
   using my_scheduler = any_sender_of<ex::set_value_t()>::any_scheduler<Queries...>;
