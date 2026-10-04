@@ -336,6 +336,28 @@ namespace
     CHECK(n == 1);
   }
 
+  TEST_CASE("timed_thread_scheduler - stop on the context thread completes inline",
+            "[timed_thread_scheduler][when_any]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    exec::async_scope            scope;
+    bool                         completed_before_start_returned = false;
+    STDEXEC::sync_wait(
+      STDEXEC::schedule(scheduler)
+      | STDEXEC::then(
+        [&]
+        {
+          bool completed = false;
+          scope.spawn(exec::when_any(exec::schedule_after(scheduler, std::chrono::seconds(5)),
+                                     STDEXEC::just())
+                      | STDEXEC::then([&completed] { completed = true; }));
+          completed_before_start_returned = completed;
+        }));
+    CHECK(completed_before_start_returned);
+    CHECK(STDEXEC::sync_wait(scope.on_empty()));
+  }
+
   TEST_CASE("timed_thread_scheduler - many timers with async scope",
             "[timed_thread_scheduler][async_scope]")
   {
