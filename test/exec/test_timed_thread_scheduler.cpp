@@ -343,17 +343,17 @@ namespace
     exec::timed_thread_scheduler scheduler = context.get_scheduler();
     exec::async_scope            scope;
     bool                         completed_before_start_returned = false;
-    STDEXEC::sync_wait(STDEXEC::schedule(scheduler)
-                       | STDEXEC::then(
-                         [&]
-                         {
-                           bool completed = false;
-                           scope.spawn(exec::when_any(exec::schedule_after(scheduler,
-                                                                           std::chrono::seconds(5)),
-                                                      STDEXEC::just())
-                                       | STDEXEC::then([&completed] { completed = true; }));
-                           completed_before_start_returned = completed;
-                         }));
+    STDEXEC::sync_wait(
+      STDEXEC::schedule(scheduler)
+      | STDEXEC::then(
+        [&]
+        {
+          bool completed = false;
+          scope.spawn(exec::when_any(exec::schedule_after(scheduler, std::chrono::seconds(5)),
+                                     STDEXEC::just())
+                      | STDEXEC::then([&completed] { completed = true; }));
+          completed_before_start_returned = completed;
+        }));
     CHECK(completed_before_start_returned);
     CHECK(STDEXEC::sync_wait(scope.on_empty()));
   }
