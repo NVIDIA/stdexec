@@ -164,11 +164,13 @@ namespace experimental::execution
     };
 
     //
-    // __operation.. coordinates all the nested operation completions, creates
-    // a nested inplace_stop_source and stores the first error to arrive and
-    // delays the error to be emmitted after all nested operations have completed
+    // __operation.. coordinates all the nested operation completions, creates a
+    // nested inplace_stop_source and stores the first error to arrive and
+    // delays the error to be emmitted after all nested operations have
+    // completed
     //
-    // The first error to arrive will request_stop on the nested inplace_stop_source
+    // The first error to arrive will request_stop on the nested
+    // inplace_stop_source
     //
 
     template <class _ErrorStorage>
@@ -199,8 +201,8 @@ namespace experimental::execution
       {
         if (this->nested_value_fail())
         {
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           if constexpr (noexcept(__error_storage_->template emplace<_Error>(
                           static_cast<_Error&&>(__error))))
           {
@@ -431,16 +433,17 @@ namespace experimental::execution
         switch (__completion_.exchange(__completion_t::__error))
         {
         case __completion_t::__started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We must request stop. When the previous state is __error or
+          // __stopped, then stop has already been requested.
           __nested_stop_.request_stop();
           [[fallthrough]];
         case __completion_t::__stopped:
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           return true;
           break;
-        case __completion_t::__error:;  // We're already in the "error" state. Ignore the error.
+        case __completion_t::__error:;  // We're already in the "error" state,
+                                        // so ignore the error.
         }
         return false;
       }
@@ -451,8 +454,9 @@ namespace experimental::execution
       }
       void error_complete() noexcept override
       {
-        // The error has been delivered as an item. Complete the sequence so the consumer can
-        // publish it, unless the operation was independently stopped.
+        // The error has been delivered as an item. Complete the sequence so the
+        // consumer can publish it, unless the operation was independently
+        // stopped.
         exec::__set_value_unless_stopped(static_cast<_Receiver&&>(__rcvr_));
       }
 
@@ -536,12 +540,12 @@ namespace experimental::execution
     };
 
     //
-    // __nested_value.. exists to store the an error signal from a
-    // value if it is the first error. All error completions are
-    // removed from the completion_signatures. when an error occurs
-    // the stopped signal will be emitted here and the error will
-    // be emitted as a separate item after all active operations
-    // have completed. otherwise __nested_value.. is transparent.
+    // __nested_value.. exists to store the an error signal from a value if it
+    // is the first error. All error completions are removed from the
+    // completion_signatures. when an error occurs the stopped signal will be
+    // emitted here and the error will be emitted as a separate item after all
+    // active operations have completed. otherwise __nested_value.. is
+    // transparent.
     //
 
     template <class _NestedValueReceiver>
@@ -695,11 +699,10 @@ namespace experimental::execution
     // receivers here, the completion signals to the next receiver
     // travel to the producer.
     // Only set_value() and set_stopped() are allowed.
-    // - set_value() will signal the producer to emit the next
-    //     sequence and cleanup the storage for the previous
-    //     sequence.
-    // - set_stopped() will signal the producer to break out and
-    //     send no more sequences.
+    // - set_value() will signal the producer to emit the next sequence and
+    //   cleanup the storage for the previous sequence.
+    // - set_stopped() will signal the producer to break out and send no more
+    //   sequences.
     //
 
     struct __next_operation_interface
@@ -739,13 +742,12 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_values is subscribed to each nested sequence
-    // This forwards all the nested value senders to the output sequence.
-    // This wraps the nested value senders to capture and delay any
-    // error signals emitted by the nested value sender.
-    // This captures and delays any error signals received directly.
-    // set_stopped is ignored. This allows nested sequences to be
-    // stopped individually without stopping all the other nested
+    // __receive_nested_values is subscribed to each nested sequence This
+    // forwards all the nested value senders to the output sequence. This wraps
+    // the nested value senders to capture and delay any error signals emitted
+    // by the nested value sender. This captures and delays any error signals
+    // received directly. set_stopped is ignored. This allows nested sequences
+    // to be stopped individually without stopping all the other nested
     // sequences or the merge_each operation.
     //
 
@@ -894,7 +896,8 @@ namespace experimental::execution
         __mapply<__all_nested_values_fn<_Env...>, __nested_sequences_t<_Sequence, _Env...>>;
 
       //
-      // __error_types extracts the types of all the errors emitted by all the senders in the list.
+      // __error_types extracts the types of all the errors emitted by all the
+      // senders in the list.
       //
 
       template <class... _Env>
@@ -964,8 +967,8 @@ namespace experimental::execution
                  __all_nested_values_t<_Sequence, _Env...>>;
 
       //
-      // __nested_sequence_ops_variant makes a variant that contains the
-      // types of all the nested sequence operations.
+      // __nested_sequence_ops_variant makes a variant that contains the types
+      // of all the nested sequence operations.
       //
 
       template <class _OperationBase>
@@ -994,9 +997,9 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_sequence is connected to each sender of a nested sequence.
-    // The nested sequence is then subscribed and the operation is stored in a
-    // variant of all possible nested sequence operations.
+    // __receive_nested_sequence is connected to each sender of a nested
+    // sequence. The nested sequence is then subscribed and the operation is
+    // stored in a variant of all possible nested sequence operations.
     //
 
     template <class _NextReceiver, class _OperationBase, class _NestedSeqOp>
@@ -1120,9 +1123,9 @@ namespace experimental::execution
     };
 
     //
-    // __receive_nested_sequences is subscribed to the input sequence of sequences
-    // each new sender of a nested sequence is placed in a __next_sequence_sender
-    // that is returned from set_next()
+    // __receive_nested_sequences is subscribed to the input sequence of
+    // sequences each new sender of a nested sequence is placed in a
+    // __next_sequence_sender that is returned from set_next()
     //
 
     template <class _OperationBase, class _NestedSeqOp>
@@ -1239,19 +1242,18 @@ namespace experimental::execution
 
     //
     // merge_each is a sequence adaptor that takes a sequence of nested
-    // sequences and merges all the nested values from all the nested
-    // sequences into a single output sequence.
+    // sequences and merges all the nested values from all the nested sequences
+    // into a single output sequence.
     //
-    // the first error encountered will trigger a stop request for all
-    // active operations. The error is stored and is emitted only after
-    // all the active operations have completed.
-    // If the error was emitted from an item, a new item is emitted
-    // at the end to deliver the stored error.
+    // the first error encountered will trigger a stop request for all active
+    // operations. The error is stored and is emitted only after all the active
+    // operations have completed. If the error was emitted from an item, a new
+    // item is emitted at the end to deliver the stored error.
     //
-    // any nested sequence or nested value that completes with
-    // set_stopped will not cause any other operations to be stopped.
-    // This allows individual nested sequences to be stopped without
-    // breaking the merge of the remaining sequences.
+    // any nested sequence or nested value that completes with set_stopped will
+    // not cause any other operations to be stopped. This allows individual
+    // nested sequences to be stopped without breaking the merge of the
+    // remaining sequences.
     //
 
     struct merge_each_t

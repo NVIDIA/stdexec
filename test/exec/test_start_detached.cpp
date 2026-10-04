@@ -57,8 +57,8 @@ namespace
     exec::start_detached(ex::just(3, 0.1415));
   }
 
-  // Trying to test `start_detached` with error flows will result in calling `std::terminate()`.
-  // We don't want that
+  // Trying to test `start_detached` with error flows will result in calling
+  // `std::terminate()`. We don't want that
 
   TEST_CASE("start_detached works with sender ending with `set_stopped`",
             "[consumers][start_detached]")
@@ -90,9 +90,9 @@ namespace
                           | ex::then([&] { called.store(true); });
       exec::start_detached(std::move(snd));
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(); i++)
       std::this_thread::sleep_for(1ms);
     // the work should be executed
@@ -126,6 +126,7 @@ namespace
     }
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver&&) const -> noop
     {
       static_assert(sizeof(Receiver) == 0);
@@ -154,6 +155,7 @@ namespace
       };
 
       template <class Receiver>
+      [[maybe_unused]]
       auto connect(Receiver&&) const
       {
         FAIL("this should not be called");
@@ -188,7 +190,7 @@ namespace
     }
 
     template <ex::__completion_tag Tag>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>, ex::__ignore = {}) const noexcept -> domain
     {
       return {};

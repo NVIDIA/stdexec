@@ -97,8 +97,8 @@ namespace STDEXEC
       using __f = __results_storage<>;
     };
 
-    // If the final sender has no value completions, then we don't need to store the
-    // initial sender's values because they won't be propagated.
+    // If the final sender has no value completions, then we don't need to store
+    // the initial sender's values because they won't be propagated.
     template <class _CvInitialSender, class _CvFinalSender, class _Receiver>
     using __result_variant_t = __mcall2<
       __result_variant_fn<__sends<set_value_t, _CvFinalSender, __fwd_env_t<env_of_t<_Receiver>>>>,
@@ -180,8 +180,9 @@ namespace STDEXEC
       {
         if constexpr (!__sends<set_value_t, _CvFinalSender, __fwd_env_t<env_of_t<_Receiver>>>)
         {
-          // If the final sender has no set_value completions, then we don't need to store the
-          // initial sender's values because they won't be propagated.
+          // If the final sender has no set_value completions, then we don't
+          // need to store the initial sender's values because they won't be
+          // propagated.
           (*__cleanup_callback_)(this);
           STDEXEC::start(this->__final_opstate_);
         }
@@ -309,9 +310,9 @@ namespace STDEXEC
                                       __mk_final_env_t<_CvInitialSender, _Env>...>)
           {
             // If the finally sender doesn't have set_value completions, then we
-            // don't need to worry about the initial sender's value types not being
-            // nothrow decay-copyable, because they won't be propagated to the
-            // receiver.
+            // don't need to worry about the initial sender's value types not
+            // being nothrow decay-copyable, because they won't be propagated to
+            // the receiver.
             return STDEXEC::__transform_completion_signatures(__initial_completions,
                                                               __ignore_completion(),
                                                               {},
@@ -322,8 +323,8 @@ namespace STDEXEC
                                         set_value_t(),
                                         __mk_final_env_t<_CvInitialSender, _Env>...>)
           {
-            // If the finally sender has value completions other than set_value_t(), then
-            // throw a compilation error.
+            // If the finally sender has value completions other than
+            // set_value_t(), then throw a compilation error.
             return STDEXEC::__throw_compile_time_error<
               _WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
               _WHERE_(_IN_ALGORITHM_, __finally_t),
@@ -334,7 +335,8 @@ namespace STDEXEC
           {
             // The finally sender's completion signatures are ...
             return STDEXEC::__concat_completion_signatures(
-              // ... the initial sender's completions with value types decayed ...
+              // ... the initial sender's completions with value types decayed
+              // ...
               STDEXEC::__transform_completion_signatures(
                 __initial_completions,
                 __decay_arguments<set_value_t, __finally_t>()),

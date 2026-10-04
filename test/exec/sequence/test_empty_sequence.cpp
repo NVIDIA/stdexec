@@ -43,6 +43,7 @@ namespace
     using receiver_concept = STDEXEC::receiver_tag;
     int& count_invocations_;
 
+    [[maybe_unused]]
     auto set_next(auto /* item */) & noexcept
     {
       ++count_invocations_;

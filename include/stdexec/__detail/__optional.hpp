@@ -98,19 +98,21 @@ namespace STDEXEC
         }
       }
 
-      // The following emplace function must take great care to avoid use-after-free bugs.
-      // If the object being constructed calls `start` on a newly created operation state
-      // (as does the object returned from `submit`), and if `start` completes inline, it
-      // could cause the destruction of the outer operation state that owns *this. The
-      // function below uses the following pattern to avoid this:
+      // The following emplace function must take great care to avoid
+      // use-after-free bugs. If the object being constructed calls `start` on a
+      // newly created operation state (as does the object returned from
+      // `submit`), and if `start` completes inline, it could cause the
+      // destruction of the outer operation state that owns *this. The function
+      // below uses the following pattern to avoid this:
       // 1. Set __has_value_ to true.
-      // 2. Create a scope guard that will reset __has_value_ to false if the constructor
-      //    throws.
-      // 3. Construct the new object in the storage, which may cause the invalidation of
-      //    *this. The emplace function must not access any members of *this after this point.
+      // 2. Create a scope guard that will reset __has_value_ to false if the
+      //    constructor throws.
+      // 3. Construct the new object in the storage, which may cause the
+      //    invalidation of *this. The emplace function must not access any
+      //    members of *this after this point.
       // 4. Dismiss the scope guard, which will leave __has_value_ set to true.
-      // 5. Return a reference to the new object -- which may be invalid! Calling code
-      //    must be aware of the danger.
+      // 5. Return a reference to the new object -- which may be invalid!
+      //    Calling code must be aware of the danger.
       template <class... _Us>
         requires __std::constructible_from<_Tp, _Us...>
       constexpr auto

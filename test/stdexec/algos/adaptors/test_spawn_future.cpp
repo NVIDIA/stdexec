@@ -184,7 +184,8 @@ namespace
                                      | ex::then(
                                        [&](auto&& envAlloc) noexcept
                                        {
-                                         // we should've pulled the scope's allocator into our environment
+                                         // we should've pulled the scope's
+                                         // allocator into our environment
                                          CHECK(alloc == envAlloc);
 
                                          return rsc.allocated();
@@ -236,7 +237,8 @@ namespace
                                    scope.get_token(),
                                    ex::prop(ex::get_allocator, alloc2));
 
-    // we should have allocated some memory for the op from rsc2 but not from rsc
+    // we should have allocated some memory for the op from rsc2 but not from
+    // rsc
     auto allocated1 = rsc1.allocated();
     auto allocated2 = rsc2.allocated();
     CHECK(allocated1 == 0);
@@ -388,6 +390,7 @@ namespace
     using sender_concept = ex::sender_tag;
 
     template <class Sender, class... Env>
+    [[maybe_unused]]
     static consteval auto get_completion_signatures(Sender&&, Env&&...) noexcept
       -> ex::completion_signatures<ex::set_stopped_t()>
     {

@@ -44,11 +44,11 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.envs]
   namespace __env
   {
-    //////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // cprop
     template <class _Query, auto _Value>
     struct cprop
@@ -141,9 +141,10 @@ namespace STDEXEC
 
     struct __root_t : __query<__root_t>
     {
-      // This is a forwarding query so that the "rootness" of an environment survives
-      // being wrapped by environment-adapting senders like `write_env`. Rootness is a
-      // property of the root of a connect tree; it holds for every operation within it.
+      // This is a forwarding query so that the "rootness" of an environment
+      // survives being wrapped by environment-adapting senders like
+      // `write_env`. Rootness is a property of the root of a connect tree; it
+      // holds for every operation within it.
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       static consteval auto query(forwarding_query_t) noexcept -> bool
       {
@@ -194,7 +195,7 @@ namespace STDEXEC
     { __root_t{}(__env) } -> __std::same_as<bool>;
   };
 
-  //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // A singleton environment from a query/value pair
   template <class _Query, class _Value>
   struct prop
@@ -237,8 +238,8 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(env<_Envs...> const &__env) const noexcept -> decltype(auto)
       {
-        // count of elements that includes the first env that supports the query and all
-        // subsequent envs
+        // count of elements that includes the first env that supports the query
+        // and all subsequent envs
         STDEXEC_CONSTEXPR_LOCAL auto __index =
           sizeof...(_Envs) - __mcall<__mfind_if<__q1<__has_query_t>, __msize>, _Envs...>::value;
         if constexpr (__index < sizeof...(_Envs))
@@ -249,7 +250,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  //////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // env
   template <class... _Envs>
   struct env : __tuple<_Envs...>
@@ -272,7 +273,7 @@ namespace STDEXEC
   template <class... _Envs>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE env(_Envs...) -> env<std::unwrap_reference_t<_Envs>...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   namespace __detail
   {
     template <class _EnvProvider>
@@ -311,7 +312,7 @@ namespace STDEXEC
   //!   using receiver_concept = stdexec::receiver_tag;
   //!
   //!   auto get_env() const noexcept {
-  //!     return stdexec::env{stdexec::prop{stdexec::get_stop_token, my_stop_token_}};
+  //!     return stdexec::prop{stdexec::get_stop_token, my_stop_token_};
   //!   }
   //! };
   //! @endcode
@@ -324,15 +325,16 @@ namespace STDEXEC
   //! **Environment queries.**
   //!
   //! Once you have an environment, you query it by calling the appropriate
-  //! query CPO on it: <tt>get_stop_token(env)</tt>,
-  //! <tt>get_allocator(env)</tt>, <tt>get_scheduler(env)</tt>, etc. Each
+  //! query CPO on it: `get_stop_token(env)`,
+  //! `get_allocator(env)`, `get_scheduler(env)`, etc. Each
   //! query is a separate CPO; the environment dispatches based on the
   //! query's type. Inside a sender pipeline you almost always reach for
   //! @c stdexec::read_env (or its helpers like @c get_stop_token() with
   //! no argument) rather than calling @c get_env directly.
   //!
   //! @see stdexec::env             — the environment container type
-  //! @see stdexec::read_env        — the sender factory that exposes env values to pipelines
+  //! @see stdexec::read_env        — the sender factory that exposes env values
+  //!                                 to pipelines
   //! @see stdexec::get_stop_token  — example of an environment query CPO
   //! @see stdexec::get_allocator
   //! @see stdexec::get_scheduler
@@ -340,7 +342,7 @@ namespace STDEXEC
   {
     //! @brief Obtain the environment of @c __env_provider.
     //!
-    //! Dispatches to <tt>__env_provider.get_env()</tt>, statically
+    //! Dispatches to `__env_provider.get_env()`, statically
     //! asserting that the member is @c noexcept.
     //!
     //! @tparam _EnvProvider A type whose const-lvalue has a
@@ -368,7 +370,7 @@ namespace STDEXEC
   //! @brief The customization point object for obtaining a sender's or
   //!        receiver's environment.
   //!
-  //! @c get_env is an instance of @ref get_env_t. See @ref get_env_t for
+  //! @c get_env is an instance of @c get_env_t. See @ref get_env_t for
   //! the full description and customization examples.
   //!
   //! @hideinitializer

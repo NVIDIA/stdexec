@@ -29,8 +29,8 @@
 
 namespace ex = STDEXEC;
 
-// For testing `when_all_with_variant`, we just check a couple of examples, check customization, and
-// we assume it's implemented in terms of `when_all`.
+// For testing `when_all_with_variant`, we just check a couple of examples,
+// check customization, and we assume it's implemented in terms of `when_all`.
 
 namespace
 {
@@ -63,6 +63,7 @@ namespace
     };
 
     template <class Receiver>
+    [[maybe_unused]]
     auto connect(Receiver receiver) const noexcept -> operation<Receiver>
     {
       return {std::move(receiver)};

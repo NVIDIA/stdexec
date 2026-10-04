@@ -45,7 +45,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.spawn]
   namespace __spawn
   {
@@ -144,7 +144,7 @@ namespace STDEXEC
   //! 1. allocates an operation state on the heap (using an allocator
   //!    queried from the environment or the sender's own environment),
   //! 2. tries to associate the resulting operation with the scope via
-  //!    <tt>token.try_associate()</tt>,
+  //!    `token.try_associate()`,
   //! 3. if the association succeeds, eagerly @c start s the operation,
   //!    and on completion deallocates the state and releases the scope
   //!    association.
@@ -173,7 +173,7 @@ namespace STDEXEC
   //! The argument sender must not be able to complete with @c set_error
   //! — @c spawn cannot deliver an error to a non-existent caller. The
   //! @c requires clause enforces this with a
-  //! <tt>__never_sends<set_error_t, ...></tt> check; the diagnostic
+  //! `__never_sends<set_error_t, ...>` check; the diagnostic
   //! overload says "spawn expects a sender that cannot fail" if the check
   //! fires.
   //!
@@ -195,10 +195,11 @@ namespace STDEXEC
   //! you want to *observe* (without blocking), use
   //! @c stdexec::spawn_future.
   //!
-  //! @see stdexec::spawn_future   — like @c spawn, but returns a sender that completes
-  //!                                when the spawned work completes
+  //! @see stdexec::spawn_future   — like @c spawn, but returns a sender that
+  //!                                completes when the spawned work completes
   //! @see exec::start_detached    — scope-less fire-and-forget (extension)
-  //! @see stdexec::sync_wait      — top-level synchronous wait that returns the result
+  //! @see stdexec::sync_wait      — top-level synchronous wait that returns the
+  //!                                result
   STDEXEC_MODULE_EXPORT
   struct spawn_t
   {
@@ -219,7 +220,7 @@ namespace STDEXEC
     //! @brief Spawn @c __sndr into the scope identified by @c __tkn, using
     //!        a default (empty) environment.
     //!
-    //! Equivalent to <tt>spawn(__sndr, __tkn, env<>{})</tt>.
+    //! Equivalent to `spawn(__sndr, __tkn, env<>{})`.
     //!
     //! @tparam _Sender A sender type with no @c set_error_t completions.
     //! @tparam _Token  A type satisfying @c stdexec::scope_token.
@@ -255,9 +256,9 @@ namespace STDEXEC
     //!        the allocator queried from @c __env.
     //!
     //! Allocates the operation state on the heap (using
-    //! <tt>stdexec::get_allocator(__env)</tt>, falling back to
+    //! `stdexec::get_allocator(__env)`, falling back to
     //! @c std::allocator), associates with the scope via
-    //! <tt>__tkn.try_associate()</tt>, and on success @c start s the
+    //! `__tkn.try_associate()`, and on success @c start s the
     //! operation. On completion the state is destroyed and deallocated.
     //!
     //! @tparam _Sender A sender type with no @c set_error_t completions.
@@ -309,7 +310,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c spawn sender consumer.
   //!
-  //! @c spawn is an instance of @ref spawn_t. See @ref spawn_t for the full
+  //! @c spawn is an instance of @c spawn_t. See @ref spawn_t for the full
   //! description, scope semantics, and a usage example.
   //!
   //! @hideinitializer

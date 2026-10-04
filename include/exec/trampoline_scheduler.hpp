@@ -182,12 +182,12 @@ namespace experimental::execution
               if (__prev_ != nullptr)
               {
                 // was not empty
-                std::exchange(__prev_->__next_, static_cast<__opstate_base*>(this));
+                __prev_->__next_ = static_cast<__opstate_base*>(this);
               }
               else
               {
                 // was empty
-                std::exchange(__current_state->__head_, static_cast<__opstate_base*>(this));
+                __current_state->__head_ = static_cast<__opstate_base*>(this);
               }
             }
           }
@@ -296,9 +296,10 @@ namespace experimental::execution
       {
         // pop the head of the list
 #  if STDEXEC_NVHPC()
-        // there appears to be a codegen bug in nvhpc where the optimizer does not see the
-        // assign to __head_ that happens in the std::exchange call below, causing it to
-        // erroneously optimize away the `if (__head_ != nullptr)` check later on.
+        // there appears to be a codegen bug in nvhpc where the optimizer does
+        // not see the assign to __head_ that happens in the std::exchange call
+        // below, causing it to erroneously optimize away the `if (__head_ !=
+        // nullptr)` check later on.
         _Operation* __op = __head_;
         __head_          = __head_->__next_;
 #  else

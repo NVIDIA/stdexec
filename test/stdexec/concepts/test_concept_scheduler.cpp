@@ -54,7 +54,7 @@ namespace
     };
 
     template <typename CPO>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto
     query(ex::get_completion_scheduler_t<CPO>, ex::__ignore = {}) const noexcept -> my_scheduler
     {

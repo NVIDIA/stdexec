@@ -40,9 +40,9 @@ namespace experimental::execution
     template <class... E>
     using __as_error = set_error_t (*)(__decay_t<E>...);
 
-    // Here we convert all set_value(Args...) and set_error(Args...) to use decayed arguments and
-    // unconditionally add set_stopped(). The indirection through the __completions_fn is to avoid
-    // a pack expansion bug in nvc++.
+    // Here we convert all set_value(Args...) and set_error(Args...) to use
+    // decayed arguments and unconditionally add set_stopped(). The indirection
+    // through the __completions_fn is to avoid a pack expansion bug in nvc++.
     template <class... _Env>
     struct __completions_fn
     {
@@ -87,13 +87,15 @@ namespace experimental::execution
       {
         constexpr void operator()() const noexcept
         {
-          // Temporarily increment the count to avoid concurrent/recursive arrivals to
-          // pull the rug under our feet. Relaxed memory order is fine here.
+          // Temporarily increment the count to avoid concurrent/recursive
+          // arrivals to pull the rug under our feet. Relaxed memory order is
+          // fine here.
           __op_->__count_.fetch_add(1, __std::memory_order_relaxed);
 
           __op_->__stop_source_.request_stop();
 
-          // Arrive in order to decrement the count again and complete if needed.
+          // Arrive in order to decrement the count again and complete if
+          // needed.
           __op_->__arrive();
         }
 
@@ -149,8 +151,9 @@ namespace experimental::execution
 
       constexpr void __arrive() noexcept
       {
-        // make __result_ emplacement visible when __count_ goes from one to zero
-        // This relies on the fact that each sender will call notify() at most once
+        // make __result_ emplacement visible when __count_ goes from one to
+        // zero This relies on the fact that each sender will call notify() at
+        // most once
         if (__count_.fetch_sub(1, __std::memory_order_acq_rel) == 1)
         {
           __on_stop_.reset();

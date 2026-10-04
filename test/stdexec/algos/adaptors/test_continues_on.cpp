@@ -57,6 +57,7 @@ namespace
       };
 
       template <class Receiver>
+      [[maybe_unused]]
       auto connect(Receiver receiver) const noexcept(false) -> opstate<Receiver>
       {
         return {static_cast<Receiver &&>(receiver)};
@@ -116,7 +117,8 @@ namespace
     auto op = ex::connect(std::move(snd), expect_value_receiver_ex{res});
     ex::start(op);
 
-    // The value will be available when the scheduler will execute the next operation
+    // The value will be available when the scheduler will execute the next
+    // operation
     REQUIRE(res == 0);
     sched.start_next();
     REQUIRE(res == 13);
@@ -130,7 +132,8 @@ namespace
     auto              snd = ex::continues_on(ex::just(13), sched);
     auto              op  = ex::connect(snd, expect_value_receiver_ex{recv_value});
     ex::start(op);
-    // Up until this point, the scheduler didn't start any task; no effect expected
+    // Up until this point, the scheduler didn't start any task; no effect
+    // expected
     CHECK(recv_value == 0);
 
     // Tell the scheduler to start executing one task
@@ -178,9 +181,9 @@ namespace
                           | ex::then([&] { called.store(true); });
       exec::start_detached(std::move(snd));
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(); i++)
     {
       std::this_thread::sleep_for(1ms);
@@ -317,6 +320,7 @@ namespace
   struct test_domain_A
   {
     template <exec::sender_for<ex::continues_on_t> Sender, class Env>
+    [[maybe_unused]]
     auto transform_sender(STDEXEC::set_value_t, Sender &&, Env &&) const
     {
       return ex::just(std::string("hello"));

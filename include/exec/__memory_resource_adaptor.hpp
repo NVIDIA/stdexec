@@ -28,24 +28,26 @@
 //! Defines template <class _Adaptee> exec::__memory_resource_adaptor_t
 //!
 //! A "memory resource adaptor" adapts a "thing that can allocate memory" to the
-//! std::pmr::memory_resource interface. It's used in exec::function when the function's
-//! type parameters do not require that its eventual receiver have an environment that's
-//! queryable with exec::get_frame_allocator. In those circumstances, function will ensure
-//! that the receiver to which its erased sender is connected *does* have an environment
-//! that responds to get_frame_allocator with a type-erased frame allocator. The
-//! type-erased frame allocator is a std::pmr::polymorphic_allocator<>, and the
-//! memory_resource given to it is a __memory_resoure_adaptor<_Adaptee>, where _Adaptee is
-//! the type of "allocator" used to allocate the function's operation state. _Adaptee may
-//! be one of:
-//!  - a type that models Allocator;
-//!  - std::pmr::memory_resource*; or
-//!  - T*, where T derives from std::pmr::memory_resource.
+//! std::pmr::memory_resource interface. It's used in exec::function when the
+//! function's type parameters do not require that its eventual receiver have an
+//! environment that's queryable with exec::get_frame_allocator. In those
+//! circumstances, function will ensure that the receiver to which its erased
+//! sender is connected *does* have an environment that responds to
+//! get_frame_allocator with a type-erased frame allocator. The type-erased
+//! frame allocator is a std::pmr::polymorphic_allocator<>, and the
+//! memory_resource given to it is a __memory_resoure_adaptor<_Adaptee>, where
+//! _Adaptee is the type of "allocator" used to allocate the function's
+//! operation state. _Adaptee may be one of:
+//! - a type that models Allocator;
+//! - std::pmr::memory_resource*; or
+//! - T*, where T derives from std::pmr::memory_resource.
 //!
-//! Given an appropriate type, _Adaptee, __memory_resource_adaptor_t<_Adaptee> is a type
-//! T, such that:
-//!  - T is constructible from an lvalue reference to an object of type _Adaptee; and
-//!  - given an object rsrc of type T, std::pmr::polymorphic_allocator<>(&rsrc) is a valid
-//!    expression.
+//! Given an appropriate type, _Adaptee, __memory_resource_adaptor_t<_Adaptee>
+//! is a type T, such that:
+//! - T is constructible from an lvalue reference to an object of type _Adaptee;
+//!   and
+//! - given an object rsrc of type T, std::pmr::polymorphic_allocator<>(&rsrc)
+//!   is a valid expression.
 namespace experimental::execution
 {
   namespace __mem_rsc_adpt
@@ -91,8 +93,8 @@ namespace experimental::execution
     //! Handle the case that _Adaptee is exactly std::allocator<std::byte>
     //!
     //! Implement do_allocate and do_deallocate in terms of ::operator new and
-    //! ::operator delete rather than conservatively reimplementing aligned allocation
-    //! on top of an arbitrary allocator.
+    //! ::operator delete rather than conservatively reimplementing aligned
+    //! allocation on top of an arbitrary allocator.
     template <>
     struct __memory_resource_adaptor<std::allocator<std::byte>>
     {
@@ -163,18 +165,19 @@ namespace experimental::execution
         constexpr void *
         allocate(std::size_t __bytes, std::size_t __align = alignof(std::max_align_t))
         {
-          // When asking __alloc_ for __bytes number of bytes, the worst case is that
-          // the resulting address is byte-aligned, and we need to adjust right by
-          // (__align - 1) bytes to get a properly aligned buffer; since we might have to
-          // make that shift, we need to allocate too many bytes, possibly make the shift,
-          // and return the resulting address. Since we're going to return an address that
-          // might be offset from what we got back from __alloc_, we need a way to
-          // retrieve from the offset address what the original address was so can pass to
-          // deallocate a pointer that actually originally came from allocate. To do that,
-          // we store a copy of the source address at the end of the buffer. To make room
-          // for the possible rightward shift and the copy of a pointer, we need to
-          // allocate extra space, and __bytes + __align - 1 + sizeof(void *) is the most
-          // we might need.
+          // When asking __alloc_ for __bytes number of bytes, the worst case is
+          // that the resulting address is byte-aligned, and we need to adjust
+          // right by (__align - 1) bytes to get a properly aligned buffer;
+          // since we might have to make that shift, we need to allocate too
+          // many bytes, possibly make the shift, and return the resulting
+          // address. Since we're going to return an address that might be
+          // offset from what we got back from __alloc_, we need a way to
+          // retrieve from the offset address what the original address was so
+          // can pass to deallocate a pointer that actually originally came from
+          // allocate. To do that, we store a copy of the source address at the
+          // end of the buffer. To make room for the possible rightward shift
+          // and the copy of a pointer, we need to allocate extra space, and
+          // __bytes + __align - 1 + sizeof(void *) is the most we might need.
           std::size_t __upstreamSize = __bytes + __align - 1 + sizeof(void *);
           void *const __buffer       = __traits::allocate(__alloc_, __upstreamSize);
 
@@ -182,12 +185,14 @@ namespace experimental::execution
 
           void *__ret = std::align(__align, __bytes, __ptr, __upstreamSize);
 
-          // by asking for as much extra storage as we did, std::align ought to succeed
+          // by asking for as much extra storage as we did, std::align ought to
+          // succeed
           STDEXEC_ASSERT(__ret != nullptr);
           // this is a postcondition of a successful call to std::align
           STDEXEC_ASSERT(__ret == __ptr);
-          // we're going to store the value of __buffer in the first sizeof(void*) bytes
-          // after the end of the returned buffer so there had better be room for that
+          // we're going to store the value of __buffer in the first
+          // sizeof(void*) bytes after the end of the returned buffer so there
+          // had better be room for that
           STDEXEC_ASSERT(__upstreamSize >= (__bytes + sizeof(void *)));
 
           // put the address we got from __alloc_ at the end of the buffer
@@ -211,9 +216,9 @@ namespace experimental::execution
 
           [=]() mutable noexcept
           {
-            // std::align mutates its final two by-reference arguments so run this
-            // assertion inside an immediately-invoked lambda that captures the inputs by
-            // value
+            // std::align mutates its final two by-reference arguments so run
+            // this assertion inside an immediately-invoked lambda that captures
+            // the inputs by value
             STDEXEC_ASSERT(std::align(__align, __bytes, __address_to_free, __size_to_free) == __p);
           }();
 
@@ -250,30 +255,32 @@ namespace experimental::execution
       };
     };
 
-    //! Handle the case that _Adaptee is an allocator of some type other than std::byte
+    //! Handle the case that _Adaptee is an allocator of some type other than
+    //! std::byte
     //!
-    //! We just rebind _Adaptee to be an allocator of std::bytes and inherit our nested
-    //! alias from the adaptor for that type. This strategy ensures that there's only one
-    //! adaptor for an entire family of adapted allocator types, reducing template bloat
-    //! and making the do_is_equals implementation sensible.
+    //! We just rebind _Adaptee to be an allocator of std::bytes and inherit our
+    //! nested alias from the adaptor for that type. This strategy ensures that
+    //! there's only one adaptor for an entire family of adapted allocator
+    //! types, reducing template bloat and making the do_is_equals
+    //! implementation sensible.
     template <class _Adaptee>
       requires __simple_allocator<_Adaptee>
     struct __memory_resource_adaptor<_Adaptee>
       : __memory_resource_adaptor<
           typename std::allocator_traits<_Adaptee>::template rebind_alloc<std::byte>>
     {
-      // This class is the reason we have a nested type alias named type inside a
-      // constrained class template rather than just a constrained class template. We
-      // are not deriving a resource adaptor from another adaptor; we're deriving one
-      // meta-function from another so that we collapse the number of actual adaptor types
-      // to the minimum.
+      // This class is the reason we have a nested type alias named type inside
+      // a constrained class template rather than just a constrained class
+      // template. We are not deriving a resource adaptor from another adaptor;
+      // we're deriving one meta-function from another so that we collapse the
+      // number of actual adaptor types to the minimum.
     };
 
     //! Handle the case that _Adaptee is a pointer to a type that derives from
     //! std::pmr::memory_resource
     //!
-    //! In this case, there's nothing to "adapt" but we need a type constructible
-    //! from _Adaptee*, and whose operator& returns _Adaptee*.
+    //! In this case, there's nothing to "adapt" but we need a type
+    //! constructible from _Adaptee*, and whose operator& returns _Adaptee*.
     template <class _Adaptee>
       requires __std::constructible_from<std::pmr::polymorphic_allocator<std::byte>, _Adaptee *>
     struct __memory_resource_adaptor<_Adaptee *>
@@ -295,12 +302,13 @@ namespace experimental::execution
     };
   }  // namespace __mem_rsc_adpt
 
-  //! Adapt _Adaptee to be a std::pmr::memory_resource
+  //! Adapt @c _Adaptee to be a @c std::pmr::memory_resource
   //!
-  //! This alias is the identity when _Adaptee is a pointer to a type that derives from
-  //! std::pmr::memory_resource. When _Adaptee is an allocator type, it is a type that
-  //! derives from std::pmr::memory_resource and implements its pure-virtual member
-  //! functions in terms of that allocator type rebound to std::byte.
+  //! This alias is the identity when @c _Adaptee is a pointer to a type that
+  //! derives from @c std::pmr::memory_resource. When @c _Adaptee is an
+  //! allocator type, it is a type that derives from
+  //! @c std::pmr::memory_resource and implements its pure-virtual member
+  //! functions in terms of that allocator type rebound to @c std::byte.
   template <class _Adaptee>
   using __memory_resource_adaptor_t =
     __mem_rsc_adpt::__memory_resource_adaptor<std::remove_cvref_t<_Adaptee>>::type;

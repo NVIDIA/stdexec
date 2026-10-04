@@ -58,7 +58,7 @@ namespace STDEXEC
   struct operation_state_tag
   {};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.opstate]
   template <class _Op>
   concept __has_start_member = requires(_Op &__op) { __op.start(); };
@@ -118,12 +118,13 @@ namespace STDEXEC
   //!
   //! @see stdexec::connect           — the CPO that produces operation states
   //! @see stdexec::operation_state   — the concept this CPO drives
-  //! @see stdexec::set_value         — one of the completions @c start eventually triggers
+  //! @see stdexec::set_value         — one of the completions @c start
+  //!                                   eventually triggers
   struct start_t
   {
     //! @brief Begin execution of @c __op.
     //!
-    //! Dispatches to <tt>__op.start()</tt>. Statically asserts both
+    //! Dispatches to `__op.start()`. Statically asserts both
     //! @c noexcept and @c void-returning.
     //!
     //! @tparam _Op    A type satisfying @c stdexec::operation_state.
@@ -142,13 +143,13 @@ namespace STDEXEC
 
   //! @brief The customization point object for starting an operation state.
   //!
-  //! @c start is an instance of @ref start_t. See @ref start_t for the
+  //! @c start is an instance of @c start_t. See @ref start_t for the
   //! full description, the lifetime contract, and customization examples.
   //!
   //! @hideinitializer
   inline constexpr start_t start{};
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.opstate]
 
   //! @brief An in-progress, *immovable*, *startable* representation of an
@@ -192,9 +193,12 @@ namespace STDEXEC
   //!
   //! See [exec.opstate] in the C++26 working draft.
   //!
-  //! @see stdexec::connect              — the customization point that produces operation states
-  //! @see stdexec::start                — the customization point this concept depends on
-  //! @see stdexec::operation_state_tag  — the tag type that opts a class into this concept
+  //! @see stdexec::connect              — the customization point that produces
+  //!                                      operation states
+  //! @see stdexec::start                — the customization point this concept
+  //!                                      depends on
+  //! @see stdexec::operation_state_tag  — the tag type that opts a class into
+  //!                                      this concept
   STDEXEC_MODULE_EXPORT template <class _Op>
   concept operation_state = __std::destructible<_Op> && std::is_object_v<_Op>
                          && requires(_Op &__op) { STDEXEC::start(__op); };

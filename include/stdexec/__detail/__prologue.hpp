@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-// NO include guard or `#pragma once` here (this file is included multiple times)
+// NO include guard or `#pragma once` here (this file is included multiple
+// times)
 
 #if defined(STDEXEC_PROLOGUE_INCLUDED)
 #  error                                                                                           \
@@ -26,6 +27,10 @@
 #include <stdexec/__detail/__config.hpp>
 
 STDEXEC_PRAGMA_PUSH()
+
+// we have some templates with internal linkage that may or may not be used; don't
+// warn the user spuriously
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-template")
 
 // Windows.h macros:
 

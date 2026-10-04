@@ -267,19 +267,22 @@ namespace STDEXEC
         return __index_ == __variant_npos;
       }
 
-      // The following emplace functions must take great care to avoid use-after-free bugs.
-      // If the object being constructed calls `start` on a newly created operation state
-      // (as does the object returned from `submit`), and if `start` completes inline, it
-      // could cause the destruction of the outer operation state that owns *this. The
-      // function below uses the following pattern to avoid this:
+      // The following emplace functions must take great care to avoid
+      // use-after-free bugs. If the object being constructed calls `start` on a
+      // newly created operation state (as does the object returned from
+      // `submit`), and if `start` completes inline, it could cause the
+      // destruction of the outer operation state that owns *this. The function
+      // below uses the following pattern to avoid this:
       // 1. Store the new index in __index_.
-      // 2. Create a scope guard that will reset __index_ to __variant_npos if the
-      //    constructor throws.
-      // 3. Construct the new object in the storage, which may cause the invalidation of
-      //    *this. The emplace function must not access any members of *this after this point.
-      // 4. Dismiss the scope guard, which will leave __index_ set to the new index.
-      // 5. Return a reference to the new object -- which may be invalid! Calling code
-      //    must be aware of the danger.
+      // 2. Create a scope guard that will reset __index_ to __variant_npos if
+      //    the constructor throws.
+      // 3. Construct the new object in the storage, which may cause the
+      //    invalidation of *this. The emplace function must not access any
+      //    members of *this after this point.
+      // 4. Dismiss the scope guard, which will leave __index_ set to the new
+      //    index.
+      // 5. Return a reference to the new object -- which may be invalid!
+      //    Calling code must be aware of the danger.
       template <class _Ty, class... _As>
       STDEXEC_ATTRIBUTE(host, device)
       constexpr auto emplace(_As &&...__as) noexcept(__nothrow_constructible_from<_Ty, _As...>)

@@ -53,7 +53,7 @@ STDEXEC_PRAGMA_IGNORE_MSVC(4714)  // marked as __forceinline not inlined
 
 namespace STDEXEC::__sync_wait
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait]
   // [exec.sync.wait.var]
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -213,29 +213,31 @@ namespace STDEXEC::__sync_wait
 }  // namespace STDEXEC::__sync_wait
 
 STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait]
 
-  //! @brief A sender consumer that synchronously blocks the calling thread until a sender
-  //!        completes and returns its result.
+  //! @brief A sender consumer that synchronously blocks the calling thread
+  //!        until a sender completes and returns its result.
   //!
-  //! @c sync_wait is the bridge from the asynchronous sender world back into synchronous
-  //! code. You give it a sender; it connects the sender to a built-in receiver, starts
-  //! the resulting operation, then drives an internal @c run_loop on the calling thread
-  //! until the operation completes. The result is returned as a <tt>std::optional</tt> of
-  //! a tuple of the value-completion datums.
+  //! @c sync_wait is the bridge from the asynchronous sender world back into
+  //! synchronous code. You give it a sender; it connects the sender to a
+  //! built-in receiver, starts the resulting operation, then drives an internal
+  //! @c run_loop on the calling thread until the operation completes. The
+  //! result is returned as a `std::optional` of a tuple of the
+  //! value-completion datums.
   //!
-  //! This is the most common way to "run" a sender in a top-level program or a test —
-  //! it's what you reach for in a @c main() or when synchronously waiting on a single
-  //! sub-pipeline. For fire-and-forget execution, prefer @c stdexec::spawn with a
-  //! counting scope.
+  //! This is the most common way to "run" a sender in a top-level program or a
+  //! test — it's what you reach for in a @c main() or when synchronously
+  //! waiting on a single sub-pipeline. For fire-and-forget execution, prefer
+  //! @c stdexec::spawn with a counting scope.
   //!
   //! @code{.cpp}
   //! auto [v] = stdexec::sync_wait(stdexec::just(42)).value();
-  //! // v == 42
+  //! assert(v == 42);
   //! @endcode
   //!
-  //! See [exec.sync.wait] in the C++26 working draft for the normative specification.
+  //! See [exec.sync.wait] in the C++26 working draft for the normative
+  //! specification.
   //!
   //! **Completion behavior.**
   //!
@@ -254,17 +256,17 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //!
   //! @c sync_wait *mandates* that its argument sender have exactly one @c set_value_t
   //! completion signature. A sender that can succeed in more than one way (e.g.
-  //! <tt>schedule(get_parallel_scheduler()) | let_stopped([] { return just(42); })</tt>
-  //! yielding two distinct value completions) requires @c sync_wait_with_variant instead.
-  //! The static assertion in @c sync_wait will point this out at compile time, with a
-  //! hint to use the variant form.
+  //! `schedule(get_parallel_scheduler()) | let_stopped([] { return just(42); })`
+  //! yielding two distinct value completions) requires @c sync_wait_with_variant
+  //! instead. The static assertion in @c sync_wait will point this out at
+  //! compile time, with a hint to use the variant form.
   //!
   //! **Delegation scheduler.**
   //!
   //! The internal @c run_loop is exposed via @c get_delegation_scheduler on the
-  //! receiver's environment, so senders that need to enqueue work back onto the waiting
-  //! thread (e.g. continuations after an I/O wait) can do so safely. This is useful to
-  //! guarantee that parallel work will make forward progress.
+  //! receiver's environment, so senders that need to enqueue work back onto the
+  //! waiting thread (e.g. continuations after an I/O wait) can do so safely.
+  //! This is useful to guarantee that parallel work will make forward progress.
   //!
   //! **When *not* to use** @c sync_wait **:**
   //! - On any thread that participates in an event loop or executor — you will block it.
@@ -275,7 +277,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //!
   //! @see stdexec::sync_wait_with_variant  — @c sync_wait for multi-completion senders
   //! @see stdexec::spawn                   — fire-and-forget into a scope
-  //! @see stdexec::spawn_future            — spawn into a scope and observe via a sender
+  //! @see stdexec::spawn_future            — spawn into a scope and observe via
+  //!                                         a sender
   struct sync_wait_t
   {
     //! @brief Connect @c __sndr to an internal receiver, start the operation,
@@ -408,7 +411,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
     }
   };
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.sync.wait.var]
 
   //! @brief A sender consumer that synchronously blocks the calling thread
@@ -424,7 +427,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! possible value-tuple shapes.
   //!
   //! @code{.cpp}
-  //! // sndr completes with either set_value_t(int) or set_value_t(std::string).
+  //! // sndr completes with either set_value_t(int) or
+  //! // set_value_t(std::string).
   //! auto opt = stdexec::sync_wait_with_variant(std::move(sndr));
   //! if (opt) {
   //!   std::visit([](auto&& tup) {
@@ -439,7 +443,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! **Completion behavior.**
   //!
   //! Given an input sender @c sndr with value-completion signatures
-  //! <tt>set_value_t(Vs1...), set_value_t(Vs2...), ...</tt>, the return type is
+  //! `set_value_t(Vs1...), set_value_t(Vs2...), ...`, the return type is
   //!
   //! @code{.cpp}
   //! std::optional<std::variant<std::tuple<Vs1...>, std::tuple<Vs2...>, ...>>
@@ -454,8 +458,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! shape; use @c sync_wait_with_variant otherwise. @c sync_wait's static
   //! assertion will steer you here if needed.
   //!
-  //! @see stdexec::sync_wait          — for single-value-completion senders
-  //! @see stdexec::into_variant       — adaptor that collapses multi-completion senders into a variant
+  //! @see stdexec::sync_wait    — for single-value-completion senders
+  //! @see stdexec::into_variant — adaptor that collapses multi-completion
+  //!                              senders into a variant
   struct sync_wait_with_variant_t
   {
     //! @brief Connect @c __sndr, start the operation, drive a @c run_loop
@@ -512,9 +517,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
     }
   };
 
-  //! @brief The customization point object for the @c sync_wait sender consumer.
+  //! @brief The customization point object for the @c sync_wait sender
+  //! consumer.
   //!
-  //! @c sync_wait is an instance of @ref sync_wait_t. See @ref sync_wait_t
+  //! @c sync_wait is an instance of @c sync_wait_t. See @ref sync_wait_t
   //! for the full description, completion-behavior table, and a usage example.
   //!
   //! @hideinitializer
@@ -523,7 +529,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   //! @brief The customization point object for the @c sync_wait_with_variant
   //!        sender consumer.
   //!
-  //! @c sync_wait_with_variant is an instance of @ref sync_wait_with_variant_t.
+  //! @c sync_wait_with_variant is an instance of @c sync_wait_with_variant_t.
   //! See @ref sync_wait_with_variant_t for the full description and a usage
   //! example.
   //!

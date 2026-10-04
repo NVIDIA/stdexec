@@ -50,10 +50,12 @@ namespace
     using receiver_concept = ex::receiver_tag;
 
     template <class... _Values>
+    [[maybe_unused]]
     void set_value(_Values&&...) noexcept
     {}
 
     template <class _Error>
+    [[maybe_unused]]
     void set_error(_Error&&) noexcept
     {}
 
@@ -68,12 +70,13 @@ namespace
     struct ignore_values_fn_t
     {
       template <class... _Vs>
+      [[maybe_unused]]
       void operator()(_Vs&&...) const noexcept
       {}
     };
 
     template <ex::sender _Item>
-    [[nodiscard]]
+    [[maybe_unused, nodiscard]]
     auto
     set_next(_Item&& __item) & noexcept(ex::__nothrow_decay_copyable<_Item>) -> next_sender auto
     {
@@ -143,7 +146,8 @@ namespace
     return ex::write_env(ex::prop{ex::get_stop_token, stop_source.get_token()});
   };
 
-  // log_start completes with the provided sequence after printing provided string
+  // log_start completes with the provided sequence after printing provided
+  // string
   [[maybe_unused]]
   auto log_start = [](auto sequence, auto message)
   {

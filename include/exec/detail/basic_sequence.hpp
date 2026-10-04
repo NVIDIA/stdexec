@@ -27,9 +27,11 @@ import stdexec;
 #  include "../../stdexec/__detail/__basic_sender_macros.hpp"
 #  include "../sequence_senders.hpp"
 
+#  include "../../stdexec/__detail/__prologue.hpp"
+
 namespace experimental::execution
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __seqexpr
   template <class...>
   struct __basic_sequence_sender
@@ -135,4 +137,6 @@ namespace STDEXEC::__detail
   extern __mtype<__minvoke<decltype(_DescriptorFn()), __q<exec::__basic_sequence_sender_t>>>
     __demangle_v<exec::__seqexpr<_DescriptorFn>>;
 }  // namespace STDEXEC::__detail
+
+#  include "../../stdexec/__detail/__epilogue.hpp"
 #endif

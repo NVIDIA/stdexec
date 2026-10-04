@@ -37,6 +37,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 namespace
 {
 
@@ -597,8 +599,8 @@ namespace
   template <ex::sender S, class... Ts>
   inline void wait_for_value(S&& snd, Ts&&... val)
   {
-    // Ensure that the given sender type has only one variant for set_value calls
-    // If not, sync_wait will not work
+    // Ensure that the given sender type has only one variant for set_value
+    // calls If not, sync_wait will not work
     static_assert(ex::__count_of<ex::set_value_t, S, ex::__sync_wait::__env>::value == 1,
                   "Sender passed to sync_wait needs to have one variant for sending set_value");
 
@@ -611,3 +613,5 @@ namespace
       CHECK_TUPLE(res.value() == expected);
   }
 }  // namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

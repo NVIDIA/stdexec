@@ -33,6 +33,8 @@ import stdexec;
 
 namespace ex = STDEXEC;
 
+#include <stdexec/__detail/__prologue.hpp>
+
 namespace
 {
 
@@ -183,8 +185,8 @@ namespace
       bool     condition_;
       Receiver rcvr_;
 
-      // without this synchronization, the thread sanitzier shows a race for construction and
-      // destruction of on_stop_
+      // without this synchronization, the thread sanitzier shows a race for
+      // construction and destruction of on_stop_
       enum class state_t
       {
         construction,
@@ -363,3 +365,5 @@ namespace
   };
 
 }  // namespace
+
+#include <stdexec/__detail/__epilogue.hpp>

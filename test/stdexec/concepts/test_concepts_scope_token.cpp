@@ -62,6 +62,7 @@ namespace
     }
 
     template <ex::sender Sender>
+    [[maybe_unused]]
     Sender&& wrap(Sender&& snd) const noexcept
     {
       return std::forward<Sender>(snd);
@@ -79,6 +80,7 @@ namespace
   struct throwing_wrap : null_token
   {
     template <ex::sender Sender>
+    [[maybe_unused]]
     constexpr Sender&& wrap(Sender&& snd) const noexcept(false)
     {
       return std::forward<Sender>(snd);
@@ -141,6 +143,7 @@ namespace
   struct non_const_wrap : null_token
   {
     template <ex::sender Sender>
+    [[maybe_unused]]
     Sender&& wrap(Sender&& snd) noexcept
     {
       return std::forward<Sender>(snd);

@@ -54,7 +54,7 @@ namespace STDEXEC
     };
   }  // namespace __detail
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.recv]
   template <class _Receiver, class... _As>
   concept __set_value_member = requires(_Receiver &&__rcvr, _As &&...__args) {
@@ -87,8 +87,8 @@ namespace STDEXEC
   //! };
   //! @endcode
   //!
-  //! At the call site, <tt>stdexec::set_value(rcvr, vs...)</tt> dispatches
-  //! to <tt>rcvr.set_value(vs...)</tt>, statically asserting both that the
+  //! At the call site, `stdexec::set_value(rcvr, vs...)` dispatches
+  //! to `rcvr.set_value(vs...)`, statically asserting both that the
   //! member is @c noexcept and that it returns @c void.
   //!
   //! See [exec.recv] in the C++26 working draft.
@@ -104,7 +104,7 @@ namespace STDEXEC
 
     //! @brief Deliver a value completion to @c __rcvr.
     //!
-    //! Dispatches to <tt>__rcvr.set_value(__as...)</tt>. The static
+    //! Dispatches to `__rcvr.set_value(__as...)`. The static
     //! asserts inside enforce that the member is @c noexcept and that it
     //! returns @c void — the two non-negotiable properties of every
     //! completion signal.
@@ -176,7 +176,7 @@ namespace STDEXEC
 
     //! @brief Deliver an error completion to @c __rcvr.
     //!
-    //! Dispatches to <tt>__rcvr.set_error(__err)</tt>. Statically asserts
+    //! Dispatches to `__rcvr.set_error(__err)`. Statically asserts
     //! both @c noexcept and @c void-returning.
     //!
     //! @tparam _Receiver A type with a matching `.set_error(_Error)` member.
@@ -232,7 +232,8 @@ namespace STDEXEC
   //!
   //! @see stdexec::set_value
   //! @see stdexec::set_error
-  //! @see stdexec::get_stop_token  — the receiver-environment query for the stop token
+  //! @see stdexec::get_stop_token — the receiver-environment query for the stop
+  //!                                token
   struct set_stopped_t : __detail::__completion_tag<__disposition::__stopped>
   {
     template <class _Fn, class... _Args>
@@ -241,7 +242,7 @@ namespace STDEXEC
 
     //! @brief Deliver a stopped completion to @c __rcvr.
     //!
-    //! Dispatches to <tt>__rcvr.set_stopped()</tt>. Statically asserts both
+    //! Dispatches to `__rcvr.set_stopped()`. Statically asserts both
     //! @c noexcept and @c void-returning.
     //!
     //! @tparam _Receiver A type with a matching nullary
@@ -261,7 +262,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for delivering a value completion.
   //!
-  //! @c set_value is an instance of @ref set_value_t. See @ref set_value_t
+  //! @c set_value is an instance of @c set_value_t. See @ref set_value_t
   //! for the full description and customization rules.
   //!
   //! @hideinitializer
@@ -269,7 +270,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for delivering an error completion.
   //!
-  //! @c set_error is an instance of @ref set_error_t. See @ref set_error_t
+  //! @c set_error is an instance of @c set_error_t. See @ref set_error_t
   //! for the full description and customization rules.
   //!
   //! @hideinitializer
@@ -277,7 +278,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for delivering a stopped completion.
   //!
-  //! @c set_stopped is an instance of @ref set_stopped_t. See
+  //! @c set_stopped is an instance of @c set_stopped_t. See
   //! @ref set_stopped_t for the full description and customization rules.
   //!
   //! @hideinitializer
@@ -346,7 +347,8 @@ namespace STDEXEC
   //! See [exec.recv.concepts] in the C++26 working draft.
   //!
   //! @see stdexec::receiver_of   — receiver plus specific completion signatures
-  //! @see stdexec::receiver_tag  — the tag type that opts a class into this concept
+  //! @see stdexec::receiver_tag  — the tag type that opts a class into this
+  //!                               concept
   //! @see stdexec::set_value
   //! @see stdexec::set_error
   //! @see stdexec::set_stopped
@@ -399,14 +401,16 @@ namespace STDEXEC
   //! See [exec.recv.concepts] in the C++26 working draft.
   //!
   //! @see stdexec::receiver              — without the signature check
-  //! @see stdexec::sender_to             — the sender-side mirror of this concept
-  //! @see stdexec::completion_signatures — the signature pack this concept consumes
+  //! @see stdexec::sender_to             — the sender-side mirror of this
+  //!                                       concept
+  //! @see stdexec::completion_signatures — the signature pack this concept
+  //!                                       consumes
   STDEXEC_MODULE_EXPORT template <class _Receiver, class _Completions>
   concept receiver_of = receiver<_Receiver> && requires(_Completions *__completions) {
     { __detail::__try_completions<_Receiver>(__completions) } -> __ok;
   };
 
-  /// A utility for calling set_value with the result of a function invocation:
+  //! A utility for calling set_value with the result of a function invocation:
   template <class _Receiver, class _Fun, class... _As>
   STDEXEC_ATTRIBUTE(host, device)
   constexpr void __set_value_from(_Receiver &&__rcvr, _Fun &&__fun, _As &&...__as) noexcept
@@ -451,9 +455,9 @@ namespace STDEXEC
     return __completion_fn<_Tag, _Receiver>{__rcvr};
   }
 
-  // Used to test whether a sender has a nothrow connect to a receiver whose environment
-  // is _Env..., or if _Env... is empty (indicating that the sender is non-dependent), to
-  // a receiver with an arbitrary environment.
+  // Used to test whether a sender has a nothrow connect to a receiver whose
+  // environment is _Env..., or if _Env... is empty (indicating that the sender
+  // is non-dependent), to a receiver with an arbitrary environment.
   struct __receiver_archetype_base
   {
     using receiver_concept = receiver_tag;

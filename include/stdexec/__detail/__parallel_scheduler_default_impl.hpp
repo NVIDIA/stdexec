@@ -57,7 +57,7 @@ namespace STDEXEC::__parallel_scheduler_default_impl
 {
   using parallel_scheduler_replacement::__parallel_scheduler_backend_factory_t;
 
-  /// Receiver that calls the callback when the operation completes.
+  //! Receiver that calls the callback when the operation completes.
   template <class _Sender>
   struct __operation;
 
@@ -81,12 +81,15 @@ namespace STDEXEC::__parallel_scheduler_default_impl
   ---------------------
   Total: 152; extra 24 bytes compared to internal operation state.
 
-  Using libdispatch backend, the operation sizes are 48 (down from 80) and 128 (down from 160).
+  Using libdispatch backend, the operation sizes are 48 (down from 80) and 128
+  (down from 160).
 
-  [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other architectures, or with different implementations.
+  [*] sizes taken on an Apple M2 Pro arm64 arch. They may differ on other
+      architectures, or with different implementations.
   */
 
-  /// Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage, if needed, to match desired alignment.
+  //! Ensure that `__storage` is aligned to `__alignment`. Shrinks the storage,
+  //! if needed, to match desired alignment.
   inline auto __ensure_alignment(std::span<std::byte> __storage, size_t __alignment) noexcept
     -> std::span<std::byte>
   {
@@ -110,12 +113,14 @@ namespace STDEXEC::__parallel_scheduler_default_impl
   template <typename _Sender>
   struct __operation
   {
-    /// The inner operation state, that results out of connecting the underlying sender with the receiver.
+    //! The inner operation state, that results out of connecting the underlying
+    //! sender with the receiver.
     using __receiver_t = __detail::__proxy_receiver<parallel_scheduler_replacement::receiver_proxy,
                                                     __detail::__proxy_env>;
     STDEXEC::connect_result_t<_Sender, __receiver_t> __inner_op_;
 
-    /// Try to construct the operation in the preallocated memory if it fits, otherwise allocate a new operation.
+    //! Try to construct the operation in the preallocated memory if it fits,
+    //! otherwise allocate a new operation.
     static auto
     __construct_maybe_alloc(std::span<std::byte>                            __storage,
                             parallel_scheduler_replacement::receiver_proxy& __completion,
@@ -149,7 +154,7 @@ namespace STDEXEC::__parallel_scheduler_default_impl
           STDEXEC::connect(std::move(__sndr), __receiver_t{__completion, this, __destruct}))
     {}
 
-    /// Destructs the operation; frees any allocated memory.
+    //! Destructs the operation; frees any allocated memory.
     template <bool _OnHeap>
     static void __destruct_(void* __ptr) noexcept
     {
@@ -175,7 +180,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     __generic_impl()
       : __pool_scheduler_(__pool_.get_scheduler())
     {
-      // If the pool exposes the available parallelism, use it to determine the chunk size.
+      // If the pool exposes the available parallelism, use it to determine the
+      // chunk size.
       if constexpr (__has_available_paralellism<_BaseSchedulerContext>)
       {
         __available_parallelism_ = static_cast<size_t>(__pool_.available_parallelism());
@@ -196,7 +202,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     //! Use a value of 0 to disable chunking.
     size_t __available_parallelism_{};
 
-    //! Helper class that maps from a chunk index to the start and end of the chunk.
+    //! Helper class that maps from a chunk index to the start and end of the
+    //! chunk.
     struct __chunker
     {
       size_t __chunk_size_;
@@ -215,7 +222,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
       }
     };
 
-    //! Functor called by the `bulk_chunked` operation; sends a `execute` signal to the frontend.
+    //! Functor called by the `bulk_chunked` operation; sends a `execute` signal
+    //! to the frontend.
     struct __bulk_chunked_functor
     {
       parallel_scheduler_replacement::bulk_item_receiver_proxy* __r_;
@@ -227,7 +235,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
       }
     };
 
-    //! Functor called by the `bulk_unchunked` operation; sends a `execute` signal to the frontend.
+    //! Functor called by the `bulk_unchunked` operation; sends a `execute`
+    //! signal to the frontend.
     struct __bulk_unchunked_functor
     {
       parallel_scheduler_replacement::bulk_item_receiver_proxy* __r_;
@@ -277,8 +286,9 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     {
       STDEXEC_TRY
       {
-        // Determine the chunking size based on the ratio between the given size and the number of workers in our pool.
-        // Aim at having 2 chunks per worker.
+        // Determine the chunking size based on the ratio between the given size
+        // and the number of workers in our pool. Aim at having 2 chunks per
+        // worker.
         size_t __chunk_size = (__available_parallelism_ > 0
                                && __size > 3ul * __available_parallelism_)
                               ? __size / __available_parallelism_ / 2ul
@@ -326,7 +336,7 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     }
   };
 
-  /// Keeps track of the backends for the system context interfaces.
+  //! Keeps track of the backends for the system context interfaces.
   template <typename _Interface, typename _Impl>
   struct __instance_data
   {
@@ -334,7 +344,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     constexpr __instance_data() noexcept  // NOLINT(modernize-use-equals-default)
     {}
 
-    /// Gets the current instance; if there is no instance, uses the current factory to create one.
+    //! Gets the current instance; if there is no instance, uses the current
+    //! factory to create one.
     auto __get_current_instance() -> std::shared_ptr<_Interface>
     {
       // If we have a valid instance, return it.
@@ -346,8 +357,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
         return __rcvr;
       }
 
-      // Otherwise, create a new instance using the factory.
-      // Note: we are lazy-loading the instance to avoid creating it if it is not needed.
+      // Otherwise, create a new instance using the factory. Note: we are
+      // lazy-loading the instance to avoid creating it if it is not needed.
       auto __new_instance = __factory_.load(__std::memory_order_relaxed)();
 
       // Store the newly created instance.
@@ -357,7 +368,8 @@ namespace STDEXEC::__parallel_scheduler_default_impl
       return __new_instance;
     }
 
-    /// Set `__new_factory` as the new factory for `_Interface` and return the old one.
+    //! Set `__new_factory` as the new factory for `_Interface` and return the
+    //! old one.
     auto __set_backend_factory(__parallel_scheduler_backend_factory_t __new_factory)
       -> __parallel_scheduler_backend_factory_t
     {
@@ -379,7 +391,7 @@ namespace STDEXEC::__parallel_scheduler_default_impl
     std::shared_ptr<_Interface>                           __instance_{nullptr};
     __std::atomic<__parallel_scheduler_backend_factory_t> __factory_{__default_factory};
 
-    /// The default factory returns an instance of `_Impl`.
+    //! The default factory returns an instance of `_Impl`.
     static auto __default_factory() -> std::shared_ptr<_Interface>
     {
       return std::make_shared<_Impl>();
@@ -410,7 +422,7 @@ namespace STDEXEC::__parallel_scheduler_default_impl
   using __parallel_scheduler_backend_impl = __generic_impl<exec::static_thread_pool>;
 #  endif
 
-  /// The singleton to hold the `parallel_scheduler_backend` instance.
+  //! The singleton to hold the `parallel_scheduler_backend` instance.
   inline constinit __instance_data<parallel_scheduler_replacement::parallel_scheduler_backend,
                                    __parallel_scheduler_backend_impl>
     __parallel_scheduler_backend_singleton{};

@@ -277,14 +277,16 @@ namespace
       ex::start(op);
       // The function is called immediately after starting the operation
       CHECK(fun_called);
-      // As the returned sender didn't complete yet, the parameter must still be alive
+      // As the returned sender didn't complete yet, the parameter must still be
+      // alive
       CHECK_FALSE(param_destructed);
       CHECK(res == 0);
 
       // Now, tell the scheduler to execute the final operation
       sched.start_next();
 
-      // The parameter is going to be destructed when the op is destructed; it should be valid now
+      // The parameter is going to be destructed when the op is destructed; it
+      // should be valid now
       CHECK_FALSE(param_destructed);
       CHECK(res == 13);
     }
@@ -309,9 +311,9 @@ namespace
                               });
       exec::start_detached(std::move(snd));
     }
-    // wait for the work to be executed, with timeout
-    // perform a poor-man's sync
-    // NOTE: it's a shame that the `join` method in static_thread_pool is not public
+    // wait for the work to be executed, with timeout perform a poor-man's sync
+    // NOTE: it's a shame that the `join` method in static_thread_pool is not
+    // public
     for (int i = 0; i < 1000 && !called.load(); i++)
       std::this_thread::sleep_for(1ms);
     // the work should be executed
@@ -363,7 +365,8 @@ namespace
                               | ex::let_value([] { return ex::just(); }));
   }
 
-  // Return a different sender when we invoke this custom defined let_value implementation
+  // Return a different sender when we invoke this custom defined let_value
+  // implementation
   struct let_value_test_domain
   {
     template <exec::sender_for<ex::let_value_t> Sender>

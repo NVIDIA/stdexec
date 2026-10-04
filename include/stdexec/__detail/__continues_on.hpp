@@ -44,7 +44,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.continues.on]
   namespace __trnsfr
   {
@@ -57,10 +57,12 @@ namespace STDEXEC
       __storage_t __data_;
     };
 
-    // This receiver is to be completed on the execution context associated with the scheduler. When
-    // the source sender completes, the completion information is saved off in the operation state
-    // so that when this receiver completes, it can read the completion out of the operation state
-    // and forward it to the output receiver after transitioning to the scheduler's context.
+    // This receiver is to be completed on the execution context associated with
+    // the scheduler. When the source sender completes, the completion
+    // information is saved off in the operation state so that when this
+    // receiver completes, it can read the completion out of the operation state
+    // and forward it to the output receiver after transitioning to the
+    // scheduler's context.
     template <class _Sexpr, class _Receiver>
     struct __receiver2
     {
@@ -118,7 +120,9 @@ namespace STDEXEC
       //! - _SetTag is set_error_t, and
       //! - _Sender has value completions, and
       //! - at least one of the value completions is not nothrow decay-copyable.
-      //! In that case, error completions can come from the sender's value completions.
+      //!
+      //! In that case, error completions can come from the sender's value
+      //! completions.
       template <class _SetTag, class... _Env>
       static consteval bool __has_decay_copy_errors() noexcept
       {
@@ -145,20 +149,21 @@ namespace STDEXEC
 
       //! @brief Queries the completion scheduler for a given @c _SetTag.
       //! @tparam _SetTag The completion tag to query for.
-      //! @tparam _Env The environment to consider when querying for the completion
-      //! scheduler.
+      //! @tparam _Env The environment to consider when querying for the
+      //! completion scheduler.
       //!
-      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path: everything
-      //! succeeded and execution continues on @c _Scheduler.
+      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path:
+      //! everything succeeded and execution continues on @c _Scheduler.
       //!
-      //! Otherwise, if @c _Sender never completes with @c _SetTag, and either @c _SetTag is
-      //! @c set_stopped_t or decay-copying @c _Sender's value results cannot throw, then a
-      //! @c _SetTag completion can only come from the scheduler's sender. In this case, return
-      //! the scheduler's completion scheduler if it has one.
+      //! Otherwise, if @c _Sender never completes with @c _SetTag, and either
+      //! @c _SetTag is @c set_stopped_t or decay-copying @c _Sender's value
+      //! results cannot throw, then a @c _SetTag completion can only come from
+      //! the scheduler's sender. In this case, return the scheduler's
+      //! completion scheduler if it has one.
       //!
-      //! Otherwise, if the scheduler's sender never completes with @c _SetTag, then a
-      //! @c _SetTag completion can only come from the original sender, so return the
-      //! original sender's completion scheduler.
+      //! Otherwise, if the scheduler's sender never completes with @c _SetTag,
+      //! then a @c _SetTag completion can only come from the original sender,
+      //! so return the original sender's completion scheduler.
       template <class _SetTag, class... _Env>
         requires(__same_as<_SetTag, set_value_t>
                  || __never_sends<_SetTag, _Sender, __fwd_env_t<_Env>...>)
@@ -186,19 +191,20 @@ namespace STDEXEC
 
       //! @brief Queries the completion domain for a given @c _SetTag.
       //! @tparam _SetTag The completion tag to query for.
-      //! @tparam _Env The environment to consider when querying for the completion domain.
+      //! @tparam _Env The environment to consider when querying for the
+      //! completion domain.
       //!
-      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path: everything
-      //! succeeded and execution continues on @c _Scheduler.
+      //! @note If @c _SetTag is @c set_value_t, then we are in the happy path:
+      //! everything succeeded and execution continues on @c _Scheduler.
       //!
-      //! Otherwise, if @c _SetTag is @c set_stopped_t or if decay-copying @c _Sender's value
-      //! results cannot throw, then a @c _SetTag completion can happen on the sender's
-      //! completion domain (if it has one) or the scheduler's completion domain (if it has
-      //! one).
+      //! Otherwise, if @c _SetTag is @c set_stopped_t or if decay-copying
+      //! @c _Sender's value results cannot throw, then a @c _SetTag completion
+      //! can happen on the sender's completion domain (if it has one) or the
+      //! scheduler's completion domain (if it has one).
       //!
-      //! @note Otherwise, @c _SetTag is @c set_error_t and decay-copying @c _Sender's value
-      //! results can throw, so error completions can also come from the sender's value
-      //! completions.
+      //! @note Otherwise, @c _SetTag is @c set_error_t and decay-copying @c
+      //! _Sender's value results can throw, so error completions can also come
+      //! from the sender's value completions.
       template <__same_as<set_value_t> _SetTag, class... _Env>
       [[nodiscard]]
       constexpr auto
@@ -239,9 +245,10 @@ namespace STDEXEC
       }
 
       //! @brief Queries the completion behavior of the combined sender.
-      //! @tparam _Env The environment to consider when querying for the completion behavior.
-      //! @note The completion behavior is the minimum between the scheduler's sender and
-      //! the original sender.
+      //! @tparam _Env The environment to consider when querying for the
+      //! completion behavior.
+      //! @note The completion behavior is the minimum between the scheduler's
+      //! sender and the original sender.
       template <class _Tag, class... _Env>
       [[nodiscard]]
       constexpr auto query(__get_completion_behavior_t<_Tag>, _Env const &...) const noexcept
@@ -277,8 +284,8 @@ namespace STDEXEC
       template <class _Child, class... _Env>
       static consteval auto __get_child_completions()
       {
-        // continues_on has the completions of the child sender, but with value and error
-        // result types decayed.
+        // continues_on has the completions of the child sender, but with value
+        // and error result types decayed.
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<_Child, __fwd_env_t<_Env>...>(),
           __decay_arguments<set_value_t, continues_on_t>(),
@@ -288,8 +295,8 @@ namespace STDEXEC
       template <class _Scheduler, class... _Env>
       static consteval auto __get_scheduler_completions()
       {
-        // The scheduler contributes only error and stopped completions; we ignore value
-        // completions here
+        // The scheduler contributes only error and stopped completions; we
+        // ignore value completions here
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>(),
           __ignore_completion());
@@ -358,8 +365,8 @@ namespace STDEXEC
           }
         }
 
-        // Enqueue the schedule operation so the completion happens on the scheduler's execution
-        // context.
+        // Enqueue the schedule operation so the completion happens on the
+        // scheduler's execution context.
         STDEXEC::start(__state.__state2_);
       };
     };
@@ -397,7 +404,7 @@ namespace STDEXEC
   //! set_stopped_t()       // forwarded — but delivered on `sched`'s resource
   //! @endcode
   //!
-  //! the sender produced by <tt>continues_on(sndr, sched)</tt> has the same
+  //! the sender produced by `continues_on(sndr, sched)` has the same
   //! completion signatures as @c sndr, except that a
   //! @c set_error_t(std::exception_ptr) completion may be added if any of
   //! @c sndr's completion datums are not @c nothrow decay-copyable (the
@@ -428,22 +435,23 @@ namespace STDEXEC
   //! int main() {
   //!   using namespace stdexec;
   //!
-  //!   auto io_sched   = get_parallel_scheduler();   // pretend: I/O
-  //!   auto cpu_sched  = get_parallel_scheduler();   // pretend: compute
+  //!   auto io_sched  = get_parallel_scheduler();   // pretend: I/O
+  //!   auto cpu_sched = get_parallel_scheduler();   // pretend: compute
   //!
   //!   auto sndr =
-  //!     starts_on(io_sched, just(42))               // produce on io_sched
-  //!     | continues_on(cpu_sched)                   // hop to cpu_sched
-  //!     | then([](int x) { return x * 2; });        // then() runs on cpu_sched
+  //!     starts_on(io_sched, just(42))              // produce on io_sched
+  //!     | continues_on(cpu_sched)                  // hop to cpu_sched
+  //!     | then([](int x) { return x * 2; });       // then() runs on cpu_sched
   //!
   //!   auto [v] = sync_wait(std::move(sndr)).value();
-  //!   (void)v;  // == 84
+  //!   assert(v == 84);
   //! }
   //! @endcode
   //!
   //! @see stdexec::schedule     — the primitive that produces a schedule-sender
   //! @see stdexec::starts_on    — *begin* execution on a given scheduler
-  //! @see stdexec::on           — run on a different scheduler, then transfer back
+  //! @see stdexec::on           — run on a different scheduler, then transfer
+  //!                              back
   struct continues_on_t
   {
     //! @brief Construct a sender that runs @c __sndr to completion, then
@@ -471,11 +479,11 @@ namespace STDEXEC
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
-    //!        sender, produces <tt>continues_on(sndr, __sched)</tt>.
+    //!        sender, produces `continues_on(sndr, __sched)`.
     //!
     //! This overload enables the pipe syntax:
-    //! <tt>sndr | continues_on(__sched)</tt> is equivalent to
-    //! <tt>continues_on(sndr, __sched)</tt>.
+    //! `sndr | continues_on(__sched)` is equivalent to
+    //! `continues_on(sndr, __sched)`.
     //!
     //! @tparam _Scheduler A type satisfying the @c stdexec::scheduler concept.
     //! @param __sched     The scheduler to transfer execution to when the
@@ -490,9 +498,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c continues_on sender adaptor.
+  //! @brief The customization point object for the @c continues_on sender
+  //! adaptor.
   //!
-  //! @c continues_on is an instance of @ref continues_on_t. See
+  //! @c continues_on is an instance of @c continues_on_t. See
   //! @ref continues_on_t for the full description, completion signatures,
   //! and a usage example.
   //!

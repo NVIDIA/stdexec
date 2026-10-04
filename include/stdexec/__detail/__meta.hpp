@@ -294,13 +294,16 @@ namespace STDEXEC
 
   //! The struct `__i` is the implementation of P2300's
   //! [_`META-APPLY`_](https://eel.is/c++draft/exec#util.cmplsig-5).
-  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): 
-  //! > The purpose of META-APPLY is to make it valid to use non-variadic
-  //! > templates as Variant and Tuple arguments to gather-signatures. — end note]
-  //! In addition to avoiding the dreaded "pack expanded into non-pack argument" error,
-  //! it is part of the meta-error propagation mechanism. if any of the argument types
-  //! are a specialization of `_ERROR_`, `__i` will short-circuit and return the error.
-  //! `__minvoke` and `__minvoke_q` are implemented in terms of `__i`.
+  //!
+  //! > [Note [1](https://eel.is/c++draft/exec#util.cmplsig-note-1): The purpose
+  //! > of META-APPLY is to make it valid to use non-variadic templates as
+  //! > Variant and Tuple arguments to gather-signatures. — end note]
+  //!
+  //! In addition to avoiding the dreaded "pack expanded into non-pack argument"
+  //! error, it is part of the meta-error propagation mechanism. if any of the
+  //! argument types are a specialization of `_ERROR_`, `__i` will short-circuit
+  //! and return the error. `__minvoke` and `__minvoke_q` are implemented in
+  //! terms of `__i`.
   template <bool _OK>
   struct __i;
 
@@ -327,9 +330,10 @@ namespace STDEXEC
   template <template <class...> class _Fn, class... _Args>
   using __minvoke_q = __i<_Ok<_Args...>>::template __g<_Fn, _Args...>;
 
-  //! Metafunction invocation
-  //! Given a metafunction, `_Fn`, and args.
-  //! We expect `_Fn::__f` to be type alias template "implementing" the metafunction `_Fn`.
+  //! @brief Invokes a metafunction with the given arguments.
+  //!
+  //! Given a metafunction, `_Fn`, and args. We expect `_Fn::__f` to be a type
+  //! alias template "implementing" the metafunction `_Fn`.
   STDEXEC_MODULE_EXPORT_META
   template <class _Fn, class... _Args>
   using __minvoke = __i<_Ok<_Fn, _Args...>>::template __f<_Fn, _Args...>;
@@ -361,12 +365,13 @@ namespace STDEXEC
   //! [mpl::quote](https://www.boost.org/doc/libs/1_86_0/libs/mpl/doc/refmanual/quote.html).
   //! It turns an alias/class template into a metafunction that also propagates
   //! "meta-exceptions". All of the meta utilities recognize specializations of
-  //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the evaluation of the
-  //! metafunction and are automatically propagated like an exception. Note: `__minvoke`
-  //! and `__minvoke_q` also participate in this error propagation.
+  //! STDEXEC::_ERROR_ as an error type. Error types short-circuit the
+  //! evaluation of the metafunction and are automatically propagated like an
+  //! exception. Note: `__minvoke` and `__minvoke_q` also participate in this
+  //! error propagation.
   //!
-  //! This design lets us report type errors briefly at the library boundary, even if the
-  //! actual error happens deep inside a meta-program.
+  //! This design lets us report type errors briefly at the library boundary,
+  //! even if the actual error happens deep inside a meta-program.
   STDEXEC_MODULE_EXPORT_META
   template <template <class...> class _Fn>
   struct __q
@@ -449,8 +454,8 @@ namespace STDEXEC
   using __mmemoize_q = __mmemoize<__q<_Fn>, _Args...>;
 
 #  if STDEXEC_GCC() || (STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1800)
-  // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an indirection
-  // that hides the builtin from the mangler.
+  // GCC and Clang < 18 cannot mangle builtins. __mmangle_t introduces an
+  // indirection that hides the builtin from the mangler.
   template <template <class...> class _Fn, class... _Args>
   using __mmangle_t = __mmemoize_q<_Fn, _Args...>;
 #  else
@@ -478,9 +483,9 @@ namespace STDEXEC
     using __if_t = __if_<bool(_Pred::value)>::template __f<_Then, _Else>;
   }  // namespace __detail
 
-  //! Metafunction selects `_Then` if the bool template is `true`, otherwise the second.
-  //! This is similar to `std::conditional_t<Pred, Then, Else>` but instantiates fewer
-  //! templates.
+  //! Metafunction selects `_Then` if the bool template is `true`, otherwise the
+  //! second. This is similar to `std::conditional_t<Pred, Then, Else>` but
+  //! instantiates fewer templates.
   template <class _Pred, class _Then, class _Else>
   using __if = __minvoke_q<__detail::__if_t, _Pred, _Then, _Else>;
 

@@ -35,7 +35,8 @@ namespace ex = STDEXEC;
 
 namespace
 {
-  // a sender adaptor that prepends the provided environment onto the provided sender's environment
+  // a sender adaptor that prepends the provided environment onto the provided
+  // sender's environment
   struct with_attrs_t
   {
     template <ex::sender Sender, class Env>

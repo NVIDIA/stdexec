@@ -120,7 +120,8 @@ namespace experimental::execution
   using sequence_sender_t
     [[deprecated("Renamed to exec::sequence_sender_tag")]] = exec::sequence_sender_tag;
 
-  // This concept checks if a given sender satisfies the requirements to be returned from `set_next`.
+  // This concept checks if a given sender satisfies the requirements to be
+  // returned from `set_next`.
   template <class _Sender, class _Env = STDEXEC::env<>>
   concept next_sender =
     STDEXEC::sender_in<_Sender, _Env>
@@ -138,11 +139,13 @@ namespace experimental::execution
       __rcvr.set_next(static_cast<_Item&&>(__item));
     };
 
-    // This is a sequence-receiver CPO that is used to apply algorithms on an input sender and it
-    // returns a next-sender. `set_next` is usually called in a context where a sender will be
-    // connected to a receiver. Since calling `set_next` usually involves constructing senders it
-    // is allowed to throw an exception, which needs to be handled by a calling sequence-operation.
-    // The returned object is a sender that can complete with `set_value_t()` or `set_stopped_t()`.
+    // This is a sequence-receiver CPO that is used to apply algorithms on an
+    // input sender and it returns a next-sender. `set_next` is usually called
+    // in a context where a sender will be connected to a receiver. Since
+    // calling `set_next` usually involves constructing senders it is allowed to
+    // throw an exception, which needs to be handled by a calling
+    // sequence-operation. The returned object is a sender that can complete
+    // with `set_value_t()` or `set_stopped_t()`.
     STDEXEC_MODULE_EXPORT
     struct set_next_t
     {
@@ -256,7 +259,7 @@ namespace experimental::execution
                           _WITH_PRETTY_SEQUENCE_<_Sequence>,
                           STDEXEC::_WITH_ENVIRONMENT_(_Env)...>;
 
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   namespace __sequence_sndr
   {
     struct get_item_types_t;
@@ -525,9 +528,10 @@ namespace experimental::execution
     decltype(__checked_sequence_completion_signatures(STDEXEC::__declval<_Sender>(),
                                                       STDEXEC::__declval<_Env>()...));
 
-  // __checked_completion_signatures is for catching logic bugs in a sender's metadata. If sender<S>
-  // and sender_in<S, Ctx> are both true, then they had better report the same metadata. This
-  // completion signatures wrapper enforces that at compile time.
+  // __checked_completion_signatures is for catching logic bugs in a sender's
+  // metadata. If sender<S> and sender_in<S, Ctx> are both true, then they had
+  // better report the same metadata. This completion signatures wrapper
+  // enforces that at compile time.
   template <class _Sequence, class... _Env>
   auto __checked_item_types(_Sequence&& __sequence, _Env&&... __env) noexcept
   {
@@ -725,9 +729,9 @@ namespace experimental::execution
     && STDEXEC::sender_in<_Sequence, STDEXEC::env_of_t<_Receiver>>  //
     && sequence_receiver_of<_Receiver,
                             __item_types_of_t<_Sequence, STDEXEC::env_of_t<_Receiver>>>  //
-    && bool(                                          // cast to bool to hide the disjunction
-      __sequence_receiver_from<_Receiver, _Sequence>  //
-      || __stopped_means_break_receiver_from<_Receiver, _Sequence>);
+    // cast to bool to hide the disjunction:
+    && bool(__sequence_receiver_from<_Receiver, _Sequence>
+            || __stopped_means_break_receiver_from<_Receiver, _Sequence>);
 
   namespace __sequence_sndr
   {
@@ -857,8 +861,9 @@ namespace experimental::execution
         {
           using __result_t
             [[maybe_unused]] = decltype(__declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
-          // static_assert(__subscribable_with_static_member<__tfx_seq_t, _Receiver>,
-          //               STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
+          // static_assert(
+          //   __subscribable_with_static_member<__tfx_seq_t, _Receiver>,
+          //   STDEXEC_ERROR_CANNOT_SUBSCRIBE_SEQUENCE_TO_RECEIVER);
           return _NO_USABLE_SUBSCRIBE_CUSTOMIZATION_FOUND_();
         }
       }

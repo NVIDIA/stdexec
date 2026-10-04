@@ -54,19 +54,19 @@ namespace experimental::execution::asio
   namespace detail::completion_token
   {
 
-    //  The machinery from here down through completion_token::set_value is to
-    //  work around the fact that Asio allows operations to declare signatures which
-    //  aren't reflective of the actual cv- & ref-qualifications with which the
-    //  values will actually be sent. This means that one or more conversions may be
-    //  required to actually send the values correctly which may throw and which
-    //  therefore must occur before the call to ::STDEXEC::set_value.
+    // The machinery from here down through completion_token::set_value is to
+    // work around the fact that Asio allows operations to declare signatures
+    // which aren't reflective of the actual cv- & ref-qualifications with which
+    // the values will actually be sent. This means that one or more conversions
+    // may be required to actually send the values correctly which may throw and
+    // which therefore must occur before the call to ::STDEXEC::set_value.
 
-    //  The technique used to achieve this is to utilize an unevaluated call against
-    //  overload_set to determine the matching Asio signature. Then
-    //  completion_token::convert is used to transform the values actually sent by
-    //  the Asio operation so that they match the selected completion signature
-    //  (this may throw). The converted values may then be sent to the receiver with
-    //  no possibility of throwing.
+    // The technique used to achieve this is to utilize an unevaluated call
+    // against overload_set to determine the matching Asio signature. Then
+    // completion_token::convert is used to transform the values actually sent
+    // by the Asio operation so that they match the selected completion
+    // signature (this may throw). The converted values may then be sent to the
+    // receiver with no possibility of throwing.
     template <typename>
     struct has_function_call_operator
     {
@@ -107,16 +107,18 @@ namespace experimental::execution::asio
       (std::is_convertible_v<U &&, T &&> && !std::reference_converts_from_temporary_v<T &&, U &&>)
 #else
       (
-        //  Just using is_base_of_v is insufficient because it always reports false for built-in types
+        // Just using is_base_of_v is insufficient because it always reports
+        // false for built-in types
         (std::is_base_of_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>
          || std::is_same_v<std::remove_cvref_t<T>, std::remove_cvref_t<U>>)
         &&
-        //  The returned type must be at least as cv-qualified as the input type (it can be more cv-qualified)
+        // The returned type must be at least as cv-qualified as the input type
+        // (it can be more cv-qualified)
         at_least_as_qualified_v<std::remove_reference_t<T>, std::remove_reference_t<U>>
         && (
-          //  Reference type must agree except...
+          // Reference type must agree except...
           (std::is_lvalue_reference_v<T> == std::is_lvalue_reference_v<U>) ||
-          //  ...special rules for const& which allows rvalues to bind thereto
+          // ...special rules for const& which allows rvalues to bind thereto
           (std::is_lvalue_reference_v<T> && std::is_const_v<std::remove_reference_t<T>>) ))
 #endif
     constexpr T&& convert(U&& u) noexcept
@@ -209,8 +211,8 @@ namespace experimental::execution::asio
             self_.frames_ = prev_;
             if (!self_.frames_ && self_.abandoned_)
             {
-              //  We are the last frame and the handler is gone so it's up to us to
-              //  finalize the operation
+              // We are the last frame and the handler is gone so it's up to us
+              // to finalize the operation
               l_.unlock();
               self_.callback_.reset();
               if (self_.ex_)
@@ -257,7 +259,7 @@ namespace experimental::execution::asio
         STDEXEC_CATCH_ALL
         {
           STDEXEC_ASSERT(frame);
-          //  Do not overwrite the first exception encountered
+          // Do not overwrite the first exception encountered
           if (!ex_)
           {
             ex_ = std::current_exception();
@@ -301,9 +303,9 @@ namespace experimental::execution::asio
       {
         if (self_)
         {
-          //  When this goes out of scope it might send set stopped or set error, or
-          //  it might defer that to the executor frames above us on the call stack
-          //  (if any)
+          // When this goes out of scope it might send set stopped or set error,
+          // or it might defer that to the executor frames above us on the call
+          // stack (if any)
           typename operation_state_base<Signatures, Receiver>::frame_ const frame(*self_);
           self_->abandoned_ = true;
         }
@@ -338,8 +340,8 @@ namespace experimental::execution::asio
             ::STDEXEC::set_error(static_cast<Receiver&&>(self_->r_), std::current_exception());
           }
         }
-        //  Makes destructor a no op, the operation is complete so there's nothing
-        //  more to do
+        // Makes destructor a no op, the operation is complete so there's
+        // nothing more to do
         self_ = nullptr;
       }
 
@@ -397,12 +399,12 @@ namespace experimental::execution::asio
           {
             base_::ex_ = std::current_exception();
           }
-          //  It's important that we fallthrough here, just because the
-          //  initiating function threw doesn't mean that there's no outstanding
-          //  operations
+          // It's important that we fallthrough here, just because the
+          // initiating function threw doesn't mean that there's no outstanding
+          // operations
         }
-        //  In the case of an immediate completion *this may already be outside its
-        //  lifetime so we can't proceed into the branch
+        // In the case of an immediate completion *this may already be outside
+        // its lifetime so we can't proceed into the branch
         if (frame)
         {
           base_::callback_.emplace(::STDEXEC::get_stop_token(::STDEXEC::get_env(base_::r_)),

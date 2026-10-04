@@ -118,7 +118,7 @@ namespace STDEXEC
   concept __statically_queryable_with = __queryable_with<_Env, _Query, _Args...>
                                      && __statically_queryable_with_impl<_Env, _Query, _Args...>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.queries]
   template <class _Tp>
   concept __is_bool_constant = requires { typename __mbool<_Tp::value>; };
@@ -127,7 +127,7 @@ namespace STDEXEC
   template <class _Tag>
   concept __forwarding_query = forwarding_query(_Tag{});
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __completion_query
   namespace __detail
   {
