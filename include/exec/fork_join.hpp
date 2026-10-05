@@ -281,9 +281,28 @@ namespace experimental::execution
 
   struct fork_join_t
   {
-    template <STDEXEC::sender Sndr, class... Closures>
+    /// No closure given.
+    template <STDEXEC::sender Sndr>
     STDEXEC_ATTRIBUTE(host, device)
-    constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const  //
+    constexpr auto operator()(Sndr&& sndr) const noexcept(STDEXEC::__nothrow_decay_copyable<Sndr>)
+    {
+      return static_cast<Sndr&&>(sndr);
+    }
+
+    /// Unary closure.
+    template <STDEXEC::sender Sndr, class Closure> requires (!STDEXEC::sender<Closure>)
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(Sndr&& sndr, Closure&& clsr) const
+      noexcept(STDEXEC::__nothrow_callable<Closure, Sndr>)
+    {
+      return static_cast<Closure&&>(clsr)(static_cast<Sndr&&>(sndr));
+    }
+
+    /// One sender and multiple closures.
+    template <STDEXEC::sender Sndr, class... Closures> requires (sizeof...(Closures) > 1)
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const
+      noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>)
       -> STDEXEC::__well_formed_sender auto
     {
       return STDEXEC::__sexpr{fork_join_t(),
@@ -291,6 +310,7 @@ namespace experimental::execution
                               static_cast<Sndr&&>(sndr)};
     }
 
+    /// One or more closures.
     template <class... Closures>
       requires((!STDEXEC::sender<Closures>) && ...)
     STDEXEC_ATTRIBUTE(host, device)
