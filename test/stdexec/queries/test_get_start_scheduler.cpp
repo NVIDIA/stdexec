@@ -92,7 +92,7 @@ namespace
   //! @test Check that the start scheduler that @c ex::continues_on sets in the receiver
   //! environment of the schedule sender is the completion scheduler of the predecessor.
   //!
-  //! Indeed, @c ex::continues_on starts an hop operation state from the completion of the
+  //! Indeed, @c ex::continues_on starts a hop operation state from the completion of the
   //! predecessor.
   TEST_CASE("get_start_scheduler with continues_on and inline_scheduler",
             "[sched_queries][get_start_scheduler]")
