@@ -1108,6 +1108,113 @@ namespace
     STATIC_REQUIRE(!valid_function_type<int() const volatile &>);
   }
 
+  // Pointer-to-member factories whose representation can be larger than two
+  // pointers under the Microsoft ABI, where the size of a pointer to member
+  // depends on the class's inheritance model. Under the Itanium ABI every
+  // pointer to member function is two pointers, so these only exercise
+  // function's factory-storage sizing on Microsoft-ABI targets.
+  struct mi_base1
+  {
+    int i = 1;
+  };
+
+  struct mi_base2
+  {
+    int j = 2;
+  };
+
+  struct multiple_inheritance
+    : mi_base1
+    , mi_base2
+  {
+    auto get() const noexcept
+    {
+      return ex::just(i + j);
+    }
+  };
+
+  struct vi_base
+  {
+    int i = 3;
+  };
+
+  struct virtual_inheritance : virtual vi_base
+  {
+    auto get() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+  struct late;
+  // Formed while late is incomplete, so the Microsoft ABI must use its most
+  // general pointer-to-member representation for this type.
+  using late_getter = decltype(ex::just(0)) (late::*)() const noexcept;
+
+  struct late
+  {
+    int i = 4;
+
+    auto get() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+#if !STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
+  template <class Function>
+  struct function_then_char
+  {
+    STDEXEC_ATTRIBUTE(no_unique_address) Function fn;
+    char c;
+  };
+
+  // Under the Itanium C++ ABI, a following member can reuse the tail padding of
+  // a [[no_unique_address]] member whose type isn't POD for the purpose of
+  // layout, so a function whose padding is all at its end leaves room for c.
+  TEST_CASE("function's padding is at its end, where an enclosing object can reuse it",
+            "[types][function]")
+  {
+    using takes_char = exec::function<int(char)>;
+    using takes_int  = exec::function<int(int)>;
+
+    STATIC_REQUIRE(sizeof(function_then_char<takes_char>) == sizeof(takes_char));
+    STATIC_REQUIRE(sizeof(function_then_char<takes_int>) == sizeof(takes_int));
+  }
+#endif
+
+  TEST_CASE("function stores pointer-to-member factories of any representation",
+            "[types][function]")
+  {
+    SECTION("multiple inheritance")
+    {
+      multiple_inheritance obj;
+      auto [ret] = ex::sync_wait(exec::function<int(multiple_inheritance const *) noexcept>(
+                                   &obj,
+                                   &multiple_inheritance::get))
+                     .value();
+      REQUIRE(ret == 3);
+    }
+
+    SECTION("virtual inheritance")
+    {
+      virtual_inheritance obj;
+      auto [ret] = ex::sync_wait(exec::function<int(virtual_inheritance const *) noexcept>(
+                                   &obj,
+                                   &virtual_inheritance::get))
+                     .value();
+      REQUIRE(ret == 3);
+    }
+
+    SECTION("pointer to member formed before the class was complete")
+    {
+      late        obj;
+      late_getter getter = &late::get;
+      auto [ret] = ex::sync_wait(exec::function<int(late const *) noexcept>(&obj, getter)).value();
+      REQUIRE(ret == 4);
+    }
+  }
+
   TEST_CASE("support for member functions works as expected", "[types][function]")
   {
     struct example
