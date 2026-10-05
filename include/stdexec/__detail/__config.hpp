@@ -180,7 +180,32 @@ import std;
 // library. It is used when forward-declaring a standard library type or
 // function, which is not portable but sometimes necessary to avoid pulling in a
 // large header when a fwd decl would do.
-#if defined(_LIBCPP_VERSION)
+//
+// libc++ 23's _LIBCPP_BEGIN_NAMESPACE_STD opens a `#pragma clang attribute
+// push` region that applies only to functions, and _LIBCPP_END_NAMESPACE_STD
+// closes it. When the region is opened from a non-system header and declares no
+// functions (as in our forward-declaration blocks), Clang reports the pushed
+// attribute as unused under -Wpragma-clang-attribute, so we suppress that
+// warning for the duration of the block. Only Clang implements `#pragma clang
+// attribute`, so only Clang can emit that warning; hence the STDEXEC_CLANG()
+// guard.
+//
+// Known gap: libc++ 23 emits those pragmas for every compiler (later versions
+// emit them only for Clang-based compilers), so GCC with libc++ 23 reports them
+// under -Wunknown-pragmas instead. GCC does not apply a diagnostic pragma to
+// another pragma from the same macro expansion, so that can't be suppressed
+// here.
+//
+// This uses STDEXEC_PRAGMA directly rather than STDEXEC_PRAGMA_PUSH() and
+// friends because those are defined further down, after the first use of these
+// macros below.
+#if defined(_LIBCPP_VERSION) && STDEXEC_CLANG()
+#  define STDEXEC_NAMESPACE_STD_BEGIN                                                              \
+    STDEXEC_PRAGMA(clang diagnostic push)                                                          \
+    STDEXEC_PRAGMA(clang diagnostic ignored "-Wpragma-clang-attribute")                            \
+    _LIBCPP_BEGIN_NAMESPACE_STD
+#  define STDEXEC_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD STDEXEC_PRAGMA(clang diagnostic pop)
+#elif defined(_LIBCPP_VERSION)
 #  define STDEXEC_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #  define STDEXEC_NAMESPACE_STD_END   _LIBCPP_END_NAMESPACE_STD
 #elif defined(__GLIBCXX__)
