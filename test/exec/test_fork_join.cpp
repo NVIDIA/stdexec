@@ -43,6 +43,30 @@ namespace
                      completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>>);
   }
 
+  TEST_CASE("fork_join coalesces empty and unary calls", "[adaptors][fork_join]")
+  {
+    /// Empty (no closure given).
+    STDEXEC::sender auto empty = exec::fork_join(STDEXEC::just());
+    using empty_t = decltype(empty);
+    STATIC_REQUIRE(std::same_as<empty_t, decltype(STDEXEC::just())>);
+    STATIC_REQUIRE(!exec::sender_for<empty_t, exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just())));
+
+    auto then = STDEXEC::then([]() noexcept {});
+
+    /// Unary closure.
+    STDEXEC::sender auto unary = exec::fork_join(STDEXEC::just(), then);
+    using unary_t = decltype(unary);
+    STATIC_REQUIRE(std::same_as<unary_t, decltype(STDEXEC::just() | then)>);
+    STATIC_REQUIRE(!exec::sender_for<unary_t, exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just(), then)));
+
+    /// Multiple closures.
+    STDEXEC::sender auto multiple = STDEXEC::just() | exec::fork_join(then, then);
+    STATIC_REQUIRE(exec::sender_for<decltype(multiple), exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just(), then, then)));
+  }
+
   struct ForwardingThen
   {
     template <typename Value>
