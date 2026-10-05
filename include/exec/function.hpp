@@ -22,9 +22,7 @@
 #include "../stdexec/__detail/__read_env.hpp"
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__sender_concepts.hpp"
-#include "../stdexec/__detail/__static_vector.hpp"
 #include "../stdexec/__detail/__tuple.hpp"
-#include "../stdexec/__detail/__typeinfo.hpp"
 #include "../stdexec/__detail/__utility.hpp"
 #include "../stdexec/functional.hpp"
 
@@ -631,37 +629,23 @@ namespace experimental::execution
       {}
     };
 
-    template <auto _Types, template <class...> class _Template, std::size_t... _Is>
-    consteval auto __canonicalize_splice(__indices<_Is...>) noexcept
-    {
-      return _Template<__msplice<_Types[_Is]>...>();
-    }
-
-    template <std::size_t _Size>
-    consteval auto __canonicalize_impl(__static_vector<__type_index, _Size> __types) noexcept
-    {
-      std::ranges::sort(__types);
-      auto const __rest = std::ranges::unique(__types);
-      __types.erase(__rest.begin(), __types.end());
-      return __types;
-    }
+    template <class _Sigs>
+    struct __canonical;
 
     template <template <class...> class _List, class... _Types>
-    consteval auto __canonicalize(_List<_Types...> *) noexcept
+    struct __canonical<_List<_Types...>>
     {
-      using __types_t        = __static_vector<__type_index, sizeof...(_Types)>;
-      constexpr auto __types = __canonicalize_impl(__types_t{__mtypeid<_Types>...});
-      return __canonicalize_splice<__types, _List>(__make_indices<__types.size()>());
-    }
+      using type = __minvoke<__munique<__msort<__q<_List>>>, _Types...>;
+    };
 
     //! Map the type-list _Sigs to a canonical form, which sorts and uniques the
     //! contained elements to ensure user-specified type-lists are not
     //! order-dependent.
     //!
     //! @tparam _Sigs a type-list of types to be sorted and uniqued; expected to
-    //! be a specialization of completion_signatures or queries.
+    //! be a specialization of completion_signatures, queries, or attrs.
     template <class _Sigs>
-    using __canonical_t = decltype(__canonicalize(static_cast<_Sigs *>(nullptr)));
+    using __canonical_t = __canonical<_Sigs>::type;
 
     template <class _Signature>
     struct __function_meta;

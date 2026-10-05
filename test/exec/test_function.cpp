@@ -600,6 +600,38 @@ namespace
     }
   }
 
+  TEST_CASE("specifications are deduplicated, and attrs are order-independent", "[types][function]")
+  {
+    SECTION("duplicate completion signatures collapse")
+    {
+      using func1_t =
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>>;
+      using func2_t = exec::function<
+        ex::sender_tag(),
+        ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(), ex::set_value_t()>>;
+
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
+    }
+
+    SECTION("attrs order doesn't matter")
+    {
+      struct my_domain : ex::default_domain
+      {};
+
+      using sigs  = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+      using value = my_domain(ex::get_completion_domain_t<ex::set_value_t>) noexcept;
+      using stop  = my_domain(ex::get_completion_domain_t<ex::set_stopped_t>) noexcept;
+
+      using func1_t =
+        exec::function<ex::sender_tag(), sigs, exec::queries<>, exec::attrs<value, stop>>;
+      using func2_t =
+        exec::function<ex::sender_tag(), sigs, exec::queries<>, exec::attrs<stop, value>>;
+
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
+    }
+  }
+
   TEST_CASE("queries specification is order-independent", "[types][function]")
   {
     constexpr auto query1 = [](auto const &) noexcept
