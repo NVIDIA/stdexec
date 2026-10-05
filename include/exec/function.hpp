@@ -32,6 +32,7 @@
 #include "any_sender_of.hpp"
 #include "get_frame_allocator.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 #include <memory>
@@ -372,6 +373,27 @@ namespace experimental::execution
     //! Concept __is_callable_pointer matches options 1 and 2, and concept
     //! __is_empty_callable matches option 3.
 
+    //! Never defined. A pointer to a member of an incomplete class gets the
+    //! ABI's most general member-pointer representation, so these types bound
+    //! the size and alignment of any pointer factory a user can provide.
+    struct __incomplete;
+    using __general_pmf_t = void (__incomplete::*)();
+    using __general_pmd_t = int __incomplete::*;
+    using __fn_ptr_t      = void (*)();
+
+    //! The size required to store any factory __function accepts: an empty
+    //! callable, a pointer to function, or a pointer to member. Under the
+    //! Itanium C++ ABI a pointer to member function is two pointers, but under
+    //! the Microsoft ABI its size depends on the class's inheritance model, and
+    //! the general representation is larger.
+    inline constexpr std::size_t __factory_storage_size = std::max(
+      {sizeof(__fn_ptr_t), sizeof(__general_pmf_t), sizeof(__general_pmd_t)});
+
+    //! The alignment required to store any factory __function accepts: an
+    //! empty callable, a pointer to function, or a pointer to member.
+    inline constexpr std::size_t __factory_storage_align = std::max(
+      {alignof(__fn_ptr_t), alignof(__general_pmf_t), alignof(__general_pmd_t)});
+
     //! Satisfied when _Ty is a pointer-to-function or pointer-to-member
     template <class _Ty>
     concept __is_callable_pointer = (std::is_pointer_v<_Ty>
@@ -488,10 +510,19 @@ namespace experimental::execution
                                        static_cast<__receiver_t &&>(__rcvr));
       }
 
-      //! The curried arguments that will be passed to __make_sender_ from
-      //! inside __make_opstate_.
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      __tuple<_Args...> __args_;
+      // The members are declared in order of decreasing alignment, with the
+      // curried arguments, whose alignment varies, last. That puts any padding
+      // at the end of the object, where it can be reused by a following
+      // member of an enclosing class when a function is a [[no_unique_address]]
+      // member or a base class.
+
+      //! Storage for the sender factory passed to our constructor template;
+      //! __make_opstate_ will reconstitute the actual factory from this
+      //! bag-of-bytes with start_lifetime_as because it internally knows the
+      //! concrete type of the user-provided sender factory. The storage is
+      //! sized and aligned for the largest pointer to member the ABI can
+      //! produce (see __factory_storage_size).
+      alignas(__factory_storage_align) std::byte __make_sender_[__factory_storage_size]{};
       //! The type-erased operation state factory; it points to a function that
       //! knows the concrete type of the sender factory stored in __make_sender_
       //! so that it can construct the desired sender on demand and connect it
@@ -499,13 +530,10 @@ namespace experimental::execution
       //! __make_sender_, the __any_receiver_ref to connect the sender to, and
       //! the arguments to pass to __make_sender_ to construct the sender.
       _any::_any_opstate_base (*__make_opstate_)(void *, __receiver_t, _Args &&...);
-      //! Storage for the sender factory passed to our constructor template;
-      //! __make_opstate_ will reconstitute the actual factory from this
-      //! bag-of-bytes with start_lifetime_as because it internally knows the
-      //! concrete type of the user-provided sender factory. We're reserving 2 *
-      //! sizeof(void *) bytes to permit the factory to be a pointer to member
-      //! function, which usually requires two pointers.
-      std::byte __make_sender_[2 * sizeof(void *)]{};
+      //! The curried arguments that will be passed to __make_sender_ from
+      //! inside __make_opstate_.
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __tuple<_Args...> __args_;
 
       struct __tag
       {};
@@ -513,10 +541,11 @@ namespace experimental::execution
       template <class _Factory>
       constexpr explicit __function(_Args &&...__args, _Factory __factory, __tag)
         noexcept(__nothrow_move_constructible<_Args...>)
-        : __args_(static_cast<_Args &&>(__args)...)
-        , __make_opstate_(&__mk_opstate<_Factory>)
+        : __make_opstate_(&__mk_opstate<_Factory>)
+        , __args_(static_cast<_Args &&>(__args)...)
       {
         static_assert(sizeof(_Factory) <= sizeof(__make_sender_));
+        static_assert(alignof(_Factory) <= __factory_storage_align);
 
         std::memcpy(__make_sender_, std::addressof(__factory), sizeof(_Factory));
       }
