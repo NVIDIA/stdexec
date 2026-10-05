@@ -1115,8 +1115,10 @@ namespace STDEXEC
   struct __msort
   {
     template <class... _Ts>
-    using __f = __detail::__msort_apply<_Continuation,
-                                        __detail::__msort_impl(std::array{__mtypeid<_Ts>...})>::__t;
+    using __f = __detail::__msort_apply<
+      _Continuation,
+      // name the array type explicitly: CTAD can't deduce one from an empty pack
+      __detail::__msort_impl(std::array<__type_index, sizeof...(_Ts)>{__mtypeid<_Ts>...})>::__t;
   };
 }  // namespace STDEXEC
 
