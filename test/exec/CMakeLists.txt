@@ -57,6 +57,7 @@ set(exec_test_sources
     sequence/test_empty_sequence.cpp
     sequence/test_ignore_all_values.cpp
     sequence/test_iterate.cpp
+    sequence/test_write_env_sequence.cpp
     sequence/test_transform_each.cpp
     sequence/test_merge.cpp
     sequence/test_sequence_any_sender.cpp

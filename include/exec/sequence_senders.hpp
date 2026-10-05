@@ -225,6 +225,100 @@ namespace experimental::execution
   template <class _Sequence>
   inline constexpr bool enable_sequence_sender = __enable_sequence_sender<_Sequence>;
 
+  // A sequence-adaptor traits customization point. The set of sender adaptors
+  // is open, so the sequence machinery cannot know about them individually.
+  // Instead, an adaptor that is transparent to sequence semantics — one that
+  // forwards `set_next` and all completions through to a single child sender,
+  // possibly adjusting the environment that child sees — declares that here,
+  // and `get_item_types` and `subscribe` handle such senders generically. See
+  // issue #2053.
+  template <class _Tag>
+  struct __sequence_adaptor_traits
+  {
+    // Adaptors default to opaque: a wrapper around a sequence sender is not
+    // itself a sequence sender.
+    static constexpr bool __transparent = false;
+  };
+
+  // The default child-environment transformation for transparent adaptors:
+  // the child is queried in the same environment as the adaptor itself.
+  struct __identity_child_env_fn
+  {
+    template <class _Env, class _Data>
+    auto operator()(_Env __env, _Data const &) const noexcept -> _Env
+    {
+      return __env;
+    }
+  };
+
+  // `write_env` only augments the environment seen by its children; it
+  // neither adds nor removes sequence items, and it computes completion
+  // signatures from its child's signatures in the joined environment. Mark it
+  // transparent with the matching environment transformation. See issue
+  // #2053.
+  template <>
+  struct __sequence_adaptor_traits<STDEXEC::__write_env_t>
+  {
+    static constexpr bool __transparent = true;
+
+    template <class _Env, class _Data>
+    struct __child_env_fn
+    {
+      auto operator()(_Env __env, _Data const & __data) const noexcept
+        -> STDEXEC::__join_env_t<_Data const &, _Env>
+      {
+        return STDEXEC::__env::__join(__data, static_cast<_Env&&>(__env));
+      }
+    };
+  };
+
+  // True when _Sequence is a sender expression whose adaptor traits (see
+  // `__sequence_adaptor_traits` above) mark it as transparent to sequence
+  // sender semantics.
+  template <class _Sequence>
+  concept __transparent_sequence_adaptor =
+    STDEXEC::__minvocable_q<STDEXEC::tag_of_t, STDEXEC::__decay_t<_Sequence>>
+    && __sequence_adaptor_traits<STDEXEC::tag_of_t<STDEXEC::__decay_t<_Sequence>>>::__transparent;
+
+  // The function object that transforms the environment of a transparent
+  // sequence adaptor: the adaptor's traits may define a nested
+  // `__child_env_fn<_Env, _Data>` function object type; otherwise, the
+  // transformation is the identity.
+  template <class _Tag, class _Env, class _Data>
+  consteval auto __adaptor_child_env_fn()
+  {
+    if constexpr (requires {
+                    typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>;
+                  })
+    {
+      return typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>{};
+    }
+    else
+    {
+      return __identity_child_env_fn{};
+    }
+  }
+
+  template <class _Tag, class _Env, class _Data>
+  using __adaptor_child_env_fn_t = decltype(__adaptor_child_env_fn<_Tag, _Env, _Data>());
+
+  // The environment in which the child of a transparent sequence adaptor is
+  // queried, given the adaptor's tag, the environment _Env in which the
+  // adaptor itself is queried, and the adaptor's data.
+  template <class _Tag, class _Env, class _Data>
+  using __adaptor_child_env_t =
+    STDEXEC::__call_result_t<__adaptor_child_env_fn_t<_Tag, _Env, _Data>, _Env, _Data const &>;
+
+  // Sender expressions whose adaptor traits mark them transparent (see
+  // `__sequence_adaptor_traits` above) count as sequence senders: they
+  // forward `set_next` and all completions through to a single child sender.
+  // Without this, wrapping a sequence sender in a transparent adaptor (e.g.
+  // `write_env`) would hide the sequence semantics from downstream
+  // sequence-aware algorithms. See issue #2053.
+  template <auto _DescriptorFn>
+    requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_DescriptorFn>>
+  inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_DescriptorFn>> = true;
+
   STDEXEC_MODULE_EXPORT
   template <class... _Senders>
   struct item_types
@@ -321,6 +415,26 @@ namespace experimental::execution
       else if constexpr (__with_consteval_static_member<_Sequence>)
       {
         return STDEXEC_REMOVE_REFERENCE(_Sequence)::template get_item_types<_Sequence>();
+      }
+      else if constexpr (__transparent_sequence_adaptor<_Sequence>)
+      {
+        // A transparent sequence adaptor (see `__sequence_adaptor_traits`
+        // above) is unwrapped one layer at a time: its item types are the
+        // item types of its child, computed in the transformed environment
+        // the adaptor presents to its child.
+        using __tag_t  = STDEXEC::tag_of_t<STDEXEC::__decay_t<_Sequence>>;
+        using __data_t = STDEXEC::__decay_t<STDEXEC::__data_of<_Sequence>>;
+        if constexpr (sizeof...(_Env) == 0)
+        {
+          return __get_item_types_helper<
+            STDEXEC::__child_of<_Sequence>,
+            __adaptor_child_env_t<__tag_t, STDEXEC::env<>, __data_t>>();
+        }
+        else
+        {
+          return __get_item_types_helper<STDEXEC::__child_of<_Sequence>,
+                                         __adaptor_child_env_t<__tag_t, _Env, __data_t>...>();
+        }
       }
       else if constexpr (sender_in<_Sequence, _Env...>
                          && !enable_sequence_sender<STDEXEC::__decay_t<_Sequence>>)
@@ -767,6 +881,53 @@ namespace experimental::execution
     using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
       _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
 
+    // Receiver wrapper used to subscribe to the child of a transparent
+    // sequence adaptor (see `__sequence_adaptor_traits` above): it forwards
+    // all completions and `set_next` calls to the wrapped receiver, but
+    // presents the adaptor's transformed environment joined with (and
+    // shadowing) the wrapped receiver's environment. This mirrors the
+    // environment the adaptor's own operation state would present to its
+    // child when connecting.
+    template <class _Receiver, class _Env>
+    struct __adaptor_rcvr
+    {
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      template <class _Item>
+      auto set_next(_Item&& __item) & noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
+        -> next_sender_of_t<_Receiver, _Item>
+      {
+        return exec::set_next(__rcvr_, static_cast<_Item&&>(__item));
+      }
+
+      void set_value() noexcept
+      {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept
+      {
+        STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__error));
+      }
+
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, _Receiver>
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+      }
+
+      auto get_env() const noexcept -> _Env const &
+      {
+        return __env_;
+      }
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Receiver __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Env      __env_;
+    };
+
     template <class _Sequence, class _Receiver>
     concept __subscribable_with_static_member =
       __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
@@ -835,6 +996,23 @@ namespace experimental::execution
                                   __stopped_means_break<_Receiver>>;
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
+        else if constexpr (__transparent_sequence_adaptor<__tfx_seq_t>)
+        {
+          // A transparent sequence adaptor (see `__sequence_adaptor_traits`
+          // above) is unwrapped one layer at a time: subscribe to its child
+          // with a receiver that presents the adaptor's transformed
+          // environment (joined with, and shadowing, the receiver's own
+          // environment). See issue #2053.
+          using __tag_t       = STDEXEC::tag_of_t<STDEXEC::__decay_t<__tfx_seq_t>>;
+          using __data_t      = __decay_t<__data_of<__tfx_seq_t>>;
+          using __child_t     = __child_of<__tfx_seq_t>;
+          using __child_env_t = __adaptor_child_env_t<__tag_t, env_of_t<_Receiver>, __data_t>;
+          using __rcvr_t      = __adaptor_rcvr<_Receiver, __child_env_t>;
+          using __result_t    = STDEXEC::__call_result_t<subscribe_t, __child_t, __rcvr_t>;
+          __check_operation_state<__result_t>();
+          constexpr bool __nothrow_subscribe = __nothrow_callable<subscribe_t, __child_t, __rcvr_t>;
+          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
+        }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
@@ -888,6 +1066,25 @@ namespace experimental::execution
           return STDEXEC::connect(static_cast<__next_sender_t&&>(__next),
                                   __stopped_means_break<_Receiver>{
                                     static_cast<_Receiver&&>(__rcvr)});
+        }
+        else if constexpr (__transparent_sequence_adaptor<__tfx_seq_t>)
+        {
+          // Transparent sequence adaptors (see `__sequence_adaptor_traits`
+          // above) are unwrapped one layer at a time; see the matching branch
+          // in __get_declfn above and issue #2053.
+          auto& [__tag, __data, __child] = __tfx_seq;
+          (void) __tag;
+          using __tag_t       = STDEXEC::tag_of_t<STDEXEC::__decay_t<__tfx_seq_t>>;
+          using __data_t      = __decay_t<decltype(__data)>;
+          using __child_env_t = __adaptor_child_env_t<__tag_t, env_of_t<_Receiver>, __data_t>;
+          using __xform_t     = __adaptor_child_env_fn_t<__tag_t, env_of_t<_Receiver>, __data_t>;
+          // Recurse into the CPO with the unwrapped child; each layer of
+          // adaptor nesting is unwrapped one at a time.
+          return (*this)(STDEXEC::__forward_like<__tfx_seq_t>(__child),
+                         __adaptor_rcvr<_Receiver, __child_env_t>{
+                           static_cast<_Receiver&&>(__rcvr),
+                           __xform_t{}(static_cast<decltype(__env)&&>(__env),
+                                       STDEXEC::__forward_like<decltype(__data)>(__data))});
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {  // NOLINT(bugprone-branch-clone)
