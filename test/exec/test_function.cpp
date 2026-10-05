@@ -295,6 +295,21 @@ namespace
     REQUIRE(ret);
   }
 
+  TEST_CASE("exec::function accepts a pointer to a derived memory_resource as frame allocator",
+            "[types][function]")
+  {
+    counting_resource res;
+    exec::function<int() noexcept,
+                   exec::queries<counting_resource *(exec::get_frame_allocator_t) noexcept>>
+      sndr([]() noexcept { return ex::just(42); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, &res)))
+                   .value();
+
+    REQUIRE(ret == 42);
+  }
+
   TEST_CASE("exec::function is conditionally lvalue connectable", "[types][function]")
   {
     exec::function<int()> sndr([]() noexcept { return ex::just(42); });

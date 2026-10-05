@@ -144,6 +144,12 @@ namespace experimental::execution
           return __resource_;
         }
 
+        template <class _Uy>
+        constexpr bool operator==(type<_Uy> const &__other) const noexcept
+        {
+          return *__resource_ == *__other.resource();
+        }
+
        private:
         _Delegate *__resource_;
       };
