@@ -190,7 +190,7 @@ namespace experimental::execution
                            static_cast<_Receiver&&>(__rcvr_)};
       }
 
-      _Receiver __rcvr_;
+      _Receiver& __rcvr_;
     };
 
     STDEXEC_MODULE_EXPORT

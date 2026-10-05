@@ -21,6 +21,7 @@
 #include <array>
 #include <numeric>
 #include <test_common/catch2.hpp>
+#include <utility>
 
 namespace
 {
@@ -124,6 +125,57 @@ namespace
       return env_;
     }
   };
+
+  struct move_only_sum_receiver : sum_receiver<>
+  {
+    move_only_sum_receiver(int& sum, bool& completed) noexcept
+      : sum_receiver<>{.sum_ = sum}
+      , completed_(completed)
+    {}
+
+    move_only_sum_receiver(move_only_sum_receiver const &) = delete;
+    move_only_sum_receiver(move_only_sum_receiver&&)       = default;
+
+    void set_value() noexcept
+    {
+      completed_ = true;
+    }
+
+    bool& completed_;
+  };
+
+  TEST_CASE("iterate - accepts a move-only receiver", "[sequence_senders][iterate]")
+  {
+    std::array<int, 3> array{42, 43, 44};
+    auto               count = GENERATE(0, 1, 3);
+    auto iterate   = exec::iterate(std::ranges::subrange(array.begin(), array.begin() + count));
+    int  sum       = 0;
+    bool completed = false;
+
+    STATIC_REQUIRE(STDEXEC::receiver<move_only_sum_receiver>);
+
+    auto check = [&](auto&& sequence)
+    {
+      auto op = exec::subscribe(static_cast<decltype(sequence)&&>(sequence),
+                                move_only_sum_receiver{sum, completed});
+      STDEXEC::start(op);
+      CHECK(completed);
+      CHECK(sum == std::accumulate(array.begin(), array.begin() + count, 0));
+    };
+
+    SECTION("lvalue sequence")
+    {
+      check(iterate);
+    }
+    SECTION("const lvalue sequence")
+    {
+      check(std::as_const(iterate));
+    }
+    SECTION("rvalue sequence")
+    {
+      check(std::move(iterate));
+    }
+  }
 
   TEST_CASE("iterate - sum up an array ", "[sequence_senders][iterate]")
   {
