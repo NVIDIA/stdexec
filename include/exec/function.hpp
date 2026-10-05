@@ -192,6 +192,12 @@ namespace experimental::execution
      public:
       using operation_state_concept = operation_state_tag;
 
+      // The type-erased receiver holds a pointer to this object, and
+      // __opstate_base may hold a polymorphic_allocator pointing at its own
+      // __resource_, so moving an __opstate would leave dangling pointers. Say
+      // so explicitly rather than relying on _any_opstate_base being immovable.
+      STDEXEC_IMMOVABLE(__opstate);
+
       template <class _Factory>
       explicit constexpr __opstate(_Receiver __rcvr, _Factory __factory)
         : __base(static_cast<_Receiver &&>(__rcvr))
