@@ -886,6 +886,26 @@ namespace
   template <class Sigs, class Attrs>
   concept function_exists = requires { typename exec::function<ex::sender_tag(), Sigs, Attrs>; };
 
+  TEST_CASE("get_completion_domain_t<> in attrs<...> means the set_value domain",
+            "[types][function]")
+  {
+    using function = exec::function<ex::sender_tag(),
+                                    ex::completion_signatures<ex::set_value_t()>,
+                                    exec::queries<>,
+                                    exec::attrs<domain(ex::get_completion_domain_t<>)>>;
+
+    // the declared domain constrains the erased sender's set_value domain
+    STATIC_REQUIRE(!std::constructible_from<function, ex::just_t>);
+    STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_value_t, domain>>);
+
+    // and the function reports it for both spellings of the value-channel query
+    function fn(domain_sender<ex::set_value, domain>);
+    auto     attrs = ex::get_env(fn);
+
+    STATIC_REQUIRE(std::same_as<domain, decltype(get_completion_domain<ex::set_value_t>(attrs))>);
+    STATIC_REQUIRE(std::same_as<domain, decltype(get_completion_domain<void>(attrs))>);
+  }
+
   TEST_CASE("function can't be specialized with invalid completion specifications")
   {
     SECTION("specifying a completion signature with no corresponding completion domain is fine")

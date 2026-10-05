@@ -286,6 +286,41 @@ namespace experimental::execution
     template <class _Queries, class... _Env>
     using __check_queries_t = __check_queries<_Queries, _Env...>::type;
 
+    //! get_completion_domain_t<> (i.e. get_completion_domain_t<void>) asks for
+    //! the set_value domain, so attrs<D(get_completion_domain_t<>)> means the
+    //! same as attrs<D(get_completion_domain_t<set_value_t>)>. Normalize to the
+    //! latter before canonicalizing so the rest of the implementation only
+    //! sees explicit completion tags.
+    template <class _Attr>
+    struct __normalize_attr
+    {
+      using type = _Attr;
+    };
+
+    template <class _Domain>
+    struct __normalize_attr<_Domain(get_completion_domain_t<>)>
+    {
+      using type = _Domain(get_completion_domain_t<set_value_t>);
+    };
+
+    template <class _Domain>
+    struct __normalize_attr<_Domain(get_completion_domain_t<>) noexcept>
+    {
+      using type = _Domain(get_completion_domain_t<set_value_t>) noexcept;
+    };
+
+    template <class _Attrs>
+    struct __normalize_attrs;
+
+    template <class... _Attrs>
+    struct __normalize_attrs<attrs<_Attrs...>>
+    {
+      using type = attrs<typename __normalize_attr<_Attrs>::type...>;
+    };
+
+    template <class _Attrs>
+    using __normalized_attrs_t = __normalize_attrs<_Attrs>::type;
+
     template <class _Attr>
     struct __get_completion_domain_tag;
 
@@ -886,10 +921,11 @@ namespace experimental::execution
         _Attrs>
     struct __make_function<_Signature, _Queries, _Attrs>
     {
+      using __attrs_t = __canonical_t<__normalized_attrs_t<_Attrs>>;
       using type =
         __function_meta<_Signature>::template __make_function<__completion_sigs_from<_Signature>,
                                                               __canonical_t<_Queries>,
-                                                              __canonical_t<_Attrs>>;
+                                                              __attrs_t>;
     };
 
     //! Handle the cases where the given function signature matches
@@ -927,9 +963,10 @@ namespace experimental::execution
       requires __completion_signatures_and_domains_are_compatible<_ComplSigs, _Attrs>
     struct __make_function<_Signature, _ComplSigs, _Queries, _Attrs>
     {
+      using __attrs_t = __canonical_t<__normalized_attrs_t<_Attrs>>;
       using type = __function_meta<_Signature>::template __make_function<__canonical_t<_ComplSigs>,
                                                                          __canonical_t<_Queries>,
-                                                                         __canonical_t<_Attrs>>;
+                                                                         __attrs_t>;
     };
   }  // namespace __func
 
@@ -953,7 +990,8 @@ namespace experimental::execution
   //!   queries in the ultimate receiver's environment
   //! - any of the above with a trailing attrs<Domain(get_completion_domain_t<Tag>),
   //!   ...>: additionally requires the erased sender to complete with Tag in
-  //!   Domain, and reports that domain from the function's environment
+  //!   Domain, and reports that domain from the function's environment;
+  //!   get_completion_domain_t<> means get_completion_domain_t<set_value_t>
   //! - a signature with an lvalue reference qualifier, like
   //!   function<int(bar) const &> or function<int(bar) &> (optionally
   //!   noexcept): an async member function; the constructor takes the object,
