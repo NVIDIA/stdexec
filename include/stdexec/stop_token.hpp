@@ -157,12 +157,15 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
     void __remove_callback_(STDEXEC::__stok::__inplace_stop_callback_base*) const noexcept;
 
+    void __sync_with_request_stop_() noexcept;
+
     static constexpr uint8_t __stop_requested_flag_ = 1;
     static constexpr uint8_t __locked_flag_         = 2;
 
     mutable STDEXEC::__std::atomic<uint8_t>                __state_{0};
     mutable STDEXEC::__stok::__inplace_stop_callback_base* __callbacks_ = nullptr;
     std::thread::id                                        __notifying_thread_;
+    bool*                                                  __destroyed_ = nullptr;
   };
 
   // [stoptoken.inplace], class inplace_stop_token
@@ -266,8 +269,38 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
   inline inplace_stop_source::~inplace_stop_source()
   {
+    if (stop_requested())
+      __sync_with_request_stop_();
+
     STDEXEC_ASSERT((__state_.load(STDEXEC::__std::memory_order_relaxed) & __locked_flag_) == 0);
     STDEXEC_ASSERT(__callbacks_ == nullptr);
+  }
+
+  // Kept separate so the destructor's no-stop path stays cheap to inline.
+  inline void inplace_stop_source::__sync_with_request_stop_() noexcept
+  {
+    auto __old_state        = __lock_();
+    auto __destroyed        = __destroyed_;
+    auto __notifying_thread = __notifying_thread_;
+    __unlock_(__old_state);
+
+    if (__destroyed != nullptr && std::this_thread::get_id() == __notifying_thread)
+    {
+      // A stop callback is destroying us from inside request_stop().
+      *__destroyed = true;
+    }
+    else
+    {
+      // Wait for request_stop() to finish on the other thread.
+      STDEXEC::__stok::__spin_wait __spin;
+      while (__destroyed != nullptr)
+      {
+        __spin.__wait();
+        __old_state = __lock_();
+        __destroyed = __destroyed_;
+        __unlock_(__old_state);
+      }
+    }
   }
 
   inline auto inplace_stop_source::request_stop() noexcept -> bool
@@ -276,6 +309,10 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
       return false;
 
     __notifying_thread_ = std::this_thread::get_id();
+
+    // ~inplace_stop_source() sets this if a callback destroys us.
+    bool __destroyed = false;
+    __destroyed_     = &__destroyed;
 
     // We are responsible for executing callbacks.
     while (__callbacks_ != nullptr)
@@ -299,9 +336,14 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
         __callbk->__callback_completed_.store(true, STDEXEC::__std::memory_order_release);
       }
 
+      // The callback destroyed this stop source, so we can't touch *this again.
+      if (__destroyed)
+        return true;
+
       __lock_();
     }
 
+    __destroyed_ = nullptr;
     __state_.store(__stop_requested_flag_, STDEXEC::__std::memory_order_release);
     return true;
   }

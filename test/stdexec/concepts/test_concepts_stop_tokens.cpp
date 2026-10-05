@@ -22,6 +22,11 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
+#  include <atomic>
+#  include <chrono>
+#  include <memory>
+#  include <optional>
+#  include <thread>
 #  include <type_traits>
 #endif
 
@@ -62,5 +67,78 @@ namespace
     ::STDEXEC::inplace_stop_source   source;
     ::STDEXEC::inplace_stop_callback cb{source.get_token(), on_stop_request{}};
     STATIC_REQUIRE(std::is_same_v<decltype(cb), ::STDEXEC::inplace_stop_callback<on_stop_request>>);
+  }
+
+  struct stop_state;
+
+  struct destroy_on_stop
+  {
+    std::unique_ptr<stop_state>* state;
+
+    void operator()() noexcept;
+  };
+
+  struct stop_state
+  {
+    ::STDEXEC::inplace_stop_source                                   source;
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>> other;
+    std::optional<::STDEXEC::inplace_stop_callback<destroy_on_stop>> callback;
+  };
+
+  void destroy_on_stop::operator()() noexcept
+  {
+    state->reset();
+  }
+
+  TEST_CASE("a stop callback can destroy the inplace_stop_source", "[stop_token]")
+  {
+    auto state = std::make_unique<stop_state>();
+    state->other.emplace(state->source.get_token(), on_stop_request{});
+    state->callback.emplace(state->source.get_token(), destroy_on_stop{&state});
+
+    CHECK(state->source.request_stop());
+    CHECK(state == nullptr);
+  }
+
+  struct slow_state;
+
+  struct remove_and_sleep
+  {
+    slow_state*        state;
+    std::atomic<bool>* removed;
+
+    void operator()() noexcept;
+  };
+
+  struct slow_state
+  {
+    ::STDEXEC::inplace_stop_source                                    source;
+    std::optional<::STDEXEC::inplace_stop_callback<remove_and_sleep>> callback;
+  };
+
+  void remove_and_sleep::operator()() noexcept
+  {
+    // Like an operation that completes from inside its stop callback.
+    auto* removed_flag = removed;
+    state->callback.reset();
+    removed_flag->store(true);
+
+    // Keep request_stop() running while the main thread destroys the source.
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  TEST_CASE("inplace_stop_source destructor waits for request_stop on another thread",
+            "[stop_token]")
+  {
+    std::atomic<bool> removed{false};
+    auto              state = std::make_unique<slow_state>();
+    state->callback.emplace(state->source.get_token(), remove_and_sleep{state.get(), &removed});
+
+    std::thread thread([source = &state->source] { source->request_stop(); });
+    while (!removed.load())
+      std::this_thread::yield();
+
+    state.reset();  // request_stop() is still running on the other thread
+    thread.join();
   }
 }  // namespace
