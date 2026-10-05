@@ -21,9 +21,11 @@
 
 #include <stdexec/execution.hpp>
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <memory_resource>
+#include <stdexcept>
 
 namespace ex = STDEXEC;
 
@@ -309,6 +311,36 @@ namespace
 
     REQUIRE(ret == 42);
   }
+
+  TEST_CASE("exec::function allocates a large operation state with the frame allocator",
+            "[types][function]")
+  {
+    // big enough that the erased operation state can't be stored inline
+    using big = std::array<char, 256>;
+
+    counting_resource                          res;
+    std::pmr::polymorphic_allocator<std::byte> alloc{&res};
+
+    exec::function<big() noexcept> sndr([]() noexcept { return ex::just(big{}); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))
+                   .value();
+
+    REQUIRE(ret == big{});
+    REQUIRE(res.count == 1);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("an exception thrown by the sender factory propagates out of connect",
+            "[types][function]")
+  {
+    exec::function<int()> sndr([]() -> decltype(ex::just(0))
+                               { throw std::runtime_error("factory failed"); });
+
+    REQUIRE_THROWS_AS(ex::sync_wait(std::move(sndr)), std::runtime_error);
+  }
+#endif
 
   TEST_CASE("exec::function is conditionally lvalue connectable", "[types][function]")
   {
