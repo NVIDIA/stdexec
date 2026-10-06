@@ -27,6 +27,14 @@ jobs:
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (clang 22, Debug)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Debug, modules)",build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++", allow_failure: true }
+          # Clang built from source at a pinned llvm-project commit, for the
+          # modular build only. Pinned to the merge of llvm/llvm-project#224528,
+          # which fixes the nondeterministic Clang 23.1.0 ICE
+          # (llvm/llvm-project#191361) seen in the modular build. The toolchain
+          # is cached by commit, so only bumping llvm_sha (or the image tag)
+          # triggers a rebuild. Drop this row once a released Clang contains
+          # the fix.
+          - { name: "CPU (clang trunk, Debug, modules)", build: "Debug", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++", llvm_sha: f970f59a9d4e6b8738547d01bc33e8a12df5244b }
           - { name: "CPU (clang 22, Release)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release, noexcept)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++ -fno-exceptions" }
           - { name: "CPU (gcc 12, Debug)",           build: "Debug",   tag: gcc12-cuda12.9,  cxxstd: "20", cxxflags: "", }
@@ -63,6 +71,115 @@ jobs:
         run: |
           echo "ARTIFACT_PREFIX=${{runner.os}}-${{matrix.tag}}-amd64" >> "${GITHUB_ENV}"
           echo "ARTIFACT_SUFFIX=${{github.run_id}}-${{github.run_attempt}}-$RANDOM" >> "${GITHUB_ENV}"
+      - if: ${{ matrix.llvm_sha }}
+        name: Restore cached Clang (llvm-project@${{ matrix.llvm_sha }})
+        id: llvm-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/coder/llvm-${{ matrix.llvm_sha }}
+          # The toolchain is built with the image's compiler and against its
+          # glibc, so the image tag is part of the key. Bump the trailing
+          # version to force a rebuild after changing the build recipe below.
+          key: llvm-${{ matrix.llvm_sha }}-${{ matrix.tag }}-v1
+      - if: ${{ matrix.llvm_sha && steps.llvm-cache.outputs.cache-hit != 'true' }}
+        name: Build Clang from source (llvm-project@${{ matrix.llvm_sha }})
+        run: |
+          set -e;
+          source /etc/profile
+          set -x;
+
+          # Keep this build independent of the job's sccache setup.
+          unset CMAKE_C_COMPILER_LAUNCHER CMAKE_CXX_COMPILER_LAUNCHER;
+
+          # The image sets PYTHONSAFEPATH=1, which stops Python from putting a
+          # script's own directory on sys.path. libc++'s build scripts (e.g.
+          # utils/generate_iwyu_mapping.py) import their sibling `libcxx`
+          # package that way.
+          unset PYTHONSAFEPATH;
+
+          # LLVM's CMake needs Python 3.
+          command -v python3 >/dev/null || {
+            sudo apt-get update;
+            sudo apt-get install -y --no-install-recommends python3;
+          };
+
+          # Fetch only the pinned commit, and only the subtrees this build uses.
+          src=/tmp/llvm-project;
+          git init -q "${src}";
+          git -C "${src}" sparse-checkout set \
+            llvm clang cmake third-party runtimes libcxx libcxxabi libunwind libc;
+          git -C "${src}" fetch -q --depth 1 --filter=blob:none \
+            https://github.com/llvm/llvm-project.git ${{ matrix.llvm_sha }};
+          git -C "${src}" checkout -q FETCH_HEAD;
+
+          # Linking Clang with ld.bfd on a 4-core/16GB runner is slow and
+          # memory-hungry; use lld when the host compiler can find it.
+          link_flags="-DLLVM_PARALLEL_LINK_JOBS=1";
+          if echo 'int main(){}' | clang++ -x c++ -fuse-ld=lld - -o /dev/null 2>/dev/null; then
+            link_flags="-DLLVM_USE_LINKER=lld -DLLVM_PARALLEL_LINK_JOBS=2";
+            # LLVM_USE_LINKER is forwarded to the runtimes, which are built
+            # with the new Clang. That Clang looks for ld.lld in its own bin/
+            # and on PATH, but the image's ld.lld is only next to the image's
+            # clang (/usr/lib/llvm-22/bin), so put that one on PATH too.
+            mkdir -p /tmp/lld-bin;
+            ln -sf "$(clang++ -print-prog-name=ld.lld)" /tmp/lld-bin/ld.lld;
+            export PATH="/tmp/lld-bin:${PATH}";
+          fi
+
+          # Release, no assertions: the compiler users would actually get.
+          # The install is limited to what the modular build needs: the driver,
+          # its resource headers, clang-scan-deps (for CMake's module
+          # dependency scanning), and libc++/libc++abi/libunwind, including
+          # libc++'s std module sources and libc++.modules.json.
+          cmake -S "${src}/llvm" -B /tmp/llvm-build -GNinja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_INSTALL_PREFIX=/home/coder/llvm-${{ matrix.llvm_sha }} \
+            -DLLVM_ENABLE_PROJECTS=clang \
+            -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
+            -DLLVM_TARGETS_TO_BUILD=X86 \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DLLVM_INCLUDE_DOCS=OFF \
+            -DCLANG_INCLUDE_TESTS=OFF \
+            -DCLANG_INCLUDE_DOCS=OFF \
+            -DLLVM_DISTRIBUTION_COMPONENTS="clang;clang-resource-headers;clang-scan-deps;runtimes" \
+            ${link_flags} \
+            ;
+          cmake --build /tmp/llvm-build --target install-distribution-stripped;
+
+          # Free the disk space for the stdexec build.
+          rm -rf /tmp/llvm-build /tmp/lld-bin "${src}";
+      - if: ${{ matrix.llvm_sha && steps.llvm-cache.outputs.cache-hit != 'true' }}
+        name: Save cached Clang (llvm-project@${{ matrix.llvm_sha }})
+        # Saved explicitly, rather than via actions/cache's post-job hook, so
+        # the toolchain is cached even when the stdexec build or tests fail.
+        uses: actions/cache/save@v4
+        with:
+          path: /home/coder/llvm-${{ matrix.llvm_sha }}
+          key: ${{ steps.llvm-cache.outputs.cache-primary-key }}
+      - if: ${{ matrix.llvm_sha }}
+        name: Use Clang from llvm-project@${{ matrix.llvm_sha }}
+        run: |
+          set -ex;
+          prefix=/home/coder/llvm-${{ matrix.llvm_sha }};
+          # The runtimes may be installed in a per-target subdirectory of lib/
+          # (e.g. lib/x86_64-unknown-linux-gnu), so locate them rather than
+          # hardcoding the layout.
+          modules_json="$(find "${prefix}/lib" -name libc++.modules.json -print -quit)";
+          libcxx_so="$(find "${prefix}/lib" -name 'libc++.so.1' -print -quit)";
+          test -f "${modules_json}";
+          test -f "${libcxx_so}";
+          libdir="$(dirname "${libcxx_so}")";
+          "${prefix}/bin/clang++" --version;
+          "${prefix}/bin/clang-scan-deps" --version;
+          {
+            echo "LLVM_FROM_SOURCE_PREFIX=${prefix}";
+            echo "LLVM_FROM_SOURCE_LIBDIR=${libdir}";
+            echo "LLVM_FROM_SOURCE_MODULES_JSON=${modules_json}";
+          } >> "${GITHUB_ENV}";
       - if: github.repository_owner == 'NVIDIA'
         name: Get AWS credentials for sccache bucket
         uses: aws-actions/configure-aws-credentials@v4
@@ -122,7 +239,9 @@ jobs:
             -DSTDEXEC_BUILD_TESTS:BOOL=ON \
             -DSTDEXEC_BUILD_EXAMPLES:BOOL=${{ !contains(matrix.name, 'modules') }} \
             -DSTDEXEC_BUILD_MODULES:BOOL=${{ contains(matrix.name, 'modules') }} \
-            -DCMAKE_CXX_STDLIB_MODULES_JSON=/usr/lib/llvm-22/lib/libc++.modules.json \
+            ${LLVM_FROM_SOURCE_PREFIX:+"-DCMAKE_CXX_COMPILER=${LLVM_FROM_SOURCE_PREFIX}/bin/clang++"} \
+            ${LLVM_FROM_SOURCE_LIBDIR:+"-DCMAKE_BUILD_RPATH=${LLVM_FROM_SOURCE_LIBDIR}"} \
+            -DCMAKE_CXX_STDLIB_MODULES_JSON="${LLVM_FROM_SOURCE_MODULES_JSON:-/usr/lib/llvm-22/lib/libc++.modules.json}" \
             ;
 
           # Compile
