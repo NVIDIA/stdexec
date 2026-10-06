@@ -26,14 +26,13 @@ jobs:
           - { name: "CPU (clang 16, Release)",       build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 16, Release, ASAN)", build: "Release", tag: llvm16-cuda12.9, cxxstd: "20", cxxflags: "-stdlib=libc++ -fsanitize=address -fsanitize-ignorelist=/home/coder/stdexec/sanitizer-ignorelist.txt" }
           - { name: "CPU (clang 22, Debug)",         build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
-          - { name: "CPU (clang 22, Debug, modules)",build: "Debug",   tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++", allow_failure: true }
           # Clang built from source at a pinned llvm-project commit, for the
           # modular build only. Pinned to the merge of llvm/llvm-project#224528,
           # which fixes the nondeterministic Clang 23.1.0 ICE
           # (llvm/llvm-project#191361) seen in the modular build. The toolchain
           # is cached by commit, so only bumping llvm_sha (or the image tag)
-          # triggers a rebuild. Drop this row once a released Clang contains
-          # the fix.
+          # triggers a rebuild. This is the only modules row: move it to a
+          # released Clang's image once one contains the fix.
           - { name: "CPU (clang trunk, Debug, modules)", build: "Debug", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++", llvm_sha: f970f59a9d4e6b8738547d01bc33e8a12df5244b }
           - { name: "CPU (clang 22, Release)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++" }
           - { name: "CPU (clang 22, Release, noexcept)",       build: "Release", tag: llvm22-cuda13.2, cxxstd: "23", cxxflags: "-stdlib=libc++ -fno-exceptions" }
