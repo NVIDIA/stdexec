@@ -179,6 +179,17 @@ namespace
                                                    | ex::then([] { return std::string{"hello"}; }));
   }
 
+  TEST_CASE("then noexceptness", "[adaptors][then]")
+  {
+    auto func = [](){};
+
+    STATIC_REQUIRE(noexcept(ex::then(func)));
+
+    STATIC_REQUIRE(noexcept(STDEXEC::just() | STDEXEC::then(func)));
+
+    STATIC_REQUIRE(noexcept(STDEXEC::then(STDEXEC::just(), func)));
+  }
+
   TEST_CASE("then keeps error_types from input sender", "[adaptors][then]")
   {
     inline_scheduler     sched1{};
