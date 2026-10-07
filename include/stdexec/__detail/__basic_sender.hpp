@@ -461,9 +461,11 @@ namespace STDEXEC
     struct __make_sexpr_t
     {
       template <class _Data = __, class... _Child>
-      constexpr auto operator()(_Data __data = {}, _Child... __child) const
+      constexpr auto operator()(_Data&& __data = {}, _Child&&... __child) const
+        noexcept(__nothrow_decay_copyable<_Data, _Child...>)
+          -> __sexpr_t<_Tag, __decay_t<_Data>, __decay_t<_Child>...>
       {
-        return __sexpr_t<_Tag, _Data, _Child...>{
+        return {
           {_Tag(), static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)...}
         };
       }
