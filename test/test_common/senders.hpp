@@ -185,8 +185,8 @@ namespace
       bool     condition_;
       Receiver rcvr_;
 
-      // without this synchronization, the thread sanitzier shows a race for construction and
-      // destruction of on_stop_
+      // without this synchronization, the thread sanitzier shows a race for
+      // construction and destruction of on_stop_
       enum class state_t
       {
         construction,

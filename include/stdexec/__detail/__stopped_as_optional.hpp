@@ -45,7 +45,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.stopped.opt]
   namespace __sao
   {
@@ -165,7 +165,7 @@ namespace STDEXEC
   //!
   //! Use this when downstream code prefers branching on a @c std::optional
   //! (a familiar idiom) over branching on an empty
-  //! <tt>std::optional<std::tuple<...>></tt> from @c sync_wait or
+  //! `std::optional<std::tuple<...>>` from @c sync_wait or
   //! handling the @c set_stopped channel via an adaptor.
   //!
   //! **Single value-completion requirement.**
@@ -188,7 +188,7 @@ namespace STDEXEC
   //! set_stopped_t()       // consumed
   //! @endcode
   //!
-  //! the sender produced by <tt>stopped_as_optional(sndr)</tt> has
+  //! the sender produced by `stopped_as_optional(sndr)` has
   //! completion signatures
   //!
   //! @code{.cpp}
@@ -226,10 +226,12 @@ namespace STDEXEC
   //!   | stopped_as_optional();
   //! @endcode
   //!
-  //! @see stdexec::stopped_as_error    — convert stopped into an error
-  //! @see stdexec::upon_stopped         — handle stopped synchronously
-  //! @see stdexec::let_stopped          — handle stopped with a sender-returning callback
-  //! @see stdexec::sync_wait            — also uses an outer @c std::optional to signal stop
+  //! @see stdexec::stopped_as_error — convert stopped into an error
+  //! @see stdexec::upon_stopped     — handle stopped synchronously
+  //! @see stdexec::let_stopped      — handle stopped with a sender-returning
+  //!                                  callback
+  //! @see stdexec::sync_wait        — also uses an outer @c std::optional to
+  //!                                  signal stop
   struct stopped_as_optional_t
   {
     //! @brief Construct a sender that wraps @c __sndr's value completion in
@@ -249,8 +251,8 @@ namespace STDEXEC
 
     //! @brief Construct a sender-adaptor closure for the pipe form.
     //!
-    //! <tt>sndr | stopped_as_optional()</tt> is equivalent to
-    //! <tt>stopped_as_optional(sndr)</tt>. The empty parentheses are
+    //! `sndr | stopped_as_optional()` is equivalent to
+    //! `stopped_as_optional(sndr)`. The empty parentheses are
     //! required by the pipe-closure convention; there are no captured
     //! arguments.
     STDEXEC_ATTRIBUTE(always_inline)
@@ -260,9 +262,10 @@ namespace STDEXEC
     }
   };
 
-  //! @brief The customization point object for the @c stopped_as_optional sender adaptor.
+  //! @brief The customization point object for the @c stopped_as_optional
+  //! sender adaptor.
   //!
-  //! @c stopped_as_optional is an instance of @ref stopped_as_optional_t.
+  //! @c stopped_as_optional is an instance of @c stopped_as_optional_t.
   //! See @ref stopped_as_optional_t for the full description and a usage
   //! example.
   //!

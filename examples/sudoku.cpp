@@ -14,11 +14,11 @@
     Copyright 2026 NVIDIA Corp.
 */
 
-// This sudoku code was originally taken from TBB examples/thread_group/sudoku. The TBB
-// example leaks: https://github.com/oneapi-src/oneTBB/issues/568. The code was modified
-// by Kirk Shoop to use libunifex instead of TBB and to remove the leaks. The code was
-// later modified by David Olsen to use stdexec instead of libunifex to be a test in the
-// NVHPC test suite for stdexec.
+// This sudoku code was originally taken from TBB examples/thread_group/sudoku.
+// The TBB example leaks: https://github.com/oneapi-src/oneTBB/issues/568. The
+// code was modified by Kirk Shoop to use libunifex instead of TBB and to remove
+// the leaks. The code was later modified by David Olsen to use stdexec instead
+// of libunifex to be a test in the NVHPC test suite for stdexec.
 
 #include <cstdio>
 #include <cstdlib>
@@ -225,8 +225,8 @@ bool examine_potentials(board_element *b, bool *progress)
     // Check if potential_set is a power of 2 (only one bit set)
     if (std::popcount(b[i].potential_set) == 1)
     {
-      // It's a singleton - solve it
-      // countr_zero gives the bit position (0-indexed), add 1 to get the element value
+      // It's a singleton - solve it countr_zero gives the bit position
+      // (0-indexed), add 1 to get the element value
       b[i].solved_element = std::countr_zero(b[i].potential_set) + 1;
       singletons          = true;
     }

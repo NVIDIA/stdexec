@@ -42,8 +42,8 @@ namespace STDEXEC
   {
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
     // Without constexpr exceptions, we cannot always produce a valid
-    // completion_signatures type. We must permit get_completion_signatures to return an
-    // error type because we can't throw it.
+    // completion_signatures type. We must permit get_completion_signatures to
+    // return an error type because we can't throw it.
     template <class _Completions>
     concept __well_formed_completions_helper = __valid_completion_signatures<_Completions>
                                             || STDEXEC_IS_BASE_OF(STDEXEC::dependent_sender_error,
@@ -59,12 +59,13 @@ namespace STDEXEC
 
   using __cmplsigs::get_completion_signatures_t;
 
-  // The cast to bool is to hide the disjunction in __well_formed_completions_helper.
+  // The cast to bool is to hide the disjunction in
+  // __well_formed_completions_helper.
   template <class _Completions>
   concept __well_formed_completions = bool(
     __cmplsigs::__well_formed_completions_helper<_Completions>);
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __for_each_completion_signature_t
   namespace __cmplsigs
   {
@@ -96,7 +97,7 @@ namespace STDEXEC
     decltype(__cmplsigs::__for_each_sigs<_Tuple, _Variant, _More...>(
       static_cast<__undefined<_Sigs> *>(nullptr)));
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __transform_reduce_completion_signatures_t
   // __transform_completion_signatures_t
   // __transform_completion_signatures_of_t
@@ -190,7 +191,7 @@ namespace STDEXEC
                                         _ErrorTransform,
                                         _StoppedSigs>;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // begin implementation of __transform_completion_signatures
   struct _IN_TRANSFORM_COMPLETION_SIGNATURES_;
   struct _A_TRANSFORM_FUNCTION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION_;
@@ -299,9 +300,9 @@ namespace STDEXEC
       __transform_all_fn(_TransformOne) -> __transform_all_fn<_TransformOne>;
   }  // namespace __cmplsigs
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //! Commonly needed transformations of completion signatures for use with
-  //! \c __transform_completion_signatures.
+  //! @c __transform_completion_signatures.
   //!
   //! * __keep_completion
   //! * __ignore_completion
@@ -379,8 +380,8 @@ namespace STDEXEC
       }
       else
       {
-        // NB: this uses an overloaded comma operator on the _ERROR_ type to find an error
-        // in a pack of types.
+        // NB: this uses an overloaded comma operator on the _ERROR_ type to
+        // find an error in a pack of types.
         return (__check_decay<_Args>(), ...);
       }
     }
@@ -402,37 +403,43 @@ namespace STDEXEC
     }
   };
 
-  //! \brief Transforms completion signatures using provided transformation functions.
+  //! @brief Transforms completion signatures using provided transformation
+  //! functions.
   //!
-  //! This consteval function transforms a set of completion signatures by applying
-  //! custom transformation functions to value, error, and stopped completion cases.
-  //! The result can be augmented with additional extra signatures.
+  //! This consteval function transforms a set of completion signatures by
+  //! applying custom transformation functions to value, error, and stopped
+  //! completion cases. The result can be augmented with additional extra
+  //! signatures.
   //!
-  //! \tparam _Completions The input completion signatures to transform.
-  //! \tparam _ValueFn     Function object that transforms set_value_t completions.
-  //!                      Defaults to __keep_completion<set_value_t>.
-  //! \tparam _ErrorFn     Function object that transforms set_error_t completions.
-  //!                      Defaults to __keep_completion<set_error_t>.
-  //! \tparam _StoppedFn   Function object that transforms set_stopped_t completions.
-  //!                      Defaults to __keep_completion<set_stopped_t>.
-  //! \tparam _ExtraSigs   Additional completion signatures to append to the result.
-  //!                      Defaults to an empty completion_signatures.
+  //! @tparam _Completions The input completion signatures to transform.
+  //! @tparam _ValueFn     Function object that transforms set_value_t
+  //!                      completions. Defaults to
+  //!                      __keep_completion<set_value_t>.
+  //! @tparam _ErrorFn     Function object that transforms set_error_t
+  //!                      completions. Defaults to
+  //!                      __keep_completion<set_error_t>.
+  //! @tparam _StoppedFn   Function object that transforms set_stopped_t
+  //!                      completions. Defaults to
+  //!                      __keep_completion<set_stopped_t>.
+  //! @tparam _ExtraSigs   Additional completion signatures to append to the
+  //!                      result. Defaults to an empty completion_signatures.
   //!
-  //! \param __completions The input completion signatures object.
-  //! \param __value_fn    Value transformation function instance.
-  //! \param __error_fn    Error transformation function instance.
-  //! \param __stopped_fn  Stopped transformation function instance.
-  //! \param __extra_sigs  Extra signatures to append to the result.
+  //! @param __completions The input completion signatures object.
+  //! @param __value_fn    Value transformation function instance.
+  //! @param __error_fn    Error transformation function instance.
+  //! @param __stopped_fn  Stopped transformation function instance.
+  //! @param __extra_sigs  Extra signatures to append to the result.
   //!
-  //! \return A transformed completion_signatures object combining the transformed
-  //!         input signatures with the extra signatures.
+  //! @return A transformed completion_signatures object combining the
+  //! transformed input signatures with the extra signatures.
   //!
-  //! \par Example
+  //! @par Example
   //!
-  //! The following example demonstrates how to use \c __transform_completion_signatures
-  //! to compute the completion signatures of the \c then sender.
+  //! The following example demonstrates how to use
+  //! @c __transform_completion_signatures to compute the completion signatures
+  //! of the @c then sender.
   //!
-  //! \code{.cpp}
+  //! @code{.cpp}
   //! namespace ex = STDEXEC;
   //!
   //! template <class Fn, class... Args>
@@ -440,8 +447,8 @@ namespace STDEXEC
   //! {
   //!   if constexpr (!std::invocable<Fn, Args...>)
   //!   {
-  //!     // If Fn cannot be invoked with the given arguments, produce a compile-time
-  //!     // error.
+  //!     // If Fn cannot be invoked with the given arguments, produce a
+  //!     // compile-time error.
   //!     return ex::__throw_compile_time_error<
   //!       _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
   //!       _WHERE_(_IN_ALGORITHM_, then_t),
@@ -494,9 +501,9 @@ namespace STDEXEC
   //!
   //!   // ...
   //! };
-  //! \endcode
+  //! @endcode
   //!
-  //! \note This function is evaluated at compile-time (consteval).
+  //! @note This function is evaluated at compile-time (consteval).
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Completions,
             class _ValueFn   = __keep_completion<set_value_t>,

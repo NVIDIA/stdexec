@@ -117,8 +117,10 @@ namespace experimental::execution
         auto *__state = __state_;
         STDEXEC_TRY
         {
-          auto __err_copy = static_cast<_Error &&>(__err);  // make a local copy of the error...
-          __state->__cleanup();  // ... because this could potentially invalidate it.
+          // make a local copy of the error...
+          auto __err_copy = static_cast<_Error &&>(__err);
+          // ... because this could potentially invalidate it.
+          __state->__cleanup();
           STDEXEC::set_error(std::move(__state->__rcvr_), static_cast<_Error &&>(__err_copy));
         }
         STDEXEC_CATCH_ALL
@@ -284,12 +286,12 @@ namespace experimental::execution
                                                 __transform_errors);
         STDEXEC_IF_OK(__sigs)
         {
-          // The repeat_until sender is a dependent sender if one of the following is
-          // true:
-          //   - the child sender is a dependent sender, or
-          //   - the trampoline scheduler's sender is a dependent sender, or
-          //   - sizeof...(_Env) == 0 and the child sender does not have a
-          //     set_error(exception_ptr) completion.
+          // The repeat_until sender is a dependent sender if one of the
+          // following is true:
+          // - the child sender is a dependent sender, or
+          // - the trampoline scheduler's sender is a dependent sender, or
+          // - sizeof...(_Env) == 0 and the child sender does not have a
+          //   set_error(exception_ptr) completion.
           constexpr bool __is_dependent = (sizeof...(_Env) == 0)
                                        && (dependent_sender<__bouncer_t>
                                            || !__sigs.__contains(__eptr_completion));
@@ -392,7 +394,7 @@ namespace experimental::execution
 
   inline constexpr repeat_t repeat{};
 
-  /// deprecated interfaces
+  //! deprecated interfaces
   using repeat_effect_t [[deprecated("use exec::repeat_t instead")]]             = repeat_t;
   using repeat_effect_until_t [[deprecated("use exec::repeat_until_t instead")]] = repeat_until_t;
   [[deprecated("use exec::repeat instead")]]

@@ -94,8 +94,8 @@ namespace STDEXEC
   inline constexpr int __structured_binding_size_v<_Ty> = decltype(__detail::__std_tuple_sizer(
     __declval<_Ty>()))::value;
 
-  // For types that are *not* tuples, __structured_binding_size_v must be specialized
-  // explicitly.
+  // For types that are *not* tuples, __structured_binding_size_v must be
+  // specialized explicitly.
 #  endif
 
   namespace __detail
@@ -127,8 +127,8 @@ namespace STDEXEC
 
 #  else
 
-    // Structured bindings *cannot* introduce a pack, so we explicitly handle structures
-    // with up to 10 members.
+    // Structured bindings *cannot* introduce a pack, so we explicitly handle
+    // structures with up to 10 members.
     template <int _Ny, bool _Nothrow = true>
     extern __undefined<__msize_t<_Ny>> __structured_apply_v;
 

@@ -48,7 +48,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.associate]
   namespace __associate
   {
@@ -80,8 +80,9 @@ namespace STDEXEC
 
       using __sender_ref = std::unique_ptr<__wrap_sender_t, __deleter>;
 
-      // BUGBUG: should the spec require __token to be declared as a const _Token, or should this be
-      //         changed to declare __token as a mutable _Token?
+      // BUGBUG: should the spec require __token to be declared as a const
+      // _Token, or should this be changed to declare __token as a mutable
+      // _Token?
       explicit __associate_data(_Token const __token, _Sender&& __sndr)
         noexcept(__nothrow_constructible_from<__wrap_sender_t, __wrap_result_t>
                  && noexcept(__token.wrap(static_cast<_Sender&&>(__sndr)))
@@ -154,7 +155,7 @@ namespace STDEXEC
     template <scope_token _Token, sender _Sender>
     __associate_data(_Token, _Sender&&) -> __associate_data<_Token, _Sender>;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     STDEXEC_MODULE_EXPORT
     struct associate_t
     {
@@ -287,9 +288,9 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   using __associate::associate_t;
 
-  /// @brief The associate sender adaptor, which associates a sender with the
-  ///        async scope referred to by the given token
-  /// @hideinitializer
+  //! @brief The associate sender adaptor, which associates a sender with the
+  //!        async scope referred to by the given token
+  //! @hideinitializer
   STDEXEC_MODULE_EXPORT
   inline constexpr associate_t associate{};
 

@@ -43,12 +43,12 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.stop.when]
   namespace __stop_when_
   {
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     template <class _Token, class _Receiver>
     struct __state
     {
@@ -137,8 +137,8 @@ namespace STDEXEC
       operator()(_SenderToken                    __sndr_token,
                  [[maybe_unused]] _ReceiverToken __rcvr_token) const noexcept -> _SenderToken
       {
-        // when the receiver's stop token is unstoppable, the net token is just the
-        // sender's captured token
+        // when the receiver's stop token is unstoppable, the net token is just
+        // the sender's captured token
         return __sndr_token;
       }
 
@@ -148,9 +148,9 @@ namespace STDEXEC
       operator()(_SenderToken __sndr_token, _ReceiverToken __rcvr_token) const noexcept
         -> __fused_token<_SenderToken, _ReceiverToken>
       {
-        // when the receiver's stop token is stoppable, the net token must be a fused
-        // token that responds to signals from both the sender's captured token and the
-        // receiver's token
+        // when the receiver's stop token is stoppable, the net token must be a
+        // fused token that responds to signals from both the sender's captured
+        // token and the receiver's token
         return __fused_token<_SenderToken, _ReceiverToken>{
           static_cast<_SenderToken&&>(__sndr_token),
           static_cast<_ReceiverToken&&>(__rcvr_token)};
@@ -201,10 +201,10 @@ namespace STDEXEC
 
   using __stop_when_::__stop_when_t;
 
-  /// @brief The stop-when sender adaptor, which fuses an additional stop token
-  ///        into its child sender such that the sender responds to stop
-  ///        requests from both the given stop token and the receiver's token
-  /// @hideinitializer
+  //! @brief The stop-when sender adaptor, which fuses an additional stop token
+  //!        into its child sender such that the sender responds to stop
+  //!        requests from both the given stop token and the receiver's token
+  //! @hideinitializer
   STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __stop_when_t __stop_when{};
 

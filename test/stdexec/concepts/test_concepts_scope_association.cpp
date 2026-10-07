@@ -23,7 +23,8 @@ namespace ex = STDEXEC;
 namespace
 {
 
-  // a "null" association that is always truthy and for which try_associate() always succeeds
+  // a "null" association that is always truthy and for which try_associate()
+  // always succeeds
   struct null_association
   {
     // this need not be explicit, although it should be
@@ -39,7 +40,8 @@ namespace
     }
   };
 
-  // a CRTP base that lets us produce variations on null_associaton with the right return type on try_associate
+  // a CRTP base that lets us produce variations on null_associaton with the
+  // right return type on try_associate
   template <class Derived>
   struct crtp_association : null_association
   {

@@ -55,7 +55,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  /////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // [exec.when.all]
   //! @brief A variadic sender factory that runs multiple senders concurrently
   //!        and completes when all of them have completed, concatenating
@@ -107,10 +107,10 @@ namespace STDEXEC
   //! the resulting sender has completion signatures:
   //!
   //! @code{.cpp}
-  //! set_value_t(V1..., V2..., ..., Vn...)   // concatenation of every input
-  //! set_error_t(Eij)...                     // union across all inputs
-  //! set_error_t(std::exception_ptr)         // added if any decay-copy may throw
-  //! set_stopped_t()                         // added if any input has it
+  //! set_value_t(V1..., V2..., ..., Vn...) // concatenation of every input
+  //! set_error_t(Eij)...                   // union across all inputs
+  //! set_error_t(std::exception_ptr)       // added if any decay-copy may throw
+  //! set_stopped_t()                       // added if any input has it
   //! @endcode
   //!
   //! The value datums of each input are decay-copied into the resulting
@@ -162,9 +162,12 @@ namespace STDEXEC
   //! }
   //! @endcode
   //!
-  //! @see stdexec::when_all_with_variant       — for inputs with multiple value-completion shapes
-  //! @see stdexec::transfer_when_all           — when_all + scheduler transfer (stdexec extension)
-  //! @see stdexec::spawn_future                — start a sender eagerly and observe via a sender
+  //! @see stdexec::when_all_with_variant — for inputs with multiple
+  //!                                       value-completion shapes
+  //! @see stdexec::transfer_when_all     — when_all + scheduler transfer
+  //!                                       (stdexec extension)
+  //! @see stdexec::spawn_future          — start a sender eagerly and observe
+  //!                                       via a sender
   struct when_all_t
   {
     //! @brief Compose @c __sndrs... into a sender that completes when every
@@ -229,8 +232,8 @@ namespace STDEXEC
   //!
   //! **Equivalence.**
   //!
-  //! <tt>when_all_with_variant(sndrs...)</tt> is specified as
-  //! expression-equivalent to <tt>when_all(into_variant(sndrs)...)</tt>
+  //! `when_all_with_variant(sndrs...)` is specified as
+  //! expression-equivalent to `when_all(into_variant(sndrs)...)`
   //! (after @c transform_sender), so all of @c when_all's concurrency,
   //! error, and cancellation semantics carry over unchanged.
   //!
@@ -257,7 +260,7 @@ namespace STDEXEC
     //!                  value-completion shapes.
     //!
     //! @returns A sender equivalent to
-    //!          <tt>when_all(into_variant(__sndrs)...)</tt>.
+    //!          `when_all(into_variant(__sndrs)...)`.
     template <sender... _Senders>
     constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
     {
@@ -278,12 +281,12 @@ namespace STDEXEC
   //! @deprecated @c transfer_when_all is deprecated. It is not part of the
   //!             C++26 working draft and is retained only for backwards
   //!             compatibility. Write
-  //!             <tt>when_all(sndrs...) | continues_on(sch)</tt> instead;
+  //!             `when_all(sndrs...) | continues_on(sch)` instead;
   //!             the behavior is identical.
   //!
   //! Composition of @c when_all with @c continues_on:
-  //! <tt>transfer_when_all(sch, sndrs...)</tt> is expression-equivalent
-  //! to <tt>continues_on(when_all(sndrs...), sch)</tt>. The inputs run
+  //! `transfer_when_all(sch, sndrs...)` is expression-equivalent
+  //! to `continues_on(when_all(sndrs...), sch)`. The inputs run
   //! concurrently (wherever their respective schedulers run them), and
   //! once all have completed, the combined result is delivered on
   //! @c sch's execution resource.
@@ -327,13 +330,13 @@ namespace STDEXEC
   //! @deprecated @c transfer_when_all_with_variant is deprecated. It is not
   //!             part of the C++26 working draft and is retained only for
   //!             backwards compatibility. Write
-  //!             <tt>when_all_with_variant(sndrs...) | continues_on(sch)</tt>
+  //!             `when_all_with_variant(sndrs...) | continues_on(sch)`
   //!             instead; the behavior is identical.
   //!
   //! Composition of @c when_all_with_variant and @c continues_on:
-  //! <tt>transfer_when_all_with_variant(sch, sndrs...)</tt> is
+  //! `transfer_when_all_with_variant(sch, sndrs...)` is
   //! expression-equivalent to
-  //! <tt>continues_on(when_all_with_variant(sndrs...), sch)</tt>.
+  //! `continues_on(when_all_with_variant(sndrs...), sch)`.
   //!
   //! @see stdexec::when_all_with_variant
   //! @see stdexec::transfer_when_all
@@ -368,7 +371,7 @@ namespace STDEXEC
 
   //! @brief The customization point object for the @c when_all sender factory.
   //!
-  //! @c when_all is an instance of @ref when_all_t. See @ref when_all_t for
+  //! @c when_all is an instance of @c when_all_t. See @ref when_all_t for
   //! the full description, completion signatures, error/stop semantics, and
   //! a usage example.
   //!
@@ -378,7 +381,7 @@ namespace STDEXEC
   //! @brief The customization point object for the @c when_all_with_variant
   //!        sender factory.
   //!
-  //! @c when_all_with_variant is an instance of @ref when_all_with_variant_t.
+  //! @c when_all_with_variant is an instance of @c when_all_with_variant_t.
   //! See @ref when_all_with_variant_t for the full description.
   //!
   //! @hideinitializer
@@ -388,7 +391,7 @@ namespace STDEXEC
   //!        sender factory.
   //!
   //! @deprecated See @ref transfer_when_all_t. Use
-  //!             <tt>when_all(...) | continues_on(sch)</tt> instead.
+  //!             `when_all(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -398,7 +401,7 @@ namespace STDEXEC
   //!        @c transfer_when_all_with_variant sender factory.
   //!
   //! @deprecated See @ref transfer_when_all_with_variant_t. Use
-  //!             <tt>when_all_with_variant(...) | continues_on(sch)</tt> instead.
+  //!             `when_all_with_variant(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -564,14 +567,15 @@ namespace STDEXEC
     {
       constexpr void operator()() const noexcept
       {
-        // Temporarily increment the count to avoid concurrent/recursive arrivals to
-        // pull the rug under our feet. Relaxed memory order is fine here.
+        // Temporarily increment the count to avoid concurrent/recursive
+        // arrivals to pull the rug under our feet. Relaxed memory order is fine
+        // here.
         __state_->__count_.fetch_add(1, __std::memory_order_relaxed);
 
         __state_t __expected = __started;
         // Transition to the "stopped" state if and only if we're in the
-        // "started" state. (If this fails, it's because we're in an
-        // error state, which trumps cancellation.)
+        // "started" state. (If this fails, it's because we're in an error
+        // state, which trumps cancellation.)
         if (__state_->__state_.compare_exchange_strong(__expected, __stopped))
         {
           if constexpr (_State::__uses_stop_source)
@@ -653,7 +657,8 @@ namespace STDEXEC
       __std::atomic<std::size_t> __count_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       __stop_source_t            __stop_source_{};
-      // Could be non-atomic here and atomic_ref everywhere except __completion_fn
+      // Could be non-atomic here and atomic_ref everywhere except
+      // __completion_fn
       __std::atomic<__state_t> __state_{__started};
       _ErrorsVariant           __errors_{__no_init};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -809,13 +814,13 @@ namespace STDEXEC
         switch (__state.__state_.exchange(__error))
         {
         case __started:
-          // We must request stop. When the previous state is __error or __stopped, then stop has
-          // already been requested.
+          // We must request stop. When the previous state is __error or
+          // __stopped, then stop has already been requested.
           __state.__stop_source_.request_stop();
           [[fallthrough]];
         case __stopped:
-          // We are the first child to complete with an error, so we must save the error. (Any
-          // subsequent errors are ignored.)
+          // We are the first child to complete with an error, so we must save
+          // the error. (Any subsequent errors are ignored.)
           if constexpr (__nothrow_decay_copyable<_Error>)
           {
             __state.__errors_.template emplace<__decay_t<_Error>>(static_cast<_Error&&>(__err));
@@ -852,8 +857,8 @@ namespace STDEXEC
           static_assert(_State::__uses_stop_source);
           __state_t __expected = __started;
           // Transition to the "stopped" state if and only if we're in the
-          // "started" state. (If this fails, it's because we're in an
-          // error state, which trumps cancellation.)
+          // "started" state. (If this fails, it's because we're in an error
+          // state, which trumps cancellation.)
           if (__state.__state_.compare_exchange_strong(__expected, __stopped))
           {
             __state.__stop_source_.request_stop();

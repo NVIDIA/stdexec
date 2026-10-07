@@ -25,8 +25,8 @@
 
 namespace ex = STDEXEC;
 
-// Check that the `then` algorithm is correctly forwarding the __get_completion_behavior
-// query:
+// Check that the `then` algorithm is correctly forwarding the
+// __get_completion_behavior query:
 static_assert(
   ex::__completes_inline<ex::set_value_t, decltype(ex::get_env(ex::just() | ex::then([] {})))>);
 
@@ -204,7 +204,8 @@ namespace
     check_sends_stopped<true>(ex::just() | ex::continues_on(sched3) | ex::then([] {}));
   }
 
-  // Return a different sender when we invoke this custom defined then implementation
+  // Return a different sender when we invoke this custom defined then
+  // implementation
   struct then_test_domain
   {
     template <exec::sender_for<ex::then_t> Sender, class... Env>

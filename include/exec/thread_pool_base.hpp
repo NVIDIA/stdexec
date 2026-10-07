@@ -53,8 +53,9 @@ namespace experimental::execution
   struct BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
   struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
 
-  //! This is a P2300-style thread pool wrapping base class, which its docs describe as "A
-  //! class that represents an explicit, user-managed task scheduler arena."
+  //! This is a P2300-style thread pool wrapping base class, which its docs
+  //! describe as "A class that represents an explicit, user-managed task
+  //! scheduler arena."
   //!
   //! * template<F> void enqueue(F &&f)
   //! and
@@ -232,8 +233,9 @@ namespace experimental::execution
           auto const parallelism = parallelize_ ? pool_.available_parallelism()
                                                 : static_cast<std::uint32_t>(1);
 
-          // With work stealing, is std::min necessary, or can we feel free to ask for more agents (tasks)
-          // than we can actually deal with at one time?
+          // With work stealing, is std::min necessary, or can we feel free to
+          // ask for more agents (tasks) than we can actually deal with at one
+          // time?
           return Shape{} < shape_
                  ? static_cast<std::uint32_t>((std::min) (shape_, static_cast<Shape>(parallelism)))
                  : 0;

@@ -39,7 +39,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __get_completion_behavior
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __completion_behavior
@@ -57,16 +57,16 @@ namespace STDEXEC
 
     enum class __behavior : std::uint8_t
     {
-      // The operation will complete asynchronously, and may complete on a different
-      // context than the one that started it.
+      // The operation will complete asynchronously, and may complete on a
+      // different context than the one that started it.
       __asynchronous = __async_ | __not_affine_,
 
-      // The operation will complete asynchronously, but will complete on the same
-      // context that started it.
+      // The operation will complete asynchronously, but will complete on the
+      // same context that started it.
       __asynchronous_affine = __async_,
 
-      // The operation will complete synchronously (before 'start()' returns) on the same
-      // thread that started it.
+      // The operation will complete synchronously (before 'start()' returns) on
+      // the same thread that started it.
       __inline_completion = __inline_,
 
       // The operation's completion behavior is unknown.
@@ -144,9 +144,9 @@ namespace STDEXEC
     static constexpr __common_t __common{};
   };
 
-  //////////////////////////////////////////////////////////////////////////////////////////
-  // __get_completion_behavior: A sender can define this attribute to describe the sender's
-  // completion behavior
+  //////////////////////////////////////////////////////////////////////////////
+  // __get_completion_behavior: A sender can define this attribute to describe
+  // the sender's completion behavior
   template <__completion_tag _Tag>
   struct __get_completion_behavior_t
   {

@@ -59,9 +59,9 @@ namespace experimental::execution
     template <class Tag, class... Args>
     using _cref_sig_t = Tag(Args const &...);
 
-    // Given a set of async results, each of the form `tuple<Tag, Args...>`, compute
-    // the corresponding completion signatures, where each signature is of the form
-    // `Tag(const Args&...)`.
+    // Given a set of async results, each of the form `tuple<Tag, Args...>`,
+    // compute the corresponding completion signatures, where each signature is
+    // of the form `Tag(const Args&...)`.
     template <class... AsyncResults>
     using _cache_sndr_completions_t =
       STDEXEC::completion_signatures<STDEXEC::__mapply<STDEXEC::__q<_cref_sig_t>, AsyncResults>...>;
@@ -147,7 +147,8 @@ namespace experimental::execution
       STDEXEC_ATTRIBUTE(host, device)
       constexpr ~_opstate_t()
       {
-        // If this opstate was never started, we must explicitly destroy the _child_opstate_.
+        // If this opstate was never started, we must explicitly destroy the
+        // _child_opstate_.
         if (_cache_.__is_valueless())
         {
           _child_opstate_.__destroy();

@@ -85,15 +85,19 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    // Splits `n` into `size` chunks distributing `n % size` evenly between ranks.
-    // Returns `[begin, end)` range in `n` for a given `rank`.
-    // Example:
-    // ```cpp
-    // //         n_items  thread  n_threads
-    // even_share(     11,      0,         3); // -> [0,  4) -> 4 items
-    // even_share(     11,      1,         3); // -> [4,  8) -> 4 items
-    // even_share(     11,      2,         3); // -> [8, 11) -> 3 items
-    // ```
+    //! @brief Splits `n` into `size` chunks distributing `n % size` evenly
+    //! between ranks.
+    //!
+    //! @returns `[begin, end)` range in `n` for a given `rank`.
+    //!
+    //! @par Example:
+    //!
+    //! @code{cpp}
+    //! //         n_items  thread  n_threads
+    //! even_share(     11,      0,         3); // -> [0,  4) -> 4 items
+    //! even_share(     11,      1,         3); // -> [4,  8) -> 4 items
+    //! even_share(     11,      2,         3); // -> [8, 11) -> 3 items
+    //! @endcode
     template <class Shape>
     constexpr auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept  //
       -> std::pair<Shape, Shape>
@@ -280,7 +284,8 @@ namespace experimental::execution
      public:
       struct domain : STDEXEC::default_domain
       {
-        // transform the generic bulk_chunked sender into a parallel thread-pool bulk sender
+        // transform the generic bulk_chunked sender into a parallel thread-pool
+        // bulk sender
         template <sender_for Sender, class Env>
           requires __one_of<tag_of_t<Sender>, bulk_chunked_t, bulk_unchunked_t>
         constexpr auto
@@ -484,7 +489,8 @@ namespace experimental::execution
         return scheduler{*this, *get_remote_queue(), threadIndex};
       }
 
-      // The caller must ensure that the constraints object is valid for the lifetime of the scheduler.
+      // The caller must ensure that the constraints object is valid for the
+      // lifetime of the scheduler.
       auto get_constrained_scheduler(nodemask const * constraints) noexcept -> scheduler
       {
         return scheduler{*this, *get_remote_queue(), constraints};
@@ -1262,7 +1268,7 @@ namespace experimental::execution
       nodemask             constraints_{};
     };
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // What follows is the implementation for parallel bulk execution on _static_thread_pool.
     template <bool Parallelize, std::integral Shape, class Fun, class Sender>
     struct _static_thread_pool::_bulk_sender
@@ -1408,9 +1414,10 @@ namespace experimental::execution
         {
           auto& sh_state      = *static_cast<bulk_task*>(t)->sh_state_;
           auto  total_threads = sh_state.num_agents_required();
-          // Each computation does one or more call to the the bulk function. In the
-          // case that the shape is much larger than the total number of threads, then
-          // each call to computation will call the function many times.
+          // Each computation does one or more call to the the bulk function. In
+          // the case that the shape is much larger than the total number of
+          // threads, then each call to computation will call the function many
+          // times.
           auto const [begin, end] = _pool_::even_share(sh_state.shape_, tid, total_threads);
           auto const applicator   = std::bind_front(std::ref(sh_state.fun_), begin, end);
           auto const computation  = std::bind_front(__apply, applicator);

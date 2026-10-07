@@ -35,7 +35,7 @@ import stdexec;
 
 namespace STDEXEC
 {
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __write adaptor
   namespace __write
   {
@@ -110,10 +110,12 @@ namespace STDEXEC
   //!
   //! **Common uses.**
   //!
-  //! - Injecting a stop token: <tt>sndr | write_env(prop{get_stop_token, my_token})</tt>
+  //! - Injecting a stop token:
+  //!   `sndr | write_env(prop{get_stop_token, my_token})`
   //!   so a sub-pipeline observes a different cancellation signal than the
   //!   outer pipeline.
-  //! - Supplying an allocator: <tt>sndr | write_env(prop{get_allocator, my_alloc})</tt>
+  //! - Supplying an allocator:
+  //!   `sndr | write_env(prop{get_allocator, my_alloc})`
   //!   so child operations allocate via @c my_alloc.
   //! - Hooking domain customization: a custom scheduler may inject its
   //!   domain into the environment for senders that don't have a scheduler

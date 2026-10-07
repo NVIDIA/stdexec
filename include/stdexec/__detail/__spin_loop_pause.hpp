@@ -24,7 +24,8 @@ import stdexec;
 
 #else
 
-// The below code for spin_loop_pause is taken from https://github.com/max0x7ba/atomic_queue/blob/master/include/atomic_queue/defs.h
+// The below code for spin_loop_pause is taken from
+// https://github.com/max0x7ba/atomic_queue/blob/master/include/atomic_queue/defs.h
 // Copyright (c) 2019 Maxim Egorushkin. MIT License.
 
 #  if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)

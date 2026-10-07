@@ -59,11 +59,12 @@ namespace
     Scheduler scheduler_;
   };
 
-  //! Scheduler that will send impulses on user's request.
-  //! One can obtain senders from this, connect them to receivers and start the operation states.
-  //! Until the scheduler is told to start the next operation, the actions in the operation states are
-  //! not executed. This is similar to a task scheduler, but it's single threaded. It has basic
-  //! thread-safety to allow it to be run with `sync_wait` (which makes us not control when the
+  //! Scheduler that will send impulses on user's request. One can obtain
+  //! senders from this, connect them to receivers and start the operation
+  //! states. Until the scheduler is told to start the next operation, the
+  //! actions in the operation states are not executed. This is similar to a
+  //! task scheduler, but it's single threaded. It has basic thread-safety to
+  //! allow it to be run with `sync_wait` (which makes us not control when the
   //! operation_state object is created and started).
   struct impulse_scheduler
   {
@@ -79,8 +80,8 @@ namespace
 
     ~impulse_scheduler() = default;
 
-    //! Actually start the command from the last started operation_state
-    //! Returns immediately if no command registered (i.e., no operation state started)
+    //! Actually start the command from the last started operation_state Returns
+    //! immediately if no command registered (i.e., no operation state started)
     auto try_start_next() -> bool
     {
       // Wait for a command that we can execute
@@ -208,7 +209,8 @@ namespace
     {}
 
     //! That data shared between the operation state and the actual scheduler
-    //! Shared pointer to allow the scheduler to be copied (not the best semantics, but it will do)
+    //! Shared pointer to allow the scheduler to be copied (not the best
+    //! semantics, but it will do)
     std::shared_ptr<data> shared_data_{};
   };
 
@@ -494,7 +496,8 @@ namespace
     };
   }  // namespace _dummy
 
-  //! Scheduler that returns a sender that always completes inline (successfully).
+  //! Scheduler that returns a sender that always completes inline
+  //! (successfully).
   template <class Domain = ex::default_domain>
   struct dummy_scheduler : _dummy::_attrs_t<Domain>
   {

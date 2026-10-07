@@ -150,7 +150,8 @@ auto main() -> int
       schedule_request_start(sched, i)
       // make sure the request is valid; throw if not
       | ex::let_value(validate_request)
-      // process the request in a function that may be using a different execution context
+      // process the request in a function that may be using a different
+      // execution context
       | ex::let_value(handle_request)
       // If there are errors transform them into proper responses
       | ex::let_error(error_to_response)

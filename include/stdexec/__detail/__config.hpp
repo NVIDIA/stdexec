@@ -41,7 +41,8 @@
 #if __has_include(<version>)
 #  include <version>
 #else
-#  include <ciso646>  // For stdlib feature-test macros when <version> is not available
+#  include <ciso646>  // For stdlib feature-test macros when <version> is not
+                      // available
 #endif
 
 #if STDEXEC_USE_MODULES()
@@ -53,10 +54,10 @@ import std;
 #  include <utility>      // IWYU pragma: keep for std::unreachable
 #endif
 
-// When used with no arguments, these macros expand to 1 if the current
-// compiler corresponds to the macro name; 0, otherwise. When used with arguments,
-// they expand to the arguments if if the current compiler corresponds to the
-// macro name; nothing, otherwise.
+// When used with no arguments, these macros expand to 1 if the current compiler
+// corresponds to the macro name; 0, otherwise. When used with arguments, they
+// expand to the arguments if if the current compiler corresponds to the macro
+// name; nothing, otherwise.
 #if defined(__NVCC__)
 #  define STDEXEC_NVCC()       1
 #  define STDEXEC_NVCC_VERSION (__CUDACC_VER_MAJOR__ * 100 + __CUDACC_VER_MINOR__)
@@ -79,8 +80,9 @@ import std;
 #  endif
 #  if defined(__apple_build_version__)
 #    define STDEXEC_APPLE_CLANG()       1
-// Apple clang version is encoded as major * 1000000 + minor * 1000 + patch. We ignore the patch
-// version here, as it is not relevant for the purposes of this library.
+// Apple clang version is encoded as major * 1000000 + minor * 1000 + patch. We
+// ignore the patch version here, as it is not relevant for the purposes of this
+// library.
 #    define STDEXEC_APPLE_CLANG_VERSION (__apple_build_version__ / 1000)
 #  endif
 #elif defined(__GNUC__)
@@ -132,53 +134,78 @@ import std;
 #  define STDEXEC_DEPRECATE_CONCEPT(_MSG)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_MSVC()
 #  define STDEXEC_PRAGMA(_ARG) __pragma(_ARG)
 #else
 #  define STDEXEC_PRAGMA(_ARG) _Pragma(STDEXEC_PP_STRINGIZE(_ARG))
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 #  define STDEXEC_CUDA_COMPILATION() 1
 #else
 #  define STDEXEC_CUDA_COMPILATION() 0
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if defined(__has_attribute)
 #  define STDEXEC_HAS_ATTRIBUTE(...) __has_attribute(__VA_ARGS__)
 #else
 #  define STDEXEC_HAS_ATTRIBUTE(...) 0
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if defined(__has_cpp_attribute)
 #  define STDEXEC_HAS_CPP_ATTRIBUTE(...) __has_cpp_attribute(__VA_ARGS__)
 #else
 #  define STDEXEC_HAS_CPP_ATTRIBUTE(...) 0
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION()
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __host__ __device__
 #else
 #  define STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_NVCC()
 #  define STDEXEC_EXEC_CHECK_DISABLE STDEXEC_PRAGMA(nv_exec_check_disable)
 #else
 #  define STDEXEC_EXEC_CHECK_DISABLE
 #endif
 
-// The following macros are used to define a namespace alias for the standard library.
-// It is used when forward-declaring a standard library type or function, which is not
-// portable but sometimes necessary to avoid pulling in a large header when a fwd decl
-// would do.
-#if defined(_LIBCPP_VERSION)
+// The following macros are used to define a namespace alias for the standard
+// library. It is used when forward-declaring a standard library type or
+// function, which is not portable but sometimes necessary to avoid pulling in a
+// large header when a fwd decl would do.
+//
+// libc++ 23's _LIBCPP_BEGIN_NAMESPACE_STD opens a `#pragma clang attribute
+// push` region that applies only to functions, and _LIBCPP_END_NAMESPACE_STD
+// closes it. When the region is opened from a non-system header and declares no
+// functions (as in our forward-declaration blocks), Clang reports the pushed
+// attribute as unused under -Wpragma-clang-attribute, so we suppress that
+// warning for the duration of the block. Only Clang implements `#pragma clang
+// attribute`, so only Clang can emit that warning; hence the STDEXEC_CLANG()
+// guard.
+//
+// Known gap: libc++ 23 emits those pragmas for every compiler (later versions
+// emit them only for Clang-based compilers), so GCC with libc++ 23 reports them
+// under -Wunknown-pragmas instead. GCC does not apply a diagnostic pragma to
+// another pragma from the same macro expansion, so that can't be suppressed
+// here.
+//
+// This uses STDEXEC_PRAGMA directly rather than STDEXEC_PRAGMA_PUSH() and
+// friends because those are defined further down, after the first use of these
+// macros below.
+#if defined(_LIBCPP_VERSION) && STDEXEC_CLANG()
+#  define STDEXEC_NAMESPACE_STD_BEGIN                                                              \
+    STDEXEC_PRAGMA(clang diagnostic push)                                                          \
+    STDEXEC_PRAGMA(clang diagnostic ignored "-Wpragma-clang-attribute")                            \
+    _LIBCPP_BEGIN_NAMESPACE_STD
+#  define STDEXEC_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD STDEXEC_PRAGMA(clang diagnostic pop)
+#elif defined(_LIBCPP_VERSION)
 #  define STDEXEC_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #  define STDEXEC_NAMESPACE_STD_END   _LIBCPP_END_NAMESPACE_STD
 #elif defined(__GLIBCXX__)
@@ -213,7 +240,7 @@ STDEXEC_NAMESPACE_STD_BEGIN
   {}
 STDEXEC_NAMESPACE_STD_END
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if !defined(STDEXEC_NAMESPACE)
 #  define STDEXEC stdexec
 #elif STDEXEC_USE_MODULES()
@@ -251,7 +278,7 @@ STDEXEC_NAMESPACE_STD_END
 #endif
 // clang-format on
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if defined(__cpp_impl_coroutine) && __cpp_impl_coroutine >= 202606L
 #  define STDEXEC_NO_STDCPP_COROUTINE_RETURN_VOID_AND_VALUE() 0
 #else
@@ -289,7 +316,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_NO_STDCPP_COROUTINES() 1
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // For portably declaring attributes on functions and types
 //   Usage:
 //
@@ -313,7 +340,8 @@ namespace STDEXEC::__std
 #define STDEXEC_ATTRIBUTE_SWITCH_launch_bounds(...)      STDEXEC_PP_CASE(LAUNCH_BOUNDS(__VA_ARGS__))
 #define STDEXEC_ATTRIBUTE_SWITCH___launch_bounds__(...)  STDEXEC_PP_CASE(LAUNCH_BOUNDS(__VA_ARGS__))
 
-// By default, assume the attribute is a C++11-style attribute that can be used as-is.
+// By default, assume the attribute is a C++11-style attribute that can be used
+// as-is.
 #define STDEXEC_ATTRIBUTE_CASE_DEFAULT(...)              [[__VA_ARGS__]]
 
 // [[no_unique_address]]
@@ -335,10 +363,10 @@ namespace STDEXEC::__std
 #elif STDEXEC_GCC()
 #  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           __attribute__((__always_inline__, __artificial__)) inline
 #else
-// No always-inline attribute is known for this compiler, but ALWAYS_INLINE
-// must still guarantee inline linkage: header-defined functions marked with
-// it rely on the macro (not an explicit 'inline' at the use site, which
-// would be a duplicate on GCC/Clang) for ODR safety.
+// No always-inline attribute is known for this compiler, but ALWAYS_INLINE must
+// still guarantee inline linkage: header-defined functions marked with it rely
+// on the macro (not an explicit 'inline' at the use site, which would be a
+// duplicate on GCC/Clang) for ODR safety.
 #  define STDEXEC_ATTRIBUTE_CASE_ALWAYS_INLINE           inline
 #endif
 
@@ -392,7 +420,7 @@ namespace STDEXEC::__std
 #  define STDEXEC_ATTRIBUTE_CASE_LAUNCH_BOUNDS(...)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // warning push/pop portability macros
 #if STDEXEC_NVCC()
 #  define STDEXEC_PRAGMA_PUSH()          STDEXEC_PRAGMA(nv_diagnostic push)
@@ -582,9 +610,9 @@ namespace STDEXEC
 #endif
 
 #if STDEXEC_GCC()
-// BUG (gcc#98995): copy elision fails when initializing a [[no_unique_address]] field
-// from a function returning an object of class type by value.
-// See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98995
+// BUG (gcc#98995): copy elision fails when initializing a [[no_unique_address]]
+// field from a function returning an object of class type by value. See:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=98995
 #  define STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
 #elif STDEXEC_CLANG() && (__clang_major__ >= 15 && __clang_major__ < 19)
 // See https://github.com/llvm/llvm-project/issues/93563
@@ -594,8 +622,8 @@ namespace STDEXEC
 #endif
 
 #if STDEXEC_NVHPC()
-// TODO: this is probably wrong in modules builds, but I don't know if there's an
-//       nv-prefixed build that can enable modules
+// TODO: this is probably wrong in modules builds, but I don't know if there's
+//       an nv-prefixed build that can enable modules
 #  include <nv/target>
 #  define STDEXEC_TERMINATE() NV_IF_TARGET(NV_IS_HOST, (std::terminate();), (__trap();)) void()
 #elif STDEXEC_CLANG() && defined(__CUDA__) && defined(__CUDA_ARCH__)
@@ -749,8 +777,8 @@ namespace STDEXEC
 #endif
 // clang-format on
 
-// CUDA compilers preinclude cuda_runtime.h, but if we're not compiling for CUDA then we
-// need to include it ourselves.
+// CUDA compilers preinclude cuda_runtime.h, but if we're not compiling for CUDA
+// then we need to include it ourselves.
 #if STDEXEC_HAS_CTK() && !STDEXEC_CUDA_COMPILATION()
 // TODO: probably wrong with modules, but do nv-prefixed builds care?
 #  include <cuda_runtime_api.h>
@@ -758,10 +786,10 @@ namespace STDEXEC
 
 // clang-format off
 
-// The following macros are used to conditionally compile exception handling code. They
-// are used in the same way as `try` and `catch`, but they allow for different behavior
-// based on whether exceptions are enabled or not, and whether the code is being compiled
-// for device or not.
+// The following macros are used to conditionally compile exception handling
+// code. They are used in the same way as `try` and `catch`, but they allow for
+// different behavior based on whether exceptions are enabled or not, and
+// whether the code is being compiled for device or not.
 //
 // Usage:
 //   STDEXEC_TRY
@@ -795,7 +823,8 @@ namespace STDEXEC
 #if !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
 namespace STDEXEC
 {
-  // Used by the STDEXEC_CATCH macro to provide a stub initialization of the exception object.
+  // Used by the STDEXEC_CATCH macro to provide a stub initialization of the
+  // exception object.
   inline constexpr struct __catch_any_lvalue_t
   {
     template <class _Tp>
@@ -816,7 +845,8 @@ namespace STDEXEC
 #if defined(STDEXEC_ASSERT)
 // nothing to do, user has provided their own assertion macro
 #elif defined(STDEXEC_ASSERT_FN)
-// legacy way to customize assertions, still supported for backward compatibility
+// legacy way to customize assertions, still supported for backward
+// compatibility
 #  define STDEXEC_ASSERT(_XP) STDEXEC_ASSERT_FN(_XP)
 #else
 #  define STDEXEC_ASSERT(_XP)                                                                      \
@@ -846,7 +876,7 @@ namespace STDEXEC
   }
 }  // namespace STDEXEC
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// To hook a customization point like STDEXEC::connect, define a member
 /// function like this:
 ///
@@ -912,14 +942,14 @@ namespace STDEXEC
 
 #endif  // STDEXEC_NO_STDCPP_EXPLICIT_THIS_PARAMETER()
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && !defined(STDEXEC_CLANG_TIDY_INVOKED)
 #  define STDEXEC_HAS_HOST_DEVICE_OVERLOADS() 1
 #else
 #  define STDEXEC_HAS_HOST_DEVICE_OVERLOADS() 0
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if STDEXEC_MSVC()
 #  if _MSC_VER >= 1935
 #    define STDEXEC_PRETTY_FUNCTION() __builtin_FUNCSIG()
@@ -938,12 +968,12 @@ namespace STDEXEC
 #  define STDEXEC_CONSTEXPR_LOCAL constexpr
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if !defined(STDEXEC_DEMANGLE_SENDER_NAMES) && (STDEXEC_MSVC() || STDEXEC_USE_MODULES())
 #  define STDEXEC_DEMANGLE_SENDER_NAMES
 #endif
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // clang-tidy struggles with the CUDA function annotations
 #if STDEXEC_CLANG() && STDEXEC_CUDA_COMPILATION() && defined(STDEXEC_CLANG_TIDY_INVOKED)
 // TODO: probably wrong with modules, but do nv-prefixed builds care?
@@ -971,8 +1001,8 @@ namespace STDEXEC
 #  define STDEXEC_MODULE_EXPORT
 #endif
 
-// Placeholder until stdexec.meta / stdexec.authoring exist as separate
-// modules; these currently just export into stdexec itself. See #2139
+// Placeholder until stdexec.meta / stdexec.authoring exist as separate modules;
+// these currently just export into stdexec itself. See #2139
 // (https://github.com/NVIDIA/stdexec/issues/2139)
 #define STDEXEC_MODULE_EXPORT_META      STDEXEC_MODULE_EXPORT
 #define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT

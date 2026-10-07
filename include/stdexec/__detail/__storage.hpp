@@ -64,8 +64,8 @@ namespace STDEXEC
            __mlist<__decayed_tuple<_Tag, _Args...>, __tuple<set_error_t, std::exception_ptr>>>;
   }  // namespace __detail
 
-  // A variant type that is capable of storing the result datums of the specified
-  // completion signatures.
+  // A variant type that is capable of storing the result datums of the
+  // specified completion signatures.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Signatures>
   struct __results_storage

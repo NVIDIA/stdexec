@@ -295,6 +295,21 @@ namespace
     REQUIRE(ret);
   }
 
+  TEST_CASE("exec::function accepts a pointer to a derived memory_resource as frame allocator",
+            "[types][function]")
+  {
+    counting_resource res;
+    exec::function<int() noexcept,
+                   exec::queries<counting_resource *(exec::get_frame_allocator_t) noexcept>>
+      sndr([]() noexcept { return ex::just(42); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, &res)))
+                   .value();
+
+    REQUIRE(ret == 42);
+  }
+
   TEST_CASE("exec::function is conditionally lvalue connectable", "[types][function]")
   {
     exec::function<int()> sndr([]() noexcept { return ex::just(42); });
@@ -417,8 +432,8 @@ namespace
 
   TEST_CASE("completion_signature specification is order-independent", "[types][function]")
   {
-    // by specifying the completions with a function signature, it's up to the library what
-    // order the completion signatures are specified in
+    // by specifying the completions with a function signature, it's up to the
+    // library what order the completion signatures are specified in
     using func1_t = exec::function<int(int) noexcept>;
     // this declaration chooses value before stopped
     using func2_t =
@@ -705,7 +720,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, ex::just_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_value_t, domain>>);
     }
 
@@ -718,7 +734,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, int, ex::just_error_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(
         std::constructible_from<function, int, domain_sender_t<ex::set_error_t, domain>>);
     }
@@ -732,7 +749,8 @@ namespace
 
       STATIC_REQUIRE(!std::constructible_from<function, ex::just_stopped_t>);
 
-      // double check that it *would* work if the sender reported a custom domain
+      // double check that it *would* work if the sender reported a custom
+      // domain
       STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_stopped_t, domain>>);
     }
   }
@@ -795,8 +813,8 @@ namespace
 
     SECTION("sender attributes other than completion domain queries don't break")
     {
-      // TODO: it's not obvious that it makes sense to support sender attributes other than
-      //       completion domain queries so this may be silly....
+      // TODO: it's not obvious that it makes sense to support sender attributes
+      //       other than completion domain queries so this may be silly....
       auto query = [](auto const &)
       {
         return 0;

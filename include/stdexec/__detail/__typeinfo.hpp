@@ -35,7 +35,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 
-//////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // __type_info, __mtypeid, and __msplice
 
 namespace STDEXEC
@@ -73,7 +73,7 @@ namespace STDEXEC
 
   namespace __detail
   {
-    //////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     // __get_pretty_name
     template <class>
     struct __xyzzy
@@ -116,14 +116,15 @@ namespace STDEXEC
     }
   }  // namespace __detail
 
-  ////////////////////////////////////////////////////////////////////////////////////////////
-  // __mnameof: get the pretty name of a type _Ty as a string_view at compile time
+  //////////////////////////////////////////////////////////////////////////////
+  // __mnameof: get the pretty name of a type _Ty as a string_view at compile
+  // time
   template <class _Ty>
   inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
 
   static_assert(__mnameof<void> == "void");
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __type_info
   struct __type_info
   {
@@ -185,7 +186,7 @@ namespace STDEXEC
     inline constexpr __type_info const &__mtypeid_v<_Ty const> = __mtypeid_v<_Ty>;
   }  // namespace __detail
 
-  //////////////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // __type_index
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __type_index
@@ -237,8 +238,9 @@ namespace STDEXEC
     STDEXEC_PRAGMA_IGNORE_GNU("-Wnon-template-friend")
     STDEXEC_PRAGMA_IGNORE_EDG(probable_guiding_friend)
 
-    // The following two classes use the stateful metaprogramming trick to create a spooky
-    // association between a __type_index object and the type it represents.
+    // The following two classes use the stateful metaprogramming trick to
+    // create a spooky association between a __type_index object and the type it
+    // represents.
     template <__type_index Id>
     struct __mtypeid_key
     {
