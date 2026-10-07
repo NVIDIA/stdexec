@@ -173,9 +173,11 @@ namespace STDEXEC
   //! The argument sender must not be able to complete with @c set_error
   //! — @c spawn cannot deliver an error to a non-existent caller. The
   //! @c requires clause enforces this with a
-  //! `__never_sends<set_error_t, ...>` check; the diagnostic
-  //! overload says "spawn expects a sender that cannot fail" if the check
-  //! fires.
+  //! `__never_sends<set_error_t, ...>` check. The diagnostic overload first
+  //! checks that the sender after scope wrapping and environment injection is
+  //! valid in the selected environment and delegates to the sender diagnostics
+  //! if that check fails; otherwise, it reports that @c spawn expects a sender
+  //! that cannot fail.
   //!
   //! Successful and stopped completions are both accepted; their results
   //! are discarded.
@@ -236,9 +238,11 @@ namespace STDEXEC
     // with the primary three-argument overload above (they differ only by a
     // constraint), which the Sphinx C++ domain cannot disambiguate.
 #  if !defined(STDEXEC_DOXYGEN_INVOKED)
-    //! @brief Diagnostic overload — selected when the sender's completion
-    //!        signatures include @c set_error_t. Emits a @c static_assert
-    //!        explaining that @c spawn expects a sender that cannot fail.
+    //! @brief Diagnostic overload selected when the no-error requirement fails.
+    //!        If the sender after scope wrapping and environment injection is
+    //!        not valid in the selected environment, delegates to the sender
+    //!        diagnostics; otherwise, emits a @c static_assert explaining that
+    //!        @c spawn expects a sender that cannot fail.
     //!
     //! Not normally called; the @c requires clause on the primary overload
     //! steers compilation here on a constraint failure.
@@ -246,9 +250,15 @@ namespace STDEXEC
     void operator()(_Sender&&, _Token, _Env&&) const
     {
       using _spawn_sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
-      static_assert(sender_in<_spawn_sndr_t, _Env>
-                      && __never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
-                    "spawn expects a sender that cannot fail");
+      if constexpr (!sender_in<_spawn_sndr_t, _Env>)
+      {
+        __diagnose_sender_concept_failure<_spawn_sndr_t, _Env>();
+      }
+      else
+      {
+        static_assert(__never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
+                      "spawn expects a sender that cannot fail");
+      }
     }
 #  endif  // !defined(STDEXEC_DOXYGEN_INVOKED)
 

@@ -897,6 +897,11 @@ namespace STDEXEC
       using __alloc_t = decltype(__spawn_common::__choose_alloc(__env, STDEXEC::get_env(__sndr)));
       using __senv_t  = decltype(__spawn_common::__choose_senv(__env, STDEXEC::get_env(__sndr)));
 
+      if constexpr (!sender_in<_Sender, __senv_t>)
+      {
+        __diagnose_sender_concept_failure<_Sender, __senv_t>();
+      }
+
       using __spawn_future_state_t =
         __spawn_future::__spawn_future_state<__alloc_t,
                                              std::remove_cvref_t<_Token>,
