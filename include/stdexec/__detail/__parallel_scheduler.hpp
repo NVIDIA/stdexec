@@ -530,7 +530,7 @@ namespace STDEXEC
         auto st = get_stop_token(STDEXEC::get_env(__state_.__rcvr_));
         if (st.stop_requested())
         {
-          STDEXEC::set_stopped(__state_.__rcvr_);
+          STDEXEC::set_stopped(static_cast<__rcvr_t&&>(__state_.__rcvr_));
           return;
         }
 
