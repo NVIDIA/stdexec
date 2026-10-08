@@ -45,6 +45,7 @@ set(exec_test_sources
     test_scheduler_concept.cpp
     test_sequence_senders.cpp
     test_static_thread_pool.cpp
+    test_xorshift.cpp
     test_just_from.cpp
     test_fork_join.cpp
     test_cpo_split.cpp

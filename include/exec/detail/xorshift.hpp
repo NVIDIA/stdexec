@@ -63,7 +63,7 @@ namespace experimental::execution
     }
 
     explicit xorshift(std::uint64_t seed)
-      : m_seed(seed)
+      : m_seed(seed == 0 ? 0xc1f651c67c62c6e0ull : seed)
     {}
 
     void seed(std::random_device &rd)
