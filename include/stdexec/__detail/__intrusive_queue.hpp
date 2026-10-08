@@ -249,6 +249,8 @@ namespace STDEXEC
         return iterator(__tail_, nullptr);
       }
 
+      // Moves the items in [first, last) from other into *this, inserting
+      // them before pos. other must not be *this.
       constexpr void
       splice(iterator pos, __intrusive_queue& other, iterator first, iterator last) noexcept
       {
@@ -256,34 +258,43 @@ namespace STDEXEC
         {
           return;
         }
+        STDEXEC_ASSERT(&other != this);
         STDEXEC_ASSERT(first.__item_ != nullptr);
         STDEXEC_ASSERT(last.__predecessor_ != nullptr);
-        if (other.__head_ == first.__item_)
+
+        _Item* const __range_head = first.__item_;
+        _Item* const __range_tail = last.__predecessor_;
+
+        // Unlink [first, last) from other.
+        if (other.__head_ == __range_head)
         {
           other.__head_ = last.__item_;
-          if (other.__head_ == nullptr)
-          {
-            other.__tail_ = nullptr;
-          }
         }
         else
         {
           STDEXEC_ASSERT(first.__predecessor_ != nullptr);
           first.__predecessor_->*_Next = last.__item_;
-          last.__predecessor_->*_Next  = pos.__item_;
         }
-        if (empty())
+        if (last.__item_ == nullptr)
         {
-          __head_ = first.__item_;
-          __tail_ = last.__predecessor_;
+          // The range ran to the end of other, so its new tail is the item
+          // before the range (or nullptr if other is now empty).
+          other.__tail_ = first.__predecessor_;
+        }
+
+        // Link [first, last) into *this before pos.
+        __range_tail->*_Next = pos.__item_;
+        if (pos.__predecessor_ == nullptr)
+        {
+          __head_ = __range_head;
         }
         else
         {
-          pos.__predecessor_->*_Next = first.__item_;
-          if (pos.__item_ == nullptr)
-          {
-            __tail_ = last.__predecessor_;
-          }
+          pos.__predecessor_->*_Next = __range_head;
+        }
+        if (pos.__item_ == nullptr)
+        {
+          __tail_ = __range_tail;
         }
       }
 
