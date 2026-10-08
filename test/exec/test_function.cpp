@@ -23,6 +23,7 @@
 
 #include <array>
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <memory_resource>
 #include <stdexcept>
@@ -527,6 +528,34 @@ namespace
     }
   }
 
+  TEST_CASE("noexcept is part of a function's type, separately from its completions",
+            "[types][function]")
+  {
+    using sigs =
+      ex::completion_signatures<ex::set_value_t(int), ex::set_error_t(std::exception_ptr)>;
+
+    using throwing_t = exec::function<ex::sender_tag(), sigs>;
+    using nothrow_t  = exec::function<ex::sender_tag() noexcept, sigs>;
+
+    STATIC_REQUIRE(!std::same_as<throwing_t, nothrow_t>);
+    // the sender_tag form's completions are exactly as declared, noexcept or not
+    STATIC_REQUIRE(std::same_as<ex::completion_signatures_of_t<throwing_t>,
+                                ex::completion_signatures_of_t<nothrow_t>>);
+
+    // the noexcept convenience form drops set_error(exception_ptr) but is
+    // still a distinct type from the equivalent sender_tag form without noexcept
+    STATIC_REQUIRE(
+      !std::same_as<
+        exec::function<int() noexcept>,
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>>);
+    STATIC_REQUIRE(
+      std::same_as<
+        exec::function<int() noexcept>,
+        exec::function<ex::sender_tag() noexcept,
+                       ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>>);
+  }
+
   TEST_CASE("completion_signature specification is order-independent", "[types][function]")
   {
     // by specifying the completions with a function signature, it's up to the
@@ -534,11 +563,11 @@ namespace
     using func1_t = exec::function<int(int) noexcept>;
     // this declaration chooses value before stopped
     using func2_t =
-      exec::function<ex::sender_tag(int),
+      exec::function<ex::sender_tag(int) noexcept,
                      ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>;
     // this declaration chooses stopped before value
     using func3_t =
-      exec::function<ex::sender_tag(int),
+      exec::function<ex::sender_tag(int) noexcept,
                      ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(int)>>;
 
     SECTION("the function types are the same as each other")
