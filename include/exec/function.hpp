@@ -520,6 +520,11 @@ namespace experimental::execution
 
     //! the main implementation of the type-erasing sender function<...>
     //
+    //! @tparam _Nothrow Whether the function type is declared noexcept, which
+    //! promises that the type-erased path (invoking the factory and connecting
+    //! the sender it returns) doesn't throw; the completion signatures describe
+    //! only the asynchronous contract
+    //!
     //! @tparam _Sigs The supported completion signatures
     //!
     //! @tparam _Queries The list of environment queries that must be supported
@@ -533,7 +538,7 @@ namespace experimental::execution
     //! noexcept, also reported by the function's own environment
     //!
     //! @tparam _Args The argument types used to construct the erased sender
-    template <class _Sigs, class _Queries, class _Attrs, class... _Args>
+    template <bool _Nothrow, class _Sigs, class _Queries, class _Attrs, class... _Args>
     class __function
     {
       // check these with asserts rather than requires because the only way to
@@ -673,23 +678,30 @@ namespace experimental::execution
     //! a sender factory adaptor that captures the real type of the implicit object and
     //! casts the stored void pointer back to the correct type upon invocation.
     //!
-    //! \tparam _Sigs the functions possible completion signatures
+    //! \tparam _Nothrow whether the function type is declared noexcept
+    //! \tparam _Sigs the function's possible completion signatures
     //! \tparam _Queries the queries required to be supported by the environment of the
     //!                  receiver to which this function is ultimately connected
     //! \tparam _Attrs the queries supported by this function's attributes
     //! \tparam _SelfBox the tag type conveying the cvref qualifiers of the implicit
     //!                  object parameter
     //! \tparam _Args the pack of explicit arguments to the sender factory
-    template <class _Sigs,
+    template <bool _Nothrow,
+              class _Sigs,
               class _Queries,
               class _Attrs,
               __is_instance_of<__self_box> _SelfBox,
               class... _Args>
-    class __function<_Sigs, _Queries, _Attrs, _SelfBox, _Args...>
-      : public __function<_Sigs, _Queries, _Attrs, typename _SelfBox::__void_pointer, _Args...>
+    class __function<_Nothrow, _Sigs, _Queries, _Attrs, _SelfBox, _Args...>
+      : public __function<_Nothrow,
+                          _Sigs,
+                          _Queries,
+                          _Attrs,
+                          typename _SelfBox::__void_pointer,
+                          _Args...>
     {
       using __void_pointer = _SelfBox::__void_pointer;
-      using __base         = __function<_Sigs, _Queries, _Attrs, __void_pointer, _Args...>;
+      using __base = __function<_Nothrow, _Sigs, _Queries, _Attrs, __void_pointer, _Args...>;
 
       using __receiver_t = __base::__receiver_t;
       using __tag        = __base::__tag;
@@ -746,7 +758,7 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., _Args...>;
+      using __make_function = __function<__noexcept, _LeadingArgs..., _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -757,7 +769,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., __self_box<__self_tag &>, _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag &>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -768,7 +781,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -779,7 +793,7 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., _Args...>;
+      using __make_function = __function<__noexcept, _LeadingArgs..., _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -790,7 +804,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., __self_box<__self_tag &>, _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag &>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -801,7 +816,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<_LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
     };
 
     template <class _Ty>
@@ -830,8 +846,7 @@ namespace experimental::execution
 
     template <class _Ty>
     concept __is_sender_tag_function = __is_function_type<_Ty>
-                                    && __same_as<sender_tag, __return_type_t<_Ty>>
-                                    && (!__is_noexcept<_Ty>);
+                                    && __same_as<sender_tag, __return_type_t<_Ty>>;
 
     template <class _Ty>
     concept __is_not_sender_tag_function = __is_function_type<_Ty>
@@ -1033,7 +1048,13 @@ namespace experimental::execution
   //! takes an explicit copy, e.g. auto(s)).
   //!
   //! When present, the completion signatures, queries and attrs must appear in
-  //! that order. The sender_tag form can't be declared noexcept.
+  //! that order.
+  //!
+  //! Declaring any form noexcept promises that the type-erased path (invoking
+  //! the factory and connecting the sender it returns) doesn't throw. For the
+  //! forms with computed completions it also drops set_error(exception_ptr);
+  //! for the sender_tag form the completion signatures are exactly as given,
+  //! since they describe only the asynchronous contract.
   //!
   //! Future: support C-style ellipsis arguments in the function signature to
   //! permit type-erased arguments as well, like function<int(bar, baz, ...)> (a
