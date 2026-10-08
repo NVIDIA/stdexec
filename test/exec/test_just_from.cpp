@@ -143,6 +143,13 @@ namespace
     }
   }
 
+  TEST_CASE("just_from can return its sink result directly", "[just_from]")
+  {
+    auto sender = exec::just_from([](auto sink) noexcept { return sink(17); });
+    auto [value] = ex::sync_wait(sender).value();
+    CHECK(value == 17);
+  }
+
   TEST_CASE("just_error_from sinks return error completion signatures", "[just_from]")
   {
     auto s = exec::just_error_from(
