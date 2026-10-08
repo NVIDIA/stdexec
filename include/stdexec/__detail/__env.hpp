@@ -238,8 +238,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto operator()(env<_Envs...> const &__env) const noexcept -> decltype(auto)
       {
-        // count of elements that includes the first env that supports the query
-        // and all subsequent envs
+        // compute the index of the first env that supports the query:
         STDEXEC_CONSTEXPR_LOCAL auto __index =
           sizeof...(_Envs) - __mcall<__mfind_if<__q1<__has_query_t>, __msize>, _Envs...>::value;
         if constexpr (__index < sizeof...(_Envs))
@@ -265,8 +264,8 @@ namespace STDEXEC
       noexcept(__nothrow_queryable_with<__1st_env_t<_Query, _Args...>, _Query, _Args...>)
         -> __query_result_t<__1st_env_t<_Query, _Args...>, _Query, _Args...>
     {
-      auto const &__env = __detail::__get_1st_env<_Query, _Args...>()(*this);
-      return __env.query(_Query(), static_cast<_Args &&>(__args)...);
+      constexpr auto __get_env = __detail::__get_1st_env<_Query, _Args...>();
+      return __get_env(*this).query(_Query(), static_cast<_Args &&>(__args)...);
     }
   };
 

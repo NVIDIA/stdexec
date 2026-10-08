@@ -37,8 +37,7 @@ namespace
     template <class... Values>
     void set_value(Values&&...) noexcept
     {
-      auto env = ex::get_env(rcvr);
-      ex::set_value(std::move(rcvr), std::move(env));
+      ex::set_value(std::move(rcvr), ex::get_env(rcvr));
     }
 
     template <class Error>
@@ -53,7 +52,7 @@ namespace
     }
 
     [[nodiscard]]
-    auto get_env() const noexcept
+    auto get_env() const noexcept -> ex::env_of_t<Rcvr>
     {
       return ex::get_env(rcvr);
     }
