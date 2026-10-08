@@ -43,6 +43,7 @@ import stdexec;
 #  include <cstdint>
 #  include <exception>
 #  include <tuple>
+#  include <type_traits>
 #  include <utility>
 #  include <variant>
 #endif
@@ -230,6 +231,7 @@ namespace experimental::execution
         [[nodiscard]]
         auto num_agents_required() const -> std::uint32_t
         {
+          using common_shape_t   = std::common_type_t<Shape, std::uint32_t>;
           auto const parallelism = parallelize_ ? pool_.available_parallelism()
                                                 : static_cast<std::uint32_t>(1);
 
@@ -237,7 +239,7 @@ namespace experimental::execution
           // ask for more agents (tasks) than we can actually deal with at one
           // time?
           return Shape{} < shape_
-                 ? static_cast<std::uint32_t>((std::min) (shape_, static_cast<Shape>(parallelism)))
+                 ? static_cast<std::uint32_t>((std::min<common_shape_t>) (shape_, parallelism))
                  : 0;
         }
 
