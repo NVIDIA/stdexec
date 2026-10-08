@@ -27,6 +27,7 @@
 
 #  include <memory>
 #  include <type_traits>
+#  include <utility>
 
 using namespace exec;
 using STDEXEC::sync_wait;
@@ -287,7 +288,9 @@ namespace
       co_return;
     };
 
-    auto&& [i, j, p] = co_await cleanup(action, argument, const_argument, std::make_unique<int>(5));
+    auto payload = std::make_unique<int>(5);
+    auto&& [i, j, p] = co_await cleanup(action, argument, const_argument, std::move(payload));
+    CHECK_FALSE(payload);
     STATIC_REQUIRE(std::is_same_v<decltype(i), int&>);
     STATIC_REQUIRE(std::is_same_v<decltype(j), int&>);
     STATIC_REQUIRE(std::is_same_v<decltype(p), std::unique_ptr<int>&>);
