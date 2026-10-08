@@ -30,6 +30,7 @@
 
 #include <array>
 #include <exception>
+#include <ranges>
 #include <utility>
 
 namespace
