@@ -125,7 +125,8 @@ namespace experimental::execution
 
       template <class _Adaptor, class _Sequence>
       auto operator()(__ignore, _Adaptor __adaptor, _Sequence&& __sequence)
-        noexcept(__nothrow_decay_copyable<_Adaptor, _Sequence>)
+        noexcept(__nothrow_decay_copyable<_Adaptor, _Sequence>
+                 && __nothrow_subscribable<_Sequence, __receiver<_Receiver, _Adaptor>>)
           -> __operation<_Sequence, _Receiver, _Adaptor>
       {
         return {static_cast<_Sequence&&>(__sequence),
