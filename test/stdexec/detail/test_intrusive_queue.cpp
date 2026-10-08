@@ -202,9 +202,16 @@ namespace
       }
     }
 
-    for (auto& queue: queues)
+    // Verify that transferred nodes can also be removed in the expected order.
+    for (std::size_t i = 0; i < queues.size(); ++i)
     {
-      queue.clear();
+      while (!expected[i].empty())
+      {
+        REQUIRE_FALSE(queues[i].empty());
+        CHECK(queues[i].pop_front()->value_ == expected[i].front());
+        expected[i].pop_front();
+      }
+      check_queue(queues[i], expected[i]);
     }
   }
 
