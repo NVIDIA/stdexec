@@ -15,7 +15,6 @@
  */
 
 #include <test_common/catch2.hpp>
-#include <stdexec/execution.hpp>
 #include <exec/detail/xorshift.hpp>
 
 #include <cstdint>
@@ -33,4 +32,10 @@ TEST_CASE("xorshift does not get stuck with a zero seed", "[xorshift]")
     produced_nonzero = produced_nonzero || sample != 0;
   }
   CHECK(produced_nonzero);
+}
+
+TEST_CASE("xorshift preserves nonzero seed behavior", "[xorshift]")
+{
+  exec::xorshift nonzero_seed{std::uint64_t{1}};
+  CHECK(nonzero_seed() == 0xd989bcacU);
 }
