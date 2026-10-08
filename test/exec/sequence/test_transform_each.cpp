@@ -65,6 +65,25 @@ namespace
   struct range_error
   {};
 
+  struct throwing_move_rcvr : next_rcvr
+  {
+    throwing_move_rcvr() = default;
+
+    throwing_move_rcvr(throwing_move_rcvr&&)
+    {
+      throw range_error{};
+    }
+  };
+
+  TEST_CASE("transform_each - subscribe propagates receiver move exceptions",
+            "[sequence_senders][transform_each]")
+  {
+    auto transformed = exec::transform_each(exec::empty_sequence(), ex::then([]() noexcept {}));
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(transformed, throwing_move_rcvr{})));
+    CHECK_THROWS_AS(exec::subscribe(transformed, throwing_move_rcvr{}), range_error);
+  }
+
   template <bool ThrowFromBegin>
   struct throwing_range
   {
