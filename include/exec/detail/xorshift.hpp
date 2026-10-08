@@ -54,7 +54,7 @@ namespace experimental::execution
     friend auto operator==(xorshift const &, xorshift const &) -> bool = default;
 
     xorshift()
-      : m_seed(0xc1f651c67c62c6e0ull)
+      : m_seed(default_seed)
     {}
 
     explicit xorshift(std::random_device &rd)
@@ -63,12 +63,16 @@ namespace experimental::execution
     }
 
     explicit xorshift(std::uint64_t seed)
-      : m_seed(seed == 0 ? 0xc1f651c67c62c6e0ull : seed)
+      : m_seed(seed == 0 ? default_seed : seed)
     {}
 
     void seed(std::random_device &rd)
     {
       m_seed = std::uint64_t(rd()) << 31 | std::uint64_t(rd());
+      if (m_seed == 0)
+      {
+        m_seed = default_seed;
+      }
     }
 
     auto operator()() -> result_type
@@ -87,7 +91,8 @@ namespace experimental::execution
     }
 
    private:
-    std::uint64_t m_seed;
+    static constexpr std::uint64_t default_seed = 0xc1f651c67c62c6e0ull;
+    std::uint64_t                 m_seed;
   };
 
 }  // namespace experimental::execution
