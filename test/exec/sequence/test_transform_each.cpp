@@ -84,6 +84,29 @@ namespace
     CHECK_THROWS_AS(exec::subscribe(transformed, throwing_move_rcvr{}), range_error);
   }
 
+  struct throwing_copy_value
+  {
+    throwing_copy_value() = default;
+
+    throwing_copy_value(throwing_copy_value const &)
+    {
+      throw range_error{};
+    }
+
+    throwing_copy_value(throwing_copy_value&&) noexcept = default;
+  };
+
+  TEST_CASE("transform_each - subscribe propagates adaptor copy exceptions",
+            "[sequence_senders][transform_each]")
+  {
+    auto transformed = exec::transform_each(
+      exec::empty_sequence(),
+      ex::then([capture = throwing_copy_value{}]() noexcept { (void) capture; }));
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(transformed, next_rcvr{})));
+    CHECK_THROWS_AS(exec::subscribe(transformed, next_rcvr{}), range_error);
+  }
+
   template <bool ThrowFromBegin>
   struct throwing_range
   {
