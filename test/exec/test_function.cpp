@@ -402,6 +402,26 @@ namespace
   inline constexpr bool nothrow_lvalue_connect = noexcept(
     std::declval<Sndr const &>().connect(std::declval<Rcvr>()));
 
+  template <class Sndr, class Rcvr>
+  concept rvalue_connectable = requires { std::declval<Sndr>().connect(std::declval<Rcvr>()); };
+
+  template <class Sndr, class Rcvr>
+  concept lvalue_connectable = requires {
+    std::declval<Sndr const &>().connect(std::declval<Rcvr>());
+  };
+
+  TEST_CASE("function's connect accepts only receivers", "[types][function]")
+  {
+    using fn = exec::function<int() noexcept>;
+
+    STATIC_REQUIRE(ex::receiver<env_receiver<ex::env<>>>);
+    STATIC_REQUIRE(rvalue_connectable<fn, env_receiver<ex::env<>>>);
+    STATIC_REQUIRE(lvalue_connectable<fn, env_receiver<ex::env<>>>);
+
+    STATIC_REQUIRE(!rvalue_connectable<fn, int>);
+    STATIC_REQUIRE(!lvalue_connectable<fn, int>);
+  }
+
   TEST_CASE("function's connect is noexcept exactly when nothing on the path can throw",
             "[types][function]")
   {
