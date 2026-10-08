@@ -22,9 +22,11 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
+#  include <array>
 #  include <cstddef>
 #  include <iterator>
 #  include <list>
+#  include <random>
 #  include <vector>
 #endif
 
@@ -161,4 +163,49 @@ namespace
       }
     }
   }
+  TEST_CASE("intrusive_queue::splice remains valid after chained transfers",
+            "[detail][intrusive_queue]")
+  {
+    std::array<test_node, 36> nodes{};
+    std::array<test_queue, 3> queues{};
+    std::array<std::list<int>, 3> expected{};
+
+    for (std::size_t i = 0; i < nodes.size(); ++i)
+    {
+      nodes[i].value_ = static_cast<int>(i);
+      queues[i % queues.size()].push_back(&nodes[i]);
+      expected[i % expected.size()].push_back(nodes[i].value_);
+    }
+
+    std::mt19937 rng{0x531CEu};
+    for (std::size_t step = 0; step < 1500; ++step)
+    {
+      std::size_t const src   = rng() % queues.size();
+      std::size_t const dst   = (src + 1 + rng() % (queues.size() - 1)) % queues.size();
+      std::size_t const first = rng() % (expected[src].size() + 1);
+      std::size_t const last  = first + rng() % (expected[src].size() - first + 1);
+      std::size_t const pos   = rng() % (expected[dst].size() + 1);
+
+      CAPTURE(step, src, dst, first, last, pos);
+      queues[dst].splice(nth(queues[dst], pos),
+                         queues[src],
+                         nth(queues[src], first),
+                         nth(queues[src], last));
+      expected[dst].splice(std::next(expected[dst].begin(), static_cast<std::ptrdiff_t>(pos)),
+                           expected[src],
+                           std::next(expected[src].begin(), static_cast<std::ptrdiff_t>(first)),
+                           std::next(expected[src].begin(), static_cast<std::ptrdiff_t>(last)));
+
+      for (std::size_t i = 0; i < queues.size(); ++i)
+      {
+        check_queue(queues[i], expected[i]);
+      }
+    }
+
+    for (auto& queue: queues)
+    {
+      queue.clear();
+    }
+  }
+
 }  // namespace
