@@ -71,9 +71,11 @@ namespace experimental::execution
 
       template <class... Ts>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
-      void operator()(Ts &&...ts) const noexcept
+      auto
+      operator()(Ts &&...ts) const noexcept -> STDEXEC::completion_signatures<_set_tag_t(Ts...)>
       {
         _set_tag_t()(static_cast<Rcvr &&>(_rcvr), static_cast<Ts &&>(ts)...);
+        return {};
       }
     };
 

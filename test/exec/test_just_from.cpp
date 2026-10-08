@@ -21,6 +21,8 @@
 
 #include <test_common/catch2.hpp>
 
+#include <concepts>
+
 namespace
 {
   constinit int global_int = 0;
@@ -91,6 +93,86 @@ namespace
     CHECK(a == 42);
     CHECK(b == 43);
     CHECK(c == 44);
+  }
+
+  TEST_CASE("just_from sinks return value completion signatures", "[just_from]")
+  {
+    SECTION("no values")
+    {
+      auto s = exec::just_from(
+        [](auto sink) noexcept
+        {
+          auto completions = sink();
+          STATIC_REQUIRE(
+            std::same_as<decltype(completions), ex::completion_signatures<ex::set_value_t()>>);
+          return completions;
+        });
+      auto op = ex::connect(s, expect_void_receiver{});
+      ex::start(op);
+    }
+
+    SECTION("multiple values")
+    {
+      auto s = exec::just_from(
+        [](auto sink) noexcept
+        {
+          auto completions = sink(42, 3.14);
+          STATIC_REQUIRE(std::same_as<decltype(completions),
+                                      ex::completion_signatures<ex::set_value_t(int, double)>>);
+          return completions;
+        });
+      auto [i, d] = ex::sync_wait(s).value();
+      CHECK(i == 42);
+      CHECK(d == 3.14);
+    }
+
+    SECTION("references")
+    {
+      int const value = 42;
+      auto      s     = exec::just_from(
+        [&value](auto sink) noexcept
+        {
+          auto completions = sink(global_int, value);
+          STATIC_REQUIRE(
+            std::same_as<decltype(completions),
+                                  ex::completion_signatures<ex::set_value_t(int&, int const &)>>);
+          return completions;
+        });
+      auto op = ex::connect(s, expect_value_receiver{global_int, value});
+      ex::start(op);
+    }
+  }
+
+  TEST_CASE("just_error_from sinks return error completion signatures", "[just_from]")
+  {
+    auto s = exec::just_error_from(
+      [](auto sink) noexcept
+      {
+        auto completions = sink(42);
+        STATIC_REQUIRE(
+          std::same_as<decltype(completions), ex::completion_signatures<ex::set_error_t(int)>>);
+        return completions;
+      });
+    ::check_err_types<ex::__mset<int>>(s);
+    int  error = 0;
+    auto op    = ex::connect(std::move(s), expect_error_receiver_ex{error});
+    ex::start(op);
+    CHECK(error == 42);
+  }
+
+  TEST_CASE("just_stopped_from sinks return stopped completion signatures", "[just_from]")
+  {
+    auto s = exec::just_stopped_from(
+      [](auto sink) noexcept
+      {
+        auto completions = sink();
+        STATIC_REQUIRE(
+          std::same_as<decltype(completions), ex::completion_signatures<ex::set_stopped_t()>>);
+        return completions;
+      });
+    ::check_sends_stopped<true>(s);
+    s.submit(expect_stopped_receiver{});
+    std::move(s).submit(expect_stopped_receiver{});
   }
 
   TEST_CASE("just_from is conditionally noexcept when storing the callable", "[just_from]")
