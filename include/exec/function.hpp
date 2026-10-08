@@ -674,6 +674,24 @@ namespace experimental::execution
         using __alloc_t           = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
         auto __alloc              = __frame_allocator_t<__alloc_t>(
           __choose_frame_allocator(STDEXEC::get_env(__rcvr)));
+        // Ideally, function would allocate raw storage for the operation state
+        // from __alloc and construct it with construct_at. Instead, an
+        // operation state too big for the inline buffer is wrapped by the
+        // __any machinery that function shares with any_sender_of, and the
+        // wrapper is constructed and destroyed with
+        // allocator_traits<...>::construct and destroy.
+        // Uses-allocator construction never reaches the operation state: the
+        // wrapper doesn't declare allocator_type, and the operation state is
+        // initialized inside it directly from connect's result. What does
+        // leak is that a frame allocator's own construct and destroy members,
+        // if it has them, are called with the wrapper's type. That happens
+        // only when the function declares the get_frame_allocator query;
+        // otherwise __alloc is the injected polymorphic_allocator, which
+        // forwards only allocate and deallocate to the caller's allocator.
+        // Tolerated because frame allocators are unlikely to customize
+        // construct or destroy. A fix would give function its own path through
+        // __any (raw storage plus construct_at and destroy_at), leaving
+        // any_sender_of unchanged.
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
                                        __alloc,
