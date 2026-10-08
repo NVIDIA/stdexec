@@ -72,6 +72,18 @@ namespace experimental::execution
     inline constexpr auto __choose_frame_allocator =
       __first_callable{get_frame_allocator, get_allocator, __always{std::allocator<std::byte>()}};
 
+    //! Satisfied when choosing the frame allocator from an environment of type
+    //! _Env and allocating from it can't throw. The check is made on the
+    //! __frame_allocator_t adaptation of the chosen allocator, which is what
+    //! actually allocates.
+    template <class _Env>
+    concept __has_nothrow_frame_allocator =
+      __nothrow_callable<decltype(__choose_frame_allocator) const &, _Env const &>
+      && requires(__frame_allocator_t<__result_of<__choose_frame_allocator, _Env const &>> &__alloc,
+                  std::size_t                                                               __n) {
+           { __alloc.allocate(__n) } noexcept;
+         };
+
     //! Wrap _Receiver, which is a type-erased receiver, in a type that can
     //! extract the concrete, to-be-erased receiver from the operation state
     //! that contains it.
@@ -135,6 +147,11 @@ namespace experimental::execution
       using __receiver_t   = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
       using __stop_token_t = stop_token_of_t<env_of_t<__receiver_t>>;
 
+      //! The declared get_frame_allocator query's result is what allocates, so
+      //! check it as the type-erased receiver's environment reports it.
+      static constexpr bool __nothrow_frame_allocation =
+        __has_nothrow_frame_allocator<env_of_t<__receiver_t>>;
+
       _any::_state<_Receiver, __stop_token_t> __rcvr_;
     };
 
@@ -147,6 +164,11 @@ namespace experimental::execution
       using __prop_t       = __receiver_t::__prop_t;
       using __stop_token_t = stop_token_of_t<env_of_t<__receiver_t>>;
       using __adaptee_t    = __result_of<__choose_frame_allocator, env_of_t<_Receiver>>;
+
+      //! The injected allocator forwards to the one chosen from the concrete
+      //! receiver's environment, so check that one.
+      static constexpr bool __nothrow_frame_allocation =
+        __has_nothrow_frame_allocator<env_of_t<_Receiver>>;
 
       __memory_resource_adaptor_t<__adaptee_t> __resource_;
       __prop_t                                 __env_;
@@ -645,8 +667,17 @@ namespace experimental::execution
         return {};
       }
 
+      //! connect is noexcept exactly when nothing on the path to the operation
+      //! state can throw: the function type is noexcept and the frame allocator
+      //! chosen from the receiver's environment allocates without throwing. If
+      //! a trusted domain transformation or a transformed sender's connect
+      //! throws anyway, std::terminate is called.
       template <class _Receiver>
-      constexpr auto connect(_Receiver __rcvr) &&  //
+      static constexpr bool __nothrow_connect = _Nothrow
+                                             && __opstate_t<_Receiver>::__nothrow_frame_allocation;
+
+      template <class _Receiver>
+      constexpr auto connect(_Receiver __rcvr) && noexcept(__nothrow_connect<_Receiver>)  //
         -> __opstate_t<_Receiver>
       {
         auto __factory = [this]<class _RcvrRef>(_RcvrRef __rcvr)
@@ -659,10 +690,12 @@ namespace experimental::execution
         return __opstate_t<_Receiver>{static_cast<_Receiver &&>(__rcvr), __factory};
       }
 
+      //! as for connect() &&, plus copying the curried arguments mustn't throw
       template <class _Receiver>
         requires __std::copy_constructible<__function>
       constexpr auto connect(_Receiver __rcvr) const &  //
-        -> __opstate_t<_Receiver>
+        noexcept(__nothrow_connect<_Receiver> && __nothrow_copy_constructible<_Args...>)
+          -> __opstate_t<_Receiver>
       {
         return __function(*this).connect(static_cast<_Receiver &&>(__rcvr));
       }
