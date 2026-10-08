@@ -25,8 +25,12 @@ TEST_CASE("xorshift does not get stuck with a zero seed", "[xorshift]")
   exec::xorshift zero_seed{std::uint64_t{0}};
   exec::xorshift default_seed{};
 
+  bool produced_nonzero = false;
   for (int i = 0; i < 8; ++i)
   {
-    CHECK(zero_seed() == default_seed());
+    auto const sample = zero_seed();
+    CHECK(sample == default_seed());
+    produced_nonzero = produced_nonzero || sample != 0;
   }
+  CHECK(produced_nonzero);
 }
