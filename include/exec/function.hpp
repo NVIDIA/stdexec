@@ -766,7 +766,7 @@ namespace experimental::execution
       static constexpr bool __nothrow_connect = _Nothrow
                                              && __opstate_t<_Receiver>::__nothrow_frame_allocation;
 
-      template <class _Receiver>
+      template <receiver _Receiver>
       constexpr auto connect(_Receiver __rcvr) && noexcept(__nothrow_connect<_Receiver>)  //
         -> __opstate_t<_Receiver>
       {
@@ -781,7 +781,7 @@ namespace experimental::execution
       }
 
       //! as for connect() &&, plus copying the curried arguments mustn't throw
-      template <class _Receiver>
+      template <receiver _Receiver>
         requires __std::copy_constructible<__function>
       constexpr auto connect(_Receiver __rcvr) const &  //
         noexcept(__nothrow_connect<_Receiver> && __nothrow_copy_constructible<_Args...>)
