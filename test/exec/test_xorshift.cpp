@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <test_common/catch2.hpp>
 #include <exec/detail/xorshift.hpp>
+#include <test_common/catch2.hpp>
 
 #include <cstdint>
 
