@@ -604,7 +604,6 @@ namespace experimental::execution
       constexpr decltype(auto) operator()(_Void *__self, _Args &&...__args) const
         noexcept(__nothrow_invocable<_Factory const &, _Self, _Args...>)
       {
-        static_assert(__is_callable_pointer<_Factory> || __is_empty_callable<_Factory>);
         static_assert(STDEXEC_IS_CONST(__value) == STDEXEC_IS_CONST(_Void));
 
         return __invoke(__factory,
