@@ -284,7 +284,7 @@ namespace experimental::execution
       static consteval auto get_completion_signatures()
       {
         return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                   _WITH_PRETTY_SENDERS_<_Senders>...>();
+                                                   _WITH_SENDERS_<_Senders>...>();
       }
 
      private:

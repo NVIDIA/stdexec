@@ -86,7 +86,7 @@ namespace STDEXEC
             return STDEXEC::__throw_compile_time_error<
               _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
               _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-              _WITH_PRETTY_SENDER_<__cv_sndr_t>>();
+              _WITH_SENDER_<__cv_sndr_t>>();
           }
           else
           {

@@ -62,7 +62,7 @@ namespace STDEXEC
              __not_a_scheduler<_WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
                                _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
                                _WHERE_(_IN_ALGORITHM_, on_t),
-                               _WITH_PRETTY_SENDER_<_Child>,
+                               _WITH_SENDER_<_Child>,
                                _WITH_ENVIRONMENT_(_Env)>>;
 
     // This transform_sender overload handles the case where `on` was called
@@ -364,8 +364,7 @@ namespace STDEXEC
     template <class _Sender, class _Env>
     static auto transform_sender(set_value_t, _Sender&&, _Env&&)
     {
-      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
-                            _WITH_PRETTY_SENDER_<_Sender>>{};
+      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_), _WITH_SENDER_<_Sender>>{};
     }
   };
 

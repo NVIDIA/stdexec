@@ -287,12 +287,4 @@ namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
 
-// Decode the sender name for diagnostics:
-namespace STDEXEC::__detail
-{
-  template <class Scheduler, class Sender>
-  extern __mtype<nvexec::_strm::continues_on_sender<Scheduler, __demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::continues_on_sender<Scheduler, Sender>>;
-}  // namespace STDEXEC::__detail
-
 STDEXEC_PRAGMA_POP()

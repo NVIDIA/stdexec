@@ -197,7 +197,7 @@ namespace STDEXEC::__sync_wait
     __mexception<_WHAT_(_INVALID_ARGUMENT_),
                  _WHERE_(_IN_ALGORITHM_, sync_wait_t),
                  _WHY_(_Reason),
-                 _WITH_PRETTY_SENDER_<_CvSender>,
+                 _WITH_SENDER_<_CvSender>,
                  _WITH_ENVIRONMENT_(_Env),
                  _TO_FIX_THIS_ERROR_(_USE_SYNC_WAIT_WITH_VARIANT_INSTEAD_)>;
 

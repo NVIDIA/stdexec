@@ -567,11 +567,4 @@ namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
 
-namespace STDEXEC::__detail
-{
-  template <class WhenAllTag, class Scheduler, class... Senders>
-  extern __mtype<nvexec::_strm::when_all_sender<WhenAllTag, Scheduler, __demangle_t<Senders>...>>
-    __demangle_v<nvexec::_strm::when_all_sender<WhenAllTag, Scheduler, Senders...>>;
-}  // namespace STDEXEC::__detail
-
 STDEXEC_PRAGMA_POP()

@@ -146,7 +146,7 @@ namespace experimental::execution
             STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
             STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_LIBDISPATCH_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-            STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+            STDEXEC::_WITH_SENDER_<Sender>,
             STDEXEC::_WITH_ENVIRONMENT_(Env)>();
         }
       }
@@ -323,12 +323,12 @@ namespace experimental::execution
             using arg_pack_t  = __tuple<Shape, Shape, __decay_t<Args> &...>;
             if constexpr (!__decay_copyable<Args...>)
             {
-              return exec::throw_compile_time_error<
-                _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
-                _WITH_ARGUMENTS_(Args...),
-                _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
-                _WITH_ENVIRONMENT_(Env...)>();
+              return exec::throw_compile_time_error<_WHAT_(
+                                                      _PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                                                    _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
+                                                    _WITH_ARGUMENTS_(Args...),
+                                                    _WITH_SENDER_<__copy_cvref_t<Self, Sender>>,
+                                                    _WITH_ENVIRONMENT_(Env...)>();
             }
             else if constexpr (__nothrow_applicable<Fun &, arg_pack_t>
                                && __nothrow_decay_copyable<Args...>)

@@ -34,7 +34,7 @@ namespace experimental::execution
       __mexception<_WHAT_(_INVALID_ARGUMENT_),
                    _WHY_(_THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION_),
                    _WHERE_(_IN_ALGORITHM_, into_tuple_t),
-                   _WITH_PRETTY_SENDER_<_Sender>,
+                   _WITH_SENDER_<_Sender>,
                    _WITH_ENVIRONMENT_(_Env)>;
 
     template <class _Sender, class... _Env>

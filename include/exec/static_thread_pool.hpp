@@ -307,7 +307,7 @@ namespace experimental::execution
               STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, tag_of_t<Sender>),
               STDEXEC::_TO_FIX_THIS_ERROR_(
                 ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-              STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+              STDEXEC::_WITH_SENDER_<Sender>,
               STDEXEC::_WITH_ENVIRONMENT_(Env)>();
           }
         }
@@ -331,7 +331,7 @@ namespace experimental::execution
               STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, exec::iterate_t),
               STDEXEC::_TO_FIX_THIS_ERROR_(
                 ADD_A_CONTINUES_ON_TRANSITION_TO_THE_STATIC_THREAD_POOL_SCHEDULER_BEFORE_THE_ITERATE_ALGORITHM),
-              STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+              STDEXEC::_WITH_SENDER_<Sender>,
               STDEXEC::_WITH_ENVIRONMENT_(Env)>();
           }
         }
@@ -1313,11 +1313,11 @@ namespace experimental::execution
           {
             if constexpr (!__nothrow_decay_copyable<Args...>)
             {
-              return exec::throw_compile_time_error<
-                _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                _WHERE_(_IN_ALGORITHM_, bulk_t),
-                _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
-                _WITH_ENVIRONMENT_(Env...)>();
+              return exec::throw_compile_time_error<_WHAT_(
+                                                      _PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                                                    _WHERE_(_IN_ALGORITHM_, bulk_t),
+                                                    _WITH_SENDER_<__copy_cvref_t<Self, Sender>>,
+                                                    _WITH_ENVIRONMENT_(Env...)>();
             }
             else if constexpr (!__callable<Fun&, Shape, Shape, __decay_t<Args>&...>)
             {

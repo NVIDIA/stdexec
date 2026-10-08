@@ -177,7 +177,7 @@ namespace STDEXEC
     {
       return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
                             _WHERE_(_IN_ALGORITHM_, stopped_as_error_t),
-                            _WITH_PRETTY_SENDER_<_Sender>>{};
+                            _WITH_SENDER_<_Sender>>{};
     }
   };
 

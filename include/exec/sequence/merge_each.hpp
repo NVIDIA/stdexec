@@ -812,12 +812,12 @@ namespace experimental::execution
       template <class... _Args>
       using __f = std::conditional_t<
         sizeof...(_Env) == 0 && sizeof...(_Args) == 1 && (dependent_sender<_Args> && ...),
-        STDEXEC::__mexception<dependent_sender_error, _WITH_PRETTY_SENDER_<_Args>...>,
+        STDEXEC::__mexception<dependent_sender_error, _WITH_SENDER_<_Args>...>,
         STDEXEC::__mexception<_WHAT_(_INVALID_ARGUMENT_),
                               _WHERE_(_IN_ALGORITHM_, merge_each_t),
                               _WHY_(_MERGE_WITH_REQUIRES_A_SEQUENCE_OF_SEQUENCES_),
-                              _WITH_PRETTY_SEQUENCE_<_Sequence>,
-                              _WITH_PRETTY_SENDER_<_Sender>,
+                              _WITH_SEQUENCE_<_Sequence>,
+                              _WITH_SENDER_<_Sender>,
                               __fn_t<_WITH_ENVIRONMENT_, _Env>...,
                               _WITH_ARGUMENTS_(_Args...)>>;
     };

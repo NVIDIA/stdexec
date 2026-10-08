@@ -220,7 +220,7 @@ namespace experimental::execution
                 _WHAT_(_INVALID_ARGUMENT_),
                 _WHERE_(_IN_ALGORITHM_, repeat_n_t),
                 _WHY_(_THE_INPUT_SENDER_MUST_HAVE_VOID_VALUE_COMPLETION_),
-                _WITH_PRETTY_SENDER_<__child_t &>>();
+                _WITH_SENDER_<__child_t &>>();
           },
           // transform for set_error completions:
           decay_arguments<set_error_t, repeat_n_t>(),

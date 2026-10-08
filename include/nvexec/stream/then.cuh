@@ -225,11 +225,4 @@ namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
 
-namespace STDEXEC::__detail
-{
-  template <class Sender, class Fun>
-  extern __mtype<nvexec::_strm::then_sender<__demangle_t<Sender>, Fun>>
-    __demangle_v<nvexec::_strm::then_sender<Sender, Fun>>;
-}  // namespace STDEXEC::__detail
-
 STDEXEC_PRAGMA_POP()

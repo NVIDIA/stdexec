@@ -113,7 +113,7 @@ namespace STDEXEC
     using __bad_result_sender_t = __mexception<
       _WHAT_(_FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_),
       _WHERE_(_IN_ALGORITHM_, _LetTag),
-      _WITH_PRETTY_SENDER_<_Sender>,
+      _WITH_SENDER_<_Sender>,
       __fn_t<_WITH_ENVIRONMENT_, _JoinEnv2>...,
       __mapply_q<_NESTED_ERROR_, __try_completion_signatures_of_t<_Sender, _JoinEnv2...>>>;
 
@@ -634,7 +634,7 @@ namespace STDEXEC
           if constexpr (!__decay_copyable<_CvSender>)
           {
             return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                       _WITH_PRETTY_SENDER_<_CvSender>>();
+                                                       _WITH_SENDER_<_CvSender>>();
           }
           else if constexpr (__t<_LetTag>() == STDEXEC::set_value)
           {

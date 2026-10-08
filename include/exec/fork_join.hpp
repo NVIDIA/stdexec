@@ -259,10 +259,9 @@ namespace experimental::execution
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            INVALID_ARGUMENTS_TO_FORK_JOIN,
-            __children_of<Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, Env>...>();
+          return STDEXEC::__throw_compile_time_error<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                                                     __children_of<Self, __qq<_WITH_SENDERS_>>,
+                                                     __fn_t<_WITH_ENVIRONMENT_, Env>...>();
         }
       }
 

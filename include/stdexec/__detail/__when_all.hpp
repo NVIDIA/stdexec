@@ -446,7 +446,7 @@ namespace STDEXEC
                    _WHERE_(_IN_ALGORITHM_, when_all_t),
                    _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
                    _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_),
-                   _WITH_PRETTY_SENDER_<_Sender>,
+                   _WITH_SENDER_<_Sender>,
                    __fn_t<_WITH_ENVIRONMENT_, _Env>...>;
 
     template <class _Error>
@@ -766,10 +766,9 @@ namespace STDEXEC
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-            __children_of<_Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
+          return STDEXEC::__throw_compile_time_error<_INVALID_ARGUMENTS_TO_WHEN_ALL_,
+                                                     __children_of<_Self, __qq<_WITH_SENDERS_>>,
+                                                     __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
         }
       }
 

@@ -95,7 +95,7 @@ namespace STDEXEC
           using __what_t = _WARNING_<_COMPLETION_SIGNATURES_MISMATCH_,
                                      _COMPLETION_SIGNATURE_<_Which>,
                                      _IS_NOT_ONE_OF_<_Sigs...>,
-                                     _SIGNAL_SENT_BY_SENDER_<__demangle_t<_CvSender>>>;
+                                     _SIGNAL_SENT_BY_SENDER_<_CvSender>>;
           __debug::_ATTENTION_<__what_t>();
         }
         STDEXEC_TERMINATE();

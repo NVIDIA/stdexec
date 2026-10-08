@@ -25,7 +25,6 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__basic_sender_macros.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__connect.hpp"
@@ -51,22 +50,6 @@ namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
   // Generic __sender type
-
-#  if defined(STDEXEC_DEMANGLE_SENDER_NAMES)
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Descriptor>
-  inline constexpr auto __descriptor_fn_v = _Descriptor{};
-#  else
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Descriptor, auto _DescriptorFn = STDEXEC_SEXPR_DESCRIPTOR_FN(_Descriptor)>
-  inline constexpr auto __descriptor_fn_v = _DescriptorFn;
-#  endif
-
-  template <class _Tag, class _Data, class... _Child>
-  consteval auto __descriptor_fn() noexcept
-  {
-    return __descriptor_fn_v<__desc<_Tag, _Data, _Child...>>;
-  }
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag>
@@ -101,7 +84,7 @@ namespace STDEXEC
     using __env_type_t = __result_of<__sexpr_impl<_Tag>::__get_env, _Index, _State const &>;
 
     template <class _Sexpr>
-    using __child_indices_t = STDEXEC::__desc_of_t<_Sexpr>::__indices;
+    using __child_indices_t = __decay_t<_Sexpr>::__indices_t;
 
     template <class _Receiver, class _Data>
     struct __state
@@ -299,8 +282,7 @@ namespace STDEXEC
   template <class _Sexpr, class _Receiver>
   struct __opstate
   {
-    using __desc_t      = __decay_t<_Sexpr>::__desc_t;
-    using __tag_t       = __desc_t::__tag;
+    using __tag_t       = __decay_t<_Sexpr>::__tag_t;
     using __state_t     = __detail::__state_type_t<_Sexpr, _Receiver>;
     using __connect_t   = __detail::__connect<__tag_t, __detail::__child_indices_t<_Sexpr>>;
     using __child_ops_t = __apply_result_t<__connect_t, _Sexpr, __state_t&>;
@@ -332,133 +314,102 @@ namespace STDEXEC
   struct __sexpr_impl : __sexpr_defaults
   {};
 
-  //! A dummy type used only for diagnostic purposes.
-  //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
+  //! A struct template to aid in creating senders. This struct resembles
+  //! P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
+  //! but is not an exact implementation.
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Data, class... _Child>
-  struct __basic_sender
+  struct __sexpr : __tuple<_Tag, _Data, _Child...>
   {
-    struct type
+    using sender_concept = sender_tag;
+
+    using __tag_t       = _Tag;
+    using __data_t      = _Data;
+    using __children_t  = __mlist<_Child...>;
+    using __indices_t   = __make_indices<sizeof...(_Child)>;
+    using __base_t      = __tuple<_Tag, _Data, _Child...>;
+    using __get_attrs_t = __mtypeof<__sexpr_impl<__tag_t>::__get_attrs>;
+    using __attrs_t     = __apply_result_t<__get_attrs_t, __base_t const &>;
+
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    constexpr auto get_env() const noexcept -> __attrs_t
     {
-      using sender_concept = sender_tag;
-    };
+      return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__base_t>(*this));
+    }
+
+    template <class _Self, class... _Env>
+    static consteval auto get_completion_signatures()
+    {
+      using namespace __detail;
+      static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
+      using __self_t = __copy_cvref_t<_Self, __sexpr>;
+      if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
+      {
+        return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t, _Env...>();
+      }
+      else if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t>)
+      {
+        return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t>();
+      }
+      else if constexpr (sizeof...(_Env) == 0)
+      {
+        return __throw_dependent_sender_error<_Self>();
+      }
+      else
+      {
+        return STDEXEC::__throw_compile_time_error(__unrecognized_sender_error_t<_Self, _Env...>());
+      }
+    }
+
+    // Non-standard extension:
+    template <class _Self, receiver _Receiver>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    static constexpr auto __static_connect(_Self&& __self, _Receiver __rcvr) noexcept(
+      __noexcept_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>)
+      -> __result_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>
+    {
+      static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
+      return __sexpr_impl<__tag_t>::__connect(STDEXEC::__c_upcast<__sexpr>(
+                                                static_cast<_Self&&>(__self)),
+                                              static_cast<_Receiver&&>(__rcvr));
+    }
+
+    template <receiver _Receiver>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    constexpr auto connect(_Receiver __rcvr) && noexcept(
+      __noexcept_of<__sexpr_impl<__tag_t>::__connect, __sexpr, _Receiver>)
+      -> __result_of<__sexpr_impl<__tag_t>::__connect, __sexpr, _Receiver>
+    {
+      return __sexpr_impl<__tag_t>::__connect(static_cast<__sexpr&&>(*this),
+                                              static_cast<_Receiver&&>(__rcvr));
+    }
+
+    template <receiver _Receiver>
+      requires __std::copy_constructible<__sexpr>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    constexpr auto connect(_Receiver __rcvr) const & noexcept(
+      __noexcept_of<__sexpr_impl<__tag_t>::__connect, __sexpr const &, _Receiver>)
+      -> __result_of<__sexpr_impl<__tag_t>::__connect, __sexpr const &, _Receiver>
+    {
+      return __sexpr_impl<__tag_t>::__connect(*this, static_cast<_Receiver&&>(__rcvr));
+    }
+
+    // Non-standard extension:
+    template <class _Self, receiver _Receiver>
+    STDEXEC_ATTRIBUTE(nodiscard, always_inline)
+    static constexpr auto submit(_Self&& __self, _Receiver&& __rcvr) noexcept(
+      __noexcept_of<__sexpr_impl<__tag_t>::__submit, __copy_cvref_t<_Self, __sexpr>, _Receiver>)
+      -> __result_of<__sexpr_impl<__tag_t>::__submit, __copy_cvref_t<_Self, __sexpr>, _Receiver>
+    {
+      return __sexpr_impl<__tag_t>::__submit(STDEXEC::__c_upcast<__sexpr>(
+                                               static_cast<_Self&&>(__self)),
+                                             static_cast<_Receiver&&>(__rcvr));
+    }
   };
 
-#  if !STDEXEC_USE_MODULES()
-  namespace
-  {
-#  endif
-    //! A struct template to aid in creating senders. This struct resembles
-    //! P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
-    //! but is not an exact implementation. Note: The struct named
-    //! `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    template <auto _DescriptorFn>
-    struct __sexpr : __mcall1<decltype(_DescriptorFn()), __qq<__tuple>>
-    {
-      using sender_concept = sender_tag;
-
-      using __desc_t      = decltype(_DescriptorFn());
-      using __tag_t       = __desc_t::__tag;
-      using __base_t      = __mcall1<__desc_t, __qq<__tuple>>;
-      using __get_attrs_t = __mtypeof<__sexpr_impl<__tag_t>::__get_attrs>;
-      using __attrs_t     = __apply_result_t<__get_attrs_t, __base_t const &>;
-
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto get_env() const noexcept -> __attrs_t
-      {
-        return __apply(__sexpr_impl<__tag_t>::__get_attrs, __c_upcast<__base_t>(*this));
-      }
-
-      template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures()
-      {
-        using namespace __detail;
-        static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
-        using __self_t = __copy_cvref_t<_Self, __sexpr>;
-        if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t, _Env...>)
-        {
-          return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t, _Env...>();
-        }
-        else if constexpr (__has_get_completion_signatures_v<__tag_t, __self_t>)
-        {
-          return __sexpr_impl<__tag_t>::template __get_completion_signatures<__self_t>();
-        }
-        else if constexpr (sizeof...(_Env) == 0)
-        {
-          return __throw_dependent_sender_error<_Self>();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(
-            __unrecognized_sender_error_t<_Self, _Env...>());
-        }
-      }
-
-      // Non-standard extension:
-      template <class _Self, receiver _Receiver>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      static constexpr auto __static_connect(_Self&& __self, _Receiver __rcvr) noexcept(
-        __noexcept_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>)
-        -> __result_of<__sexpr_impl<__tag_t>::__connect, __copy_cvref_t<_Self, __sexpr>, _Receiver>
-      {
-        static_assert(STDEXEC_IS_BASE_OF(__sexpr, __decay_t<_Self>));
-        return __sexpr_impl<__tag_t>::__connect(STDEXEC::__c_upcast<__sexpr>(
-                                                  static_cast<_Self&&>(__self)),
-                                                static_cast<_Receiver&&>(__rcvr));
-      }
-
-      template <receiver _Receiver>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto connect(_Receiver __rcvr) && noexcept(
-        __noexcept_of<__sexpr_impl<__tag_t>::__connect, __sexpr, _Receiver>)
-        -> __result_of<__sexpr_impl<__tag_t>::__connect, __sexpr, _Receiver>
-      {
-        return __sexpr_impl<__tag_t>::__connect(static_cast<__sexpr&&>(*this),
-                                                static_cast<_Receiver&&>(__rcvr));
-      }
-
-      template <receiver _Receiver>
-        requires __std::copy_constructible<__sexpr>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      constexpr auto connect(_Receiver __rcvr) const & noexcept(
-        __noexcept_of<__sexpr_impl<__tag_t>::__connect, __sexpr const &, _Receiver>)
-        -> __result_of<__sexpr_impl<__tag_t>::__connect, __sexpr const &, _Receiver>
-      {
-        return __sexpr_impl<__tag_t>::__connect(*this, static_cast<_Receiver&&>(__rcvr));
-      }
-
-      // Non-standard extension:
-      template <class _Self, receiver _Receiver>
-      STDEXEC_ATTRIBUTE(nodiscard, always_inline)
-      static constexpr auto submit(_Self&& __self, _Receiver&& __rcvr) noexcept(
-        __noexcept_of<__sexpr_impl<__tag_t>::__submit, __copy_cvref_t<_Self, __sexpr>, _Receiver>)
-        -> __result_of<__sexpr_impl<__tag_t>::__submit, __copy_cvref_t<_Self, __sexpr>, _Receiver>
-      {
-        return __sexpr_impl<__tag_t>::__submit(STDEXEC::__c_upcast<__sexpr>(
-                                                 static_cast<_Self&&>(__self)),
-                                               static_cast<_Receiver&&>(__rcvr));
-      }
-    };
-
-    template <class _Tag, class _Data, class... _Child>
-    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
-    __sexpr(_Tag, _Data, _Child...) -> __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-#  if !STDEXEC_USE_MODULES()
-  }  // anonymous namespace
-#  endif
-
-  // The __demangle_t utility defined below is used to pretty-print the type
-  // names of senders in compiler diagnostics.
-  namespace __detail
-  {
-    template <class _Tag, class _Data, class... _Child>
-    using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>::type;
-
-    template <auto _Descriptor>
-    extern __mtype<__mcall1<decltype(_Descriptor()), __q<__basic_sender_t>>>
-      __demangle_v<__sexpr<_Descriptor>>;
-  }  // namespace __detail
+  template <class _Tag, class _Data, class... _Child>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+  __sexpr(_Tag, _Data, _Child...) -> __sexpr<_Tag, _Data, _Child...>;
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

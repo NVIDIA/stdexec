@@ -477,7 +477,7 @@ namespace experimental::execution::__shared
       {
         return STDEXEC::__throw_compile_time_error<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
                                                    _WHERE_(_IN_ALGORITHM_, _Tag),
-                                                   _WITH_PRETTY_SENDER_<_CvChild>>();
+                                                   _WITH_SENDER_<_CvChild>>();
       }
     }
 

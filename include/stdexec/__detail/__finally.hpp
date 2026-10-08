@@ -330,7 +330,7 @@ namespace STDEXEC
               _WHAT_(_INVALID_ARGUMENT_TO_THE_FINALLY_ALGORITHM_),
               _WHERE_(_IN_ALGORITHM_, __finally_t),
               _WHY_(_THE_FINAL_SENDER_MUST_BE_A_SENDER_OF_VOID_),
-              _WITH_PRETTY_SENDER_<_CvFinalSender>>();
+              _WITH_SENDER_<_CvFinalSender>>();
           }
           else
           {
