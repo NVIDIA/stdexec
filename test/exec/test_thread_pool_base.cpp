@@ -22,6 +22,7 @@
 #include <cstdint>
 #include <exception>
 #include <limits>
+#include <utility>
 
 namespace ex = STDEXEC;
 
@@ -173,6 +174,29 @@ namespace
     for (std::size_t i = 0; i < visits.size(); ++i)
     {
       CHECK(visits[i] == (i < static_cast<std::size_t>(shape) ? 1 : 0));
+    }
+  }
+
+  TEST_CASE("thread_pool_base bulk covers a maximal uint8 shape", "[thread_pool_base][bulk]")
+  {
+    inline_test_thread_pool pool;
+    pool.parallelism_ = 256;
+    completion_state state;
+    std::array<int, 255> visits{};
+
+    auto sndr = ex::schedule(pool.get_scheduler())
+              | ex::bulk_unchunked(ex::par,
+                                   std::uint8_t{255},
+                                   [&](std::uint8_t i) noexcept { ++visits[i]; });
+    auto op = ex::connect(std::move(sndr), counting_receiver{&state});
+    ex::start(op);
+
+    CHECK(state.completions_ == 1);
+    CHECK_FALSE(state.error_);
+    CHECK(pool.enqueued_ == 256);
+    for (int count: visits)
+    {
+      CHECK(count == 1);
     }
   }
 
