@@ -33,7 +33,6 @@ import stdexec;
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>
-#    include <type_traits>
 #  endif
 
 #  include "__prologue.hpp"
@@ -42,11 +41,9 @@ namespace STDEXEC
 {
   namespace __detail
   {
-    // For template arguments deduced from a forwarding-reference parameter:
-    // lvalues deduce to T&; rvalues deduce to T, preserving const qualification.
-    // This check assumes deduction, not explicitly supplied template arguments.
+    // For deduced forwarding-reference arguments, rejects lvalues and const rvalues.
     template <class _Ty>
-    concept __non_const_rvalue = (!std::is_lvalue_reference_v<_Ty>) && (!STDEXEC_IS_CONST(_Ty));
+    concept __non_const_rvalue = !STDEXEC_IS_SAME(_Ty, _Ty const);
 
     template <__disposition _Disposition>
     struct __completion_tag
