@@ -499,6 +499,95 @@ namespace experimental::execution
       __is_factory_of_suitable_sender<_Factory, _Func, _Receiver, _Args...>
       && (__is_callable_pointer<_Factory> || __is_empty_callable<_Factory>);
 
+    //! A frame allocator whose allocate is declared noexcept. It exists only to
+    //! be named in unevaluated operands, so its members are never defined.
+    template <class _Ty>
+    struct __nothrow_frame_allocator_stub
+    {
+      using value_type = _Ty;
+
+      __nothrow_frame_allocator_stub() = default;
+
+      template <class _Uy>
+      constexpr __nothrow_frame_allocator_stub(__nothrow_frame_allocator_stub<_Uy> const &) noexcept
+      {}
+
+      auto allocate(std::size_t) noexcept -> _Ty *;
+      void deallocate(_Ty *, std::size_t) noexcept;
+
+      friend constexpr auto operator==(__nothrow_frame_allocator_stub,
+                                       __nothrow_frame_allocator_stub) noexcept -> bool = default;
+    };
+
+    //! A receiver used only to check, at construction, whether connecting the
+    //! factory's sender can throw. It is the type-erased receiver _Receiver
+    //! except that its environment's frame allocator is declared not to throw.
+    //! Frame-allocation failure is the caller's concern (it appears in the
+    //! conditional noexcept of function's connect), so a noexcept function type
+    //! promises only that the type-erased path doesn't throw *other than* by
+    //! failing to allocate a frame. In particular, a noexcept function whose
+    //! factory returns another noexcept function is accepted, even though the
+    //! inner function's connect allocates its frame through the outer one's
+    //! type-erased frame allocator.
+    //!
+    //! This is sound as long as a sender's connect depends on the frame
+    //! allocator's exception behaviour only through calls to allocate: the check
+    //! sees this stub's type, while at run time the sender sees the type-erased
+    //! receiver's frame allocator.
+    template <class _Receiver>
+    struct __nothrow_frame_allocation_receiver : _Receiver
+    {
+      using __prop_t = prop<get_frame_allocator_t, __nothrow_frame_allocator_stub<std::byte>>;
+
+      auto get_env() const noexcept -> __join_env_t<__prop_t, env_of_t<_Receiver>>;
+    };
+
+    //! Satisfied when _Factory can be invoked as a const lvalue with arguments
+    //! of types _Args without throwing.
+    template <class _Factory, class... _Args>
+    concept __factory_is_nothrow_invocable = __nothrow_invocable<_Factory const &, _Args...>;
+
+    //! Satisfied when transform_sender, given a _Sender and an _Env, returns a
+    //! sender of a different type, i.e. a domain has transformed it.
+    template <class _Sender, class _Env>
+    concept __is_transformed_for =
+      !__same_as<__decay_t<transform_sender_result_t<_Sender, _Env>>, __decay_t<_Sender>>;
+
+    //! Satisfied when connecting the sender _Factory returns to the type-erased
+    //! receiver _Receiver can't throw, short of failing to allocate a frame (see
+    //! __nothrow_frame_allocation_receiver). If a domain transforms that sender,
+    //! the transformation and the transformed sender's connect are trusted
+    //! rather than checked. The domains that can transform it depend only on
+    //! the sender and on the queries the function type declares: _Receiver's
+    //! environment provides nothing else but a frame allocator, so the
+    //! caller's domain can't reach the sender. Those domains are chosen only
+    //! implicitly (declaring a get_scheduler_t query, for example, brings that
+    //! scheduler's domain into play) and nothing checks the choice, so
+    //! declaring the function type noexcept vouches for whatever they do.
+    template <class _Factory, class _Receiver, class... _Args>
+    concept __factory_sender_connects_without_throwing =
+      __is_transformed_for<__invoke_result_t<_Factory const &, _Args...>,
+                           env_of_t<__nothrow_frame_allocation_receiver<_Receiver>>>
+      || __nothrow_connectable<__invoke_result_t<_Factory const &, _Args...>,
+                               __nothrow_frame_allocation_receiver<_Receiver>>;
+
+    //! Defines the additional constraints on the sender factory of a noexcept
+    //! function type, whose noexcept promises that the type-erased path
+    //! (invoking the factory and connecting the sender it returns) doesn't
+    //! throw. Satisfied when the function type isn't noexcept, or when _Factory:
+    //!  - is nothrow-invocable with the curried arguments as connect() && passes
+    //!    them (rvalues, unless the parameter type is a reference), and
+    //!  - returns a sender that connects to _Receiver without throwing as
+    //!    defined by __factory_sender_connects_without_throwing.
+    //! These are the only checks: each is exact, and when one fails, the
+    //! function type's author can fix it. Anything a domain transformation
+    //! does is trusted instead.
+    template <bool _Nothrow, class _Factory, class _Receiver, class... _Args>
+    concept __meets_noexcept_contract =
+      (!_Nothrow)
+      || (__factory_is_nothrow_invocable<_Factory, _Args...>
+          && __factory_sender_connects_without_throwing<_Factory, _Receiver, _Args...>);
+
     //! A class template that adapts a user-provided callable expecting a "self" reference
     //! in the first argument to a factory that accepts a pointer to (const) void, which
     //! is what's actually invoked by the underlying __function
@@ -643,6 +732,7 @@ namespace experimental::execution
       template <class _Factory>
         requires __not_decays_to<_Factory, __function>
               && __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
+              && __meets_noexcept_contract<_Nothrow, _Factory, __receiver_t, _Args...>
       constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory)
         noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
         : __function(static_cast<__curried_param_t<_Args>>(__args)..., __factory, __tag{})
@@ -748,6 +838,11 @@ namespace experimental::execution
                                        __receiver_t,
                                        __declared_self_t<_Self, _SelfBox>,
                                        _Args...>
+              && __meets_noexcept_contract<_Nothrow,
+                                           _Factory,
+                                           __receiver_t,
+                                           __declared_self_t<_Self, _SelfBox>,
+                                           _Args...>
       constexpr explicit __function(_Self &&__self,
                                     __curried_param_t<_Args>... __args,
                                     _Factory __fact)
@@ -1084,10 +1179,17 @@ namespace experimental::execution
   //! that order.
   //!
   //! Declaring any form noexcept promises that the type-erased path (invoking
-  //! the factory and connecting the sender it returns) doesn't throw. For the
-  //! forms with computed completions it also drops set_error(exception_ptr);
-  //! for the sender_tag form the completion signatures are exactly as given,
-  //! since they describe only the asynchronous contract.
+  //! the factory and connecting the sender it returns) doesn't throw, except
+  //! by failing to allocate a frame, which connect's own conditional noexcept
+  //! accounts for. For the forms with computed completions it also drops
+  //! set_error(exception_ptr); for the sender_tag form the completion
+  //! signatures are exactly as given, since they describe only the
+  //! asynchronous contract. The constructor enforces the promise where it can
+  //! be checked exactly: it requires the factory to be nothrow-invocable with
+  //! the curried arguments and, unless a domain transforms the factory's
+  //! sender, that sender's connect not to throw. A domain transformation and
+  //! the transformed sender's connect are trusted; if either throws anyway,
+  //! std::terminate is called.
   //!
   //! Future: support C-style ellipsis arguments in the function signature to
   //! permit type-erased arguments as well, like function<int(bar, baz, ...)> (a

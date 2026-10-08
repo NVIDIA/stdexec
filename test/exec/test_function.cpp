@@ -478,6 +478,210 @@ namespace
     REQUIRE(count == 1);
   }
 
+  //! A sender completing with set_value(Value) whose connect is
+  //! noexcept(NothrowConnect)
+  template <bool NothrowConnect, int Value>
+  struct connect_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class Receiver>
+    struct opstate
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      Receiver rcvr;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr), Value);
+      }
+    };
+
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures() noexcept  //
+      -> ex::completion_signatures<ex::set_value_t(int)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept(NothrowConnect) -> opstate<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+  };
+
+  using nothrow_connect_sender  = connect_sender<true, 1>;
+  using throwing_connect_sender = connect_sender<false, 2>;
+
+  //! A domain that rewrites a nothrow_connect_sender into a
+  //! throwing_connect_sender, with a transformation that isn't declared
+  //! noexcept either
+  struct rewriting_domain
+  {
+    template <class OpTag, class Env>
+    auto
+    transform_sender(OpTag, nothrow_connect_sender &&, Env const &) const -> throwing_connect_sender
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("a noexcept function type constrains its sender factory", "[types][function]")
+  {
+    auto returns_throwing_connect_sender = []() noexcept
+    {
+      return throwing_connect_sender();
+    };
+    auto throwing_factory = []()
+    {
+      return ex::just(42);
+    };
+
+    SECTION("the factory must be nothrow-invocable")
+    {
+      STATIC_REQUIRE(
+        !std::constructible_from<exec::function<int() noexcept>, decltype(throwing_factory)>);
+      STATIC_REQUIRE(std::constructible_from<exec::function<int()>, decltype(throwing_factory)>);
+    }
+
+    SECTION("the factory must be nothrow-invocable as a const lvalue")
+    {
+      // only the overload that function actually calls can throw
+      struct throws_as_const_lvalue
+      {
+        auto operator()() const &
+        {
+          return ex::just(42);
+        }
+
+        auto operator()() && noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      STATIC_REQUIRE(
+        !std::constructible_from<exec::function<int() noexcept>, throws_as_const_lvalue>);
+      STATIC_REQUIRE(std::constructible_from<exec::function<int()>, throws_as_const_lvalue>);
+    }
+
+    SECTION("the factory must be nothrow-invocable with the curried arguments")
+    {
+      using fn = exec::function<int(std::string const &) noexcept>;
+
+      // copying the referenced std::string into the by-value parameter may
+      // allocate
+      auto takes_by_value = [](std::string) noexcept
+      {
+        return ex::just(42);
+      };
+      auto takes_by_ref = [](std::string const &) noexcept
+      {
+        return ex::just(42);
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string &, decltype(takes_by_value)>);
+      STATIC_REQUIRE(std::constructible_from<fn, std::string &, decltype(takes_by_ref)>);
+    }
+
+    SECTION("the factory's sender must connect without throwing")
+    {
+      STATIC_REQUIRE(!std::constructible_from<exec::function<int() noexcept>,
+                                              decltype(returns_throwing_connect_sender)>);
+      STATIC_REQUIRE(
+        std::constructible_from<exec::function<int()>, decltype(returns_throwing_connect_sender)>);
+    }
+
+    SECTION("the member-function form is checked too")
+    {
+      struct example
+      {
+        auto nothrow_get() const noexcept
+        {
+          return ex::just(42);
+        }
+
+        auto throwing_get() const
+        {
+          return ex::just(42);
+        }
+      };
+
+      using nothrow_fn  = exec::function<int() const & noexcept>;
+      using throwing_fn = exec::function<int() const &>;
+
+      STATIC_REQUIRE(
+        std::constructible_from<nothrow_fn, example const &, decltype(&example::nothrow_get)>);
+      STATIC_REQUIRE(
+        !std::constructible_from<nothrow_fn, example const &, decltype(&example::throwing_get)>);
+      STATIC_REQUIRE(
+        std::constructible_from<throwing_fn, example const &, decltype(&example::throwing_get)>);
+    }
+
+    SECTION("a noexcept function may return another noexcept function")
+    {
+      // the inner function's connect allocates its frame through the outer
+      // function's type-erased frame allocator, which can throw; that is the
+      // caller's concern, not a breach of the outer function's noexcept
+      using fn = exec::function<int() noexcept>;
+
+      fn sndr([]() noexcept { return fn([]() noexcept { return ex::just(42); }); });
+
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a domain's transformation and the transformed sender's connect are trusted")
+    {
+      using fn =
+        exec::function<int() noexcept, exec::queries<rewriting_domain(ex::get_domain_t) noexcept>>;
+
+      auto returns_nothrow_connect_sender = []() noexcept
+      {
+        return nothrow_connect_sender();
+      };
+
+      STATIC_REQUIRE(std::constructible_from<fn, decltype(returns_nothrow_connect_sender)>);
+
+      fn sndr(returns_nothrow_connect_sender);
+
+      auto [ret] = ex::sync_wait(std::move(sndr)
+                                 | ex::write_env(ex::prop(ex::get_domain, rewriting_domain())))
+                     .value();
+
+      // the throwing_connect_sender ran, so the domain did rewrite the sender
+      REQUIRE(ret == 2);
+    }
+  }
+
+  TEST_CASE("function's constructor rejects a sender that is broken only in the receiver's "
+            "environment",
+            "[types][function]")
+  {
+    // read_env(get_stop_token) | then(f) is a sender whatever f is; whether f
+    // can take the stop token is only discovered when the completions are
+    // computed against the receiver's environment
+    using fn =
+      exec::function<int(), exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>>;
+
+    auto takes_token = []() noexcept
+    {
+      return ex::read_env(ex::get_stop_token)
+           | ex::then([](ex::inplace_stop_token) noexcept { return 42; });
+    };
+    auto takes_string = []() noexcept
+    {
+      return ex::read_env(ex::get_stop_token)
+           | ex::then([](std::string const &) noexcept { return 42; });
+    };
+
+    STATIC_REQUIRE(std::constructible_from<fn, decltype(takes_token)>);
+    STATIC_REQUIRE(!std::constructible_from<fn, decltype(takes_string)>);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by the sender factory propagates out of connect",
             "[types][function]")
