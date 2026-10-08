@@ -502,6 +502,22 @@ namespace experimental::execution
       }
     };
 
+    //! The type with which function's constructor takes a curried argument
+    //! declared as _Ty: `_Ty const &` when _Ty is a non-reference type that is
+    //! both trivially copy-constructible and trivially move-constructible,
+    //! otherwise `_Ty &&`. An lvalue is therefore accepted (and copied)
+    //! exactly when writing std::move would change nothing; otherwise the
+    //! caller must move or copy explicitly (e.g. with auto(x)), so a costly
+    //! copy is never made silently. Both traits are required: with a
+    //! `const &` parameter even std::move(x) copies, so a type whose move is
+    //! non-trivial must not take this path. Reference types are unchanged.
+    template <class _Ty>
+    using __curried_param_t =
+      __if_c<!std::is_reference_v<_Ty> && std::is_trivially_copy_constructible_v<_Ty>
+               && std::is_trivially_move_constructible_v<_Ty>,
+             _Ty const &,
+             _Ty &&>;
+
     //! the main implementation of the type-erasing sender function<...>
     //
     //! @tparam _Sigs The supported completion signatures
@@ -580,10 +596,10 @@ namespace experimental::execution
       {};
 
       template <class _Factory>
-      constexpr explicit __function(_Args &&...__args, _Factory __factory, __tag)
-        noexcept(__nothrow_move_constructible<_Args...>)
+      constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory, __tag)
+        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
         : __make_opstate_(&__mk_opstate<_Factory>)
-        , __args_(static_cast<_Args &&>(__args)...)
+        , __args_(static_cast<__curried_param_t<_Args>>(__args)...)
       {
         static_assert(sizeof(_Factory) <= sizeof(__make_sender_));
         static_assert(alignof(_Factory) <= __factory_storage_align);
@@ -600,9 +616,9 @@ namespace experimental::execution
       template <class _Factory>
         requires __not_decays_to<_Factory, __function>
               && __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
-      constexpr explicit __function(_Args &&...__args, _Factory __factory)
-        noexcept(__nothrow_move_constructible<_Args...>)
-        : __function(static_cast<_Args &&>(__args)..., __factory, __tag{})
+      constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory)
+        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
+        : __function(static_cast<__curried_param_t<_Args>>(__args)..., __factory, __tag{})
       {}
 
       //! this implementation of get_completion_signatures is taken directly
@@ -687,13 +703,15 @@ namespace experimental::execution
                                        __receiver_t,
                                        __declared_self_t<_Self, _SelfBox>,
                                        _Args...>
-      constexpr explicit __function(_Self &&__self, _Args &&...__args, _Factory __fact)
+      constexpr explicit __function(_Self &&__self,
+                                    __curried_param_t<_Args>... __args,
+                                    _Factory __fact)
         // like the base's constructor: storing the self pointer and the
-        // (pointer or empty) factory can't throw, so only the curried
-        // arguments' moves matter
-        noexcept(__nothrow_move_constructible<_Args...>)
+        // (pointer or empty) factory can't throw, so only initializing the
+        // curried arguments matters
+        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
         : __base(static_cast<__void_pointer>(std::addressof(__self)),
-                 static_cast<_Args &&>(__args)...,
+                 static_cast<__curried_param_t<_Args>>(__args)...,
                  __self_adapting_factory<_Factory, __declared_self_t<_Self, _SelfBox>>{__fact},
                  __tag{})
       {}
@@ -1008,6 +1026,11 @@ namespace experimental::execution
   //!
   //! `&&`, `const &&`, `const` without a ref-qualifier and `volatile` function
   //! types are not supported.
+  //!
+  //! The constructor takes each curried argument declared as T as `T const &`
+  //! when T is trivially copy- and move-constructible (so an lvalue `int` can
+  //! be passed directly), and as `T &&` otherwise (so copying a std::string
+  //! takes an explicit copy, e.g. auto(s)).
   //!
   //! When present, the completion signatures, queries and attrs must appear in
   //! that order. The sender_tag form can't be declared noexcept.
