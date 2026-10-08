@@ -134,10 +134,11 @@ namespace
                      std::uint8_t,
                      std::int8_t,
                      std::uint16_t,
-                     std::int16_t)
+                     std::int16_t,
+                     std::int32_t)
   {
     inline_test_thread_pool pool;
-    pool.parallelism_ = GENERATE(256u, 257u, 65'536u, 65'537u);
+    pool.parallelism_ = GENERATE(256u, 257u, 65'536u, 65'537u, 0x80000000u, 0xffffffffu);
     completion_state   state;
     std::array<int, 5> visits{};
     auto const         shape = GENERATE(TestType{1}, TestType{3}, TestType{5});

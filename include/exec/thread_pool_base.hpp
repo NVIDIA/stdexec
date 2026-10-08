@@ -38,6 +38,7 @@ import stdexec;
 #  include "../stdexec/__detail/__transform_completion_signatures.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
 
+#  include <algorithm>
 #  include <atomic>
 #  include <concepts>
 #  include <cstdint>
