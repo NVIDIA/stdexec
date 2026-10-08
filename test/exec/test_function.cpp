@@ -335,6 +335,149 @@ namespace
     REQUIRE(res.count == 1);
   }
 
+  //! An allocator whose allocate is declared noexcept, counting allocations
+  template <class T>
+  struct nothrow_allocator
+  {
+    using value_type = T;
+
+    int *count_ = nullptr;
+
+    nothrow_allocator() = default;
+
+    explicit nothrow_allocator(int *count) noexcept
+      : count_(count)
+    {}
+
+    template <class U>
+    nothrow_allocator(nothrow_allocator<U> const &other) noexcept
+      : count_(other.count_)
+    {}
+
+    T *allocate(std::size_t n) noexcept
+    {
+      if (count_)
+        ++*count_;
+      // a real nothrow frame allocator would draw on a pre-sized arena and
+      // terminate on exhaustion; std::allocator terminates here instead
+      return std::allocator<T>().allocate(n);
+    }
+
+    void deallocate(T *p, std::size_t n) noexcept
+    {
+      std::allocator<T>().deallocate(p, n);
+    }
+
+    template <class U>
+    bool operator==(nothrow_allocator<U> const &other) const noexcept
+    {
+      return count_ == other.count_;
+    }
+  };
+
+  template <class Env>
+  struct env_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    Env env_{};
+
+    auto get_env() const noexcept -> Env
+    {
+      return env_;
+    }
+
+    void set_value(auto &&...) noexcept {}
+
+    void set_error(auto &&) noexcept {}
+
+    void set_stopped() noexcept {}
+  };
+
+  template <class Sndr, class Rcvr>
+  inline constexpr bool nothrow_rvalue_connect = noexcept(
+    std::declval<Sndr>().connect(std::declval<Rcvr>()));
+
+  template <class Sndr, class Rcvr>
+  inline constexpr bool nothrow_lvalue_connect = noexcept(
+    std::declval<Sndr const &>().connect(std::declval<Rcvr>()));
+
+  TEST_CASE("function's connect is noexcept exactly when nothing on the path can throw",
+            "[types][function]")
+  {
+    using nothrow_fn  = exec::function<int() noexcept>;
+    using throwing_fn = exec::function<int()>;
+
+    using nothrow_env  = ex::prop<exec::get_frame_allocator_t, nothrow_allocator<std::byte>>;
+    using nothrow_rcvr = env_receiver<nothrow_env>;
+
+    SECTION("noexcept function type and nothrow frame allocator")
+    {
+      STATIC_REQUIRE(nothrow_rvalue_connect<nothrow_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(nothrow_lvalue_connect<nothrow_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(
+        noexcept(ex::connect(std::declval<nothrow_fn>(), std::declval<nothrow_rcvr>())));
+    }
+
+    SECTION("a function type without noexcept")
+    {
+      STATIC_REQUIRE(!nothrow_rvalue_connect<throwing_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(!nothrow_lvalue_connect<throwing_fn, nothrow_rcvr>);
+    }
+
+    SECTION("a frame allocator whose allocate can throw")
+    {
+      // no frame allocator in the environment: the default, std::allocator
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<ex::env<>>>);
+
+      using std_env = ex::prop<exec::get_frame_allocator_t, std::allocator<std::byte>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<std_env>>);
+
+      using pmr_env = ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<pmr_env>>);
+    }
+
+    SECTION("a declared frame allocator query is checked as declared")
+    {
+      using nothrow_decl_fn = exec::function<
+        int() noexcept,
+        exec::queries<nothrow_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+      STATIC_REQUIRE(nothrow_rvalue_connect<nothrow_decl_fn, nothrow_rcvr>);
+
+      using pmr_decl_fn = exec::function<
+        int() noexcept,
+        exec::queries<std::pmr::polymorphic_allocator<>(exec::get_frame_allocator_t) noexcept>>;
+      using pmr_env = ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<pmr_decl_fn, env_receiver<pmr_env>>);
+    }
+
+    SECTION("connect() const & also copies the curried arguments")
+    {
+      using fn = exec::function<int(std::string) noexcept>;
+      STATIC_REQUIRE(nothrow_rvalue_connect<fn, nothrow_rcvr>);
+      STATIC_REQUIRE(!nothrow_lvalue_connect<fn, nothrow_rcvr>);
+    }
+  }
+
+  TEST_CASE("a noexcept function allocates its frame with a nothrow frame allocator",
+            "[types][function]")
+  {
+    // big enough that the erased operation state can't be stored inline
+    using big = std::array<char, 256>;
+
+    int                          count = 0;
+    nothrow_allocator<std::byte> alloc{&count};
+
+    exec::function<big() noexcept> sndr([]() noexcept { return ex::just(big{}); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))
+                   .value();
+
+    REQUIRE(ret == big{});
+    REQUIRE(count == 1);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by the sender factory propagates out of connect",
             "[types][function]")
