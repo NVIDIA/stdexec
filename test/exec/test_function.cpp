@@ -26,6 +26,7 @@
 #include <memory>
 #include <memory_resource>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace ex = STDEXEC;
@@ -1096,6 +1097,111 @@ namespace
                                    }))
                      .value();
       REQUIRE(ret == 42);
+    }
+  }
+
+  struct trivial_move_only
+  {
+    trivial_move_only()                                     = default;
+    trivial_move_only(trivial_move_only const &)            = delete;
+    trivial_move_only(trivial_move_only &&)                 = default;
+    trivial_move_only &operator=(trivial_move_only const &) = delete;
+    trivial_move_only &operator=(trivial_move_only &&)      = default;
+    ~trivial_move_only()                                    = default;
+  };
+
+  //! Trivially copy- and move-constructible, but not trivially copyable,
+  //! because its assignment operators are user-provided.
+  struct trivial_construction_only
+  {
+    trivial_construction_only()                                  = default;
+    trivial_construction_only(trivial_construction_only const &) = default;
+    trivial_construction_only(trivial_construction_only &&)      = default;
+    trivial_construction_only &operator=(trivial_construction_only const &) noexcept
+    {
+      return *this;
+    }
+    trivial_construction_only &operator=(trivial_construction_only &&) noexcept
+    {
+      return *this;
+    }
+    ~trivial_construction_only() = default;
+  };
+
+  TEST_CASE("function takes trivially copy- and move-constructible curried arguments by const "
+            "reference and all others by rvalue reference",
+            "[types][function]")
+  {
+    using just_int_t = decltype(ex::just(0));
+
+    SECTION("an int may be an lvalue or an rvalue")
+    {
+      using fn      = exec::function<int(int)>;
+      using factory = just_int_t (*)(int);
+      STATIC_REQUIRE(std::constructible_from<fn, int &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, int const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, int, factory>);
+
+      int i      = 42;
+      auto [ret] = ex::sync_wait(fn(i, ex::just)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a class with trivial copy and move constructors may be an lvalue, whatever its "
+            "assignment operators")
+    {
+      // function only constructs its curried arguments, so their assignment
+      // operators don't matter
+      using type = trivial_construction_only;
+      STATIC_REQUIRE(!std::is_trivially_copyable_v<type>);
+      using fn      = exec::function<int(type)>;
+      using factory = just_int_t (*)(type);
+      STATIC_REQUIRE(std::constructible_from<fn, type &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, type, factory>);
+    }
+
+    SECTION("a type with a non-trivial copy or move must be an rvalue")
+    {
+      using fn      = exec::function<int(std::string)>;
+      using factory = just_int_t (*)(std::string);
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, std::string, factory>);
+    }
+
+    SECTION("a trivially copyable type whose copy constructor is deleted must be an rvalue")
+    {
+      STATIC_REQUIRE(std::is_trivially_copyable_v<trivial_move_only>);
+      using fn      = exec::function<int(trivial_move_only)>;
+      using factory = just_int_t (*)(trivial_move_only);
+      STATIC_REQUIRE(!std::constructible_from<fn, trivial_move_only &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, trivial_move_only, factory>);
+    }
+
+    SECTION("reference-typed parameters are unchanged")
+    {
+      using lref_fn      = exec::function<int(int &)>;
+      using lref_factory = just_int_t (*)(int &);
+      STATIC_REQUIRE(std::constructible_from<lref_fn, int &, lref_factory>);
+      STATIC_REQUIRE(!std::constructible_from<lref_fn, int const &, lref_factory>);
+      STATIC_REQUIRE(!std::constructible_from<lref_fn, int, lref_factory>);
+
+      using rref_fn      = exec::function<int(int &&)>;
+      using rref_factory = just_int_t (*)(int &&);
+      STATIC_REQUIRE(!std::constructible_from<rref_fn, int &, rref_factory>);
+      STATIC_REQUIRE(std::constructible_from<rref_fn, int, rref_factory>);
+    }
+
+    SECTION("the rule applies to member functions' explicit arguments too")
+    {
+      struct example;
+      using fn      = exec::function<int(int) const &>;
+      using factory = just_int_t (*)(example const &, int);
+      STATIC_REQUIRE(std::constructible_from<fn, example const &, int &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<exec::function<int(std::string) const &>,
+                                              example const &,
+                                              std::string &,
+                                              just_int_t (*)(example const &, std::string)>);
     }
   }
 
