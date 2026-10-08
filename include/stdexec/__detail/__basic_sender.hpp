@@ -332,9 +332,6 @@ namespace STDEXEC
   struct __sexpr_impl : __sexpr_defaults
   {};
 
-  template <class _Tag, class _Data, class... _Child>
-  using __sexpr_t = __sexpr<STDEXEC_SEXPR_DESCRIPTOR(_Tag, _Data, _Child...)>;
-
   //! A dummy type used only for diagnostic purposes.
   //! See `__sexpr` for the implementation of P2300's _`basic-sender`_.
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -355,14 +352,15 @@ namespace STDEXEC
     //! P2300's [_`basic-sender`_](https://eel.is/c++draft/exec#snd.expos-24),
     //! but is not an exact implementation. Note: The struct named
     //! `__basic_sender` is just a dummy type and is also not _`basic-sender`_.
+    STDEXEC_MODULE_EXPORT_AUTHORING
     template <auto _DescriptorFn>
-    struct __sexpr : __minvoke<decltype(_DescriptorFn()), __qq<__tuple>>
+    struct __sexpr : __mcall1<decltype(_DescriptorFn()), __qq<__tuple>>
     {
       using sender_concept = sender_tag;
 
       using __desc_t      = decltype(_DescriptorFn());
       using __tag_t       = __desc_t::__tag;
-      using __base_t      = __minvoke<__desc_t, __qq<__tuple>>;
+      using __base_t      = __mcall1<__desc_t, __qq<__tuple>>;
       using __get_attrs_t = __mtypeof<__sexpr_impl<__tag_t>::__get_attrs>;
       using __attrs_t     = __apply_result_t<__get_attrs_t, __base_t const &>;
 
@@ -450,32 +448,6 @@ namespace STDEXEC
   }  // anonymous namespace
 #  endif
 
-  //////////////////////////////////////////////////////////////////////////////
-  // __make_sexpr
-  //! A tagged function-object
-  //! Takes data and children and
-  //! returns `__sexpr_t<_Tag, _Data, _Child...>{_Tag(), data, children...}`.
-  namespace __detail
-  {
-    template <class _Tag>
-    struct __make_sexpr_t
-    {
-      template <class _Data = __, class... _Child>
-      constexpr auto operator()(_Data&& __data = {}, _Child&&... __child) const
-        noexcept(__nothrow_decay_copyable<_Data, _Child...>)
-          -> __sexpr_t<_Tag, __decay_t<_Data>, __decay_t<_Child>...>
-      {
-        return {
-          {_Tag(), static_cast<_Data&&>(__data), static_cast<_Child&&>(__child)...}
-        };
-      }
-    };
-  }  // namespace __detail
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Tag>
-  inline constexpr __detail::__make_sexpr_t<_Tag> __make_sexpr{};
-
   // The __demangle_t utility defined below is used to pretty-print the type
   // names of senders in compiler diagnostics.
   namespace __detail
@@ -484,7 +456,7 @@ namespace STDEXEC
     using __basic_sender_t = __basic_sender<_Tag, _Data, __demangle_t<_Child>...>::type;
 
     template <auto _Descriptor>
-    extern __mtype<__minvoke<decltype(_Descriptor()), __q<__basic_sender_t>>>
+    extern __mtype<__mcall1<decltype(_Descriptor()), __q<__basic_sender_t>>>
       __demangle_v<__sexpr<_Descriptor>>;
   }  // namespace __detail
 }  // namespace STDEXEC

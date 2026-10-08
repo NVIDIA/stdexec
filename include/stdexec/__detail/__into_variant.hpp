@@ -203,7 +203,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<into_variant_t>(__(), static_cast<_Sender&&>(__sndr));
+      return __sexpr{into_variant_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a

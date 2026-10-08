@@ -173,7 +173,7 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(_Ts&&... __ts) const noexcept(__nothrow_decay_copyable<_Ts...>)
     {
-      return __make_sexpr<just_t>(__tuple{static_cast<_Ts&&>(__ts)...});
+      return __sexpr{just_t(), __tuple{static_cast<_Ts&&>(__ts)...}};
     }
   };
 
@@ -234,7 +234,7 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(_Error&& __err) const noexcept(__nothrow_decay_copyable<_Error>)
     {
-      return __make_sexpr<just_error_t>(__tuple{static_cast<_Error&&>(__err)});
+      return __sexpr{just_error_t(), __tuple{static_cast<_Error&&>(__err)}};
     }
   };
 
@@ -288,7 +288,7 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()() const noexcept
     {
-      return __make_sexpr<_Tag>(__tuple{});
+      return __sexpr{_Tag(), __tuple{}};
     }
   };
 

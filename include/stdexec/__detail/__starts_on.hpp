@@ -196,8 +196,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<starts_on_t>(static_cast<_Scheduler&&>(__sched),
-                                       static_cast<_Sender&&>(__sndr));
+      return __sexpr{starts_on_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Sender&&>(__sndr)};
     }
 
     template <__decay_copyable _Sender>

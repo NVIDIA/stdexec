@@ -182,8 +182,7 @@ namespace STDEXEC
       requires __callable<_Fun>
     auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
     {
-      return __make_sexpr<upon_stopped_t>(static_cast<_Fun&&>(__fun),
-                                          static_cast<_Sender&&>(__sndr));
+      return __sexpr{upon_stopped_t(), static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure that, when applied to a

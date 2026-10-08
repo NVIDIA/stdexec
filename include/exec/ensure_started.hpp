@@ -51,10 +51,10 @@ namespace experimental::execution
       }
       else
       {
-        return STDEXEC::transform_sender(
-          STDEXEC::__make_sexpr<ensure_started_t>(static_cast<_Env&&>(__env),
-                                                  static_cast<_CvSender&&>(__sndr)),
-          __env);
+        return STDEXEC::transform_sender(STDEXEC::__sexpr{ensure_started_t(),
+                                                          static_cast<_Env&&>(__env),
+                                                          static_cast<_CvSender&&>(__sndr)},
+                                         __env);
       }
     }
 

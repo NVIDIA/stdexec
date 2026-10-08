@@ -44,7 +44,7 @@ namespace
       noexcept(std::is_nothrow_constructible_v<std::remove_cvref_t<Sender>, Sender>
                && std::is_nothrow_constructible_v<std::remove_cvref_t<Env>, Env>)
     {
-      return ex::__make_sexpr<with_attrs_t>(std::forward<Env>(env), std::forward<Sender>(sender));
+      return ex::__sexpr{with_attrs_t(), std::forward<Env>(env), std::forward<Sender>(sender)};
     }
   };
 

@@ -287,9 +287,9 @@ namespace experimental::execution
     constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const  //
       -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<fork_join_t>(STDEXEC::__tuple{static_cast<Closures&&>(
-                                                  closures)...},
-                                                static_cast<Sndr&&>(sndr));
+      return STDEXEC::__sexpr{fork_join_t(),
+                              STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
+                              static_cast<Sndr&&>(sndr)};
     }
 
     template <class... Closures>

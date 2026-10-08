@@ -69,8 +69,7 @@ namespace STDEXEC
     template <sender _Sender, class _Env>
     constexpr auto operator()(_Sender&& __sndr, _Env __env) const
     {
-      return __make_sexpr<__write_env_t>(static_cast<_Env&&>(__env),
-                                         static_cast<_Sender&&>(__sndr));
+      return __sexpr{__write_env_t(), static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)};
     }
 
     template <class _Env>

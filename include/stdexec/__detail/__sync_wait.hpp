@@ -388,23 +388,23 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
     STDEXEC_CONSTEXPR_CXX23 auto apply_sender(_CvSender&& __sndr) const  //
       -> std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>>
     {
-      STDEXEC::__sync_wait::__state                                       __local_state{};
-      std::optional<STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>> __result{};
+      using __values_t   = STDEXEC::__sync_wait::__value_tuple_for_t<_CvSender>;
+      using __receiver_t = STDEXEC::__sync_wait::__receiver_t<_CvSender>;
+      auto __state       = STDEXEC::__sync_wait::__state{};
+      auto __result      = std::optional<__values_t>{};
 
       // Launch the sender with a continuation that will fill in the __result optional or set the
-      // exception_ptr in __local_state.
-      [[maybe_unused]]
+      // exception_ptr in __state.
       auto __op = STDEXEC::connect(static_cast<_CvSender&&>(__sndr),
-                                   STDEXEC::__sync_wait::__receiver_t<_CvSender>{&__local_state,
-                                                                                 &__result});
+                                   __receiver_t{&__state, &__result});
       STDEXEC::start(__op);
 
       // Wait for the variant to be filled in.
-      __local_state.__loop_.run();
+      __state.__loop_.run();
 
-      if (__local_state.__eptr_)
+      if (__state.__eptr_)
       {
-        std::rethrow_exception(static_cast<std::exception_ptr&&>(__local_state.__eptr_));
+        std::rethrow_exception(static_cast<std::exception_ptr&&>(__state.__eptr_));
       }
 
       return __result;

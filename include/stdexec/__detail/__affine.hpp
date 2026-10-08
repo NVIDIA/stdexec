@@ -66,7 +66,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<affine_t>({}, static_cast<_Sender &&>(__sndr));
+      return __sexpr{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
     constexpr auto operator()() const noexcept

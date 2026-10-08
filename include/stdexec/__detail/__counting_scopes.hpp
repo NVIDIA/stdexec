@@ -796,7 +796,7 @@ namespace STDEXEC
     sender auto join() noexcept
     {
       // [exec.simple.counting.mem] paragraph 4
-      return __make_sexpr<__counting_scopes::__scope_join_t>(this);
+      return __sexpr{__counting_scopes::__scope_join_t(), this};
     }
 
    private:
@@ -869,7 +869,7 @@ namespace STDEXEC
     [[nodiscard]]
     sender auto join() noexcept
     {
-      return __make_sexpr<__counting_scopes::__scope_join_t>(this);
+      return __sexpr{__counting_scopes::__scope_join_t(), this};
     }
 
     void request_stop() noexcept

@@ -934,8 +934,7 @@ namespace STDEXEC
         }
       };
 
-      return __make_sexpr<spawn_future_t>(
-        std::unique_ptr<__spawn_future_state_t, __abandoner>(__op));
+      return __sexpr{spawn_future_t(), std::unique_ptr<__spawn_future_state_t, __abandoner>(__op)};
     }
   };
 

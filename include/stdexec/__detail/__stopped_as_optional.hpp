@@ -246,7 +246,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
+      return __sexpr{stopped_as_optional_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.

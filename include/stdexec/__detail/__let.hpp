@@ -516,7 +516,7 @@ namespace STDEXEC
       template <sender _Sender, __movable_value _Fun>
       constexpr auto operator()(_Sender&& __sndr, _Fun __fn) const -> __well_formed_sender auto
       {
-        return __make_sexpr<_LetTag>(static_cast<_Fun&&>(__fn), static_cast<_Sender&&>(__sndr));
+        return __sexpr{_LetTag(), static_cast<_Fun&&>(__fn), static_cast<_Sender&&>(__sndr)};
       }
 
       template <class _Fun>

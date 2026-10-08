@@ -198,10 +198,11 @@ namespace STDEXEC
       noexcept(__nothrow_decay_copyable<_Sender0, _Sender1, _Senders...>) -> __well_formed_sender
       auto
     {
-      return __make_sexpr<when_all_t>(__(),
-                                      static_cast<_Sender0&&>(__sndr0),
-                                      static_cast<_Sender1&&>(__sndr1),
-                                      static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_t(),
+                     __(),
+                     static_cast<_Sender0&&>(__sndr0),
+                     static_cast<_Sender1&&>(__sndr1),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
   };
 
@@ -264,7 +265,7 @@ namespace STDEXEC
     template <sender... _Senders>
     constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_with_variant_t(), __(), static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -305,8 +306,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_t>(static_cast<_Scheduler&&>(__sched),
-                                               static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{transfer_when_all_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -350,8 +352,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_with_variant_t>(static_cast<_Scheduler&&>(__sched),
-                                                            static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{transfer_when_all_with_variant_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>

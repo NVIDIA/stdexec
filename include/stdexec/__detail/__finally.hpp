@@ -57,9 +57,10 @@ namespace STDEXEC
     constexpr auto operator()(_Initial&& __initial, _Final&& __final) const  //
       -> __well_formed_sender auto
     {
-      return __make_sexpr<__finally_t>({},
-                                       static_cast<_Initial&&>(__initial),
-                                       static_cast<_Final&&>(__final));
+      return __sexpr{__finally_t(),
+                     __(),
+                     static_cast<_Initial&&>(__initial),
+                     static_cast<_Final&&>(__final)};
     }
 
     template <sender _Final>

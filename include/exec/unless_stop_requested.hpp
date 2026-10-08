@@ -83,7 +83,7 @@ namespace experimental::execution
       [[nodiscard]]
       constexpr __well_formed_sender auto operator()(_Sender&& __sndr) const
       {
-        return __make_sexpr<unless_stop_requested_t>({}, static_cast<_Sender&&>(__sndr));
+        return __sexpr{unless_stop_requested_t(), __(), static_cast<_Sender&&>(__sndr)};
       }
     };
 

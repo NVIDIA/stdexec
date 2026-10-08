@@ -343,7 +343,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_until_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_until_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -360,7 +360,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)

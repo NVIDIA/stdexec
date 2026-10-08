@@ -165,8 +165,9 @@ namespace STDEXEC
                                      _Token,
                                      _Sender>) -> __well_formed_sender auto
       {
-        return __make_sexpr<associate_t>(
-          __associate_data(static_cast<_Token&&>(__token), static_cast<_Sender&&>(__sndr)));
+        return __sexpr{associate_t(),
+                       __associate_data(static_cast<_Token&&>(__token),
+                                        static_cast<_Sender&&>(__sndr))};
       }
 
       template <scope_token _Token>

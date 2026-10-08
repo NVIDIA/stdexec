@@ -301,7 +301,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+      return __sexpr{on_t(), static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Form 2: run @c __sndr in place, hop to @c __sched, apply
@@ -325,9 +325,11 @@ namespace STDEXEC
     constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
       -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(__tuple{static_cast<_Scheduler&&>(__sched),
-                                        static_cast<_Closure&&>(__clsur)},
-                                static_cast<_Sender&&>(__sndr));
+      return __sexpr{
+        on_t(),
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+        static_cast<_Sender&&>(__sndr)
+      };
     }
 
     //! @brief Pipe form of Form 2: construct a sender-adaptor closure that,

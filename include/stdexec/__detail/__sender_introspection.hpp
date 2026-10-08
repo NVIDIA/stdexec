@@ -41,6 +41,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
 namespace STDEXEC
 {
 #  if STDEXEC_USE_MODULES()
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <auto _Descriptor>
   struct __sexpr;
 #  else

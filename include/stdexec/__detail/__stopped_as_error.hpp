@@ -145,8 +145,9 @@ namespace STDEXEC
     template <sender _Sender, __movable_value _Error>
     constexpr auto operator()(_Sender&& __sndr, _Error __err) const -> __well_formed_sender auto
     {
-      return __make_sexpr<stopped_as_error_t>(static_cast<_Error&&>(__err),
-                                              static_cast<_Sender&&>(__sndr));
+      return __sexpr{stopped_as_error_t(),
+                     static_cast<_Error&&>(__err),
+                     static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.

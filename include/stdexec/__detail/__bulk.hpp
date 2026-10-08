@@ -141,8 +141,11 @@ namespace STDEXEC
       constexpr auto operator()(_Sender&& __sndr, _Policy&& __pol, _Shape __shape, _Fun __fun) const
         -> __well_formed_sender auto
       {
-        return __make_sexpr<_AlgoTag>(__data{__pol, __shape, static_cast<_Fun&&>(__fun)},
-                                      static_cast<_Sender&&>(__sndr));
+        return __sexpr{
+          _AlgoTag(),
+          __data{__pol, __shape, static_cast<_Fun&&>(__fun)},
+          static_cast<_Sender&&>(__sndr)
+        };
       }
 
       template <typename _Policy, __std::integral _Shape, __std::copy_constructible _Fun>

@@ -465,7 +465,7 @@ namespace STDEXEC
     constexpr auto operator()(_Senders &&...__sndrs) const  //
       noexcept(__nothrow_decay_copyable<_Senders...>) -> __well_formed_sender auto
     {
-      return __make_sexpr<__sequence_t>({}, static_cast<_Senders &&>(__sndrs)...);
+      return __sexpr{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...};
     }
 
     template <class _Self>

@@ -72,8 +72,9 @@ namespace STDEXEC
       constexpr auto operator()(_Sender&& __sndr, _Token&& __token) const
         noexcept(__nothrow_decay_copyable<_Sender> && __nothrow_decay_copyable<_Token>)
       {
-        return __make_sexpr<__stop_when_t>(static_cast<_Token&&>(__token),
-                                           static_cast<_Sender&&>(__sndr));
+        return __sexpr{__stop_when_t(),
+                       static_cast<_Token&&>(__token),
+                       static_cast<_Sender&&>(__sndr)};
       }
     };
 

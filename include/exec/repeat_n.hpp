@@ -260,7 +260,7 @@ namespace experimental::execution
     constexpr auto operator()(_Sender &&__sndr, std::size_t __count) const  //
       -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_n_t>(__count, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_n_t(), __count, static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)

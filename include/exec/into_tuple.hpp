@@ -113,7 +113,7 @@ namespace experimental::execution
       template <sender _Sender>
       constexpr auto operator()(_Sender &&__sndr) const
       {
-        return __make_sexpr<into_tuple_t>({}, static_cast<_Sender &&>(__sndr));
+        return __sexpr{into_tuple_t(), __(), static_cast<_Sender &&>(__sndr)};
       }
 
       STDEXEC_ATTRIBUTE(always_inline)
