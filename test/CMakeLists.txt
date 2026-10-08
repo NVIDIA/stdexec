@@ -69,6 +69,7 @@ set(stdexec_test_sources
     stdexec/detail/test_completion_signatures.cpp
     stdexec/detail/test_demangle.cpp
     stdexec/detail/test_intrusive_mpsc_queue.cpp
+    stdexec/detail/test_intrusive_queue.cpp
     stdexec/detail/test_utility.cpp
     stdexec/queries/test_env.cpp
     stdexec/queries/test_forwarding_queries.cpp
