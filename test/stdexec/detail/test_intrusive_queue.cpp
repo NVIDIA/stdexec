@@ -61,6 +61,10 @@ namespace
     for (test_node* node: queue)
     {
       result.push_back(node->value_);
+      if (result.size() > 64)
+      {
+        FAIL("cycle detected while iterating intrusive queue");
+      }
     }
     return result;
   }
