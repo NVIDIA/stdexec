@@ -181,7 +181,7 @@ namespace
   {
     inline_test_thread_pool pool;
     pool.parallelism_ = 256;
-    completion_state state;
+    completion_state     state;
     std::array<int, 255> visits{};
 
     auto sndr = ex::schedule(pool.get_scheduler())
