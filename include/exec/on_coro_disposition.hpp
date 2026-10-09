@@ -226,7 +226,7 @@ namespace experimental::execution
      public:
       template <class _Action, class... _Ts>
         requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
-      auto operator()(_Action&& __action, _Ts&&... __ts) const -> __task<_Ts...>
+      auto operator()(_Action&& __action, _Ts&&... __ts) const -> __task<__decay_t<_Ts>...>
       {
         return __impl(static_cast<_Action&&>(__action), static_cast<_Ts&&>(__ts)...);
       }
