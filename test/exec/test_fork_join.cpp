@@ -47,7 +47,7 @@ namespace
   {
     /// Empty (no closure given).
     STDEXEC::sender auto empty = exec::fork_join(STDEXEC::just());
-    using empty_t = decltype(empty);
+    using empty_t              = decltype(empty);
     STATIC_REQUIRE(std::same_as<empty_t, decltype(STDEXEC::just())>);
     STATIC_REQUIRE(!exec::sender_for<empty_t, exec::fork_join_t>);
     STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just())));
@@ -56,7 +56,7 @@ namespace
 
     /// Unary closure.
     STDEXEC::sender auto unary = exec::fork_join(STDEXEC::just(), then);
-    using unary_t = decltype(unary);
+    using unary_t              = decltype(unary);
     STATIC_REQUIRE(std::same_as<unary_t, decltype(STDEXEC::just() | then)>);
     STATIC_REQUIRE(!exec::sender_for<unary_t, exec::fork_join_t>);
     STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just(), then)));

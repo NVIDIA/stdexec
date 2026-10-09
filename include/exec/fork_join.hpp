@@ -290,7 +290,8 @@ namespace experimental::execution
     }
 
     /// Unary closure.
-    template <STDEXEC::sender Sndr, class Closure> requires (!STDEXEC::sender<Closure>)
+    template <STDEXEC::sender Sndr, class Closure>
+      requires(!STDEXEC::sender<Closure>)
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(Sndr&& sndr, Closure&& clsr) const
       noexcept(STDEXEC::__nothrow_callable<Closure, Sndr>)
@@ -299,11 +300,12 @@ namespace experimental::execution
     }
 
     /// One sender and multiple closures.
-    template <STDEXEC::sender Sndr, class... Closures> requires (sizeof...(Closures) > 1)
+    template <STDEXEC::sender Sndr, class... Closures>
+      requires(sizeof...(Closures) > 1)
     STDEXEC_ATTRIBUTE(host, device)
     constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const
       noexcept(STDEXEC::__nothrow_decay_copyable<Sndr, Closures...>)
-      -> STDEXEC::__well_formed_sender auto
+        -> STDEXEC::__well_formed_sender auto
     {
       return STDEXEC::__sexpr{fork_join_t(),
                               STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
