@@ -1453,6 +1453,17 @@ namespace
     REQUIRE(ret == 42);
   }
 
+  TEST_CASE("member-function functions are unrelated to the void-pointer form", "[types][function]")
+  {
+    using member   = exec::function<int() const &>;
+    using void_ptr = exec::function<int(void const *)>;
+
+    STATIC_REQUIRE(!std::is_convertible_v<member, void_ptr>);
+    STATIC_REQUIRE(!std::constructible_from<void_ptr, member>);
+    STATIC_REQUIRE(!std::is_convertible_v<member &, void_ptr &>);
+    STATIC_REQUIRE(!std::is_convertible_v<member *, void_ptr *>);
+  }
+
   TEST_CASE("member-function functions accept the self arguments a synchronous member function "
             "would, except rvalues",
             "[types][function]")
