@@ -26,6 +26,7 @@
 #include <memory>
 #include <memory_resource>
 #include <stdexcept>
+#include <utility>
 
 namespace ex = STDEXEC;
 
@@ -363,17 +364,17 @@ namespace
 
   struct iface
   {
-    virtual exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct iface2
   {
-    exec::function<int(iface2 const *) noexcept> get_i_from_base() const noexcept
+    exec::function<int() const & noexcept> get_i_from_base() const noexcept
     {
-      return exec::function<int(iface2 const *) noexcept>(this, &iface2::get_i_virtually);
+      return exec::function<int() const & noexcept>(*this, &iface2::get_i_virtually);
     }
 
-    virtual exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct impl
@@ -399,11 +400,9 @@ namespace
       return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
     }
 
-    exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept override
+    exec::function<int() const & noexcept> get_i_virtually() const noexcept override
     {
-      return exec::function<int(iface const *) noexcept>(
-        this,
-        [](iface const *self) noexcept { return static_cast<impl const *>(self)->just_i(); });
+      return exec::function<int() const & noexcept>(*this, &impl::just_i);
     }
 
    private:
@@ -503,15 +502,14 @@ namespace
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int(iface const *) noexcept> can be the return type of a virtual member "
-            "function")
+    SECTION("function<int() const & noexcept> can be the return type of a virtual member function")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_virtually()).value();
 
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int(iface const *) noexcept> accepts a pointer-to-member function")
+    SECTION("function<int(iface const *)> accepts a pointer-to-member function")
     {
       impl imp{42};
       auto [ret] =
@@ -520,7 +518,7 @@ namespace
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int(iface2 const *) noexcept> works on the base class")
+    SECTION("function<int() const & noexcept> works on the base class")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_from_base()).value();
 
@@ -922,5 +920,245 @@ namespace
       STATIC_REQUIRE(
         function_exists<ex::completion_signatures<ex::set_value_t()>, exec::attrs<int(query_t)>>);
     }
+  }
+
+  struct pointer_factories
+  {
+    int i;
+
+    static auto just_i(pointer_factories const &self) noexcept
+    {
+      return ex::just(self.i);
+    }
+
+    auto just_i_memfn() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+  TEST_CASE("member-function functions built from pointer factories are nothrow constructible",
+            "[types][function]")
+  {
+    using function = exec::function<int() const & noexcept>;
+    using self     = pointer_factories const &;
+
+    SECTION("pointer-to-function factory")
+    {
+      using factory = decltype(&pointer_factories::just_i);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, self, factory>);
+
+      pointer_factories pf{42};
+      auto [ret] = ex::sync_wait(function(std::as_const(pf), &pointer_factories::just_i)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("pointer-to-member-function factory")
+    {
+      using factory = decltype(&pointer_factories::just_i_memfn);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, self, factory>);
+
+      pointer_factories pf{42};
+      auto [ret] =
+        ex::sync_wait(function(std::as_const(pf), &pointer_factories::just_i_memfn)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("pointer-to-member-data factory")
+    {
+      using factory = decltype(&sender_holder::sndr);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, sender_holder const &, factory>);
+
+      sender_holder h;
+      auto [ret] = ex::sync_wait(function(std::as_const(h), &sender_holder::sndr)).value();
+      REQUIRE(ret == 42);
+    }
+  }
+
+  TEST_CASE("member-function functions require factories invocable as const lvalues",
+            "[types][function]")
+  {
+    using function = exec::function<int() const &>;
+
+    struct non_const_call
+    {
+      auto operator()(pointer_factories const &self) noexcept
+      {
+        return ex::just(self.i);
+      }
+    };
+
+    struct const_call
+    {
+      auto operator()(pointer_factories const &self) const noexcept
+      {
+        return ex::just(self.i);
+      }
+    };
+
+    STATIC_REQUIRE(!std::constructible_from<function, pointer_factories const &, non_const_call>);
+    STATIC_REQUIRE(std::constructible_from<function, pointer_factories const &, const_call>);
+
+    pointer_factories pf{42};
+    auto [ret] = ex::sync_wait(function(pf, const_call{})).value();
+    REQUIRE(ret == 42);
+  }
+
+  TEST_CASE("member-function functions accept the self arguments a synchronous member function "
+            "would, except rvalues",
+            "[types][function]")
+  {
+    using factory = decltype(&pointer_factories::just_i);
+
+    SECTION("const & accepts const and non-const lvalues")
+    {
+      using fn = exec::function<int() const &>;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &&, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &&, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const volatile &, factory>);
+    }
+
+    SECTION("& accepts only non-const lvalues")
+    {
+      using fn       = exec::function<int() &>;
+      using mfactory = decltype(ex::just(0)) (*)(pointer_factories &) noexcept;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &&, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &, mfactory>);
+    }
+
+    SECTION("a non-const lvalue reaches a const & function's factory as a const reference")
+    {
+      pointer_factories pf{42};
+      auto [ret] = ex::sync_wait(exec::function<int() const &>(
+                                   pf,
+                                   [](auto &self) noexcept
+                                   {
+                                     static_assert(
+                                       std::is_const_v<std::remove_reference_t<decltype(self)>>);
+                                     return ex::just(self.i);
+                                   }))
+                     .value();
+      REQUIRE(ret == 42);
+    }
+  }
+
+  template <class Sig, class... Ts>
+  concept valid_function_type = requires { typename exec::function<Sig, Ts...>; };
+
+  TEST_CASE("function rejects rvalue, unqualified const, and volatile function types",
+            "[types][function]")
+  {
+    using sigs = ex::completion_signatures<ex::set_value_t(int)>;
+
+    STATIC_REQUIRE(valid_function_type<int()>);
+    STATIC_REQUIRE(valid_function_type<int() &>);
+    STATIC_REQUIRE(valid_function_type<int() const &>);
+    STATIC_REQUIRE(valid_function_type<int() const & noexcept>);
+    STATIC_REQUIRE(valid_function_type<ex::sender_tag() const &, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() &&>);
+    STATIC_REQUIRE(!valid_function_type<int() const &&>);
+    STATIC_REQUIRE(!valid_function_type < int() && noexcept >);
+    STATIC_REQUIRE(!valid_function_type < int() const && noexcept >);
+    STATIC_REQUIRE(!valid_function_type<ex::sender_tag() &&, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() const>);
+    STATIC_REQUIRE(!valid_function_type<int() const noexcept>);
+    STATIC_REQUIRE(!valid_function_type<ex::sender_tag() const, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() volatile>);
+    STATIC_REQUIRE(!valid_function_type<int() volatile &>);
+    STATIC_REQUIRE(!valid_function_type<int() const volatile &>);
+  }
+
+  TEST_CASE("support for member functions works as expected", "[types][function]")
+  {
+    struct example
+    {
+      exec::function<int() const &> get_int() const &
+      {
+        return exec::function<int() const &>(*this,
+                                             [](example const &self) { return ex::just(self.i_); });
+      }
+
+      exec::function<example &(int) &> set_int(int i) &
+      {
+        return exec::function<example &(int) &>(*this,
+                                                int(i),
+                                                [](auto &self, int i)
+                                                {
+                                                  return ex::just(i)
+                                                       | ex::then(
+                                                           [&self](int i) -> decltype(auto)
+                                                           {
+                                                             self.i_ = i;
+                                                             return self;
+                                                           });
+                                                });
+      }
+
+     private:
+      int i_{42};
+    };
+
+    {
+      example e;
+
+      auto [result] =
+        ex::sync_wait(e.set_int(34) | ex::let_value([](auto &e) { return e.get_int(); })).value();
+
+      REQUIRE(result == 34);
+    }
+  }
+
+  template <class T>
+  using async_getter =
+    exec::function<ex::sender_tag() const &, ex::completion_signatures<ex::set_value_t(T)>>;
+
+  template <class O, class T>
+  using async_setter =
+    exec::function<ex::sender_tag(T) &, ex::completion_signatures<ex::set_value_t(O &)>>;
+
+  TEST_CASE("specifying more parameters of a function hiding a member function works",
+            "[types][function]")
+  {
+    struct example
+    {
+      async_getter<int> get() const & noexcept
+      {
+        return async_getter<int>(*this, [](auto &self) noexcept { return ex::just(self.i_); });
+      }
+
+      async_setter<example, int> set(int i) & noexcept
+      {
+        return async_setter<example, int>(*this,
+                                          int(i),
+                                          [](auto &self, int i) noexcept
+                                          {
+                                            return ex::just(i)
+                                                 | ex::then(
+                                                     [&self](int i) noexcept -> example &
+                                                     {
+                                                       self.i_ = i;
+                                                       return self;
+                                                     });
+                                          });
+      }
+
+     private:
+      int i_{};
+    };
+
+    example e;
+
+    auto [result] =
+      ex::sync_wait(e.set(42) | ex::let_value([](auto &e) noexcept { return e.get(); })).value();
+
+    REQUIRE(result == 42);
   }
 }  // namespace
