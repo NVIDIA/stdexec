@@ -198,10 +198,11 @@ namespace STDEXEC
       noexcept(__nothrow_decay_copyable<_Sender0, _Sender1, _Senders...>) -> __well_formed_sender
       auto
     {
-      return __make_sexpr<when_all_t>(__(),
-                                      static_cast<_Sender0&&>(__sndr0),
-                                      static_cast<_Sender1&&>(__sndr1),
-                                      static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_t(),
+                     __(),
+                     static_cast<_Sender0&&>(__sndr0),
+                     static_cast<_Sender1&&>(__sndr1),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
   };
 
@@ -264,7 +265,7 @@ namespace STDEXEC
     template <sender... _Senders>
     constexpr auto operator()(_Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<when_all_with_variant_t>(__(), static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{when_all_with_variant_t(), __(), static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -305,8 +306,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_t>(static_cast<_Scheduler&&>(__sched),
-                                               static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{transfer_when_all_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -350,8 +352,9 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __make_sexpr<transfer_when_all_with_variant_t>(static_cast<_Scheduler&&>(__sched),
-                                                            static_cast<_Senders&&>(__sndrs)...);
+      return __sexpr{transfer_when_all_with_variant_t(),
+                     static_cast<_Scheduler&&>(__sched),
+                     static_cast<_Senders&&>(__sndrs)...};
     }
 
     template <class _Sender>
@@ -443,7 +446,7 @@ namespace STDEXEC
                    _WHERE_(_IN_ALGORITHM_, when_all_t),
                    _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
                    _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_),
-                   _WITH_PRETTY_SENDER_<_Sender>,
+                   _WITH_SENDER_<_Sender>,
                    __fn_t<_WITH_ENVIRONMENT_, _Env>...>;
 
     template <class _Error>
@@ -763,10 +766,9 @@ namespace STDEXEC
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            _INVALID_ARGUMENTS_TO_WHEN_ALL_,
-            __children_of<_Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
+          return STDEXEC::__throw_compile_time_error<_INVALID_ARGUMENTS_TO_WHEN_ALL_,
+                                                     __children_of<_Self, __qq<_WITH_SENDERS_>>,
+                                                     __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
         }
       }
 

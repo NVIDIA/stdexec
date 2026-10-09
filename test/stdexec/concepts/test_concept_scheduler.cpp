@@ -25,7 +25,6 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunneeded-internal-declaration")
 
 namespace
 {
-
   template <class Scheduler>
   struct default_env
   {
@@ -196,9 +195,7 @@ namespace
 
   struct my_void_schedule_scheduler
   {
-    [[nodiscard]]
-    auto schedule() const noexcept -> void
-    {}
+    auto schedule() const noexcept -> void {}
 
     friend auto operator==(my_void_schedule_scheduler, my_void_schedule_scheduler) noexcept -> bool
     {

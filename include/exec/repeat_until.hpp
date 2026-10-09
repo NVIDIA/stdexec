@@ -243,7 +243,7 @@ namespace experimental::execution
             _WHAT_(_INVALID_ARGUMENT_),
             _WHERE_(_IN_ALGORITHM_, repeat_until_t),
             _WHY_(_EXPECTING_A_SENDER_OF_ONE_VALUE_THAT_IS_CONVERTIBLE_TO_BOOL_),
-            _WITH_PRETTY_SENDER_<_Child>>();
+            _WITH_SENDER_<_Child>>();
         }
         else if constexpr ((__is_bool_constant<_Args, false> && ...))
         {
@@ -298,7 +298,7 @@ namespace experimental::execution
           if constexpr (__is_dependent)
           {
             return exec::throw_compile_time_error<dependent_sender_error,
-                                                  _WITH_PRETTY_SENDER_<__child_t>>();
+                                                  _WITH_SENDER_<__child_t>>();
           }
           else
           {
@@ -343,7 +343,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_until_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_until_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -360,7 +360,7 @@ namespace experimental::execution
     template <STDEXEC::sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<repeat_t>({}, static_cast<_Sender &&>(__sndr));
+      return STDEXEC::__sexpr{repeat_t(), STDEXEC::__(), static_cast<_Sender &&>(__sndr)};
     }
 
     STDEXEC_ATTRIBUTE(always_inline)
@@ -386,7 +386,7 @@ namespace experimental::execution
       {
         return __not_a_sender<_WHAT_(_INVALID_ARGUMENT_, _EXPECTING_A_SENDER_OF_VOID_),
                               _WHERE_(_IN_ALGORITHM_, repeat_until_t),
-                              _WITH_PRETTY_SENDER_<__child_t>,
+                              _WITH_SENDER_<__child_t>,
                               _WITH_ENVIRONMENT_(_Env)>();
       }
     }

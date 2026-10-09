@@ -391,6 +391,25 @@ namespace STDEXEC
     return __binder_t{static_cast<_Fn &&>(__fn), static_cast<_BoundArgs &&>(__bound_args)...};
   };
 
+  //! @brief Returns the first argument of a parameter pack.
+  //!
+  //! @tparam _Head The type of the first argument.
+  //! @tparam _Tail The types of the remaining arguments.
+  //!
+  //! @param __head The first argument.
+  //!
+  //! @returns The first argument.
+  struct __front
+  {
+    template <class _Head, class... _Tail>
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
+    constexpr auto operator()(_Head &&__head, _Tail &&...)  //
+      noexcept(__nothrow_move_constructible<_Head>) -> _Head
+    {
+      return static_cast<_Head &&>(__head);
+    }
+  };
+
   //! @brief A binary callable that wraps another binary callable and calls it
   //! with its two arguments in reverse order.
   //!

@@ -97,7 +97,7 @@ namespace STDEXEC
         return __throw_compile_time_error<
           _A_GET_COMPLETION_SIGNATURES_CUSTOMIZATION_RETURNED_A_TYPE_THAT_IS_NOT_A_COMPLETION_SIGNATURES_SPECIALIZATION,
           _WITH_COMPLETION_SIGNATURES_(_Completions),
-          _WITH_PRETTY_SENDER_<_Sender>,
+          _WITH_SENDER_<_Sender>,
           __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
       }
     }

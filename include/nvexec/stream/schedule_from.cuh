@@ -202,10 +202,3 @@ namespace nv::execution
 }  // namespace nv::execution
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender>
-  extern __mtype<nvexec::_strm::schedule_from_sender<__demangle_t<Sender>>>
-    __demangle_v<nvexec::_strm::schedule_from_sender<Sender>>;
-}  // namespace STDEXEC::__detail

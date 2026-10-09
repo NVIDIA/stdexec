@@ -259,10 +259,9 @@ namespace experimental::execution
         }
         else
         {
-          return STDEXEC::__throw_compile_time_error<
-            INVALID_ARGUMENTS_TO_FORK_JOIN,
-            __children_of<Self, __qq<_WITH_PRETTY_SENDERS_>>,
-            __fn_t<_WITH_ENVIRONMENT_, Env>...>();
+          return STDEXEC::__throw_compile_time_error<INVALID_ARGUMENTS_TO_FORK_JOIN,
+                                                     __children_of<Self, __qq<_WITH_SENDERS_>>,
+                                                     __fn_t<_WITH_ENVIRONMENT_, Env>...>();
         }
       }
 
@@ -287,9 +286,9 @@ namespace experimental::execution
     constexpr auto operator()(Sndr&& sndr, Closures&&... closures) const  //
       -> STDEXEC::__well_formed_sender auto
     {
-      return STDEXEC::__make_sexpr<fork_join_t>(STDEXEC::__tuple{static_cast<Closures&&>(
-                                                  closures)...},
-                                                static_cast<Sndr&&>(sndr));
+      return STDEXEC::__sexpr{fork_join_t(),
+                              STDEXEC::__tuple{static_cast<Closures&&>(closures)...},
+                              static_cast<Sndr&&>(sndr)};
     }
 
     template <class... Closures>

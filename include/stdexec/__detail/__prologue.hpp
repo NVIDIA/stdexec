@@ -32,6 +32,9 @@ STDEXEC_PRAGMA_PUSH()
 // warn the user spuriously
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-template")
 
+// Don't warn about C++26 extensions
+STDEXEC_PRAGMA_IGNORE_GNU("-Wc++26-extensions")
+
 // Windows.h macros:
 
 #if defined(interface)

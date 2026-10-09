@@ -165,7 +165,7 @@ namespace STDEXEC
     template <class _Query>
     constexpr auto operator()(_Query) const noexcept
     {
-      return __make_sexpr<__read_env_t>(_Query());
+      return __sexpr{__read_env_t(), _Query()};
     }
   };
 

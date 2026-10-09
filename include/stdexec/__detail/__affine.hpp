@@ -66,7 +66,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender &&__sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<affine_t>({}, static_cast<_Sender &&>(__sndr));
+      return __sexpr{affine_t(), __(), static_cast<_Sender &&>(__sndr)};
     }
 
     constexpr auto operator()() const noexcept
@@ -111,7 +111,7 @@ namespace STDEXEC
           _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_),
           _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
           _WHERE_(_IN_ALGORITHM_, affine_t),
-          _WITH_PRETTY_SENDER_<__cv_child_t>,
+          _WITH_SENDER_<__cv_child_t>,
           _WITH_ENVIRONMENT_(_Env)>{};
       }
       else if constexpr (!__infallible_scheduler<__sched_t, __unstoppable_env_t<_Env>>)
@@ -123,7 +123,7 @@ namespace STDEXEC
           _WHAT_(_CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_),
           _WHY_(_THE_SCHEDULER_IN_THE_CURRENT_EXECUTION_ENVIRONMENT_IS_NOT_INFALLIBLE_),
           _WHERE_(_IN_ALGORITHM_, affine_t),
-          _WITH_PRETTY_SENDER_<__cv_child_t>,
+          _WITH_SENDER_<__cv_child_t>,
           _WITH_SCHEDULER_(__sched_t)>{};
       }
       else

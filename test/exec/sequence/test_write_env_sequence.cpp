@@ -110,7 +110,7 @@ namespace
   template <STDEXEC::sender Sndr>
   auto my_adapt(Sndr&& sndr)
   {
-    return STDEXEC::__make_sexpr<my_adapt_t>(STDEXEC::env<>{}, static_cast<Sndr&&>(sndr));
+    return STDEXEC::__sexpr{my_adapt_t(), STDEXEC::env<>{}, static_cast<Sndr&&>(sndr)};
   }
 
   struct my_adapt_impl : STDEXEC::__sexpr_defaults

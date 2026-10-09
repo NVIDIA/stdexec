@@ -105,12 +105,6 @@ namespace experimental::execution
   struct _WITH_SEQUENCES_
   {};
 
-  template <class _Sequence>
-  using _WITH_PRETTY_SEQUENCE_ = _WITH_SEQUENCE_<STDEXEC::__demangle_t<_Sequence>>;
-
-  template <class... _Sequences>
-  using _WITH_PRETTY_SEQUENCES_ = _WITH_SEQUENCES_<STDEXEC::__demangle_t<_Sequences>...>;
-
   STDEXEC_MODULE_EXPORT
   struct sequence_sender_tag : STDEXEC::sender_tag
   {};
@@ -315,9 +309,9 @@ namespace experimental::execution
   // Without this, wrapping a sequence sender in a transparent adaptor (e.g.
   // `write_env`) would hide the sequence semantics from downstream
   // sequence-aware algorithms. See issue #2053.
-  template <auto _DescriptorFn>
-    requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_DescriptorFn>>
-  inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_DescriptorFn>> = true;
+  template <class _Tag, class _Data, class... _Child>
+    requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_Tag, _Data, _Child...>>
+  inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_Tag, _Data, _Child...>> = true;
 
   STDEXEC_MODULE_EXPORT
   template <class... _Senders>
@@ -350,7 +344,7 @@ namespace experimental::execution
   using __unrecognized_sequence_error_t =
     STDEXEC::__mexception<STDEXEC::_WHAT_(_UNRECOGNIZED_SEQUENCE_TYPE_),
                           STDEXEC::_WHY_(_FAILED_TO_COMPUTE_SEQUENCE_ITEM_TYPES_),
-                          _WITH_PRETTY_SEQUENCE_<_Sequence>,
+                          _WITH_SEQUENCE_<_Sequence>,
                           STDEXEC::_WITH_ENVIRONMENT_(_Env)...>;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -517,8 +511,8 @@ namespace experimental::execution
   template <class _Sequence, class _Item>
   constexpr auto __check_item(_Item*)
     -> STDEXEC::__mexception<STDEXEC::_WHAT_(_SEQUENCE_ITEM_IS_NOT_A_WELL_FORMED_SENDER_),
-                             STDEXEC::_WITH_PRETTY_SENDER_<_Item>,
-                             _WITH_PRETTY_SEQUENCE_<_Sequence>>;
+                             STDEXEC::_WITH_SENDER_<_Item>,
+                             _WITH_SEQUENCE_<_Sequence>>;
 
   template <class _Sequence, class _Item>
     requires STDEXEC::__well_formed_sender<_Item>
@@ -541,7 +535,7 @@ namespace experimental::execution
     -> STDEXEC::__mexception<STDEXEC::_WHAT_(_SEQUENCE_GET_ITEM_TYPES_RESULT_IS_NOT_WELL_FORMED_),
                              STDEXEC::_WHY_(_EXPECTED_A_SPECIALIZATION_OF_<item_types>),
                              STDEXEC::_WITH_TYPE_<_Items>,
-                             _WITH_PRETTY_SEQUENCE_<_Sequence>>;
+                             _WITH_SEQUENCE_<_Sequence>>;
 
   template <class _Sequence, class... _Items>
   auto __check_items(exec::item_types<_Items...>*)
@@ -569,7 +563,7 @@ namespace experimental::execution
   auto __check_sequence(_Sequence*)
     -> STDEXEC::__mexception<STDEXEC::_WHAT_(_ERROR_WHILE_COMPUTING_THE_SEQUENCE_ITEM_TYPES_),
                              STDEXEC::_WHY_(_THE_CALL_TO_GET_ITEM_TYPES_IS_ILL_FORMED_),
-                             _WITH_PRETTY_SEQUENCE_<_Sequence>>;
+                             _WITH_SEQUENCE_<_Sequence>>;
 
   template <class _Sequence>
     requires(!STDEXEC::__merror<_Sequence>) && STDEXEC::__minvocable_q<__item_types_of_t, _Sequence>
@@ -741,7 +735,7 @@ namespace experimental::execution
   template <class _Receiver, class _Item>
   constexpr auto
   __try_item(_Item*) -> STDEXEC::__mexception<STDEXEC::_WHAT_(_MISSING_SET_NEXT_OVERLOAD_FOR_ITEM_),
-                                              STDEXEC::_WITH_PRETTY_SENDER_<_Item>,
+                                              STDEXEC::_WITH_SENDER_<_Item>,
                                               STDEXEC::_WITH_RECEIVER_(_Receiver)>;
 
   template <class _Receiver, class _Item>

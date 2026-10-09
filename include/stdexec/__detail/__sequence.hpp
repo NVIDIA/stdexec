@@ -340,7 +340,7 @@ namespace STDEXEC
       using __error_t = __mexception<_WHAT_(_INVALID_ARGUMENT_),
                                      _WHERE_(_IN_ALGORITHM_, __sequence_t),
                                      _WHY_(_ALL_SENDERS_BUT_THE_LAST_MUST_BE_SENDERS_OF_VOID_),
-                                     _WITH_PRETTY_SENDER_<_Self>>;
+                                     _WITH_SENDER_<_Self>>;
 
       template <class... _Args>
       constexpr auto operator()() const noexcept
@@ -382,7 +382,7 @@ namespace STDEXEC
         if constexpr (!__decay_copyable<_Self>)
         {
           return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
-                                                     _WITH_PRETTY_SENDER_<_Self>>();
+                                                     _WITH_SENDER_<_Self>>();
         }
         else if constexpr (!__sends<set_value_t, __cv_sender1_t, __fwd_env_t<_Env>...>)
         {
@@ -465,7 +465,7 @@ namespace STDEXEC
     constexpr auto operator()(_Senders &&...__sndrs) const  //
       noexcept(__nothrow_decay_copyable<_Senders...>) -> __well_formed_sender auto
     {
-      return __make_sexpr<__sequence_t>({}, static_cast<_Senders &&>(__sndrs)...);
+      return __sexpr{__sequence_t(), __(), static_cast<_Senders &&>(__sndrs)...};
     }
 
     template <class _Self>
@@ -505,13 +505,6 @@ namespace STDEXEC
   // transformed further.
   template <class... _Senders>
   inline constexpr auto __structured_binding_size_v<__seq::__sndr<_Senders...>> = -1;
-
-  namespace __detail
-  {
-    template <class... _Senders>
-    extern __mtype<__seq::__sndr<__demangle_t<_Senders>...>>
-      __demangle_v<__seq::__sndr<_Senders...>>;
-  }  // namespace __detail
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

@@ -343,9 +343,7 @@ namespace STDEXEC
   template <class _Sender, class... _Env>
   constexpr auto __diagnose_sender_concept_failure() noexcept
   {
-    return __detail::__diagnose_sender_concept_failure<_WITH_PRETTY_SENDER_<_Sender>,
-                                                       _Sender,
-                                                       _Env...>();
+    return __detail::__diagnose_sender_concept_failure<_WITH_SENDER_<_Sender>, _Sender, _Env...>();
   }
 }  // namespace STDEXEC
 

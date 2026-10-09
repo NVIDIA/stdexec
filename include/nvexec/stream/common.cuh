@@ -130,7 +130,7 @@ namespace nv::execution
       return __not_a_sender<_WHAT_(CANNOT_DISPATCH_THIS_ALGORITHM_TO_THE_CUDA_STREAM_SCHEDULER),
                             _WHY_(BECAUSE_THERE_IS_NO_CUDA_STREAM_SCHEDULER_IN_THE_ENVIRONMENT),
                             _WHERE_(_IN_ALGORITHM_, Tag),
-                            _WITH_PRETTY_SENDER_<Sender>,
+                            _WITH_SENDER_<Sender>,
                             _WITH_ENVIRONMENT_(Env)>{};
     }
   }  // namespace _strm

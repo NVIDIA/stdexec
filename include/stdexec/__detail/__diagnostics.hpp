@@ -58,20 +58,15 @@ namespace STDEXEC
 
   struct _UNRECOGNIZED_SENDER_TYPE_;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender>
   struct _WITH_SENDER_
   {};
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _Senders>
   struct _WITH_SENDERS_
   {};
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender>
-  using _WITH_PRETTY_SENDER_ = _WITH_SENDER_<__demangle_t<_Sender>>;
-
-  template <class... _Senders>
-  using _WITH_PRETTY_SENDERS_ = _WITH_SENDERS_<__demangle_t<_Senders>...>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_ENVIRONMENT_
@@ -157,7 +152,7 @@ namespace STDEXEC
   template <class _Sender>
   using __bad_pipe_sink_t = __mexception<_WHAT_(_INVALID_EXPRESSION_),
                                          _WHY_(_CANNOT_PIPE_ONE_SENDER_INTO_ANOTHER_),
-                                         _WITH_PRETTY_SENDER_<_Sender>>;
+                                         _WITH_SENDER_<_Sender>>;
 
   template <class _Tag, class _Fun, class... _Args>
   using __callable_error_t =
@@ -174,7 +169,7 @@ namespace STDEXEC
   using __unrecognized_sender_error_t =
     __mexception<_WHAT_(_UNRECOGNIZED_SENDER_TYPE_),
                  _WHY_(_UNABLE_TO_COMPUTE_THE_SENDER_COMPLETION_SIGNATURES_),
-                 _WITH_PRETTY_SENDER_<_Sender>,
+                 _WITH_SENDER_<_Sender>,
                  _WITH_ENVIRONMENT_(_Env)...>;
 
 #  if __cpp_lib_constexpr_exceptions >= 202502L
@@ -299,7 +294,7 @@ namespace STDEXEC
   // By making __dependent_sender_error_t an alias for _ERROR_<...>, we ensure
   // that it will get propagated correctly through various metafunctions.
   template <class _Sender>
-  using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_PRETTY_SENDER_<_Sender>>;
+  using __dependent_sender_error_t = _ERROR_<dependent_sender_error, _WITH_SENDER_<_Sender>>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class... _What>

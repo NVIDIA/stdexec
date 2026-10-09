@@ -853,7 +853,7 @@ namespace STDEXEC
         _WHERE_(_IN_ALGORITHM_, tag_of_t<_Sender>),
         _TO_FIX_THIS_ERROR_(
           ADD_A_CONTINUES_ON_TRANSITION_TO_THE_PARALLEL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-        _WITH_PRETTY_SENDER_<_Sender>,
+        _WITH_SENDER_<_Sender>,
         _WITH_ENVIRONMENT_(_Env)>();
     }
   }

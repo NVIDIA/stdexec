@@ -50,8 +50,10 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Values&&... __vals) const -> __well_formed_sender auto
     {
-      return __make_sexpr<__transfer_just_t>(
-        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...});
+      return __sexpr{
+        __transfer_just_t(),
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Values&&>(__vals)...}
+      };
     }
 
     template <class _Sender>
@@ -64,7 +66,7 @@ namespace STDEXEC
       }
       else
       {
-        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_PRETTY_SENDER_<_Sender>>();
+        return __not_a_sender<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_, _WITH_SENDER_<_Sender>>();
       }
     }
 

@@ -86,7 +86,7 @@ namespace STDEXEC
             return STDEXEC::__throw_compile_time_error<
               _WHAT_(_SENDER_MUST_HAVE_EXACTLY_ONE_VALUE_COMPLETION_WITH_AT_LEAST_ONE_ARGUMENT_),
               _WHERE_(_IN_ALGORITHM_, stopped_as_optional_t),
-              _WITH_PRETTY_SENDER_<__cv_sndr_t>>();
+              _WITH_SENDER_<__cv_sndr_t>>();
           }
           else
           {
@@ -246,7 +246,7 @@ namespace STDEXEC
     template <sender _Sender>
     constexpr auto operator()(_Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<stopped_as_optional_t>(__(), static_cast<_Sender&&>(__sndr));
+      return __sexpr{stopped_as_optional_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Construct a sender-adaptor closure for the pipe form.

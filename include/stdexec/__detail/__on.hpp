@@ -62,7 +62,7 @@ namespace STDEXEC
              __not_a_scheduler<_WHAT_(_CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_),
                                _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
                                _WHERE_(_IN_ALGORITHM_, on_t),
-                               _WITH_PRETTY_SENDER_<_Child>,
+                               _WITH_SENDER_<_Child>,
                                _WITH_ENVIRONMENT_(_Env)>>;
 
     // This transform_sender overload handles the case where `on` was called
@@ -301,7 +301,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Sender&& __sndr) const -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr));
+      return __sexpr{on_t(), static_cast<_Scheduler&&>(__sched), static_cast<_Sender&&>(__sndr)};
     }
 
     //! @brief Form 2: run @c __sndr in place, hop to @c __sched, apply
@@ -325,9 +325,11 @@ namespace STDEXEC
     constexpr auto operator()(_Sender&& __sndr, _Scheduler&& __sched, _Closure&& __clsur) const
       -> __well_formed_sender auto
     {
-      return __make_sexpr<on_t>(__tuple{static_cast<_Scheduler&&>(__sched),
-                                        static_cast<_Closure&&>(__clsur)},
-                                static_cast<_Sender&&>(__sndr));
+      return __sexpr{
+        on_t(),
+        __tuple{static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur)},
+        static_cast<_Sender&&>(__sndr)
+      };
     }
 
     //! @brief Pipe form of Form 2: construct a sender-adaptor closure that,
@@ -362,8 +364,7 @@ namespace STDEXEC
     template <class _Sender, class _Env>
     static auto transform_sender(set_value_t, _Sender&&, _Env&&)
     {
-      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_),
-                            _WITH_PRETTY_SENDER_<_Sender>>{};
+      return __not_a_sender<_WHAT_(_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_), _WITH_SENDER_<_Sender>>{};
     }
   };
 

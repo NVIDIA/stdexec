@@ -118,7 +118,7 @@ namespace STDEXEC
             _WHAT_(_JOINING_A_COUNTING_SCOPE_NEEDS_A_SCHEDULER_IN_THE_ENVIRONMENT_),
             _WHY_(_THE_CURRENT_EXECUTION_ENVIRONMENT_DOESNT_HAVE_A_SCHEDULER_),
             _WHERE_(STDEXEC::_IN_ALGORITHM_, __scope_join_t),
-            _WITH_PRETTY_SENDER_<_Sender>,
+            _WITH_SENDER_<_Sender>,
             _WITH_ENVIRONMENT_(_Env)>();
         }
       };
@@ -796,7 +796,7 @@ namespace STDEXEC
     sender auto join() noexcept
     {
       // [exec.simple.counting.mem] paragraph 4
-      return __make_sexpr<__counting_scopes::__scope_join_t>(this);
+      return __sexpr{__counting_scopes::__scope_join_t(), this};
     }
 
    private:
@@ -869,7 +869,7 @@ namespace STDEXEC
     [[nodiscard]]
     sender auto join() noexcept
     {
-      return __make_sexpr<__counting_scopes::__scope_join_t>(this);
+      return __sexpr{__counting_scopes::__scope_join_t(), this};
     }
 
     void request_stop() noexcept

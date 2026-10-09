@@ -212,17 +212,18 @@ namespace experimental::execution
       auto
       operator()(_Scheduler &&__sched, const duration_of_t<_Scheduler> &__duration) const noexcept
       {
+        using __sched_t = __decay_t<_Scheduler>;
         using __native_sender_t =
           __call_result_t<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>;
 
-        return __make_sexpr<__timed_scheduler_fallback::__tag>(
-          __timed_scheduler_fallback::__data<STDEXEC::__decay_t<_Scheduler>, __native_sender_t>{
-            __sched},
+        return __sexpr{
+          __timed_scheduler_fallback::__tag(),
+          __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
           let_value(just(),
                     [__sched, __duration]() noexcept(
-                      __nothrow_callable<schedule_at_t, _Scheduler, time_point_of_t<_Scheduler>>
-                        &&__nothrow_callable<now_t, _Scheduler const &>)
-                    { return schedule_at(__sched, now(__sched) + __duration); }));
+                      __nothrow_callable<schedule_at_t, _Scheduler &, time_point_of_t<_Scheduler>>
+                        &&__nothrow_callable<now_t, _Scheduler &>)
+                    { return schedule_at(__sched, now(__sched) + __duration); })};
       }
     };
   }  // namespace __schedule_after
@@ -277,16 +278,16 @@ namespace experimental::execution
       auto operator()(_Scheduler &&__sched, const time_point_of_t<_Scheduler> &__time_point) const
         noexcept(noexcept(schedule_after(__sched, __time_point - now(__sched))))
       {
+        using __sched_t = __decay_t<_Scheduler>;
         using __native_sender_t =
           __call_result_t<__schedule_after_base_t, _Scheduler, duration_of_t<_Scheduler> const &>;
 
-        return __make_sexpr<__timed_scheduler_fallback::__tag>(
-          __timed_scheduler_fallback::__data<STDEXEC::__decay_t<_Scheduler>, __native_sender_t>{
-            __sched},
-          let_value(just(),
-                    [__sched, __time_point]() noexcept(
-                      noexcept(schedule_after(__sched, __time_point - now(__sched))))
-                    { return schedule_after(__sched, __time_point - now(__sched)); }));
+        return __sexpr{__timed_scheduler_fallback::__tag(),
+                       __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
+                       let_value(just(),
+                                 [__sched, __time_point]() noexcept(
+                                   noexcept(schedule_after(__sched, __time_point - now(__sched))))
+                                 { return schedule_after(__sched, __time_point - now(__sched)); })};
       }
     };
   }  // namespace __schedule_at

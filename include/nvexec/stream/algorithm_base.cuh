@@ -142,11 +142,3 @@ namespace nv::execution::_strm::__algo_range_init_fun
 }  // namespace nv::execution::_strm::__algo_range_init_fun
 
 namespace nvexec = nv::execution;
-
-namespace STDEXEC::__detail
-{
-  template <class Sender, class InitT, class Fun, class DerivedSender>
-  extern __mtype<nvexec::_strm::__algo_range_init_fun::
-                   sender<__demangle_t<Sender>, InitT, Fun, __demangle_t<DerivedSender>>>
-    __demangle_v<nvexec::_strm::__algo_range_init_fun::sender<Sender, InitT, Fun, DerivedSender>>;
-}  // namespace STDEXEC::__detail

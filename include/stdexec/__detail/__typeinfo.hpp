@@ -49,30 +49,6 @@ namespace STDEXEC
 
   namespace __detail
   {
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Ty>
-    extern __mtype<_Ty> __demangle_v;
-  }  // namespace __detail
-
-  // A utility for pretty-printing type names in diagnostics
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Ty>
-  using __demangle_t = decltype(__detail::__demangle_v<_Ty>)::__t;
-
-  namespace __detail
-  {
-    template <class _Ty>
-    extern __mtype<__demangle_t<_Ty> &> __demangle_v<_Ty &>;
-
-    template <class _Ty>
-    extern __mtype<__demangle_t<_Ty> &&> __demangle_v<_Ty &&>;
-
-    template <class _Ty>
-    extern __mtype<__demangle_t<_Ty> const &> __demangle_v<_Ty const &>;
-  }  // namespace __detail
-
-  namespace __detail
-  {
     ////////////////////////////////////////////////////////////////////////////
     // __get_pretty_name
     template <class>
@@ -120,7 +96,7 @@ namespace STDEXEC
   // __mnameof: get the pretty name of a type _Ty as a string_view at compile
   // time
   template <class _Ty>
-  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<__demangle_t<_Ty>>();
+  inline constexpr std::string_view __mnameof = __detail::__get_pretty_name<_Ty>();
 
   static_assert(__mnameof<void> == "void");
 
