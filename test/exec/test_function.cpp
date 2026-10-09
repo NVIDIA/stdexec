@@ -1229,6 +1229,63 @@ namespace
     }
   }
 
+  TEST_CASE("function reports its declared completion domain wherever it's started",
+            "[types][function]")
+  {
+    // A function's completion domain comes from its type, not from the
+    // environment it's connected in, even when its implementation completes
+    // inline and so actually completes wherever the caller started it.
+    auto caller_env = ex::prop(ex::get_domain, domain());
+
+    SECTION("an inline-completing implementation doesn't report the caller's domain")
+    {
+      exec::function<void()> fn(ex::just);
+
+      auto just_domain = get_completion_domain<ex::set_value_t>(ex::get_env(ex::just()),
+                                                                caller_env);
+      auto fn_domain   = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<domain, decltype(just_domain)>);
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(fn_domain)>);
+    }
+
+    SECTION("forwarding the caller's domain doesn't change what's reported")
+    {
+      using function = exec::function<void(), exec::queries<domain(ex::get_domain_t) noexcept>>;
+
+      function fn(ex::just);
+      auto     fn_domain = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(fn_domain)>);
+    }
+
+    SECTION("a forwarded domain is accepted under the default only if it derives from it")
+    {
+      struct unrelated_domain
+      {};
+
+      using derived = exec::function<void(), exec::queries<domain(ex::get_domain_t) noexcept>>;
+      using unrelated =
+        exec::function<void(), exec::queries<unrelated_domain(ex::get_domain_t) noexcept>>;
+
+      STATIC_REQUIRE(std::constructible_from<derived, ex::just_t>);
+      STATIC_REQUIRE(!std::constructible_from<unrelated, ex::just_t>);
+    }
+
+    SECTION("declaring the forwarded domain reports it")
+    {
+      using function =
+        exec::function<void(),
+                       exec::queries<domain(ex::get_domain_t) noexcept>,
+                       exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>;
+
+      function fn(ex::just);
+      auto     fn_domain = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<domain, decltype(fn_domain)>);
+    }
+  }
+
   template <auto Tag>
   using custom_domain_for =
     exec::attrs<domain(ex::get_completion_domain_t<std::remove_cvref_t<decltype(Tag)>>)>;
