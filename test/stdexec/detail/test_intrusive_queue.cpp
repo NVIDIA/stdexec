@@ -170,8 +170,8 @@ namespace
   TEST_CASE("intrusive_queue::splice remains valid after chained transfers",
             "[detail][intrusive_queue]")
   {
-    std::array<test_node, 36> nodes{};
-    std::array<test_queue, 3> queues{};
+    std::array<test_node, 36>     nodes{};
+    std::array<test_queue, 3>     queues{};
     std::array<std::list<int>, 3> expected{};
 
     for (std::size_t i = 0; i < nodes.size(); ++i)
