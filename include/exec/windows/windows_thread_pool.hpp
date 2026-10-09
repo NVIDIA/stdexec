@@ -129,7 +129,7 @@ namespace experimental::execution::__win32
 
     struct transform_bulk;
 
-    template <bool Parallelize, std::integral Shape, class Fun, class Sender>
+    template <bool Parallelize, std::integral Shape, class Fun, class Sender, bool IsChunked>
     class bulk_sender;
 
     template <bool Parallelize, class Shape, class Fun, class CvSender, class Rcvr>
@@ -950,14 +950,14 @@ namespace experimental::execution::__win32
         // Turn a bulk_unchunked into a bulk_chunked operation
         using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
         using sender_t =
-          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>>;
+          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>, false>;
         return sender_t{*pool_, static_cast<CvSender &&>(sndr), shape, fun_t{std::move(fun)}};
       }
       else
       {
         using fun_t = decltype(fun);
         using sender_t =
-          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>>;
+          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>, true>;
         return sender_t{*pool_, static_cast<CvSender &&>(sndr), shape, std::move(fun)};
       }
     }
@@ -969,7 +969,7 @@ namespace experimental::execution::__win32
   {
     // transform the generic bulk_chunked/bulk_unchunked senders into a parallel
     // windows_thread_pool bulk sender
-    template <experimental::execution::sender_for Sender, class Env>
+    template <exec::sender_for Sender, class Env>
       requires STDEXEC::__one_of<STDEXEC::tag_of_t<Sender>,
                                  STDEXEC::bulk_chunked_t,
                                  STDEXEC::bulk_unchunked_t>
@@ -996,7 +996,7 @@ namespace experimental::execution::__win32
     }
   };
 
-  template <bool Parallelize, std::integral Shape, class Fun, class Sender>
+  template <bool Parallelize, std::integral Shape, class Fun, class Sender, bool IsChunked>
   class windows_thread_pool::bulk_sender
   {
     template <class Self, class Rcvr>
@@ -1028,24 +1028,25 @@ namespace experimental::execution::__win32
     static consteval auto get_completion_signatures()
     {
       using namespace STDEXEC;
-      return experimental::execution::transform_completion_signatures(
+      return exec::transform_completion_signatures(
         STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
         []<class... Args>()
         {
+          using bulk_tag_t = std::conditional_t<IsChunked, bulk_chunked_t, bulk_unchunked_t>;
           if constexpr (!__decay_copyable<Args...>)
           {
-            return experimental::execution::throw_compile_time_error<
+            return exec::throw_compile_time_error<
               _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-              _WHERE_(_IN_ALGORITHM_, bulk_chunked_t),
+              _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
               _WITH_ARGUMENTS_(Args...),
               _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
               _WITH_ENVIRONMENT_(Env...)>();
           }
           else if constexpr (!__callable<Fun &, Shape, Shape, __decay_t<Args> &...>)
           {
-            return experimental::execution::throw_compile_time_error<
+            return exec::throw_compile_time_error<
               _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
-              _WHERE_(_IN_ALGORITHM_, bulk_chunked_t),
+              _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
               _WITH_FUNCTION_(Fun &),
               _WITH_ARGUMENTS_(Shape, Shape, __decay_t<Args> & ...)>();
           }
