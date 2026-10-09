@@ -659,6 +659,10 @@ namespace experimental::execution
       static_assert(__is_instance_of<_Attrs, attrs>);
       static_assert(__completion_signatures_and_domains_are_compatible<_Sigs, _Attrs>);
 
+      // the member-function specialization wraps a void-pointer specialization
+      template <bool, class, class, class, class...>
+      friend class __function;
+
      protected:
       using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
@@ -833,20 +837,23 @@ namespace experimental::execution
               __is_instance_of<__self_box> _SelfBox,
               class... _Args>
     class __function<_Nothrow, _Sigs, _Queries, _Attrs, _SelfBox, _Args...>
-      : public __function<_Nothrow,
-                          _Sigs,
-                          _Queries,
-                          _Attrs,
-                          typename _SelfBox::__void_pointer,
-                          _Args...>
     {
       using __void_pointer = _SelfBox::__void_pointer;
-      using __base = __function<_Nothrow, _Sigs, _Queries, _Attrs, __void_pointer, _Args...>;
+      using __impl_t = __function<_Nothrow, _Sigs, _Queries, _Attrs, __void_pointer, _Args...>;
 
-      using __receiver_t = __base::__receiver_t;
-      using __tag        = __base::__tag;
+      using __receiver_t = __impl_t::__receiver_t;
+      using __tag        = __impl_t::__tag;
+
+      template <class _Receiver>
+      using __opstate_t = __impl_t::template __opstate_t<_Receiver>;
+
+      // The void-pointer form does all the work. It's a member rather than a
+      // base so that a member-function function doesn't convert to it.
+      __impl_t __impl_;
 
      public:
+      using sender_concept = sender_tag;
+
       // check the cheap __binds_to_self first; the conjunction short-circuits
       template <class _Self, class _Factory>
         requires __binds_to_self<_Self &&, _SelfBox>
@@ -867,11 +874,41 @@ namespace experimental::execution
         // (pointer or empty) factory can't throw, so only initializing the
         // curried arguments matters
         noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
-        : __base(static_cast<__void_pointer>(std::addressof(__self)),
-                 static_cast<__curried_param_t<_Args>>(__args)...,
-                 __self_adapting_factory<_Factory, __declared_self_t<_Self, _SelfBox>>{__fact},
-                 __tag{})
+        : __impl_(static_cast<__void_pointer>(std::addressof(__self)),
+                  static_cast<__curried_param_t<_Args>>(__args)...,
+                  __self_adapting_factory<_Factory, __declared_self_t<_Self, _SelfBox>>{__fact},
+                  __tag{})
       {}
+
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures()
+      {
+        static_assert(__decays_to_derived_from<_Self, __function>);
+        return __impl_t::template get_completion_signatures<__copy_cvref_t<_Self, __impl_t>,
+                                                            _Env...>();
+      }
+
+      constexpr auto get_env() const noexcept
+      {
+        return __impl_.get_env();
+      }
+
+      template <receiver _Receiver>
+      constexpr auto connect(_Receiver __rcvr) &&  //
+        noexcept(__impl_t::template __nothrow_connect<_Receiver>) -> __opstate_t<_Receiver>
+      {
+        return static_cast<__impl_t &&>(__impl_).connect(static_cast<_Receiver &&>(__rcvr));
+      }
+
+      template <receiver _Receiver>
+        requires __std::copy_constructible<__impl_t>
+      constexpr auto connect(_Receiver __rcvr) const &  //
+        noexcept(__impl_t::template __nothrow_connect<_Receiver>
+                 && __nothrow_copy_constructible<__impl_t>)  //
+        -> __opstate_t<_Receiver>
+      {
+        return __impl_.connect(static_cast<_Receiver &&>(__rcvr));
+      }
     };
 
     template <class _Sigs>
