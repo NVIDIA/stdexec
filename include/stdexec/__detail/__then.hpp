@@ -189,6 +189,12 @@ namespace STDEXEC
   //!                              sender-returning function
   struct then_t
   {
+    template <class _Fun, class _Sender>
+    struct __sender;
+
+    template <class _Fun, class _Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __sender(then_t, _Fun, _Sender) -> __sender<_Fun, _Sender>;
+
     //! @brief Construct a sender that adapts @c __sndr by invoking @c __fun
     //!        with each value-completion argument pack it produces.
     //!
@@ -213,10 +219,9 @@ namespace STDEXEC
     //!      the program is ill-formed at the point where the resulting sender
     //!      is connected to a receiver.
     template <sender _Sender, __movable_value _Fun>
-    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
-    {
-      return __sexpr{then_t(), static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr)};
-    }
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const
+      noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto;
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
     //!        sender, produces `then(sndr, __fun)`.
@@ -233,12 +238,28 @@ namespace STDEXEC
     //!          value. When piped against a sender @c sndr, it yields the
     //!          sender `then(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
-    STDEXEC_ATTRIBUTE(always_inline)
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
     constexpr auto operator()(_Fun __fun) const
     {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
+
+  template <>
+  struct __sexpr_impl<then_t> : __then::__then_impl
+  {};
+
+  template <class _Fun, class _Sender>
+  struct then_t::__sender : __sexpr<then_t, _Fun, _Sender>
+  {};
+
+  template <sender _Sender, __movable_value _Fun>
+  STDEXEC_ATTRIBUTE(host, device)
+  inline constexpr auto then_t::operator()(_Sender && __sndr, _Fun __fun) const
+    noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto
+  {
+    return then_t::__sender{then_t(), static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr)};
+  }
 
   //! @brief The customization point object for the @c then sender adaptor.
   //!
@@ -248,10 +269,6 @@ namespace STDEXEC
   //!
   //! @hideinitializer
   inline constexpr then_t then{};
-
-  template <>
-  struct __sexpr_impl<then_t> : __then::__then_impl
-  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

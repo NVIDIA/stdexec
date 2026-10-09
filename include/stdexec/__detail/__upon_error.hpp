@@ -189,6 +189,13 @@ namespace STDEXEC
   //!                               sender-returning function
   struct upon_error_t
   {
+    template <class _Fun, class _Sender>
+    struct __sender;
+
+    template <class _Fun, class _Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
+      __sender(upon_error_t, _Fun, _Sender) -> __sender<_Fun, _Sender>;
+
     //! @brief Construct a sender that handles each error completion of
     //!        @c __sndr by invoking @c __fun on the error datum.
     //!
@@ -213,10 +220,9 @@ namespace STDEXEC
     //!      ill-formed at the point where the resulting sender is connected
     //!      to a receiver.
     template <sender _Sender, __movable_value _Fun>
-    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const -> __well_formed_sender auto
-    {
-      return __sexpr{upon_error_t(), static_cast<_Fun&&>(__fun), static_cast<_Sender&&>(__sndr)};
-    }
+    STDEXEC_ATTRIBUTE(host, device)
+    constexpr auto operator()(_Sender&& __sndr, _Fun __fun) const
+      noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto;
 
     //! @brief Construct a sender-adaptor closure that, when applied to a
     //!        sender, produces `upon_error(sndr, __fun)`.
@@ -232,12 +238,30 @@ namespace STDEXEC
     //!          value. When piped against a sender @c sndr, it yields the
     //!          sender `upon_error(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
-    STDEXEC_ATTRIBUTE(always_inline)
+    STDEXEC_ATTRIBUTE(always_inline, host, device)
     constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_move_constructible<_Fun>)
     {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }
   };
+
+  template <>
+  struct __sexpr_impl<upon_error_t> : __upon_error::__upon_error_impl
+  {};
+
+  template <class _Fun, class _Sender>
+  struct upon_error_t::__sender : __sexpr<upon_error_t, _Fun, _Sender>
+  {};
+
+  template <sender _Sender, __movable_value _Fun>
+  STDEXEC_ATTRIBUTE(host, device)
+  inline constexpr auto upon_error_t::operator()(_Sender && __sndr, _Fun __fun) const
+    noexcept(__nothrow_decay_copyable<_Sender, _Fun>) -> __well_formed_sender auto
+  {
+    return upon_error_t::__sender{upon_error_t(),
+                                  static_cast<_Fun&&>(__fun),
+                                  static_cast<_Sender&&>(__sndr)};
+  }
 
   //! @brief The customization point object for the @c upon_error sender
   //! adaptor.
@@ -248,10 +272,6 @@ namespace STDEXEC
   //!
   //! @hideinitializer
   inline constexpr upon_error_t upon_error{};
-
-  template <>
-  struct __sexpr_impl<upon_error_t> : __upon_error::__upon_error_impl
-  {};
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
