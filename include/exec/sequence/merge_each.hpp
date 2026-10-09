@@ -1095,8 +1095,10 @@ namespace experimental::execution
       using sender_concept = STDEXEC::sender_tag;
 
       template <class _NextReceiver>
-      using __next_sequence_op_t =
-        __next_sequence_op<_NestedSequenceSender, _NextReceiver, _OperationBase, _NestedSeqOp>;
+      using __next_sequence_op_t = __next_sequence_op<_NestedSequenceSender,
+                                                      __decay_t<_NextReceiver>,
+                                                      _OperationBase,
+                                                      _NestedSeqOp>;
 
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures() noexcept

@@ -35,7 +35,7 @@ namespace
 
   struct recv_value
   {
-    int* target_;
+    int *target_;
 
     void set_value(int val) noexcept
     {
@@ -55,7 +55,7 @@ namespace
 
   struct recv_rvalref
   {
-    int* target_;
+    int *target_;
 
     void set_value(int val) noexcept
     {
@@ -75,7 +75,7 @@ namespace
 
   struct recv_ref
   {
-    int* target_;
+    int *target_;
 
     void set_value(int val) noexcept
     {
@@ -95,7 +95,7 @@ namespace
 
   struct recv_cref
   {
-    int* target_;
+    int *target_;
 
     void set_value(int val) noexcept
     {
@@ -111,6 +111,14 @@ namespace
     {
       *target_ = INT_MAX;
     }
+  };
+
+  // Const members ensure that rejection comes from the CPO constraints.
+  struct recv_const
+  {
+    void set_value(int) const noexcept {}
+    void set_error(int) const noexcept {}
+    void set_stopped() const noexcept {}
   };
 
   TEST_CASE("can call set_value on a void receiver", "[cpo][cpo_receiver]")
@@ -170,16 +178,6 @@ namespace
     REQUIRE(val == 10);
   }
 
-  TEST_CASE("can call set_value on a receiver with ref type", "[cpo][cpo_receiver]")
-  {
-    static_assert(std::invocable<ex::set_value_t, recv_ref&, int>,
-                  "cannot call set_value on recv_ref");
-    int      val = 0;
-    recv_ref recv{&val};
-    ex::set_value(recv, 10);
-    REQUIRE(val == 10);
-  }
-
   TEST_CASE("can call set_value on a receiver with const ref type", "[cpo][cpo_receiver]")
   {
     static_assert(std::invocable<ex::set_value_t, recv_cref, int>,
@@ -204,16 +202,6 @@ namespace
                   "cannot call set_error on recv_rvalref");
     int val = 0;
     ex::set_error(recv_rvalref{&val}, 10);
-    REQUIRE(val == -10);
-  }
-
-  TEST_CASE("can call set_error on a receiver with ref type", "[cpo][cpo_receiver]")
-  {
-    static_assert(std::invocable<ex::set_error_t, recv_ref&, int>,
-                  "cannot call set_error on recv_ref");
-    int      val = 0;
-    recv_ref recv{&val};
-    ex::set_error(recv, 10);
     REQUIRE(val == -10);
   }
 
@@ -244,16 +232,6 @@ namespace
     REQUIRE(val == INT_MAX);
   }
 
-  TEST_CASE("can call set_stopped on a receiver with ref type", "[cpo][cpo_receiver]")
-  {
-    static_assert(std::invocable<ex::set_stopped_t, recv_ref&>,
-                  "cannot call set_stopped on recv_ref");
-    int      val = 0;
-    recv_ref recv{&val};
-    ex::set_stopped(recv);
-    REQUIRE(val == INT_MAX);
-  }
-
   TEST_CASE("can call set_stopped on a receiver with const ref type", "[cpo][cpo_receiver]")
   {
     static_assert(std::invocable<ex::set_stopped_t, recv_cref>,
@@ -261,6 +239,28 @@ namespace
     int val = 0;
     ex::set_stopped(recv_cref{&val});
     REQUIRE(val == INT_MAX);
+  }
+
+  TEST_CASE("completion CPOs reject lvalue receivers", "[cpo][cpo_receiver]")
+  {
+    static_assert(!std::invocable<ex::set_value_t, recv_const &, int>);
+    static_assert(!std::invocable<ex::set_error_t, recv_const &, int>);
+    static_assert(!std::invocable<ex::set_stopped_t, recv_const &>);
+
+    static_assert(!std::invocable<ex::set_value_t, recv_const const &, int>);
+    static_assert(!std::invocable<ex::set_error_t, recv_const const &, int>);
+    static_assert(!std::invocable<ex::set_stopped_t, recv_const const &>);
+  }
+
+  TEST_CASE("completion CPOs reject const rvalue receivers", "[cpo][cpo_receiver]")
+  {
+    static_assert(std::invocable<ex::set_value_t, recv_const &&, int>);
+    static_assert(std::invocable<ex::set_error_t, recv_const &&, int>);
+    static_assert(std::invocable<ex::set_stopped_t, recv_const &&>);
+
+    static_assert(!std::invocable<ex::set_value_t, recv_const const &&, int>);
+    static_assert(!std::invocable<ex::set_error_t, recv_const const &&, int>);
+    static_assert(!std::invocable<ex::set_stopped_t, recv_const const &&>);
   }
 
   TEST_CASE("tag types can be deduced from set_value, set_error and set_stopped",

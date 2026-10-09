@@ -41,6 +41,10 @@ namespace STDEXEC
 {
   namespace __detail
   {
+    // For deduced forwarding-reference arguments, rejects lvalues and const rvalues.
+    template <class _Ty>
+    concept __non_const_rvalue = !STDEXEC_IS_SAME(_Ty, _Ty const);
+
     template <__disposition _Disposition>
     struct __completion_tag
     {
@@ -114,7 +118,7 @@ namespace STDEXEC
     //!                   `.set_value(_As...)` member.
     //! @tparam _As       The value-datum argument types.
     template <class _Receiver, class... _As>
-      requires __set_value_member<_Receiver, _As...>
+      requires __detail::__non_const_rvalue<_Receiver> && __set_value_member<_Receiver, _As...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr void operator()(_Receiver &&__rcvr, _As &&...__as) const noexcept
     {
@@ -182,7 +186,7 @@ namespace STDEXEC
     //! @tparam _Receiver A type with a matching `.set_error(_Error)` member.
     //! @tparam _Error    The error datum type.
     template <class _Receiver, class _Error>
-      requires __set_error_member<_Receiver, _Error>
+      requires __detail::__non_const_rvalue<_Receiver> && __set_error_member<_Receiver, _Error>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr void operator()(_Receiver &&__rcvr, _Error &&__err) const noexcept
     {
@@ -248,7 +252,7 @@ namespace STDEXEC
     //! @tparam _Receiver A type with a matching nullary
     //!                   `.set_stopped()` member.
     template <class _Receiver>
-      requires __set_stopped_member<_Receiver>
+      requires __detail::__non_const_rvalue<_Receiver> && __set_stopped_member<_Receiver>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr void operator()(_Receiver &&__rcvr) const noexcept
     {
