@@ -92,7 +92,7 @@ namespace experimental::execution
 
    private:
     static constexpr std::uint64_t default_seed = 0xc1f651c67c62c6e0ull;
-    std::uint64_t                 m_seed;
+    std::uint64_t m_seed;
   };
 
 }  // namespace experimental::execution
