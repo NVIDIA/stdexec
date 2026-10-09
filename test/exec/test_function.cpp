@@ -274,9 +274,10 @@ namespace
 
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
-    counting_resource               res;
-    exec::function<bool() noexcept> sndr(
-      [&res]() noexcept
+    counting_resource                                      res;
+    exec::function<bool(counting_resource & res) noexcept> sndr(
+      res,
+      [](auto &res) noexcept
       {
         return ex::read_env(exec::get_frame_allocator)
              | ex::then(
@@ -362,7 +363,7 @@ namespace
 
   struct iface
   {
-    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct iface2
@@ -372,7 +373,7 @@ namespace
       return exec::function<int(iface2 const *) noexcept>(this, &iface2::get_i_virtually);
     }
 
-    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct impl
@@ -393,34 +394,98 @@ namespace
       return self->just_i();
     }
 
-    exec::function<int() noexcept> get_i_with_capture() const noexcept
-    {
-      return exec::function<int() noexcept>([this]() noexcept { return just_i(); });
-    }
-
     exec::function<int(impl const *) noexcept> get_i_with_pmfn() const noexcept
     {
       return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
     }
 
-    exec::function<int() noexcept> get_i_virtually() const noexcept override
+    exec::function<int(iface const *) noexcept> get_i_virtually() const noexcept override
     {
-      return get_i_with_capture();
+      return exec::function<int(iface const *) noexcept>(
+        this,
+        [](iface const *self) noexcept { return static_cast<impl const *>(self)->just_i(); });
     }
 
    private:
     int i_;
   };
 
-  TEST_CASE("exec::function accepts small trivially-copyable callables", "[types][function]")
+  struct sender_holder
   {
-    SECTION("function<int() noexcept> accepts a lambda capturing this")
+    decltype(ex::just(42)) sndr = ex::just(42);
+  };
+
+  struct move_only_sender_holder
+  {
+    decltype(ex::just(std::unique_ptr<int>{})) sndr = ex::just(std::unique_ptr<int>{});
+  };
+
+  TEST_CASE("exec::function accepts only stateless sender factories", "[types][function]")
+  {
+    SECTION("function<int(sender_holder const *) noexcept> accepts a pointer to member data")
     {
-      auto [ret] = ex::sync_wait(impl{42}.get_i_with_capture()).value();
+      sender_holder h;
+      auto [ret] = ex::sync_wait(
+                     exec::function<int(sender_holder const *) noexcept>(&h, &sender_holder::sndr))
+                     .value();
 
       REQUIRE(ret == 42);
     }
 
+    SECTION("a pointer to member data yields an lvalue, so the sender must be copyable")
+    {
+      using function =
+        exec::function<std::unique_ptr<int>(move_only_sender_holder const *) noexcept>;
+      using factory = decltype(&move_only_sender_holder::sndr);
+
+      STATIC_REQUIRE(!std::constructible_from<function, move_only_sender_holder const *, factory>);
+    }
+
+    SECTION("a callable with state is rejected, however small")
+    {
+      using function = exec::function<int() noexcept>;
+
+      int  i        = 42;
+      auto stateful = [i]() noexcept
+      {
+        return ex::just(i);
+      };
+      auto stateless = []() noexcept
+      {
+        return ex::just(42);
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<function, decltype(stateful)>);
+      STATIC_REQUIRE(std::constructible_from<function, decltype(stateless)>);
+    }
+
+    SECTION("the factory must be invocable as a const lvalue")
+    {
+      using function = exec::function<int()>;
+
+      struct non_const_call
+      {
+        auto operator()() noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      struct rvalue_call
+      {
+        auto operator()() && noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<function, non_const_call>);
+      STATIC_REQUIRE(!std::constructible_from<function, rvalue_call>);
+    }
+  }
+
+  TEST_CASE("exec::function accepts small trivially-copyable callables", "[types][function]")
+  {
     SECTION("function<int(impl const *) noexcept> accepts a pointer-to-member function")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_with_pmfn()).value();
@@ -438,7 +503,8 @@ namespace
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int()> can be the return type of a virtual member function")
+    SECTION("function<int(iface const *) noexcept> can be the return type of a virtual member "
+            "function")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_virtually()).value();
 

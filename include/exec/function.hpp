@@ -326,6 +326,57 @@ namespace experimental::execution
       && ((!__has_completion_domain<_Attrs, set_error_t>) || _Sigs::__count(set_error) > 0)  //
       && ((!__has_completion_domain<_Attrs, set_stopped_t>) || _Sigs::__count(set_stopped) > 0);
 
+    //! The sender factory passed to function must be one of:
+    //!  1. a pointer-to-function,
+    //!  2. a pointer-to-member (function or object), or
+    //!  3. an empty, trivially-copyable, callable object (like a captureless lambda or a
+    //!     CPO like STDEXEC::just).
+    //!
+    //! Concept __is_callable_pointer matches options 1 and 2, and concept
+    //! __is_empty_callable matches option 3.
+
+    //! Satisfied when _Ty is a pointer-to-function or pointer-to-member
+    template <class _Ty>
+    concept __is_callable_pointer = (std::is_pointer_v<_Ty>
+                                     && std::is_function_v<std::remove_pointer_t<_Ty>>)
+                                 || std::is_member_pointer_v<_Ty>;
+
+    //! Satisfied when _Ty is an empty, trivially-copyable object; callability is not
+    //! actually checked here because __is_suitable_factory checks __invocable before
+    //! checking is_empty_callable
+    template <class _Ty>
+    concept __is_empty_callable = std::is_empty_v<_Ty> && (STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty));
+
+    //! Defines the constraints on a function's sender factory argument; satisfied when
+    //! _Factory:
+    //!  - is invocable as a const lvalue with the given argument types (function
+    //!    stores the factory and always invokes it that way; a stateless factory
+    //!    has nothing to mutate or consume),
+    //!  - returns a sender that is connectable to the given receiver type, and
+    //!  - returns a sender whose completion domains match the declared completion
+    //!    domains of the function that will use it.
+    //!
+    //! \tparam _Factory the ostensible factory to check
+    //! \tparam _Func the function specialization that will use _Factory
+    //! \tparam _Receiver the type of the receiver to which the sender returned from the
+    //!                   factory will be connected
+    //! \tparam _Args... the factory arguments
+    template <class _Factory, class _Func, class _Receiver, class... _Args>
+    concept __is_factory_of_suitable_sender =
+      __invocable<_Factory const &, _Args...>
+      && sender_to<__invoke_result_t<_Factory const &, _Args...>, _Receiver>
+      && __completion_domains_match<__invoke_result_t<_Factory const &, _Args...>,
+                                    _Func,
+                                    env_of_t<_Receiver>>;
+
+    //! Defines the constraints on a function's sender factory; satisfied when _Factory:
+    //!  - produces a suitable sender as defined by __is_factory_of_suitable_sender, and
+    //!  - is either of the above-defined kinds of callable.
+    template <class _Factory, class _Func, class _Receiver, class... _Args>
+    concept __is_suitable_factory =
+      __is_factory_of_suitable_sender<_Factory, _Func, _Receiver, _Args...>
+      && (__is_callable_pointer<_Factory> || __is_empty_callable<_Factory>);
+
     //! the main implementation of the type-erasing sender function<...>
     //
     //! @tparam _Sigs The supported completion signatures
@@ -358,9 +409,9 @@ namespace experimental::execution
       __mk_opstate(void *__storage, __receiver_t __rcvr, _Args &&...__args)  //
         -> _any::_any_opstate_base
       {
-        auto &__make_sender = *__std::start_lifetime_as<_Factory>(__storage);
-        using __alloc_t     = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
-        auto __alloc        = __frame_allocator_t<__alloc_t>(
+        auto const &__make_sender = *__std::start_lifetime_as<_Factory>(__storage);
+        using __alloc_t           = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
+        auto __alloc              = __frame_allocator_t<__alloc_t>(
           __choose_frame_allocator(STDEXEC::get_env(__rcvr)));
         return _any::_any_opstate_base(__in_place_from,
                                        std::allocator_arg,
@@ -392,19 +443,19 @@ namespace experimental::execution
      public:
       using sender_concept = sender_tag;
 
-      template <__invocable<_Args...> _Factory>
-        requires __not_decays_to<_Factory, __function>           //
-                && (STDEXEC_IS_TRIVIALLY_COPYABLE(_Factory))     //
-                && (sizeof(_Factory) <= sizeof(__make_sender_))  //
-                && sender_to<__invoke_result_t<_Factory, _Args...>, __receiver_t>
-                && __completion_domains_match<__invoke_result_t<_Factory, _Args...>,
-                                              __function,
-                                              env_of_t<__receiver_t>>
+      // check __not_decays_to first: the conjunction short-circuits, so
+      // overload resolution for an ordinary copy or move never instantiates
+      // the much more expensive __is_suitable_factory check
+      template <class _Factory>
+        requires __not_decays_to<_Factory, __function>
+                && __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
       constexpr explicit __function(_Args &&...__args, _Factory __factory)
         noexcept(__nothrow_move_constructible<_Args...>)
         : __args_(static_cast<_Args &&>(__args)...)
         , __make_opstate_(&__mk_opstate<_Factory>)
       {
+        static_assert(sizeof(_Factory) <= sizeof(__make_sender_));
+
         std::memcpy(__make_sender_, std::addressof(__factory), sizeof(_Factory));
       }
 
