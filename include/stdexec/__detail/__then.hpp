@@ -239,7 +239,7 @@ namespace STDEXEC
     //!          sender `then(sndr, std::move(__fun))`.
     template <__movable_value _Fun>
     STDEXEC_ATTRIBUTE(always_inline, host, device)
-    constexpr auto operator()(_Fun __fun) const
+    constexpr auto operator()(_Fun __fun) const noexcept(__nothrow_decay_copyable<_Fun>)
     {
       return __closure(*this, static_cast<_Fun&&>(__fun));
     }

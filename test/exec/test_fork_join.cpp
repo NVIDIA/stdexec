@@ -43,6 +43,30 @@ namespace
                      completion_signatures<set_value_t(), set_error_t(std::exception_ptr)>>);
   }
 
+  TEST_CASE("fork_join coalesces empty and unary calls", "[adaptors][fork_join]")
+  {
+    /// Empty (no closure given).
+    STDEXEC::sender auto empty = exec::fork_join(STDEXEC::just());
+    using empty_t              = decltype(empty);
+    STATIC_REQUIRE(std::same_as<empty_t, decltype(STDEXEC::just())>);
+    STATIC_REQUIRE(!exec::sender_for<empty_t, exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just())));
+
+    auto then = STDEXEC::then([]() noexcept {});
+
+    /// Unary closure.
+    STDEXEC::sender auto unary = exec::fork_join(STDEXEC::just(), then);
+    using unary_t              = decltype(unary);
+    STATIC_REQUIRE(std::same_as<unary_t, decltype(STDEXEC::just() | then)>);
+    STATIC_REQUIRE(!exec::sender_for<unary_t, exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just(), then)));
+
+    /// Multiple closures.
+    STDEXEC::sender auto multiple = STDEXEC::just() | exec::fork_join(then, then);
+    STATIC_REQUIRE(exec::sender_for<decltype(multiple), exec::fork_join_t>);
+    STATIC_REQUIRE(noexcept(exec::fork_join(STDEXEC::just(), then, then)));
+  }
+
   struct ForwardingThen
   {
     template <typename Value>
@@ -68,6 +92,35 @@ namespace
     int value = 0;
   };
 #endif
+
+  //! Count how many copies and moves are performed.
+  struct counter
+  {
+    inline static std::atomic<unsigned int> copy_constructions{0};
+    inline static std::atomic<unsigned int> copy_assignments{0};
+    inline static std::atomic<unsigned int> move_constructions{0};
+    inline static std::atomic<unsigned int> move_assignments{0};
+
+    counter() = default;
+    counter(counter const &) noexcept
+    {
+      copy_constructions.fetch_add(1, std::memory_order_relaxed);
+    }
+    counter &operator=(counter const &) noexcept
+    {
+      copy_assignments.fetch_add(1, std::memory_order_relaxed);
+      return *this;
+    }
+    counter(counter &&) noexcept
+    {
+      move_constructions.fetch_add(1, std::memory_order_relaxed);
+    }
+    counter &operator=(counter &&) noexcept
+    {
+      move_assignments.fetch_add(1, std::memory_order_relaxed);
+      return *this;
+    }
+  };
 
   template <char ID>
   struct identifiable_domain : public STDEXEC::default_domain
@@ -140,17 +193,42 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("fork_join reports failures while caching results", "[adaptors][fork_join]")
   {
+    std::atomic<int> witness{0};
+
     auto sndr = exec::fork_join(exec::just_from(
                                   [](auto sink) noexcept
                                   {
                                     static throwing_copy value;
                                     return sink(value);
                                   }),
-                                then([](throwing_copy const &) noexcept {}));
+                                then([&witness](throwing_copy const &) noexcept { ++witness; }),
+                                then([&witness](throwing_copy const &) noexcept { ++witness; }));
 
     CHECK_THROWS_AS(sync_wait(std::move(sndr)), int);
+
+    CHECK(witness == 0);
   }
 #endif
+
+  TEST_CASE("fork_join caches without copying when results are movable and replays by reference to "
+            "children",
+            "[adaptors][fork_join]")
+  {
+    std::atomic<int> witness{0};
+
+    auto sndr = exec::fork_join(exec::just_from([](auto sink) noexcept { return sink(counter{}); }),
+                                STDEXEC::then([&witness](counter const &) noexcept { ++witness; }),
+                                STDEXEC::then([&witness](counter const &) noexcept { ++witness; }));
+
+    STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(counter::copy_constructions == 0);
+    CHECK(counter::copy_assignments == 0);
+    CHECK(counter::move_constructions == 1);
+    CHECK(counter::move_assignments == 0);
+
+    CHECK(witness == 2);
+  }
 
   TEST_CASE("fork_join can be nested", "[adaptors][fork_join]")
   {
