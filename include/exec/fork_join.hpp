@@ -39,8 +39,24 @@ namespace experimental::execution
       }
     };
 
+    template <class Completions,
+              bool = STDEXEC::__nothrow_decay_copyable_results_t<Completions>::value>
+    struct _cache_completions
+    {
+      using type = Completions;
+    };
+
     template <class Completions>
-    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage, Completions>;
+    struct _cache_completions<Completions, false>
+    {
+      using type =
+        STDEXEC::__concat_completion_signatures_t<Completions, STDEXEC::__eptr_completion_t>;
+    };
+
+    // Account that decay-copying into the cache may throw.
+    template <class Completions>
+    using _variant_t = STDEXEC::__mapply_q<STDEXEC::__results_storage,
+                                           typename _cache_completions<Completions>::type>;
 
     template <class Domain>
     struct _env_t

@@ -93,6 +93,35 @@ namespace
   };
 #endif
 
+  //! Count how many copies and moves are performed.
+  struct counter
+  {
+    inline static std::atomic<unsigned int> copy_constructions{0};
+    inline static std::atomic<unsigned int> copy_assignments{0};
+    inline static std::atomic<unsigned int> move_constructions{0};
+    inline static std::atomic<unsigned int> move_assignments{0};
+
+    counter() = default;
+    counter(counter const &) noexcept
+    {
+      copy_constructions.fetch_add(1, std::memory_order_relaxed);
+    }
+    counter &operator=(counter const &) noexcept
+    {
+      copy_assignments.fetch_add(1, std::memory_order_relaxed);
+      return *this;
+    }
+    counter(counter &&) noexcept
+    {
+      move_constructions.fetch_add(1, std::memory_order_relaxed);
+    }
+    counter &operator=(counter &&) noexcept
+    {
+      move_assignments.fetch_add(1, std::memory_order_relaxed);
+      return *this;
+    }
+  };
+
   template <char ID>
   struct identifiable_domain : public STDEXEC::default_domain
   {};
@@ -164,17 +193,42 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("fork_join reports failures while caching results", "[adaptors][fork_join]")
   {
+    std::atomic<int> witness{0};
+
     auto sndr = exec::fork_join(exec::just_from(
                                   [](auto sink) noexcept
                                   {
                                     static throwing_copy value;
                                     return sink(value);
                                   }),
-                                then([](throwing_copy const &) noexcept {}));
+                                then([&witness](throwing_copy const &) noexcept { ++witness; }),
+                                then([&witness](throwing_copy const &) noexcept { ++witness; }));
 
     CHECK_THROWS_AS(sync_wait(std::move(sndr)), int);
+
+    CHECK(witness == 0);
   }
 #endif
+
+  TEST_CASE("fork_join caches without copying when results are movable and replays by reference to "
+            "children",
+            "[adaptors][fork_join]")
+  {
+    std::atomic<int> witness{0};
+
+    auto sndr = exec::fork_join(exec::just_from([](auto sink) noexcept { return sink(counter{}); }),
+                                STDEXEC::then([&witness](counter const &) noexcept { ++witness; }),
+                                STDEXEC::then([&witness](counter const &) noexcept { ++witness; }));
+
+    STDEXEC::sync_wait(std::move(sndr));
+
+    CHECK(counter::copy_constructions == 0);
+    CHECK(counter::copy_assignments == 0);
+    CHECK(counter::move_constructions == 1);
+    CHECK(counter::move_assignments == 0);
+
+    CHECK(witness == 2);
+  }
 
   TEST_CASE("fork_join can be nested", "[adaptors][fork_join]")
   {
