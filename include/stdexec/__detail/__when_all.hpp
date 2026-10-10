@@ -397,7 +397,6 @@ namespace STDEXEC
   //!             `when_all(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
-  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __transfer_when_all_t __transfer_when_all{};
 
   //! @brief The customization point object for the
@@ -407,7 +406,6 @@ namespace STDEXEC
   //!             `when_all_with_variant(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
-  STDEXEC_MODULE_EXPORT_AUTHORING
   inline constexpr __transfer_when_all_with_variant_t __transfer_when_all_with_variant{};
 
   namespace __when_all
