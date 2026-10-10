@@ -28,6 +28,11 @@
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <array>
+#include <exception>
+#include <ranges>
+#include <utility>
+
 namespace
 {
 
@@ -42,6 +47,107 @@ namespace
 
     void set_value() noexcept {}
   };
+
+  TEST_CASE("transform_each - subscribe is noexcept for a nonthrowing child",
+            "[sequence_senders][transform_each]")
+  {
+    auto transformed = exec::transform_each(exec::empty_sequence(), ex::then([]() noexcept {}));
+
+    STATIC_REQUIRE(noexcept(exec::subscribe(transformed, next_rcvr{})));
+    STATIC_REQUIRE(noexcept(exec::subscribe(std::as_const(transformed), next_rcvr{})));
+    STATIC_REQUIRE(noexcept(exec::subscribe(std::move(transformed), next_rcvr{})));
+
+    auto op = exec::subscribe(std::move(transformed), next_rcvr{});
+    ex::start(op);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct range_error
+  {};
+
+  struct throwing_copy_value
+  {
+    throwing_copy_value() = default;
+
+    throwing_copy_value(throwing_copy_value const &)
+    {
+      throw range_error{};
+    }
+
+    throwing_copy_value(throwing_copy_value &&) noexcept = default;
+  };
+
+  TEST_CASE("transform_each - subscribe propagates adaptor copy exceptions",
+            "[sequence_senders][transform_each]")
+  {
+    auto adaptor     = ex::then([capture = throwing_copy_value{}]() noexcept { (void) capture; });
+    auto transformed = exec::transform_each(exec::empty_sequence(), std::move(adaptor));
+
+    STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(transformed, next_rcvr{})));
+    CHECK_THROWS_AS(exec::subscribe(transformed, next_rcvr{}), range_error);
+  }
+
+  template <bool ThrowFromBegin>
+  struct throwing_range
+  {
+    using iterator = std::array<int, 1>::iterator;
+
+    auto begin() noexcept(!ThrowFromBegin) -> iterator
+    {
+      if constexpr (ThrowFromBegin)
+      {
+        throw range_error{};
+      }
+      return values_.begin();
+    }
+
+    auto end() noexcept(ThrowFromBegin) -> iterator
+    {
+      if constexpr (!ThrowFromBegin)
+      {
+        throw range_error{};
+      }
+      return values_.end();
+    }
+
+    std::array<int, 1> values_{0};
+  };
+
+  struct range_rcvr : next_rcvr
+  {
+    void set_error(std::exception_ptr) noexcept {}
+
+    void set_stopped() noexcept {}
+  };
+
+  TEMPLATE_TEST_CASE("transform_each - subscribe propagates range exceptions",
+                     "[sequence_senders][transform_each][iterate]",
+                     throwing_range<true>,
+                     throwing_range<false>)
+  {
+    TestType range;
+    auto     transformed = exec::transform_each(exec::iterate(std::views::all(range)),
+                                            ex::then([](int) noexcept {}));
+
+    SECTION("lvalue sender")
+    {
+      STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(transformed, range_rcvr{})));
+      CHECK_THROWS_AS(exec::subscribe(transformed, range_rcvr{}), range_error);
+    }
+
+    SECTION("const lvalue sender")
+    {
+      STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(std::as_const(transformed), range_rcvr{})));
+      CHECK_THROWS_AS(exec::subscribe(std::as_const(transformed), range_rcvr{}), range_error);
+    }
+
+    SECTION("rvalue sender")
+    {
+      STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(std::move(transformed), range_rcvr{})));
+      CHECK_THROWS_AS(exec::subscribe(std::move(transformed), range_rcvr{}), range_error);
+    }
+  }
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   TEST_CASE("transform_each - transform sender applies adaptor to no elements",
             "[sequence_senders][transform_each][empty_sequence]")
