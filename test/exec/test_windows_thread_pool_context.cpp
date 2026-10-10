@@ -402,7 +402,7 @@ TEST_CASE("windows_thread_pool: bulk completes with an error when copying the va
           "[types][windows_thread_pool][schedulers][bulk]")
 {
   struct value_capture_error
-  { };
+  {};
 
   struct throwing_value
   {
@@ -423,7 +423,7 @@ TEST_CASE("windows_thread_pool: bulk completes with an error when copying the va
   auto                      s = tp.get_scheduler();
 
   auto sndr = STDEXEC::schedule(s) | STDEXEC::then([]() noexcept { return throwing_value{}; })
-            | STDEXEC::bulk(STDEXEC::par, 0, [](int, throwing_value &) noexcept { });
+            | STDEXEC::bulk(STDEXEC::par, 0, [](int, throwing_value &) noexcept {});
 
   STATIC_REQUIRE(
     set_equivalent<STDEXEC::completion_signatures_of_t<decltype(sndr), STDEXEC::env<>>,
