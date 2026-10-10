@@ -23,34 +23,14 @@ namespace ex = stdexec;
 
 auto main() -> int
 {
-  using nvexec::is_on_gpu;
-
   nvexec::stream_context stream_ctx{};
   ex::scheduler auto     sch = stream_ctx.get_scheduler();
 
-  auto bulk_fn = [](int lbl)
+  auto fn = [](int i) noexcept
   {
-    return [=](int i)
-    {
-      std::printf("B%d: i = %d\n", lbl, i);
-    };
+    std::printf("i = %d (%s)\n", i, nvexec::is_on_gpu() ? "GPU" : "CPU");
   };
 
-  auto then_fn = [](int lbl)
-  {
-    return [=]
-    {
-      std::printf("T%d\n", lbl);
-    };
-  };
-
-  auto fork = ex::schedule(sch) | ex::then(then_fn(0)) | exec::split();
-
-  auto snd = ex::transfer_when_all(sch,
-                                   fork | ex::bulk(ex::par, 4, bulk_fn(1)),
-                                   fork | ex::then(then_fn(1)),
-                                   fork | ex::bulk(ex::par, 4, bulk_fn(2)))
-           | ex::then(then_fn(2));
-
+  auto snd = ex::on(sch, ex::just() | ex::bulk(ex::par, 4, fn));
   stdexec::sync_wait(std::move(snd));
 }

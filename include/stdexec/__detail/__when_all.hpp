@@ -295,7 +295,7 @@ namespace STDEXEC
   //! @see stdexec::when_all      — without the scheduler transfer
   //! @see stdexec::continues_on  — the underlying transfer primitive
   STDEXEC_MODULE_EXPORT_AUTHORING
-  struct transfer_when_all_t
+  struct __transfer_when_all_t
   {
     //! @brief Compose @c __sndrs... and deliver the combined completion on
     //!        @c __sched's execution resource.
@@ -306,7 +306,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __sexpr{transfer_when_all_t(),
+      return __sexpr{__transfer_when_all_t(),
                      static_cast<_Scheduler&&>(__sched),
                      static_cast<_Senders&&>(__sndrs)...};
     }
@@ -314,7 +314,7 @@ namespace STDEXEC
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      // transform transfer_when_all(sch, sndrs...) into
+      // transform __transfer_when_all(sch, sndrs...) into
       // continues_on(when_all(sndrs...), sch).
       return __apply(
         [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child)
@@ -343,7 +343,7 @@ namespace STDEXEC
   //! @see stdexec::when_all_with_variant
   //! @see stdexec::transfer_when_all
   STDEXEC_MODULE_EXPORT_AUTHORING
-  struct transfer_when_all_with_variant_t
+  struct __transfer_when_all_with_variant_t
   {
     //! @brief Compose @c __sndrs... (each wrapped in @c into_variant) and
     //!        deliver the combined completion on @c __sched's execution
@@ -352,7 +352,7 @@ namespace STDEXEC
     constexpr auto
     operator()(_Scheduler&& __sched, _Senders&&... __sndrs) const -> __well_formed_sender auto
     {
-      return __sexpr{transfer_when_all_with_variant_t(),
+      return __sexpr{__transfer_when_all_with_variant_t(),
                      static_cast<_Scheduler&&>(__sched),
                      static_cast<_Senders&&>(__sndrs)...};
     }
@@ -360,13 +360,13 @@ namespace STDEXEC
     template <class _Sender>
     static constexpr auto transform_sender(set_value_t, _Sender&& __sndr, __ignore)
     {
-      // transform the transfer_when_all_with_variant(sch, sndrs...) into
-      // transfer_when_all(sch, into_variant(sndrs...))
+      // transform the __transfer_when_all_with_variant(sch, sndrs...) into
+      // __transfer_when_all(sch, into_variant(sndrs...))
       return __apply(
         [&]<class _Data, class... _Child>(__ignore, _Data&& __data, _Child&&... __child)
         {
-          return transfer_when_all_t()(static_cast<_Data&&>(__data),
-                                       into_variant(static_cast<_Child&&>(__child))...);
+          return __transfer_when_all_t()(static_cast<_Data&&>(__data),
+                                         into_variant(static_cast<_Child&&>(__child))...);
         },
         static_cast<_Sender&&>(__sndr));
     }
@@ -390,25 +390,25 @@ namespace STDEXEC
   //! @hideinitializer
   inline constexpr when_all_with_variant_t when_all_with_variant{};
 
-  //! @brief The customization point object for the @c transfer_when_all
+  //! @brief The customization point object for the @c __transfer_when_all
   //!        sender factory.
   //!
-  //! @deprecated See @ref transfer_when_all_t. Use
+  //! @deprecated See @ref __transfer_when_all_t. Use
   //!             `when_all(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
   STDEXEC_MODULE_EXPORT_AUTHORING
-  inline constexpr transfer_when_all_t transfer_when_all{};
+  inline constexpr __transfer_when_all_t __transfer_when_all{};
 
   //! @brief The customization point object for the
-  //!        @c transfer_when_all_with_variant sender factory.
+  //!        @c __transfer_when_all_with_variant sender factory.
   //!
-  //! @deprecated See @ref transfer_when_all_with_variant_t. Use
+  //! @deprecated See @ref __transfer_when_all_with_variant_t. Use
   //!             `when_all_with_variant(...) | continues_on(sch)` instead.
   //!
   //! @hideinitializer
   STDEXEC_MODULE_EXPORT_AUTHORING
-  inline constexpr transfer_when_all_with_variant_t transfer_when_all_with_variant{};
+  inline constexpr __transfer_when_all_with_variant_t __transfer_when_all_with_variant{};
 
   namespace __when_all
   {
@@ -928,7 +928,7 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         using __sndr_t =
-          __detail::__transform_sender_result_t<transfer_when_all_t, set_value_t, _Sender, env<>>;
+          __detail::__transform_sender_result_t<__transfer_when_all_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
       };
     };
@@ -946,7 +946,7 @@ namespace STDEXEC
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
-        using __sndr_t = __detail::__transform_sender_result_t<transfer_when_all_with_variant_t,
+        using __sndr_t = __detail::__transform_sender_result_t<__transfer_when_all_with_variant_t,
                                                                set_value_t,
                                                                _Sender,
                                                                env<>>;
@@ -964,11 +964,11 @@ namespace STDEXEC
   {};
 
   template <>
-  struct __sexpr_impl<transfer_when_all_t> : __when_all::__transfer_when_all_impl
+  struct __sexpr_impl<__transfer_when_all_t> : __when_all::__transfer_when_all_impl
   {};
 
   template <>
-  struct __sexpr_impl<transfer_when_all_with_variant_t>
+  struct __sexpr_impl<__transfer_when_all_with_variant_t>
     : __when_all::__transfer_when_all_with_variant_impl
   {};
 }  // namespace STDEXEC
