@@ -26,15 +26,31 @@
 // clang-format on
 
 #  include "../../stdexec/__detail/__atomic.hpp"
+#  include "../../stdexec/__detail/__bulk.hpp"
+#  include "../../stdexec/__detail/__connect.hpp"
+#  include "../../stdexec/__detail/__domain.hpp"
+#  include "../../stdexec/__detail/__env.hpp"
+#  include "../../stdexec/__detail/__get_completion_signatures.hpp"
 #  include "../../stdexec/__detail/__manual_lifetime.hpp"
 #  include "../../stdexec/__detail/__operation_states.hpp"
 #  include "../../stdexec/__detail/__receivers.hpp"
 #  include "../../stdexec/__detail/__schedulers.hpp"
 #  include "../../stdexec/__detail/__stop_token.hpp"
+#  include "../../stdexec/__detail/__transform_sender.hpp"
+#  include "../../stdexec/__detail/__tuple.hpp"
+#  include "../../stdexec/__detail/__variant.hpp"
+#  include "../completion_signatures.hpp"
+#  include "../sender_for.hpp"
 #  include "../timed_scheduler.hpp"  // IWYU pragma: keep
 #  include "./filetime_clock.hpp"
 
+#  include <algorithm>
+#  include <cstdint>
+#  include <exception>
+#  include <functional>
 #  include <system_error>
+#  include <thread>
+#  include <type_traits>
 #  include <utility>
 
 namespace experimental::execution::__win32
@@ -42,7 +58,6 @@ namespace experimental::execution::__win32
   class windows_thread_pool
   {
     struct attrs;
-    class scheduler;
     class schedule_sender;
     class schedule_op_base;
 
@@ -112,7 +127,24 @@ namespace experimental::execution::__win32
 
     using clock_type = filetime_clock;
 
+    struct transform_bulk;
+
+    template <bool Parallelize, std::integral Shape, class Fun, class Sender, bool IsChunked>
+    class bulk_sender;
+
+    template <bool Parallelize, class Shape, class Fun, class CvSender, class Rcvr>
+    struct bulk_shared_state;
+
+    template <bool Parallelize, class Shape, class Fun, class CvSender, class Rcvr>
+    struct bulk_receiver;
+
+    template <bool Parallelize, std::integral Shape, class Fun, class CvSender, class Rcvr>
+    struct bulk_op;
+
    public:
+    class scheduler;
+    struct domain;
+
     // Initialise to use the process' default thread-pool.
     windows_thread_pool() noexcept;
 
@@ -125,7 +157,15 @@ namespace experimental::execution::__win32
     auto get_scheduler() noexcept -> scheduler;
 
    private:
-    PTP_POOL threadPool_;
+    // The maximum number of execution agents a bulk operation is split into.
+    [[nodiscard]]
+    auto available_parallelism() const noexcept -> std::uint32_t
+    {
+      return availableParallelism_;
+    }
+
+    PTP_POOL      threadPool_;
+    std::uint32_t availableParallelism_;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -886,6 +926,407 @@ namespace experimental::execution::__win32
   };
 
   //////////////////////////////////////////////////////////////////////////////
+  // bulk_chunked() / bulk_unchunked()
+
+  struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_WINDOWS_THREAD_POOL_SCHEDULER;
+  struct BECAUSE_THERE_IS_NO_WINDOWS_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT;
+  struct ADD_A_CONTINUES_ON_TRANSITION_TO_THE_WINDOWS_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM;
+
+  struct windows_thread_pool::transform_bulk
+  {
+    template <STDEXEC::__one_of<STDEXEC::bulk_chunked_t, STDEXEC::bulk_unchunked_t> Tag,
+              class Data,
+              class CvSender>
+    auto operator()(Tag, Data &&data, CvSender &&sndr) const
+    {
+      auto [pol, shape, fun] = static_cast<Data &&>(data);
+      using policy_t         = STDEXEC::__decay_t<decltype(pol.__get())>;
+      constexpr bool parallelize =
+        STDEXEC::__same_as<policy_t, STDEXEC::parallel_policy>
+        || STDEXEC::__same_as<policy_t, STDEXEC::parallel_unsequenced_policy>;
+
+      if constexpr (STDEXEC::__same_as<Tag, STDEXEC::bulk_unchunked_t>)
+      {
+        // Turn a bulk_unchunked into a bulk_chunked operation
+        using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<decltype(fun)>;
+        using sender_t =
+          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>, false>;
+        return sender_t{*pool_, static_cast<CvSender &&>(sndr), shape, fun_t{std::move(fun)}};
+      }
+      else
+      {
+        using fun_t = decltype(fun);
+        using sender_t =
+          bulk_sender<parallelize, decltype(shape), fun_t, STDEXEC::__decay_t<CvSender>, true>;
+        return sender_t{*pool_, static_cast<CvSender &&>(sndr), shape, std::move(fun)};
+      }
+    }
+
+    windows_thread_pool *pool_;
+  };
+
+  struct windows_thread_pool::domain : STDEXEC::default_domain
+  {
+    // transform the generic bulk_chunked/bulk_unchunked senders into a parallel
+    // windows_thread_pool bulk sender
+    template <exec::sender_for Sender, class Env>
+      requires STDEXEC::__one_of<STDEXEC::tag_of_t<Sender>,
+                                 STDEXEC::bulk_chunked_t,
+                                 STDEXEC::bulk_unchunked_t>
+    auto transform_sender(STDEXEC::set_value_t, Sender &&sndr, Env const &env) const noexcept
+    {
+      if constexpr (STDEXEC::__completes_on<Sender, windows_thread_pool::scheduler, Env>)
+      {
+        auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(sndr),
+                                                                             env);
+        static_assert(std::is_same_v<decltype(sched), windows_thread_pool::scheduler>);
+        return STDEXEC::__apply(transform_bulk{sched.pool_}, static_cast<Sender &&>(sndr));
+      }
+      else
+      {
+        return STDEXEC::__not_a_sender<
+          STDEXEC::_WHAT_(CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_WINDOWS_THREAD_POOL_SCHEDULER),
+          STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_WINDOWS_THREAD_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
+          STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
+          STDEXEC::_TO_FIX_THIS_ERROR_(
+            ADD_A_CONTINUES_ON_TRANSITION_TO_THE_WINDOWS_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
+          STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+          STDEXEC::_WITH_ENVIRONMENT_(Env)>();
+      }
+    }
+  };
+
+  template <bool Parallelize, std::integral Shape, class Fun, class Sender, bool IsChunked>
+  class windows_thread_pool::bulk_sender
+  {
+    template <class Self, class Rcvr>
+    using bulk_op_t = bulk_op<Parallelize, Shape, Fun, STDEXEC::__copy_cvref_t<Self, Sender>, Rcvr>;
+
+   public:
+    using sender_concept = STDEXEC::sender_tag;
+
+    explicit bulk_sender(windows_thread_pool &pool, Sender sndr, Shape shape, Fun fun)
+      noexcept(STDEXEC::__nothrow_move_constructible<Sender, Fun>)
+      : pool_(&pool)
+      , sndr_(static_cast<Sender &&>(sndr))
+      , shape_(shape)
+      , fun_(static_cast<Fun &&>(fun))
+    {}
+
+    template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Rcvr>
+    STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self &&self, Rcvr rcvr) -> bulk_op_t<Self, Rcvr>
+    {
+      return bulk_op_t<Self, Rcvr>{*self.pool_,
+                                   self.shape_,
+                                   self.fun_,
+                                   static_cast<Self &&>(self).sndr_,
+                                   static_cast<Rcvr &&>(rcvr)};
+    }
+    STDEXEC_EXPLICIT_THIS_END(connect)
+
+    template <STDEXEC::__decays_to<bulk_sender> Self, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      using namespace STDEXEC;
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        []<class... Args>()
+        {
+          using bulk_tag_t = std::conditional_t<IsChunked, bulk_chunked_t, bulk_unchunked_t>;
+          if constexpr (!__decay_copyable<Args...>)
+          {
+            return exec::throw_compile_time_error<
+              _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+              _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
+              _WITH_ARGUMENTS_(Args...),
+              _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
+              _WITH_ENVIRONMENT_(Env...)>();
+          }
+          else if constexpr (!__callable<Fun &, Shape, Shape, __decay_t<Args> &...>)
+          {
+            return exec::throw_compile_time_error<
+              _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+              _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
+              _WITH_FUNCTION_(Fun &),
+              _WITH_ARGUMENTS_(Shape, Shape, __decay_t<Args> & ...)>();
+          }
+          else if constexpr (__nothrow_callable<Fun &, Shape, Shape, __decay_t<Args> &...>
+                             && __nothrow_decay_copyable<Args...>)
+          {
+            return completion_signatures<set_value_t(__decay_t<Args>...)>();
+          }
+          else
+          {
+            return completion_signatures<set_value_t(__decay_t<Args>...),
+                                         set_error_t(std::exception_ptr)>();
+          }
+        });
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> STDEXEC::env_of_t<Sender const &>
+    {
+      return STDEXEC::get_env(sndr_);
+    }
+
+   private:
+    windows_thread_pool *pool_;
+    Sender               sndr_;
+    Shape                shape_;
+    Fun                  fun_;
+  };
+
+  // The state shared by all the execution agents of a bulk operation.
+  //
+  // A single thread-pool work object is created for the whole operation and is
+  // submitted once per execution agent. Each invocation of the work callback
+  // claims the next agent index and runs the bulk function over that agent's
+  // share of [0, shape). The agent that finishes last completes the operation.
+  template <bool Parallelize, class Shape, class Fun, class CvSender, class Rcvr>
+  struct windows_thread_pool::bulk_shared_state
+  {
+    using variant_t = STDEXEC::__value_types_of_t<CvSender,
+                                                  STDEXEC::env_of_t<Rcvr>,
+                                                  STDEXEC::__qq<STDEXEC::__decayed_tuple>,
+                                                  STDEXEC::__qq<STDEXEC::__variant>>;
+
+    explicit bulk_shared_state(windows_thread_pool &pool, Rcvr rcvr, Shape shape, Fun fun)
+      : rcvr_(static_cast<Rcvr &&>(rcvr))
+      , shape_(shape)
+      , fun_(static_cast<Fun &&>(fun))
+      , num_agents_(num_agents_required(pool, shape))
+      , agent_with_exception_(num_agents_)
+    {
+      ::InitializeThreadpoolEnvironment(&environ_);
+      ::SetThreadpoolCallbackPool(&environ_, pool.threadPool_);
+      work_ = ::CreateThreadpoolWork(&work_callback, static_cast<void *>(this), &environ_);
+      if (work_ == nullptr)
+      {
+        DWORD errorCode = ::GetLastError();
+
+        ::DestroyThreadpoolEnvironment(&environ_);
+        throw std::system_error{static_cast<int>(errorCode),
+                                std::system_category(),
+                                "CreateThreadpoolWork()"};
+      }
+    }
+
+    bulk_shared_state(bulk_shared_state &&) = delete;
+
+    ~bulk_shared_state()
+    {
+      // This may run inside the work callback of the last agent (when the
+      // receiver destroys the operation from set_value()). This is fine: the
+      // work object is then released once the outstanding callbacks return.
+      ::CloseThreadpoolWork(work_);
+      ::DestroyThreadpoolEnvironment(&environ_);
+    }
+
+    //! The number of agents required is the minimum of `shape` and the
+    //! available parallelism of the pool, or 1 if the policy is sequenced.
+    static auto
+    num_agents_required(windows_thread_pool &pool, Shape shape) noexcept -> std::uint32_t
+    {
+      if (!(Shape{} < shape))
+      {
+        return 0;
+      }
+
+      if constexpr (Parallelize)
+      {
+        using ushape_t = std::make_unsigned_t<Shape>;
+        return static_cast<std::uint32_t>(
+          (std::min) (static_cast<std::uint64_t>(static_cast<ushape_t>(shape)),
+                      static_cast<std::uint64_t>(pool.available_parallelism())));
+      }
+      else
+      {
+        return 1;
+      }
+    }
+
+    //! Splits `[0, n)` into `size` chunks, distributing `n % size` evenly
+    //! between the first ranks, and returns the chunk of `rank`.
+    static auto
+    even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept -> std::pair<Shape, Shape>
+    {
+      using ushape_t           = std::make_unsigned_t<Shape>;
+      auto const avg_per_agent = static_cast<ushape_t>(n) / size;
+      auto const n_big_share   = avg_per_agent + 1;
+      auto const big_shares    = static_cast<ushape_t>(n) % size;
+      auto const is_big_share  = rank < big_shares;
+      auto const begin         = is_big_share
+                                 ? n_big_share * rank
+                                 : n_big_share * big_shares + (rank - big_shares) * avg_per_agent;
+      auto const end           = begin + (is_big_share ? n_big_share : avg_per_agent);
+      return {static_cast<Shape>(begin), static_cast<Shape>(end)};
+    }
+
+    void submit() noexcept
+    {
+      for (std::uint32_t i = 0; i != num_agents_; ++i)
+      {
+        ::SubmitThreadpoolWork(work_);
+      }
+    }
+
+    void complete() noexcept
+    {
+      STDEXEC::__visit(
+        [this](auto &tupl) noexcept
+        {
+          STDEXEC::__apply([this](auto &...args) noexcept
+                           { STDEXEC::set_value(static_cast<Rcvr &&>(rcvr_), std::move(args)...); },
+                           tupl);
+        },
+        data_);
+    }
+
+    static void CALLBACK work_callback(PTP_CALLBACK_INSTANCE, void *workContext, PTP_WORK) noexcept
+    {
+      auto &self = *static_cast<bulk_shared_state *>(workContext);
+
+      // Every submission of the work object invokes this callback exactly once,
+      // so each invocation gets a distinct agent index.
+      std::uint32_t const agent = self.next_agent_.fetch_add(1,
+                                                             STDEXEC::__std::memory_order_relaxed);
+      STDEXEC_ASSERT(agent < self.num_agents_);
+
+      auto const [begin, end] = even_share(self.shape_, agent, self.num_agents_);
+      auto const applicator   = std::bind_front(std::ref(self.fun_), begin, end);
+      auto const computation  = std::bind_front(STDEXEC::__apply, applicator);
+
+      if constexpr (noexcept(STDEXEC::__visit(computation, self.data_)))
+      {
+        STDEXEC::__visit(computation, self.data_);
+        if (self.finished_agents_.fetch_add(1, STDEXEC::__std::memory_order_acq_rel) + 1
+            == self.num_agents_)  // last agent?
+        {
+          self.complete();
+        }
+      }
+      else
+      {
+        STDEXEC_TRY
+        {
+          STDEXEC::__visit(computation, self.data_);
+        }
+        STDEXEC_CATCH_ALL
+        {
+          std::uint32_t expected = self.num_agents_;
+          if (self.agent_with_exception_.compare_exchange_strong(
+                expected,
+                agent,
+                STDEXEC::__std::memory_order_relaxed,
+                STDEXEC::__std::memory_order_relaxed))
+          {
+            self.exception_ = std::current_exception();
+          }
+        }
+
+        if (self.finished_agents_.fetch_add(1, STDEXEC::__std::memory_order_acq_rel) + 1
+            == self.num_agents_)  // last agent?
+        {
+          if (self.exception_)
+          {
+            STDEXEC::set_error(static_cast<Rcvr &&>(self.rcvr_), std::move(self.exception_));
+          }
+          else
+          {
+            self.complete();
+          }
+        }
+      }
+    }
+
+    variant_t                             data_{STDEXEC::__no_init};
+    Rcvr                                  rcvr_;
+    Shape                                 shape_;
+    Fun                                   fun_;
+    std::uint32_t                         num_agents_;
+    STDEXEC::__std::atomic<std::uint32_t> next_agent_{0};
+    STDEXEC::__std::atomic<std::uint32_t> finished_agents_{0};
+    STDEXEC::__std::atomic<std::uint32_t> agent_with_exception_;
+    std::exception_ptr                    exception_;
+    PTP_WORK                              work_;
+    TP_CALLBACK_ENVIRON                   environ_;
+  };
+
+  template <bool Parallelize, class Shape, class Fun, class CvSender, class Rcvr>
+  struct windows_thread_pool::bulk_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    template <class... As>
+    void set_value(As &&...as) noexcept
+    {
+      STDEXEC_TRY
+      {
+        shared_state_.data_.template emplace<STDEXEC::__decayed_tuple<As...>>(
+          static_cast<As &&>(as)...);
+      }
+      STDEXEC_CATCH_ALL
+      {
+        if constexpr (!STDEXEC::__nothrow_decay_copyable<As...>)
+        {
+          STDEXEC::set_error(static_cast<Rcvr &&>(shared_state_.rcvr_), std::current_exception());
+          return;
+        }
+      }
+
+      if (shared_state_.num_agents_ != 0)
+      {
+        shared_state_.submit();
+      }
+      else
+      {
+        shared_state_.complete();
+      }
+    }
+
+    template <class Error>
+    void set_error(Error &&error) noexcept
+    {
+      STDEXEC::set_error(static_cast<Rcvr &&>(shared_state_.rcvr_), static_cast<Error &&>(error));
+    }
+
+    void set_stopped() noexcept
+    {
+      STDEXEC::set_stopped(static_cast<Rcvr &&>(shared_state_.rcvr_));
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> STDEXEC::env_of_t<Rcvr>
+    {
+      return STDEXEC::get_env(shared_state_.rcvr_);
+    }
+
+    bulk_shared_state<Parallelize, Shape, Fun, CvSender, Rcvr> &shared_state_;
+  };
+
+  template <bool Parallelize, std::integral Shape, class Fun, class CvSender, class Rcvr>
+  struct windows_thread_pool::bulk_op
+  {
+    using operation_state_concept = STDEXEC::operation_state_tag;
+    using receiver_t              = bulk_receiver<Parallelize, Shape, Fun, CvSender, Rcvr>;
+    using shared_state_t          = bulk_shared_state<Parallelize, Shape, Fun, CvSender, Rcvr>;
+    using inner_op_t              = STDEXEC::connect_result_t<CvSender, receiver_t>;
+
+    explicit bulk_op(windows_thread_pool &pool, Shape shape, Fun fun, CvSender &&sndr, Rcvr rcvr)
+      : shared_state_(pool, static_cast<Rcvr &&>(rcvr), shape, static_cast<Fun &&>(fun))
+      , inner_op_(STDEXEC::connect(static_cast<CvSender &&>(sndr), receiver_t{shared_state_}))
+    {}
+
+    void start() & noexcept
+    {
+      STDEXEC::start(inner_op_);
+    }
+
+    shared_state_t shared_state_;
+    inner_op_t     inner_op_;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
   // scheduler
 
   class windows_thread_pool::scheduler
@@ -919,6 +1360,27 @@ namespace experimental::execution::__win32
       return schedule_after_sender<Duration>{*pool_, std::move(d)};
     }
 
+    [[nodiscard]]
+    static constexpr auto
+    query(STDEXEC::get_forward_progress_guarantee_t) noexcept -> STDEXEC::forward_progress_guarantee
+    {
+      return STDEXEC::forward_progress_guarantee::parallel;
+    }
+
+    [[nodiscard]]
+    auto
+    query(STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>) const noexcept -> scheduler
+    {
+      return *this;
+    }
+
+    [[nodiscard]]
+    static constexpr auto
+    query(STDEXEC::get_completion_domain_t<STDEXEC::set_value_t>) noexcept -> domain
+    {
+      return {};
+    }
+
     friend auto operator==(scheduler a, scheduler b) noexcept -> bool
     {
       return a.pool_ == b.pool_;
@@ -931,6 +1393,7 @@ namespace experimental::execution::__win32
 
    private:
     friend windows_thread_pool;
+    friend domain;
 
     explicit scheduler(windows_thread_pool &pool) noexcept
       : pool_(&pool)
@@ -957,11 +1420,15 @@ namespace experimental::execution::__win32
 
   inline windows_thread_pool::windows_thread_pool() noexcept
     : threadPool_(nullptr)
+    , availableParallelism_((std::max) (1u, std::thread::hardware_concurrency()))
   {}
 
   inline windows_thread_pool::windows_thread_pool(std::uint32_t minThreadCount,
                                                   std::uint32_t maxThreadCount)
     : threadPool_(::CreateThreadpool(nullptr))
+    , availableParallelism_(
+        (std::max) ((std::min) (maxThreadCount, std::thread::hardware_concurrency()),
+                    std::uint32_t{1}))
   {
     if (threadPool_ == nullptr)
     {
