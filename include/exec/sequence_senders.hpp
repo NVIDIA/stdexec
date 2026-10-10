@@ -285,6 +285,17 @@ namespace experimental::execution
     STDEXEC::__minvocable_q<STDEXEC::tag_of_t, STDEXEC::__decay_t<_Sequence>>
     && __sequence_adaptor_traits<STDEXEC::tag_of_t<STDEXEC::__decay_t<_Sequence>>>::__transparent;
 
+  // The custom child-environment transformation an adaptor's traits define
+  // (`__sequence_adaptor_traits<_Tag>::__child_env_fn<_Env, _Data>`), if any.
+  // Named through an alias because gcc 12 mishandles a `typename T::template
+  // X<...>` type-requirement written directly inside a requires-expression:
+  // it silently reports such a requirement as unsatisfied for a dependent T
+  // (and rejects a non-dependent one outright), which would silently fall
+  // every transparent adaptor back to the identity transformation.
+  template <class _Tag, class _Env, class _Data>
+  using __custom_child_env_fn_t =
+    typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>;
+
   // The function object that transforms the environment of a transparent
   // sequence adaptor: the adaptor's traits may define a nested
   // `__child_env_fn<_Env, _Data>` function object type; otherwise, the
@@ -292,11 +303,9 @@ namespace experimental::execution
   template <class _Tag, class _Env, class _Data>
   consteval auto __adaptor_child_env_fn()
   {
-    if constexpr (requires {
-                    typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>;
-                  })
+    if constexpr (requires { typename __custom_child_env_fn_t<_Tag, _Env, _Data>; })
     {
-      return typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>{};
+      return __custom_child_env_fn_t<_Tag, _Env, _Data>{};
     }
     else
     {
