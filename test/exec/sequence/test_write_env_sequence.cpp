@@ -29,6 +29,7 @@
 #include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
+#include <optional>
 #include <utility>
 
 namespace
@@ -149,5 +150,156 @@ namespace
                        | exec::transform_each(STDEXEC::then([&](int v) { value = v; }))
                        | exec::ignore_all_values());
     CHECK(value == 42);
+  }
+
+  // Lifetime tests for issue #2305: `write_env` over a sequence sender injects
+  // its data into the environment the child is subscribed with, and the
+  // resulting operation state must own that data rather than reference the
+  // (long-dead) sender.
+
+  struct read_env_query : STDEXEC::__query<read_env_query>
+  {
+    static consteval auto query(STDEXEC::forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  inline constexpr int poisoned_value = -1;
+
+  struct injected_env_data
+  {
+    int value;
+
+    explicit injected_env_data(int value) noexcept
+      : value(value)
+    {}
+
+    injected_env_data(injected_env_data const &)    = default;
+    injected_env_data(injected_env_data&&) noexcept = default;
+
+    // Poison the value on destruction so that a read through a dangling
+    // reference after the sender is gone fails deterministically.
+    ~injected_env_data()
+    {
+      value = poisoned_value;
+    }
+
+    auto query(read_env_query) const noexcept -> int
+    {
+      return value;
+    }
+  };
+
+  struct move_only_env_data
+  {
+    int value;
+
+    explicit move_only_env_data(int value) noexcept
+      : value(value)
+    {}
+
+    move_only_env_data(move_only_env_data&&) noexcept = default;
+    move_only_env_data(move_only_env_data const &)    = delete;
+
+    ~move_only_env_data()
+    {
+      value = poisoned_value;
+    }
+
+    auto query(read_env_query) const noexcept -> int
+    {
+      return value;
+    }
+  };
+
+  // A sequence sender that reads an injected query out of its receiver's
+  // environment when started.
+  struct env_reading_sequence
+  {
+    using sender_concept = exec::sequence_sender_tag;
+    using item_types     = exec::item_types<decltype(STDEXEC::just(int{}))>;
+    using completion_signatures =
+      STDEXEC::completion_signatures<STDEXEC::set_value_t(), STDEXEC::set_stopped_t()>;
+
+    int* observed_;
+
+    template <class Rcvr>
+    struct op
+    {
+      using operation_state_concept = STDEXEC::operation_state_t;
+      Rcvr rcvr_;
+      int* observed_;
+
+      void start() noexcept
+      {
+        *observed_ = read_env_query{}(STDEXEC::get_env(rcvr_));
+        STDEXEC::set_value(static_cast<Rcvr&&>(rcvr_));
+      }
+    };
+
+    template <STDEXEC::receiver Rcvr>
+    auto subscribe(Rcvr rcvr) const -> op<Rcvr>
+    {
+      return op<Rcvr>{static_cast<Rcvr&&>(rcvr), observed_};
+    }
+  };
+
+  struct test_sequence_rcvr
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    template <class Item>
+    auto set_next(Item&& item) noexcept
+    {
+      return static_cast<Item&&>(item);
+    }
+
+    void set_value() noexcept {}
+
+    void set_stopped() noexcept {}
+
+    template <class Error>
+    void set_error(Error&&) noexcept
+    {}
+
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop(STDEXEC::get_stop_token, STDEXEC::inplace_stop_token{});
+    }
+  };
+
+  TEST_CASE("write_env's env data outlives a temporary sequence sender", "[sequence][write_env]")
+  {
+    int  observed = 0;
+    auto op       = exec::subscribe(STDEXEC::write_env(env_reading_sequence{&observed},
+                                                 injected_env_data{42}),
+                              test_sequence_rcvr{});
+    STDEXEC::start(op);
+    CHECK(observed == 42);
+  }
+
+  TEST_CASE("write_env with a move-only env over a sequence sender", "[sequence][write_env]")
+  {
+    int  observed = 0;
+    auto op       = exec::subscribe(STDEXEC::write_env(env_reading_sequence{&observed},
+                                                 move_only_env_data{42}),
+                              test_sequence_rcvr{});
+    STDEXEC::start(op);
+    CHECK(observed == 42);
+  }
+
+  TEST_CASE("write_env's env data outlives a named sequence sender", "[sequence][write_env]")
+  {
+    int observed = 0;
+    using sndr_t = decltype(STDEXEC::write_env(env_reading_sequence{}, injected_env_data{0}));
+    using op_t   = exec::subscribe_result_t<sndr_t&, test_sequence_rcvr>;
+    std::optional<sndr_t> sndr;
+    sndr.emplace(STDEXEC::write_env(env_reading_sequence{&observed}, injected_env_data{42}));
+    std::optional<op_t> op;
+    op.emplace(exec::subscribe(*sndr, test_sequence_rcvr{}));
+    sndr.reset();
+    STDEXEC::start(*op);
+    CHECK(observed == 42);
   }
 }  // namespace
