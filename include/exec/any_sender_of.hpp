@@ -509,7 +509,7 @@ namespace experimental::execution
         template <class, class>
         friend struct _any_schedule_sender;
         using _ireceiver_t        = _ireceiver<completion_signatures<Sigs...>, queries<Queries...>>;
-        using _any_receiver_ref_t = __pointer_receiver<typename _ireceiver_t::_pointer_t>;
+        using _any_receiver_ref_t = __indirect_receiver<typename _ireceiver_t::_pointer_t>;
         using _base_t             = STDEXEC::__any::__interface_base<_interface_, Base, _extends_t>;
        public:
         using sender_concept = STDEXEC::sender_tag;
@@ -646,12 +646,12 @@ namespace experimental::execution
 
     template <class Sigs, class Queries = queries<>>
     struct _any_receiver_ref
-      : __pointer_receiver<typename _any::_ireceiver<Sigs, Queries>::_pointer_t>
+      : __indirect_receiver<typename _any::_ireceiver<Sigs, Queries>::_pointer_t>
     {
       template <__not_decays_to<_any_receiver_ref> Receiver>
         requires STDEXEC::receiver_of<Receiver, Sigs>
       constexpr _any_receiver_ref(Receiver &_rcvr) noexcept
-        : _any_receiver_ref::__pointer_receiver(std::addressof(_rcvr))
+        : _any_receiver_ref::__indirect_receiver(std::addressof(_rcvr))
       {}
     };
   }  // namespace _any

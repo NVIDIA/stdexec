@@ -173,13 +173,13 @@ namespace experimental::execution
   // any_sequence_receiver_ref
   template <class _Sigs, class _Queries>
   struct any_sequence_receiver_ref
-    : STDEXEC::__pointer_receiver<
+    : STDEXEC::__indirect_receiver<
         STDEXEC::__any::__any_ptr<_any::_isequence_receiver<_Sigs, _Queries>::template _interface_>>
   {
    private:
     using _item_sender_t = execution::any_sender<any_receiver<_Sigs, _Queries>>;
     using _item_types_t  = execution::item_types<_item_sender_t>;
-    using _base_t        = STDEXEC::__pointer_receiver<
+    using _base_t        = STDEXEC::__indirect_receiver<
              STDEXEC::__any::__any_ptr<_any::_isequence_receiver<_Sigs, _Queries>::template _interface_>>;
 
    public:
