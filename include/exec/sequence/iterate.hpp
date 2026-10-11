@@ -53,25 +53,32 @@ namespace experimental::execution
     // The operation state owns the range it iterates, mirroring what the
     // default `get-state` does for a sender's data: the range is copied out of
     // an lvalue sender and moved out of an rvalue one. The range member is
-    // declared first so that the iterators are initialized from the stored
-    // copy and destroyed before it; the child item operations stored in the
-    // derived class are destroyed before anything in this base class.
+    // declared first so that the iterator is initialized from the stored copy
+    // and destroyed before it; the child item operations stored in the
+    // derived class are destroyed before anything in this base class. The
+    // sentinel is not stored separately; it is computed from the owned range
+    // on demand.
     template <class _Range>
     struct __operation_base_base
     {
       constexpr explicit __operation_base_base(_Range __range)
         noexcept(__nothrow_move_constructible<_Range> && noexcept(std::ranges::begin(__range_))
                  && noexcept(std::ranges::end(__range_))
-                 && __nothrow_move_constructible<std::ranges::iterator_t<_Range>,
-                                                 std::ranges::sentinel_t<_Range>>)
+                 && __nothrow_move_constructible<std::ranges::iterator_t<_Range>>)
         : __range_{static_cast<_Range&&>(__range)}
         , __iterator_{std::ranges::begin(__range_)}
-        , __sentinel_{std::ranges::end(__range_)}
-      {}
+      {
+        // Validate the sentinel eagerly so that an `end()` that throws still
+        // propagates out of `subscribe` (as
+        // "transform_each - subscribe propagates range exceptions" requires)
+        // rather than out of the noexcept `start`, which would terminate. The
+        // result is not stored; the sentinel is recomputed from the owned
+        // range on demand.
+        (void) std::ranges::end(__range_);
+      }
 
       STDEXEC_ATTRIBUTE(no_unique_address) _Range __range_;
       STDEXEC_ATTRIBUTE(no_unique_address) std::ranges::iterator_t<_Range> __iterator_;
-      STDEXEC_ATTRIBUTE(no_unique_address) std::ranges::sentinel_t<_Range> __sentinel_;
       trampoline_scheduler __scheduler_{};
     };
 
@@ -107,7 +114,7 @@ namespace experimental::execution
     template <class _Range>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_tag;
+      using sender_concept        = STDEXEC::sender_tag;
       using completion_signatures = STDEXEC::completion_signatures<set_value_t(
         std::iter_reference_t<std::ranges::iterator_t<_Range>>)>;
 
@@ -162,7 +169,7 @@ namespace experimental::execution
 
       constexpr void __start_next() noexcept final
       {
-        if (this->__iterator_ == this->__sentinel_)
+        if (this->__iterator_ == std::ranges::end(this->__range_))
         {
           STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
         }
