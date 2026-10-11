@@ -990,7 +990,7 @@ namespace experimental::execution::__win32
           STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
           STDEXEC::_TO_FIX_THIS_ERROR_(
             ADD_A_CONTINUES_ON_TRANSITION_TO_THE_WINDOWS_THREAD_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
-          STDEXEC::_WITH_PRETTY_SENDER_<Sender>,
+          STDEXEC::_WITH_SENDER_<Sender>,
           STDEXEC::_WITH_ENVIRONMENT_(Env)>();
       }
     }
@@ -1035,11 +1035,11 @@ namespace experimental::execution::__win32
           using bulk_tag_t = std::conditional_t<IsChunked, bulk_chunked_t, bulk_unchunked_t>;
           if constexpr (!__decay_copyable<Args...>)
           {
-            return exec::throw_compile_time_error<
+            return exec::throw_compile_time_error<  //
               _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
               _WHERE_(_IN_ALGORITHM_, bulk_tag_t),
               _WITH_ARGUMENTS_(Args...),
-              _WITH_PRETTY_SENDER_<__copy_cvref_t<Self, Sender>>,
+              _WITH_SENDER_<__copy_cvref_t<Self, Sender>>,
               _WITH_ENVIRONMENT_(Env...)>();
           }
           else if constexpr (!__callable<Fun &, Shape, Shape, __decay_t<Args> &...>)
