@@ -24,6 +24,11 @@ using namespace STDEXEC;
 
 namespace
 {
+  struct throwing_move_only
+  {
+    throwing_move_only() = default;
+    throwing_move_only(throwing_move_only &&) {}
+  };
 
   TEST_CASE("into_tuple is a sender", "[adaptors][into_tuple]")
   {
@@ -35,17 +40,21 @@ namespace
   {
     using void_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t()>>;
     STATIC_REQUIRE(sender_in<void_sender, ex::env<>>);
-    STATIC_REQUIRE(
-      set_equivalent<
-        completion_signatures_of_t<void_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<>)>>);
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<void_sender, ex::env<>>,
+                                  completion_signatures<set_value_t(std::tuple<>)>>);
 
-    using ints_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t(int&, int)>>;
+    using ints_sender = result_of_t<exec::into_tuple, a_sender_of<set_value_t(int &, int)>>;
+    STATIC_REQUIRE(sender_in<ints_sender, ex::env<>>);
+    STATIC_REQUIRE(set_equivalent<completion_signatures_of_t<ints_sender, ex::env<>>,
+                                  completion_signatures<set_value_t(std::tuple<int, int>)>>);
+
+    using throwing_move_only_sender =
+      result_of_t<exec::into_tuple, a_sender_of<set_value_t(throwing_move_only)>>;
     STATIC_REQUIRE(sender_in<ints_sender, ex::env<>>);
     STATIC_REQUIRE(
-      set_equivalent<
-        completion_signatures_of_t<ints_sender, ex::env<>>,
-        completion_signatures<set_error_t(std::exception_ptr), set_value_t(std::tuple<int, int>)>>);
+      set_equivalent<completion_signatures_of_t<throwing_move_only_sender, ex::env<>>,
+                     completion_signatures<set_error_t(std::exception_ptr),
+                                           set_value_t(std::tuple<throwing_move_only>)>>);
   }
 
   TEST_CASE("into_tuple rejects senders unless they have a single value completion",
