@@ -321,7 +321,7 @@ namespace experimental::execution
         {
           __u32 const            __index = __head & __mask_;
           ::io_uring_cqe const & __cqe   = __entries_[__index];
-          auto*                  __op    = reinterpret_cast<__task*>(static_cast<std::uintptr_t>(__cqe.user_data));
+          auto* __op = reinterpret_cast<__task*>(static_cast<std::uintptr_t>(__cqe.user_data));
           __op->__vtable_->__complete_(__op, __cqe);
           ++__head;
           ++__count;
@@ -362,7 +362,7 @@ namespace experimental::execution
         __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
         __entry                    = ::io_uring_sqe{};
         __entry.fd                 = __self.__eventfd_;
-        __entry.addr               = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__self.__buffer_));
+        __entry.addr = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__self.__buffer_));
 #    ifdef STDEXEC_HAS_IORING_OP_READ
         __entry.opcode = IORING_OP_READ;
         __entry.len    = sizeof(__self.__buffer_);
