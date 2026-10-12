@@ -92,9 +92,11 @@ namespace experimental::execution
         }
       }
 
-      STDEXEC_ATTRIBUTE(no_unique_address) _Range __range_;
-      STDEXEC_ATTRIBUTE(no_unique_address) std::ranges::iterator_t<_Range> __iterator_;
-      STDEXEC_ATTRIBUTE(no_unique_address)
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Range                                                                          __range_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      std::ranges::iterator_t<_Range>                                                 __iterator_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       std::conditional_t<__cache_sentinel, std::ranges::sentinel_t<_Range>, __ignore> __sentinel_;
       trampoline_scheduler __scheduler_{};
     };
