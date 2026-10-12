@@ -56,29 +56,46 @@ namespace experimental::execution
     // declared first so that the iterator is initialized from the stored copy
     // and destroyed before it; the child item operations stored in the
     // derived class are destroyed before anything in this base class. The
-    // sentinel is not stored separately; it is computed from the owned range
-    // on demand.
+    // sentinel is cached only when `ranges::end` can throw; when it cannot,
+    // an empty `__ignore` stands in for it and the end is recomputed from the
+    // range on each comparison.
     template <class _Range>
     struct __operation_base_base
     {
+      // A potentially-throwing `end()` is evaluated exactly once, in the
+      // constructor, so that it escapes `subscribe`; calling it again from
+      // the noexcept `__start_next` would terminate instead. An `end()` that
+      // is noexcept needs no such guard.
+      static constexpr bool __cache_sentinel = !noexcept(std::ranges::end(std::declval<_Range&>()));
+
       constexpr explicit __operation_base_base(_Range __range)
         noexcept(__nothrow_move_constructible<_Range> && noexcept(std::ranges::begin(__range_))
                  && noexcept(std::ranges::end(__range_))
                  && __nothrow_move_constructible<std::ranges::iterator_t<_Range>>)
         : __range_{static_cast<_Range&&>(__range)}
         , __iterator_{std::ranges::begin(__range_)}
+        , __sentinel_{std::ranges::end(__range_)}
+      {}
+
+      [[nodiscard]]
+      constexpr bool
+      __at_end() noexcept(noexcept(std::declval<std::ranges::iterator_t<_Range>&>()
+                                   == std::declval<std::ranges::sentinel_t<_Range>&>()))
       {
-        // Validate the sentinel eagerly so that an `end()` that throws still
-        // propagates out of `subscribe` (as
-        // "transform_each - subscribe propagates range exceptions" requires)
-        // rather than out of the noexcept `start`, which would terminate. The
-        // result is not stored; the sentinel is recomputed from the owned
-        // range on demand.
-        (void) std::ranges::end(__range_);
+        if constexpr (__cache_sentinel)
+        {
+          return __iterator_ == __sentinel_;
+        }
+        else
+        {
+          return __iterator_ == std::ranges::end(__range_);
+        }
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address) _Range __range_;
       STDEXEC_ATTRIBUTE(no_unique_address) std::ranges::iterator_t<_Range> __iterator_;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      std::conditional_t<__cache_sentinel, std::ranges::sentinel_t<_Range>, __ignore> __sentinel_;
       trampoline_scheduler __scheduler_{};
     };
 
@@ -169,7 +186,7 @@ namespace experimental::execution
 
       constexpr void __start_next() noexcept final
       {
-        if (this->__iterator_ == std::ranges::end(this->__range_))
+        if (this->__at_end())
         {
           STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
         }
