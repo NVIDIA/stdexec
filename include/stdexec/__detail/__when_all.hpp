@@ -294,7 +294,6 @@ namespace STDEXEC
   //!
   //! @see stdexec::when_all      — without the scheduler transfer
   //! @see stdexec::continues_on  — the underlying transfer primitive
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_t
   {
     //! @brief Compose @c __sndrs... and deliver the combined completion on
@@ -342,7 +341,6 @@ namespace STDEXEC
   //!
   //! @see stdexec::when_all_with_variant
   //! @see stdexec::transfer_when_all
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_with_variant_t
   {
     //! @brief Compose @c __sndrs... (each wrapped in @c into_variant) and

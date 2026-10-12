@@ -453,14 +453,17 @@ namespace STDEXEC
   // deprecated interfaces (see __deprecations.hpp):
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_just_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   extern __transfer_just_t const __transfer_just;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   extern __transfer_when_all_t const __transfer_when_all;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   struct __transfer_when_all_with_variant_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
   extern __transfer_when_all_with_variant_t const __transfer_when_all_with_variant;
 }  // namespace STDEXEC
 
