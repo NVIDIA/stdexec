@@ -31,6 +31,6 @@ auto main() -> int
     std::printf("i = %d (%s)\n", i, nvexec::is_on_gpu() ? "GPU" : "CPU");
   };
 
-  auto snd = ex::on(sch, ex::just() | ex::bulk(ex::par, 4, fn));
+  auto snd = ex::just() | ex::continues_on(sch) | ex::bulk(ex::par, 4, fn);
   stdexec::sync_wait(std::move(snd));
 }
