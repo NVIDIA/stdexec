@@ -56,7 +56,7 @@ namespace experimental::execution
               _WHY_(THE_INPUT_SENDER_MUST_HAVE_AT_EXACTLY_ONE_POSSIBLE_VALUE_COMPLETION),
               _WHERE_(_IN_ALGORITHM_, into_tuple_t),
               _WITH_SENDER_<Sender>,
-              _WITH_ENVIRONMENT_(Env)...>();
+              __fn_t<_WITH_ENVIRONMENT_, Env>...>();
           }
           else
           {
