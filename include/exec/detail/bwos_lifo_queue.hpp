@@ -41,19 +41,22 @@ import stdexec;
  *
  * BLOCK COUNTER ENCODING:
  * ----------------------
- * Block counters (last_block_, start_block_, and internal counters) are 64-bit values with:
- *   - Bits [63:32]: Round number (32-bit unsigned, wraps on overflow)
- *   - Bits [31:0]:  Block index within the circular block array (masked by mask_)
+ * The queue-level block counters (last_block_, start_block_) count blocks
+ * linearly: counter = round * num_blocks() + index. Because num_blocks() is a
+ * power of two, the index is (counter & mask_) and the round is
+ * (counter >> round_shift_). Moving to the next or previous block is counter + 1
+ * or counter - 1; the round changes exactly when the index wraps.
  *
- * The round number increments each time the index wraps around from mask_ to 0.
- * This encoding allows:
+ * The counters are std::uint64_t regardless of the width of std::size_t, so the
+ * round always has at least 32 bits and wraps in step with the 32-bit block-level
+ * rounds below. This encoding allows:
  *   - Direct comparison of counters to determine relative order
  *   - ABA problem prevention through round tracking
- *   - Efficient atomic operations on a single 64-bit value
+ *   - Atomic operations on a single 64-bit value
  *
  * TWO-LEVEL ROUND SYSTEM:
  * ----------------------
- * 1. Queue-level rounds: Tracked in last_block_/start_block_ upper 32 bits
+ * 1. Queue-level rounds: counter >> round_shift_ of last_block_/start_block_
  *    - Increments when the owner wraps around the circular block array
  *    - Passed to blocks during reclaim() to initialize block-level rounds
  *
@@ -176,24 +179,28 @@ namespace experimental::execution::bwos
       std::vector<Tp, Allocator> ring_buffer_;
     };
 
-    auto advance_get_index(std::size_t& owner, std::size_t owner_index) noexcept -> bool;
-    auto advance_steal_index(std::size_t& thief) noexcept -> bool;
-    auto advance_put_index(std::size_t& owner) noexcept -> bool;
+    // Linear block counter, see BLOCK COUNTER ENCODING. Deliberately not
+    // std::size_t: the round must keep 32 bits on 32-bit targets.
+    using block_counter = std::uint64_t;
 
-    auto increase_block_counter(std::size_t counter) const noexcept -> std::size_t;
-    auto decrease_block_counter(std::size_t counter) const noexcept -> std::size_t;
+    auto advance_get_index(block_counter& owner, std::size_t owner_index) noexcept -> bool;
+    auto advance_steal_index(block_counter& thief) noexcept -> bool;
+    auto advance_put_index(block_counter& owner) noexcept -> bool;
 
-    // Block counter (round in upper 32 bits, index in lower bits) for the most
+    auto index_of(block_counter counter) const noexcept -> std::size_t;
+    auto round_of(block_counter counter) const noexcept -> std::uint32_t;
+
+    // Linear block counter (see BLOCK COUNTER ENCODING) for the most
     // recent block owned by push/pop operations. Modified only by the owner
     // thread.
-    alignas(hardware_destructive_interference_size) STDEXEC::__std::atomic<std::size_t> last_block_{
-      0};
+    alignas(
+      hardware_destructive_interference_size) STDEXEC::__std::atomic<block_counter> last_block_{0};
 
     // Block counter for the oldest block available for stealing. Modified only
     // by the owner thread when it advances to a new block and needs to reclaim
     // the block at start_block_ position.
     alignas(
-      hardware_destructive_interference_size) STDEXEC::__std::atomic<std::size_t> start_block_{0};
+      hardware_destructive_interference_size) STDEXEC::__std::atomic<block_counter> start_block_{0};
 
     // Circular array of blocks. Size is always a power of 2 for efficient
     // masking.
@@ -201,6 +208,9 @@ namespace experimental::execution::bwos
 
     // Bitmask (blocks_.size() - 1) for extracting block index from counters.
     std::size_t mask_{};
+
+    // log2(blocks_.size()) for extracting the round from counters.
+    int round_shift_{};
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -214,6 +224,7 @@ namespace experimental::execution::bwos
               block_type(block_size, allocator),
               allocator_of_t<block_type>(allocator))
     , mask_(blocks_.size() - 1)
+    , round_shift_(std::countr_zero(blocks_.size()))
   {
     blocks_[0].reclaim(0);
   }
@@ -221,11 +232,11 @@ namespace experimental::execution::bwos
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::pop_back() noexcept -> Tp
   {
-    std::size_t owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
-    std::size_t owner_index{};
+    block_counter owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
+    std::size_t   owner_index{};
     do
     {
-      owner_index               = owner & mask_;
+      owner_index               = index_of(owner);
       block_type& current_block = blocks_[owner_index];
       auto [ec, value]          = current_block.get();
       if (ec == lifo_queue_error_code::success)
@@ -245,11 +256,11 @@ namespace experimental::execution::bwos
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::steal_front() noexcept -> Tp
   {
-    std::size_t thief = start_block_.load(STDEXEC::__std::memory_order_relaxed);
+    block_counter thief = start_block_.load(STDEXEC::__std::memory_order_relaxed);
     do
     {
-      auto const        thief_round = static_cast<std::uint32_t>(thief >> 32);
-      std::size_t const thief_index = thief & mask_;
+      auto const        thief_round = round_of(thief);
+      std::size_t const thief_index = index_of(thief);
       block_type&       block       = blocks_[thief_index];
       fetch_result      result      = block.steal(thief_round);
       while (result.status != lifo_queue_error_code::done)
@@ -273,10 +284,10 @@ namespace experimental::execution::bwos
   template <class Tp, class Allocator>
   auto lifo_queue<Tp, Allocator>::push_back(Tp value) noexcept -> bool
   {
-    std::size_t owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
+    block_counter owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
     do
     {
-      std::size_t owner_index   = owner & mask_;
+      std::size_t owner_index   = index_of(owner);
       block_type& current_block = blocks_[owner_index];
       auto        ec            = current_block.put(value);
       if (ec == lifo_queue_error_code::success)
@@ -293,10 +304,10 @@ namespace experimental::execution::bwos
   template <class Iterator, class Sentinel>
   auto lifo_queue<Tp, Allocator>::push_back(Iterator first, Sentinel last) noexcept -> Iterator
   {
-    std::size_t owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
+    block_counter owner = last_block_.load(STDEXEC::__std::memory_order_relaxed);
     do
     {
-      std::size_t owner_index   = owner & mask_;
+      std::size_t owner_index   = index_of(owner);
       block_type& current_block = blocks_[owner_index];
       first                     = current_block.bulk_put(first, last);
     }
@@ -317,45 +328,32 @@ namespace experimental::execution::bwos
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::increase_block_counter(std::size_t counter) const noexcept
-    -> std::size_t
+  auto lifo_queue<Tp, Allocator>::index_of(block_counter counter) const noexcept -> std::size_t
   {
-    std::uint32_t round      = static_cast<std::uint32_t>(counter >> 32);
-    std::size_t   index      = counter & mask_;
-    std::size_t   next_index = (index + 1) & mask_;
-    std::uint32_t next_round = round + static_cast<std::uint32_t>(next_index == 0);
-    return (static_cast<std::size_t>(next_round) << 32) | next_index;
+    return static_cast<std::size_t>(counter) & mask_;
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::decrease_block_counter(std::size_t counter) const noexcept
-    -> std::size_t
+  auto lifo_queue<Tp, Allocator>::round_of(block_counter counter) const noexcept -> std::uint32_t
   {
-    std::uint32_t round      = static_cast<std::uint32_t>(counter >> 32);
-    std::size_t   index      = counter & mask_;
-    std::size_t   prev_index = static_cast<std::size_t>(static_cast<std::ptrdiff_t>(index) - 1)
-                           & mask_;
-    std::uint32_t prev_round = round - static_cast<std::uint32_t>(index == 0);
-    return (static_cast<std::size_t>(prev_round) << 32) | prev_index;
+    return static_cast<std::uint32_t>(counter >> round_shift_);
   }
 
   template <class Tp, class Allocator>
-  auto
-  lifo_queue<Tp, Allocator>::advance_get_index(std::size_t& owner, std::size_t owner_index) noexcept
-    -> bool
+  auto lifo_queue<Tp, Allocator>::advance_get_index(block_counter& owner,
+                                                    std::size_t    owner_index) noexcept -> bool
   {
-    std::size_t start = start_block_.load(STDEXEC::__std::memory_order_relaxed);
+    block_counter start = start_block_.load(STDEXEC::__std::memory_order_relaxed);
     if (start == owner)
     {
       // Cannot move backward past start_block_ - queue is empty
       return false;
     }
-    // Move to predecessor block, properly decrementing round if wrapping
-    // backward
-    std::size_t predecessor       = decrease_block_counter(owner);
-    std::size_t predecessor_index = predecessor & mask_;
-    block_type& previous_block    = blocks_[predecessor_index];
-    block_type& current_block     = blocks_[owner_index];
+    // Move to predecessor block; the round drops when the index wraps backward
+    block_counter predecessor       = owner - 1;
+    std::size_t   predecessor_index = index_of(predecessor);
+    block_type&   previous_block    = blocks_[predecessor_index];
+    block_type&   current_block     = blocks_[owner_index];
     current_block.reduce_round();
     previous_block.takeover();
     last_block_.store(predecessor, STDEXEC::__std::memory_order_relaxed);
@@ -364,43 +362,43 @@ namespace experimental::execution::bwos
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::advance_put_index(std::size_t& owner) noexcept -> bool
+  auto lifo_queue<Tp, Allocator>::advance_put_index(block_counter& owner) noexcept -> bool
   {
-    std::size_t next_index  = (owner + 1ul) & mask_;
-    std::size_t owner_index = owner & mask_;
+    block_counter next        = owner + 1;
+    std::size_t   next_index  = index_of(next);
+    std::size_t   owner_index = index_of(owner);
     if (next_index == owner_index)
     {
       // Wrap-around would hit the same block - queue is full
       return false;
     }
-    // Calculate next round, incrementing when wrapping to index 0
-    std::uint32_t next_round = static_cast<std::uint32_t>(owner >> 32)
-                             + static_cast<std::uint32_t>(next_index == 0);
-    block_type& next_block = blocks_[next_index];
+    // The round increments exactly when next_index wraps to 0
+    std::uint32_t next_round = round_of(next);
+    block_type&   next_block = blocks_[next_index];
     if (!next_block.is_writable(next_round))
     {
       // Block is not yet safe to reuse (thieves still accessing previous generation)
       return false;
     }
-    std::size_t first       = start_block_.load(STDEXEC::__std::memory_order_relaxed);
-    std::size_t first_index = first & mask_;
+    block_counter first       = start_block_.load(STDEXEC::__std::memory_order_relaxed);
+    std::size_t   first_index = index_of(first);
     if (next_index == first_index)
     {
       // About to reuse the block at start_block_, so advance start_block_ forward
-      start_block_.store(increase_block_counter(first), STDEXEC::__std::memory_order_relaxed);
+      start_block_.store(first + 1, STDEXEC::__std::memory_order_relaxed);
     }
     block_type& current_block = blocks_[owner_index];
     current_block.grant();
-    owner = (static_cast<std::size_t>(next_round) << 32) | next_index;
+    owner = next;
     next_block.reclaim(next_round);
     last_block_.store(owner, STDEXEC::__std::memory_order_relaxed);
     return true;
   }
 
   template <class Tp, class Allocator>
-  auto lifo_queue<Tp, Allocator>::advance_steal_index(std::size_t& thief) noexcept -> bool
+  auto lifo_queue<Tp, Allocator>::advance_steal_index(block_counter& thief) noexcept -> bool
   {
-    thief = increase_block_counter(thief);
+    ++thief;
     return thief < last_block_.load(STDEXEC::__std::memory_order_relaxed);
   }
 
