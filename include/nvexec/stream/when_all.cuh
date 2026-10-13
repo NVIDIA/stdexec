@@ -169,7 +169,7 @@ namespace nv::execution::_strm
                                                 Env...>;
 
       auto query(get_completion_scheduler_t<set_value_t>, __ignore = {}) const noexcept -> Scheduler
-        requires STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>
+        requires STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>
       {
         return Scheduler(ctx_);
       }
@@ -177,7 +177,7 @@ namespace nv::execution::_strm
       template <class... Env>
       constexpr auto query(get_completion_domain_t<set_value_t>, Env const &...) const noexcept
       {
-        if constexpr (STDEXEC::__same_as<WhenAllTag, transfer_when_all_t>)
+        if constexpr (STDEXEC::__same_as<WhenAllTag, __transfer_when_all_t>)
         {
           return sched_domain_t<Env...>{};
         }
@@ -551,7 +551,7 @@ namespace nv::execution::_strm
   };
 
   template <>
-  struct transform_sender_for<STDEXEC::transfer_when_all_t>
+  struct transform_sender_for<STDEXEC::__transfer_when_all_t>
   {
     template <class Env,
               gpu_stream_scheduler<Env> Scheduler,
@@ -559,7 +559,7 @@ namespace nv::execution::_strm
     auto operator()(Env const &, __ignore, Scheduler sched, CvSenders&&... sndrs) const
     {
       using sender_t =
-        when_all_sender<STDEXEC::transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
+        when_all_sender<STDEXEC::__transfer_when_all_t, stream_scheduler, __decay_t<CvSenders>...>;
       return sender_t{sched.ctx_, static_cast<CvSenders&&>(sndrs)...};
     }
   };
