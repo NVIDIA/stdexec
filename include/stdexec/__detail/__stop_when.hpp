@@ -121,9 +121,9 @@ namespace STDEXEC
         using __cb2_t = _Token2::template callback_type<__cb_t>;
 
         _Fn                 __fn_;
+        __std::atomic<bool> __called_{false};
         __cb1_t             __cb1_;
         __cb2_t             __cb2_;
-        __std::atomic<bool> __called_{false};
       };
 
       _Token1 __tkn1_;
