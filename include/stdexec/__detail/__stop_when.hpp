@@ -120,6 +120,10 @@ namespace STDEXEC
         using __cb1_t = _Token1::template callback_type<__cb_t>;
         using __cb2_t = _Token2::template callback_type<__cb_t>;
 
+        // __called_ must be initialized before the callbacks: a callback
+        // registered with an already-stopped token runs its function as part
+        // of the callback's own construction, and that function reads and
+        // writes __called_.
         _Fn                 __fn_;
         __std::atomic<bool> __called_{false};
         __cb1_t             __cb1_;
