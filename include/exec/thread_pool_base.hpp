@@ -79,6 +79,10 @@ namespace experimental::execution
     template <class, class>
     friend struct _pool_::opstate;
 
+    friend DerivedPoolType;
+
+    thread_pool_base() = default;
+
    public:
     struct scheduler;
 
