@@ -407,7 +407,7 @@ namespace STDEXEC
     }
   };
 
-  template <class _Tag, class _Data, class... _Child>
+  template <class _Tag, class _Data = __, class... _Child>
   STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE
   __sexpr(_Tag, _Data, _Child...) -> __sexpr<_Tag, _Data, _Child...>;
 }  // namespace STDEXEC
