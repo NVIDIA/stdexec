@@ -201,7 +201,7 @@ namespace experimental::execution
     {
       ::io_uring_cqe __cqe{};
       __cqe.res       = -ECANCELED;
-      __cqe.user_data = bit_cast<__u64>(__op);
+      __cqe.user_data = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
       __op->__vtable_->__complete_(__op, __cqe);
     }
 
@@ -268,7 +268,7 @@ namespace experimental::execution
             }
             else
             {
-              __sqe.user_data   = bit_cast<__u64>(__op);
+              __sqe.user_data   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
               __array_[__index] = __index;
               ++__result.__n_submitted;
               ++__tail;
@@ -321,7 +321,7 @@ namespace experimental::execution
         {
           __u32 const            __index = __head & __mask_;
           ::io_uring_cqe const & __cqe   = __entries_[__index];
-          auto*                  __op    = bit_cast<__task*>(__cqe.user_data);
+          auto* __op = reinterpret_cast<__task*>(static_cast<std::uintptr_t>(__cqe.user_data));
           __op->__vtable_->__complete_(__op, __cqe);
           ++__head;
           ++__count;
@@ -332,7 +332,7 @@ namespace experimental::execution
         {
           __task*        __op = __ready.pop_front();
           ::io_uring_cqe __dummy_cqe{};
-          __dummy_cqe.user_data = bit_cast<__u64>(__op);
+          __dummy_cqe.user_data = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op));
           __op->__vtable_->__complete_(__op, __dummy_cqe);
         }
         return __count;
@@ -362,7 +362,7 @@ namespace experimental::execution
         __wakeup_operation& __self = *static_cast<__wakeup_operation*>(__pointer);
         __entry                    = ::io_uring_sqe{};
         __entry.fd                 = __self.__eventfd_;
-        __entry.addr               = bit_cast<__u64>(&__self.__buffer_);
+        __entry.addr = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__self.__buffer_));
 #    ifdef STDEXEC_HAS_IORING_OP_READ
         __entry.opcode = IORING_OP_READ;
         __entry.len    = sizeof(__self.__buffer_);
@@ -918,7 +918,7 @@ namespace experimental::execution
         {
           std::memset(&__sqe, 0, sizeof(__sqe));
           __sqe.opcode = IORING_OP_ASYNC_CANCEL;
-          __sqe.addr   = bit_cast<__u64>(__op_->__parent_);
+          __sqe.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(__op_->__parent_));
         }
 #    else
         __op_->submit_stop(__sqe);
@@ -1193,14 +1193,14 @@ namespace experimental::execution
 #    ifdef STDEXEC_HAS_IO_URING_ASYNC_CANCELLATION
         ::io_uring_sqe __sqe_{};
         __sqe_.opcode = IORING_OP_TIMEOUT;
-        __sqe_.addr   = bit_cast<__u64>(&__duration_);
+        __sqe_.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__duration_));
         __sqe_.len    = 1;
         __sqe         = __sqe_;
 #    else
         ::io_uring_sqe __sqe_{};
         __sqe_.opcode = IORING_OP_READV;
         __sqe_.fd     = __timerfd_;
-        __sqe_.addr   = bit_cast<__u64>(&__iov_);
+        __sqe_.addr   = static_cast<__u64>(reinterpret_cast<std::uintptr_t>(&__iov_));
         __sqe_.len    = 1;
         __sqe         = __sqe_;
 #    endif
