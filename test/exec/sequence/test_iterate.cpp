@@ -19,9 +19,12 @@
 #include "stdexec/execution.hpp"
 
 #include <array>
+#include <initializer_list>
 #include <numeric>
+#include <optional>
 #include <test_common/catch2.hpp>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -224,5 +227,124 @@ namespace
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
+
+  // A forward range over a fixed array that poisons its storage when
+  // destroyed, so that a read through an iterator that dangles into a
+  // destroyed sender is caught deterministically, without a sanitizer.
+  struct poison_on_destroy_range
+  {
+    static constexpr int poison = -1;
+
+    int values_[3]{};
+
+    explicit poison_on_destroy_range(std::initializer_list<int> list) noexcept
+    {
+      std::size_t index = 0;
+      for (int value: list)
+      {
+        values_[index++] = value;
+      }
+    }
+
+    poison_on_destroy_range(poison_on_destroy_range const &) = default;
+
+    ~poison_on_destroy_range()
+    {
+      for (int& value: values_)
+      {
+        value = poison;
+      }
+    }
+
+    int* begin() noexcept
+    {
+      return values_;
+    }
+
+    int* end() noexcept
+    {
+      return values_ + 3;
+    }
+
+    int const * begin() const noexcept
+    {
+      return values_;
+    }
+
+    int const * end() const noexcept
+    {
+      return values_ + 3;
+    }
+  };
+
+  // A forward range whose elements cannot be copied: a fix that always
+  // copies the range instead of moving out of an rvalue sender fails to
+  // compile against this range.
+  struct move_only_range
+  {
+    std::vector<int> values_;
+
+    explicit move_only_range(std::initializer_list<int> list)
+      : values_(list)
+    {}
+
+    move_only_range(move_only_range&&)       = default;
+    move_only_range(move_only_range const &) = delete;
+
+    auto begin() noexcept
+    {
+      return values_.begin();
+    }
+
+    auto end() noexcept
+    {
+      return values_.end();
+    }
+
+    auto begin() const noexcept
+    {
+      return values_.begin();
+    }
+
+    auto end() const noexcept
+    {
+      return values_.end();
+    }
+  };
+
+  TEST_CASE("iterate - operation state outlives the sequence sender", "[sequence_senders][iterate]")
+  {
+    using seq_t = decltype(exec::iterate(poison_on_destroy_range{}));
+
+    int                  sum = 0;
+    std::optional<seq_t> sndr;
+    sndr.emplace(exec::iterate(poison_on_destroy_range{10, 20, 30}));
+    auto op = exec::subscribe(*sndr, sum_receiver<>{.sum_ = sum});
+    sndr.reset();  // the sender is gone; the operation state must not depend on it
+    STDEXEC::start(op);
+    CHECK(sum == 60);
+  }
+
+  TEST_CASE("iterate - rvalue subscribe moves an owning range", "[sequence_senders][iterate]")
+  {
+    int  sum = 0;
+    auto op = exec::subscribe(exec::iterate(move_only_range{1, 2, 3}), sum_receiver<>{.sum_ = sum});
+    STDEXEC::start(op);
+    CHECK(sum == 6);
+  }
+
+  TEST_CASE("iterate - const lvalue subscribe copies an owning range",
+            "[sequence_senders][iterate]")
+  {
+    using seq_t = decltype(exec::iterate(poison_on_destroy_range{}));
+
+    int                  sum = 0;
+    std::optional<seq_t> sndr;
+    sndr.emplace(exec::iterate(poison_on_destroy_range{1, 2, 3}));
+    auto op = exec::subscribe(std::as_const(*sndr), sum_receiver<>{.sum_ = sum});
+    sndr.reset();
+    STDEXEC::start(op);
+    CHECK(sum == 6);
+  }
 
 }  // namespace

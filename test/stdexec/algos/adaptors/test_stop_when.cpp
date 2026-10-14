@@ -72,6 +72,43 @@ namespace
 
 #if !STDEXEC_USE_MODULES()
   // TODO: figure out why this fails in a modules build
+  TEST_CASE("callbacks registered with an already-stopped fused token run exactly once",
+            "[adaptors][stop-when]")
+  {
+    // Regression test for #2326: the first token is already stopped when the
+    // callback is registered, so the function must run once, at registration,
+    // and never again when the second token is stopped later.
+    ex::inplace_stop_source first, second;
+    first.request_stop();
+
+    int  calls        = 0;
+    int  atReg        = -1;
+    auto makeCallback = [](auto token, auto fn) noexcept
+    {
+      using cb_t = decltype(token)::template callback_type<decltype(fn)>;
+      return std::optional<cb_t>(std::in_place, std::move(token), std::move(fn));
+    };
+
+    ex::sync_wait(ex::__stop_when(ex::__stop_when(ex::read_env(ex::get_stop_token)
+                                                    | ex::then(
+                                                      [&](auto token) noexcept
+                                                      {
+                                                        auto cb = makeCallback(token,
+                                                                               [&]() noexcept
+                                                                               { ++calls; });
+                                                        atReg   = calls;
+                                                        second.request_stop();
+                                                      }),
+                                                  first.get_token()),
+                                  second.get_token()));
+
+    REQUIRE(atReg == 1);
+    REQUIRE(calls == 1);
+  }
+#endif
+
+#if !STDEXEC_USE_MODULES()
+  // TODO: figure out why this fails in a modules build
   TEST_CASE("stop-when fuses its token with the receiver's when both are stoppable",
             "[adaptors][stop-when]")
   {
