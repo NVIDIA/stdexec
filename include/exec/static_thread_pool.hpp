@@ -887,12 +887,12 @@ namespace experimental::execution
           {
             continue;
           }
-          std::size_t n_threads = num_threads(static_cast<int>(node_index));
-          if (target_index < n_threads)
+          std::size_t node_threads = num_threads(static_cast<int>(node_index));
+          if (target_index < node_threads)
           {
             return get_thread_index(static_cast<int>(node_index), target_index);
           }
-          target_index -= n_threads;
+          target_index -= node_threads;
         }
       }
       return target_index;
