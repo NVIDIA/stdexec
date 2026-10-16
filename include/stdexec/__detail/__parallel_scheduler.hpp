@@ -27,6 +27,7 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "../functional.hpp"
+#  include "__atomic.hpp"
 #  include "__bulk.hpp"
 #  include "__domain.hpp"
 #  include "__manual_lifetime.hpp"
@@ -39,6 +40,7 @@ import stdexec;
 #  include "__variant.hpp"
 
 #  if !STDEXEC_USE_MODULES()
+#    include <exception>
 #    include <optional>
 #    include <utility>
 #  endif
@@ -374,6 +376,13 @@ namespace STDEXEC
       using __rcvr_t  = _BulkState::__rcvr_t;
       using __base_t  = __forward_args_receiver<_Previous, env_of_t<__rcvr_t>>;
       using __tuple_t = __decayed_tuple<_As...>;
+      using __fun_t   = _BulkState::__fun_t;
+
+      //! Whether calling the bulk functor can throw.
+      static constexpr bool __nothrow_fun =
+        _BulkState::__is_unchunked
+          ? __nothrow_callable<__fun_t&, size_t, __decay_t<_As>&...>
+          : __nothrow_callable<__fun_t&, size_t, size_t, __decay_t<_As>&...>;
 
       //! Stores `__as` in the base class storage, with the right types.
       explicit __typed_forward_args_receiver(_As&&... __as)
@@ -387,7 +396,15 @@ namespace STDEXEC
       void set_value() noexcept override
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
-        auto __args  = std::move(__base_t::__arguments_.__get());
+        if constexpr (!__nothrow_fun)
+        {
+          if (__state->__exception_)
+          {
+            __typed_forward_args_receiver::set_error(std::move(__state->__exception_));
+            return;
+          }
+        }
+        auto __args = std::move(__base_t::__arguments_.__get());
         __base_t::__arguments_.__destroy();
         std::destroy_at(this);
         auto const __fun = STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value));
@@ -416,6 +433,32 @@ namespace STDEXEC
       //! Calls the bulk functor passing `__index` and the values from the
       //! previous sender.
       void execute(size_t __begin, size_t __end) noexcept override
+      {
+        if constexpr (__nothrow_fun)
+        {
+          __execute(__begin, __end);
+        }
+        else
+        {
+          STDEXEC_TRY
+          {
+            __execute(__begin, __end);
+          }
+          STDEXEC_CATCH_ALL
+          {
+            // Only the first exception is kept; it is reported from
+            // `set_value()` once all the bulk work has completed.
+            auto __state = reinterpret_cast<_BulkState*>(this);
+            if (!__state->__has_exception_.exchange(true, __std::memory_order_relaxed))
+            {
+              __state->__exception_ = std::current_exception();
+            }
+          }
+        }
+      }
+
+     private:
+      void __execute(size_t __begin, size_t __end) noexcept(__nothrow_fun)
       {
         auto __state = reinterpret_cast<_BulkState*>(this);
         if constexpr (_BulkState::__is_unchunked)
@@ -487,6 +530,7 @@ namespace STDEXEC
     struct __bulk_state_base
     {
       using __rcvr_t                       = _Rcvr;
+      using __fun_t                        = _Fn;
       using __forward_args_helper_t        = __forward_args_receiver<_Previous, env_of_t<__rcvr_t>>;
       static constexpr bool __is_unchunked = _IsUnchunked;
       static constexpr bool __parallelize  = _Parallelize;
@@ -511,6 +555,11 @@ namespace STDEXEC
       std::span<std::byte> (*__prepare_storage_for_backend)(__bulk_state_base*){nullptr};
       //! The size of the bulk operation.
       _Size __size_;
+
+      //! Set by the first bulk item call that throws.
+      __std::atomic<bool> __has_exception_{false};
+      //! The exception thrown by the first bulk item call that throws.
+      std::exception_ptr __exception_;
 
       __bulk_state_base(_Fn&& __fun, _Rcvr&& __rcvr, _Size __size)
         : __fun_{std::move(__fun)}
