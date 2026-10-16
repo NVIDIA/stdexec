@@ -106,7 +106,12 @@ endif()
 # * Dependencies -------------------------------------------------------------
 
 # Initialize CPM
-rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
+if(STDEXEC_BUILD_TESTS
+   OR STDEXEC_ENABLE_ASIO
+   OR STDEXEC_ENABLE_TASKFLOW
+   OR STDEXEC_ENABLE_CUDA)
+  rapids_cpm_init(OVERRIDE ${CMAKE_CURRENT_SOURCE_DIR}/cmake/versions.json)
+endif()
 
 if(STDEXEC_BUILD_TESTS)
   # Add Catch2
@@ -126,31 +131,31 @@ if(STDEXEC_BUILD_TESTS)
     OPTIONS
     "CMAKE_CXX_STANDARD 20"
     "CATCH_CONFIG_NO_POSIX_SIGNALS ON")
-endif()
 
-# Add ICM
-set(icm_VERSION 1.5.0)
-# Always download it, don't attempt to do `find_package(ICM)` first
-set(CPM_DOWNLOAD_icm TRUE)
-rapids_cpm_find(
-  icm
-  ${icm_VERSION}
-  CPM_ARGS
-  GITHUB_REPOSITORY
-  iboB/icm
-  GIT_TAG
-  v${icm_VERSION}
-  VERSION
-  ${icm_VERSION}
-  PATCH_COMMAND
-  git
-  restore
-  --
-  .
-  &&
-  git
-  apply
-  ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
+  # Add ICM
+  set(icm_VERSION 1.5.0)
+  # Always download it, don't attempt to do `find_package(ICM)` first
+  set(CPM_DOWNLOAD_icm TRUE)
+  rapids_cpm_find(
+    icm
+    ${icm_VERSION}
+    CPM_ARGS
+    GITHUB_REPOSITORY
+    iboB/icm
+    GIT_TAG
+    v${icm_VERSION}
+    VERSION
+    ${icm_VERSION}
+    PATCH_COMMAND
+    git
+    restore
+    --
+    .
+    &&
+    git
+    apply
+    ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
+endif()
 
 # Ensure that we link with the threading library
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
