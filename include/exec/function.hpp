@@ -628,6 +628,19 @@ namespace experimental::execution
              _Ty const &,
              _Ty &&>;
 
+    //! The types with which function's constructor takes curried arguments
+    //! declared as _Args; see __function's _Params.
+    template <class... _Args>
+    using __curried_params_t = __mlist<__curried_param_t<_Args>...>;
+
+    template <bool _Nothrow,
+              class _Sigs,
+              class _Queries,
+              class _Attrs,
+              class _Params,
+              class... _Args>
+    class __function;
+
     //! the main implementation of the type-erasing sender function<...>
     //
     //! @tparam _Nothrow Whether the function type is declared noexcept, which
@@ -647,9 +660,22 @@ namespace experimental::execution
     //! report; a pack of function types like Domain(get_completion_domain_t<Tag>)
     //! noexcept, also reported by the function's own environment
     //!
+    //! @tparam _Params __curried_params_t<_Args...>, the types with which the
+    //! constructors take the curried arguments. Naming them as a separate pack,
+    //! rather than expanding __curried_param_t<_Args>... in the constructors'
+    //! parameter lists, avoids an internal error in the name mangler of nvc++
+    //! (seen with 26.1 through 26.9), which fails on a constructor template
+    //! whose parameter list begins with an empty expansion of a dependent type
+    //! and continues with a deduced one.
+    //!
     //! @tparam _Args The argument types used to construct the erased sender
-    template <bool _Nothrow, class _Sigs, class _Queries, class _Attrs, class... _Args>
-    class __function
+    template <bool _Nothrow,
+              class _Sigs,
+              class _Queries,
+              class _Attrs,
+              class... _Params,
+              class... _Args>
+    class __function<_Nothrow, _Sigs, _Queries, _Attrs, __mlist<_Params...>, _Args...>
     {
       // check these with asserts rather than requires because the only way to
       // violate them is to circumvent the exec::function alias template so any
@@ -660,7 +686,7 @@ namespace experimental::execution
       static_assert(__completion_signatures_and_domains_are_compatible<_Sigs, _Attrs>);
 
       // the member-function specialization wraps a void-pointer specialization
-      template <bool, class, class, class, class...>
+      template <bool, class, class, class, class, class...>
       friend class __function;
 
      protected:
@@ -733,10 +759,10 @@ namespace experimental::execution
       {};
 
       template <class _Factory>
-      constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory, __tag)
-        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
+      constexpr explicit __function(_Params... __args, _Factory __factory, __tag)
+        noexcept((__nothrow_constructible_from<_Args, _Params> && ...))
         : __make_opstate_(&__mk_opstate<_Factory>)
-        , __args_(static_cast<__curried_param_t<_Args>>(__args)...)
+        , __args_(static_cast<_Params>(__args)...)
       {
         static_assert(sizeof(_Factory) <= sizeof(__make_sender_));
         static_assert(alignof(_Factory) <= __factory_storage_align);
@@ -754,9 +780,9 @@ namespace experimental::execution
         requires __not_decays_to<_Factory, __function>
               && __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
               && __meets_noexcept_contract<_Nothrow, _Factory, __receiver_t, _Args...>
-      constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory)
-        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
-        : __function(static_cast<__curried_param_t<_Args>>(__args)..., __factory, __tag{})
+      constexpr explicit __function(_Params... __args, _Factory __factory)
+        noexcept((__nothrow_constructible_from<_Args, _Params> && ...))
+        : __function(static_cast<_Params>(__args)..., __factory, __tag{})
       {}
 
       //! this implementation of get_completion_signatures is taken directly
@@ -827,6 +853,7 @@ namespace experimental::execution
     //! \tparam _Queries the queries required to be supported by the environment of the
     //!                  receiver to which this function is ultimately connected
     //! \tparam _Attrs the queries supported by this function's attributes
+    //! \tparam _Params __curried_params_t<_Args...>, as for the void-pointer form
     //! \tparam _SelfBox the tag type conveying the cvref qualifiers of the implicit
     //!                  object parameter
     //! \tparam _Args the pack of explicit arguments to the sender factory
@@ -834,12 +861,19 @@ namespace experimental::execution
               class _Sigs,
               class _Queries,
               class _Attrs,
+              class... _Params,
               __is_instance_of<__self_box> _SelfBox,
               class... _Args>
-    class __function<_Nothrow, _Sigs, _Queries, _Attrs, _SelfBox, _Args...>
+    class __function<_Nothrow, _Sigs, _Queries, _Attrs, __mlist<_Params...>, _SelfBox, _Args...>
     {
       using __void_pointer = _SelfBox::__void_pointer;
-      using __impl_t = __function<_Nothrow, _Sigs, _Queries, _Attrs, __void_pointer, _Args...>;
+      using __impl_t       = __function<_Nothrow,
+                                        _Sigs,
+                                        _Queries,
+                                        _Attrs,
+                                        __curried_params_t<__void_pointer, _Args...>,
+                                        __void_pointer,
+                                        _Args...>;
 
       using __receiver_t = __impl_t::__receiver_t;
       using __tag        = __impl_t::__tag;
@@ -867,15 +901,13 @@ namespace experimental::execution
                                            __receiver_t,
                                            __declared_self_t<_Self, _SelfBox>,
                                            _Args...>
-      constexpr explicit __function(_Self &&__self,
-                                    __curried_param_t<_Args>... __args,
-                                    _Factory __fact)
+      constexpr explicit __function(_Self &&__self, _Params... __args, _Factory __fact)
         // like the base's constructor: storing the self pointer and the
         // (pointer or empty) factory can't throw, so only initializing the
         // curried arguments matters
-        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
+        noexcept((__nothrow_constructible_from<_Args, _Params> && ...))
         : __impl_(static_cast<__void_pointer>(std::addressof(__self)),
-                  static_cast<__curried_param_t<_Args>>(__args)...,
+                  static_cast<_Params>(__args)...,
                   __self_adapting_factory<_Factory, __declared_self_t<_Self, _SelfBox>>{__fact},
                   __tag{})
       {}
@@ -940,7 +972,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept, _LeadingArgs..., _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __curried_params_t<_Args...>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -951,8 +984,11 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function =
-        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag &>, _Args...>;
+      using __make_function = __function<__noexcept,
+                                         _LeadingArgs...,
+                                         __curried_params_t<_Args...>,
+                                         __self_box<__self_tag &>,
+                                         _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -963,8 +999,11 @@ namespace experimental::execution
       static constexpr bool __noexcept = false;
 
       template <class... _LeadingArgs>
-      using __make_function =
-        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
+      using __make_function = __function<__noexcept,
+                                         _LeadingArgs...,
+                                         __curried_params_t<_Args...>,
+                                         __self_box<__self_tag const &>,
+                                         _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -975,7 +1014,8 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept, _LeadingArgs..., _Args...>;
+      using __make_function =
+        __function<__noexcept, _LeadingArgs..., __curried_params_t<_Args...>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -986,8 +1026,11 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function =
-        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag &>, _Args...>;
+      using __make_function = __function<__noexcept,
+                                         _LeadingArgs...,
+                                         __curried_params_t<_Args...>,
+                                         __self_box<__self_tag &>,
+                                         _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -998,8 +1041,11 @@ namespace experimental::execution
       static constexpr bool __noexcept = true;
 
       template <class... _LeadingArgs>
-      using __make_function =
-        __function<__noexcept, _LeadingArgs..., __self_box<__self_tag const &>, _Args...>;
+      using __make_function = __function<__noexcept,
+                                         _LeadingArgs...,
+                                         __curried_params_t<_Args...>,
+                                         __self_box<__self_tag const &>,
+                                         _Args...>;
     };
 
     template <class _Ty>
