@@ -19,9 +19,6 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#include "sender_for.hpp"
-#include "static_thread_pool.hpp"
-
 #if STDEXEC_USE_MODULES()
 import std;
 import stdexec;
@@ -37,6 +34,7 @@ import stdexec;
 #  include "../stdexec/__detail/__schedulers.hpp"
 #  include "../stdexec/__detail/__transform_completion_signatures.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
+#  include "../stdexec/__detail/__utility.hpp"
 
 #  include <algorithm>
 #  include <atomic>
@@ -48,6 +46,10 @@ import stdexec;
 #  include <utility>
 #  include <variant>
 #endif
+
+#include "completion_signatures.hpp"
+#include "sender_for.hpp"
+#include "static_thread_pool.hpp"
 
 namespace experimental::execution
 {
@@ -68,9 +70,6 @@ namespace experimental::execution
     template <class PoolType, class Receiver>
     struct opstate;
 
-    template <class _Ty>
-    using __decay_ref_t = STDEXEC::__decay_t<_Ty>&;
-
     using task_base = exec::static_thread_pool::task_base;
   }  // namespace _pool_
 
@@ -79,6 +78,10 @@ namespace experimental::execution
   {
     template <class, class>
     friend struct _pool_::opstate;
+
+    friend DerivedPoolType;
+
+    thread_pool_base() = default;
 
    public:
     struct scheduler;
@@ -92,21 +95,24 @@ namespace experimental::execution
       {
         auto& [tag, data, child] = sndr;
         auto& [pol, shape, fun]  = data;
+        using tag_t              = decltype(tag);
+        using child_t            = decltype(child);
+        using shape_t            = decltype(shape);
+        using fun_t              = decltype(fun);
 
-        if constexpr (STDEXEC::__completes_on<decltype(child), scheduler, Env>)
+        if constexpr (STDEXEC::__completes_on<child_t, scheduler, Env>)
         {
           auto sch =
             STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(STDEXEC::get_env(child), env);
 
-          using policy_type = STDEXEC::__decay_t<decltype(pol.__get())>;
-          constexpr bool parallelize =
-            STDEXEC::__same_as<policy_type, STDEXEC::parallel_policy>
-            || STDEXEC::__same_as<policy_type, STDEXEC::parallel_unsequenced_policy>;
+          using policy_type          = STDEXEC::__decay_t<decltype(pol.__get())>;
+          constexpr bool parallelize = STDEXEC::__one_of<policy_type,
+                                                         STDEXEC::parallel_policy,
+                                                         STDEXEC::parallel_unsequenced_policy>;
 
           if constexpr (sender_for<Sender, STDEXEC::bulk_chunked_t>)
           {
-            using sender_t =
-              scheduler::template bulk_sender_t<decltype(child), decltype(shape), decltype(fun)>;
+            using sender_t = scheduler::template bulk_sender_t<child_t, shape_t, fun_t>;
             return sender_t{*sch.pool_,
                             STDEXEC::__forward_like<Sender>(child),
                             shape,
@@ -115,13 +121,12 @@ namespace experimental::execution
           }
           else
           {
-            using fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<STDEXEC::__decay_t<decltype(fun)>>;
-            using sender_t =
-              scheduler::template bulk_sender_t<decltype(child), decltype(shape), fun_t>;
+            using chunked_fun_t = STDEXEC::__bulk::__as_bulk_chunked_fn<fun_t>;
+            using sender_t = scheduler::template bulk_sender_t<child_t, shape_t, chunked_fun_t>;
             return sender_t{*sch.pool_,
                             STDEXEC::__forward_like<Sender>(child),
                             shape,
-                            fun_t{STDEXEC::__forward_like<Sender>(fun)},
+                            chunked_fun_t{STDEXEC::__forward_like<Sender>(fun)},
                             parallelize};
           }
         }
@@ -130,7 +135,7 @@ namespace experimental::execution
           return STDEXEC::__not_a_sender<
             STDEXEC::_WHAT_(CANNOT_DISPATCH_BULK_ALGORITHM_TO_THE_POOL_SCHEDULER),
             STDEXEC::_WHY_(BECAUSE_THERE_IS_NO_POOL_SCHEDULER_IN_THE_ENVIRONMENT),
-            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, STDEXEC::tag_of_t<Sender>),
+            STDEXEC::_WHERE_(STDEXEC::_IN_ALGORITHM_, tag_t),
             STDEXEC::_TO_FIX_THIS_ERROR_(
               ADD_A_CONTINUES_ON_TRANSITION_TO_THE_POOL_SCHEDULER_BEFORE_THE_BULK_ALGORITHM),
             STDEXEC::_WITH_SENDER_<Sender>,
@@ -144,13 +149,14 @@ namespace experimental::execution
       using scheduler_concept = STDEXEC::scheduler_tag;
 
      private:
-      template <class DerivedPoolType_, class Receiver>
+      template <class, class>
       friend struct _pool_::opstate;
 
       class sender
       {
        public:
         using sender_concept = STDEXEC::sender_tag;
+
         template <class Self, class Env>
         static consteval auto get_completion_signatures() noexcept
         {
@@ -166,8 +172,8 @@ namespace experimental::execution
         }
 
         template <class CPO>
-        auto
-        query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept -> DerivedPoolType::scheduler
+        auto query(STDEXEC::get_completion_scheduler_t<CPO>) const noexcept  //
+          -> DerivedPoolType::scheduler
         {
           return pool_.get_scheduler();
         }
@@ -186,8 +192,7 @@ namespace experimental::execution
         template <class Receiver>
         auto connect(Receiver rcvr) const -> _pool_::opstate<DerivedPoolType, Receiver>
         {
-          return _pool_::opstate<DerivedPoolType, Receiver>{this->pool_,
-                                                            static_cast<Receiver&&>(rcvr)};
+          return _pool_::opstate<DerivedPoolType, Receiver>{pool_, std::move(rcvr)};
         }
 
        private:
@@ -201,24 +206,92 @@ namespace experimental::execution
         DerivedPoolType& pool_;
       };
 
-      template <class Fun, class Shape, class... Args>
-      using bulk_non_throwing = STDEXEC::__mbool<
-        // If function invocation doesn't throw
-        STDEXEC::__nothrow_callable<Fun, Shape, _pool_::__decay_ref_t<Args>...> &&
-        // and emplacing a tuple doesn't throw
-        noexcept(STDEXEC::__decayed_std_tuple<Args...>(STDEXEC::__declval<Args>()...))
-        // there's no need to advertise completion with `exception_ptr`
-        >;
-
-      template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
+      template <class CvSender, class Receiver, class Shape, class Fun>
       struct bulk_shared_state : _pool_::task_base
       {
-        using variant_t = STDEXEC::__value_types_of_t<CvSender,
-                                                      STDEXEC::env_of_t<Receiver>,
-                                                      STDEXEC::__q<STDEXEC::__decayed_std_tuple>,
-                                                      STDEXEC::__q<STDEXEC::__std_variant>>;
+        using variant_t = STDEXEC::value_types_of_t<CvSender,
+                                                    STDEXEC::env_of_t<Receiver>,
+                                                    STDEXEC::__decayed_tuple,
+                                                    STDEXEC::__variant>;
 
-        variant_t        data_;
+        explicit bulk_shared_state(DerivedPoolType& pool,
+                                   Receiver         rcvr,
+                                   Shape            shape,
+                                   Fun              fun,
+                                   bool             parallelize)
+          noexcept(STDEXEC::__nothrow_decay_copyable<Fun>)
+          : _pool_::task_base{&do_execute_}
+          , pool_(pool)
+          , rcvr_{std::move(rcvr)}
+          , shape_{shape}
+          , fun_{std::move(fun)}
+          , parallelize_{parallelize}
+          , thread_with_exception_{num_agents_required()}
+        {}
+
+        [[nodiscard]]
+        auto num_agents_required() const noexcept -> std::uint32_t
+        {
+          using common_shape_t   = std::common_type_t<Shape, std::uint32_t>;
+          auto const parallelism = parallelize_ ? pool_.available_parallelism() : std::uint32_t(1);
+
+          // With work stealing, is std::min necessary, or can we feel free to
+          // ask for more agents (tasks) than we can actually deal with at one
+          // time?
+          return Shape{} < shape_ ? std::uint32_t(std::min<common_shape_t>(shape_, parallelism))
+                                  : std::uint32_t(0);
+        }
+
+        static void do_execute_(_pool_::task_base* task, std::uint32_t const tid) noexcept
+        {
+          using namespace STDEXEC;
+          auto& self          = *static_cast<bulk_shared_state*>(task);
+          auto  total_threads = self.num_agents_required();
+
+          // Each computation does one or more call to the the bulk function. In
+          // the case that the shape is much larger than the total number of
+          // threads, then each call to computation will call the function many
+          // times.
+          auto const [begin, end] = _pool_::even_share(self.shape_, tid, total_threads);
+          auto const applicator   = std::bind_front(std::ref(self.fun_), begin, end);
+          auto const computation  = std::bind_front(__apply, applicator);
+          auto const completion   = STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value));
+
+          if constexpr (noexcept(__visit(computation, self.data_)))
+          {
+            __visit(computation, self.data_);
+            if (self.finished_threads_.fetch_add(1) + 1 == total_threads)  // last thread?
+              __visit(completion, std::move(self.data_), std::move(self.rcvr_));
+          }
+          else
+          {
+            STDEXEC_TRY
+            {
+              __visit(computation, self.data_);
+            }
+            STDEXEC_CATCH_ALL
+            {
+              std::uint32_t expected = total_threads;
+              if (self.thread_with_exception_.compare_exchange_strong(expected,
+                                                                      tid,
+                                                                      std::memory_order_relaxed,
+                                                                      std::memory_order_relaxed))
+              {
+                self.exception_ = std::current_exception();
+              }
+            }
+
+            if (self.finished_threads_.fetch_add(1) + 1 == total_threads)  // last thread?
+            {
+              if (self.exception_)
+                STDEXEC::set_error(std::move(self.rcvr_), std::move(self.exception_));
+              else
+                __visit(completion, std::move(self.data_), std::move(self.rcvr_));
+            }
+          }
+        }
+
+        variant_t        data_{STDEXEC::__no_init};
         DerivedPoolType& pool_;
         Receiver         rcvr_;
         Shape            shape_;
@@ -228,167 +301,47 @@ namespace experimental::execution
         std::atomic<std::uint32_t> finished_threads_{0};
         std::atomic<std::uint32_t> thread_with_exception_{0};
         std::exception_ptr         exception_;
-
-        [[nodiscard]]
-        auto num_agents_required() const -> std::uint32_t
-        {
-          using common_shape_t   = std::common_type_t<Shape, std::uint32_t>;
-          auto const parallelism = parallelize_ ? pool_.available_parallelism()
-                                                : static_cast<std::uint32_t>(1);
-
-          // With work stealing, is std::min necessary, or can we feel free to
-          // ask for more agents (tasks) than we can actually deal with at one
-          // time?
-          return Shape{} < shape_
-                 ? static_cast<std::uint32_t>((std::min<common_shape_t>) (shape_, parallelism))
-                 : 0;
-        }
-
-        template <class F>
-        void apply(F f)
-        {
-          std::visit([&](auto& tupl) -> void
-                     { std::apply([&](auto&... args) -> void { f(args...); }, tupl); },
-                     data_);
-        }
-
-        explicit bulk_shared_state(DerivedPoolType& pool,
-                                   Receiver         rcvr,
-                                   Shape            shape,
-                                   Fun              fun,
-                                   bool             parallelize)
-          : pool_(pool)
-          , rcvr_{static_cast<Receiver&&>(rcvr)}
-          , shape_{shape}
-          , fun_{fun}
-          , parallelize_{parallelize}
-          , thread_with_exception_{num_agents_required()}
-        {
-          this->execute_ = [](_pool_::task_base* t, std::uint32_t tid) noexcept
-          {
-            auto& self          = *static_cast<bulk_shared_state*>(t);
-            auto  total_threads = self.num_agents_required();
-
-            auto computation = [&](auto&... args)
-            {
-              auto [begin, end] = exec::_pool_::even_share(self.shape_, tid, total_threads);
-              self.fun_(begin, end, args...);
-            };
-
-            auto completion = [&](auto&... args)
-            {
-              STDEXEC::set_value(static_cast<Receiver&&>(self.rcvr_), std::move(args)...);
-            };
-
-            if constexpr (MayThrow)
-            {
-              STDEXEC_TRY
-              {
-                self.apply(computation);
-              }
-              STDEXEC_CATCH_ALL
-              {
-                std::uint32_t expected = total_threads;
-
-                if (self.thread_with_exception_.compare_exchange_strong(expected,
-                                                                        tid,
-                                                                        std::memory_order_relaxed,
-                                                                        std::memory_order_relaxed))
-                {
-                  self.exception_ = std::current_exception();
-                }
-              }
-
-              bool const is_last_thread = self.finished_threads_.fetch_add(1)
-                                       == (total_threads - 1);
-
-              if (is_last_thread)
-              {
-                if (self.exception_)
-                {
-                  STDEXEC::set_error(static_cast<Receiver&&>(self.rcvr_),
-                                     std::move(self.exception_));
-                }
-                else
-                {
-                  self.apply(completion);
-                }
-              }
-            }
-            else
-            {
-              self.apply(computation);
-
-              bool const is_last_thread = self.finished_threads_.fetch_add(1)
-                                       == (total_threads - 1);
-
-              if (is_last_thread)
-              {
-                self.apply(completion);
-              }
-            }
-          };
-        }
       };
 
-      template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
+      template <class CvSender, class Receiver, class Shape, class Fun>
       struct bulk_receiver
       {
         using receiver_concept = STDEXEC::receiver_tag;
-
-        using shared_state = bulk_shared_state<CvSender, Receiver, Shape, Fun, MayThrow>;
-
-        void enqueue() noexcept
-        {
-          shared_state_.pool_.bulk_enqueue(&shared_state_, shared_state_.num_agents_required());
-        }
+        using shared_state_t   = bulk_shared_state<CvSender, Receiver, Shape, Fun>;
 
         template <class... As>
         void set_value(As&&... as) noexcept
         {
-          using tuple_t = STDEXEC::__decayed_std_tuple<As...>;
+          using namespace STDEXEC;
+          STDEXEC_TRY
+          {
+            shared_state_.data_.template emplace<__decayed_tuple<As...>>(static_cast<As&&>(as)...);
 
-          shared_state& state = shared_state_;
-
-          if constexpr (MayThrow)
-          {
-            STDEXEC_TRY
-            {
-              state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
-            }
-            STDEXEC_CATCH_ALL
-            {
-              STDEXEC::set_error(std::move(state.rcvr_), std::current_exception());
-              return;
-            }
+            if (Shape{} < shared_state_.shape_)
+              shared_state_.pool_.bulk_enqueue(&shared_state_, shared_state_.num_agents_required());
+            else
+              __visit(STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value)),
+                      std::move(shared_state_.data_),
+                      std::move(shared_state_.rcvr_));
           }
-          else
+          STDEXEC_CATCH_ALL
           {
-            state.data_.template emplace<tuple_t>(static_cast<As&&>(as)...);
-          }
-
-          if (Shape{} < state.shape_)
-          {
-            enqueue();
-          }
-          else
-          {
-            state.apply([&](auto&... args)
-                        { STDEXEC::set_value(std::move(state.rcvr_), std::move(args)...); });
+            if constexpr (__nothrow_decay_copyable<As...>)
+              __std::unreachable();
+            else
+              STDEXEC::set_error(std::move(shared_state_.rcvr_), std::current_exception());
           }
         }
 
         template <class Error>
         void set_error(Error&& err) noexcept
         {
-          shared_state& state = shared_state_;
-          STDEXEC::set_error(static_cast<Receiver&&>(state.rcvr_), static_cast<Error&&>(err));
+          STDEXEC::set_error(std::move(shared_state_.rcvr_), static_cast<Error&&>(err));
         }
 
         void set_stopped() noexcept
         {
-          shared_state& state = shared_state_;
-          STDEXEC::set_stopped(static_cast<Receiver&&>(state.rcvr_));
+          STDEXEC::set_stopped(std::move(shared_state_.rcvr_));
         }
 
         auto get_env() const noexcept -> STDEXEC::env_of_t<Receiver>
@@ -396,62 +349,40 @@ namespace experimental::execution
           return STDEXEC::get_env(shared_state_.rcvr_);
         }
 
-        shared_state& shared_state_;
+        shared_state_t& shared_state_;
       };
 
       template <class CvSender, class Receiver, std::integral Shape, class Fun>
       struct bulk_opstate
       {
-        static constexpr bool may_throw =
-          !STDEXEC::__value_types_of_t<CvSender,
-                                       STDEXEC::env_of_t<Receiver>,
-                                       STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
-                                       STDEXEC::__q<STDEXEC::__mand>>::value;
+        using receiver_t = bulk_receiver<CvSender, Receiver, Shape, Fun>;
 
-        using bulk_rcvr     = bulk_receiver<CvSender, Receiver, Shape, Fun, may_throw>;
-        using shared_state  = bulk_shared_state<CvSender, Receiver, Shape, Fun, may_throw>;
-        using inner_opstate = STDEXEC::connect_result_t<CvSender, bulk_rcvr>;
+        explicit bulk_opstate(DerivedPoolType& pool,
+                              Shape            shape,
+                              Fun              fun,
+                              bool             parallelize,
+                              CvSender&&       sndr,
+                              Receiver         rcvr)
+          noexcept(STDEXEC::__nothrow_decay_copyable<Fun>
+                   && STDEXEC::__nothrow_connectable<CvSender, receiver_t>)
+          : shared_state_(pool, std::move(rcvr), shape, std::move(fun), parallelize)
+          , inner_op_{STDEXEC::connect(static_cast<CvSender&&>(sndr), receiver_t{shared_state_})}
+        {}
 
         void start() & noexcept
         {
           STDEXEC::start(inner_op_);
         }
 
-        bulk_opstate(DerivedPoolType& pool,
-                     Shape            shape,
-                     Fun              fun,
-                     bool             parallelize,
-                     CvSender&&       sndr,
-                     Receiver         rcvr)
-          : shared_state_(pool, static_cast<Receiver&&>(rcvr), shape, fun, parallelize)
-          , inner_op_{STDEXEC::connect(static_cast<CvSender&&>(sndr), bulk_rcvr{shared_state_})}
-        {}
-
-        shared_state  shared_state_;
-        inner_opstate inner_op_;
+       private:
+        bulk_shared_state<CvSender, Receiver, Shape, Fun> shared_state_;
+        STDEXEC::connect_result_t<CvSender, receiver_t>   inner_op_;
       };
 
       template <class Sender, std::integral Shape, class Fun>
       struct bulk_sender
       {
         using sender_concept = STDEXEC::sender_tag;
-
-        template <class Self, class... Env>
-        using _with_error_invoke_t = STDEXEC::__eptr_completion_unless_t<STDEXEC::__value_types_t<
-          STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
-          STDEXEC::__mtransform<STDEXEC::__q1<_pool_::__decay_ref_t>,
-                                STDEXEC::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
-          STDEXEC::__q<STDEXEC::__mand>>>;
-
-        template <class... Tys>
-        using _set_value_t =
-          STDEXEC::completion_signatures<STDEXEC::set_value_t(STDEXEC::__decay_t<Tys>...)>;
-
-        template <class Self, class... Env>
-        using _completion_signatures_t = STDEXEC::__transform_completion_signatures_t<
-          STDEXEC::__completion_signatures_of_t<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>,
-          _with_error_invoke_t<Self, Env...>,
-          _set_value_t>;
 
         template <class Self, class Receiver>
         using bulk_opstate_t =
@@ -470,31 +401,49 @@ namespace experimental::execution
         {}
 
         template <STDEXEC::__decays_to<bulk_sender> Self, STDEXEC::receiver Receiver>
-          requires STDEXEC::receiver_of<Receiver,
-                                        _completion_signatures_t<Self, STDEXEC::env_of_t<Receiver>>>
         STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
-          noexcept(STDEXEC::__nothrow_constructible_from<bulk_opstate_t<Self, Receiver>,
-                                                         DerivedPoolType&,
-                                                         Shape,
-                                                         Fun,
-                                                         Sender,
-                                                         Receiver>)
-            -> bulk_opstate_t<Self, Receiver>
-        {
-          return bulk_opstate_t<Self, Receiver>{self.pool_,
-                                                self.shape_,
-                                                static_cast<Self&&>(self).fun_,
-                                                self.parallelize_,
-                                                static_cast<Self&&>(self).sndr_,
-                                                static_cast<Receiver&&>(rcvr)};
-        }
+          STDEXEC_AUTO_RETURN(bulk_opstate_t<Self, Receiver>(self.pool_,
+                                                             Shape(self.shape_),
+                                                             static_cast<Self&&>(self).fun_,
+                                                             self.parallelize_,
+                                                             static_cast<Self&&>(self).sndr_,
+                                                             std::move(rcvr)));
         STDEXEC_EXPLICIT_THIS_END(connect)
 
         template <STDEXEC::__decays_to<bulk_sender> Self, class... Env>
-        static consteval auto get_completion_signatures()  //
-          -> _completion_signatures_t<Self, Env...>
+        static consteval auto get_completion_signatures()
         {
-          return {};
+          using namespace STDEXEC;
+          return exec::transform_completion_signatures(
+            STDEXEC::get_completion_signatures<STDEXEC::__copy_cvref_t<Self, Sender>, Env...>(),
+            []<class... Args>()
+            {
+              if constexpr (!__nothrow_decay_copyable<Args...>)
+              {
+                return exec::throw_compile_time_error<
+                  _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+                  _WHERE_(_IN_ALGORITHM_, bulk_t),
+                  _WITH_SENDER_<__copy_cvref_t<Self, Sender>>,
+                  __fn_t<_WITH_ENVIRONMENT_, Env>...>();
+              }
+              else if constexpr (!__callable<Fun&, Shape, Shape, __decay_t<Args>&...>)
+              {
+                return exec::throw_compile_time_error<
+                  _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+                  _WHERE_(_IN_ALGORITHM_, bulk_t),
+                  _WITH_FUNCTION_(Fun&),
+                  _WITH_ARGUMENTS_(Shape, Shape, __decay_t<Args> & ...)>();
+              }
+              else if constexpr (__nothrow_callable<Fun&, Shape, Shape, __decay_t<Args>&...>)
+              {
+                return completion_signatures<set_value_t(__decay_t<Args>...)>();
+              }
+              else
+              {
+                return completion_signatures<set_value_t(__decay_t<Args>...),
+                                             set_error_t(std::exception_ptr)>();
+              }
+            });
         }
 
         struct attrs
@@ -590,14 +539,16 @@ namespace experimental::execution
    private:
     void enqueue(_pool_::task_base* task, std::uint32_t tid = 0) noexcept
     {
-      static_cast<DerivedPoolType&>(*this).enqueue(task, tid);
+      auto& self = static_cast<DerivedPoolType&>(*this);
+      static_assert(noexcept(self.enqueue(task, tid)));
+      self.enqueue(task, tid);
     }
 
     void bulk_enqueue(_pool_::task_base* task, std::uint32_t n_threads) noexcept
     {
       for (std::uint32_t tid = 0; tid < n_threads; ++tid)
       {
-        this->enqueue(task, tid);
+        enqueue(task, tid);
       }
     }
   };
@@ -607,44 +558,39 @@ namespace experimental::execution
     template <class PoolType, class Receiver>
     struct opstate : _pool_::task_base
     {
-      friend class thread_pool_base<PoolType>;
-
-      PoolType& pool_;
-      Receiver  rcvr_;
-
-      explicit opstate(PoolType& pool, Receiver rcvr)
-        : pool_(pool)
+      explicit opstate(PoolType& pool, Receiver rcvr) noexcept
+        : _pool_::task_base{&do_execute_}
+        , pool_(pool)
         , rcvr_(std::move(rcvr))
-      {
-        this->execute_ = [](_pool_::task_base* t, std::uint32_t) noexcept
-        {
-          auto& op     = *static_cast<opstate*>(t);
-          auto  stoken = STDEXEC::get_stop_token(STDEXEC::get_env(op.rcvr_));
+      {}
 
-          if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>)
-          {  // NOLINT(bugprone-branch-clone)
-            STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
-          }
-          else if (stoken.stop_requested())
-          {
-            STDEXEC::set_stopped(static_cast<Receiver&&>(op.rcvr_));
-          }
-          else
-          {
-            STDEXEC::set_value(static_cast<Receiver&&>(op.rcvr_));
-          }
-        };
-      }
-
-      void enqueue() noexcept
+      void start() & noexcept
       {
         pool_.enqueue(this);
       }
 
-      void start() & noexcept
+     private:
+      static void do_execute_(_pool_::task_base* task, std::uint32_t) noexcept
       {
-        enqueue();
+        auto& self   = *static_cast<opstate*>(task);
+        auto  stoken = STDEXEC::get_stop_token(STDEXEC::get_env(self.rcvr_));
+
+        if constexpr (STDEXEC::unstoppable_token<decltype(stoken)>)
+        {  // NOLINT(bugprone-branch-clone)
+          STDEXEC::set_value(std::move(self.rcvr_));
+        }
+        else if (stoken.stop_requested())
+        {
+          STDEXEC::set_stopped(std::move(self.rcvr_));
+        }
+        else
+        {
+          STDEXEC::set_value(std::move(self.rcvr_));
+        }
       }
+
+      PoolType& pool_;
+      Receiver  rcvr_;
     };
   }  // namespace _pool_
 }  // namespace experimental::execution

@@ -63,6 +63,19 @@ namespace STDEXEC
   [[deprecated]]
   inline constexpr __transfer_just_t const & transfer_just = __transfer_just;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  using transfer_when_all_t [[deprecated]] = __transfer_when_all_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  [[deprecated]]
+  inline constexpr __transfer_when_all_t const & transfer_when_all = __transfer_when_all;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  using transfer_when_all_with_variant_t [[deprecated]] = __transfer_when_all_with_variant_t;
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  [[deprecated]]
+  inline constexpr __transfer_when_all_with_variant_t const & transfer_when_all_with_variant =
+    __transfer_when_all_with_variant;
+
   [[deprecated("read has been renamed to read_env")]]
   inline constexpr __read_env_t const & read = read_env;
 

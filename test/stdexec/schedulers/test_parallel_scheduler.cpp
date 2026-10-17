@@ -688,6 +688,79 @@ TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after e
 
   CHECK(live->load(std::memory_order_relaxed) == 0);
 }
+
+TEST_CASE("bulk on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  auto live = std::make_shared<std::atomic<int>>(0);
+
+  {
+    auto fn = [](std::size_t i, destructor_tracked_value&)
+    {
+      if (i == 7)
+        throw std::runtime_error{"bulk"};
+    };
+    STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+    auto                        snd = tracked_value_sender{sched, live} | ex::bulk(ex::par, 16, fn);
+
+    CHECK_THROWS_AS(ex::sync_wait(std::move(snd)), std::runtime_error);
+  }
+
+  CHECK(live->load(std::memory_order_relaxed) == 0);
+}
+
+TEST_CASE("bulk_chunked on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+  std::atomic<int>            calls = 0;
+
+  auto par_snd = ex::bulk_chunked(ex::schedule(sched),
+                                  ex::par,
+                                  1'000,
+                                  [&](std::size_t, std::size_t)
+                                  {
+                                    ++calls;
+                                    throw std::runtime_error{"bulk_chunked"};
+                                  });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(par_snd)), std::runtime_error);
+  CHECK(calls.load() >= 1);
+
+  auto seq_snd = ex::bulk_chunked(ex::schedule(sched),
+                                  ex::seq,
+                                  1'000,
+                                  [](std::size_t, std::size_t)
+                                  { throw std::runtime_error{"bulk_chunked"}; });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(seq_snd)), std::runtime_error);
+}
+
+TEST_CASE("bulk_unchunked on parallel_scheduler propagates exceptions thrown by the function",
+          "[scheduler][parallel_scheduler]")
+{
+  STDEXEC::parallel_scheduler sched = STDEXEC::get_parallel_scheduler();
+
+  auto par_snd = ex::bulk_unchunked(ex::schedule(sched),
+                                    ex::par,
+                                    64,
+                                    [](std::size_t i)
+                                    {
+                                      if (i % 2 == 0)
+                                        throw std::runtime_error{"bulk_unchunked"};
+                                    });
+  CHECK_THROWS_AS(ex::sync_wait(std::move(par_snd)), std::runtime_error);
+
+  // With `seq`, the iterations after the throwing one are not executed.
+  std::size_t executed = 0;
+  auto        seq_fn   = [&](std::size_t i)
+  {
+    ++executed;
+    if (i == 3)
+      throw std::runtime_error{"bulk_unchunked"};
+  };
+  auto seq_snd = ex::bulk_unchunked(ex::schedule(sched), ex::seq, 64, seq_fn);
+  CHECK_THROWS_AS(ex::sync_wait(std::move(seq_snd)), std::runtime_error);
+  CHECK(executed == 4);
+}
 #endif
 
 TEST_CASE("bulk on parallel_scheduler destroys stored predecessor values after stopped",

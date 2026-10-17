@@ -258,10 +258,15 @@ namespace experimental::execution
     template <class _Env, class _Data>
     struct __child_env_fn
     {
-      auto operator()(_Env __env, _Data const & __data) const noexcept
-        -> STDEXEC::__join_env_t<_Data const &, _Env>
+      static_assert(STDEXEC::__nothrow_move_constructible<_Data>);
+
+      template <class _DataFwd>
+      auto operator()(_Env __env, _DataFwd&& __data) const
+        noexcept(STDEXEC::__nothrow_constructible_from<_Data, _DataFwd&&>)
+          -> STDEXEC::__join_env_t<_Data, _Env>
       {
-        return STDEXEC::__env::__join(__data, static_cast<_Env&&>(__env));
+        return STDEXEC::__env::__join(_Data(static_cast<_DataFwd&&>(__data)),
+                                      static_cast<_Env&&>(__env));
       }
     };
   };
@@ -274,6 +279,17 @@ namespace experimental::execution
     STDEXEC::__minvocable_q<STDEXEC::tag_of_t, STDEXEC::__decay_t<_Sequence>>
     && __sequence_adaptor_traits<STDEXEC::tag_of_t<STDEXEC::__decay_t<_Sequence>>>::__transparent;
 
+  // The custom child-environment transformation an adaptor's traits define
+  // (`__sequence_adaptor_traits<_Tag>::__child_env_fn<_Env, _Data>`), if any.
+  // Named through an alias because gcc 12 mishandles a `typename T::template
+  // X<...>` type-requirement written directly inside a requires-expression:
+  // it silently reports such a requirement as unsatisfied for a dependent T
+  // (and rejects a non-dependent one outright), which would silently fall
+  // every transparent adaptor back to the identity transformation.
+  template <class _Tag, class _Env, class _Data>
+  using __custom_child_env_fn_t =
+    __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>;
+
   // The function object that transforms the environment of a transparent
   // sequence adaptor: the adaptor's traits may define a nested
   // `__child_env_fn<_Env, _Data>` function object type; otherwise, the
@@ -281,11 +297,9 @@ namespace experimental::execution
   template <class _Tag, class _Env, class _Data>
   consteval auto __adaptor_child_env_fn()
   {
-    if constexpr (requires {
-                    typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>;
-                  })
+    if constexpr (requires { typename __custom_child_env_fn_t<_Tag, _Env, _Data>; })
     {
-      return typename __sequence_adaptor_traits<_Tag>::template __child_env_fn<_Env, _Data>{};
+      return __custom_child_env_fn_t<_Tag, _Env, _Data>{};
     }
     else
     {
@@ -1004,8 +1018,14 @@ namespace experimental::execution
           using __rcvr_t      = __adaptor_rcvr<_Receiver, __child_env_t>;
           using __result_t    = STDEXEC::__call_result_t<subscribe_t, __child_t, __rcvr_t>;
           __check_operation_state<__result_t>();
+          using __xform_t    = __adaptor_child_env_fn_t<__tag_t, env_of_t<_Receiver>, __data_t>;
+          using __data_fwd_t = decltype(STDEXEC::__forward_like<__tfx_seq_t>(
+            __declval<__data_t&>()));
           constexpr bool __nothrow_subscribe = __nothrow_callable<subscribe_t, __child_t, __rcvr_t>;
-          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
+          constexpr bool __nothrow_child_env =
+            __nothrow_callable<__xform_t, env_of_t<_Receiver>, __data_fwd_t>;
+          return __declfn<__result_t,
+                          __nothrow_subscribe && __nothrow_child_env && __nothrow_tfx_seq>();
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
@@ -1078,7 +1098,7 @@ namespace experimental::execution
                          __adaptor_rcvr<_Receiver, __child_env_t>{
                            static_cast<_Receiver&&>(__rcvr),
                            __xform_t{}(static_cast<decltype(__env)&&>(__env),
-                                       STDEXEC::__forward_like<decltype(__data)>(__data))});
+                                       STDEXEC::__forward_like<__tfx_seq_t>(__data))});
         }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {  // NOLINT(bugprone-branch-clone)

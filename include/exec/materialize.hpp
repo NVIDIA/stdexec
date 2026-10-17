@@ -17,224 +17,247 @@
 #pragma once
 
 #include "../stdexec/execution.hpp"
+#include "completion_signatures.hpp"
 
 namespace experimental::execution
 {
-  namespace __materialize
+  struct materialize_t;
+  struct dematerialize_t;
+
+  struct DEMATERIALIZE_EXPECTS_VALUE_COMPLETIONS_WHERE_THE_FIRST_VALUE_IS_A_COMPLETION_TAG;
+  struct AN_ERROR_COMPLETION_REQUIRES_EXACTLY_ONE_ARGUMENT;
+  struct A_STOPPED_COMPLETION_REQUIRES_EXACTLY_ZERO_ARGUMENTS;
+
+  namespace _materialize
   {
     using namespace STDEXEC;
 
-    template <class _Receiver>
-    struct __receiver
+    template <class Receiver>
+    struct _receiver
     {
-     public:
       using receiver_concept = STDEXEC::receiver_tag;
 
-      constexpr __receiver(_Receiver&& __upstream)
-        : __upstream_{static_cast<_Receiver&&>(__upstream)}
-      {}
-
-      template <class... _As>
-      constexpr void set_value(_As&&... __as) noexcept
+      template <class... Args>
+      constexpr void set_value(Args&&... args) noexcept
       {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_),
+        STDEXEC::set_value(static_cast<Receiver&&>(rcvr_),
                            set_value_t(),
-                           static_cast<_As&&>(__as)...);
-      }
-
-      template <class _Error>
-      constexpr void set_error(_Error&& __err) noexcept
-      {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_),
-                           set_error_t(),
-                           static_cast<_Error&&>(__err));
-      }
-
-      constexpr void set_stopped() noexcept
-      {
-        STDEXEC::set_value(static_cast<_Receiver&&>(__upstream_), set_stopped_t());
-      }
-
-      [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
-      {
-        return STDEXEC::get_env(__upstream_);
-      }
-
-     private:
-      _Receiver __upstream_;
-    };
-
-    template <class _Sender>
-    struct __sender
-    {
-     public:
-      using sender_concept = STDEXEC::sender_tag;
-
-      template <__decays_to<_Sender> _Sndr>
-      constexpr explicit __sender(_Sndr&& __sender)
-        : __sndr_{static_cast<_Sndr&&>(__sender)}
-      {}
-
-      template <__decays_to<__sender> _Self, class _Receiver>
-        requires sender_to<__copy_cvref_t<_Self, _Sender>, __materialize::__receiver<_Receiver>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept(
-        __nothrow_connectable<__copy_cvref_t<_Self, _Sender>, __materialize::__receiver<_Receiver>>)
-        -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __materialize::__receiver<_Receiver>>
-      {
-        return STDEXEC::connect(static_cast<_Self&&>(__self).__sndr_,
-                                __materialize::__receiver<_Receiver>{
-                                  static_cast<_Receiver&&>(__rcvr)});
-      }
-      STDEXEC_EXPLICIT_THIS_END(connect)
-
-      template <class... _Args>
-      using __materialize_value = completion_signatures<set_value_t(set_value_t, _Args...)>;
-
-      template <class _Err>
-      using __materialize_error = completion_signatures<set_value_t(set_error_t, _Err)>;
-
-      template <class _Self, class... _Env>
-      using __completions_t = __transform_reduce_completion_signatures_t<
-        __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
-        __materialize_value,
-        __materialize_error,
-        completion_signatures<set_value_t(set_stopped_t)>,
-        __mconcat<__qq<completion_signatures>>::__f>;
-
-      template <__decays_to<__sender> _Self, class... _Env>
-      static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...>
-      {
-        return {};
-      }
-
-     private:
-      _Sender __sndr_;
-    };
-
-    struct __materialize_t
-    {
-      template <class _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> __sender<__decay_t<_Sender>>
-      {
-        return __sender<__decay_t<_Sender>>{static_cast<_Sender&&>(__sndr)};
-      }
-
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()() const noexcept
-      {
-        return __closure(*this);
-      }
-    };
-  }  // namespace __materialize
-
-  inline constexpr __materialize::__materialize_t materialize;
-
-  namespace __dematerialize
-  {
-    using namespace STDEXEC;
-
-    template <class _Receiver>
-    struct __receiver
-    {
-     public:
-      using receiver_concept = STDEXEC::receiver_tag;
-
-      constexpr __receiver(_Receiver&& __upstream)
-        : __upstream_{static_cast<_Receiver&&>(__upstream)}
-      {}
-
-      template <__completion_tag _Tag, class... _Args>
-        requires __callable<_Tag, _Receiver, _Args...>
-      void set_value(_Tag, _Args&&... __args) noexcept
-      {
-        _Tag()(static_cast<_Receiver&&>(__upstream_), static_cast<_Args&&>(__args)...);
+                           static_cast<Args&&>(args)...);
       }
 
       template <class Error>
       constexpr void set_error(Error&& err) noexcept
       {
-        STDEXEC::set_error(static_cast<_Receiver&&>(__upstream_), static_cast<Error&&>(err));
+        STDEXEC::set_value(static_cast<Receiver&&>(rcvr_),
+                           set_error_t(),
+                           static_cast<Error&&>(err));
       }
 
       constexpr void set_stopped() noexcept
       {
-        STDEXEC::set_stopped(static_cast<_Receiver&&>(__upstream_));
+        STDEXEC::set_value(static_cast<Receiver&&>(rcvr_), set_stopped_t());
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
+      constexpr auto get_env() const noexcept -> env_of_t<Receiver>
       {
-        return STDEXEC::get_env(__upstream_);
+        return STDEXEC::get_env(rcvr_);
       }
 
-     private:
-      _Receiver __upstream_;
+      Receiver rcvr_;
     };
 
-    template <class _Sender>
-    struct __sender
+    template <class Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE _receiver(Receiver) -> _receiver<Receiver>;
+
+    template <class Tag>
+    static constexpr auto _materialize_cmplsigs = []<class... Args>() noexcept
     {
-     public:
+      return completion_signatures<set_value_t(Tag, Args...)>();
+    };
+
+    template <class Sender>
+    struct _sender
+    {
       using sender_concept = STDEXEC::sender_tag;
 
-      template <__decays_to<_Sender> _Sndr>
-      constexpr explicit __sender(_Sndr&& __sndr) noexcept(__nothrow_decay_copyable<_Sndr>)
-        : __sndr_{static_cast<_Sndr&&>(__sndr)}
-      {}
-
-      template <__decays_to<__sender> _Self, class _Receiver>
-        requires sender_to<__copy_cvref_t<_Self, _Sender>, __dematerialize::__receiver<_Receiver>>
-      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self&& __self, _Receiver __rcvr) noexcept(
-        __nothrow_connectable<__copy_cvref_t<_Self, _Sender>,
-                              __dematerialize::__receiver<_Receiver>>)
-        -> connect_result_t<__copy_cvref_t<_Self, _Sender>, __dematerialize::__receiver<_Receiver>>
+      template <__decays_to<_sender> Self, class Receiver>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        noexcept(__nothrow_connectable<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>)
+          -> connect_result_t<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
       {
-        return STDEXEC::connect(static_cast<_Self&&>(__self).__sndr_,
-                                __dematerialize::__receiver<_Receiver>{
-                                  static_cast<_Receiver&&>(__rcvr)});
+        return STDEXEC::connect(static_cast<Self&&>(self).sndr_,
+                                _receiver{static_cast<Receiver&&>(rcvr)});
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
 
-      template <class _Tag, class... _Args>
-        requires __completion_tag<__decay_t<_Tag>>
-      using __dematerialize_value = completion_signatures<__decay_t<_Tag>(_Args...)>;
-
-      template <class _Self, class... _Env>
-      using __completions_t = __transform_completion_signatures_t<
-        __completion_signatures_of_t<__copy_cvref_t<_Self, _Sender>, _Env...>,
-        completion_signatures<>,
-        __mtry_q<__dematerialize_value>::template __f>;
-
-      template <__decays_to<__sender> _Self, class... _Env>
-      static consteval auto get_completion_signatures() -> __completions_t<_Self, _Env...>
+      template <__decays_to<_sender> Self, class... Env>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          _materialize_cmplsigs<set_value_t>,
+          _materialize_cmplsigs<set_error_t>,
+          _materialize_cmplsigs<set_stopped_t>);
       }
 
-     private:
-      _Sender __sndr_;
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<Sender>
+      {
+        return STDEXEC::get_env(sndr_);
+      }
+
+      Sender sndr_;
     };
 
-    struct __dematerialize_t
+    template <class Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE _sender(Sender) -> _sender<Sender>;
+  }  // namespace _materialize
+
+  namespace _dematerialize
+  {
+    using namespace STDEXEC;
+
+    template <class Receiver>
+    struct _receiver
     {
-      template <sender _Sender>
-      constexpr auto operator()(_Sender&& __sndr) const noexcept(__nothrow_decay_copyable<_Sender>)
-        -> __sender<__decay_t<_Sender>>
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      template <__completion_tag Tag, class... Args>
+        requires __callable<Tag, Receiver, Args...>
+      void set_value(Tag, Args&&... args) noexcept
       {
-        return __sender<__decay_t<_Sender>>(static_cast<_Sender&&>(__sndr));
+        Tag()(static_cast<Receiver&&>(rcvr_), static_cast<Args&&>(args)...);
       }
 
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()() const noexcept
+      template <class Error>
+      constexpr void set_error(Error&& err) noexcept
       {
-        return __closure(*this);
+        STDEXEC::set_error(static_cast<Receiver&&>(rcvr_), static_cast<Error&&>(err));
+      }
+
+      constexpr void set_stopped() noexcept
+      {
+        STDEXEC::set_stopped(static_cast<Receiver&&>(rcvr_));
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<Receiver>
+      {
+        return STDEXEC::get_env(rcvr_);
+      }
+
+      Receiver rcvr_;
+    };
+
+    template <class Receiver>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE _receiver(Receiver) -> _receiver<Receiver>;
+
+    static constexpr auto _dematerialize_cmplsigs = []<class Tag = void, class... Args>()
+    {
+      using tag_t = __decay_t<Tag>;
+      if constexpr (!__completion_tag<tag_t>)
+      {
+        return exec::throw_compile_time_error<
+          _WHAT_(_INVALID_ARGUMENT_),
+          _WHY_(DEMATERIALIZE_EXPECTS_VALUE_COMPLETIONS_WHERE_THE_FIRST_VALUE_IS_A_COMPLETION_TAG),
+          _WHERE_(_IN_ALGORITHM_, dematerialize_t),
+          __if_c<__same_as<tag_t, void>, _WITH_ARGUMENTS_(), _WITH_ARGUMENTS_(Tag, Args...)>>();
+      }
+      else if constexpr (tag_t() == set_error && sizeof...(Args) != 1)
+      {
+        return exec::throw_compile_time_error<  //
+          _WHAT_(_INVALID_ARGUMENT_),
+          _WHY_(AN_ERROR_COMPLETION_REQUIRES_EXACTLY_ONE_ARGUMENT),
+          _WHERE_(_IN_ALGORITHM_, dematerialize_t),
+          _WITH_ARGUMENTS_(Args...)>();
+      }
+      else if constexpr (tag_t() == set_stopped && sizeof...(Args) != 0)
+      {
+        return exec::throw_compile_time_error<  //
+          _WHAT_(_INVALID_ARGUMENT_),
+          _WHY_(A_STOPPED_COMPLETION_REQUIRES_EXACTLY_ZERO_ARGUMENTS),
+          _WHERE_(_IN_ALGORITHM_, dematerialize_t),
+          _WITH_ARGUMENTS_(Args...)>();
+      }
+      else
+      {
+        return completion_signatures<tag_t(Args...)>();
       }
     };
-  }  // namespace __dematerialize
 
-  inline constexpr __dematerialize::__dematerialize_t dematerialize;
+    template <class Sender>
+    struct _sender
+    {
+      using sender_concept = STDEXEC::sender_tag;
+
+      template <__decays_to<_sender> Self, class Receiver>
+        requires sender_to<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
+      STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
+        noexcept(__nothrow_connectable<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>)
+          -> connect_result_t<__copy_cvref_t<Self, Sender>, _receiver<Receiver>>
+      {
+        return STDEXEC::connect(static_cast<Self&&>(self).sndr_,
+                                _receiver{static_cast<Receiver&&>(rcvr)});
+      }
+      STDEXEC_EXPLICIT_THIS_END(connect)
+
+      template <__decays_to<_sender> Self, class... Env>
+      static consteval auto get_completion_signatures()
+      {
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          _dematerialize_cmplsigs);
+      }
+
+      [[nodiscard]]
+      constexpr auto get_env() const noexcept -> env_of_t<Sender>
+      {
+        return STDEXEC::get_env(sndr_);
+      }
+
+      Sender sndr_;
+    };
+
+    template <class Sender>
+    STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE _sender(Sender) -> _sender<Sender>;
+  }  // namespace _dematerialize
+
+  struct materialize_t
+  {
+    template <STDEXEC::sender Sender>
+    constexpr auto operator()(Sender&& sndr) const  //
+      noexcept(STDEXEC::__nothrow_decay_copyable<Sender>)
+    {
+      return _materialize::_sender{static_cast<Sender&&>(sndr)};
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    auto operator()() const noexcept
+    {
+      return STDEXEC::__closure(*this);
+    }
+  };
+
+  inline constexpr materialize_t materialize{};
+
+  struct dematerialize_t
+  {
+    template <STDEXEC::sender Sender>
+    constexpr auto operator()(Sender&& sndr) const  //
+      noexcept(STDEXEC::__nothrow_decay_copyable<Sender>)
+    {
+      return _dematerialize::_sender{static_cast<Sender&&>(sndr)};
+    }
+
+    STDEXEC_ATTRIBUTE(always_inline)
+    constexpr auto operator()() const noexcept
+    {
+      return STDEXEC::__closure(*this);
+    }
+  };
+
+  inline constexpr dematerialize_t dematerialize{};
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

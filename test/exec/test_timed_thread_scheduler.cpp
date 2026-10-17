@@ -18,11 +18,15 @@
 #include <exec/timed_thread_scheduler.hpp>
 
 #include "test_common/catch2.hpp"
+#include "test_common/receivers.hpp"
 
 #include <exec/async_scope.hpp>
 #include <exec/when_any.hpp>
 
+#include <chrono>
 #include <concepts>
+#include <optional>
+#include <thread>
 #include <utility>
 
 // Avoid a TSAN bug in GCC 11 and earlier
@@ -356,6 +360,31 @@ namespace
         }));
     CHECK(completed_before_start_returned);
     CHECK(STDEXEC::sync_wait(scope.on_empty()));
+  }
+
+  TEST_CASE("timed_thread_scheduler - destroying the context completes a queued stop",
+            "[timed_thread_scheduler][stop]")
+  {
+    // Each iteration hits the window with high but not certain probability (the context thread
+    // can wake up and drain the stop command first); repeat so a regression is reliably caught.
+    for (int i = 0; i < 5; ++i)
+    {
+      bool                                      stopped = false;
+      STDEXEC::inplace_stop_source              source;
+      std::optional<exec::timed_thread_context> context{std::in_place};
+      auto env = STDEXEC::prop{STDEXEC::get_stop_token, source.get_token()};
+      auto op  = STDEXEC::connect(exec::schedule_after(context->get_scheduler(),
+                                                      std::chrono::hours(1)),
+                                 expect_stopped_receiver_ex{env, stopped});
+      STDEXEC::start(op);
+      // Let the context thread put the operation in its heap and go to sleep.
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      // Queue a stop command, then stop the context before the sleeping thread can wake and
+      // drain it: the thread sees both at once and takes the shutdown path.
+      source.request_stop();
+      context.reset();
+      CHECK(stopped);
+    }
   }
 
   TEST_CASE("timed_thread_scheduler - many timers with async scope",

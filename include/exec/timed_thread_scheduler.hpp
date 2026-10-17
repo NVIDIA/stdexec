@@ -155,29 +155,34 @@ namespace experimental::execution
       return std::this_thread::get_id() == run_thread_.get_id();
     }
 
+    void drain_commands()
+    {
+      while (command_type* op = command_queue_.pop_front())
+      {
+        if (op->command_ == command_type::command_type::schedule)
+        {
+          auto* task  = static_cast<task_type*>(op);
+          task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
+          heap_.insert(task);
+        }
+        else
+        {
+          STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
+          auto* stop_op = static_cast<stop_type*>(op);
+          if (heap_.erase(stop_op->target_))
+          {
+            stop_op->target_->set_stopped_(stop_op->target_);
+          }
+          stop_op->set_value_(stop_op);
+        }
+      }
+    }
+
     void run()
     {
       while (true)
       {
-        while (command_type* op = command_queue_.pop_front())
-        {
-          if (op->command_ == command_type::command_type::schedule)
-          {
-            auto* task  = static_cast<task_type*>(op);
-            task->when_ = _time_thrd_sched::when_type{task->time_point_, submission_counter_++};
-            heap_.insert(task);
-          }
-          else
-          {
-            STDEXEC_ASSERT(op->command_ == command_type::command_type::stop);
-            auto* stop_op = static_cast<stop_type*>(op);
-            if (heap_.erase(stop_op->target_))
-            {
-              stop_op->target_->set_stopped_(stop_op->target_);
-            }
-            stop_op->set_value_(stop_op);
-          }
-        }
+        drain_commands();
         time_point now = std::chrono::steady_clock::now();
         task_type* op  = heap_.front();
         while (op && op->time_point_ <= now)
@@ -203,6 +208,9 @@ namespace experimental::execution
             STDEXEC::__spin_loop_pause();
             expected = 0;
           }
+          // No submission is in flight and none can start, so this drain is the last one:
+          // commands pushed since the drain above complete here.
+          drain_commands();
           op = heap_.front();
           while (op)
           {

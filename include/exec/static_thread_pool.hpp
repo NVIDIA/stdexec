@@ -241,10 +241,10 @@ namespace experimental::execution
                   class CvSender>
         auto operator()(Tag, Data&& data, CvSender&& sndr) const
         {
-          auto [pol, shape, fun]     = static_cast<Data&&>(data);
-          using policy_t             = std::remove_cvref_t<decltype(pol.__get())>;
-          constexpr bool parallelize = std::same_as<policy_t, parallel_policy>
-                                    || std::same_as<policy_t, parallel_unsequenced_policy>;
+          auto [pol, shape, fun] = static_cast<Data&&>(data);
+          using policy_t         = std::remove_cvref_t<decltype(pol.__get())>;
+          constexpr bool parallelize =
+            __one_of<policy_t, parallel_policy, parallel_unsequenced_policy>;
 
           if constexpr (__same_as<Tag, bulk_unchunked_t>)
           {
@@ -291,11 +291,14 @@ namespace experimental::execution
         constexpr auto
         transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env) const noexcept
         {
-          if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>)
+          auto& [tag, data, child] = sndr;
+          auto& [pol, shape, fun]  = data;
+
+          if constexpr (__completes_on<decltype(child), scheduler, Env>)
           {
-            auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(get_env(sndr),
+            auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(get_env(child),
                                                                                  env);
-            static_assert(std::is_same_v<decltype(sched), _static_thread_pool::scheduler>);
+            static_assert(std::is_same_v<decltype(sched), scheduler>);
             return __apply(_transform_bulk{*sched.pool_}, static_cast<Sender&&>(sndr));
           }
           else
@@ -316,7 +319,7 @@ namespace experimental::execution
         constexpr auto
         transform_sender(STDEXEC::set_value_t, Sender&& sndr, Env const & env) const noexcept
         {
-          if constexpr (__completes_on<Sender, _static_thread_pool::scheduler, Env>)
+          if constexpr (__completes_on<Sender, scheduler, Env>)
           {
             auto sched = STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(get_env(sndr),
                                                                                  env);
@@ -357,10 +360,9 @@ namespace experimental::execution
           struct attrs
           {
             template <class CPO>
-            auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept
-              -> _static_thread_pool::scheduler
+            auto query(get_completion_scheduler_t<CPO>, __ignore = {}) const noexcept -> scheduler
             {
-              return _static_thread_pool::scheduler{pool_, *queue_};
+              return scheduler{pool_, *queue_};
             }
 
             template <class CPO>
@@ -402,7 +404,7 @@ namespace experimental::execution
           }
 
          private:
-          friend struct _static_thread_pool::scheduler;
+          friend struct scheduler;
 
           explicit _sender(_static_thread_pool& pool,
                            remote_queue*        queue,
@@ -885,12 +887,12 @@ namespace experimental::execution
           {
             continue;
           }
-          std::size_t n_threads = num_threads(static_cast<int>(node_index));
-          if (target_index < n_threads)
+          std::size_t node_threads = num_threads(static_cast<int>(node_index));
+          if (target_index < node_threads)
           {
             return get_thread_index(static_cast<int>(node_index), target_index);
           }
-          target_index -= n_threads;
+          target_index -= node_threads;
         }
       }
       return target_index;
@@ -1215,7 +1217,7 @@ namespace experimental::execution
       }
 
      private:
-      friend class ::exec::_pool_::_static_thread_pool::scheduler::_sender;
+      friend class scheduler::_sender;
 
       explicit _opstate(_static_thread_pool& pool,
                         remote_queue*        queue,
@@ -1491,26 +1493,25 @@ namespace experimental::execution
         STDEXEC_TRY
         {
           shared_state_.data_.template emplace<__decayed_tuple<As...>>(static_cast<As&&>(as)...);
+
+          if (Shape{} < shared_state_.shape_)
+          {
+            enqueue();
+          }
+          else
+          {
+            __visit(STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value)),
+                    std::move(shared_state_.data_),
+                    static_cast<Receiver&&>(shared_state_.rcvr_));
+          }
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!__nothrow_decay_copyable<As...>)
-          {
+          if constexpr (__nothrow_decay_copyable<As...>)
+            STDEXEC::__std::unreachable();
+          else
             STDEXEC::set_error(static_cast<Receiver&&>(shared_state_.rcvr_),
                                std::current_exception());
-            return;
-          }
-        }
-
-        if (Shape{} < shared_state_.shape_)
-        {
-          enqueue();
-        }
-        else
-        {
-          __visit(STDEXEC::__flip(std::bind_front(__apply, STDEXEC::set_value)),
-                  std::move(shared_state_.data_),
-                  static_cast<Receiver&&>(shared_state_.rcvr_));
         }
       }
 

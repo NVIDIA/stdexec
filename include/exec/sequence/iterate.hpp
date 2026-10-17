@@ -50,20 +50,64 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
-    template <class _Iterator, class _Sentinel>
+    // The operation state owns the range it iterates, mirroring what the
+    // default `get-state` does for a sender's data: the range is copied out of
+    // an lvalue sender and moved out of an rvalue one. The range member is
+    // declared first so that the iterator is initialized from the stored copy
+    // and destroyed before it; the child item operations stored in the
+    // derived class are destroyed before anything in this base class. The
+    // sentinel is cached only when `ranges::end` can throw; when it cannot,
+    // an empty `__ignore` stands in for it and the end is recomputed from the
+    // range on each comparison.
+    template <class _Range>
     struct __operation_base_base
     {
-      STDEXEC_ATTRIBUTE(no_unique_address) _Iterator __iterator_;
-      STDEXEC_ATTRIBUTE(no_unique_address) _Sentinel __sentinel_;
+      // A potentially-throwing `end()` is evaluated exactly once, in the
+      // constructor, so that it escapes `subscribe`; calling it again from
+      // the noexcept `__start_next` would terminate instead. An `end()` that
+      // is noexcept needs no such guard.
+      static constexpr bool __cache_sentinel = !noexcept(std::ranges::end(std::declval<_Range&>()));
+
+      constexpr explicit __operation_base_base(_Range __range)
+        noexcept(__nothrow_move_constructible<_Range> && noexcept(std::ranges::begin(__range_))
+                 && noexcept(std::ranges::end(__range_))
+                 && __nothrow_move_constructible<std::ranges::iterator_t<_Range>>)
+        : __range_{static_cast<_Range&&>(__range)}
+        , __iterator_{std::ranges::begin(__range_)}
+        , __sentinel_{std::ranges::end(__range_)}
+      {}
+
+      [[nodiscard]]
+      constexpr bool
+      __at_end() noexcept(noexcept(std::declval<std::ranges::iterator_t<_Range>&>()
+                                   == std::declval<std::ranges::sentinel_t<_Range>&>()))
+      {
+        if constexpr (__cache_sentinel)
+        {
+          return __iterator_ == __sentinel_;
+        }
+        else
+        {
+          return __iterator_ == std::ranges::end(__range_);
+        }
+      }
+
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      _Range                                                                          __range_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      std::ranges::iterator_t<_Range>                                                 __iterator_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      std::conditional_t<__cache_sentinel, std::ranges::sentinel_t<_Range>, __ignore> __sentinel_;
       trampoline_scheduler __scheduler_{};
     };
 
-    template <class _Iterator, class _Sentinel, class _Receiver>
-    struct __operation_base : __operation_base_base<_Iterator, _Sentinel>
+    template <class _Range, class _Receiver>
+    struct __operation_base : __operation_base_base<_Range>
     {
-      constexpr explicit __operation_base(_Iterator __it, _Sentinel __sen, _Receiver&& __rcvr)
-        : __operation_base_base<_Iterator, _Sentinel>{static_cast<_Iterator&&>(__it),
-                                                      static_cast<_Sentinel&&>(__sen)}
+      constexpr explicit __operation_base(_Range __range, _Receiver&& __rcvr)
+        noexcept(noexcept(__operation_base_base<_Range>{static_cast<_Range&&>(__range)})
+                 && __nothrow_move_constructible<_Receiver>)
+        : __operation_base_base<_Range>{static_cast<_Range&&>(__range)}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
 
@@ -73,7 +117,7 @@ namespace experimental::execution
       _Receiver __rcvr_;
     };
 
-    template <class _Iterator, class _Sentinel, class _ItemRcvr>
+    template <class _Range, class _ItemRcvr>
     struct __item_operation
     {
       constexpr void start() noexcept
@@ -82,28 +126,28 @@ namespace experimental::execution
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      _ItemRcvr                                    __rcvr_;
-      __operation_base_base<_Iterator, _Sentinel>* __parent_;
+      _ItemRcvr                      __rcvr_;
+      __operation_base_base<_Range>* __parent_;
     };
 
-    template <class _Iterator, class _Sentinel>
+    template <class _Range>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_tag;
-      using completion_signatures =
-        STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<_Iterator>)>;
+      using sender_concept        = STDEXEC::sender_tag;
+      using completion_signatures = STDEXEC::completion_signatures<set_value_t(
+        std::iter_reference_t<std::ranges::iterator_t<_Range>>)>;
 
       template <receiver_of<completion_signatures> _ItemRcvr>
       constexpr auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
-        -> __item_operation<_Iterator, _Sentinel, _ItemRcvr>
+        -> __item_operation<_Range, _ItemRcvr>
       {
         return {static_cast<_ItemRcvr&&>(__rcvr), __parent_};
       }
 
-      __operation_base_base<_Iterator, _Sentinel>* __parent_;
+      __operation_base_base<_Range>* __parent_;
     };
 
-    template <class _Iterator, class _Sentinel, class _Receiver>
+    template <class _Range, class _Receiver>
     struct __next_receiver
     {
       using receiver_concept = STDEXEC::receiver_tag;
@@ -124,27 +168,27 @@ namespace experimental::execution
         return STDEXEC::get_env(__op_->__rcvr_);
       }
 
-      __operation_base<_Iterator, _Sentinel, _Receiver>* __op_;
+      __operation_base<_Range, _Receiver>* __op_;
     };
 
-    template <class _Iterator, class _Sentinel, class _Receiver>
-    struct __operation final : __operation_base<_Iterator, _Sentinel, _Receiver>
+    template <class _Range, class _Receiver>
+    struct __operation final : __operation_base<_Range, _Receiver>
     {
-      using __item_sender_t   = __result_of<exec::sequence,
-                                            schedule_result_t<trampoline_scheduler>,
-                                            __sender<_Iterator, _Sentinel>>;
-      using __next_receiver_t = __next_receiver<_Iterator, _Sentinel, _Receiver>;
+      using __item_sender_t =
+        __result_of<exec::sequence, schedule_result_t<trampoline_scheduler>, __sender<_Range>>;
+      using __next_receiver_t = __next_receiver<_Range, _Receiver>;
       using __next_sender_t   = next_sender_of_t<_Receiver, __item_sender_t>;
 
-      constexpr explicit __operation(_Iterator __iterator, _Sentinel __sentinel, _Receiver&& __rcvr)
-        : __operation_base<_Iterator, _Sentinel, _Receiver>{static_cast<_Iterator&&>(__iterator),
-                                                            static_cast<_Sentinel&&>(__sentinel),
-                                                            static_cast<_Receiver&&>(__rcvr)}
+      constexpr explicit __operation(_Range __range, _Receiver&& __rcvr)
+        noexcept(noexcept(__operation_base_base<_Range>{static_cast<_Range&&>(__range)})
+                 && __nothrow_move_constructible<_Receiver>)
+        : __operation_base<_Range, _Receiver>{static_cast<_Range&&>(__range),
+                                              static_cast<_Receiver&&>(__rcvr)}
       {}
 
       constexpr void __start_next() noexcept final
       {
-        if (this->__iterator_ == this->__sentinel_)
+        if (this->__at_end())
         {
           STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
         }
@@ -156,7 +200,7 @@ namespace experimental::execution
               STDEXEC::connect,
               exec::set_next(this->__rcvr_,
                              exec::sequence(STDEXEC::schedule(this->__scheduler_),
-                                            __sender<_Iterator, _Sentinel>{this})),
+                                            __sender<_Range>{this})),
               __next_receiver_t{this}));
           }
           STDEXEC_CATCH_ALL
@@ -178,16 +222,15 @@ namespace experimental::execution
     struct __subscribe_fn
     {
       template <class _Range>
-      constexpr auto operator()(__ignore, _Range&& __range)
-        noexcept(noexcept(std::ranges::begin(static_cast<_Range&&>(__range)))
-                 && noexcept(std::ranges::end(static_cast<_Range&&>(__range)))
-                 && __nothrow_move_constructible<std::ranges::iterator_t<_Range>,
-                                                 std::ranges::sentinel_t<_Range>,
-                                                 _Receiver>)
+      constexpr auto operator()(__ignore, _Range&& __range) noexcept(
+        __nothrow_decay_copyable<_Range>
+        && noexcept(__operation<__decay_t<_Range>, _Receiver>{static_cast<_Range&&>(__range),
+                                                              static_cast<_Receiver&&>(__rcvr_)}))
       {
-        return __operation{std::ranges::begin(static_cast<_Range&&>(__range)),
-                           std::ranges::end(static_cast<_Range&&>(__range)),
-                           static_cast<_Receiver&&>(__rcvr_)};
+        // The operation state owns a decayed copy of the range so that its
+        // iterators never point into the sender, which may be a temporary.
+        return __operation<__decay_t<_Range>, _Receiver>{static_cast<_Range&&>(__range),
+                                                         static_cast<_Receiver&&>(__rcvr_)};
       }
 
       _Receiver& __rcvr_;
@@ -204,20 +247,22 @@ namespace experimental::execution
       }
 
       template <class _Range>
-      using __sender_t = __sender<std::ranges::iterator_t<_Range>, std::ranges::sentinel_t<_Range>>;
+      using __sender_t = __sender<_Range>;
 
       using __completion_sigs =
         completion_signatures<set_value_t(), set_error_t(std::exception_ptr), set_stopped_t()>;
 
+      // The operation state iterates a decayed, non-const copy of the
+      // sequence's range (see `__subscribe_fn` above), so the item types are
+      // computed from that copy rather than from the sender's data, whose
+      // cvref qualification can differ.
       template <class _Sequence>
       using __item_sender_t = __result_of<exec::sequence,
                                           schedule_result_t<trampoline_scheduler&>,
-                                          __sender_t<__data_of<_Sequence>>>;
+                                          __sender_t<__decay_t<__data_of<_Sequence>>>>;
 
       template <class _Sequence, class _Receiver>
-      using _NextReceiver = __next_receiver<std::ranges::iterator_t<__data_of<_Sequence>>,
-                                            std::ranges::sentinel_t<__data_of<_Sequence>>,
-                                            _Receiver>;
+      using _NextReceiver = __next_receiver<__decay_t<__data_of<_Sequence>>, _Receiver>;
 
       template <class _Sequence, class _Receiver>
       using _NextSender = next_sender_of_t<_Receiver, __item_sender_t<_Sequence>>;

@@ -21,107 +21,109 @@
 #include "../stdexec/__detail/__receiver_ref.hpp"
 #include "../stdexec/execution.hpp"
 
+#include "completion_signatures.hpp"
 #include "sender_for.hpp"
 
 namespace experimental::execution
 {
-  namespace __unless_stop_requested
+  struct unless_stop_requested_t;
+
+  namespace _unless_stop_requested
   {
     using namespace STDEXEC;
 
-    template <typename _Env>
-    concept __unstoppable_env = unstoppable_token<stop_token_of_t<_Env>>;
+    template <typename Env>
+    concept _unstoppable_env = unstoppable_token<stop_token_of_t<Env>>;
 
-    template <typename _Receiver>
-    concept __unstoppable_receiver = __unstoppable_env<env_of_t<_Receiver>>;
+    template <typename Receiver>
+    concept _unstoppable_receiver = _unstoppable_env<env_of_t<Receiver>>;
 
-    template <class _Sender, class _Env>
-    using __completions_t =
-      __transform_completion_signatures_t<__completion_signatures_of_t<_Sender, _Env>,
-                                          __if_c<__unstoppable_env<_Env>,
-                                                 completion_signatures<>,
-                                                 completion_signatures<set_stopped_t()>>>;
-
-    template <class _CvChild, class _Receiver>
-    struct __opstate
+    template <class CvChild, class Receiver>
+    struct _opstate
     {
       using receiver_concept = receiver_tag;
-      using __child_op_t     = connect_result_t<_CvChild, __receiver_ref<_Receiver>>;
+      using child_opstate_t  = connect_result_t<CvChild, __receiver_ref<Receiver>>;
 
-      constexpr explicit __opstate(_CvChild&& __child, _Receiver __rcvr)
-        noexcept(__nothrow_connectable<_CvChild, __receiver_ref<_Receiver>>)
-        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
-        , __child_op_(
-            STDEXEC::connect(static_cast<_CvChild&&>(__child), STDEXEC::__receiver_ref(__rcvr_)))
+      constexpr explicit _opstate(CvChild&& child, Receiver rcvr)
+        noexcept(__nothrow_connectable<CvChild, __receiver_ref<Receiver>>)
+        : rcvr_(static_cast<Receiver&&>(rcvr))
+        , child_op_(STDEXEC::connect(static_cast<CvChild&&>(child), STDEXEC::__receiver_ref(rcvr_)))
       {}
 
       constexpr void start() noexcept
       {
-        if (STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_)).stop_requested())
+        if (STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)).stop_requested())
         {
-          STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          STDEXEC::set_stopped(static_cast<Receiver&&>(rcvr_));
         }
         else
         {
-          STDEXEC::start(__child_op_);
+          STDEXEC::start(child_op_);
         }
       }
 
-      _Receiver    __rcvr_;
-      __child_op_t __child_op_;
+      Receiver        rcvr_;
+      child_opstate_t child_op_;
     };
 
-    struct unless_stop_requested_t : sender_adaptor_closure<unless_stop_requested_t>
+    struct _impls : __sexpr_defaults
     {
-      [[nodiscard]]
-      constexpr auto operator()() const noexcept
-      {
-        return *this;
-      }
-
-      template <sender _Sender>
-      [[nodiscard]]
-      constexpr __well_formed_sender auto operator()(_Sender&& __sndr) const
-      {
-        return __sexpr{unless_stop_requested_t(), __(), static_cast<_Sender&&>(__sndr)};
-      }
-    };
-
-    struct __impls : __sexpr_defaults
-    {
-      template <class _Self, class _Env>
+      template <class Self, class Env>
       static consteval auto __get_completion_signatures()
       {
-        static_assert(sender_for<_Self, unless_stop_requested_t>);
-        // TODO: port this to use constant evaluation
-        return __completions_t<__child_of<_Self>, _Env>{};
-      };
-
-      template <class _Receiver>
-      using __rcvr_t =
-        __if_c<__unstoppable_receiver<_Receiver>, _Receiver, __receiver_ref<_Receiver>>;
-
-      static constexpr auto __connect =  //
-        []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept(
-          __nothrow_connectable<__child_of<_Sender>, __rcvr_t<_Receiver>>)
-      {
-        auto& [__tag, __ign, __child] = __sndr;
-        if constexpr (__unstoppable_receiver<_Receiver>)
+        static_assert(sender_for<Self, unless_stop_requested_t>);
+        if constexpr (_unstoppable_env<Env>)
         {
-          return STDEXEC::connect(STDEXEC::__forward_like<_Sender>(__child),
-                                  static_cast<_Receiver&&>(__rcvr));
+          return STDEXEC::get_completion_signatures<__child_of<Self>, Env>();
         }
         else
         {
-          return __opstate<__child_of<_Sender>, _Receiver>(STDEXEC::__forward_like<_Sender>(
-                                                             __child),
-                                                           static_cast<_Receiver&&>(__rcvr));
+          return exec::concat_completion_signatures(
+            STDEXEC::get_completion_signatures<__child_of<Self>, Env>(),
+            completion_signatures<set_stopped_t()>());
+        }
+      };
+
+      template <class Receiver>
+      using _receiver_t =
+        __if_c<_unstoppable_receiver<Receiver>, Receiver, __receiver_ref<Receiver>>;
+
+      static constexpr auto __connect =  //
+        []<class Sender, class Receiver>(Sender&& sndr, Receiver rcvr) noexcept(
+          __nothrow_connectable<__child_of<Sender>, _receiver_t<Receiver>>)
+      {
+        auto& [tag, ign, child] = sndr;
+
+        if constexpr (_unstoppable_receiver<Receiver>)
+        {
+          return STDEXEC::connect(STDEXEC::__forward_like<Sender>(child),
+                                  static_cast<Receiver&&>(rcvr));
+        }
+        else
+        {
+          using opstate_t = _opstate<__child_of<Sender>, Receiver>;
+          return opstate_t(STDEXEC::__forward_like<Sender>(child), static_cast<Receiver&&>(rcvr));
         }
       };
     };
-  }  // namespace __unless_stop_requested
+  }  // namespace _unless_stop_requested
 
-  using __unless_stop_requested::unless_stop_requested_t;
+  struct unless_stop_requested_t : STDEXEC::sender_adaptor_closure<unless_stop_requested_t>
+  {
+    [[nodiscard]]
+    constexpr auto operator()() const noexcept
+    {
+      return *this;
+    }
+
+    template <STDEXEC::sender Sender>
+    [[nodiscard]]
+    constexpr auto operator()(Sender&& sndr) const -> STDEXEC::__well_formed_sender auto
+    {
+      return STDEXEC::__sexpr{unless_stop_requested_t(), {}, static_cast<Sender&&>(sndr)};
+    }
+  };
+
   inline constexpr unless_stop_requested_t unless_stop_requested{};
 }  // namespace experimental::execution
 
@@ -130,6 +132,6 @@ namespace exec = experimental::execution;
 namespace STDEXEC
 {
   template <>
-  struct __sexpr_impl<::exec::unless_stop_requested_t> : ::exec::__unless_stop_requested::__impls
+  struct __sexpr_impl<::exec::unless_stop_requested_t> : ::exec::_unless_stop_requested::_impls
   {};
 }  // namespace STDEXEC
