@@ -48,13 +48,20 @@ namespace STDEXEC
   // [exec.continues.on]
   namespace __trnsfr
   {
-    template <class _Sexpr, class _Receiver>
+    template <class _Sender, class _Receiver>
     struct __state_base
     {
-      using __storage_t = __storage_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
+      using __env2_t    = __secondary_env_t<_Sender, env_of_t<_Receiver>, set_value_t>;
+      using __storage_t = __storage_for_t<_Sender, env_of_t<_Receiver>>;
 
-      _Receiver   __rcvr_;
-      __storage_t __data_;
+      constexpr __state_base(_Sender const & __child, _Receiver&& __rcvr) noexcept
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __env2_(__mk_secondary_env_t<set_value_t>()(__child, get_env(__rcvr_)))
+      {}
+
+      _Receiver      __rcvr_;
+      __env2_t const __env2_;
+      __storage_t    __data_;
     };
 
     // This receiver is to be completed on the execution context associated with
@@ -63,10 +70,12 @@ namespace STDEXEC
     // receiver completes, it can read the completion out of the operation state
     // and forward it to the output receiver after transitioning to the
     // scheduler's context.
-    template <class _Sexpr, class _Receiver>
+    template <class _Sender, class _Receiver>
     struct __receiver2
     {
       using receiver_concept = receiver_tag;
+      using __env2_t         = __state_base<_Sender, _Receiver>::__env2_t;
+      using __sch_env_t      = __join_env_t<__env2_t const &, env_of_t<_Receiver>>;
 
       constexpr void set_value() noexcept
       {
@@ -86,24 +95,24 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept -> env_of_t<_Receiver>
+      constexpr auto get_env() const noexcept -> __sch_env_t
       {
-        return STDEXEC::get_env(__state_->__rcvr_);
+        return __env::__join(__state_->__env2_, STDEXEC::get_env(__state_->__rcvr_));
       }
 
-      __state_base<_Sexpr, _Receiver>* __state_;
+      __state_base<_Sender, _Receiver>* __state_;
     };
 
-    template <class _Scheduler, class _Sexpr, class _Receiver>
-    struct __state : __state_base<_Sexpr, _Receiver>
+    template <class _Scheduler, class _Sender, class _Receiver>
+    struct __state : __state_base<_Sender, _Receiver>
     {
-      using __receiver2_t       = __receiver2<_Sexpr, _Receiver>;
+      using __receiver2_t       = __receiver2<_Sender, _Receiver>;
       using __schedule_sender_t = schedule_result_t<_Scheduler&>;
 
-      constexpr explicit __state(_Scheduler __sched, _Receiver&& __rcvr)
+      constexpr explicit __state(_Scheduler __sched, _Sender const & __child, _Receiver&& __rcvr)
         noexcept(__nothrow_callable<schedule_t, _Scheduler&>
                  && __nothrow_connectable<__schedule_sender_t, __receiver2_t>)
-        : __state::__state_base{static_cast<_Receiver&&>(__rcvr)}
+        : __state::__state_base{__child, static_cast<_Receiver&&>(__rcvr)}
         , __state2_(connect(schedule(__sched), __receiver2_t{this}))
       {}
       STDEXEC_IMMOVABLE(__state);
@@ -116,6 +125,18 @@ namespace STDEXEC
     struct __attrs
     {
      private:
+      template <class _Env>
+      using __env2_t = __secondary_env_t<_Sender, _Env, set_value_t>;
+      template <class _Env>
+      using __sch_env_t = __join_env_t<__env2_t<_Env>, _Env>;
+
+      template <class _Env>
+      constexpr auto __mk_sch_env(_Env&& __env) const noexcept -> __sch_env_t<_Env>
+      {
+        return __env::__join(__mk_secondary_env_t<set_value_t>()(__sndr_, __env),
+                             static_cast<_Env&&>(__env));
+      }
+
       //! @brief Returns `true` when:
       //! - _SetTag is set_error_t, and
       //! - _Sender has value completions, and
@@ -138,13 +159,13 @@ namespace STDEXEC
         return false;
       }
 
-      _Scheduler        __sch_;
-      env_of_t<_Sender> __attrs_;
+      _Scheduler      __sch_;
+      _Sender const & __sndr_;
 
      public:
-      constexpr explicit __attrs(_Scheduler __sch, env_of_t<_Sender> __attrs) noexcept
+      constexpr explicit __attrs(_Scheduler __sch, _Sender const & __sndr) noexcept
         : __sch_(static_cast<_Scheduler&&>(__sch))
-        , __attrs_(static_cast<env_of_t<_Sender>&&>(__attrs))
+        , __sndr_(__sndr)
       {}
 
       //! @brief Queries the completion scheduler for a given @c _SetTag.
@@ -171,14 +192,14 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
-        -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __fwd_env_t<_Env>...>
+        -> __call_result_t<get_completion_scheduler_t<_SetTag>, _Scheduler, __sch_env_t<_Env>...>
       {
-        return get_completion_scheduler<_SetTag>(__sch_, __fwd_env(__env)...);
+        return get_completion_scheduler<_SetTag>(__sch_, __mk_sch_env(__env)...);
       }
 
       //! @overload
       template <class _SetTag, class... _Env>
-        requires __never_sends<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>
+        requires __never_sends<_SetTag, schedule_result_t<_Scheduler>, __sch_env_t<_Env>...>
       [[nodiscard]]
       constexpr auto
       query(get_completion_scheduler_t<_SetTag>, _Env const &... __env) const noexcept
@@ -186,7 +207,7 @@ namespace STDEXEC
                            env_of_t<_Sender>,
                            __fwd_env_t<_Env>...>
       {
-        return get_completion_scheduler<_SetTag>(__attrs_, __fwd_env(__env)...);
+        return get_completion_scheduler<_SetTag>(get_env(__sndr_), __fwd_env(__env)...);
       }
 
       //! @brief Queries the completion domain for a given @c _SetTag.
@@ -209,7 +230,7 @@ namespace STDEXEC
       [[nodiscard]]
       constexpr auto
       query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
-        __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
+        __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>,
         indeterminate_domain<>>
       {
         return {};
@@ -223,7 +244,7 @@ namespace STDEXEC
       query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
         __common_domain_t<
           __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>>,
+          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>>,
         indeterminate_domain<>>
       {
         return {};
@@ -237,7 +258,7 @@ namespace STDEXEC
       query(get_completion_domain_t<_SetTag>, _Env const &...) const noexcept -> __unless_one_of_t<
         __common_domain_t<
           __completion_domain_of_t<_SetTag, _Sender, __fwd_env_t<_Env>...>,
-          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __fwd_env_t<_Env>...>,
+          __completion_domain_of_t<_SetTag, schedule_result_t<_Scheduler>, __env2_t<_Env>...>,
           __completion_domain_of_t<set_value_t, _Sender, __fwd_env_t<_Env>...>>,
         indeterminate_domain<>>
       {
@@ -255,7 +276,7 @@ namespace STDEXEC
       {
         using _SchSender = schedule_result_t<_Scheduler>;
         constexpr auto cb_sched =
-          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __fwd_env_t<_Env>...>();
+          STDEXEC::__get_completion_behavior<_Tag, _SchSender, __env2_t<_Env>...>();
         constexpr auto cb_sndr =
           STDEXEC::__get_completion_behavior<_Tag, _Sender, __fwd_env_t<_Env>...>();
         return cb_sched | cb_sndr;
@@ -271,7 +292,7 @@ namespace STDEXEC
         noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
           -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
       {
-        return __attrs_.query(_Query(), static_cast<_Args&&>(__args)...);
+        return _Query()(STDEXEC::get_env(__sndr_), static_cast<_Args&&>(__args)...);
       }
     };
 
@@ -303,7 +324,8 @@ namespace STDEXEC
       }
 
       template <class _Sender, class _Receiver>
-      using __state_for_t = __state<__decay_t<__data_of<_Sender>>, _Sender, _Receiver>;
+      using __state_for_t =
+        __state<__decay_t<__data_of<_Sender>>, __decay_t<__child_of<_Sender>>, _Receiver>;
 
      public:
       static constexpr auto __get_attrs =
@@ -311,7 +333,7 @@ namespace STDEXEC
                                            _Scheduler const & __data,
                                            _Child const &     __child) noexcept
       {
-        return __attrs<_Scheduler, _Child>{__data, STDEXEC::get_env(__child)};
+        return __attrs<_Scheduler, _Child>{__data, __child};
       };
 
       template <class _Sender, class... _Env>
@@ -332,12 +354,15 @@ namespace STDEXEC
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver&& __rcvr) noexcept(
           __nothrow_constructible_from<__state_for_t<_Sender, _Receiver>,
                                        __data_of<_Sender>&,
+                                       __child_of<_Sender>&,
                                        _Receiver>) -> __state_for_t<_Sender, _Receiver>
         requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(__sender_for<_Sender, continues_on_t>);
         auto& [__tag, __sched, __child] = __sndr;
-        return __state_for_t<_Sender, _Receiver>{__sched, static_cast<_Receiver&&>(__rcvr)};
+        return __state_for_t<_Sender, _Receiver>{__sched,
+                                                 __child,
+                                                 static_cast<_Receiver&&>(__rcvr)};
       };
 
       static constexpr auto __complete =
