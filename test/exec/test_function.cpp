@@ -1762,14 +1762,17 @@ namespace
   // Under the Itanium C++ ABI, a following member can reuse the tail padding of
   // a [[no_unique_address]] member whose type isn't POD for the purpose of
   // layout, so a function whose padding is all at its end leaves room for c.
+  // The curried arguments are smaller than a pointer, so each function has
+  // tail padding on every target; an int would leave none where pointers are
+  // four bytes wide.
   TEST_CASE("function's padding is at its end, where an enclosing object can reuse it",
             "[types][function]")
   {
-    using takes_char = exec::function<int(char)>;
-    using takes_int  = exec::function<int(int)>;
+    using takes_char  = exec::function<int(char)>;
+    using takes_short = exec::function<int(short)>;
 
     STATIC_REQUIRE(sizeof(function_then_char<takes_char>) == sizeof(takes_char));
-    STATIC_REQUIRE(sizeof(function_then_char<takes_int>) == sizeof(takes_int));
+    STATIC_REQUIRE(sizeof(function_then_char<takes_short>) == sizeof(takes_short));
   }
 #endif
 
