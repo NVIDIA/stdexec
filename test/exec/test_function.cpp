@@ -21,9 +21,14 @@
 
 #include <stdexec/execution.hpp>
 
+#include <array>
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <memory_resource>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace ex = STDEXEC;
 
@@ -272,9 +277,10 @@ namespace
 
   TEST_CASE("exec::function forwards get_frame_allocator", "[types][function]")
   {
-    counting_resource               res;
-    exec::function<bool() noexcept> sndr(
-      [&res]() noexcept
+    counting_resource                                      res;
+    exec::function<bool(counting_resource & res) noexcept> sndr(
+      res,
+      [](auto &res) noexcept
       {
         return ex::read_env(exec::get_frame_allocator)
              | ex::then(
@@ -310,6 +316,403 @@ namespace
     REQUIRE(ret == 42);
   }
 
+  TEST_CASE("exec::function allocates a large operation state with the frame allocator",
+            "[types][function]")
+  {
+    // big enough that the erased operation state can't be stored inline
+    using big = std::array<char, 256>;
+
+    counting_resource                          res;
+    std::pmr::polymorphic_allocator<std::byte> alloc{&res};
+
+    exec::function<big() noexcept> sndr([]() noexcept { return ex::just(big{}); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))
+                   .value();
+
+    REQUIRE(ret == big{});
+    REQUIRE(res.count == 1);
+  }
+
+  //! An allocator whose allocate is declared noexcept, counting allocations
+  template <class T>
+  struct nothrow_allocator
+  {
+    using value_type = T;
+
+    int *count_ = nullptr;
+
+    nothrow_allocator() = default;
+
+    explicit nothrow_allocator(int *count) noexcept
+      : count_(count)
+    {}
+
+    template <class U>
+    nothrow_allocator(nothrow_allocator<U> const &other) noexcept
+      : count_(other.count_)
+    {}
+
+    T *allocate(std::size_t n) noexcept
+    {
+      if (count_)
+        ++*count_;
+      // a real nothrow frame allocator would draw on a pre-sized arena and
+      // terminate on exhaustion; std::allocator terminates here instead
+      return std::allocator<T>().allocate(n);
+    }
+
+    void deallocate(T *p, std::size_t n) noexcept
+    {
+      std::allocator<T>().deallocate(p, n);
+    }
+
+    template <class U>
+    bool operator==(nothrow_allocator<U> const &other) const noexcept
+    {
+      return count_ == other.count_;
+    }
+  };
+
+  template <class Env>
+  struct env_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    Env env_{};
+
+    auto get_env() const noexcept -> Env
+    {
+      return env_;
+    }
+
+    void set_value(auto &&...) noexcept {}
+
+    void set_error(auto &&) noexcept {}
+
+    void set_stopped() noexcept {}
+  };
+
+  template <class Sndr, class Rcvr>
+  inline constexpr bool nothrow_rvalue_connect = noexcept(
+    std::declval<Sndr>().connect(std::declval<Rcvr>()));
+
+  template <class Sndr, class Rcvr>
+  inline constexpr bool nothrow_lvalue_connect = noexcept(
+    std::declval<Sndr const &>().connect(std::declval<Rcvr>()));
+
+  template <class Sndr, class Rcvr>
+  concept rvalue_connectable = requires { std::declval<Sndr>().connect(std::declval<Rcvr>()); };
+
+  template <class Sndr, class Rcvr>
+  concept lvalue_connectable = requires {
+    std::declval<Sndr const &>().connect(std::declval<Rcvr>());
+  };
+
+  TEST_CASE("function's connect accepts only receivers", "[types][function]")
+  {
+    using fn = exec::function<int() noexcept>;
+
+    STATIC_REQUIRE(ex::receiver<env_receiver<ex::env<>>>);
+    STATIC_REQUIRE(rvalue_connectable<fn, env_receiver<ex::env<>>>);
+    STATIC_REQUIRE(lvalue_connectable<fn, env_receiver<ex::env<>>>);
+
+    STATIC_REQUIRE(!rvalue_connectable<fn, int>);
+    STATIC_REQUIRE(!lvalue_connectable<fn, int>);
+  }
+
+  TEST_CASE("function's connect is noexcept exactly when nothing on the path can throw",
+            "[types][function]")
+  {
+    using nothrow_fn  = exec::function<int() noexcept>;
+    using throwing_fn = exec::function<int()>;
+
+    using nothrow_env  = ex::prop<exec::get_frame_allocator_t, nothrow_allocator<std::byte>>;
+    using nothrow_rcvr = env_receiver<nothrow_env>;
+
+    SECTION("noexcept function type and nothrow frame allocator")
+    {
+      STATIC_REQUIRE(nothrow_rvalue_connect<nothrow_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(nothrow_lvalue_connect<nothrow_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(
+        noexcept(ex::connect(std::declval<nothrow_fn>(), std::declval<nothrow_rcvr>())));
+    }
+
+    SECTION("a function type without noexcept")
+    {
+      STATIC_REQUIRE(!nothrow_rvalue_connect<throwing_fn, nothrow_rcvr>);
+      STATIC_REQUIRE(!nothrow_lvalue_connect<throwing_fn, nothrow_rcvr>);
+    }
+
+    SECTION("a frame allocator whose allocate can throw")
+    {
+      // no frame allocator in the environment: the default, std::allocator
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<ex::env<>>>);
+
+      using std_env = ex::prop<exec::get_frame_allocator_t, std::allocator<std::byte>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<std_env>>);
+
+      using pmr_env = ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<nothrow_fn, env_receiver<pmr_env>>);
+    }
+
+    SECTION("a declared frame allocator query is checked as declared")
+    {
+      using nothrow_decl_fn = exec::function<
+        int() noexcept,
+        exec::queries<nothrow_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+      STATIC_REQUIRE(nothrow_rvalue_connect<nothrow_decl_fn, nothrow_rcvr>);
+
+      using pmr_decl_fn = exec::function<
+        int() noexcept,
+        exec::queries<std::pmr::polymorphic_allocator<>(exec::get_frame_allocator_t) noexcept>>;
+      using pmr_env = ex::prop<exec::get_frame_allocator_t, std::pmr::polymorphic_allocator<>>;
+      STATIC_REQUIRE(!nothrow_rvalue_connect<pmr_decl_fn, env_receiver<pmr_env>>);
+    }
+
+    SECTION("connect() const & also copies the curried arguments")
+    {
+      using fn = exec::function<int(std::string) noexcept>;
+      STATIC_REQUIRE(nothrow_rvalue_connect<fn, nothrow_rcvr>);
+      STATIC_REQUIRE(!nothrow_lvalue_connect<fn, nothrow_rcvr>);
+    }
+  }
+
+  TEST_CASE("a noexcept function allocates its frame with a nothrow frame allocator",
+            "[types][function]")
+  {
+    // big enough that the erased operation state can't be stored inline
+    using big = std::array<char, 256>;
+
+    int                          count = 0;
+    nothrow_allocator<std::byte> alloc{&count};
+
+    exec::function<big() noexcept> sndr([]() noexcept { return ex::just(big{}); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc)))
+                   .value();
+
+    REQUIRE(ret == big{});
+    REQUIRE(count == 1);
+  }
+
+  //! A sender completing with set_value(Value) whose connect is
+  //! noexcept(NothrowConnect)
+  template <bool NothrowConnect, int Value>
+  struct connect_sender
+  {
+    using sender_concept = ex::sender_tag;
+
+    template <class Receiver>
+    struct opstate
+    {
+      using operation_state_concept = ex::operation_state_tag;
+
+      Receiver rcvr;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr), Value);
+      }
+    };
+
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures() noexcept  //
+      -> ex::completion_signatures<ex::set_value_t(int)>
+    {
+      return {};
+    }
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept(NothrowConnect) -> opstate<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+  };
+
+  using nothrow_connect_sender  = connect_sender<true, 1>;
+  using throwing_connect_sender = connect_sender<false, 2>;
+
+  //! A domain that rewrites a nothrow_connect_sender into a
+  //! throwing_connect_sender, with a transformation that isn't declared
+  //! noexcept either
+  struct rewriting_domain
+  {
+    template <class OpTag, class Env>
+    auto
+    transform_sender(OpTag, nothrow_connect_sender &&, Env const &) const -> throwing_connect_sender
+    {
+      return {};
+    }
+  };
+
+  TEST_CASE("a noexcept function type constrains its sender factory", "[types][function]")
+  {
+    auto returns_throwing_connect_sender = []() noexcept
+    {
+      return throwing_connect_sender();
+    };
+    auto throwing_factory = []()
+    {
+      return ex::just(42);
+    };
+
+    SECTION("the factory must be nothrow-invocable")
+    {
+      STATIC_REQUIRE(
+        !std::constructible_from<exec::function<int() noexcept>, decltype(throwing_factory)>);
+      STATIC_REQUIRE(std::constructible_from<exec::function<int()>, decltype(throwing_factory)>);
+    }
+
+    SECTION("the factory must be nothrow-invocable as a const lvalue")
+    {
+      // only the overload that function actually calls can throw
+      struct throws_as_const_lvalue
+      {
+        auto operator()() const &
+        {
+          return ex::just(42);
+        }
+
+        auto operator()() && noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      STATIC_REQUIRE(
+        !std::constructible_from<exec::function<int() noexcept>, throws_as_const_lvalue>);
+      STATIC_REQUIRE(std::constructible_from<exec::function<int()>, throws_as_const_lvalue>);
+    }
+
+    SECTION("the factory must be nothrow-invocable with the curried arguments")
+    {
+      using fn = exec::function<int(std::string const &) noexcept>;
+
+      // copying the referenced std::string into the by-value parameter may
+      // allocate
+      auto takes_by_value = [](std::string) noexcept
+      {
+        return ex::just(42);
+      };
+      auto takes_by_ref = [](std::string const &) noexcept
+      {
+        return ex::just(42);
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string &, decltype(takes_by_value)>);
+      STATIC_REQUIRE(std::constructible_from<fn, std::string &, decltype(takes_by_ref)>);
+    }
+
+    SECTION("the factory's sender must connect without throwing")
+    {
+      STATIC_REQUIRE(!std::constructible_from<exec::function<int() noexcept>,
+                                              decltype(returns_throwing_connect_sender)>);
+      STATIC_REQUIRE(
+        std::constructible_from<exec::function<int()>, decltype(returns_throwing_connect_sender)>);
+    }
+
+    SECTION("the member-function form is checked too")
+    {
+      struct example
+      {
+        auto nothrow_get() const noexcept
+        {
+          return ex::just(42);
+        }
+
+        auto throwing_get() const
+        {
+          return ex::just(42);
+        }
+      };
+
+      using nothrow_fn  = exec::function<int() const & noexcept>;
+      using throwing_fn = exec::function<int() const &>;
+
+      STATIC_REQUIRE(
+        std::constructible_from<nothrow_fn, example const &, decltype(&example::nothrow_get)>);
+      STATIC_REQUIRE(
+        !std::constructible_from<nothrow_fn, example const &, decltype(&example::throwing_get)>);
+      STATIC_REQUIRE(
+        std::constructible_from<throwing_fn, example const &, decltype(&example::throwing_get)>);
+    }
+
+    SECTION("a noexcept function may return another noexcept function")
+    {
+      // the inner function's connect allocates its frame through the outer
+      // function's type-erased frame allocator, which can throw; that is the
+      // caller's concern, not a breach of the outer function's noexcept
+      using fn = exec::function<int() noexcept>;
+
+      fn sndr([]() noexcept { return fn([]() noexcept { return ex::just(42); }); });
+
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a domain's transformation and the transformed sender's connect are trusted")
+    {
+      using fn =
+        exec::function<int() noexcept, exec::queries<rewriting_domain(ex::get_domain_t) noexcept>>;
+
+      auto returns_nothrow_connect_sender = []() noexcept
+      {
+        return nothrow_connect_sender();
+      };
+
+      STATIC_REQUIRE(std::constructible_from<fn, decltype(returns_nothrow_connect_sender)>);
+
+      fn sndr(returns_nothrow_connect_sender);
+
+      auto [ret] = ex::sync_wait(std::move(sndr)
+                                 | ex::write_env(ex::prop(ex::get_domain, rewriting_domain())))
+                     .value();
+
+      // the throwing_connect_sender ran, so the domain did rewrite the sender
+      REQUIRE(ret == 2);
+    }
+  }
+
+  TEST_CASE("function's constructor rejects a sender that is broken only in the receiver's "
+            "environment",
+            "[types][function]")
+  {
+    // read_env(get_stop_token) | then(f) is a sender whatever f is; whether f
+    // can take the stop token is only discovered when the completions are
+    // computed against the receiver's environment
+    using fn =
+      exec::function<int(), exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>>;
+
+    auto takes_token = []() noexcept
+    {
+      return ex::read_env(ex::get_stop_token)
+           | ex::then([](ex::inplace_stop_token) noexcept { return 42; });
+    };
+    auto takes_string = []() noexcept
+    {
+      return ex::read_env(ex::get_stop_token)
+           | ex::then([](std::string const &) noexcept { return 42; });
+    };
+
+    STATIC_REQUIRE(std::constructible_from<fn, decltype(takes_token)>);
+    STATIC_REQUIRE(!std::constructible_from<fn, decltype(takes_string)>);
+  }
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("an exception thrown by the sender factory propagates out of connect",
+            "[types][function]")
+  {
+    exec::function<int()> sndr([]() -> decltype(ex::just(0))
+                               { throw std::runtime_error("factory failed"); });
+
+    REQUIRE_THROWS_AS(ex::sync_wait(std::move(sndr)), std::runtime_error);
+  }
+#endif
+
   TEST_CASE("exec::function is conditionally lvalue connectable", "[types][function]")
   {
     exec::function<int()> sndr([]() noexcept { return ex::just(42); });
@@ -330,17 +733,17 @@ namespace
 
   struct iface
   {
-    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct iface2
   {
-    exec::function<int(iface2 const *) noexcept> get_i_from_base() const noexcept
+    exec::function<int() const & noexcept> get_i_from_base() const noexcept
     {
-      return exec::function<int(iface2 const *) noexcept>(this, &iface2::get_i_virtually);
+      return exec::function<int() const & noexcept>(*this, &iface2::get_i_virtually);
     }
 
-    virtual exec::function<int() noexcept> get_i_virtually() const noexcept = 0;
+    virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct impl
@@ -361,34 +764,96 @@ namespace
       return self->just_i();
     }
 
-    exec::function<int() noexcept> get_i_with_capture() const noexcept
-    {
-      return exec::function<int() noexcept>([this]() noexcept { return just_i(); });
-    }
-
     exec::function<int(impl const *) noexcept> get_i_with_pmfn() const noexcept
     {
       return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
     }
 
-    exec::function<int() noexcept> get_i_virtually() const noexcept override
+    exec::function<int() const & noexcept> get_i_virtually() const noexcept override
     {
-      return get_i_with_capture();
+      return exec::function<int() const & noexcept>(*this, &impl::just_i);
     }
 
    private:
     int i_;
   };
 
-  TEST_CASE("exec::function accepts small trivially-copyable callables", "[types][function]")
+  struct sender_holder
   {
-    SECTION("function<int() noexcept> accepts a lambda capturing this")
+    decltype(ex::just(42)) sndr = ex::just(42);
+  };
+
+  struct move_only_sender_holder
+  {
+    decltype(ex::just(std::unique_ptr<int>{})) sndr = ex::just(std::unique_ptr<int>{});
+  };
+
+  TEST_CASE("exec::function accepts only stateless sender factories", "[types][function]")
+  {
+    SECTION("function<int(sender_holder const *) noexcept> accepts a pointer to member data")
     {
-      auto [ret] = ex::sync_wait(impl{42}.get_i_with_capture()).value();
+      sender_holder h;
+      auto [ret] = ex::sync_wait(
+                     exec::function<int(sender_holder const *) noexcept>(&h, &sender_holder::sndr))
+                     .value();
 
       REQUIRE(ret == 42);
     }
 
+    SECTION("a pointer to member data yields an lvalue, so the sender must be copyable")
+    {
+      using function =
+        exec::function<std::unique_ptr<int>(move_only_sender_holder const *) noexcept>;
+      using factory = decltype(&move_only_sender_holder::sndr);
+
+      STATIC_REQUIRE(!std::constructible_from<function, move_only_sender_holder const *, factory>);
+    }
+
+    SECTION("a callable with state is rejected, however small")
+    {
+      using function = exec::function<int() noexcept>;
+
+      int  i        = 42;
+      auto stateful = [i]() noexcept
+      {
+        return ex::just(i);
+      };
+      auto stateless = []() noexcept
+      {
+        return ex::just(42);
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<function, decltype(stateful)>);
+      STATIC_REQUIRE(std::constructible_from<function, decltype(stateless)>);
+    }
+
+    SECTION("the factory must be invocable as a const lvalue")
+    {
+      using function = exec::function<int()>;
+
+      struct non_const_call
+      {
+        auto operator()() noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      struct rvalue_call
+      {
+        auto operator()() && noexcept
+        {
+          return ex::just(42);
+        }
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<function, non_const_call>);
+      STATIC_REQUIRE(!std::constructible_from<function, rvalue_call>);
+    }
+  }
+
+  TEST_CASE("exec::function accepts small trivially-copyable callables", "[types][function]")
+  {
     SECTION("function<int(impl const *) noexcept> accepts a pointer-to-member function")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_with_pmfn()).value();
@@ -406,14 +871,14 @@ namespace
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int()> can be the return type of a virtual member function")
+    SECTION("function<int() const & noexcept> can be the return type of a virtual member function")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_virtually()).value();
 
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int(iface const *) noexcept> accepts a pointer-to-member function")
+    SECTION("function<int(iface const *)> accepts a pointer-to-member function")
     {
       impl imp{42};
       auto [ret] =
@@ -422,12 +887,40 @@ namespace
       REQUIRE(ret == 42);
     }
 
-    SECTION("function<int(iface2 const *) noexcept> works on the base class")
+    SECTION("function<int() const & noexcept> works on the base class")
     {
       auto [ret] = ex::sync_wait(impl{42}.get_i_from_base()).value();
 
       REQUIRE(ret == 42);
     }
+  }
+
+  TEST_CASE("noexcept is part of a function's type, separately from its completions",
+            "[types][function]")
+  {
+    using sigs =
+      ex::completion_signatures<ex::set_value_t(int), ex::set_error_t(std::exception_ptr)>;
+
+    using throwing_t = exec::function<ex::sender_tag(), sigs>;
+    using nothrow_t  = exec::function<ex::sender_tag() noexcept, sigs>;
+
+    STATIC_REQUIRE(!std::same_as<throwing_t, nothrow_t>);
+    // the sender_tag form's completions are exactly as declared, noexcept or not
+    STATIC_REQUIRE(std::same_as<ex::completion_signatures_of_t<throwing_t>,
+                                ex::completion_signatures_of_t<nothrow_t>>);
+
+    // the noexcept convenience form drops set_error(exception_ptr) but is
+    // still a distinct type from the equivalent sender_tag form without noexcept
+    STATIC_REQUIRE(
+      !std::same_as<
+        exec::function<int() noexcept>,
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>>);
+    STATIC_REQUIRE(
+      std::same_as<
+        exec::function<int() noexcept>,
+        exec::function<ex::sender_tag() noexcept,
+                       ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>>);
   }
 
   TEST_CASE("completion_signature specification is order-independent", "[types][function]")
@@ -437,11 +930,11 @@ namespace
     using func1_t = exec::function<int(int) noexcept>;
     // this declaration chooses value before stopped
     using func2_t =
-      exec::function<ex::sender_tag(int),
+      exec::function<ex::sender_tag(int) noexcept,
                      ex::completion_signatures<ex::set_value_t(int), ex::set_stopped_t()>>;
     // this declaration chooses stopped before value
     using func3_t =
-      exec::function<ex::sender_tag(int),
+      exec::function<ex::sender_tag(int) noexcept,
                      ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(int)>>;
 
     SECTION("the function types are the same as each other")
@@ -501,6 +994,38 @@ namespace
       STATIC_REQUIRE(std::assignable_from<func3_t &, func1_t const &>);
       STATIC_REQUIRE(std::assignable_from<func3_t &, func2_t const &>);
       STATIC_REQUIRE(std::assignable_from<func3_t &, func3_t const &>);
+    }
+  }
+
+  TEST_CASE("specifications are deduplicated, and attrs are order-independent", "[types][function]")
+  {
+    SECTION("duplicate completion signatures collapse")
+    {
+      using func1_t =
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>>;
+      using func2_t = exec::function<
+        ex::sender_tag(),
+        ex::completion_signatures<ex::set_stopped_t(), ex::set_value_t(), ex::set_value_t()>>;
+
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
+    }
+
+    SECTION("attrs order doesn't matter")
+    {
+      struct my_domain : ex::default_domain
+      {};
+
+      using sigs  = ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
+      using value = my_domain(ex::get_completion_domain_t<ex::set_value_t>) noexcept;
+      using stop  = my_domain(ex::get_completion_domain_t<ex::set_stopped_t>) noexcept;
+
+      using func1_t =
+        exec::function<ex::sender_tag(), sigs, exec::queries<>, exec::attrs<value, stop>>;
+      using func2_t =
+        exec::function<ex::sender_tag(), sigs, exec::queries<>, exec::attrs<stop, value>>;
+
+      STATIC_REQUIRE(std::same_as<func1_t, func2_t>);
     }
   }
 
@@ -704,6 +1229,63 @@ namespace
     }
   }
 
+  TEST_CASE("function reports its declared completion domain wherever it's started",
+            "[types][function]")
+  {
+    // A function's completion domain comes from its type, not from the
+    // environment it's connected in, even when its implementation completes
+    // inline and so actually completes wherever the caller started it.
+    auto caller_env = ex::prop(ex::get_domain, domain());
+
+    SECTION("an inline-completing implementation doesn't report the caller's domain")
+    {
+      exec::function<void()> fn(ex::just);
+
+      auto just_domain = get_completion_domain<ex::set_value_t>(ex::get_env(ex::just()),
+                                                                caller_env);
+      auto fn_domain   = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<domain, decltype(just_domain)>);
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(fn_domain)>);
+    }
+
+    SECTION("forwarding the caller's domain doesn't change what's reported")
+    {
+      using function = exec::function<void(), exec::queries<domain(ex::get_domain_t) noexcept>>;
+
+      function fn(ex::just);
+      auto     fn_domain = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(fn_domain)>);
+    }
+
+    SECTION("a forwarded domain is accepted under the default only if it derives from it")
+    {
+      struct unrelated_domain
+      {};
+
+      using derived = exec::function<void(), exec::queries<domain(ex::get_domain_t) noexcept>>;
+      using unrelated =
+        exec::function<void(), exec::queries<unrelated_domain(ex::get_domain_t) noexcept>>;
+
+      STATIC_REQUIRE(std::constructible_from<derived, ex::just_t>);
+      STATIC_REQUIRE(!std::constructible_from<unrelated, ex::just_t>);
+    }
+
+    SECTION("declaring the forwarded domain reports it")
+    {
+      using function =
+        exec::function<void(),
+                       exec::queries<domain(ex::get_domain_t) noexcept>,
+                       exec::attrs<domain(ex::get_completion_domain_t<ex::set_value_t>)>>;
+
+      function fn(ex::just);
+      auto     fn_domain = get_completion_domain<ex::set_value_t>(ex::get_env(fn), caller_env);
+
+      STATIC_REQUIRE(std::same_as<domain, decltype(fn_domain)>);
+    }
+  }
+
   template <auto Tag>
   using custom_domain_for =
     exec::attrs<domain(ex::get_completion_domain_t<std::remove_cvref_t<decltype(Tag)>>)>;
@@ -757,6 +1339,26 @@ namespace
 
   template <class Sigs, class Attrs>
   concept function_exists = requires { typename exec::function<ex::sender_tag(), Sigs, Attrs>; };
+
+  TEST_CASE("get_completion_domain_t<> in attrs<...> means the set_value domain",
+            "[types][function]")
+  {
+    using function = exec::function<ex::sender_tag(),
+                                    ex::completion_signatures<ex::set_value_t()>,
+                                    exec::queries<>,
+                                    exec::attrs<domain(ex::get_completion_domain_t<>)>>;
+
+    // the declared domain constrains the erased sender's set_value domain
+    STATIC_REQUIRE(!std::constructible_from<function, ex::just_t>);
+    STATIC_REQUIRE(std::constructible_from<function, domain_sender_t<ex::set_value_t, domain>>);
+
+    // and the function reports it for both spellings of the value-channel query
+    function fn(domain_sender<ex::set_value, domain>);
+    auto     attrs = ex::get_env(fn);
+
+    STATIC_REQUIRE(std::same_as<domain, decltype(get_completion_domain<ex::set_value_t>(attrs))>);
+    STATIC_REQUIRE(std::same_as<domain, decltype(get_completion_domain<void>(attrs))>);
+  }
 
   TEST_CASE("function can't be specialized with invalid completion specifications")
   {
@@ -824,5 +1426,468 @@ namespace
       STATIC_REQUIRE(
         function_exists<ex::completion_signatures<ex::set_value_t()>, exec::attrs<int(query_t)>>);
     }
+  }
+
+  struct pointer_factories
+  {
+    int i;
+
+    static auto just_i(pointer_factories const &self) noexcept
+    {
+      return ex::just(self.i);
+    }
+
+    auto just_i_memfn() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+  TEST_CASE("member-function functions built from pointer factories are nothrow constructible",
+            "[types][function]")
+  {
+    using function = exec::function<int() const & noexcept>;
+    using self     = pointer_factories const &;
+
+    SECTION("pointer-to-function factory")
+    {
+      using factory = decltype(&pointer_factories::just_i);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, self, factory>);
+
+      pointer_factories pf{42};
+      auto [ret] = ex::sync_wait(function(std::as_const(pf), &pointer_factories::just_i)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("pointer-to-member-function factory")
+    {
+      using factory = decltype(&pointer_factories::just_i_memfn);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, self, factory>);
+
+      pointer_factories pf{42};
+      auto [ret] =
+        ex::sync_wait(function(std::as_const(pf), &pointer_factories::just_i_memfn)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("pointer-to-member-data factory")
+    {
+      using factory = decltype(&sender_holder::sndr);
+      STATIC_REQUIRE(std::is_nothrow_constructible_v<function, sender_holder const &, factory>);
+
+      sender_holder h;
+      auto [ret] = ex::sync_wait(function(std::as_const(h), &sender_holder::sndr)).value();
+      REQUIRE(ret == 42);
+    }
+  }
+
+  TEST_CASE("member-function functions require factories invocable as const lvalues",
+            "[types][function]")
+  {
+    using function = exec::function<int() const &>;
+
+    struct non_const_call
+    {
+      auto operator()(pointer_factories const &self) noexcept
+      {
+        return ex::just(self.i);
+      }
+    };
+
+    struct const_call
+    {
+      auto operator()(pointer_factories const &self) const noexcept
+      {
+        return ex::just(self.i);
+      }
+    };
+
+    STATIC_REQUIRE(!std::constructible_from<function, pointer_factories const &, non_const_call>);
+    STATIC_REQUIRE(std::constructible_from<function, pointer_factories const &, const_call>);
+
+    pointer_factories pf{42};
+    auto [ret] = ex::sync_wait(function(pf, const_call{})).value();
+    REQUIRE(ret == 42);
+  }
+
+  TEST_CASE("member-function functions are unrelated to the void-pointer form", "[types][function]")
+  {
+    using member   = exec::function<int() const &>;
+    using void_ptr = exec::function<int(void const *)>;
+
+    STATIC_REQUIRE(!std::is_convertible_v<member, void_ptr>);
+    STATIC_REQUIRE(!std::constructible_from<void_ptr, member>);
+    STATIC_REQUIRE(!std::is_convertible_v<member &, void_ptr &>);
+    STATIC_REQUIRE(!std::is_convertible_v<member *, void_ptr *>);
+  }
+
+  TEST_CASE("member-function functions accept the self arguments a synchronous member function "
+            "would, except rvalues",
+            "[types][function]")
+  {
+    using factory = decltype(&pointer_factories::just_i);
+
+    SECTION("const & accepts const and non-const lvalues")
+    {
+      using fn = exec::function<int() const &>;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &&, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &&, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const volatile &, factory>);
+    }
+
+    SECTION("& accepts only non-const lvalues")
+    {
+      using fn       = exec::function<int() &>;
+      using mfactory = decltype(ex::just(0)) (*)(pointer_factories &) noexcept;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &&, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &, mfactory>);
+    }
+
+    SECTION("a non-const lvalue reaches a const & function's factory as a const reference")
+    {
+      pointer_factories pf{42};
+      auto [ret] = ex::sync_wait(exec::function<int() const &>(
+                                   pf,
+                                   [](auto &self) noexcept
+                                   {
+                                     static_assert(
+                                       std::is_const_v<std::remove_reference_t<decltype(self)>>);
+                                     return ex::just(self.i);
+                                   }))
+                     .value();
+      REQUIRE(ret == 42);
+    }
+  }
+
+  struct trivial_move_only
+  {
+    trivial_move_only()                                     = default;
+    trivial_move_only(trivial_move_only const &)            = delete;
+    trivial_move_only(trivial_move_only &&)                 = default;
+    trivial_move_only &operator=(trivial_move_only const &) = delete;
+    trivial_move_only &operator=(trivial_move_only &&)      = default;
+    ~trivial_move_only()                                    = default;
+  };
+
+  //! Trivially copy- and move-constructible, but not trivially copyable,
+  //! because its assignment operators are user-provided.
+  struct trivial_construction_only
+  {
+    trivial_construction_only()                                  = default;
+    trivial_construction_only(trivial_construction_only const &) = default;
+    trivial_construction_only(trivial_construction_only &&)      = default;
+    trivial_construction_only &operator=(trivial_construction_only const &) noexcept
+    {
+      return *this;
+    }
+    trivial_construction_only &operator=(trivial_construction_only &&) noexcept
+    {
+      return *this;
+    }
+    ~trivial_construction_only() = default;
+  };
+
+  TEST_CASE("function takes trivially copy- and move-constructible curried arguments by const "
+            "reference and all others by rvalue reference",
+            "[types][function]")
+  {
+    using just_int_t = decltype(ex::just(0));
+
+    SECTION("an int may be an lvalue or an rvalue")
+    {
+      using fn      = exec::function<int(int)>;
+      using factory = just_int_t (*)(int);
+      STATIC_REQUIRE(std::constructible_from<fn, int &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, int const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, int, factory>);
+
+      int i      = 42;
+      auto [ret] = ex::sync_wait(fn(i, ex::just)).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a class with trivial copy and move constructors may be an lvalue, whatever its "
+            "assignment operators")
+    {
+      // function only constructs its curried arguments, so their assignment
+      // operators don't matter
+      using type = trivial_construction_only;
+      STATIC_REQUIRE(!std::is_trivially_copyable_v<type>);
+      using fn      = exec::function<int(type)>;
+      using factory = just_int_t (*)(type);
+      STATIC_REQUIRE(std::constructible_from<fn, type &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, type, factory>);
+    }
+
+    SECTION("a type with a non-trivial copy or move must be an rvalue")
+    {
+      using fn      = exec::function<int(std::string)>;
+      using factory = just_int_t (*)(std::string);
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, std::string const &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, std::string, factory>);
+    }
+
+    SECTION("a trivially copyable type whose copy constructor is deleted must be an rvalue")
+    {
+      STATIC_REQUIRE(std::is_trivially_copyable_v<trivial_move_only>);
+      using fn      = exec::function<int(trivial_move_only)>;
+      using factory = just_int_t (*)(trivial_move_only);
+      STATIC_REQUIRE(!std::constructible_from<fn, trivial_move_only &, factory>);
+      STATIC_REQUIRE(std::constructible_from<fn, trivial_move_only, factory>);
+    }
+
+    SECTION("reference-typed parameters are unchanged")
+    {
+      using lref_fn      = exec::function<int(int &)>;
+      using lref_factory = just_int_t (*)(int &);
+      STATIC_REQUIRE(std::constructible_from<lref_fn, int &, lref_factory>);
+      STATIC_REQUIRE(!std::constructible_from<lref_fn, int const &, lref_factory>);
+      STATIC_REQUIRE(!std::constructible_from<lref_fn, int, lref_factory>);
+
+      using rref_fn      = exec::function<int(int &&)>;
+      using rref_factory = just_int_t (*)(int &&);
+      STATIC_REQUIRE(!std::constructible_from<rref_fn, int &, rref_factory>);
+      STATIC_REQUIRE(std::constructible_from<rref_fn, int, rref_factory>);
+    }
+
+    SECTION("the rule applies to member functions' explicit arguments too")
+    {
+      struct example;
+      using fn      = exec::function<int(int) const &>;
+      using factory = just_int_t (*)(example const &, int);
+      STATIC_REQUIRE(std::constructible_from<fn, example const &, int &, factory>);
+      STATIC_REQUIRE(!std::constructible_from<exec::function<int(std::string) const &>,
+                                              example const &,
+                                              std::string &,
+                                              just_int_t (*)(example const &, std::string)>);
+    }
+  }
+
+  template <class Sig, class... Ts>
+  concept valid_function_type = requires { typename exec::function<Sig, Ts...>; };
+
+  TEST_CASE("function rejects rvalue, unqualified const, and volatile function types",
+            "[types][function]")
+  {
+    using sigs = ex::completion_signatures<ex::set_value_t(int)>;
+
+    STATIC_REQUIRE(valid_function_type<int()>);
+    STATIC_REQUIRE(valid_function_type<int() &>);
+    STATIC_REQUIRE(valid_function_type<int() const &>);
+    STATIC_REQUIRE(valid_function_type<int() const & noexcept>);
+    STATIC_REQUIRE(valid_function_type<ex::sender_tag() const &, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() &&>);
+    STATIC_REQUIRE(!valid_function_type<int() const &&>);
+    STATIC_REQUIRE(!valid_function_type < int() && noexcept >);
+    STATIC_REQUIRE(!valid_function_type < int() const && noexcept >);
+    STATIC_REQUIRE(!valid_function_type<ex::sender_tag() &&, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() const>);
+    STATIC_REQUIRE(!valid_function_type<int() const noexcept>);
+    STATIC_REQUIRE(!valid_function_type<ex::sender_tag() const, sigs>);
+
+    STATIC_REQUIRE(!valid_function_type<int() volatile>);
+    STATIC_REQUIRE(!valid_function_type<int() volatile &>);
+    STATIC_REQUIRE(!valid_function_type<int() const volatile &>);
+  }
+
+  // Pointer-to-member factories whose representation can be larger than two
+  // pointers under the Microsoft ABI, where the size of a pointer to member
+  // depends on the class's inheritance model. Under the Itanium ABI every
+  // pointer to member function is two pointers, so these only exercise
+  // function's factory-storage sizing on Microsoft-ABI targets.
+  struct mi_base1
+  {
+    int i = 1;
+  };
+
+  struct mi_base2
+  {
+    int j = 2;
+  };
+
+  struct multiple_inheritance
+    : mi_base1
+    , mi_base2
+  {
+    auto get() const noexcept
+    {
+      return ex::just(i + j);
+    }
+  };
+
+  struct vi_base
+  {
+    int i = 3;
+  };
+
+  struct virtual_inheritance : virtual vi_base
+  {
+    auto get() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+  struct late;
+  // Formed while late is incomplete, so the Microsoft ABI must use its most
+  // general pointer-to-member representation for this type.
+  using late_getter = decltype(ex::just(0)) (late::*)() const noexcept;
+
+  struct late
+  {
+    int i = 4;
+
+    auto get() const noexcept
+    {
+      return ex::just(i);
+    }
+  };
+
+#if !STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
+  template <class Function>
+  struct function_then_char
+  {
+    STDEXEC_ATTRIBUTE(no_unique_address) Function fn;
+    char c;
+  };
+
+  // Under the Itanium C++ ABI, a following member can reuse the tail padding of
+  // a [[no_unique_address]] member whose type isn't POD for the purpose of
+  // layout, so a function whose padding is all at its end leaves room for c.
+  TEST_CASE("function's padding is at its end, where an enclosing object can reuse it",
+            "[types][function]")
+  {
+    using takes_char = exec::function<int(char)>;
+    using takes_int  = exec::function<int(int)>;
+
+    STATIC_REQUIRE(sizeof(function_then_char<takes_char>) == sizeof(takes_char));
+    STATIC_REQUIRE(sizeof(function_then_char<takes_int>) == sizeof(takes_int));
+  }
+#endif
+
+  TEST_CASE("function stores pointer-to-member factories of any representation",
+            "[types][function]")
+  {
+    SECTION("multiple inheritance")
+    {
+      multiple_inheritance obj;
+      auto [ret] = ex::sync_wait(exec::function<int(multiple_inheritance const *) noexcept>(
+                                   &obj,
+                                   &multiple_inheritance::get))
+                     .value();
+      REQUIRE(ret == 3);
+    }
+
+    SECTION("virtual inheritance")
+    {
+      virtual_inheritance obj;
+      auto [ret] = ex::sync_wait(exec::function<int(virtual_inheritance const *) noexcept>(
+                                   &obj,
+                                   &virtual_inheritance::get))
+                     .value();
+      REQUIRE(ret == 3);
+    }
+
+    SECTION("pointer to member formed before the class was complete")
+    {
+      late        obj;
+      late_getter getter = &late::get;
+      auto [ret] = ex::sync_wait(exec::function<int(late const *) noexcept>(&obj, getter)).value();
+      REQUIRE(ret == 4);
+    }
+  }
+
+  TEST_CASE("support for member functions works as expected", "[types][function]")
+  {
+    struct example
+    {
+      exec::function<int() const &> get_int() const &
+      {
+        return exec::function<int() const &>(*this,
+                                             [](example const &self) { return ex::just(self.i_); });
+      }
+
+      exec::function<example &(int) &> set_int(int i) &
+      {
+        return exec::function<example &(int) &>(*this,
+                                                int(i),
+                                                [](auto &self, int i)
+                                                {
+                                                  return ex::just(i)
+                                                       | ex::then(
+                                                           [&self](int i) -> decltype(auto)
+                                                           {
+                                                             self.i_ = i;
+                                                             return self;
+                                                           });
+                                                });
+      }
+
+     private:
+      int i_{42};
+    };
+
+    {
+      example e;
+
+      auto [result] =
+        ex::sync_wait(e.set_int(34) | ex::let_value([](auto &e) { return e.get_int(); })).value();
+
+      REQUIRE(result == 34);
+    }
+  }
+
+  template <class T>
+  using async_getter =
+    exec::function<ex::sender_tag() const &, ex::completion_signatures<ex::set_value_t(T)>>;
+
+  template <class O, class T>
+  using async_setter =
+    exec::function<ex::sender_tag(T) &, ex::completion_signatures<ex::set_value_t(O &)>>;
+
+  TEST_CASE("specifying more parameters of a function hiding a member function works",
+            "[types][function]")
+  {
+    struct example
+    {
+      async_getter<int> get() const & noexcept
+      {
+        return async_getter<int>(*this, [](auto &self) noexcept { return ex::just(self.i_); });
+      }
+
+      async_setter<example, int> set(int i) & noexcept
+      {
+        return async_setter<example, int>(*this,
+                                          int(i),
+                                          [](auto &self, int i) noexcept
+                                          {
+                                            return ex::just(i)
+                                                 | ex::then(
+                                                     [&self](int i) noexcept -> example &
+                                                     {
+                                                       self.i_ = i;
+                                                       return self;
+                                                     });
+                                          });
+      }
+
+     private:
+      int i_{};
+    };
+
+    example e;
+
+    auto [result] =
+      ex::sync_wait(e.set(42) | ex::let_value([](auto &e) noexcept { return e.get(); })).value();
+
+    REQUIRE(result == 42);
   }
 }  // namespace
