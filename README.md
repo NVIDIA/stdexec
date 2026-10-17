@@ -75,7 +75,7 @@ int main() {
 | Clang | 16 | |
 | MSVC | 14.43 | |
 | Xcode (Apple Clang) | 16 | |
-| nvc++ | 25.9 | required for [GPU support](#gpu-support) |
+| nvc++ | 26.5 | required for [GPU support](#gpu-support) |
 
 Requires `-std=c++20` or later.
 
