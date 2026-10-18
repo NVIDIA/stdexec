@@ -65,6 +65,11 @@ namespace experimental::execution
 
     void prepend(STDEXEC::__intrusive_queue<_NextPtr> queue) noexcept
     {
+      if (queue.empty())
+      {
+        return;
+      }
+
       __node_pointer __new_head = queue.front();
       __node_pointer __tail     = queue.back();
       __node_pointer __old_head = __head_.load(STDEXEC::__std::memory_order_relaxed);
