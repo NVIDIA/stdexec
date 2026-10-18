@@ -64,4 +64,18 @@ namespace
     using res = __minvoke<tr, int, char>;
     static_assert(is_same_v<res, tuple<optional<int>, optional<char>>>);
   }
+  TEST_CASE("sort orders a type list independently of the input order", "[detail][sort]")
+  {
+    using sort = __msort<>;
+    static_assert(
+      is_same_v<__minvoke<sort, int, char, double>, __minvoke<sort, double, int, char>>);
+    static_assert(is_same_v<__minvoke<sort, int>, __mlist<int>>);
+  }
+
+  TEST_CASE("sort accepts an empty type list", "[detail][sort]")
+  {
+    static_assert(is_same_v<__minvoke<__msort<>>, __mlist<>>);
+    static_assert(is_same_v<__minvoke<__munique<__msort<>>>, __mlist<>>);
+  }
+
 }  // namespace
