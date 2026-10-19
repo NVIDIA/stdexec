@@ -169,7 +169,7 @@ namespace STDEXEC
         std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
         resize(size() - (__last - __first));
       }
-      return end();
+      return const_cast<iterator>(__first);
     }
 
     std::size_t __size_ = 0;
