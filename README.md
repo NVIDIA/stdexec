@@ -56,6 +56,8 @@ int main() {
 }
 ```
 
+`get_parallel_scheduler()` needs its backend compiled in, so either define `STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY` for your target (as the godbolt link does), or configure stdexec with `-DSTDEXEC_BUILD_PARALLEL_SCHEDULER=ON` and link `STDEXEC::parallel_scheduler`. Without either, the program can still link and then crash on that call.
+
 ## Features
 
 - **C++26 reference implementation** of `std::execution` (P2300).
