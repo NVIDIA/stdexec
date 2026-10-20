@@ -655,14 +655,30 @@ endif()
 if(STDEXEC_IS_TOP_LEVEL)
   # Integrate with LLVM/clang tooling
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/clangd_compile_info.cmake)
-  add_executable(_clangd_helper_file include/._clangd_helper_file.cpp)
-  target_link_libraries(
-    _clangd_helper_file
-    PRIVATE STDEXEC::stdexec
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
-            $<TARGET_NAME_IF_EXISTS:STDEXEC::nvexec>)
+
+  # The helper translation unit only exists to give clangd a compile command
+  # for the headers (see the comment at the top of the file). It is not needed
+  # when stdexec is configured for packaging, and a source tree that went
+  # through an archive step may not even have it: the leading "._" looks like
+  # AppleDouble metadata, which macOS tar and friends can strip.
+  option(STDEXEC_BUILD_CLANGD_HELPER
+         "Build the helper translation unit that gives clangd compile commands"
+         ON)
+  set(stdexec_clangd_helper_file
+      "${CMAKE_CURRENT_SOURCE_DIR}/include/._clangd_helper_file.cpp")
+  if(STDEXEC_BUILD_CLANGD_HELPER AND EXISTS "${stdexec_clangd_helper_file}")
+    add_executable(_clangd_helper_file "${stdexec_clangd_helper_file}")
+    target_link_libraries(
+      _clangd_helper_file
+      PRIVATE STDEXEC::stdexec
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::asioexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::tbbexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::taskflowexec>
+              $<TARGET_NAME_IF_EXISTS:STDEXEC::nvexec>)
+  elseif(STDEXEC_BUILD_CLANGD_HELPER)
+    message(STATUS "stdexec: ${stdexec_clangd_helper_file} is missing, "
+                   "skipping the clangd helper target")
+  endif()
 endif()
 
 # ##############################################################################
