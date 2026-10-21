@@ -129,6 +129,55 @@ namespace
     CHECK(bytes == 0);
   }
 
+  constinit std::size_t g_default_allocator_bytes = 0;
+
+  template <class T>
+  struct default_counting_allocator
+  {
+    using value_type = T;
+
+    default_counting_allocator() = default;
+
+    template <class Other>
+    default_counting_allocator(default_counting_allocator<Other> const &) noexcept
+    {}
+
+    auto allocate(std::size_t n) -> T*
+    {
+      g_default_allocator_bytes += n * sizeof(T);
+      return static_cast<T*>(::operator new(n * sizeof(T)));
+    }
+
+    void deallocate(T* p, std::size_t n)
+    {
+      g_default_allocator_bytes -= n * sizeof(T);
+      ::operator delete(p);
+    }
+
+    auto operator==(default_counting_allocator const &) const -> bool = default;
+  };
+
+  struct default_allocator_env : ex::env<>
+  {
+    using allocator_type = default_counting_allocator<std::byte>;
+  };
+
+  auto test_task_default_allocator() -> ex::task<void, default_allocator_env>
+  {
+    co_return;
+  }
+
+  TEST_CASE("task without an allocator argument allocates its frame with a default-constructed "
+            "allocator_type",
+            "[types][task]")
+  {
+    g_default_allocator_bytes = 0;
+    auto t                    = test_task_default_allocator();
+    CHECK(g_default_allocator_bytes > 0);
+    ex::sync_wait(std::move(t));
+    CHECK(g_default_allocator_bytes == 0);
+  }
+
   auto test_task_awaits_just_sender() -> ex::task<int>
   {
     co_return co_await ex::just(42);
