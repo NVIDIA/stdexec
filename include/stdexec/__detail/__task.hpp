@@ -908,7 +908,7 @@ namespace STDEXEC
     // When no allocator passed to the coroutine:
     static void* operator new(size_t __bytes)
     {
-      return __promise::operator new(__bytes, std::allocator_arg, std::allocator<std::byte>{});
+      return __promise::operator new(__bytes, std::allocator_arg, allocator_type());
     }
 
     static void operator delete(void* __ptr, size_t __bytes) noexcept
