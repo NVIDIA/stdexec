@@ -147,12 +147,12 @@ if(STDEXEC_BUILD_TESTS)
     VERSION
     ${icm_VERSION}
     PATCH_COMMAND
-    git
+    ${GIT_EXECUTABLE}
     restore
     --
     .
     &&
-    git
+    ${GIT_EXECUTABLE}
     apply
     ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
 endif()
