@@ -57,7 +57,7 @@ namespace experimental::execution::asio
     friend struct ::exec::thread_pool_base<asio_thread_pool>;
 
     template <class PoolType, class Receiver>
-    friend struct exec::_pool_::opstate;
+    friend struct exec::_pool::opstate;
 
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
@@ -65,7 +65,7 @@ namespace experimental::execution::asio
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool::_task_base* task, std::uint32_t tid = 0) noexcept
     {
       asio_impl::post(pool_, [task, tid] { task->execute_(task, /*tid=*/tid); });
     }

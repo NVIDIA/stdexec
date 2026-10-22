@@ -22,6 +22,7 @@
 #include <stdexec/execution.hpp>
 
 #include <exec/inline_scheduler.hpp>
+#include <exec/static_thread_pool.hpp>
 #include <test_common/schedulers.hpp>
 
 #include <exec/tbb/tbb_thread_pool.hpp>

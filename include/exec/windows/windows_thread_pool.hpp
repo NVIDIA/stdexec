@@ -1148,7 +1148,7 @@ namespace experimental::execution::__win32
     //! Splits `[0, n)` into `size` chunks, distributing `n % size` evenly
     //! between the first ranks, and returns the chunk of `rank`.
     static auto
-    even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept -> std::pair<Shape, Shape>
+    _even_share(Shape n, std::uint32_t rank, std::uint32_t size) noexcept -> std::pair<Shape, Shape>
     {
       using ushape_t           = std::make_unsigned_t<Shape>;
       auto const avg_per_agent = static_cast<ushape_t>(n) / size;
@@ -1192,7 +1192,7 @@ namespace experimental::execution::__win32
                                                              STDEXEC::__std::memory_order_relaxed);
       STDEXEC_ASSERT(agent < self.num_agents_);
 
-      auto const [begin, end] = even_share(self.shape_, agent, self.num_agents_);
+      auto const [begin, end] = _even_share(self.shape_, agent, self.num_agents_);
       auto const applicator   = std::bind_front(std::ref(self.fun_), begin, end);
       auto const computation  = std::bind_front(STDEXEC::__apply, applicator);
 
