@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
+#include <atomic>
+#include <exec/async_scope.hpp>
 #include <exec/single_thread_context.hpp>
 #include <exec/when_any.hpp>
 #include <numbers>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
+#include <test_common/stop_tokens.hpp>
 #include <test_common/type_helpers.hpp>
+#include <thread>
 
 #include <test_common/catch2.hpp>
 
@@ -330,6 +334,40 @@ namespace
 
     ex::sync_wait(std::move(snd));
     REQUIRE(result == 42);
+  }
+
+  TEST_CASE("when_any handles stop requests from the environment correctly", "[adaptors][when_any]")
+  {
+    // Both children complete inside the stop request, and async_scope destroys
+    // when_any's operation state before the request returns.
+    auto snd = exec::when_any(completes_if(false), completes_if(false));
+
+    exec::async_scope scope;
+    scope.spawn(snd);
+    scope.request_stop();
+    ex::sync_wait(scope.on_empty());
+  }
+
+  TEST_CASE("when_any completes once when a stop request races with its last child",
+            "[adaptors][when_any]")
+  {
+    impulse_scheduler  sched;
+    racing_stop_source source;
+    std::atomic<int>   values{0};
+    std::atomic<int>   stopped{0};
+
+    auto op = ex::connect(exec::when_any(ex::schedule(sched)),
+                          racing_stop_receiver{&values, &stopped, source.get_token()});
+    ex::start(op);
+
+    std::thread requester{[&] { source.request_stop(); }};
+    source.wait_for_request();  // the requester has taken when_any's stop callback
+    sched.start_next();         // the only child completes on this thread
+    requester.join();
+
+    CHECK(source.destructor_waited());
+    CHECK(values == 0);
+    CHECK(stopped == 1);
   }
 
   TEST_CASE("when_any completion signatures", "[adaptors][when_any]")
