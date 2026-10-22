@@ -38,20 +38,23 @@ namespace
       return parallelism_;
     }
 
+    std::uint32_t parallelism_ = 1;
+    std::uint32_t enqueued_    = 0;
+
+   private:
+    friend exec::thread_pool_access;
+
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() noexcept -> ex::forward_progress_guarantee
     {
       return ex::forward_progress_guarantee::parallel;
     }
 
-    void enqueue(exec::_pool_::task_base *task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool::_task_base *task, std::uint32_t tid = 0) noexcept
     {
       ++enqueued_;
       task->execute_(task, tid);
     }
-
-    std::uint32_t parallelism_ = 1;
-    std::uint32_t enqueued_    = 0;
   };
 
   struct value_capture_error

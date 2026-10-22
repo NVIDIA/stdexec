@@ -42,10 +42,7 @@ namespace experimental::execution::tbb
     }
 
    private:
-    friend struct ::exec::thread_pool_base<tbb_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct exec::_pool_::opstate;
+    friend thread_pool_access;
 
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
@@ -53,7 +50,7 @@ namespace experimental::execution::tbb
       return STDEXEC::forward_progress_guarantee::parallel;
     }
 
-    void enqueue(exec::_pool_::task_base* task, std::uint32_t tid = 0) noexcept
+    void enqueue(exec::_pool::_task_base* task, std::uint32_t tid = 0) noexcept
     {
       arena_.enqueue([task, tid] { task->execute_(task, /*tid=*/tid); });
     }

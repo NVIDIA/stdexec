@@ -47,9 +47,9 @@ namespace experimental::execution
 
   namespace __libdispatch
   {
-    struct task_base
+    struct _task_base
     {
-      void (*execute)(task_base *) noexcept;
+      void (*execute)(_task_base *) noexcept;
     };
 
     template <class Receiver>
@@ -224,7 +224,7 @@ namespace experimental::execution
   {
     bool operator==(libdispatch_queue const &) const = default;
 
-    void submit(__libdispatch::task_base *f)
+    void submit(__libdispatch::_task_base *f)
     {
       auto queue = dispatch_get_global_queue(priority, 0);
       dispatch_async_f(queue, f, reinterpret_cast<void (*)(void *) noexcept>(f->execute));
@@ -241,7 +241,7 @@ namespace experimental::execution
   namespace __libdispatch
   {
     template <typename Receiver>
-    struct operation : task_base
+    struct operation : _task_base
     {
       libdispatch_queue &queue;
       Receiver           receiver;
@@ -250,7 +250,7 @@ namespace experimental::execution
         : queue(*queue_arg)
         , receiver(std::move(rcvr))
       {
-        this->execute = [](task_base *t) noexcept
+        this->execute = [](_task_base *t) noexcept
         {
           auto &op     = *static_cast<operation *>(t);
           auto  stoken = STDEXEC::get_stop_token(STDEXEC::get_env(op.receiver));
@@ -269,7 +269,7 @@ namespace experimental::execution
         };
       }
 
-      void enqueue(task_base *op) const
+      void enqueue(_task_base *op) const
       {
         queue.submit(op);
       }
@@ -366,7 +366,7 @@ namespace experimental::execution
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct bulk_shared_state
     {
-      struct bulk_task : task_base
+      struct bulk_task : _task_base
       {
         bulk_shared_state *sh_state_;
         Shape              task_id_;
@@ -375,7 +375,7 @@ namespace experimental::execution
           : sh_state_(sh_state_arg)
           , task_id_(task_id_arg)
         {
-          this->execute = [](task_base *t) noexcept
+          this->execute = [](_task_base *t) noexcept
           {
             auto &sh_state    = *static_cast<bulk_task *>(t)->sh_state_;
             auto  task_id     = static_cast<bulk_task *>(t)->task_id_;
