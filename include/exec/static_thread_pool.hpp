@@ -1074,7 +1074,7 @@ namespace experimental::execution
       if (state_.exchange(state::notified, __std::memory_order_release) == state::sleeping)
       {
         {
-          std::scoped_lock lock{mut_};
+          std::lock_guard lock{mut_};
         }
         cv_.notify_one();
         return true;
@@ -1085,7 +1085,7 @@ namespace experimental::execution
     inline void _static_thread_pool::_thread_state::request_stop()
     {
       {
-        std::scoped_lock lock{mut_};
+        std::lock_guard lock{mut_};
         stop_requested_ = true;
       }
       cv_.notify_one();
