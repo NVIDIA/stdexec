@@ -25,7 +25,15 @@
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/senders.hpp>
+#include <test_common/stop_tokens.hpp>
 #include <test_common/type_helpers.hpp>
+
+#if STDEXEC_USE_MODULES()
+import std;
+#else
+#  include <atomic>
+#  include <thread>
+#endif
 
 namespace ex = STDEXEC;
 
@@ -599,6 +607,42 @@ namespace
     scope.spawn(snd);
     scope.request_stop();
     ex::sync_wait(scope.on_empty());
+  }
+
+  TEST_CASE("when_all leaves stop requests from the environment to its children",
+            "[adaptors][when_all]")
+  {
+    ex::inplace_stop_source source;
+    source.request_stop();
+    auto env = ex::prop(ex::get_stop_token, source.get_token());
+    // In this environment the children can complete with set_stopped, so
+    // when_all forwards the stop request to them, but they never do.
+    auto snd = ex::when_all(stop_sensitive_sender{}, stop_sensitive_sender{});
+    auto op  = ex::connect(std::move(snd), expect_void_receiver(env));
+    ex::start(op);
+  }
+
+  TEST_CASE("when_all completes once when a stop request races with its last child",
+            "[adaptors][when_all]")
+  {
+    impulse_scheduler  sched;
+    racing_stop_source source;
+    std::atomic<int>   values{0};
+    std::atomic<int>   stopped{0};
+
+    // just() completes in start(), so the impulse sender is the last child.
+    auto op = ex::connect(ex::when_all(ex::just(), ex::schedule(sched)),
+                          racing_stop_receiver{&values, &stopped, source.get_token()});
+    ex::start(op);
+
+    std::thread requester{[&] { source.request_stop(); }};
+    source.wait_for_request();  // the requester has taken when_all's stop callback
+    sched.start_next();         // the last child completes on this thread
+    requester.join();
+
+    CHECK(source.destructor_waited());
+    CHECK(values == 1);
+    CHECK(stopped == 0);
   }
 
   TEST_CASE("regression test for #1988", "[adaptors][when_all]")

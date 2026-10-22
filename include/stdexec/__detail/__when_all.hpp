@@ -561,35 +561,6 @@ namespace STDEXEC
     struct _INVALID_ARGUMENTS_TO_WHEN_ALL_
     {};
 
-    template <class _State>
-    struct __forward_stop_request
-    {
-      constexpr void operator()() const noexcept
-      {
-        // Temporarily increment the count to avoid concurrent/recursive
-        // arrivals to pull the rug under our feet. Relaxed memory order is fine
-        // here.
-        __state_->__count_.fetch_add(1, __std::memory_order_relaxed);
-
-        __state_t __expected = __started;
-        // Transition to the "stopped" state if and only if we're in the
-        // "started" state. (If this fails, it's because we're in an error
-        // state, which trumps cancellation.)
-        if (__state_->__state_.compare_exchange_strong(__expected, __stopped))
-        {
-          if constexpr (_State::__uses_stop_source)
-          {
-            __state_->__stop_source_.request_stop();
-          }
-        }
-
-        // Arrive in order to decrement the count again and complete if needed.
-        __state_->__arrive();
-      }
-
-      _State* __state_;
-    };
-
     template <class _ErrorsVariant,
               class _ValuesTuple,
               class _Receiver,
@@ -600,7 +571,7 @@ namespace STDEXEC
       using __receiver_t                       = _Receiver;
       static constexpr bool __uses_stop_source = _UsesStopSource;
       using __stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<__state>>;
+        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<>>;
       using __stop_source_t = __if_c<_UsesStopSource, inplace_stop_source, __empty>;
       using __on_stop_t     = __if_c<_UsesStopSource, __optional<__stop_callback_t>, __empty>;
 
@@ -622,16 +593,6 @@ namespace STDEXEC
         // All child operations have completed and arrived at the barrier.
         switch (__state_.load(__std::memory_order_relaxed))
         {
-        case __stopped:
-          if constexpr (_SendsStopped)
-          {
-            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
-            break;
-          }
-          // This is reachable because the stop callback sets __stopped whether
-          // or not any child can send set_stopped, therefore we handle this the
-          // same as __started
-          [[fallthrough]];
         case __started:
           if constexpr (!__std::same_as<_ValuesTuple, __ignore>)
           {
@@ -645,6 +606,17 @@ namespace STDEXEC
             // One or more child operations completed with an error:
             STDEXEC::__visit(__mk_completion_fn(set_error, __rcvr_),
                              static_cast<_ErrorsVariant&&>(__errors_));
+          }
+          break;
+        case __stopped:
+          // Only a child completing with set_stopped puts us in this state.
+          if constexpr (_SendsStopped)
+          {
+            STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+          }
+          else
+          {
+            STDEXEC_UNREACHABLE();
           }
           break;
         default:;
@@ -797,8 +769,11 @@ namespace STDEXEC
       {
         if constexpr (_State::__uses_stop_source)
         {
+          // Only forward the request to the children. The callback can still
+          // be running on another thread after the last child has arrived, so
+          // it must not arrive or change __state_ itself.
           __state.__on_stop_.emplace(get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
-                                     __forward_stop_request<_State>{&__state});
+                                     __forward_stop_request{__state.__stop_source_});
         }
         (STDEXEC::start(__child_ops), ...);
       };
@@ -864,24 +839,29 @@ namespace STDEXEC
         }
         else if constexpr (!__same_as<_ValuesTuple, __ignore>)
         {
-          auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
-          using _Tuple       = __decayed_tuple<_Args...>;
-          static_assert(__same_as<decltype(*__opt_values), _Tuple&>,
-                        "One of the senders in this when_all() is fibbing about what types it "
-                        "sends");
-          if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+          // We only need to bother recording the completion values if we're
+          // not already in the "error" or "stopped" state.
+          if (__state.__state_.load() == __started)
           {
-            __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-          }
-          else
-          {
-            STDEXEC_TRY
+            auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
+            using _Tuple       = __decayed_tuple<_Args...>;
+            static_assert(__same_as<decltype(*__opt_values), _Tuple&>,
+                          "One of the senders in this when_all() is fibbing about what types it "
+                          "sends");
+            if constexpr ((__nothrow_decay_copyable<_Args> && ...))
             {
               __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
             }
-            STDEXEC_CATCH_ALL
+            else
             {
-              __set_error(__state, std::current_exception());
+              STDEXEC_TRY
+              {
+                __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
+              }
+              STDEXEC_CATCH_ALL
+              {
+                __set_error(__state, std::current_exception());
+              }
             }
           }
         }
