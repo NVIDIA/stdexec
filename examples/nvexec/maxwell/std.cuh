@@ -26,7 +26,7 @@
 #include <vector>
 
 template <class Shape>
-auto even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape>
+auto _even_share(Shape n, std::size_t rank, std::size_t size) noexcept -> std::pair<Shape, Shape>
 {
   auto const avg_per_thread = n / size;
   auto const n_big_share    = avg_per_thread + 1;
@@ -64,7 +64,7 @@ void run_std(float            dt,
         auto           e_updater   = update_e(time.get(), dt, accessor);
         auto           initializer = grid_initializer(dt, accessor);
 
-        auto [begin, end] = even_share(accessor.cells, tid, n_threads);
+        auto [begin, end] = _even_share(accessor.cells, tid, n_threads);
 
         for (std::size_t i = begin; i < end; i++)
         {
