@@ -55,9 +55,7 @@ namespace experimental::execution::asio
 
    private:
     friend struct ::exec::thread_pool_base<asio_thread_pool>;
-
-    template <class PoolType, class Receiver>
-    friend struct exec::_pool::opstate;
+    friend struct ::exec::thread_pool_access;
 
     [[nodiscard]]
     static constexpr auto forward_progress_guarantee() -> STDEXEC::forward_progress_guarantee
