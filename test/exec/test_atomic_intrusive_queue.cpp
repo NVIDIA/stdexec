@@ -27,7 +27,7 @@ namespace
     test_node* next_{nullptr};
   };
 
-  using test_queue = STDEXEC::__intrusive_queue<&test_node::next_>;
+  using test_queue   = STDEXEC::__intrusive_queue<&test_node::next_>;
   using atomic_queue = exec::__atomic_intrusive_queue<&test_node::next_>;
 
   TEST_CASE("atomic_intrusive_queue::prepend handles empty input", "[atomic_intrusive_queue]")
