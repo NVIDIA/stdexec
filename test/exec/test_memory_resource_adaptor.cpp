@@ -15,14 +15,15 @@
  * limitations under the License.
  */
 
-#include <exec/__memory_resource_adaptor.hpp>
-
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
 
+#include <exec/__memory_resource_adaptor.hpp>
+
 #include <bit>
 #include <concepts>
+#include <limits>
 #include <memory>
 
 namespace ex = STDEXEC;
@@ -84,6 +85,28 @@ namespace
 
   template <std::size_t Alignment>
   using alignment = std::integral_constant<std::size_t, Alignment>;
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEMPLATE_TEST_CASE("exec::__memory_resource_adaptor rejects allocation size overflow",
+                     "[types][memory_resource_adaptor]",
+                     custom_allocator<std::byte>,
+                     custom_allocator<int>)
+  {
+    using adaptor_t = exec::__memory_resource_adaptor_t<TestType>;
+
+    auto                              underlying = make_underlying_resource<TestType>();
+    adaptor_t                         rsc(adaptor_arg_from_resource(&underlying));
+    std::pmr::polymorphic_allocator<> alloc(&rsc);
+
+    auto const align    = GENERATE(std::size_t{1}, std::size_t{16}, std::size_t{64});
+    auto const max_size = (std::numeric_limits<std::size_t>::max)();
+    auto const bytes    = GENERATE_COPY(max_size,
+                                     max_size - (align - 1),
+                                     max_size - (align - 1) - sizeof(void*) + 1);
+
+    CHECK_THROWS_AS(alloc.allocate_bytes(bytes, align), std::bad_alloc);
+  }
+#endif
 
   TEMPLATE_TEST_CASE("exec::__memory_resource_adaptor supports over-alignment",
                      "[types][memory_resource_adaptor]",
