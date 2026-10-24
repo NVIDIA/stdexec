@@ -618,6 +618,45 @@ namespace
     ex::start(op);
   }
 
+  template <std::integral Expected>
+  struct CheckIndexType
+  {
+    template <std::integral Deduced>
+    void operator()(Deduced const, bool& as_expected) const noexcept
+    {
+      as_expected = std::same_as<Expected, Deduced>;
+    }
+  };
+
+  TEST_CASE("bulk index type is deduced from shape type", "[adaptors][bulk]")
+  {
+    {
+      // The index type matches.
+      auto const [value] =
+        ex::sync_wait(ex::just(false) | ex::bulk(ex::par, int(1), CheckIndexType<int>{})).value();
+      CHECK(value == true);
+    }
+    {
+      // The index type does not match.
+      auto const [value] =
+        ex::sync_wait(ex::just(true) | ex::bulk(ex::par, int(1), CheckIndexType<size_t>{})).value();
+      CHECK(value == false);
+    }
+    {
+      // The index type matches.
+      auto const [value] = ex::sync_wait(ex::just(false)
+                                         | ex::bulk(ex::par, size_t(1), CheckIndexType<size_t>{}))
+                             .value();
+      CHECK(value == true);
+    }
+    {
+      // The index type does not match.
+      auto const [value] =
+        ex::sync_wait(ex::just(true) | ex::bulk(ex::par, size_t(1), CheckIndexType<int>{})).value();
+      CHECK(value == false);
+    }
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("bulk can throw, and set_error will be called", "[adaptors][bulk]")
   {
