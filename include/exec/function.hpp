@@ -168,18 +168,21 @@ namespace experimental::execution
     template <class _Sigs, class _Queries>
     using __any_receiver_ref = ::exec::_any::_any_receiver_ref<_Sigs, _Queries>;
 
+    //! The concrete receiver is stored as it is, without any_sender's stop-token
+    //! bridging: a declared stop-token query is a requirement on the receiver's
+    //! environment like any other declared query, so the type-erased receiver
+    //! answers it by converting the receiver's own stop token.
     template <class _Receiver, class _Sigs, class _Queries>
     struct __opstate_base
     {
-      using __receiver_t   = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
-      using __stop_token_t = stop_token_of_t<env_of_t<__receiver_t>>;
+      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
 
       //! The declared get_frame_allocator query's result is what allocates, so
       //! check it as the type-erased receiver's environment reports it.
       static constexpr bool __nothrow_frame_allocation =
         __has_nothrow_frame_allocator<env_of_t<__receiver_t>>;
 
-      _any::_state<_Receiver, __stop_token_t> __rcvr_;
+      _Receiver __rcvr_;
     };
 
     template <class _Receiver, class _Sigs, class _Queries>
@@ -187,10 +190,9 @@ namespace experimental::execution
         !__queryable_with<env_of_t<__any_receiver_ref<_Sigs, _Queries>>, get_frame_allocator_t>)
     struct __opstate_base<_Receiver, _Sigs, _Queries>
     {
-      using __receiver_t   = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
-      using __prop_t       = __receiver_t::__prop_t;
-      using __stop_token_t = stop_token_of_t<env_of_t<__receiver_t>>;
-      using __adaptee_t    = __result_of<__choose_frame_allocator, env_of_t<_Receiver>>;
+      using __receiver_t = __receiver_wrapper<__any_receiver_ref<_Sigs, _Queries>>;
+      using __prop_t     = __receiver_t::__prop_t;
+      using __adaptee_t  = __result_of<__choose_frame_allocator, env_of_t<_Receiver>>;
 
       //! The injected allocator forwards to the one chosen from the concrete
       //! receiver's environment, so check that one.
@@ -199,7 +201,7 @@ namespace experimental::execution
 
       __memory_resource_adaptor_t<__adaptee_t> __resource_;
       __prop_t                                 __env_;
-      _any::_state<_Receiver, __stop_token_t>  __rcvr_;
+      _Receiver                                __rcvr_;
 
       explicit __opstate_base(_Receiver __rcvr)
         : __resource_(__choose_frame_allocator(STDEXEC::get_env(__rcvr)))
@@ -340,7 +342,7 @@ namespace experimental::execution
     template <class... _Queries, class... _Env>
     struct __check_queries<queries<_Queries...>, _Env...>
     {
-      using type = __mfind_error<_any::_check_query_t<_Queries, _Env...>...>;
+      using type = __mfind_error<_any::_check_required_query_t<_Queries, _Env...>...>;
     };
 
     template <class _Queries, class... _Env>
