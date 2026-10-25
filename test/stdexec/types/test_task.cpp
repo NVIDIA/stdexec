@@ -648,7 +648,8 @@ namespace
   // performing a symmetric transfer, which grows the stack with each nested
   // task completion.
 #  if !STDEXEC_GCC()                                                                               \
-    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__))
+    || (defined(__OPTIMIZE__) && !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__)   \
+        && !(defined(__powerpc64__) && !defined(__PCREL__)))
 #    if !defined(STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND)
   auto sync() -> ex::task<int>
   {
