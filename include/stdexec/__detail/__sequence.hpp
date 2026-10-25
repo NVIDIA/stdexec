@@ -73,12 +73,14 @@ namespace STDEXEC
     template <class _Sender>
     struct __attrs<_Sender>
     {
-      template <class _Env2 = env_of_t<_Sender>, class _Query, class... _Args>
-        requires __queryable_with<_Env2, _Query, _Args...>
+      using _env_t = env_of_t<_Sender>;
+
+      template <class _Query, class... _Args>
+        requires __queryable_with<_env_t, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto operator()(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
-          -> __query_result_t<_Env2, _Query, _Args...>
+      constexpr auto query(_Query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<_env_t, _Query, _Args...>)
+          -> __query_result_t<_env_t, _Query, _Args...>
       {
         return STDEXEC::get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
       }
