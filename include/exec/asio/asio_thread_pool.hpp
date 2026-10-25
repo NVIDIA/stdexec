@@ -19,6 +19,8 @@
 
 #include <exec/asio/asio_config.hpp>
 
+#include "noexcept_boost_throw.hpp" // IWYU pragma: keep
+
 #include "../thread_pool_base.hpp"
 
 namespace experimental::execution::asio
