@@ -39,19 +39,21 @@ import stdexec;
 #  include "../stdexec/__detail/__utility.hpp"
 #  include "../stdexec/__detail/__variant.hpp"
 
-#  include <algorithm>
-#  include <atomic>
-#  include <concepts>
-#  include <cstdint>
-#  include <exception>
-#  include <functional>
-#  include <memory>
-#  include <mutex>
-#  include <ranges>
-#  include <span>
-#  include <type_traits>
-#  include <utility>
-#  include <vector>
+#  if !STDEXEC_USE_MODULES()
+#    include <algorithm>
+#    include <atomic>
+#    include <concepts>
+#    include <cstdint>
+#    include <exception>
+#    include <functional>
+#    include <memory>
+#    include <mutex>
+#    include <ranges>
+#    include <span>
+#    include <type_traits>
+#    include <utility>
+#    include <vector>
+#  endif
 #endif
 
 #include "completion_behavior.hpp"
