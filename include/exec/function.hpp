@@ -57,8 +57,35 @@
 // template at the end of this file for the accepted forms.
 namespace experimental::execution
 {
-  // for specifying required sender attributes in exec::function
-  template <_query::_query_signature... Sigs>
+  namespace __func
+  {
+    using namespace STDEXEC;
+
+    template <class _Attr>
+    inline constexpr bool __is_completion_domain_attribute_v = false;
+
+    template <class _Domain, class _Tag>
+      requires std::is_class_v<_Domain> && std::default_initializable<_Domain>
+              && __one_of<_Tag, void, set_value_t, set_error_t, set_stopped_t>
+    inline constexpr bool
+      __is_completion_domain_attribute_v<_Domain(get_completion_domain_t<_Tag>)> = true;
+
+    template <class _Domain, class _Tag>
+      requires std::is_class_v<_Domain> && std::default_initializable<_Domain>
+              && __one_of<_Tag, void, set_value_t, set_error_t, set_stopped_t>
+    inline constexpr bool
+      __is_completion_domain_attribute_v<_Domain(get_completion_domain_t<_Tag>) noexcept> = true;
+
+    //! Satisfied when _Attr declares a completion domain: it's a function type
+    //! of the form D(get_completion_domain_t<Tag>), optionally noexcept, where
+    //! D is a default-initializable class type and Tag is void (meaning
+    //! set_value_t) or a completion tag.
+    template <class _Attr>
+    concept __completion_domain_attribute = __is_completion_domain_attribute_v<_Attr>;
+  }  // namespace __func
+
+  // for specifying the completion domains an exec::function reports
+  template <__func::__completion_domain_attribute... Attrs>
   struct attrs
   {};
 
