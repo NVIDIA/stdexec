@@ -333,12 +333,12 @@ include(GNUInstallDirs)
 target_link_libraries(stdexec ${stdexec_scope} Threads::Threads)
 
 if(STDEXEC_BUILD_MODULES)
-    # Use C++23 standard; modules were introduced in 20 so this feels
-    # like it ought to be unnecessary, but it makes `import std` work
-    target_compile_features(stdexec ${stdexec_scope} cxx_std_23)
+  # Use C++23 standard; modules were introduced in 20 so this feels
+  # like it ought to be unnecessary, but it makes `import std` work
+  target_compile_features(stdexec ${stdexec_scope} cxx_std_23)
 else()
-    # Use C++20 standard
-    target_compile_features(stdexec ${stdexec_scope} cxx_std_20)
+  # Use C++20 standard
+  target_compile_features(stdexec ${stdexec_scope} cxx_std_20)
 endif()
 
 # # Enable GPU compilation when using NVHPC compiler

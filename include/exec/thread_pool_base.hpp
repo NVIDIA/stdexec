@@ -19,7 +19,7 @@
 
 #include "../stdexec/__detail/__config.hpp"
 
-#if STDEXEC_USE_MODULES()
+#if STDEXEC_USE_MODULES() && !defined(STDEXEC_IN_MODULE_PURVIEW)
 import std;
 import stdexec;
 #else
