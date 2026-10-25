@@ -104,7 +104,7 @@ namespace experimental::execution
         ACTUAL_QUERY_RESULT_TYPE(__call_result_t<Query, Env, Args...>)>{};
 
     template <class Result, class Query, class... Args, class Env>
-      requires(!__nothrow_queryable_with<Env, Query, Args...>)
+      requires(!__nothrow_callable<Query, Env const &, Args...>)
     inline constexpr auto _check_query_impl_v<Result(Query, Args...), true, Env> =
       _ERROR_<_WHAT_(CANNOT_TYPE_ERASE_THE_GIVEN_RECEIVER),
               _WHY_(THE_RECEIVERS_QUERY_IS_NOT_NOEXCEPT_BUT_THE_TYPE_ERASED_QUERY_IS),
@@ -116,7 +116,7 @@ namespace experimental::execution
     // either. The constraints keep this specialization from overlapping the
     // two above, which report their own errors.
     template <class Result, class Query, class... Args, class Env>
-      requires __nothrow_queryable_with<Env, Query, Args...>
+      requires __nothrow_callable<Query, Env const &, Args...>
               && __std::convertible_to<__call_result_t<Query, Env, Args...>, Result>
               && (!std::is_nothrow_convertible_v<__call_result_t<Query, Env, Args...>, Result>)
     inline constexpr auto _check_query_impl_v<Result(Query, Args...), true, Env> = _ERROR_<
@@ -138,13 +138,17 @@ namespace experimental::execution
                                                               __mexception<dependent_sender_error>,
                                                               _no_query_error_t<QueryFn, Env...>>{};
 
+    // The type-erased query answers by calling the query object on the
+    // receiver's environment, so check that call rather than whether the
+    // environment has a query member of its own: some queries, such as
+    // get_domain, have an answer for an environment that doesn't.
     template <class Result, class Query, class... Args, class... Env>
-      requires(__queryable_with<Env, Query, Args...> || ...)
+      requires(__callable<Query, Env const &, Args...> || ...)
     inline constexpr auto _check_query_v<Result(Query, Args...), Env...> =
       _check_query_impl_v<Result(Query, Args...), false, Env...>;
 
     template <class Result, class Query, class... Args, class... Env>
-      requires(__queryable_with<Env, Query, Args...> || ...)
+      requires(__callable<Query, Env const &, Args...> || ...)
     inline constexpr auto _check_query_v<Result(Query, Args...) noexcept, Env...> =
       _check_query_impl_v<Result(Query, Args...), true, Env...>;
 
