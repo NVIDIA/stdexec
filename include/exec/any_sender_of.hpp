@@ -83,6 +83,7 @@ namespace experimental::execution
   struct EXPECTED_QUERY_RESULT_TYPE;
   struct ACTUAL_QUERY_RESULT_TYPE;
   struct THE_RECEIVERS_QUERY_IS_NOT_NOEXCEPT_BUT_THE_TYPE_ERASED_QUERY_IS;
+  struct THE_RESULT_OF_THE_RECEIVERS_QUERY_CONVERTS_TO_THE_RESULT_OF_THE_NOEXCEPT_TYPE_ERASED_QUERY_BY_THROWING;
 
   namespace _any
   {
@@ -109,6 +110,22 @@ namespace experimental::execution
               _WHY_(THE_RECEIVERS_QUERY_IS_NOT_NOEXCEPT_BUT_THE_TYPE_ERASED_QUERY_IS),
               _WITH_QUERY_(Query),
               _WITH_ENVIRONMENT_(Env)>{};
+
+    // A noexcept type-erased query converts the receiver's answer to its own
+    // result type inside a noexcept function, so the conversion mustn't throw
+    // either. The constraints keep this specialization from overlapping the
+    // two above, which report their own errors.
+    template <class Result, class Query, class... Args, class Env>
+      requires __nothrow_queryable_with<Env, Query, Args...>
+              && __std::convertible_to<__call_result_t<Query, Env, Args...>, Result>
+              && (!std::is_nothrow_convertible_v<__call_result_t<Query, Env, Args...>, Result>)
+    inline constexpr auto _check_query_impl_v<Result(Query, Args...), true, Env> = _ERROR_<
+      _WHAT_(CANNOT_TYPE_ERASE_THE_GIVEN_RECEIVER),
+      _WHY_(
+        THE_RESULT_OF_THE_RECEIVERS_QUERY_CONVERTS_TO_THE_RESULT_OF_THE_NOEXCEPT_TYPE_ERASED_QUERY_BY_THROWING),
+      _WITH_QUERY_(Query),
+      EXPECTED_QUERY_RESULT_TYPE(Result),
+      ACTUAL_QUERY_RESULT_TYPE(__call_result_t<Query, Env, Args...>)>{};
 
     template <class QueryFn, class... Env>
     using _no_query_error_t = _ERROR_<_WHAT_(CANNOT_TYPE_ERASE_THE_GIVEN_RECEIVER),
