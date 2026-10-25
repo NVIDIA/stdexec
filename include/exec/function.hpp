@@ -33,6 +33,8 @@
 #include "get_frame_allocator.hpp"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cstddef>
 #include <cstring>
 #include <memory>
@@ -622,16 +624,58 @@ namespace experimental::execution
       || (__factory_is_nothrow_invocable<_Factory, _Args...>
           && __factory_sender_connects_without_throwing<_Factory, _Receiver, _Args...>);
 
+    //! Recreates an object of the empty, trivially copyable type _Ty. Such a
+    //! type has no value, so a recreated object is as good as a copy of any
+    //! other, and bit_cast makes one in constant evaluation too without
+    //! requiring _Ty to be default constructible.
+    template <class _Ty>
+    constexpr auto __recreate_empty() noexcept -> _Ty
+    {
+      static_assert(std::is_empty_v<_Ty> && STDEXEC_IS_TRIVIALLY_COPYABLE(_Ty));
+      return std::bit_cast<_Ty>(std::array<std::byte, sizeof(_Ty)>{});
+    }
+
+    //! Holds a sender factory by value, unless it's empty, in which case it
+    //! holds nothing and recreates the factory when asked, so that a class
+    //! that derives from it adds no state to an empty factory.
+    template <class _Factory, bool = std::is_empty_v<_Factory>>
+    struct __factory_holder
+    {
+      constexpr explicit __factory_holder(_Factory __factory) noexcept
+        : __factory_(__factory)
+      {}
+
+      constexpr auto __get_factory() const noexcept -> _Factory const &
+      {
+        return __factory_;
+      }
+
+     private:
+      _Factory __factory_;
+    };
+
+    template <class _Factory>
+    struct __factory_holder<_Factory, true>
+    {
+      constexpr explicit __factory_holder(_Factory) noexcept {}
+
+      constexpr auto __get_factory() const noexcept -> _Factory
+      {
+        return __func::__recreate_empty<_Factory>();
+      }
+    };
+
     //! A class template that adapts a user-provided callable expecting a "self" reference
     //! in the first argument to a factory that accepts a pointer to (const) void, which
-    //! is what's actually invoked by the underlying __function
+    //! is what's actually invoked by the underlying __function. It's empty when the
+    //! callable is.
     template <class _Factory, class _Self>
-    struct __self_adapting_factory
+    struct __self_adapting_factory : __factory_holder<_Factory>
     {
       using __value   = STDEXEC_REMOVE_REFERENCE(_Self);
       using __pointer = __value *;
 
-      _Factory __factory;
+      using __factory_holder<_Factory>::__factory_holder;
 
       template <class _Void, class... _Args>
         requires std::is_void_v<_Void>
@@ -640,6 +684,7 @@ namespace experimental::execution
       {
         static_assert(STDEXEC_IS_CONST(__value) == STDEXEC_IS_CONST(_Void));
 
+        _Factory const &__factory = this->__get_factory();
         return __invoke(__factory,
                         static_cast<_Self>(*static_cast<__pointer>(__self)),
                         static_cast<_Args &&>(__args)...);
@@ -655,12 +700,26 @@ namespace experimental::execution
     //! copy is never made silently. Both traits are required: with a
     //! `const &` parameter even std::move(x) copies, so a type whose move is
     //! non-trivial must not take this path. Reference types are unchanged.
+    //!
+    //! The outer __if_c is a workaround for an MSVC bug, and only takes effect
+    //! on MSVC, where a pointer to void is taken by value instead. MSVC's
+    //! constant evaluator rejects binding `void const * const &` to a
+    //! temporary ("a conversion from void* to a pointer-to-object type"),
+    //! which constructing a function with a curried void pointer would do, as
+    //! would the member-function form, which passes the object's address as
+    //! one. Taking every trivially copyable type by value would avoid the bug
+    //! more simply, but would copy large types such as
+    //! std::array<double, 4096> at every layer of construction. Remove the
+    //! outer __if_c once MSVC is fixed; see
+    //! https://developercommunity.visualstudio.com/t/MSVC%E2%80%99s-constant-evaluator-rejects-bindin/11176854
     template <class _Ty>
     using __curried_param_t =
-      __if_c<!std::is_reference_v<_Ty> && std::is_trivially_copy_constructible_v<_Ty>
-               && std::is_trivially_move_constructible_v<_Ty>,
-             _Ty const &,
-             _Ty &&>;
+      __if_c<STDEXEC_MSVC() && std::is_pointer_v<_Ty> && std::is_void_v<std::remove_pointer_t<_Ty>>,
+             _Ty,
+             __if_c<!std::is_reference_v<_Ty> && std::is_trivially_copy_constructible_v<_Ty>
+                      && std::is_trivially_move_constructible_v<_Ty>,
+                    _Ty const &,
+                    _Ty &&>>;
 
     //! The types with which function's constructor takes curried arguments
     //! declared as _Args; see __function's _Params.
@@ -753,12 +812,27 @@ namespace experimental::execution
       template <class _Receiver>
       using __opstate_t = __opstate<_Receiver, _Sigs, _Queries>;
 
+      //! The factory of type _Factory that the constructor stored in __storage.
+      //! An empty factory isn't stored at all; it's recreated instead.
+      template <class _Factory>
+      static constexpr auto __stored_factory(void *__storage) noexcept -> _Factory
+      {
+        if constexpr (std::is_empty_v<_Factory>)
+        {
+          return __func::__recreate_empty<_Factory>();
+        }
+        else
+        {
+          return *__std::start_lifetime_as<_Factory>(__storage);
+        }
+      }
+
       template <class _Factory>
       static constexpr auto
       __mk_opstate(void *__storage, __receiver_t __rcvr, _Args &&...__args)  //
         -> _any::_any_opstate_base
       {
-        auto const &__make_sender = *__std::start_lifetime_as<_Factory>(__storage);
+        auto const &__make_sender = __stored_factory<_Factory>(__storage);
         using __alloc_t           = decltype(__choose_frame_allocator(STDEXEC::get_env(__rcvr)));
         auto __alloc              = __frame_allocator_t<__alloc_t>(
           __choose_frame_allocator(STDEXEC::get_env(__rcvr)));
@@ -784,10 +858,10 @@ namespace experimental::execution
 
       //! Storage for the sender factory passed to our constructor template;
       //! __make_opstate_ will reconstitute the actual factory from this
-      //! bag-of-bytes with start_lifetime_as because it internally knows the
-      //! concrete type of the user-provided sender factory. The storage is
-      //! sized and aligned for the largest pointer to member the ABI can
-      //! produce (see __factory_storage_size).
+      //! bag-of-bytes with __stored_factory because it internally knows the
+      //! concrete type of the user-provided sender factory. An empty factory
+      //! leaves it unused. The storage is sized and aligned for the largest
+      //! pointer to member the ABI can produce (see __factory_storage_size).
       alignas(__factory_storage_align) std::byte __make_sender_[__factory_storage_size]{};
       //! The type-erased operation state factory; it points to a function that
       //! knows the concrete type of the sender factory stored in __make_sender_
@@ -813,7 +887,12 @@ namespace experimental::execution
         static_assert(sizeof(_Factory) <= sizeof(__make_sender_));
         static_assert(alignof(_Factory) <= __factory_storage_align);
 
-        std::memcpy(__make_sender_, std::addressof(__factory), sizeof(_Factory));
+        // an empty factory has no state to store (see __stored_factory), which
+        // keeps this constructor usable in constant evaluation
+        if constexpr (!std::is_empty_v<_Factory>)
+        {
+          std::memcpy(__make_sender_, std::addressof(__factory), sizeof(_Factory));
+        }
       }
 
      public:
