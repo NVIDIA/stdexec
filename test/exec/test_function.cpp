@@ -1088,6 +1088,55 @@ namespace
     }
   }
 
+  struct answer_query_t
+  {
+    template <class Env>
+    [[maybe_unused]]
+    constexpr auto operator()(Env const &env) const noexcept -> decltype(env.query(*this))
+    {
+      return env.query(*this);
+    }
+  };
+
+  struct nothrow_answer
+  {
+    constexpr operator int() const noexcept
+    {
+      return 42;
+    }
+  };
+
+  struct throwing_answer
+  {
+    constexpr operator int() const
+    {
+      return 42;
+    }
+  };
+
+  TEST_CASE("a noexcept query requires an answer that converts without throwing",
+            "[types][function]")
+  {
+    using nothrow_env  = ex::prop<answer_query_t, nothrow_answer>;
+    using throwing_env = ex::prop<answer_query_t, throwing_answer>;
+
+    SECTION("a noexcept query rejects an answer whose conversion can throw")
+    {
+      using fn = exec::function<int(), exec::queries<int(answer_query_t) noexcept>>;
+
+      STATIC_REQUIRE(ex::sender_in<fn, nothrow_env>);
+      STATIC_REQUIRE(!ex::sender_in<fn, throwing_env>);
+    }
+
+    SECTION("a query that isn't noexcept accepts both answers")
+    {
+      using fn = exec::function<int(), exec::queries<int(answer_query_t)>>;
+
+      STATIC_REQUIRE(ex::sender_in<fn, nothrow_env>);
+      STATIC_REQUIRE(ex::sender_in<fn, throwing_env>);
+    }
+  }
+
   struct none_such
   {};
 

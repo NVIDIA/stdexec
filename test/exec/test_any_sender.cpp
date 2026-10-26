@@ -489,6 +489,41 @@ namespace
     });
   }
 
+  struct nothrow_address
+  {
+    operator void const *() const noexcept
+    {
+      return nullptr;
+    }
+  };
+
+  struct throwing_address
+  {
+    operator void const *() const
+    {
+      return nullptr;
+    }
+  };
+
+  TEST_CASE("any_sender - a noexcept query requires an answer that converts without throwing",
+            "[types][any_sender]")
+  {
+    using completions_t = ex::completion_signatures<ex::set_value_t()>;
+    using nothrow_env   = ex::prop<get_address_t, nothrow_address>;
+    using throwing_env  = ex::prop<get_address_t, throwing_address>;
+
+    using noexcept_sender =
+      exec::any_receiver_ref<completions_t,
+                             get_address.signature<void const *() noexcept>>::any_sender<>;
+    using sender =
+      exec::any_receiver_ref<completions_t, get_address.signature<void const *()>>::any_sender<>;
+
+    STATIC_REQUIRE(ex::sender_in<noexcept_sender, nothrow_env>);
+    STATIC_REQUIRE(!ex::sender_in<noexcept_sender, throwing_env>);
+    STATIC_REQUIRE(ex::sender_in<sender, nothrow_env>);
+    STATIC_REQUIRE(ex::sender_in<sender, throwing_env>);
+  }
+
   TEST_CASE("queryable any_scheduler with inline_scheduler", "[types][any_sender]")
   {
     using completions_t        = ex::completion_signatures<ex::set_value_t()>;
