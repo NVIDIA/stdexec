@@ -19,6 +19,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <memory_resource>
 #include <new>
@@ -178,6 +179,10 @@ namespace experimental::execution
           // end of the buffer. To make room for the possible rightward shift
           // and the copy of a pointer, we need to allocate extra space, and
           // __bytes + __align - 1 + sizeof(void *) is the most we might need.
+          if (__bytes > (std::numeric_limits<std::size_t>::max)() - (__align - 1) - sizeof(void *))
+          {
+            STDEXEC_THROW(std::bad_alloc());
+          }
           std::size_t __upstreamSize = __bytes + __align - 1 + sizeof(void *);
           void *const __buffer       = __traits::allocate(__alloc_, __upstreamSize);
 
