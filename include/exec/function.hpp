@@ -314,10 +314,15 @@ namespace experimental::execution
     concept __completion_domain_matches_impl =
       __same_as<_ExpectedDomain, __common_domain_t<_ActualDomain, _ExpectedDomain>>;
 
+    //! A function makes no claim about where it completes with a tag for which
+    //! it declares no completion domain, so only declared domains are checked.
+    //! (Asked with an environment, get_completion_domain answers default_domain
+    //! for attributes that declare nothing, so the check can't rely on that.)
     template <class _Tag, class _ActualAttrs, class _ExpectedAttrs, class... _Env>
     concept __completion_domain_matches =
-      __completion_domain_matches_impl<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
-                                       __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
+      !__queryable_with<_ExpectedAttrs, get_completion_domain_t<_Tag>>
+      || __completion_domain_matches_impl<__completion_domain_t<_Tag, _ActualAttrs, _Env...>,
+                                          __completion_domain_t<_Tag, _ExpectedAttrs, _Env...>>;
 
     template <class _ActualAttrs, class _ExpectedAttrs, class... _Env>
     concept __completion_domains_match_impl =
@@ -1117,46 +1122,6 @@ namespace experimental::execution
       completion_signatures<__single_value_sig_t<__return_type_t<_Ty>>, set_stopped_t()>,
       __eptr_completion_unless_t<__mbool<__is_noexcept<_Ty>>>>>;
 
-    //! maps a completion signature to the default completion domain query
-    struct __domain_query_from_sig
-    {
-      template <class _Tag, class... _Args>
-      consteval auto operator()(_Tag (*)(_Args...)) const noexcept  //
-        -> default_domain (*)(get_completion_domain_t<_Tag>) noexcept
-      {
-        return nullptr;
-      }
-    };
-
-    //! maps a pack of domain queries produced by __domain_query_from_sig to the
-    //! corresponding attrs<_Attrs...> type
-    class __attrs_from_domain_queries
-    {
-      template <class _Tag>
-      using __query_sig = default_domain (*)(get_completion_domain_t<_Tag>) noexcept;
-
-     public:
-      template <class... _Tag>
-      consteval auto operator()(__query_sig<_Tag>...) const noexcept  //
-        -> __canonical_t<attrs<default_domain(get_completion_domain_t<_Tag>) noexcept...>>
-      {
-        return {};
-      }
-    };
-
-    //! computes the set of get_completion_domain queries that must be supported
-    //! by any sender that might be erased by the corresponding function
-    //!
-    //! we should support get_completion_domain<Tag> only if _Sigs contains a
-    //! completion of type Tag
-    //!
-    //! the query form should be
-    //!
-    //!   default_domain(get_completion_domain_t<Tag>)
-    template <class _Sigs>
-    using __default_attrs = decltype(_Sigs::__transform_reduce(__domain_query_from_sig(),
-                                                               __attrs_from_domain_queries()));
-
     //! Map a variety of function<...> specifications into the canonical type-erased
     //! contract represented by the user-provided specification.
     //!
@@ -1191,13 +1156,11 @@ namespace experimental::execution
     //! signatures since they are derived from _Signature.
 
     template <__is_not_sender_tag_function _Signature>
-    struct __make_function<_Signature>
-      : __make_function<_Signature, queries<>, __default_attrs<__completion_sigs_from<_Signature>>>
+    struct __make_function<_Signature> : __make_function<_Signature, queries<>, attrs<>>
     {};
 
     template <__is_not_sender_tag_function _Signature, __is_instance_of<queries> _Queries>
-    struct __make_function<_Signature, _Queries>
-      : __make_function<_Signature, _Queries, __default_attrs<__completion_sigs_from<_Signature>>>
+    struct __make_function<_Signature, _Queries> : __make_function<_Signature, _Queries, attrs<>>
     {};
 
     template <__is_not_sender_tag_function _Signature, __is_instance_of<attrs> _Attrs>
@@ -1232,14 +1195,14 @@ namespace experimental::execution
     template <__is_sender_tag_function                _Signature,
               __is_instance_of<completion_signatures> _ComplSigs>
     struct __make_function<_Signature, _ComplSigs>
-      : __make_function<_Signature, _ComplSigs, queries<>, __default_attrs<_ComplSigs>>
+      : __make_function<_Signature, _ComplSigs, queries<>, attrs<>>
     {};
 
     template <__is_sender_tag_function                _Signature,
               __is_instance_of<completion_signatures> _ComplSigs,
               __is_instance_of<queries>               _Queries>
     struct __make_function<_Signature, _ComplSigs, _Queries>
-      : __make_function<_Signature, _ComplSigs, _Queries, __default_attrs<_ComplSigs>>
+      : __make_function<_Signature, _ComplSigs, _Queries, attrs<>>
     {};
 
     template <__is_sender_tag_function                _Signature,
