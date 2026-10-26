@@ -47,7 +47,7 @@ struct RunThread
                                               buffer.size(),
                                               pmr::null_memory_resource()};
       pmr::polymorphic_allocator<char> alloc(&resource);
-      auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
+      auto [start, end] = exec::_pool::_even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t              scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       auto                     env = stdexec::prop{stdexec::get_allocator, alloc};
@@ -68,7 +68,7 @@ struct RunThread
         --scheds;
       }
 #else
-      auto [start, end] = exec::_pool_::even_share(total_scheds, tid, pool.available_parallelism());
+      auto [start, end] = exec::_pool::_even_share(total_scheds, tid, pool.available_parallelism());
       std::size_t              scheds = end - start;
       std::atomic<std::size_t> counter{scheds};
       while (scheds)

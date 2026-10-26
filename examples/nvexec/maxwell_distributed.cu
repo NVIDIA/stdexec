@@ -26,7 +26,7 @@
 #    include <mpi.h>
 #    include <vector>
 
-static auto even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept
+static auto _even_share(std::size_t n, std::size_t rank, std::size_t size) noexcept
   -> std::pair<std::size_t, std::size_t>
 {
   auto const avg_per_thread = n / size;
@@ -457,7 +457,7 @@ auto main(int argc, char *argv[]) -> int
   bool const        write_wtk     = value(params, "write-vtk");
   std::size_t const n_iterations  = value(params, "iterations", 1000);
   std::size_t const N             = value(params, "N", 512);
-  auto const [row_begin, row_end] = even_share(N, rank, size);
+  auto const [row_begin, row_end] = _even_share(N, rank, size);
   std::size_t const   rank_begin  = row_begin * N;
   std::size_t const   rank_end    = row_end * N;
   distributed::grid_t grid{N, rank_begin, rank_end};

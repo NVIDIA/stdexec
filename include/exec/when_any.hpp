@@ -76,7 +76,7 @@ namespace experimental::execution
     template <class _Receiver, class _ResultVariant>
     struct __opstate_base
     {
-      __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
+      explicit __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
@@ -100,6 +100,7 @@ namespace experimental::execution
       template <class _Tag, class... _Args>
       void notify(_Tag, _Args&&... __args) noexcept
       {
+        using __error_t  = __tuple<set_error_t, std::exception_ptr>;
         using __result_t = __decayed_tuple<_Tag, _Args...>;
         bool __expect    = false;
         if (__emplaced_.compare_exchange_strong(__expect,
@@ -107,26 +108,23 @@ namespace experimental::execution
                                                 __std::memory_order_relaxed,
                                                 __std::memory_order_relaxed))
         {
-          // This emplacement can happen only once
-          if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+          STDEXEC_TRY
           {
+            // This emplacement can happen only once
             __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
           }
-          else
+          STDEXEC_CATCH_ALL
           {
-            STDEXEC_TRY
-            {
-              __result_.template emplace<__result_t>(_Tag{}, static_cast<_Args&&>(__args)...);
-            }
-            STDEXEC_CATCH_ALL
-            {
-              using __error_t = __tuple<set_error_t, std::exception_ptr>;
+            if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+              __std::unreachable();
+            else
               __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
-            }
           }
+
           // stop pending operations
           __stop_source_.request_stop();
         }
+
         __arrive();
       }
 
@@ -139,11 +137,13 @@ namespace experimental::execution
         {
           __on_stop_.reset();
           auto stop_token = get_stop_token(get_env(__rcvr_));
+
           if (stop_token.stop_requested())
           {
             STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
             return;
           }
+
           std::move(__result_).__complete(__rcvr_);
         }
       }

@@ -201,7 +201,7 @@ TEST_CASE("completion domain of a sequence of one sender", "[sequence]")
   static_assert(
     std::same_as<
       STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, decltype(sndr), STDEXEC::env<>>,
-      experimental::execution::_pool_::_static_thread_pool::domain>);
+      experimental::execution::static_thread_pool::domain>);
 
   STDEXEC::sync_wait(std::move(sndr));
 
@@ -222,7 +222,7 @@ TEST_CASE("completion domain of a sequence of two senders", "[sequence]")
   static_assert(
     std::same_as<
       STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, decltype(sndr), STDEXEC::env<>>,
-      experimental::execution::_pool_::_static_thread_pool::domain>);
+      experimental::execution::static_thread_pool::domain>);
 
   STDEXEC::sync_wait(std::move(sndr));
 
