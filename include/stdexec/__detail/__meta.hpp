@@ -41,12 +41,15 @@ namespace STDEXEC
 {
   //! Convenience metafunction getting the dependent type `__t` out of `_Tp`.
   //! That is, `typename _Tp::__t`.
+  STDEXEC_MODULE_EXPORT_META
   template <class _Tp>
   using __t = _Tp::__t;
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Ret, class... _Args>
   using __fn_t = _Ret(_Args...);
 
+  STDEXEC_MODULE_EXPORT_META
   template <class _Ret, class... _Args>
   using __fn_ptr_t = _Ret (*)(_Args...);
 
