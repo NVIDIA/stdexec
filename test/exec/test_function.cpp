@@ -1596,7 +1596,7 @@ namespace
   }
 
   TEST_CASE("member-function functions accept the self arguments a synchronous member function "
-            "would, except rvalues",
+            "would, lvalues for lvalue qualifiers and rvalues for rvalue qualifiers",
             "[types][function]")
   {
     using factory = decltype(&pointer_factories::just_i);
@@ -1622,6 +1622,27 @@ namespace
       STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &, mfactory>);
     }
 
+    SECTION("const && accepts const and non-const rvalues")
+    {
+      using fn       = exec::function<int() const &&>;
+      using mfactory = decltype(ex::just(0)) (*)(pointer_factories const &&) noexcept;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories const &&, mfactory>);
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &&, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &&, mfactory>);
+    }
+
+    SECTION("&& accepts only non-const rvalues")
+    {
+      using fn       = exec::function<int() &&>;
+      using mfactory = decltype(ex::just(0)) (*)(pointer_factories &&) noexcept;
+      STATIC_REQUIRE(std::constructible_from<fn, pointer_factories &&, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories const &&, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories &, mfactory>);
+      STATIC_REQUIRE(!std::constructible_from<fn, pointer_factories volatile &&, mfactory>);
+    }
+
     SECTION("a non-const lvalue reaches a const & function's factory as a const reference")
     {
       pointer_factories pf{42};
@@ -1635,6 +1656,63 @@ namespace
                                    }))
                      .value();
       REQUIRE(ret == 42);
+    }
+  }
+
+  struct movable_name
+  {
+    std::string name;
+
+    auto take() && noexcept
+    {
+      return ex::just(std::move(name));
+    }
+  };
+
+  TEST_CASE("rvalue-qualified member-function functions pass the object to the factory as an "
+            "rvalue",
+            "[types][function]")
+  {
+    using sigs = ex::completion_signatures<ex::set_value_t(std::string)>;
+
+    SECTION("&& lets the factory move from the object")
+    {
+      movable_name object{"moved"};
+      auto [name] = ex::sync_wait(exec::function<ex::sender_tag() &&, sigs>(
+                                    std::move(object),
+                                    [](movable_name &&self) noexcept
+                                    { return ex::just(std::move(self.name)); }))
+                      .value();
+      REQUIRE(name == "moved");
+      REQUIRE(object.name.empty());
+    }
+
+    SECTION("&& works with a pointer to an rvalue-qualified member function")
+    {
+      movable_name object{"moved"};
+      auto [name] = ex::sync_wait(exec::function < ex::sender_tag() && noexcept,
+                                  sigs > (std::move(object), &movable_name::take))
+                      .value();
+      REQUIRE(name == "moved");
+      REQUIRE(object.name.empty());
+    }
+
+    SECTION("const && passes the object as a const rvalue")
+    {
+      movable_name object{"kept"};
+      auto [name] = ex::sync_wait(exec::function<ex::sender_tag() const &&, sigs>(
+                                    std::move(object),
+                                    [](auto &&self) noexcept
+                                    {
+                                      using self_t = decltype(self);
+                                      static_assert(std::is_rvalue_reference_v<self_t>);
+                                      static_assert(
+                                        std::is_const_v<std::remove_reference_t<self_t>>);
+                                      return ex::just(std::string(self.name));
+                                    }))
+                      .value();
+      REQUIRE(name == "kept");
+      REQUIRE(object.name == "kept");
     }
   }
 
@@ -1746,8 +1824,7 @@ namespace
   template <class Sig, class... Ts>
   concept valid_function_type = requires { typename exec::function<Sig, Ts...>; };
 
-  TEST_CASE("function rejects rvalue, unqualified const, and volatile function types",
-            "[types][function]")
+  TEST_CASE("function rejects unqualified const and volatile function types", "[types][function]")
   {
     using sigs = ex::completion_signatures<ex::set_value_t(int)>;
 
@@ -1757,11 +1834,11 @@ namespace
     STATIC_REQUIRE(valid_function_type<int() const & noexcept>);
     STATIC_REQUIRE(valid_function_type<ex::sender_tag() const &, sigs>);
 
-    STATIC_REQUIRE(!valid_function_type<int() &&>);
-    STATIC_REQUIRE(!valid_function_type<int() const &&>);
-    STATIC_REQUIRE(!valid_function_type < int() && noexcept >);
-    STATIC_REQUIRE(!valid_function_type < int() const && noexcept >);
-    STATIC_REQUIRE(!valid_function_type<ex::sender_tag() &&, sigs>);
+    STATIC_REQUIRE(valid_function_type<int() &&>);
+    STATIC_REQUIRE(valid_function_type<int() const &&>);
+    STATIC_REQUIRE(valid_function_type < int() && noexcept >);
+    STATIC_REQUIRE(valid_function_type < int() const && noexcept >);
+    STATIC_REQUIRE(valid_function_type<ex::sender_tag() &&, sigs>);
 
     STATIC_REQUIRE(!valid_function_type<int() const>);
     STATIC_REQUIRE(!valid_function_type<int() const noexcept>);
