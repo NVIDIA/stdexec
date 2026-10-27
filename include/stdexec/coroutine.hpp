@@ -39,6 +39,20 @@ import stdexec;
 #      define STDEXEC_MSVC_CORO_DESTROY_BUG_WORKAROUND
 #    endif
 
+// Before LLVM 23, Clang calls a coroutine's resume and destroy functions with
+// LLVM's fastcc calling convention. On 32-bit x86 that passes the frame address
+// in ECX, as fastcall does, instead of on the stack. Functions stored in a
+// __synthetic_coro_frame must use the same convention. LLVM 23 uses the C
+// convention instead (https://github.com/llvm/llvm-project/pull/198943); define
+// STDEXEC_CORO_FRAME_CALLCONV as empty for an older Clang with that backported.
+#    if !defined(STDEXEC_CORO_FRAME_CALLCONV)
+#      if STDEXEC_CLANG() && defined(__i386__) && STDEXEC_CLANG_VERSION < 2300
+#        define STDEXEC_CORO_FRAME_CALLCONV __attribute__((__fastcall__))
+#      else
+#        define STDEXEC_CORO_FRAME_CALLCONV
+#      endif
+#    endif
+
 namespace STDEXEC
 {
   template <class _Tp, __one_of<_Tp, void> _Up>
@@ -185,12 +199,12 @@ namespace STDEXEC
   {
     struct __synthetic_coro_frame
     {
-      using __callback_fn_t = void(void*) noexcept;
+      using __callback_fn_t = void STDEXEC_CORO_FRAME_CALLCONV(void*) noexcept;
 
       __callback_fn_t* __resume_  = &__noop_fn;
       __callback_fn_t* __destroy_ = &__noop_fn;
 
-      static void __noop_fn(void*) noexcept {}
+      static void STDEXEC_CORO_FRAME_CALLCONV __noop_fn(void*) noexcept {}
     };
 
     static constexpr std::ptrdiff_t __coro_promise_offset = static_cast<std::ptrdiff_t>(
