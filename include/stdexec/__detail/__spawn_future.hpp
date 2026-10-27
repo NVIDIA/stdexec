@@ -751,7 +751,7 @@ namespace STDEXEC
         -> __completions_t<_Sender, _Env>
       {
         return {};
-      };
+      }
 
       static constexpr auto __get_state =
         []<class _Sender, class _Receiver>(_Sender&& __sndr, _Receiver __rcvr) noexcept /* TODO */

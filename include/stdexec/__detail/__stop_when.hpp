@@ -200,7 +200,7 @@ namespace STDEXEC
           __call_result_t<__mk_env2_fn,
                           __call_result_t<__fuse_token_fn, __token_t, stop_token_of_t<_Env>>,
                           _Env>...>();
-      };
+      }
     };
   }  // namespace __stop_when_
 

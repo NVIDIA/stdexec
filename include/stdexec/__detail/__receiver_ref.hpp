@@ -26,6 +26,10 @@
 
 #include "__prologue.hpp"
 
+// The left operand of the comma in __indirect_receiver::set_next has no effect,
+// which -Wunused-value reports. It is only there to make the call depend on _Item.
+STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
+
 namespace STDEXEC
 {
   namespace __detail

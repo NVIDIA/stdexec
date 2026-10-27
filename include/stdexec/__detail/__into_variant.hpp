@@ -108,7 +108,7 @@ namespace STDEXEC
             {},
             completion_signatures<set_value_t(__variant_t), set_error_t(std::exception_ptr)>());
         }
-      };
+      }
     };
   }  // namespace __into_variant
 

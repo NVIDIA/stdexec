@@ -81,7 +81,7 @@ namespace STDEXEC
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
           {},
           __transform_error_completion<__fn_t>());
-      };
+      }
 
       static constexpr auto __complete =
         []<class _Tag, class _State, class... _Args>(__ignore,

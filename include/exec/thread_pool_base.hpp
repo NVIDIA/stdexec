@@ -582,6 +582,9 @@ namespace experimental::execution
         , parallelize_(parallelize)
       {}
 
+      // There is no ';' after STDEXEC_AUTO_RETURN(...), because -Wpedantic flags it
+      // as extra. Without it, clang-format runs connect into the next member.
+      // clang-format off
       template <__decays_to<_bulk_sender> Self, receiver Receiver>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         STDEXEC_AUTO_RETURN(bulk_opstate_t<Self, Receiver>(self.pool_,
@@ -589,7 +592,7 @@ namespace experimental::execution
                                                            static_cast<Self&&>(self).fun_,
                                                            self.parallelize_,
                                                            static_cast<Self&&>(self).sndr_,
-                                                           std::move(rcvr)));
+                                                           std::move(rcvr)))
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<_bulk_sender> Self, class... Env>
@@ -600,6 +603,7 @@ namespace experimental::execution
           STDEXEC::get_completion_signatures<sender_t, Env...>(),
           _pool::_get_bulk_sender_cmplsigs_transform<sender_t, Shape, Fun, Env...>());
       }
+      // clang-format on
 
       struct attrs
       {
@@ -649,7 +653,6 @@ namespace experimental::execution
         auto& [pol, shape, fun]  = data;
         using tag_t              = decltype(tag);
         using child_t            = decltype(child);
-        using shape_t            = decltype(shape);
         using fun_t              = decltype(fun);
 
         if constexpr (__completes_on<child_t, typename Pool::scheduler, Env>)

@@ -53,6 +53,8 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
+
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
@@ -886,7 +888,7 @@ namespace STDEXEC
                                                                _Sender,
                                                                env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
 
     struct __transfer_when_all_impl : __sexpr_defaults
@@ -906,7 +908,7 @@ namespace STDEXEC
         using __sndr_t =
           __detail::__transform_sender_result_t<__transfer_when_all_t, set_value_t, _Sender, env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
 
     struct __transfer_when_all_with_variant_impl : __sexpr_defaults
@@ -927,7 +929,7 @@ namespace STDEXEC
                                                                _Sender,
                                                                env<>>;
         return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-      };
+      }
     };
   }  // namespace __when_all
 

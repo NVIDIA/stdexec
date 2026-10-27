@@ -80,7 +80,7 @@ namespace STDEXEC
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
           __transform_value_completion<__fn_t>());
-      };
+      }
 
       struct __complete_fn
       {

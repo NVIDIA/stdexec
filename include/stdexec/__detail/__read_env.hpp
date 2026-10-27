@@ -138,7 +138,7 @@ namespace STDEXEC
             _WITH_QUERY_(__query_t),
             _WITH_ENVIRONMENT_(_Env)>();
         }
-      };
+      }
 
       static constexpr auto __connect =
         []<class _Self, class _Receiver>(_Self const &, _Receiver&& __rcvr) noexcept
