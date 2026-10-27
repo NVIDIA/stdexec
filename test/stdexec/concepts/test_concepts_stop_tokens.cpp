@@ -44,6 +44,20 @@ namespace
                                   on_stop_request>);
   }
 
+  struct pointer_on_stop_request
+  {
+    int* ptr;
+
+    void operator()() && noexcept {}
+  };
+
+  TEST_CASE("inplace_stop_callback adds at most four pointers to its callback", "[stop_token]")
+  {
+    // The list links share storage with the state used while the callback runs.
+    STATIC_REQUIRE(sizeof(::STDEXEC::inplace_stop_callback<pointer_on_stop_request>)
+                   <= sizeof(pointer_on_stop_request) + 4 * sizeof(void*));
+  }
+
   TEST_CASE("(un)stoppable_token correctly categorizes various standard stop token types",
             "[concepts]")
   {
@@ -100,6 +114,30 @@ namespace
     CHECK(state == nullptr);
   }
 
+  struct destroy_other_on_stop
+  {
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>>* other;
+
+    void operator()() noexcept
+    {
+      other->reset();
+    }
+  };
+
+  TEST_CASE("a stop callback can destroy a stop callback that already ran", "[stop_token]")
+  {
+    ::STDEXEC::inplace_stop_source                                         source;
+    std::optional<::STDEXEC::inplace_stop_callback<destroy_other_on_stop>> destroyer;
+    std::optional<::STDEXEC::inplace_stop_callback<on_stop_request>>       other;
+    // Callbacks run in reverse order of registration, so other has already run
+    // when destroyer destroys it.
+    destroyer.emplace(source.get_token(), destroy_other_on_stop{&other});
+    other.emplace(source.get_token(), on_stop_request{});
+
+    CHECK(source.request_stop());
+    CHECK(!other.has_value());
+  }
+
   struct slow_state;
 
   struct remove_and_sleep
@@ -139,6 +177,44 @@ namespace
       std::this_thread::yield();
 
     state.reset();  // request_stop() is still running on the other thread
+    thread.join();
+  }
+
+  struct wait_then_finish
+  {
+    std::atomic<bool>* started;
+    std::atomic<bool>* destroying;
+    bool*              finished;
+
+    void operator()() noexcept
+    {
+      started->store(true);
+      while (!destroying->load())
+        std::this_thread::yield();
+
+      // Give the main thread time to start waiting in ~inplace_stop_callback().
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      *finished = true;
+    }
+  };
+
+  TEST_CASE("inplace_stop_callback destructor waits for the callback to finish on another thread",
+            "[stop_token]")
+  {
+    std::atomic<bool>                                                 started{false};
+    std::atomic<bool>                                                 destroying{false};
+    bool                                                              finished = false;
+    ::STDEXEC::inplace_stop_source                                    source;
+    std::optional<::STDEXEC::inplace_stop_callback<wait_then_finish>> callback;
+    callback.emplace(source.get_token(), wait_then_finish{&started, &destroying, &finished});
+
+    std::thread thread([&source] { source.request_stop(); });
+    while (!started.load())
+      std::this_thread::yield();
+
+    destroying.store(true);
+    callback.reset();  // the callback is still running on the other thread
+    CHECK(finished);
     thread.join();
   }
 }  // namespace

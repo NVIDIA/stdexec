@@ -30,7 +30,9 @@ import stdexec;
 
 #  if !STDEXEC_USE_MODULES()
 #    include <cstdint>
+#    include <memory>
 #    include <thread>
+#    include <type_traits>
 #    include <utility>
 #    include <version>
 
@@ -77,16 +79,45 @@ namespace STDEXEC::__stok
       , __execute_(__execute)
     {}
 
+    // std::atomic is trivially destructible, so this does nothing. Relacy's
+    // replacement for std::atomic is not, so end the lifetime of the
+    // execution members if request_stop() started it.
+    constexpr ~__inplace_stop_callback_base()
+    {
+      if constexpr (!std::is_trivially_destructible_v<__execute_members_t>)
+      {
+        if (__execute_ == nullptr)
+          std::destroy_at(&__execute_members_);
+      }
+    }
+
     constexpr void __register_callback_() noexcept;
 
     friend inplace_stop_source;
 
-    inplace_stop_source const *    __source_;
-    __execute_fn_t*                __execute_;
-    __inplace_stop_callback_base*  __next_                    = nullptr;
-    __inplace_stop_callback_base** __prev_ptr_                = nullptr;
-    bool*                          __removed_during_callback_ = nullptr;
-    STDEXEC::__std::atomic<bool>   __callback_completed_{false};
+    // Used while the callback is in the stop source's list.
+    struct __list_members_t
+    {
+      __inplace_stop_callback_base*  __next_     = nullptr;
+      __inplace_stop_callback_base** __prev_ptr_ = nullptr;
+    };
+
+    // Used once request_stop() has taken the callback off the list to execute it.
+    struct __execute_members_t
+    {
+      bool*                        __removed_during_callback_ = nullptr;
+      STDEXEC::__std::atomic<bool> __callback_completed_{false};
+    };
+
+    inplace_stop_source const * __source_;
+    // request_stop() sets this to nullptr, under the lock, when it takes the
+    // callback off the list. That also switches the active member of the union.
+    __execute_fn_t* __execute_;
+    union
+    {
+      __list_members_t    __list_members_{};
+      __execute_members_t __execute_members_;
+    };
   };
 
   struct __spin_wait
@@ -317,23 +348,29 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
     // We are responsible for executing callbacks.
     while (__callbacks_ != nullptr)
     {
-      auto* __callbk        = __callbacks_;
-      __callbk->__prev_ptr_ = nullptr;
-      __callbacks_          = __callbk->__next_;
+      auto* __callbk = __callbacks_;
+      __callbacks_   = __callbk->__list_members_.__next_;
       if (__callbacks_ != nullptr)
-        __callbacks_->__prev_ptr_ = &__callbacks_;
+        __callbacks_->__list_members_.__prev_ptr_ = &__callbacks_;
+
+      // The callback is off the list, so reuse the storage of its list members.
+      // This must happen before unlocking: once __remove_callback_ sees that
+      // __execute_ is null, it reads the execution members.
+      auto* __execute = std::exchange(__callbk->__execute_, nullptr);
+      std::construct_at(&__callbk->__execute_members_);
+
+      bool __removed_during_callback                          = false;
+      __callbk->__execute_members_.__removed_during_callback_ = &__removed_during_callback;
 
       __state_.store(__stop_requested_flag_, STDEXEC::__std::memory_order_release);
 
-      bool __removed_during_callback       = false;
-      __callbk->__removed_during_callback_ = &__removed_during_callback;
-
-      __callbk->__execute();
+      __execute(__callbk);
 
       if (!__removed_during_callback)
       {
-        __callbk->__removed_during_callback_ = nullptr;
-        __callbk->__callback_completed_.store(true, STDEXEC::__std::memory_order_release);
+        __callbk->__execute_members_.__removed_during_callback_ = nullptr;
+        __callbk->__execute_members_.__callback_completed_
+          .store(true, STDEXEC::__std::memory_order_release);
       }
 
       // The callback destroyed this stop source, so we can't touch *this again.
@@ -417,11 +454,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
       return false;
     }
 
-    __callbk->__next_     = __callbacks_;
-    __callbk->__prev_ptr_ = &__callbacks_;
+    __callbk->__list_members_.__next_     = __callbacks_;
+    __callbk->__list_members_.__prev_ptr_ = &__callbacks_;
     if (__callbacks_ != nullptr)
     {
-      __callbacks_->__prev_ptr_ = &__callbk->__next_;
+      __callbacks_->__list_members_.__prev_ptr_ = &__callbk->__list_members_.__next_;
     }
     __callbacks_ = __callbk;
 
@@ -435,14 +472,15 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   {
     auto __old_state = __lock_();
 
-    if (__callbk->__prev_ptr_ != nullptr)
+    if (__callbk->__execute_ != nullptr)
     {
       // Callback has not been executed yet.
       // Remove from the list.
-      *__callbk->__prev_ptr_ = __callbk->__next_;
-      if (__callbk->__next_ != nullptr)
+      auto& __list        = __callbk->__list_members_;
+      *__list.__prev_ptr_ = __list.__next_;
+      if (__list.__next_ != nullptr)
       {
-        __callbk->__next_->__prev_ptr_ = __callbk->__prev_ptr_;
+        __list.__next_->__list_members_.__prev_ptr_ = __list.__prev_ptr_;
       }
       __unlock_(__old_state);
     }
@@ -455,9 +493,9 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
       // currently executing on another thread.
       if (std::this_thread::get_id() == __notifying_thread)
       {
-        if (__callbk->__removed_during_callback_ != nullptr)
+        if (__callbk->__execute_members_.__removed_during_callback_ != nullptr)
         {
-          *__callbk->__removed_during_callback_ = true;
+          *__callbk->__execute_members_.__removed_during_callback_ = true;
         }
       }
       else
@@ -465,7 +503,8 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
         // Concurrently executing on another thread.
         // Wait until the other thread finishes executing the callback.
         STDEXEC::__stok::__spin_wait __spin;
-        while (!__callbk->__callback_completed_.load(STDEXEC::__std::memory_order_acquire))
+        while (!__callbk->__execute_members_.__callback_completed_.load(
+          STDEXEC::__std::memory_order_acquire))
         {
           __spin.__wait();
         }
