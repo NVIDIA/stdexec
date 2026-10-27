@@ -57,6 +57,14 @@ namespace STDEXEC
     template <class... _Ts>
     struct STDEXEC_ATTRIBUTE(empty_bases) __tuple;
 
+    //! The type with which an element declared as _Ty is passed on from a
+    //! tuple of the possibly cvref-qualified type _Tuple: _Ty with _Tuple's
+    //! cvref-qualifiers, as std::get gives it. Naming the element through the
+    //! forwarded tuple gives the same, except for an element of rvalue
+    //! reference type, which names an lvalue.
+    template <class _Tuple, class _Ty>
+    using __fwd_element_t = __copy_cvref_t<_Tuple&&, _Ty>;
+
     template <class _Ty, std::size_t _Idx>
     struct __box
     {
@@ -79,9 +87,10 @@ namespace STDEXEC
       static constexpr auto __apply(_Fn&& __fn, _Self&& __self, _Us&&... __us)
         noexcept(__nothrow_callable<_Fn, _Us..., __copy_cvref_t<_Self, _Ts>...>) -> decltype(auto)
       {
-        return static_cast<_Fn&&>(__fn)(
-          static_cast<_Us&&>(__us)...,
-          static_cast<_Self&&>(__self).STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Index>::__value...);
+        return static_cast<_Fn&&>(
+          __fn)(static_cast<_Us&&>(__us)...,
+                static_cast<__fwd_element_t<_Self, _Ts>>(
+                  __self.STDEXEC_CWG1835_TEMPLATE __box<_Ts, _Index>::__value)...);
       }
     };
 
@@ -233,7 +242,8 @@ namespace STDEXEC
     template <class... _Ts>
     STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __tuple(_Ts...) -> __tuple<_Ts...>;
 
-#  define STDEXEC_TUPLE_GET(_Idx) , static_cast<_Tuple&&>(__tupl).__val##_Idx
+#  define STDEXEC_TUPLE_GET(_Idx)                                                                \
+    , static_cast<__fwd_element_t<_Tuple, decltype(__tupl.__val##_Idx)>>(__tupl.__val##_Idx)
 
     //
     // __apply(fn, tuple, extra...)
@@ -383,35 +393,35 @@ namespace STDEXEC
     }
     else if constexpr (_Index == 0)
     {
-      return static_cast<_Tuple&&>(__tupl).__val0;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val0)>>(__tupl.__val0);
     }
     else if constexpr (_Index == 1)
     {
-      return static_cast<_Tuple&&>(__tupl).__val1;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val1)>>(__tupl.__val1);
     }
     else if constexpr (_Index == 2)
     {
-      return static_cast<_Tuple&&>(__tupl).__val2;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val2)>>(__tupl.__val2);
     }
     else if constexpr (_Index == 3)
     {
-      return static_cast<_Tuple&&>(__tupl).__val3;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val3)>>(__tupl.__val3);
     }
     else if constexpr (_Index == 4)
     {
-      return static_cast<_Tuple&&>(__tupl).__val4;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val4)>>(__tupl.__val4);
     }
     else if constexpr (_Index == 5)
     {
-      return static_cast<_Tuple&&>(__tupl).__val5;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val5)>>(__tupl.__val5);
     }
     else if constexpr (_Index == 6)
     {
-      return static_cast<_Tuple&&>(__tupl).__val6;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val6)>>(__tupl.__val6);
     }
     else if constexpr (_Index == 7)
     {
-      return static_cast<_Tuple&&>(__tupl).__val7;
+      return static_cast<__tup::__fwd_element_t<_Tuple, decltype(__tupl.__val7)>>(__tupl.__val7);
     }
     else
     {

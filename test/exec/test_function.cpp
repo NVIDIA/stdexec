@@ -1743,6 +1743,55 @@ namespace
     }
   }
 
+  struct string_appender
+  {
+    std::string suffix;
+  };
+
+  TEST_CASE("function passes curried arguments to the factory as their declared types",
+            "[types][function]")
+  {
+    SECTION("an rvalue reference stays an rvalue, so the factory can move from it")
+    {
+      using fn = exec::function<std::string(std::string &&)>;
+      // a curried rvalue reference must not be passed twice, so there is no
+      // lvalue connect
+      STATIC_REQUIRE(!std::copy_constructible<fn>);
+
+      std::string str = "a string too long for the small-string optimization";
+      fn          sndr(std::move(str), [](std::string &&s) { return ex::just(std::move(s)); });
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+      REQUIRE(ret == "a string too long for the small-string optimization");
+      REQUIRE(str.empty());
+    }
+
+    SECTION("an lvalue reference refers to the caller's object")
+    {
+      using fn = exec::function<int(int &)>;
+
+      int i = 0;
+      fn  sndr(i, [](int &j) { return ex::just(++j); });
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+      REQUIRE(ret == 1);
+      REQUIRE(i == 1);
+    }
+
+    SECTION("member functions' explicit arguments are forwarded the same way")
+    {
+      using fn = exec::function<std::string(std::string &&) const &>;
+
+      string_appender const appender{"!"};
+      std::string           str = "a string too long for the small-string optimization";
+      fn                    sndr(appender,
+              std::move(str),
+              [](string_appender const &self, std::string &&s)
+              { return ex::just(std::move(s) + self.suffix); });
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+      REQUIRE(ret == "a string too long for the small-string optimization!");
+      REQUIRE(str.empty());
+    }
+  }
+
   template <class Sig, class... Ts>
   concept valid_function_type = requires { typename exec::function<Sig, Ts...>; };
 
