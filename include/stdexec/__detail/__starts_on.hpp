@@ -87,6 +87,17 @@ namespace STDEXEC
       {
         return {};
       }
+
+      template <__forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>)
+             && __queryable_with<env_of_t<_Child>, _Query, _Args...>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(_Query __query, _Args&&... __args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Child>, _Query, _Args...>)
+          -> __query_result_t<env_of_t<_Child>, _Query, _Args...>
+      {
+        return __query(__attr_, static_cast<_Args&&>(__args)...);
+      }
     };
   }  // namespace __starts_on
 

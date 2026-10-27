@@ -23,6 +23,7 @@
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
+#include <test_common/non_completion_query.hpp>
 
 #if STDEXEC_USE_MODULES()
 import std;
@@ -78,6 +79,12 @@ namespace
     auto snd = ex::continues_on(ex::just(13), inline_scheduler{});
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
+  }
+
+  TEST_CASE("continues_on forwards non-completion queries", "[adaptors][continues_on]")
+  {
+    auto snd = ex::continues_on(test_common::non_completion_query_sender{}, inline_scheduler{});
+    CHECK(test_common::non_completion_query(ex::get_env(snd), 41) == 42);
   }
 
   TEST_CASE("continues_on with environment returns a sender", "[adaptors][continues_on]")

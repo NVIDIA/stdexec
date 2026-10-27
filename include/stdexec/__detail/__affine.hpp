@@ -163,13 +163,15 @@ namespace STDEXEC
         }
       }
 
-      template <__forwarding_query _Tag, class... _Args>
-        requires(!__completion_query<_Tag>)
-             && __queryable_with<env_of_t<_Sender>, _Tag, _Args const &...>
-      constexpr auto query(_Tag, _Args const &...) const noexcept
-        -> __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>
+      template <__forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>)
+             && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
+      STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
+      constexpr auto query(_Query __query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
+          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
       {
-        return __query_result_t<env_of_t<_Sender>, _Tag, _Args const &...>{};
+        return __query(STDEXEC::get_env(__sndr_), static_cast<_Args &&>(__args)...);
       }
 
       _Sender const &__sndr_;
