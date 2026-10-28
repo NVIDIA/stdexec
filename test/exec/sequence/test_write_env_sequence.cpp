@@ -250,6 +250,7 @@ namespace
     using receiver_concept = STDEXEC::receiver_tag;
 
     template <class Item>
+    [[maybe_unused]]
     auto set_next(Item&& item) noexcept
     {
       return static_cast<Item&&>(item);
@@ -260,6 +261,7 @@ namespace
     void set_stopped() noexcept {}
 
     template <class Error>
+    [[maybe_unused]]
     void set_error(Error&&) noexcept
     {}
 
