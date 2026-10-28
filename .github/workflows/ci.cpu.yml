@@ -59,7 +59,7 @@ jobs:
           - { name: "CPU (gcc 15, Debug, TSAN)",     build: "Debug",   tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
           - { name: "CPU (gcc 15, Release, TSAN)",   build: "Release", tag: gcc15-cuda12.9,  cxxstd: "20", cxxflags: "-fsanitize=thread" }
     container:
-      options: -u root
+      options: -u root --cap-add SYS_PTRACE --security-opt label=disable --security-opt seccomp=unconfined
       image: rapidsai/devcontainers:26.08-cpp-${{ matrix.tag }}
     permissions:
       id-token: write # This is required for configure-aws-credentials
