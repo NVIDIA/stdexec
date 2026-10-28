@@ -27,138 +27,162 @@
 //! Defines template <class _Delegate> exec::__frame_allocator_t
 //!
 //! The intended use for __frame_allocator_t is the dynamic allocation of
-//! operation states and/or coroutine frames. __frame_allocator_t models the
-//! Allocator named requirement in terms of its type parameter, _Delegate.
+//! operation states and/or coroutine frames. __frame_allocator_t<_Delegate> is
+//! an allocator of std::byte that allocates and deallocates through _Delegate,
+//! which may be one of:
+//! - another allocator, which allocates and deallocates as itself rebound to
+//!   the requested type;
+//! - std::pmr::memory_resource*; or
+//! - T* for some T that inherits from std::pmr::memory_resource, in which case
+//!   __frame_allocator_t knows the concrete type of its memory_resource and so
+//!   may be able to avoid virtual dispatch.
 //!
-//! _Delegate may be one of:
-//! - Another allocator, in which case __frame_allocator_t<_Delegate> is just
-//!   _Delegate rebound to std::byte;
-//! - std::pmr::memory_resource*, in which case __frame_allocator_t<_Delegate>
-//!   is just std::pmr::polymorphic_allocator<std::byte>; or
-//! - T* for some T that inherits from std::pmr::memor_resource, in which case
-//!   __frame_allocator_t is an allocator that behaves like
-//!   std::pmr::polymorphic_allocator<std::byte>, but knows the concrete type of
-//!   its memory_resource and so therefore may be able to avoid virtual
-//!   dispatch.
-//!
-//! Given that __frame_allocator_t<_Delegate> is just an alias to _Delegate when
-//! _Delegate is an allocator type, it's up to that type whether its construct
-//! member function does "uses-allocator construction". When _Delegate is a
-//! pointer to a memory_resource, __frame_allocator_t<_Delegate>::construct does
-//! "uses-allocator construction".
+//! A frame allocator only provides storage: __frame_allocator_t declares no
+//! construct or destroy members, so allocator_traits constructs objects with
+//! construct_at and destroys them with destroy_at. In particular, it never does
+//! uses-allocator construction, and a delegate allocator's own construct and
+//! destroy members, if it has any, are never called.
 namespace experimental::execution
 {
   namespace __fa
   {
     using namespace STDEXEC;
 
+    //! An allocator that allocates and deallocates through _Alloc but declares
+    //! no construct or destroy members
+    template <class _Alloc>
+    class __allocator_adaptor
+    {
+      using __traits_t = std::allocator_traits<_Alloc>;
+
+      template <class>
+      friend class __allocator_adaptor;
+
+      STDEXEC_ATTRIBUTE(no_unique_address) _Alloc __alloc_;
+
+     public:
+      using value_type      = __traits_t::value_type;
+      using pointer         = __traits_t::pointer;
+      using size_type       = __traits_t::size_type;
+      using is_always_equal = __traits_t::is_always_equal;
+
+      template <class _Ty>
+      struct rebind
+      {
+        using other = __allocator_adaptor<typename __traits_t::template rebind_alloc<_Ty>>;
+      };
+
+      /*implicit*/ constexpr __allocator_adaptor(_Alloc const &__alloc)
+        noexcept(std::is_nothrow_copy_constructible_v<_Alloc>)
+        : __alloc_(__alloc)
+      {}
+
+      template <class _OtherAlloc>
+      /*implicit*/ constexpr __allocator_adaptor(__allocator_adaptor<_OtherAlloc> const &__other)
+        noexcept(std::is_nothrow_constructible_v<_Alloc, _OtherAlloc const &>)
+        : __alloc_(__other.__alloc_)
+      {}
+
+      constexpr auto
+      allocate(size_type __n) noexcept(noexcept(std::declval<_Alloc &>().allocate(__n))) -> pointer
+      {
+        return __alloc_.allocate(__n);
+      }
+
+      constexpr void deallocate(pointer __p, size_type __n) noexcept
+      {
+        __alloc_.deallocate(__p, __n);
+      }
+
+      template <class _OtherAlloc>
+      constexpr auto
+      operator==(__allocator_adaptor<_OtherAlloc> const &__other) const noexcept -> bool
+      {
+        return __alloc_ == __other.__alloc_;
+      }
+    };
+
+    //! An allocator that allocates from and deallocates to a memory resource of
+    //! type _Resource, which is std::pmr::memory_resource or derives from it
+    template <class _Resource, class _Ty>
+    class __resource_allocator
+    {
+      template <class, class>
+      friend class __resource_allocator;
+
+      _Resource *__resource_;
+
+     public:
+      using value_type = _Ty;
+      using pointer    = value_type *;
+
+      template <class _Uy>
+      struct rebind
+      {
+        using other = __resource_allocator<_Resource, _Uy>;
+      };
+
+      // unlike polymorphic_allocator, there's no default constructor, because
+      // there's no default resource of type _Resource
+
+      /*implicit*/ constexpr __resource_allocator(_Resource *__resource) noexcept
+        : __resource_(__resource)
+      {}
+
+      template <class _Uy>
+      /*implicit*/ constexpr __resource_allocator(
+        __resource_allocator<_Resource, _Uy> const &__other) noexcept
+        : __resource_(__other.__resource_)
+      {}
+
+      constexpr auto allocate(std::size_t __n) -> pointer
+      {
+        return static_cast<pointer>(
+          __resource_->allocate(__n * sizeof(value_type), alignof(value_type)));
+      }
+
+      constexpr void deallocate(pointer __p, std::size_t __n) noexcept
+      {
+        __resource_->deallocate(__p, __n * sizeof(value_type), alignof(value_type));
+      }
+
+      constexpr auto resource() const noexcept -> _Resource *
+      {
+        return __resource_;
+      }
+
+      template <class _Uy>
+      constexpr auto
+      operator==(__resource_allocator<_Resource, _Uy> const &__other) const noexcept -> bool
+      {
+        return *__resource_ == *__other.__resource_;
+      }
+    };
+
     template <class _Delegate>
     struct __frame_allocator;
 
     //! Handle the case that _Delegate is an allocator already
-    //!
-    //! In this case, __frame_allocator_t<Delegate> is just an alias to
-    //! _Delegate but rebound to std::byte.
     template <class _Delegate>
       requires __simple_allocator<_Delegate>
     struct __frame_allocator<_Delegate>
     {
-      template <class _Ty>
-      using type = std::allocator_traits<_Delegate>::template rebind_alloc<_Ty>;
+      using type = __allocator_adaptor<
+        typename std::allocator_traits<_Delegate>::template rebind_alloc<std::byte>>;
     };
 
-    //! Handle the case that _Delegate is exactly std::pmr::memory_resource *
-    //!
-    //! In this case, __frame_allocator_t<_Delegate> is exactly
-    //! std::pmr::polymorphic_allocator<std::byte>.
-    template <>
-    struct __frame_allocator<std::pmr::memory_resource *>
+    //! Handle the case that _Delegate is a pointer to std::pmr::memory_resource
+    //! or to a type that derives from it
+    template <class _Resource>
+      requires __std::derived_from<_Resource, std::pmr::memory_resource>
+    struct __frame_allocator<_Resource *>
     {
-      template <class _Ty>
-      using type = std::pmr::polymorphic_allocator<_Ty>;
-    };
-
-    //! Handle the case that _Delegate is a pointer to a type that derives from
-    //! std::pmr::memory_resource
-    //!
-    //! In this case, __frame_allocator_t<_Delegate> is an allocator that
-    //! behaves like std::pmr::polymorphic_allocator<std::byte> except that it
-    //! knows the concrete type of its memory resource. In other words,
-    //! allocation and deallocation are delegated to the given resource,
-    //! construct does uses-allocator construction, etc.
-    template <class _Delegate>
-      requires __std::derived_from<_Delegate, std::pmr::memory_resource>
-    struct __frame_allocator<_Delegate *>
-    {
-      template <class _Ty>
-      struct type
-      {
-        using value_type = _Ty;
-        using pointer    = value_type *;
-
-        // polymorphic_allocator's default constructor grabs the default memory
-        // resource, which we can't do because there's no default for _Delegate
-
-        /*implicit*/ constexpr type(_Delegate *__resource) noexcept
-          : __resource_(__resource)
-        {}
-
-        constexpr type(type const &) noexcept = default;
-
-        template <class _Uy>
-        /*implicit*/ constexpr type(type<_Uy> const &other) noexcept
-          : __resource_(other.resource())
-        {}
-
-        constexpr ~type() = default;
-
-        constexpr type &operator=(type const &) noexcept = default;
-
-        constexpr pointer allocate(std::size_t __n)
-        {
-          return static_cast<pointer>(
-            __resource_->allocate(__n * sizeof(value_type), alignof(value_type)));
-        }
-
-        constexpr void deallocate(void *__p, std::size_t __n) noexcept
-        {
-          __resource_->deallocate(__p, __n * sizeof(value_type), alignof(value_type));
-        }
-
-        template <class _Uy, class... _Args>
-        constexpr void construct(_Uy *__p, _Args &&...__args)
-        {
-          (void) std::uninitialized_construct_using_allocator(__p,
-                                                              *this,
-                                                              static_cast<_Args &&>(__args)...);
-        }
-
-        template <class _Uy>
-        constexpr void destroy(_Uy *__p) noexcept
-        {
-          __p->~_Uy();
-        }
-
-        constexpr _Delegate *resource() const noexcept
-        {
-          return __resource_;
-        }
-
-        template <class _Uy>
-        constexpr bool operator==(type<_Uy> const &__other) const noexcept
-        {
-          return *__resource_ == *__other.resource();
-        }
-
-       private:
-        _Delegate *__resource_;
-      };
+      using type = __resource_allocator<_Resource, std::byte>;
     };
   }  // namespace __fa
 
   template <class _Delegate>
-  using __frame_allocator_t =
-    __fa::__frame_allocator<std::remove_cvref_t<_Delegate>>::template type<std::byte>;
+  using __frame_allocator_t = __fa::__frame_allocator<std::remove_cvref_t<_Delegate>>::type;
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;
