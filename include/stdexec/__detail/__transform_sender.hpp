@@ -64,7 +64,7 @@ namespace STDEXEC
         }
         else if constexpr (__same_as<__result_t, _Sndr>)
         {
-          return __declfn<__result_t, __is_nothrow>();
+          return __declfn<__result_t, (_Nothrow && __is_nothrow)>();
         }
         else if constexpr (__same_as<_OpTag, start_t>)
         {

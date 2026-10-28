@@ -63,6 +63,7 @@ set(stdexec_test_sources
     stdexec/cpos/test_cpo_receiver.cpp
     stdexec/cpos/test_cpo_schedule.cpp
     stdexec/cpos/test_cpo_start.cpp
+    stdexec/cpos/test_cpo_transform_sender.cpp
     stdexec/cpos/test_cpo_upon_stopped.cpp
     stdexec/detail/test_any.cpp
     stdexec/detail/test_common_domain.cpp
