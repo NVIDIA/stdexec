@@ -588,29 +588,21 @@ namespace experimental::execution
     template <class _Factory, class... _Args>
     concept __factory_is_nothrow_invocable = __nothrow_invocable<_Factory const &, _Args...>;
 
-    //! Satisfied when transform_sender, given a _Sender and an _Env, returns a
-    //! sender of a different type, i.e. a domain has transformed it.
-    template <class _Sender, class _Env>
-    concept __is_transformed_for =
-      !__same_as<__decay_t<transform_sender_result_t<_Sender, _Env>>, __decay_t<_Sender>>;
-
     //! Satisfied when connecting the sender _Factory returns to the type-erased
     //! receiver _Receiver can't throw, short of failing to allocate a frame (see
-    //! __nothrow_frame_allocation_receiver). If a domain transforms that sender,
-    //! the transformation and the transformed sender's connect are trusted
-    //! rather than checked. The domains that can transform it depend only on
-    //! the sender and on the queries the function type declares: _Receiver's
-    //! environment provides nothing else but a frame allocator, so the
-    //! caller's domain can't reach the sender. Those domains are chosen only
-    //! implicitly (declaring a get_scheduler_t query, for example, brings that
-    //! scheduler's domain into play) and nothing checks the choice, so
-    //! declaring the function type noexcept vouches for whatever they do.
+    //! __nothrow_frame_allocation_receiver). connect passes the sender through
+    //! transform_sender first, so this covers any domain's transformation of
+    //! the sender as well as the transformed sender's connect. Checking the
+    //! transformation here, before any caller exists, is sound because no
+    //! caller can change it: the domains that can transform the sender depend
+    //! only on the sender and on the queries the function type declares.
+    //! _Receiver's environment provides nothing else but a frame allocator, so
+    //! the caller's domain reaches the sender only through a declared query,
+    //! and then only as the type that query names.
     template <class _Factory, class _Receiver, class... _Args>
     concept __factory_sender_connects_without_throwing =
-      __is_transformed_for<__invoke_result_t<_Factory const &, _Args...>,
-                           env_of_t<__nothrow_frame_allocation_receiver<_Receiver>>>
-      || __nothrow_connectable<__invoke_result_t<_Factory const &, _Args...>,
-                               __nothrow_frame_allocation_receiver<_Receiver>>;
+      __nothrow_connectable<__invoke_result_t<_Factory const &, _Args...>,
+                            __nothrow_frame_allocation_receiver<_Receiver>>;
 
     //! Defines the additional constraints on the sender factory of a noexcept
     //! function type, whose noexcept promises that the type-erased path
@@ -621,8 +613,7 @@ namespace experimental::execution
     //!  - returns a sender that connects to _Receiver without throwing as
     //!    defined by __factory_sender_connects_without_throwing.
     //! These are the only checks: each is exact, and when one fails, the
-    //! function type's author can fix it. Anything a domain transformation
-    //! does is trusted instead.
+    //! function type's author can fix it.
     template <bool _Nothrow, class _Factory, class _Receiver, class... _Args>
     concept __meets_noexcept_contract =
       (!_Nothrow)
@@ -861,10 +852,10 @@ namespace experimental::execution
       }
 
       //! connect is noexcept exactly when nothing on the path to the operation
-      //! state can throw: the function type is noexcept and the frame allocator
-      //! chosen from the receiver's environment allocates without throwing. If
-      //! a trusted domain transformation or a transformed sender's connect
-      //! throws anyway, std::terminate is called.
+      //! state can throw: the function type is noexcept, so the constructor has
+      //! checked that invoking the factory and connecting the sender it returns
+      //! don't throw, and the frame allocator chosen from the receiver's
+      //! environment allocates without throwing.
       template <class _Receiver>
       static constexpr bool __nothrow_connect = _Nothrow
                                              && __opstate_t<_Receiver>::__nothrow_frame_allocation;
@@ -1385,12 +1376,10 @@ namespace experimental::execution
   //! accounts for. For the forms with computed completions it also drops
   //! set_error(exception_ptr); for the sender_tag form the completion
   //! signatures are exactly as given, since they describe only the
-  //! asynchronous contract. The constructor enforces the promise where it can
-  //! be checked exactly: it requires the factory to be nothrow-invocable with
-  //! the curried arguments and, unless a domain transforms the factory's
-  //! sender, that sender's connect not to throw. A domain transformation and
-  //! the transformed sender's connect are trusted; if either throws anyway,
-  //! std::terminate is called.
+  //! asynchronous contract. The constructor enforces the promise: it requires
+  //! the factory to be nothrow-invocable with the curried arguments, and the
+  //! sender it returns to connect without throwing, including any domain's
+  //! transformation of that sender.
   //!
   //! Future: support C-style ellipsis arguments in the function signature to
   //! permit type-erased arguments as well, like function<int(bar, baz, ...)> (a

@@ -628,21 +628,28 @@ namespace
     }
   };
 
-  using nothrow_connect_sender  = connect_sender<true, 1>;
-  using throwing_connect_sender = connect_sender<false, 2>;
+  using nothrow_connect_sender       = connect_sender<true, 1>;
+  using throwing_connect_sender      = connect_sender<false, 2>;
+  using other_nothrow_connect_sender = connect_sender<true, 3>;
 
-  //! A domain that rewrites a nothrow_connect_sender into a
-  //! throwing_connect_sender, with a transformation that isn't declared
-  //! noexcept either
+  //! A domain that rewrites a nothrow_connect_sender into a Result, with a
+  //! transformation that is noexcept(NothrowTransform)
+  template <bool NothrowTransform, class Result>
   struct rewriting_domain
   {
     template <class OpTag, class Env>
-    auto
-    transform_sender(OpTag, nothrow_connect_sender &&, Env const &) const -> throwing_connect_sender
+    auto transform_sender(OpTag, nothrow_connect_sender &&, Env const &) const
+      noexcept(NothrowTransform) -> Result
     {
       return {};
     }
   };
+
+  //! A noexcept function type whose implementation's environment answers
+  //! get_domain with a Domain
+  template <class Domain>
+  using nothrow_function_in =
+    exec::function<int() noexcept, exec::queries<Domain(ex::get_domain_t) noexcept>>;
 
   TEST_CASE("a noexcept function type constrains its sender factory", "[types][function]")
   {
@@ -787,26 +794,38 @@ namespace
       STATIC_REQUIRE(std::constructible_from<throwing_fn, decltype(returns_fn)>);
     }
 
-    SECTION("a domain's transformation and the transformed sender's connect are trusted")
+    SECTION("a domain's transformation and the transformed sender's connect are checked")
     {
-      using fn =
-        exec::function<int() noexcept, exec::queries<rewriting_domain(ex::get_domain_t) noexcept>>;
+      using nothrow_transform  = rewriting_domain<true, other_nothrow_connect_sender>;
+      using throwing_transform = rewriting_domain<false, other_nothrow_connect_sender>;
+      using to_throwing_sender = rewriting_domain<true, throwing_connect_sender>;
 
       auto returns_nothrow_connect_sender = []() noexcept
       {
         return nothrow_connect_sender();
       };
 
-      STATIC_REQUIRE(std::constructible_from<fn, decltype(returns_nothrow_connect_sender)>);
+      using factory_t = decltype(returns_nothrow_connect_sender);
 
-      fn sndr(returns_nothrow_connect_sender);
+      STATIC_REQUIRE(std::constructible_from<nothrow_function_in<nothrow_transform>, factory_t>);
+
+      // the transformation may throw, even though the sender it returns
+      // connects without throwing
+      STATIC_REQUIRE(!std::constructible_from<nothrow_function_in<throwing_transform>, factory_t>);
+
+      // the transformation doesn't throw, but the sender it returns may throw
+      // when connected
+      STATIC_REQUIRE(!std::constructible_from<nothrow_function_in<to_throwing_sender>, factory_t>);
+
+      nothrow_function_in<nothrow_transform> sndr(returns_nothrow_connect_sender);
 
       auto [ret] = ex::sync_wait(std::move(sndr)
-                                 | ex::write_env(ex::prop(ex::get_domain, rewriting_domain())))
+                                 | ex::write_env(ex::prop(ex::get_domain, nothrow_transform())))
                      .value();
 
-      // the throwing_connect_sender ran, so the domain did rewrite the sender
-      REQUIRE(ret == 2);
+      // the other_nothrow_connect_sender ran, so the domain did rewrite the
+      // sender
+      REQUIRE(ret == 3);
     }
   }
 
