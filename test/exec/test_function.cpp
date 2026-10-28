@@ -1461,19 +1461,44 @@ namespace
           ex::completion_signatures<ex::set_value_t(), ex::set_error_t(int), ex::set_stopped_t()>,
           exec::attrs<domain(ex::get_completion_domain_t<ex::set_stopped_t>)>>);
     }
+  }
 
-    SECTION("sender attributes other than completion domain queries don't break")
+  template <class... Attrs>
+  concept attrs_exists = requires { typename exec::attrs<Attrs...>; };
+
+  struct not_a_domain_query_t
+  {};
+
+  struct not_default_initializable_domain
+  {
+    explicit not_default_initializable_domain(int) {}
+  };
+
+  TEST_CASE("attrs accepts only completion-domain attributes", "[types][function]")
+  {
+    SECTION("each completion tag, and void for the value channel, with or without noexcept")
     {
-      // TODO: it's not obvious that it makes sense to support sender attributes
-      //       other than completion domain queries so this may be silly....
-      auto query = [](auto const &)
-      {
-        return 0;
-      };
-      using query_t = decltype(query);
+      STATIC_REQUIRE(attrs_exists<>);
+      STATIC_REQUIRE(attrs_exists<domain(ex::get_completion_domain_t<>)>);
+      STATIC_REQUIRE(attrs_exists<domain(ex::get_completion_domain_t<ex::set_value_t>)>);
+      STATIC_REQUIRE(attrs_exists<domain(ex::get_completion_domain_t<ex::set_error_t>)>);
+      STATIC_REQUIRE(attrs_exists<domain(ex::get_completion_domain_t<ex::set_stopped_t>) noexcept>);
+      STATIC_REQUIRE(attrs_exists<domain(ex::get_completion_domain_t<ex::set_value_t>),
+                                  domain(ex::get_completion_domain_t<ex::set_error_t>) noexcept>);
+    }
 
-      STATIC_REQUIRE(
-        function_exists<ex::completion_signatures<ex::set_value_t()>, exec::attrs<int(query_t)>>);
+    SECTION("anything else is rejected")
+    {
+      STATIC_REQUIRE(!attrs_exists<int>);
+      STATIC_REQUIRE(!attrs_exists<int(not_a_domain_query_t)>);
+      STATIC_REQUIRE(!attrs_exists<domain(not_a_domain_query_t) noexcept>);
+      STATIC_REQUIRE(!attrs_exists<int(ex::get_completion_domain_t<ex::set_value_t>)>);
+      STATIC_REQUIRE(!attrs_exists<not_default_initializable_domain(
+                       ex::get_completion_domain_t<ex::set_value_t>)>);
+      STATIC_REQUIRE(!attrs_exists<domain(ex::get_completion_domain_t<int>)>);
+      STATIC_REQUIRE(!attrs_exists<domain(ex::get_completion_domain_t<ex::set_value_t>, int)>);
+      STATIC_REQUIRE(!attrs_exists<domain(ex::get_completion_domain_t<ex::set_value_t>),
+                                   int(not_a_domain_query_t)>);
     }
   }
 
