@@ -294,10 +294,20 @@ namespace STDEXEC
 
   namespace __detail
   {
+    // sender_adaptor_closure only accepts class types. In a concept, a type it
+    // rejects (e.g. int) makes the check false instead of a hard error.
+    template <class _Sender>
+    concept __is_sender_adaptor_closure =
+      __std::derived_from<__decay_t<_Sender>, sender_adaptor_closure<__decay_t<_Sender>>>;
+
     template <class _SenderName, class _Sender, class... _Env>
     constexpr auto __diagnose_sender_concept_failure() noexcept
     {
-      if constexpr (!enable_sender<__decay_t<_Sender>>)
+      if constexpr (!enable_sender<__decay_t<_Sender>> && __is_sender_adaptor_closure<_Sender>)
+      {
+        static_assert(enable_sender<_Sender>, STDEXEC_ERROR_SENDER_ADAPTOR_CLOSURE_IS_NOT_A_SENDER);
+      }
+      else if constexpr (!enable_sender<__decay_t<_Sender>>)
       {
         static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
       }
