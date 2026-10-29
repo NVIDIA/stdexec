@@ -21,10 +21,10 @@ jobs:
         include:
           - { name: "clang 22",    cuda: "12.0", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.0", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "-Wno-deprecated-declarations" }
           - { name: "clang 22",    cuda: "12.9", cxx: "clang++", build: "Release", tag: "llvm22-cuda12.9", gpu: "v100", sm: "70", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Release", tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Release", tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
-          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "" }
+          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Release", tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.5",  cuda: "13.2", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.5",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Release", tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
+          - { name: "nvc++ 26.9",  cuda: "13.3", cxx: "mpic++",  build: "Debug",   tag: "nvhpc26.9",       gpu: "l4",   sm: "75", driver: "latest", arch: "amd64", flags: "-pthread" }
     runs-on: linux-${{ matrix.arch }}-gpu-${{ matrix.gpu }}-${{ matrix.driver }}-1
     container:
       options: -u root
