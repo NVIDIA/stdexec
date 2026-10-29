@@ -166,7 +166,13 @@ namespace STDEXEC
       STDEXEC_ASSERT(__last >= __first && __last <= end());
       if (__first != __last)
       {
+        STDEXEC_PRAGMA_PUSH()
+        // Disable a false positive on gcc-14 in Release ASAN mode.
+        STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+        STDEXEC_PRAGMA_IGNORE_GNU("-Wstringop-overread")
         std::move(const_cast<iterator>(__last), end(), const_cast<iterator>(__first));
+        STDEXEC_PRAGMA_POP()
+
         resize(size() - (__last - __first));
       }
       return const_cast<iterator>(__first);
