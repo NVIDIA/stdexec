@@ -53,6 +53,7 @@ jobs:
       - name: Build and test GPU schedulers
         env:
           NVCC_APPEND_FLAGS: "-t=100"
+          DISABLE_SCCACHE: 1
         run: |
           set -e;
           source /etc/profile
