@@ -107,7 +107,7 @@ namespace STDEXEC
       using __opstate_t = __opstate<_Awaiter, _Receiver>;
       friend __opstate_t;
 
-      static void __resume(void* __frame) noexcept
+      static void STDEXEC_CORO_FRAME_CALLCONV __resume(void* __frame) noexcept
       {
         auto* __op = static_cast<__opstate_t*>(__frame);
         __op->__on_resume();
