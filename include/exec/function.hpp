@@ -437,19 +437,24 @@ namespace experimental::execution
     //! implicit object parameter whose qualifiers _SelfBox records for
     //! __self_tag (which come from the function type's qualifiers, e.g.
     //! `int() const &`), as it could for a synchronous member function with
-    //! those qualifiers, except that rvalues are never accepted: the function
-    //! stores a pointer to the object, so accepting an rvalue would leave the
-    //! function borrowing an object that is about to expire. Concretely:
-    //!  - `&` accepts a non-const lvalue, and
-    //!  - `const &` accepts a const or non-const lvalue (a qualification
-    //!    conversion; the factory still receives a const reference).
-    //! volatile objects are rejected, since no supported function type can
-    //! bind to them.
+    //! those qualifiers, except that an lvalue-qualified function accepts only
+    //! lvalues and an rvalue-qualified one only rvalues. Concretely:
+    //!  - `&` accepts a non-const lvalue,
+    //!  - `const &` accepts a const or non-const lvalue,
+    //!  - `&&` accepts a non-const rvalue, and
+    //!  - `const &&` accepts a const or non-const rvalue,
+    //! where accepting a non-const object for a `const` qualifier is a
+    //! qualification conversion: the factory still receives a const reference.
+    //! Either way the function stores a pointer to the object, so the object
+    //! must outlive the operation. volatile objects are rejected, since no
+    //! supported function type can bind to them.
     template <class _Ty, class _SelfBox>
     concept __binds_to_self =
-      std::is_lvalue_reference_v<_Ty> && (!std::is_volatile_v<std::remove_reference_t<_Ty>>)
+      (!std::is_volatile_v<std::remove_reference_t<_Ty>>)
+      && (std::is_lvalue_reference_v<_Ty>
+          == std::is_lvalue_reference_v<typename _SelfBox::__self_tag>)
       && (__same_as<__copy_cvref_t<_Ty, __self_tag>, typename _SelfBox::__self_tag>
-          || __same_as<typename _SelfBox::__self_tag, __self_tag const &>);
+          || STDEXEC_IS_CONST(STDEXEC_REMOVE_REFERENCE(typename _SelfBox::__self_tag)));
 
     //! The type with which the implicit object parameter is passed to the
     //! factory: _Self's unqualified type with the qualifiers the function type
@@ -1110,36 +1115,6 @@ namespace experimental::execution
     };
 
     template <class _Return, class... _Args>
-    struct __function_meta<_Return(_Args...) &>
-    {
-      using __return_type = _Return;
-
-      static constexpr bool __noexcept = false;
-
-      template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept,
-                                         _LeadingArgs...,
-                                         __deferred_params,
-                                         __self_box<__self_tag &>,
-                                         _Args...>;
-    };
-
-    template <class _Return, class... _Args>
-    struct __function_meta<_Return(_Args...) const &>
-    {
-      using __return_type = _Return;
-
-      static constexpr bool __noexcept = false;
-
-      template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept,
-                                         _LeadingArgs...,
-                                         __deferred_params,
-                                         __self_box<__self_tag const &>,
-                                         _Args...>;
-    };
-
-    template <class _Return, class... _Args>
     struct __function_meta<_Return(_Args...) noexcept>
     {
       using __return_type = _Return;
@@ -1151,35 +1126,81 @@ namespace experimental::execution
         __function<__noexcept, _LeadingArgs..., __curried_params_or_deferred_t<_Args...>, _Args...>;
     };
 
+    //! Maps the function that a non-member call type with the same parameters
+    //! denotes to the member-function form whose implicit object binds as
+    //! _SelfBox records. The member-function form names __deferred_params
+    //! whatever its arity (see its specialization), so the non-member form's
+    //! _Params, which is __mlist<> when there are no curried arguments, is
+    //! replaced, not kept.
+    template <class _SelfBox, class _Function>
+    struct __member_function;
+
+    template <class _SelfBox,
+              bool _Nothrow,
+              class _Sigs,
+              class _Queries,
+              class _Attrs,
+              class _Params,
+              class... _Args>
+    struct __member_function<_SelfBox,
+                             __function<_Nothrow, _Sigs, _Queries, _Attrs, _Params, _Args...>>
+    {
+      using type =
+        __function<_Nothrow, _Sigs, _Queries, _Attrs, __deferred_params, _SelfBox, _Args...>;
+    };
+
+    //! A member-function call type is described like the non-member call type
+    //! with the same return type, parameters and noexcept-ness, _Signature,
+    //! plus the binding of the implicit object, _SelfTag (__self_tag with the
+    //! call type's cv- and ref-qualifiers).
+    template <class _Signature, class _SelfTag>
+    struct __member_function_meta : __function_meta<_Signature>
+    {
+      template <class... _LeadingArgs>
+      using __make_function = __member_function<
+        __self_box<_SelfTag>,
+        typename __function_meta<_Signature>::template __make_function<_LeadingArgs...>>::type;
+    };
+
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) &>
+      : __member_function_meta<_Return(_Args...), __self_tag &>
+    {};
+
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) const &>
+      : __member_function_meta<_Return(_Args...), __self_tag const &>
+    {};
+
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) &&>
+      : __member_function_meta<_Return(_Args...), __self_tag &&>
+    {};
+
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) const &&>
+      : __member_function_meta<_Return(_Args...), __self_tag const &&>
+    {};
+
     template <class _Return, class... _Args>
     struct __function_meta<_Return(_Args...) & noexcept>
-    {
-      using __return_type = _Return;
-
-      static constexpr bool __noexcept = true;
-
-      template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept,
-                                         _LeadingArgs...,
-                                         __deferred_params,
-                                         __self_box<__self_tag &>,
-                                         _Args...>;
-    };
+      : __member_function_meta<_Return(_Args...) noexcept, __self_tag &>
+    {};
 
     template <class _Return, class... _Args>
     struct __function_meta<_Return(_Args...) const & noexcept>
-    {
-      using __return_type = _Return;
+      : __member_function_meta<_Return(_Args...) noexcept, __self_tag const &>
+    {};
 
-      static constexpr bool __noexcept = true;
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) && noexcept>
+      : __member_function_meta<_Return(_Args...) noexcept, __self_tag &&>
+    {};
 
-      template <class... _LeadingArgs>
-      using __make_function = __function<__noexcept,
-                                         _LeadingArgs...,
-                                         __deferred_params,
-                                         __self_box<__self_tag const &>,
-                                         _Args...>;
-    };
+    template <class _Return, class... _Args>
+    struct __function_meta<_Return(_Args...) const && noexcept>
+      : __member_function_meta<_Return(_Args...) noexcept, __self_tag const &&>
+    {};
 
     template <class _Ty>
     using __return_type_t = __function_meta<_Ty>::__return_type;
@@ -1192,13 +1213,12 @@ namespace experimental::execution
 
     //! Satisfied when _Ty is one of the function types function accepts:
     //!
-    //!   R(A...), R(A...) &, R(A...) const &, each optionally noexcept
+    //!   R(A...), R(A...) &, R(A...) const &, R(A...) &&, R(A...) const &&,
+    //!   each optionally noexcept
     //!
     //! Rejected forms (__function_meta has no specialization for them):
-    //!  - `&&` and `const &&`: the function would borrow an object that is
-    //!    about to expire;
-    //!  - `const` without a ref-qualifier: as for synchronous member
-    //!    functions, it would bind rvalues too, reopening the same problem;
+    //!  - `const` without a ref-qualifier: a call type without one borrows no
+    //!    object, so there's nothing for `const` to qualify;
     //!  - anything `volatile`.
     template <class _Ty>
     concept __is_supported_function_type = __is_function_type<_Ty> && requires {
@@ -1350,16 +1370,18 @@ namespace experimental::execution
   //!   ...>: additionally requires the erased sender to complete with Tag in
   //!   Domain, and reports that domain from the function's environment;
   //!   get_completion_domain_t<> means get_completion_domain_t<set_value_t>
-  //! - a signature with an lvalue reference qualifier, like
-  //!   function<int(bar) const &> or function<int(bar) &> (optionally
+  //! - a signature with a ref-qualifier, like
+  //!   function<int(bar) const &>, function<int(bar) &>,
+  //!   function<int(bar) const &&> or function<int(bar) &&> (optionally
   //!   noexcept): an async member function; the constructor takes the object,
-  //!   which must be an lvalue, as its first argument, the function holds a
-  //!   pointer to it (so the object must outlive the function's operation),
-  //!   and the factory receives it, with the declared cv- and ref-qualifiers,
-  //!   before (bar); a `const &` function also accepts a non-const lvalue
+  //!   which must be an lvalue for `&` and `const &` and an rvalue for `&&`
+  //!   and `const &&`, as its first argument, the function holds a pointer to
+  //!   it (so the object must outlive the function's operation), and the
+  //!   factory receives it, with the declared cv- and ref-qualifiers, before
+  //!   (bar); a `const` function also accepts a non-const object
   //!
-  //! `&&`, `const &&`, `const` without a ref-qualifier and `volatile` function
-  //! types are not supported.
+  //! `const` without a ref-qualifier and `volatile` function types are not
+  //! supported.
   //!
   //! The constructor takes each curried argument declared as T as `T const &`
   //! when T is trivially copy- and move-constructible (so an lvalue `int` can
