@@ -472,7 +472,7 @@ namespace STDEXEC
 
     template <class _Self>
     static constexpr auto transform_sender(set_value_t, _Self &&__self, __ignore)  //
-      -> decltype(auto)
+      noexcept(__nothrow_transform<_Self>()) -> decltype(auto)
     {
       constexpr std::size_t __nbr_sndrs = __nbr_children_of<_Self>;
       if constexpr (__nbr_sndrs == 0)
@@ -491,10 +491,32 @@ namespace STDEXEC
     }
 
    private:
-    static constexpr auto __mk_sndr = []<class... _Child>(__ignore, __ignore, _Child &&...__child)
+    static constexpr auto __mk_sndr =
+      []<class... _Child>(__ignore, __ignore, _Child &&...__child)  //
+      noexcept(__nothrow_decay_copyable<_Child...>)
     {
       return __seq::__sndr<__decay_t<_Child>...>{static_cast<_Child &&>(__child)...};
     };
+
+    //! whether transform_sender, given a sequence of type _Self, can't throw
+    template <class _Self>
+    static consteval auto __nothrow_transform() noexcept -> bool
+    {
+      constexpr std::size_t __nbr_sndrs = __nbr_children_of<_Self>;
+      if constexpr (__nbr_sndrs == 0)
+      {
+        return true;
+      }
+      else if constexpr (__nbr_sndrs == 1)
+      {
+        return noexcept(
+          static_cast<__tuple_element_t<2, _Self>>(STDEXEC::__get<2>(__declval<_Self>())));
+      }
+      else
+      {
+        return __nothrow_applicable<decltype(__mk_sndr) const &, _Self>;
+      }
+    }
   };
 
   inline constexpr __sequence_t __sequence{};

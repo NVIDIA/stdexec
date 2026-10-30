@@ -170,6 +170,32 @@ TEST_CASE("sequence with two arguments works", "[sequence]")
   }
 }
 
+namespace
+{
+  //! A value whose copy constructor may throw, but whose move constructor
+  //! can't
+  struct throwing_copy
+  {
+    throwing_copy() = default;
+
+    throwing_copy(throwing_copy const &) noexcept(false) {}
+
+    throwing_copy(throwing_copy &&) noexcept = default;
+  };
+}  // namespace
+
+TEST_CASE("lowering a sequence is noexcept unless moving or copying its children can throw",
+          "[sequence]")
+{
+  auto nothrow = exec::sequence(ex::just(), ex::just(42));
+  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(nothrow), ex::env<>{})));
+  STATIC_REQUIRE(ex::__nothrow_connectable<decltype(nothrow), ex::__receiver_archetype<ex::env<>>>);
+
+  auto throwing = exec::sequence(ex::just(), ex::just(throwing_copy{}));
+  STATIC_REQUIRE(noexcept(ex::transform_sender(std::move(throwing), ex::env<>{})));
+  STATIC_REQUIRE(!noexcept(ex::transform_sender(throwing, ex::env<>{})));
+}
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
 TEST_CASE("sequence with sender with throwing connect", "[sequence]")
 {
