@@ -1208,75 +1208,39 @@ namespace
   inline constexpr auto get_completion_domain =
     ex::__first_callable{ex::get_completion_domain<Completion>, ex::__always{none_such()}};
 
-  TEST_CASE("function reports a default completion domain by default", "[types][function]")
+  template <class Tag>
+  using default_domain_for = exec::attrs<ex::default_domain(ex::get_completion_domain_t<Tag>)>;
+
+  template <class Completion, class Function>
+  using completion_domain_of_t = std::remove_cvref_t<decltype(get_completion_domain<Completion>(
+    ex::get_env(std::declval<Function const &>())))>;
+
+  template <class Function>
+  inline constexpr bool reports_no_completion_domain =
+    std::same_as<none_such, completion_domain_of_t<ex::set_value_t, Function>>
+    && std::same_as<none_such, completion_domain_of_t<ex::set_error_t, Function>>
+    && std::same_as<none_such, completion_domain_of_t<ex::set_stopped_t, Function>>;
+
+  TEST_CASE("function reports no completion domain it doesn't declare", "[types][function]")
   {
-    SECTION("throwing function reports a completion domain for all three channels")
-    {
-      exec::function<void()> fn(ex::just);
-      auto                   attrs        = ex::get_env(fn);
-      auto                   value_domain = get_completion_domain<ex::set_value_t>(attrs);
-      auto                   error_domain = get_completion_domain<ex::set_error_t>(attrs);
-      auto                   stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
+    STATIC_REQUIRE(reports_no_completion_domain<exec::function<void()>>);
+    STATIC_REQUIRE(reports_no_completion_domain<exec::function<void() noexcept>>);
+    STATIC_REQUIRE(reports_no_completion_domain<
+                   exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t()>>>);
+    STATIC_REQUIRE(reports_no_completion_domain<
+                   exec::function<ex::sender_tag(),
+                                  ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>,
+                                  exec::queries<>,
+                                  exec::attrs<>>>);
 
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(value_domain)>);
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(error_domain)>);
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
-    }
+    using declares_value = exec::function<void(), default_domain_for<ex::set_value_t>>;
 
-    SECTION("no-throw function reports a completion domain for value and stop channels only")
-    {
-      exec::function<void() noexcept> fn(ex::just);
-      auto                            attrs        = ex::get_env(fn);
-      auto                            value_domain = get_completion_domain<ex::set_value_t>(attrs);
-      auto                            error_domain = get_completion_domain<ex::set_error_t>(attrs);
-      auto                            stop_domain = get_completion_domain<ex::set_stopped_t>(attrs);
-
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(value_domain)>);
-      STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
-    }
-
-    SECTION("infallible function reports a completion domain for value channel only")
-    {
-      exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t()>> fn(ex::just);
-      auto attrs        = ex::get_env(fn);
-      auto value_domain = get_completion_domain<ex::set_value_t>(attrs);
-      auto error_domain = get_completion_domain<ex::set_error_t>(attrs);
-      auto stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
-
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(value_domain)>);
-      STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
-      STATIC_REQUIRE(std::same_as<none_such, decltype(stop_domain)>);
-    }
-
-    SECTION("just_error function reports a completion domain for error channel only")
-    {
-      exec::function<ex::sender_tag(int), ex::completion_signatures<ex::set_error_t(int)>> fn(
-        42,
-        ex::just_error);
-      auto attrs        = ex::get_env(fn);
-      auto value_domain = get_completion_domain<ex::set_value_t>(attrs);
-      auto error_domain = get_completion_domain<ex::set_error_t>(attrs);
-      auto stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
-
-      STATIC_REQUIRE(std::same_as<none_such, decltype(value_domain)>);
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(error_domain)>);
-      STATIC_REQUIRE(std::same_as<none_such, decltype(stop_domain)>);
-    }
-
-    SECTION("just_stopped function reports a completion domain for stop channel only")
-    {
-      exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>> fn(
-        ex::just_stopped);
-      auto attrs        = ex::get_env(fn);
-      auto value_domain = get_completion_domain<ex::set_value_t>(attrs);
-      auto error_domain = get_completion_domain<ex::set_error_t>(attrs);
-      auto stop_domain  = get_completion_domain<ex::set_stopped_t>(attrs);
-
-      STATIC_REQUIRE(std::same_as<none_such, decltype(value_domain)>);
-      STATIC_REQUIRE(std::same_as<none_such, decltype(error_domain)>);
-      STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(stop_domain)>);
-    }
+    STATIC_REQUIRE(
+      std::same_as<ex::default_domain, completion_domain_of_t<ex::set_value_t, declares_value>>);
+    STATIC_REQUIRE(
+      std::same_as<none_such, completion_domain_of_t<ex::set_error_t, declares_value>>);
+    STATIC_REQUIRE(
+      std::same_as<none_such, completion_domain_of_t<ex::set_stopped_t, declares_value>>);
   }
 
   struct domain : ex::default_domain
@@ -1288,8 +1252,10 @@ namespace
 
     SECTION("the constraint applies to set_value")
     {
-      using function =
-        exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_value_t()>, queries>;
+      using function = exec::function<ex::sender_tag(),
+                                      ex::completion_signatures<ex::set_value_t()>,
+                                      queries,
+                                      default_domain_for<ex::set_value_t>>;
 
       STATIC_REQUIRE(std::constructible_from<function, ex::just_t>);
 
@@ -1308,7 +1274,8 @@ namespace
     {
       using function = exec::function<ex::sender_tag(int),
                                       ex::completion_signatures<ex::set_error_t(int)>,
-                                      queries>;
+                                      queries,
+                                      default_domain_for<ex::set_error_t>>;
 
       STATIC_REQUIRE(std::constructible_from<function, int, ex::just_error_t>);
 
@@ -1325,8 +1292,10 @@ namespace
 
     SECTION("the constraint applies to set_stopped")
     {
-      using function =
-        exec::function<ex::sender_tag(), ex::completion_signatures<ex::set_stopped_t()>, queries>;
+      using function = exec::function<ex::sender_tag(),
+                                      ex::completion_signatures<ex::set_stopped_t()>,
+                                      queries,
+                                      default_domain_for<ex::set_stopped_t>>;
 
       STATIC_REQUIRE(std::constructible_from<function, ex::just_stopped_t>);
 
@@ -1372,7 +1341,7 @@ namespace
       STATIC_REQUIRE(std::same_as<ex::default_domain, decltype(fn_domain)>);
     }
 
-    SECTION("a forwarded domain is accepted under the default only if it derives from it")
+    SECTION("a function that declares no completion domain doesn't check one")
     {
       struct unrelated_domain
       {};
@@ -1382,7 +1351,24 @@ namespace
         exec::function<void(), exec::queries<unrelated_domain(ex::get_domain_t) noexcept>>;
 
       STATIC_REQUIRE(std::constructible_from<derived, ex::just_t>);
-      STATIC_REQUIRE(!std::constructible_from<unrelated, ex::just_t>);
+      STATIC_REQUIRE(std::constructible_from<unrelated, ex::just_t>);
+    }
+
+    SECTION("a function checks only the completion domains it declares")
+    {
+      struct unrelated_domain
+      {};
+
+      using function =
+        exec::function<ex::sender_tag(),
+                       ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>,
+                       exec::queries<>,
+                       default_domain_for<ex::set_value_t>>;
+
+      STATIC_REQUIRE(
+        std::constructible_from<function, domain_sender_t<ex::set_stopped_t, unrelated_domain>>);
+      STATIC_REQUIRE(
+        !std::constructible_from<function, domain_sender_t<ex::set_value_t, unrelated_domain>>);
     }
 
     SECTION("declaring the forwarded domain reports it")
