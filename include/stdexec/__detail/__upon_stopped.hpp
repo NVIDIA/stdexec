@@ -53,7 +53,7 @@ namespace STDEXEC
           {},
           __always{__set_value_from_t<__fn_t>()},
           __eptr_completion_unless_t<__mbool<__nothrow_callable<__fn_t>>>());
-      };
+      }
 
       static constexpr auto __complete =
         []<class _Tag, class _State, class... _Args>(__ignore,

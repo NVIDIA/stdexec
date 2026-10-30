@@ -82,7 +82,7 @@ namespace experimental::execution
             STDEXEC::get_completion_signatures<__child_of<Self>, Env>(),
             completion_signatures<set_stopped_t()>());
         }
-      };
+      }
 
       template <class Receiver>
       using _receiver_t =

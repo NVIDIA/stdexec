@@ -54,7 +54,7 @@ namespace STDEXEC
       using __storage_t = __storage_for_t<__child_of<_Sexpr>, env_of_t<_Receiver>>;
 
       _Receiver   __rcvr_;
-      __storage_t __data_;
+      __storage_t __data_{};
     };
 
     // This receiver is to be completed on the execution context associated with

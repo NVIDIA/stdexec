@@ -263,7 +263,7 @@ namespace STDEXEC
                 __mapply<__qf<_WITH_ARGUMENTS_>, __arg_pack_t>>();
             }
           });
-      };
+      }
     };
 
     struct __chunked_impl : __impl_base<bulk_chunked_t>

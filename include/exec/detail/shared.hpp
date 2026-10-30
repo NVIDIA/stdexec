@@ -487,7 +487,7 @@ namespace experimental::execution::__shared
       static_assert(STDEXEC::__sender_for<_CvSender, _Tag>);
       return __get_completion_signatures_impl<__child_of<_CvSender>,
                                               __decay_t<__data_of<_CvSender>>>();
-    };
+    }
   };
 
   //! This class is a split sender when _Tag is split_t, and an ensure_started

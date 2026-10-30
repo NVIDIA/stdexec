@@ -112,7 +112,7 @@ namespace STDEXEC
       _Receiver __rcvr_{};
       STDEXEC_ATTRIBUTE(no_unique_address)
       _Env2 const __env2_{};
-      _Storage    __result_;  // __variant<__tuple<set_tag, args...>, ...>
+      _Storage    __result_{};  // __variant<__tuple<set_tag, args...>, ...>
     };
 
     using __mk_secondary_env_t =

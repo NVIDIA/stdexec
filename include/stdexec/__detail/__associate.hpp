@@ -264,7 +264,7 @@ namespace STDEXEC
         return STDEXEC::__concat_completion_signatures(
           STDEXEC::get_completion_signatures<__wrap_sender_of_t<_Sender>, _Env...>(),
           completion_signatures<set_stopped_t()>());
-      };
+      }
 
       static constexpr auto __get_state =
         []<class _Self, class _Receiver>(_Self&& __self, _Receiver __rcvr) noexcept(

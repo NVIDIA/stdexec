@@ -108,7 +108,7 @@ namespace STDEXEC
       using __sndr_t =
         __detail::__transform_sender_result_t<__transfer_just_t, set_value_t, _Sender, env<>>;
       return STDEXEC::get_completion_signatures<__sndr_t, _Env...>();
-    };
+    }
   };
 }  // namespace STDEXEC
 

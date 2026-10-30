@@ -121,7 +121,7 @@ namespace STDEXEC
             _WITH_SENDER_<_Sender>,
             _WITH_ENVIRONMENT_(_Env)>();
         }
-      };
+      }
 
       template <class _Rcvr>
       struct __join_state : __join_state_base
@@ -141,7 +141,7 @@ namespace STDEXEC
           void set_error(_Error&& __err) && noexcept
           {
             STDEXEC::set_error(std::move(__rcvr_), static_cast<_Error&&>(__err));
-          };
+          }
 
           void set_stopped() && noexcept
           {
