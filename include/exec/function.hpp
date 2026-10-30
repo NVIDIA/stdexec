@@ -914,7 +914,10 @@ namespace experimental::execution
 
       template <class _Factory>
         requires __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
-              && __meets_noexcept_contract<_Nothrow, _Factory, __receiver_t, _Args...>
+              && __meets_noexcept_contract<_Nothrow,
+                                           _Factory,
+                                           __any_receiver_ref<_Sigs, _Queries>,
+                                           _Args...>
       constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory)
         noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
         : __impl_(static_cast<__curried_param_t<_Args>>(__args)..., __factory, __tag{})

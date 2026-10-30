@@ -776,6 +776,36 @@ namespace
       REQUIRE(ret == 42);
     }
 
+    SECTION("a noexcept function with curried arguments may return another of its type")
+    {
+      using fn = exec::function<int(int) noexcept>;
+
+      auto returns_fn = [](int i) noexcept
+      {
+        return fn(i, [](int j) noexcept { return ex::just(j); });
+      };
+
+      fn sndr(42, returns_fn);
+
+      auto [ret] = ex::sync_wait(std::move(sndr)).value();
+
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a declared frame allocator is checked as declared with curried arguments")
+    {
+      using fn = exec::function<
+        int(int) noexcept,
+        exec::queries<throwing_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+
+      auto returns_fn = [](int i) noexcept
+      {
+        return fn(i, [](int j) noexcept { return ex::just(j); });
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<fn, int, decltype(returns_fn)>);
+    }
+
     SECTION("a declared frame allocator is checked as declared")
     {
       // the inner function's connect allocates its frame with the declared
