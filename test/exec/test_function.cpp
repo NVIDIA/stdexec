@@ -335,6 +335,85 @@ namespace
     REQUIRE(res.count == 1);
   }
 
+  //! Counts calls to its own construct and destroy, which a frame allocator
+  //! may declare but which function must not call
+  struct allocator_counts
+  {
+    int allocate  = 0;
+    int construct = 0;
+    int destroy   = 0;
+  };
+
+  template <class T>
+  struct constructing_allocator
+  {
+    using value_type = T;
+
+    allocator_counts *counts_;
+
+    explicit constructing_allocator(allocator_counts *c) noexcept
+      : counts_(c)
+    {}
+
+    template <class U>
+    constructing_allocator(constructing_allocator<U> const &other) noexcept
+      : counts_(other.counts_)
+    {}
+
+    T *allocate(std::size_t n)
+    {
+      ++counts_->allocate;
+      return std::allocator<T>().allocate(n);
+    }
+
+    void deallocate(T *p, std::size_t n) noexcept
+    {
+      std::allocator<T>().deallocate(p, n);
+    }
+
+    template <class U, class... Args>
+    void construct(U *p, Args &&...args)
+    {
+      ++counts_->construct;
+      std::construct_at(p, static_cast<Args &&>(args)...);
+    }
+
+    template <class U>
+    void destroy(U *p) noexcept
+    {
+      ++counts_->destroy;
+      std::destroy_at(p);
+    }
+
+    template <class U>
+    bool operator==(constructing_allocator<U> const &other) const noexcept
+    {
+      return counts_ == other.counts_;
+    }
+  };
+
+  TEST_CASE("function allocates from a declared frame allocator but constructs the operation "
+            "state itself",
+            "[types][function]")
+  {
+    // big enough that the erased operation state can't be stored inline
+    using big   = std::array<char, 256>;
+    using alloc = constructing_allocator<std::byte>;
+
+    allocator_counts                                                                  counts;
+    exec::function<big(), exec::queries<alloc(exec::get_frame_allocator_t) noexcept>> sndr(
+      [] { return ex::just(big{}); });
+
+    auto [ret] = ex::sync_wait(std::move(sndr)
+                               | ex::write_env(ex::prop(exec::get_frame_allocator, alloc(&counts))))
+                   .value();
+
+    REQUIRE(ret == big{});
+    REQUIRE(counts.allocate == 1);
+    REQUIRE(counts.construct == 0);
+    REQUIRE(counts.destroy == 0);
+  }
+
   //! An allocator whose allocate is declared noexcept, counting allocations
   template <class T>
   struct nothrow_allocator
