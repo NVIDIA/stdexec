@@ -40,6 +40,7 @@ set(exec_test_sources
     test_when_any.cpp
     test_at_coroutine_exit.cpp
     test_materialize.cpp
+    test_stopped_by.cpp
     $<$<BOOL:${STDEXEC_ENABLE_IO_URING}>:test_io_uring_context.cpp>
     $<$<BOOL:${STDEXEC_ENABLE_WINDOWS_THREAD_POOL}>:test_windows_thread_pool_context.cpp>
     test_trampoline_scheduler.cpp
