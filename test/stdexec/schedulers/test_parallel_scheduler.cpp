@@ -841,3 +841,14 @@ TEST_CASE("environment with a stop token can expose its stop token",
   REQUIRE(rcvr.try_query<int>(ex::get_stop_token) == std::nullopt);
   REQUIRE(rcvr.try_query<std::allocator<int>>(ex::get_allocator) == std::nullopt);
 }
+
+TEST_CASE("environment with an allocator can expose its allocator",
+          "[scheduler][parallel_scheduler]")
+{
+  auto sched = ex::get_parallel_scheduler();
+  auto work  = ex::read_env(ex::get_allocator)  //
+            | ex::continues_on(sched)           //
+            | ex::write_env(ex::prop{ex::get_allocator, std::allocator<int>{}});
+  auto [alloc] = ex::sync_wait(std::move(work)).value();
+  STATIC_REQUIRE(std::is_same_v<decltype(alloc), std::allocator<int>>);
+}

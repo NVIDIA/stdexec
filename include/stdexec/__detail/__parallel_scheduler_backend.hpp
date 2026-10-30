@@ -213,10 +213,10 @@ namespace STDEXEC
      public:
       using receiver_concept = receiver_tag;
       using __stop_token_t   = stop_token_of_t<env_of_t<_Rcvr>>;
-      using __allocator_t    = std::allocator_traits<
-           __call_result_or_t<get_allocator_t,
-                              __any_allocator<std::byte>,
-                              env_of_t<_Rcvr>>>::template rebind_alloc<std::byte>;
+      using __allocator_t =
+        __decay_t<__call_result_or_t<get_allocator_t, __any_allocator<std::byte>, env_of_t<_Rcvr>>>;
+      using __byte_allocator_t =
+        std::allocator_traits<__allocator_t>::template rebind_alloc<std::byte>;
 
       constexpr explicit __receiver_proxy_base(_Rcvr rcvr) noexcept
         : __rcvr_(static_cast<_Rcvr&&>(rcvr))
@@ -325,9 +325,9 @@ namespace STDEXEC
           auto& __val = *static_cast<std::optional<__any_allocator<std::byte>>*>(__dest);
           __val.emplace(__byte_alloc);
         }
-        else if (__value_type == __mtypeid<__allocator_t>)
+        else if (__value_type == __mtypeid<__byte_allocator_t>)
         {
-          auto& __val = *static_cast<std::optional<__allocator_t>*>(__dest);
+          auto& __val = *static_cast<std::optional<__byte_allocator_t>*>(__dest);
           __val.emplace(__byte_alloc);
         }
       }
