@@ -1875,6 +1875,44 @@ namespace
     }
   };
 
+  // A class can name a function that curries an object of the class while the
+  // class is still incomplete, e.g. in a member function's declaration.
+  struct curries_itself
+  {
+    std::string name;
+
+    using sigs = ex::completion_signatures<ex::set_value_t(std::string)>;
+
+    auto copied() const -> exec::function<ex::sender_tag(curries_itself), sigs>
+    {
+      return exec::function<ex::sender_tag(curries_itself), sigs>(
+        curries_itself(*this),
+        [](curries_itself self) noexcept { return ex::just(std::move(self.name)); });
+    }
+
+    auto borrowed_with(curries_itself other) const
+      -> exec::function<ex::sender_tag(curries_itself) const &, sigs>
+    {
+      return exec::function<ex::sender_tag(curries_itself) const &, sigs>(
+        *this,
+        std::move(other),
+        [](curries_itself const &self, curries_itself other) noexcept
+        { return ex::just(self.name + other.name); });
+    }
+  };
+
+  TEST_CASE("function can be named while a curried parameter's type is incomplete",
+            "[types][function]")
+  {
+    curries_itself const object{"one"};
+
+    auto [copied] = ex::sync_wait(object.copied()).value();
+    REQUIRE(copied == "one");
+
+    auto [both] = ex::sync_wait(object.borrowed_with(curries_itself{"two"})).value();
+    REQUIRE(both == "onetwo");
+  }
+
 #if !STDEXEC_MSVC() && !STDEXEC_CLANG_CL()
   template <class Function>
   struct function_then_char

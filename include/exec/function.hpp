@@ -669,6 +669,27 @@ namespace experimental::execution
     template <class... _Args>
     using __curried_params_t = __mlist<__curried_param_t<_Args>...>;
 
+    //! Stands in for __curried_params_t<_Args...> in the name of a function,
+    //! so that naming the function doesn't compute __curried_param_t, whose
+    //! traits need complete types. That lets a class name a function that
+    //! curries an object of the class, e.g. in the declaration of a member
+    //! function, before the class is complete. The specializations of
+    //! __function for it compute the parameter types, if they need them, when
+    //! they're instantiated.
+    struct __deferred_params
+    {};
+
+    //! What __function_meta passes for the curried parameter types of a
+    //! non-member call type whose parameters are _Args. The specialization
+    //! for __deferred_params has a constructor that expands
+    //! __curried_param_t<_Args>... before a deduced parameter, which nvc++
+    //! can't compile when _Args is empty (see __function's _Params), so a
+    //! function without curried arguments names __mlist<> instead. It loses
+    //! nothing by doing so: there's no type whose completeness matters.
+    template <class... _Args>
+    using __curried_params_or_deferred_t =
+      __if_c<sizeof...(_Args) == 0, __mlist<>, __deferred_params>;
+
     template <bool _Nothrow,
               class _Sigs,
               class _Queries,
@@ -697,7 +718,10 @@ namespace experimental::execution
     //! noexcept, also reported by the function's own environment
     //!
     //! @tparam _Params __curried_params_t<_Args...>, the types with which the
-    //! constructors take the curried arguments. Naming them as a separate pack,
+    //! constructors take the curried arguments. Only a non-member function
+    //! without curried arguments names them here, as __mlist<>; other
+    //! functions name __deferred_params and wrap this specialization (see
+    //! below). Naming them as a separate pack,
     //! rather than expanding __curried_param_t<_Args>... in the constructors'
     //! parameter lists, avoids an internal error in the name mangler of nvc++
     //! (seen with 26.1 through 26.9), which fails on a constructor template
@@ -877,6 +901,70 @@ namespace experimental::execution
       }
     };
 
+    //! This specialization of __function handles non-member functions with
+    //! curried arguments; it wraps the specialization for their curried
+    //! parameter types, which it computes only when it's instantiated (see
+    //! __deferred_params). Its constructor expands __curried_param_t<_Args>...
+    //! directly, which nvc++ compiles because _Args is never empty here.
+    template <bool _Nothrow, class _Sigs, class _Queries, class _Attrs, class... _Args>
+    class __function<_Nothrow, _Sigs, _Queries, _Attrs, __deferred_params, _Args...>
+    {
+      using __impl_t =
+        __function<_Nothrow, _Sigs, _Queries, _Attrs, __curried_params_t<_Args...>, _Args...>;
+
+      using __receiver_t = __impl_t::__receiver_t;
+      using __tag        = __impl_t::__tag;
+
+      template <class _Receiver>
+      using __opstate_t = __impl_t::template __opstate_t<_Receiver>;
+
+      // [[no_unique_address]] so that the wrapper's tail padding is the
+      // wrapped function's, as when the wrapped function is used directly.
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      __impl_t __impl_;
+
+     public:
+      using sender_concept = sender_tag;
+
+      template <class _Factory>
+        requires __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
+              && __meets_noexcept_contract<_Nothrow, _Factory, __receiver_t, _Args...>
+      constexpr explicit __function(__curried_param_t<_Args>... __args, _Factory __factory)
+        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
+        : __impl_(static_cast<__curried_param_t<_Args>>(__args)..., __factory, __tag{})
+      {}
+
+      template <class _Self, class... _Env>
+      static consteval auto get_completion_signatures()
+      {
+        static_assert(__decays_to_derived_from<_Self, __function>);
+        return __impl_t::template get_completion_signatures<__copy_cvref_t<_Self, __impl_t>,
+                                                            _Env...>();
+      }
+
+      constexpr auto get_env() const noexcept
+      {
+        return __impl_.get_env();
+      }
+
+      template <receiver _Receiver>
+      constexpr auto connect(_Receiver __rcvr) &&  //
+        noexcept(__impl_t::template __nothrow_connect<_Receiver>) -> __opstate_t<_Receiver>
+      {
+        return static_cast<__impl_t &&>(__impl_).connect(static_cast<_Receiver &&>(__rcvr));
+      }
+
+      template <receiver _Receiver>
+        requires __std::copy_constructible<__impl_t>
+      constexpr auto connect(_Receiver __rcvr) const &  //
+        noexcept(__impl_t::template __nothrow_connect<_Receiver>
+                 && __nothrow_copy_constructible<__impl_t>)  //
+        -> __opstate_t<_Receiver>
+      {
+        return __impl_.connect(static_cast<_Receiver &&>(__rcvr));
+      }
+    };
+
     //! This specialization of __function handles "member functions", which are created
     //! by specializing __make_function (below) with a cvref-qualified function type to
     //! indicate that the argument list includes an implicit self object (with the given
@@ -887,12 +975,17 @@ namespace experimental::execution
     //! a sender factory adaptor that captures the real type of the implicit object and
     //! casts the stored void pointer back to the correct type upon invocation.
     //!
+    //! A member function always names __deferred_params, whatever its arity: its
+    //! constructor expands __curried_param_t<_Args>... after the leading self
+    //! parameter, which nvc++ compiles even when _Args is empty, and its __impl_t
+    //! computes its own parameter types, so it never needs them up front and one
+    //! specialization covers every arity.
+    //!
     //! \tparam _Nothrow whether the function type is declared noexcept
     //! \tparam _Sigs the function's possible completion signatures
     //! \tparam _Queries the queries required to be supported by the environment of the
     //!                  receiver to which this function is ultimately connected
     //! \tparam _Attrs the queries supported by this function's attributes
-    //! \tparam _Params __curried_params_t<_Args...>, as for the void-pointer form
     //! \tparam _SelfBox the tag type conveying the cvref qualifiers of the implicit
     //!                  object parameter
     //! \tparam _Args the pack of explicit arguments to the sender factory
@@ -900,10 +993,9 @@ namespace experimental::execution
               class _Sigs,
               class _Queries,
               class _Attrs,
-              class... _Params,
               __is_instance_of<__self_box> _SelfBox,
               class... _Args>
-    class __function<_Nothrow, _Sigs, _Queries, _Attrs, __mlist<_Params...>, _SelfBox, _Args...>
+    class __function<_Nothrow, _Sigs, _Queries, _Attrs, __deferred_params, _SelfBox, _Args...>
     {
       using __void_pointer = _SelfBox::__void_pointer;
       using __impl_t       = __function<_Nothrow,
@@ -940,13 +1032,15 @@ namespace experimental::execution
                                            __any_receiver_ref<_Sigs, _Queries>,
                                            __declared_self_t<_Self, _SelfBox>,
                                            _Args...>
-      constexpr explicit __function(_Self &&__self, _Params... __args, _Factory __fact)
+      constexpr explicit __function(_Self &&__self,
+                                    __curried_param_t<_Args>... __args,
+                                    _Factory __fact)
         // like the base's constructor: storing the self pointer and the
         // (pointer or empty) factory can't throw, so only initializing the
         // curried arguments matters
-        noexcept((__nothrow_constructible_from<_Args, _Params> && ...))
+        noexcept((__nothrow_constructible_from<_Args, __curried_param_t<_Args>> && ...))
         : __impl_(static_cast<__void_pointer>(std::addressof(__self)),
-                  static_cast<_Params>(__args)...,
+                  static_cast<__curried_param_t<_Args>>(__args)...,
                   __self_adapting_factory<_Factory, __declared_self_t<_Self, _SelfBox>>{__fact},
                   __tag{})
       {}
@@ -1012,7 +1106,7 @@ namespace experimental::execution
 
       template <class... _LeadingArgs>
       using __make_function =
-        __function<__noexcept, _LeadingArgs..., __curried_params_t<_Args...>, _Args...>;
+        __function<__noexcept, _LeadingArgs..., __curried_params_or_deferred_t<_Args...>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -1025,7 +1119,7 @@ namespace experimental::execution
       template <class... _LeadingArgs>
       using __make_function = __function<__noexcept,
                                          _LeadingArgs...,
-                                         __curried_params_t<_Args...>,
+                                         __deferred_params,
                                          __self_box<__self_tag &>,
                                          _Args...>;
     };
@@ -1040,7 +1134,7 @@ namespace experimental::execution
       template <class... _LeadingArgs>
       using __make_function = __function<__noexcept,
                                          _LeadingArgs...,
-                                         __curried_params_t<_Args...>,
+                                         __deferred_params,
                                          __self_box<__self_tag const &>,
                                          _Args...>;
     };
@@ -1054,7 +1148,7 @@ namespace experimental::execution
 
       template <class... _LeadingArgs>
       using __make_function =
-        __function<__noexcept, _LeadingArgs..., __curried_params_t<_Args...>, _Args...>;
+        __function<__noexcept, _LeadingArgs..., __curried_params_or_deferred_t<_Args...>, _Args...>;
     };
 
     template <class _Return, class... _Args>
@@ -1067,7 +1161,7 @@ namespace experimental::execution
       template <class... _LeadingArgs>
       using __make_function = __function<__noexcept,
                                          _LeadingArgs...,
-                                         __curried_params_t<_Args...>,
+                                         __deferred_params,
                                          __self_box<__self_tag &>,
                                          _Args...>;
     };
@@ -1082,7 +1176,7 @@ namespace experimental::execution
       template <class... _LeadingArgs>
       using __make_function = __function<__noexcept,
                                          _LeadingArgs...,
-                                         __curried_params_t<_Args...>,
+                                         __deferred_params,
                                          __self_box<__self_tag const &>,
                                          _Args...>;
     };
