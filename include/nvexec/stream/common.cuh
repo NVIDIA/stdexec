@@ -104,7 +104,7 @@ namespace nv::execution
 
     template <class Sender, class Env>
     concept stream_completing_sender =
-      sender<Sender>
+      sender_in<Sender, Env>
       && gpu_stream_scheduler<
         __result_of<get_completion_scheduler<set_value_t>, env_of_t<Sender>, Env>,
         Env>;

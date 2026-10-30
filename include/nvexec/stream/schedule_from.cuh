@@ -184,7 +184,7 @@ namespace nv::execution
     struct transform_sender_for<STDEXEC::schedule_from_t>
     {
       template <class Env, class Sender>
-      auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
+      constexpr auto operator()(Env const & env, __ignore, __ignore, Sender&& sndr) const
       {
         if constexpr (stream_completing_sender<Sender, Env>)
         {
