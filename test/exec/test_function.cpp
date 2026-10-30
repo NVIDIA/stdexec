@@ -702,6 +702,16 @@ namespace
     STATIC_REQUIRE(!std::constructible_from<fn, decltype(takes_string)>);
   }
 
+  TEST_CASE("function's declared query accepts an environment for which the query has a default "
+            "answer",
+            "[types][function]")
+  {
+    // ex::env<> has no get_domain member, but ex::get_domain answers
+    // ex::default_domain for it
+    using fn = exec::function<int(), exec::queries<ex::default_domain(ex::get_domain_t) noexcept>>;
+    STATIC_REQUIRE(ex::sender_in<fn, ex::env<>>);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by the sender factory propagates out of connect",
             "[types][function]")

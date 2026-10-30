@@ -472,6 +472,25 @@ namespace
     ex::start(do_check);
   }
 
+  TEST_CASE("any_sender - a declared query accepts an environment for which the query has a "
+            "default answer",
+            "[types][any_sender]")
+  {
+    using completions_t         = ex::completion_signatures<ex::set_value_t(bool)>;
+    constexpr auto domain_query = ex::get_domain.signature<ex::default_domain() noexcept>;
+
+    using sender = exec::any_receiver_ref<completions_t, domain_query>::any_sender<>;
+
+    // ex::env<> has no get_domain member, but ex::get_domain answers
+    // ex::default_domain for it
+    STATIC_REQUIRE(ex::sender_in<sender, ex::env<>>);
+
+    sender sndr = ex::read_env(ex::get_domain)
+                | ex::then([](ex::default_domain) noexcept { return true; });
+    auto [answered] = ex::sync_wait(std::move(sndr)).value();
+    CHECK(answered);
+  }
+
   TEST_CASE("any_sender - get_completion_signatures is constrained with respect to stop-token"
             "ex::receiver stop_token queries",
             "[types][any_sender]")
