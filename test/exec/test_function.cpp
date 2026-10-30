@@ -375,6 +375,23 @@ namespace
     }
   };
 
+  //! A frame allocator whose allocate isn't declared noexcept
+  template <class T>
+  struct throwing_allocator : std::allocator<T>
+  {
+    template <class U>
+    struct rebind
+    {
+      using other = throwing_allocator<U>;
+    };
+
+    throwing_allocator() = default;
+
+    template <class U>
+    throwing_allocator(throwing_allocator<U> const &) noexcept
+    {}
+  };
+
   template <class Env>
   struct env_receiver
   {
@@ -652,6 +669,43 @@ namespace
       auto [ret] = ex::sync_wait(std::move(sndr)).value();
 
       REQUIRE(ret == 42);
+    }
+
+    SECTION("a noexcept function declaring a nothrow frame allocator may return another of its "
+            "type")
+    {
+      using fn = exec::function<
+        int() noexcept,
+        exec::queries<nothrow_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+
+      fn sndr([]() noexcept { return fn([]() noexcept { return ex::just(42); }); });
+
+      auto [ret] = ex::sync_wait(std::move(sndr)
+                                 | ex::write_env(ex::prop(exec::get_frame_allocator,
+                                                          nothrow_allocator<std::byte>())))
+                     .value();
+
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("a declared frame allocator is checked as declared")
+    {
+      // the inner function's connect allocates its frame with the declared
+      // allocator, which can throw
+      using fn = exec::function<
+        int() noexcept,
+        exec::queries<throwing_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+      using throwing_fn = exec::function<
+        int(),
+        exec::queries<throwing_allocator<std::byte>(exec::get_frame_allocator_t) noexcept>>;
+
+      auto returns_fn = []() noexcept
+      {
+        return fn([]() noexcept { return ex::just(42); });
+      };
+
+      STATIC_REQUIRE(!std::constructible_from<fn, decltype(returns_fn)>);
+      STATIC_REQUIRE(std::constructible_from<throwing_fn, decltype(returns_fn)>);
     }
 
     SECTION("a domain's transformation and the transformed sender's connect are trusted")

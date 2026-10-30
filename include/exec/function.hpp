@@ -548,14 +548,18 @@ namespace experimental::execution
 
     //! A receiver used only to check, at construction, whether connecting the
     //! factory's sender can throw. It is the type-erased receiver _Receiver
-    //! except that its environment's frame allocator is declared not to throw.
-    //! Frame-allocation failure is the caller's concern (it appears in the
-    //! conditional noexcept of function's connect), so a noexcept function type
-    //! promises only that the type-erased path doesn't throw *other than* by
-    //! failing to allocate a frame. In particular, a noexcept function whose
-    //! factory returns another noexcept function is accepted, even though the
-    //! inner function's connect allocates its frame through the outer one's
-    //! type-erased frame allocator.
+    //! without the frame allocator that __receiver_wrapper injects, and with a
+    //! frame allocator declared not to throw as a fallback. When the function
+    //! type declares get_frame_allocator, _Receiver's environment answers it,
+    //! so the declared frame allocator is checked as declared.
+    //!
+    //! Otherwise, frame-allocation failure is the caller's concern (it appears
+    //! in the conditional noexcept of function's connect), so a noexcept
+    //! function type promises only that the type-erased path doesn't throw
+    //! *other than* by failing to allocate a frame. In particular, a noexcept
+    //! function whose factory returns another noexcept function is accepted,
+    //! even though the inner function's connect allocates its frame through the
+    //! outer one's type-erased frame allocator.
     //!
     //! This is sound as long as a sender's connect depends on the frame
     //! allocator's exception behaviour only through calls to allocate: the check
@@ -566,7 +570,7 @@ namespace experimental::execution
     {
       using __prop_t = prop<get_frame_allocator_t, __nothrow_frame_allocator_stub<std::byte>>;
 
-      auto get_env() const noexcept -> __join_env_t<__prop_t, env_of_t<_Receiver>>;
+      auto get_env() const noexcept -> __join_env_t<env_of_t<_Receiver>, __prop_t>;
     };
 
     //! Satisfied when _Factory can be invoked as a const lvalue with arguments
@@ -806,7 +810,10 @@ namespace experimental::execution
       template <class _Factory>
         requires __not_decays_to<_Factory, __function>
               && __is_suitable_factory<_Factory, __function, __receiver_t, _Args...>
-              && __meets_noexcept_contract<_Nothrow, _Factory, __receiver_t, _Args...>
+              && __meets_noexcept_contract<_Nothrow,
+                                           _Factory,
+                                           __any_receiver_ref<_Sigs, _Queries>,
+                                           _Args...>
       constexpr explicit __function(_Params... __args, _Factory __factory)
         noexcept((__nothrow_constructible_from<_Args, _Params> && ...))
         : __function(static_cast<_Params>(__args)..., __factory, __tag{})
@@ -925,7 +932,7 @@ namespace experimental::execution
                                        _Args...>
               && __meets_noexcept_contract<_Nothrow,
                                            _Factory,
-                                           __receiver_t,
+                                           __any_receiver_ref<_Sigs, _Queries>,
                                            __declared_self_t<_Self, _SelfBox>,
                                            _Args...>
       constexpr explicit __function(_Self &&__self, _Params... __args, _Factory __fact)
