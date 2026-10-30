@@ -133,10 +133,14 @@ namespace experimental::execution
                                       _WITH_QUERY_(QueryFn),
                                       _WITH_ENVIRONMENT_(Env...)>;
 
+    // A type-erased query is a requirement on the receiver's environment: the
+    // environment must answer the query, with a result that converts to the
+    // query's result type, and without throwing if the query is noexcept.
     template <class QueryFn, class... Env>
-    inline constexpr auto _check_query_v = std::conditional_t<sizeof...(Env) == 0,
-                                                              __mexception<dependent_sender_error>,
-                                                              _no_query_error_t<QueryFn, Env...>>{};
+    inline constexpr auto _check_required_query_v =
+      std::conditional_t<sizeof...(Env) == 0,
+                         __mexception<dependent_sender_error>,
+                         _no_query_error_t<QueryFn, Env...>>{};
 
     // The type-erased query answers by calling the query object on the
     // receiver's environment, so check that call rather than whether the
@@ -144,13 +148,23 @@ namespace experimental::execution
     // get_domain, have an answer for an environment that doesn't.
     template <class Result, class Query, class... Args, class... Env>
       requires(__callable<Query, Env const &, Args...> || ...)
-    inline constexpr auto _check_query_v<Result(Query, Args...), Env...> =
+    inline constexpr auto _check_required_query_v<Result(Query, Args...), Env...> =
       _check_query_impl_v<Result(Query, Args...), false, Env...>;
 
     template <class Result, class Query, class... Args, class... Env>
       requires(__callable<Query, Env const &, Args...> || ...)
-    inline constexpr auto _check_query_v<Result(Query, Args...) noexcept, Env...> =
+    inline constexpr auto _check_required_query_v<Result(Query, Args...) noexcept, Env...> =
       _check_query_impl_v<Result(Query, Args...), true, Env...>;
+
+    template <class QueryFn, class... Env>
+    using _check_required_query_t = __decay_t<decltype(_check_required_query_v<QueryFn, Env...>)>;
+
+    // any_sender relaxes the requirement for the stop-token queries: when the
+    // receiver's stop token doesn't convert, its operation state bridges stop
+    // requests through an inplace_stop_source or answers with a token that is
+    // never stopped.
+    template <class QueryFn, class... Env>
+    inline constexpr auto _check_query_v = _check_required_query_v<QueryFn, Env...>;
 
     template <class... Env>
     inline constexpr auto _check_query_v<never_stop_token(get_stop_token_t) noexcept, Env...> =

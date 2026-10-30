@@ -18,6 +18,8 @@
 #include <exec/function.hpp>
 
 #include <test_common/catch2.hpp>
+#include <test_common/receivers.hpp>
+#include <test_common/schedulers.hpp>
 
 #include <stdexec/execution.hpp>
 
@@ -843,6 +845,64 @@ namespace
     // ex::default_domain for it
     using fn = exec::function<int(), exec::queries<ex::default_domain(ex::get_domain_t) noexcept>>;
     STATIC_REQUIRE(ex::sender_in<fn, ex::env<>>);
+  }
+
+  TEST_CASE("function forwards the receiver's stop token through a declared stop-token query",
+            "[types][function]")
+  {
+    using fn = exec::function<ex::sender_tag(impulse_scheduler),
+                              ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>,
+                              exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>>;
+
+    auto factory = [](impulse_scheduler sched) noexcept
+    {
+      return ex::schedule(sched);
+    };
+
+    impulse_scheduler       sched;
+    ex::inplace_stop_source source;
+    auto                    env = ex::prop{ex::get_stop_token, source.get_token()};
+
+    SECTION("a stop request made after start reaches the implementation")
+    {
+      auto op = ex::connect(fn(impulse_scheduler(sched), factory), expect_stopped_receiver{env});
+      ex::start(op);
+      source.request_stop();
+      sched.start_next();
+    }
+
+    SECTION("without a stop request, the implementation completes normally")
+    {
+      auto op = ex::connect(fn(impulse_scheduler(sched), factory), expect_void_receiver{env});
+      ex::start(op);
+      sched.start_next();
+    }
+  }
+
+  TEST_CASE("function rejects a receiver whose stop token doesn't convert to the declared one",
+            "[types][function]")
+  {
+    using inplace_env = ex::prop<ex::get_stop_token_t, ex::inplace_stop_token>;
+    using never_env   = ex::prop<ex::get_stop_token_t, ex::never_stop_token>;
+
+    SECTION("a declared inplace_stop_token requires one from the receiver")
+    {
+      using fn =
+        exec::function<int(), exec::queries<ex::inplace_stop_token(ex::get_stop_token_t) noexcept>>;
+      STATIC_REQUIRE(ex::sender_in<fn, inplace_env>);
+      STATIC_REQUIRE(!ex::sender_in<fn, never_env>);
+      // ex::get_stop_token answers ex::never_stop_token for ex::env<>
+      STATIC_REQUIRE(!ex::sender_in<fn, ex::env<>>);
+    }
+
+    SECTION("a declared never_stop_token accepts an environment without a stop token")
+    {
+      using fn =
+        exec::function<int(), exec::queries<ex::never_stop_token(ex::get_stop_token_t) noexcept>>;
+      STATIC_REQUIRE(ex::sender_in<fn, never_env>);
+      STATIC_REQUIRE(ex::sender_in<fn, ex::env<>>);
+      STATIC_REQUIRE(!ex::sender_in<fn, inplace_env>);
+    }
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
