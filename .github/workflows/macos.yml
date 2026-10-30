@@ -1,0 +1,32 @@
+# Copy this file to .github/workflows/macos-ssh.yml in your repository, then
+# start a session from the Actions tab or with `gh workflow run macos-ssh.yml`.
+#
+# See https://github.com/vasama/macos for details.
+
+name: macOS SSH Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner label (macos-latest, macos-15, macos-14, ...)
+        type: string
+        default: macos-latest
+      timeout:
+        description: Session timeout in minutes (1-350)
+        type: number
+        default: 60
+
+permissions:
+  contents: read
+
+jobs:
+  ssh:
+    name: SSH on ${{ inputs.runner }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: vasama/macos@v1
+        with:
+          timeout: ${{ inputs.timeout }}
+          authorized-keys: ${{ vars.SSH_AUTHORIZED_KEYS }}
