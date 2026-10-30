@@ -111,6 +111,15 @@ namespace STDEXEC
       }
     };
 
+    // A call through a pointer to member function has a branch for virtual functions
+    // that reads a vtable pointer from the object. When GCC cannot see which function
+    // the pointer holds, it can report that read with -Warray-bounds (if the object is
+    // smaller than a vtable pointer) or -Wmaybe-uninitialized, even for a class without
+    // virtual functions, where the branch is never taken.
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wmaybe-uninitialized")
+
     template <>
     struct __invoke_fn<true, true, false>
     {
@@ -151,6 +160,8 @@ namespace STDEXEC
         return ((*static_cast<_Ty &&>(__ty)).*__mem_ptr)(static_cast<_Args &&>(__args)...);
       }
     };
+
+    STDEXEC_PRAGMA_POP()
 
     template <class _Mbr, class _Class, class _Ty>
     using __invoke_fn_t = __invoke_fn<STDEXEC_IS_FUNCTION(_Mbr),
