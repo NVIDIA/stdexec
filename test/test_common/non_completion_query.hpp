@@ -21,7 +21,9 @@ namespace test_common
 {
   namespace ex = STDEXEC;
 
-  struct non_completion_query_t : ex::__query<non_completion_query_t>, ex::forwarding_query_t
+  struct non_completion_query_t
+    : ex::__query<non_completion_query_t>
+    , ex::forwarding_query_t
   {
     using ex::__query<non_completion_query_t>::operator();
   };
@@ -38,7 +40,7 @@ namespace test_common
 
   struct non_completion_query_sender
   {
-    using sender_concept = ex::sender_tag;
+    using sender_concept        = ex::sender_tag;
     using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
     template <ex::receiver Receiver>

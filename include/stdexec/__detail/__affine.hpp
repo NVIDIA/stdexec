@@ -167,11 +167,10 @@ namespace STDEXEC
         requires(!__completion_query<_Query>)
              && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
-      constexpr auto query(_Query __query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
-          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
+      constexpr auto query(_Query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>) -> decltype(auto)
       {
-        return __query(STDEXEC::get_env(__sndr_), static_cast<_Args &&>(__args)...);
+        return STDEXEC::get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
       }
 
       _Sender const &__sndr_;

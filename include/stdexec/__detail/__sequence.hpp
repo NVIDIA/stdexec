@@ -79,8 +79,7 @@ namespace STDEXEC
         requires __queryable_with<_env_t, _Query, _Args...>
       STDEXEC_ATTRIBUTE(nodiscard, always_inline, host, device)
       constexpr auto query(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<_env_t, _Query, _Args...>)
-          -> __query_result_t<_env_t, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<_env_t, _Query, _Args...>) -> decltype(auto)
       {
         return STDEXEC::get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
       }
@@ -174,8 +173,7 @@ namespace STDEXEC
         requires(!__completion_query<_Query>) && __queryable_with<__joined_t, _Query, _Args...>
       [[nodiscard]]
       constexpr auto operator()(_Query, _Args &&...__args) const
-        noexcept(__nothrow_queryable_with<__joined_t, _Query, _Args...>)
-          -> __query_result_t<__joined_t, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<__joined_t, _Query, _Args...>) -> decltype(auto)
       {
         return __joined_t{STDEXEC::get_env(__sndr2_), STDEXEC::get_env(__sndr1_)}
           .query(_Query(), static_cast<_Args &&>(__args)...);

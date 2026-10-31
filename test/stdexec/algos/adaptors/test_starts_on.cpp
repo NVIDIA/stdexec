@@ -20,10 +20,10 @@
 #include <exec/sender_for.hpp>
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <test_common/non_completion_query.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
-#include <test_common/non_completion_query.hpp>
 
 #if STDEXEC_USE_MODULES()
 import std;
