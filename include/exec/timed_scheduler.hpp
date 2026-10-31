@@ -217,9 +217,8 @@ namespace experimental::execution
         // scheduler as a `const __sched_t&`. Probe the native sender type the
         // same way, so instead-of-inventory such as the completion-scheduler
         // claim is computed from the overload the deferred call resolves to.
-        using __native_sender_t = __call_result_t<__schedule_at_base_t,
-                                                  __sched_t const &,
-                                                  time_point_of_t<_Scheduler> const &>;
+        using __native_sender_t =
+          __call_result_t<__schedule_at_base_t, __sched_t const &, time_point_of_t<_Scheduler>>;
 
         return __sexpr{
           __timed_scheduler_fallback::__tag(),
@@ -287,9 +286,8 @@ namespace experimental::execution
         using __sched_t = __decay_t<_Scheduler>;
         // Same as above: probe through the const-qualified lvalue the
         // deferred lambda captures, not the call site's value category.
-        using __native_sender_t = __call_result_t<__schedule_after_base_t,
-                                                  __sched_t const &,
-                                                  duration_of_t<_Scheduler> const &>;
+        using __native_sender_t =
+          __call_result_t<__schedule_after_base_t, __sched_t const &, duration_of_t<_Scheduler>>;
 
         return __sexpr{__timed_scheduler_fallback::__tag(),
                        __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
