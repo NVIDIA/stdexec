@@ -29,6 +29,7 @@
 import std;
 #else
 #  include <chrono>  // IWYU pragma: keep for chrono_literals
+#  include <cstdint>
 #  include <exception>
 #  include <memory>
 #endif
@@ -80,6 +81,25 @@ namespace
   {
     ex::sender auto snd = ex::just() | ex::let_value([] { return ex::just(); });
     STDEXEC::sync_wait(std::move(snd));
+  }
+
+  // Regression test for https://github.com/NVIDIA/stdexec/issues/2099: MSVC miscompiled
+  // the layout of [[msvc::no_unique_address]] members, so constructing this sender wrote
+  // past the end of a stack temporary and corrupted the captured values.
+  TEST_CASE("let_value preserves a function's captures alongside a nested sender",
+            "[adaptors][let_value]")
+  {
+    auto work = ex::just() | ex::let_value([] { return ex::just(); });
+    auto snd  = ex::just(std::uintptr_t{0x1111})
+             | ex::let_value(
+                 [sentinel = 0x5A5A5A5A, work](std::uintptr_t v)
+                 {
+                   (void) work;
+                   return ex::just(sentinel, v);
+                 });
+    auto [sentinel, v] = STDEXEC::sync_wait(std::move(snd)).value();
+    CHECK(sentinel == 0x5A5A5A5A);
+    CHECK(v == 0x1111);
   }
 
   TEST_CASE("let_value can be used to produce values", "[adaptors][let_value]")
