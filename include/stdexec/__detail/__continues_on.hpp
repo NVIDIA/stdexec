@@ -268,8 +268,7 @@ namespace STDEXEC
              && __queryable_with<env_of_t<_Sender>, _Query, _Args...>
       [[nodiscard]]
       constexpr auto query(_Query, _Args&&... __args) const
-        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>)
-          -> __query_result_t<env_of_t<_Sender>, _Query, _Args...>
+        noexcept(__nothrow_queryable_with<env_of_t<_Sender>, _Query, _Args...>) -> decltype(auto)
       {
         return __attrs_.query(_Query(), static_cast<_Args&&>(__args)...);
       }
@@ -360,8 +359,7 @@ namespace STDEXEC
           }
           STDEXEC_CATCH_ALL
           {
-            STDEXEC::set_error(static_cast<_State&&>(__state).__rcvr_, std::current_exception());
-            return;
+            __state.__data_.__emplace_from(__mktuple, set_error, std::current_exception());
           }
         }
 

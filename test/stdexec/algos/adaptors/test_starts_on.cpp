@@ -20,6 +20,7 @@
 #include <exec/sender_for.hpp>
 #include <exec/start_detached.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <test_common/non_completion_query.hpp>
 #include <test_common/receivers.hpp>
 #include <test_common/schedulers.hpp>
 #include <test_common/type_helpers.hpp>
@@ -46,6 +47,12 @@ namespace
     auto snd = ex::starts_on(inline_scheduler{}, ex::just(13));
     static_assert(ex::sender<decltype(snd)>);
     (void) snd;
+  }
+
+  TEST_CASE("starts_on forwards non-completion queries", "[adaptors][starts_on]")
+  {
+    auto snd = ex::starts_on(inline_scheduler{}, test_common::non_completion_query_sender{});
+    CHECK(test_common::non_completion_query(ex::get_env(snd), 41) == 42);
   }
 
   TEST_CASE("starts_on with environment returns a sender", "[adaptors][starts_on]")
