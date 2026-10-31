@@ -28,7 +28,6 @@ import stdexec;
 // include these after __execution_fwd.hpp
 #  include "__basic_sender.hpp"
 #  include "__env.hpp"
-#  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
 
 #  include "__prologue.hpp"
@@ -36,18 +35,47 @@ import stdexec;
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
-  // __write adaptor
+  // write_env adaptor
   namespace __write
   {
+    // The attributes of a sender adaptor that does not introduce asynchrony.
+    template <class _Env2, class _Child>
+    struct __attrs
+    {
+      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Env>
+        requires __completion_query<_Query>
+              && __queryable_with<_Attrs, _Query, __join_env_t<_Env2 const &, _Env const &>...>
+      [[nodiscard]]
+      constexpr auto query(_Query, _Env const &...__env) const noexcept(
+        __nothrow_queryable_with<_Attrs, _Query, __join_env_t<_Env2 const &, _Env const &>...>)
+        -> __query_result_t<_Attrs, _Query, __join_env_t<_Env2 const &, _Env const &>...>
+      {
+        return get_env(__child_).query(_Query(), STDEXEC::__env::__join(__env2_, __env)...);
+      }
+
+      template <class _Attrs = env_of_t<_Child>, __forwarding_query _Query, class... _Args>
+        requires(!__completion_query<_Query>) && __queryable_with<_Attrs, _Query, _Args...>
+      [[nodiscard]]
+      constexpr auto query(_Query, _Args &&...__args) const
+        noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>)
+          -> __query_result_t<_Attrs, _Query, _Args...>
+      {
+        return get_env(__child_).query(_Query(), static_cast<_Args &&>(__args)...);
+      }
+
+      _Env2 const  &__env2_;
+      _Child const &__child_;
+    };
+
     struct __write_env_impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+        []<class _Env2, class _Child>(__ignore, _Env2 const &__env2, _Child const &__child) noexcept
       {
-        return __sync_attrs{__child};
+        return __attrs<_Env2, _Child>{__env2, __child};
       };
 
-      static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
+      static constexpr auto __get_env = []<class _State>(__ignore, _State const &__state) noexcept
         -> decltype(__env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_)))
       {
         return __env::__join(__state.__data_, STDEXEC::get_env(__state.__rcvr_));
@@ -57,9 +85,9 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, __write_env_t>);
-        return STDEXEC::get_completion_signatures<
-          __child_of<_Self>,
-          __minvoke_q<__join_env_t, __decay_t<__data_of<_Self>> const &, _Env>...>();
+        using __env2_t = __decay_t<__data_of<_Self>>;
+        return STDEXEC::get_completion_signatures<__child_of<_Self>,
+                                                  __join_env_t<__env2_t const &, _Env>...>();
       }
     };
   }  // namespace __write
@@ -67,16 +95,16 @@ namespace STDEXEC
   struct __write_env_t
   {
     template <sender _Sender, class _Env>
-    constexpr auto operator()(_Sender&& __sndr, _Env __env) const
+    constexpr auto operator()(_Sender &&__sndr, _Env __env) const
     {
-      return __sexpr{__write_env_t(), static_cast<_Env&&>(__env), static_cast<_Sender&&>(__sndr)};
+      return __sexpr{__write_env_t(), static_cast<_Env &&>(__env), static_cast<_Sender &&>(__sndr)};
     }
 
     template <class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
     constexpr auto operator()(_Env __env) const
     {
-      return __closure(*this, static_cast<_Env&&>(__env));
+      return __closure(*this, static_cast<_Env &&>(__env));
     }
   };
 
