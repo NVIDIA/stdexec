@@ -91,11 +91,12 @@ namespace
   {
     auto work = ex::just() | ex::let_value([] { return ex::just(); });
     auto snd  = ex::just(std::uintptr_t{0x1111})
-             | ex::let_value([sentinel = 0x5A5A5A5A, work](std::uintptr_t v)
-                             {
-                               (void) work;
-                               return ex::just(sentinel, v);
-                             });
+             | ex::let_value(
+                 [sentinel = 0x5A5A5A5A, work](std::uintptr_t v)
+                 {
+                   (void) work;
+                   return ex::just(sentinel, v);
+                 });
     auto [sentinel, v] = STDEXEC::sync_wait(std::move(snd)).value();
     CHECK(sentinel == 0x5A5A5A5A);
     CHECK(v == 0x1111);
