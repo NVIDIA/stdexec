@@ -213,17 +213,22 @@ namespace experimental::execution
       operator()(_Scheduler &&__sched, const duration_of_t<_Scheduler> &__duration) const noexcept
       {
         using __sched_t = __decay_t<_Scheduler>;
+        // The let_value sender below invokes the native CPO with the captured
+        // scheduler as a `const __sched_t&`. Probe the native sender type the
+        // same way, so instead-of-inventory such as the completion-scheduler
+        // claim is computed from the overload the deferred call resolves to.
         using __native_sender_t =
-          __call_result_t<__schedule_at_base_t, _Scheduler, time_point_of_t<_Scheduler> const &>;
+          __call_result_t<__schedule_at_base_t, __sched_t const &, time_point_of_t<_Scheduler>>;
 
         return __sexpr{
           __timed_scheduler_fallback::__tag(),
           __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
-          let_value(just(),
-                    [__sched, __duration]() noexcept(
-                      __nothrow_callable<schedule_at_t, _Scheduler &, time_point_of_t<_Scheduler>>
-                        &&__nothrow_callable<now_t, _Scheduler &>)
-                    { return schedule_at(__sched, now(__sched) + __duration); })};
+          let_value(
+            just(),
+            [__sched, __duration]() noexcept(
+              __nothrow_callable<schedule_at_t, __sched_t const &, time_point_of_t<_Scheduler>>
+                &&__nothrow_callable<now_t, __sched_t const &>)
+            { return schedule_at(__sched, now(__sched) + __duration); })};
       }
     };
   }  // namespace __schedule_after
@@ -279,8 +284,10 @@ namespace experimental::execution
         noexcept(noexcept(schedule_after(__sched, __time_point - now(__sched))))
       {
         using __sched_t = __decay_t<_Scheduler>;
+        // Same as above: probe through the const-qualified lvalue the
+        // deferred lambda captures, not the call site's value category.
         using __native_sender_t =
-          __call_result_t<__schedule_after_base_t, _Scheduler, duration_of_t<_Scheduler> const &>;
+          __call_result_t<__schedule_after_base_t, __sched_t const &, duration_of_t<_Scheduler>>;
 
         return __sexpr{__timed_scheduler_fallback::__tag(),
                        __timed_scheduler_fallback::__data<__sched_t, __native_sender_t>{__sched},
