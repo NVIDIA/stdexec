@@ -179,24 +179,26 @@ namespace nv::execution::_strm
 
     struct sync_wait_t
     {
-      template <sender_in<env> Sender>
+      template <stream_completing_sender<env> Sender>
         requires(__count_of<set_value_t, Sender, env>::value == 1)
-      auto operator()(context ctx, Sender&& sndr) const  //
-        -> std::optional<sync_wait_result_t<Sender>>
+      auto operator()(Sender&& sndr) const -> std::optional<sync_wait_result_t<Sender>>
       {
         using state_t = _sync_wait::state<Sender>;
         state_t  state{};
         run_loop loop;
 
+        auto sched = STDEXEC::get_completion_scheduler<set_value_t>(STDEXEC::get_env(sndr),
+                                                                    env{loop.get_scheduler()});
+
         cudaError_t status  = cudaSuccess;
         auto        opstate = host_allocate<exit_opstate_t<Sender, receiver<Sender>>>(
           status,
-          ctx.pinned_resource_,
+          sched.ctx_.pinned_resource_,
           __emplace_from{[&]
                          {
                            return exit_opstate(static_cast<Sender&&>(sndr),
                                                receiver<Sender>{{}, &state, &loop},
-                                               ctx);
+                                               sched.ctx_);
                          }});
         if (status != cudaSuccess)
         {
@@ -222,15 +224,8 @@ namespace nv::execution::_strm
   }  // namespace _sync_wait
 
   template <>
-  struct apply_sender_for<sync_wait_t>
-  {
-    template <stream_completing_sender<STDEXEC::env<>> Sender>
-    auto operator()(Sender&& sndr) const
-    {
-      auto sched = get_completion_scheduler<set_value_t>(get_env(sndr), STDEXEC::env{});
-      return _sync_wait::sync_wait_t{}(sched.ctx_, static_cast<Sender&&>(sndr));
-    }
-  };
+  struct apply_sender_for<sync_wait_t> : _sync_wait::sync_wait_t
+  {};
 }  // namespace nv::execution::_strm
 
 namespace nvexec = nv::execution;
