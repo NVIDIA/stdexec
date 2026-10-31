@@ -1,8 +1,12 @@
-#include <stdexec/execution.hpp>
 #include <test_common/catch2.hpp>
 
+#include <stdexec/execution.hpp>
+
+#include <exec/env.hpp>
+
+#include <nvexec/stream_context.cuh>
+
 #include "common.cuh"
-#include "nvexec/stream_context.cuh"
 
 #include <cuda/std/span>
 
@@ -26,7 +30,7 @@ namespace
     nvexec::stream_context stream_ctx{};
     auto const snd = ex::schedule(stream_ctx.get_scheduler()) | ex::bulk(ex::par, 1, [](int) {});
 
-    REQUIRE(STDEXEC::sync_wait(snd).has_value());
+    REQUIRE(ex::sync_wait(snd).has_value());
   }
 
   TEST_CASE("nvexec bulk executes on GPU", "[cuda][stream][adaptors][bulk]")
@@ -46,7 +50,7 @@ namespace
                             flags.set(idx);
                           }
                         });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -71,7 +75,7 @@ namespace
                             }
                           }
                         });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -96,7 +100,7 @@ namespace
                             }
                           }
                         });
-    auto const [i, d] = STDEXEC::sync_wait(std::move(snd)).value();
+    auto const [i, d] = ex::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
     REQUIRE(i == 42);
@@ -122,7 +126,7 @@ namespace
                             flags.set(idx);
                           }
                         });
-    [[maybe_unused]] auto [flags_actual] = STDEXEC::sync_wait(std::move(snd)).value();
+    [[maybe_unused]] auto [flags_actual] = ex::sync_wait(std::move(snd)).value();
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -152,7 +156,7 @@ namespace
                      flags.set(2);
                    }
                  });
-    STDEXEC::sync_wait(std::move(snd));
+    ex::sync_wait(std::move(snd));
 
     REQUIRE(flags_storage.all_set_once());
   }
@@ -183,7 +187,7 @@ namespace
                               flags.set(idx);
                             }
                           });
-      STDEXEC::sync_wait(std::move(snd));
+      ex::sync_wait(std::move(snd));
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -205,7 +209,7 @@ namespace
                               flags.set(idx);
                             }
                           });
-      STDEXEC::sync_wait(std::move(snd)).value();
+      ex::sync_wait(std::move(snd)).value();
 
       REQUIRE(flags_storage.all_set_once());
     }
@@ -220,19 +224,19 @@ namespace
     int const nelems = 10;
     cudaMallocManaged(&inout, nelems * sizeof(double));
 
-    auto task = STDEXEC::just(cuda::std::span<double>{inout, nelems})
-              | STDEXEC::continues_on(ctx.get_scheduler())
-              | STDEXEC::bulk(ex::par,
-                              nelems,
-                              [](std::size_t i, cuda::std::span<double> out)
-                              { out[i] = (double) i; })
-              | STDEXEC::let_value([](cuda::std::span<double> out) { return STDEXEC::just(out); })
-              | STDEXEC::bulk(ex::par,
-                              nelems,
-                              [](std::size_t i, cuda::std::span<double> out)
-                              { out[i] = 2.0 * out[i]; });
+    auto task = ex::just(cuda::std::span<double>{inout, nelems})
+              | ex::continues_on(ctx.get_scheduler())
+              | ex::bulk(ex::par,
+                         nelems,
+                         [](std::size_t i, cuda::std::span<double> out) { out[i] = (double) i; })
+              | ex::let_value([](cuda::std::span<double> out) { return ex::just(out); })
+              | exec::write_attrs(
+                  ex::prop{ex::get_completion_scheduler<ex::set_value_t>, ctx.get_scheduler()})
+              | ex::bulk(ex::par,
+                         nelems,
+                         [](std::size_t i, cuda::std::span<double> out) { out[i] = 2.0 * out[i]; });
 
-    STDEXEC::sync_wait(std::move(task)).value();
+    ex::sync_wait(std::move(task)).value();
 
     for (int i = 0; i < nelems; ++i)
     {
