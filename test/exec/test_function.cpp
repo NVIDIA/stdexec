@@ -209,6 +209,62 @@ namespace
     }
   }
 
+  struct constant_object
+  {
+    int i;
+  };
+
+  inline constexpr constant_object the_constant_object{42};
+
+  inline constexpr exec::function<int(int) noexcept>
+    constant_function(41, [](int i) noexcept { return ex::just(i + 1); });
+
+  inline constexpr exec::function<int() const &>
+    constant_member_function(the_constant_object,
+                             [](constant_object const &self) noexcept { return ex::just(self.i); });
+
+  inline constexpr exec::function<int(void const *) noexcept>
+    constant_void_pointer_function(&the_constant_object,
+                                   [](void const *p) noexcept
+                                   {
+                                     return ex::just(static_cast<constant_object const *>(p)->i);
+                                   });
+
+  TEST_CASE("exec::function can be constructed in constant evaluation from an empty callable",
+            "[types][function]")
+  {
+    SECTION("a function constructed at compile time runs at run time")
+    {
+      auto [ret] = ex::sync_wait(constant_function).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("so does a member function")
+    {
+      auto [ret] = ex::sync_wait(constant_member_function).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("so does a function with a curried void pointer")
+    {
+      auto [ret] = ex::sync_wait(constant_void_pointer_function).value();
+      REQUIRE(ret == 42);
+    }
+
+    SECTION("construction, copy and move can all be constant-evaluated")
+    {
+      constexpr bool ok = []
+      {
+        exec::function<void(int)> fn(5, [](int) noexcept { return ex::just(); });
+        auto                      copy  = fn;
+        auto                      moved = std::move(copy);
+        fn                              = moved;
+        return true;
+      }();
+      STATIC_REQUIRE(ok);
+    }
+  }
+
   TEST_CASE("exec::function is connectable", "[types][function]")
   {
     SECTION("int() noexcept from just(42)")
