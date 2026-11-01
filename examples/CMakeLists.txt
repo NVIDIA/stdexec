@@ -61,6 +61,7 @@ set(stdexec_examples
     "example.sudoku : sudoku.cpp"
     "example.retry : retry.cpp"
     "example.then : then.cpp"
+    "example.frames : frames/demo.cpp"
     "example.server_theme.let_value : server_theme/let_value.cpp"
     "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
     "example.server_theme.then_upon : server_theme/then_upon.cpp"
