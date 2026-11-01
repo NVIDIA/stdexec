@@ -74,19 +74,9 @@ target_link_libraries(test.nvexec.stream_pool STDEXEC::nvexec stdexec_executable
 
 catch_discover_tests(test.nvexec.stream_pool PROPERTIES TIMEOUT 30)
 
-icm_add_build_failure_test(
-  NAME
-  when_all_fail
-  TARGET
-  when_all_fail
-  SOURCES
-  PARSE
-  when_all_fail.cpp
-  LIBRARIES
-  stdexec
-  nvexec
-  FOLDER
-  test)
+stdexec_add_build_failure_test(
+  NAME when_all_fail SOURCE when_all_fail.cpp
+  LIBRARIES stdexec nvexec)
 if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "NVHPC"))
   set_source_files_properties(when_all_fail.cpp PROPERTIES LANGUAGE CUDA)
 endif()

@@ -177,7 +177,7 @@ endif()
 include(${Catch2_SOURCE_DIR}/extras/Catch.cmake)
 
 # For testing that builds fail as expected
-include(${icm_SOURCE_DIR}/icm_build_failure_testing.cmake)
+include(BuildFailureTests)
 
 catch_discover_tests(test.stdexec PROPERTIES TIMEOUT 30)
 
@@ -222,37 +222,15 @@ if(NOT STDEXEC_BUILD_MODULES)
 
   # build failure tests: tests which parse a source file for an expected error
   # message
-  icm_add_build_failure_test(
-    NAME
-    test_let_fail1
-    TARGET
-    test_let_fail1
-    SOURCES
-    PARSE
-    stdexec/algos/adaptors/test_let_fail1.cpp
-    LIBRARIES
-    stdexec
-    FOLDER
-    test)
+  stdexec_add_build_failure_test(
+    NAME test_let_fail1 SOURCE stdexec/algos/adaptors/test_let_fail1.cpp
+    LIBRARIES stdexec)
 
-  icm_add_build_failure_test(
-    NAME
-    test_then_fail1
-    TARGET
-    test_then_fail1
-    SOURCES
-    PARSE
-    stdexec/algos/adaptors/test_then_fail1.cpp
-    LIBRARIES
-    stdexec
-    FOLDER
-    test)
+  stdexec_add_build_failure_test(
+    NAME test_then_fail1 SOURCE stdexec/algos/adaptors/test_then_fail1.cpp
+    LIBRARIES stdexec)
 
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)
   endif()
 endif()
-
-# # Adding multiple tests with a glob icm_glob_build_failure_tests( PATTERN
-# *_fail*.cpp LIBRARIES stdexec PREFIX stdexec FOLDER
-# test/stdexec/algos/adaptors )
