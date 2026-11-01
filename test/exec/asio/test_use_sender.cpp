@@ -20,6 +20,7 @@
 #include <exec/asio/use_sender.hpp>
 
 #include <test_common/receivers.hpp>
+#include <test_common/senders.hpp>
 #include <test_common/type_helpers.hpp>
 
 #include <test_common/catch2.hpp>
@@ -37,29 +38,54 @@ using namespace exec::asio;
 
 namespace
 {
+  TEST_CASE("use_sender completion signatures", "[asioexec][use_sender]")
+  {
+    {
+      using sndr_t = ::exec::asio::detail::use_sender::sender<  //
+        a_sender_of<set_value_t(std::error_code),               //
+                    set_stopped_t(),
+                    set_error_t(std::exception_ptr)>>;
 
-  static_assert(
-    set_equivalent<
-      detail::use_sender::completion_signatures<
-        completion_signatures<set_value_t(std::error_code),
-                              set_stopped_t(),
-                              set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
-  static_assert(
-    set_equivalent<
-      detail::use_sender::completion_signatures<
-        completion_signatures<set_value_t(error_code),
-                              set_stopped_t(),
-                              set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
-  static_assert(
-    set_equivalent<
-      detail::use_sender::completion_signatures<
-        completion_signatures<set_value_t(error_code, int),
-                              set_value_t(int),
-                              set_stopped_t(),
-                              set_error_t(std::exception_ptr)>>,
-      completion_signatures<set_value_t(int), set_stopped_t(), set_error_t(std::exception_ptr)>>);
+      constexpr auto actual   = ::STDEXEC::get_completion_signatures<sndr_t>();
+      constexpr auto expected = completion_signatures<  //
+        set_value_t(),
+        set_stopped_t(),
+        set_error_t(std::exception_ptr)>();
+
+      STATIC_REQUIRE(actual == expected);
+    }
+
+    {
+      using sndr_t = ::exec::asio::detail::use_sender::sender<  //
+        a_sender_of<set_value_t(error_code),                    //
+                    set_stopped_t(),
+                    set_error_t(std::exception_ptr)>>;
+
+      constexpr auto actual   = ::STDEXEC::get_completion_signatures<sndr_t>();
+      constexpr auto expected = completion_signatures<  //
+        set_value_t(),
+        set_stopped_t(),
+        set_error_t(std::exception_ptr)>();
+
+      STATIC_REQUIRE(actual == expected);
+    }
+
+    {
+      using sndr_t = ::exec::asio::detail::use_sender::sender<  //
+        a_sender_of<set_value_t(error_code, int),               //
+                    set_value_t(int),
+                    set_stopped_t(),
+                    set_error_t(std::exception_ptr)>>;
+
+      constexpr auto actual   = ::STDEXEC::get_completion_signatures<sndr_t>();
+      constexpr auto expected = completion_signatures<  //
+        set_value_t(int),
+        set_stopped_t(),
+        set_error_t(std::exception_ptr)>();
+
+      STATIC_REQUIRE(actual == expected);
+    }
+  }
 
   TEST_CASE("Asio-based asynchronous operation ends with set_stopped when "
             "cancellation occurs",
@@ -82,13 +108,13 @@ namespace
     asio_impl::system_timer t(ctx);
     t.expires_after(std::chrono::years(1));
     auto sender = t.async_wait(use_sender);
-    static_assert(::STDEXEC::sender_in<decltype(sender)>);
-    static_assert(::STDEXEC::sender_of<decltype(sender), ::STDEXEC::set_value_t()>);
-    static_assert(
+    STATIC_REQUIRE(::STDEXEC::sender_in<decltype(sender)>);
+    STATIC_REQUIRE(::STDEXEC::sender_of<decltype(sender), ::STDEXEC::set_value_t()>);
+    STATIC_REQUIRE(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<decltype(sender), ::STDEXEC::env<>>,
         completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
-    static_assert(
+    STATIC_REQUIRE(
       set_equivalent<
         ::STDEXEC::completion_signatures_of_t<const decltype(sender)&, ::STDEXEC::env<>>,
         completion_signatures<set_value_t(), set_stopped_t(), set_error_t(std::exception_ptr)>>);
@@ -247,7 +273,7 @@ namespace
     bool                  invoked = false;
     asio_impl::io_context ctx;
     auto                  t = use_sender.as_default_on(asio_impl::system_timer(ctx));
-    static_assert(
+    STATIC_REQUIRE(
       std::is_same_v<decltype(t), use_sender_t::as_default_on_t<asio_impl::system_timer>>);
     t.expires_after(std::chrono::milliseconds(5));
     auto op = ::STDEXEC::connect(t.async_wait(), expect_void_receiver_ex(invoked));

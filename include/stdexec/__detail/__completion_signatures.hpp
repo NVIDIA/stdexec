@@ -421,6 +421,7 @@ namespace STDEXEC
       return __reduce(__transform(static_cast<_Sigs*>(nullptr))...);
     }
 
+    //! NOT TO SPEC
     template <class... _OtherSigs>
     [[nodiscard]]
     consteval bool operator==(completion_signatures<_OtherSigs...> const &) const noexcept
