@@ -64,6 +64,61 @@ to `outer`.
    frames in its own buffer; the third falls back to the strand's slab.
 5. **No storage, no change.** Without a root, `indirect` uses the heap.
 
+## Part two: operation states as sequences of phases
+
+`typestate.hpp` reimplements `just`, `then`, `let_value` and a binary
+`sequence` with operation states that hold one *phase* at a time:
+
+- **`phased<Rcvr, Phases...>`** holds the operation's receiver and storage
+  sized for the largest phase. It doesn't record which phase is live.
+- **`phase_receiver<Op, Rcvr, Tag>`** is the receiver a phase's child
+  completes through. Its type names the phase, so each completion handler
+  knows statically what the storage holds. `let_value` has one possible
+  second phase per value signature of its child, each with its own receiver
+  type.
+- **A transition** runs inside the live phase's completion: move what the
+  next phase needs onto the stack, destroy the live phase, then construct the
+  next phase in the same storage and start it.
+- **Eager teardown.** The last phase is destroyed the same way before the
+  operation's own receiver is completed, with the results moved onto the
+  stack first. So the destructor needs one bit: was the operation started?
+
+| Section | Shows |
+|---|---|
+| 6 | The four algorithms composed under `sync_wait`. |
+| 7 | `let_value` choosing between an `int` phase and a `string` phase by receiver type alone; errors and stopped passing through. |
+| 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
+| 9 | Operation-state sizes against stdexec's own algorithms. |
+| 10 | An exception thrown by `then`'s function ending the phase and completing with `set_error`. |
+
+Sizes (x86-64, GCC 13 and Clang 18 agree):
+
+| Pipeline | stdexec | typestate |
+|---|---|---|
+| `let_value(just(big), fn)`, `big` 256 bytes | 552 | 288 |
+| `sequence(just(big), just(big))` (stdexec: `let_value` making the second) | 560 | 536 |
+| `then(just(1), fn)` | 24 | 32 |
+
+`let_value` gains because its arguments live in the second phase, which
+reuses the first phase's bytes; stdexec keeps them alongside the shared
+storage. `sequence` gains nothing because the second sender waits in the
+first phase. `then` loses 8 bytes to the started bit and its padding.
+
+What it costs, and what it taught:
+
+- **Copies.** Everything crossing a phase boundary, or leaving the last
+  phase, is moved through the stack: `then`'s function and arguments,
+  `let_value`'s function (twice) and arguments, every final result.
+  stdexec's `then` passes its child's arguments straight to the function.
+- **`let_value`'s function must move into the second phase**, not die on
+  the stack: the sender it returns may refer to its captures.
+- **The transition is boilerplate.** `then`, `let_value` and `sequence`
+  each repeat the same "move out, leave, enter, start, or fail" sequence with
+  its own exception handling. It wants to be one helper on `phased`.
+- **Completion signatures are still most of the work.** About 130 of the
+  header's ~780 lines compute them, and phases don't help with that; every
+  algorithm here conservatively declares `set_error_t(std::exception_ptr)`.
+
 ## Open questions
 
 - **Who may forward the query.** Making the query non-forwarding wouldn't
@@ -79,7 +134,9 @@ to `outer`.
   relies on the same rule.
 - **Frame overhead.** Each receiver carries a copy of the storage cursor
   (five pointers here); that is most of each 56–64-byte frame in the demo.
-- **Simplifications.** Fixed-size slabs (an oversized frame fails instead of
+- **Simplifications.** The typestate senders connect as rvalues only, and
+  `let_value` doesn't add a completion scheduler to its second phase's
+  environment. Fixed-size slabs (an oversized frame fails instead of
   getting an oversized slab), allocation failure always throws `bad_alloc`
   (or terminates without exceptions), no `fork(n)`, no `spawn`, no
   coroutines.
