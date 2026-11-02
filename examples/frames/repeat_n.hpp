@@ -18,16 +18,18 @@ namespace frames::typestate
   // iteration; each time, the phase binds the stored child sender without
   // consuming it, so a child that can bind is never copied. (A child that
   // can't, such as any stdexec sender, is connected as a const lvalue, which
-  // copies it, as exec::repeat_n does.) The child stays in the stored
-  // sender.
+  // copies it, as exec::repeat_n does.)
   //
   // Prototype simplification: no trampoline, so a child that completes
   // inline makes each iteration a nested call.
 
-  template <class Ending, class Entry, class Sndr>
+  template <class Ending, class Entry, class Data, class Sndr>
   struct repeat_n_sender
   {
     using sender_concept = ex::sender_t;
+
+    Sndr        sndr_;
+    std::size_t count_;
 
     struct values_fn
     {
@@ -59,6 +61,7 @@ namespace frames::typestate
       struct iteration_tag
       {};
 
+      using parts_t = parts<&repeat_n_sender::sndr_>;
       using rcvr_t  = phase_receiver<opstate, Rcvr, iteration_tag, Sndr const>;
       using child_t = bind_result_t<Sndr const, rcvr_t>;
 
@@ -76,19 +79,23 @@ namespace frames::typestate
         child_t child;
       };
 
-      explicit opstate(Rcvr rcvr)
-        : opstate(rcvr.bound_sender().count_, static_cast<Rcvr&&>(rcvr))
+      template <class... Incoming>
+      explicit opstate(Rcvr rcvr, Incoming&... incoming)
+        : opstate(peek<&repeat_n_sender::count_>(rcvr, incoming...),
+                  static_cast<Rcvr&&>(rcvr),
+                  incoming...)
       {}
 
-      opstate(std::size_t count, Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr), carried{count})
+      template <class... Incoming>
+      opstate(std::size_t count, Rcvr rcvr, Incoming&... incoming)
+        : phases_(static_cast<Rcvr&&>(rcvr), carried{count}, incoming...)
       {
-        phases_.on_connect(this);
+        phases_.on_connect(this, incoming...);
       }
 
       auto child_sender() noexcept -> Sndr const &
       {
-        return self().sndr_;
+        return phases_.template part<&repeat_n_sender::sndr_>();
       }
 
       void start() & noexcept
@@ -134,39 +141,33 @@ namespace frames::typestate
         return child_sender();
       }
 
-      // The sender this operation is bound to, found through the receiver
-      // rather than stored.
-      auto self() noexcept -> maybe_const<Const, repeat_n_sender>&
-      {
-        return phases_.receiver().bound_sender();
-      }
-
-      phased<Ending, carried_layout, Entry, Rcvr, carried, iteration> phases_;
+      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, carried, iteration> phases_;
     };
 
     template <class Rcvr>
-    auto connect(Rcvr rcvr) && -> root<repeat_n_sender, Rcvr>
+    auto connect(Rcvr rcvr) &&
     {
-      return root<repeat_n_sender, Rcvr>(std::move(*this), static_cast<Rcvr&&>(rcvr));
+      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     // repeat_n only ever reads its child sender, so binding it consumes
     // nothing either way.
     template <class Rcvr>
-      requires requires(Rcvr const & r) { r.bound_sender(); }
+      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
       return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
     }
-
-    Sndr        sndr_;
-    std::size_t count_;
   };
 
-  template <class Ending = eager_teardown, class Entry = connect_entry, class Sndr>
+  template <class Ending = eager_teardown,
+            class Entry  = connect_entry,
+            class Data   = stored_sender,
+            class Sndr>
   auto repeat_n(Sndr&& sndr, std::size_t count)
   {
-    return repeat_n_sender<Ending, Entry, std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr), count};
+    return repeat_n_sender<Ending, Entry, Data, std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr),
+                                                                    count};
   }
 }  // namespace frames::typestate

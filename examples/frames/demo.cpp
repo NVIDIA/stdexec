@@ -149,52 +149,59 @@ namespace
     }
   }
 
-  // The typestate algorithms under one ending and one entry.
-  template <class Ending, class Entry>
+  // The typestate algorithms under one ending, one entry and one way of
+  // keeping the sender's data.
+  template <class Ending, class Entry, class Data = ts::stored_sender>
   struct policy
   {
     template <class... Vs>
     static auto just(Vs&&... vs)
     {
-      return ts::just<Ending, Entry>(static_cast<Vs&&>(vs)...);
+      return ts::just<Ending, Entry, Data>(static_cast<Vs&&>(vs)...);
     }
 
     template <class Sndr, class Fn>
     static auto then(Sndr&& sndr, Fn&& fn)
     {
-      return ts::then<Ending, Entry>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
+      return ts::then<Ending, Entry, Data>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
     }
 
     template <class Layout = ts::carried_layout, class Sndr, class Fn>
     static auto let_value(Sndr&& sndr, Fn&& fn)
     {
-      return ts::let_value<Ending, Layout, Entry>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
+      return ts::let_value<Ending, Layout, Entry, Data>(static_cast<Sndr&&>(sndr),
+                                                        static_cast<Fn&&>(fn));
     }
 
     template <class Sndr1, class Sndr2>
     static auto sequence(Sndr1&& sndr1, Sndr2&& sndr2)
     {
-      return ts::sequence<Ending, Entry>(static_cast<Sndr1&&>(sndr1), static_cast<Sndr2&&>(sndr2));
+      return ts::sequence<Ending, Entry, Data>(static_cast<Sndr1&&>(sndr1),
+                                               static_cast<Sndr2&&>(sndr2));
     }
 
     template <class Sndr>
     static auto repeat_n(Sndr&& sndr, std::size_t count)
     {
-      return ts::repeat_n<Ending, Entry>(static_cast<Sndr&&>(sndr), count);
+      return ts::repeat_n<Ending, Entry, Data>(static_cast<Sndr&&>(sndr), count);
     }
   };
 
   using eager       = policy<ts::eager_teardown, ts::connect_entry>;
   using forward     = policy<ts::forward_results, ts::connect_entry>;
   using eager_start = policy<ts::eager_teardown, ts::start_entry>;
+  using eager_split = policy<ts::eager_teardown, ts::connect_entry, ts::split_sender>;
 
   // The heading of a table of costs: each policy over a pair of columns,
   // operation-state bytes and moves (copies).
   void cost_heading()
   {
-    std::printf("    %24s      stdexec          eager          forward        eager+start\n"
-                "    %24s   -------------   -------------   -------------   -------------\n"
-                "    %24s   bytes   moves   bytes   moves   bytes   moves   bytes   moves\n",
+    std::printf("    %24s      stdexec          eager          forward        eager+start"
+                "      eager+split\n"
+                "    %24s   -------------   -------------   -------------   -------------"
+                "   -------------\n"
+                "    %24s   bytes   moves   bytes   moves   bytes   moves   bytes   moves"
+                "   bytes   moves\n",
                 "",
                 "",
                 "");
@@ -225,7 +232,7 @@ namespace
                     opstate_size<decltype(make_sized(Ps()))>,
                     count(make_counted(Ps())).c_str())),
        ...);
-    }(eager(), forward(), eager_start());
+    }(eager(), forward(), eager_start(), eager_split());
     std::printf("\n");
   }
 
@@ -237,7 +244,7 @@ namespace
     [&]<class... Ps>(Ps...)
     {
       ((std::printf(" %10s", count(make(Ps())).c_str())), ...);
-    }(eager(), forward(), eager_start());
+    }(eager(), forward(), eager_start(), eager_split());
     std::printf("\n");
   }
 
@@ -595,6 +602,8 @@ int main()
                 failure_points(forward()));
     std::printf("    eager+start: %2d failure points, each surfacing from sync_wait\n",
                 failure_points(eager_start()));
+    std::printf("    eager+split: %2d failure points, each surfacing from sync_wait\n",
+                failure_points(eager_split()));
     // The same, with let_value's values kept under the other layouts.
     std::printf("    with overlapped_layout: %2d, %2d and %2d failure points\n",
                 failure_points(eager(), ts::overlapped_layout()),
@@ -683,12 +692,13 @@ int main()
     // a copy of its child every time; repeat_n reads its child in place, so
     // what the child only reads (here, a capture) is never copied. Values
     // the child sends are copied each time either way.
-    std::printf("\n    %-44s %10s %10s %10s %10s\n",
+    std::printf("\n    %-44s %10s %10s %10s %10s %10s\n",
                 "moves (copies), 100 iterations",
                 "stdexec",
                 "eager",
                 "forward",
-                "eag+start");
+                "eag+start",
+                "eag+split");
     count_row("repeat_n(then(just(), fn capturing c))",
               count(exec::repeat_n(ex::just() | ex::then([c = counted()] {}), 100)),
               []<class P>(P) { return P::repeat_n(P::then(P::just(), [c = counted()] {}), 100); });

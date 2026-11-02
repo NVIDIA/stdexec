@@ -72,12 +72,12 @@ with operation states that hold one *phase* at a time, written against the
 machinery in `typestate.hpp`. The aim is a standard way of expressing an
 operation's states and transitions, so that lifetimes are correct by
 construction, at no cost relative to the established approach. The machinery
-is where the complexity lives, in about 1100 lines; each algorithm takes 125
-to 185, about a fifth of them completion signatures.
+is where the complexity lives, in about 1400 lines; each algorithm takes 125
+to 190, about a fifth of them completion signatures.
 
-- **`phased<Ending, Layout, Entry, Rcvr, Carried, Phases...>`** holds the
-  operation's receiver, a *carried* region that lives as long as the
-  operation, and storage sized for the largest phase. A phase may also
+- **`phased<Ending, Layout, Entry, Data, Rcvr, Parts, Carried, Phases...>`**
+  holds the operation's receiver, a *carried* region that lives as long as
+  the operation, and storage sized for the largest phase. A phase may also
   *receive* values from the phase before it, built from that phase's results
   while it's still alive, since they may refer into it. Where those live is
   the layout policy's choice, made inside `phased`. Algorithms never
@@ -99,7 +99,7 @@ to 185, about a fifth of them completion signatures.
   phase is destroyed and the next one is constructed in the same storage and
   started.
 
-Three policies, chosen per algorithm instance:
+Four policies, chosen per algorithm instance:
 
 - **Ending.** `eager_teardown` destroys the last phase before completing,
   so a completed operation holds nothing live; results may refer into that
@@ -117,20 +117,30 @@ Three policies, chosen per algorithm instance:
   keeps them beside the phases, constructed in place, but only for as long
   as the phase that receives them, and with no `std::variant` index, since
   the live phase already says which values are there.
-- **Entry**: when the first phase is entered. Either way, `connect` moves
-  the sender into a small `root` operation, and every typestate sender
-  *binds* rather than connects (`bind(rcvr) &`): its operation refers to the
-  stored sender, using its function in place and binding its children to its
-  own child senders, so the stored sender is the carried state of the whole
-  tree and nothing below the root copies it. A sender that can't bind (any
-  stdexec sender) is moved into `connect` when its phase begins.
-  `connect_entry`, the default, enters the first phase in `connect`.
-  `start_entry` enters it in `start`, so a child whose `connect` throws
-  makes `start` complete with `set_error` instead of making `connect` throw.
-  Senders that `let_value`'s function returns are created at run time, so
-  their phase owns them.
+- **Entry**: when the first phase is entered. `connect_entry`, the default,
+  enters it in `connect`. `start_entry` enters it in `start`, so a child
+  whose `connect` throws makes `start` complete with `set_error` instead of
+  making `connect` throw.
+- **Data**: where the sender's data lives once it's connected.
+  `stored_sender`, the default, has `connect` move the sender into a small
+  `root` operation, and every typestate sender then *binds* rather than
+  connects (`bind(rcvr) &`): its operation refers to the stored sender,
+  using its function in place and binding its children to its own child
+  senders, so the stored sender is the carried state of the whole tree and
+  nothing below the root copies it. A sender that can't bind (any stdexec
+  sender) is moved into `connect` when its phase begins. `split_sender`
+  stores no sender: `connect` moves each part the operation uses into the
+  operation, except the child sender that a first phase entered by `connect`
+  connects, which goes straight into that child's `connect`, as stdexec's
+  algorithms do. Each algorithm lists the parts it uses (`parts<&S::sndr_,
+  &S::fn_>`) and each phase the part its child is made from (`connects`); it
+  reads a part with `part<M>()` and makes a child with
+  `connect_part<M>(rcvr)`, which binds under one policy and connects under
+  the other, so the algorithm doesn't depend on which. Senders that
+  `let_value`'s function returns are created at run time, so their phase
+  owns them either way.
 
-Binding comes in two forms, like `connect` for rvalues and const lvalues,
+Under `stored_sender`, binding comes in two forms, like `connect` for rvalues and const lvalues,
 minus the move or copy. Through a non-const reference, `bind(rcvr) &`
 *consumes*: the operation may move from the stored sender (as `just` does
 when it hands over its values), which is then spent. Through a const
@@ -144,27 +154,29 @@ copy: a function is shared by every bind rather than copied, so it must be
 callable as `const`.
 
 `repeat_n(sndr, n)` uses the non-consuming form: one phase, re-entered for
-each iteration, binding the stored child every time. Over 100 iterations:
+each iteration, binding the stored child every time. Over 100 iterations
+(eager+split is `eager_teardown` with `split_sender`):
 
-| Moves (copies) | stdexec | eager | forward | eager+start |
-|---|---|---|---|---|
-| `repeat_n(then(just(), fn capturing c))` | 904 (100) (Clang: 804) | 3 (0) | 3 (0) | 3 (0) |
-| `repeat_n(then(just(c), drop))` | 1104 (100) (Clang: 1004) | 103 (100) | 3 (100) | 103 (100) |
+| Moves (copies) | stdexec | eager | forward | eager+start | eager+split |
+|---|---|---|---|---|---|
+| `repeat_n(then(just(), fn capturing c))` | 904 (100) (Clang: 804) | 3 (0) | 3 (0) | 3 (0) | 303 (100) |
+| `repeat_n(then(just(c), drop))` | 1104 (100) (Clang: 1004) | 103 (100) | 3 (100) | 103 (100) | 703 (100) |
 
 `exec::repeat_n` reconnects a copy of its child every iteration, captures
-included; `repeat_n` never copies what its child only reads. Values the
-child sends are copied each time either way, since the receiver gets an
-rvalue; under `eager_teardown` each copy is moved once more onto the stack.
-Unlike `exec::repeat_n`, it doesn't trampoline, so a child that completes
-inline makes each iteration a nested call.
+included; bound to a stored sender, `repeat_n` never copies what its child
+only reads. Under `split_sender` it keeps its child and connects a copy each
+iteration too. Values the child sends are copied each time either way, since
+the receiver gets an rvalue; under `eager_teardown` each copy is moved once
+more onto the stack. Unlike `exec::repeat_n`, it doesn't trampoline, so a
+child that completes inline makes each iteration a nested call.
 
 Each exception path knows statically which phase, if any, is live, so the
 byte recording the live phase serves only the destructor. With
 `eager_teardown` and `start_entry` together, no phase is ever live when the
 operation state is destroyed, so `phased` has no such byte at all and its
-destructor destroys only the receiver and the carried region. With
-binding, the root's destructor destroys the stored sender as well, which is
-every level's carried data at once.
+destructor destroys only the receiver and the carried region. Under
+`stored_sender`, the root's destructor destroys the stored sender as well,
+which is every level's carried data at once.
 
 | Section | Shows |
 |---|---|
@@ -172,14 +184,15 @@ every level's carried data at once.
 | 7 | `let_value` choosing between an `int` phase and a `string` phase by receiver type alone; errors and stopped passing through. |
 | 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
 | 9 | Sizes and moves against stdexec's own algorithms. |
-| 10 | Exceptions: from `then`'s function; from every move of a value in turn, under three policies and again under each other layout; and where a throwing child `connect` surfaces under each entry. |
+| 10 | Exceptions: from `then`'s function; from every move of a value in turn, under four policies and again under each other layout; and where a throwing child `connect` surfaces under each entry. |
 | 11 | Bound operations mixed with stdexec senders, and bound phases reusing automatic storage. |
 | 12 | `repeat_n`: iteration counts, a failing iteration, and copies against `exec::repeat_n`. |
 | 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 | 14 | When `let_value`'s values are destroyed, under each layout and both endings. |
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
-where noted; "eager+start" is `eager_teardown` with `start_entry`). Each policy
+where noted; "eager+start" is `eager_teardown` with `start_entry`, and
+"eager+split" is `eager_teardown` with `split_sender`). Each policy
 heads two columns: the operation state's size in bytes, and how often a
 value moves between `connect` and the result, with copies in parentheses.
 The two are measured on slightly different pipelines. For bytes, `v` is a
@@ -190,27 +203,27 @@ values, so `s` is `then(just(big), drop)` for bytes, making the first phase
 big too, and `just()` for moves.
 
 ```text
-                              stdexec            eager            forward         eager+start
-                          ---------------   ---------------   ---------------   ---------------
-                          bytes   moves     bytes   moves     bytes   moves     bytes   moves
-let_value(just(v), fn)     552    6 (0)      568    5 (0)      568    4 (0)      568    5 (0)
-  ... overlapped_layout                      568    6 (0)      568    5 (0)      560    6 (0)
-  ... scoped_layout                          568    5 (0)      568    4 (0)      560    5 (0)
-sequence(s, just(v))       560   10 (0)*     568    6 (0)      568    4 (0)      552    6 (0)
-then(just(v), fn)           24    8 (0)       40    8 (0)       40    6 (0)       32    8 (0)
+                              stdexec          eager          forward        eager+start      eager+split
+                           -------------   -------------   -------------   -------------   -------------
+                           bytes   moves   bytes   moves   bytes   moves   bytes   moves   bytes   moves
+let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568   5 (0)     536   7 (0)
+  ... overlapped_layout                      568   6 (0)     568   5 (0)     560   6 (0)     296   8 (0)
+  ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
+sequence(s, just(v))*        560  10 (0)     568   6 (0)     568   4 (0)     552   6 (0)     552   9 (0)
+then(just(v), fn)             24   8 (0)      40   8 (0)      40   6 (0)      32   8 (0)      24  10 (0)
 
-* 9 (0) with Clang
+* stdexec moves 9 (0) with Clang
 ```
 
-Binding makes values move once, into the root, and then be used in place, so
-the moves come out at or below stdexec's in every row, under every policy.
-The cost is in bytes: the stored sender keeps every level's data for the
-whole operation, so nothing a later phase could reuse is moved out of it.
-That's why `overlapped_layout` saves nothing here: `just`'s value stays in
-the stored sender rather than in the first phase. A bound operation doesn't
-store a pointer to its sender either: it asks its receiver, whose parent
-knows which of its child senders each phase binds (`bound_sender()`), and
-the root's receiver points at the stored sender. So the tree holds one
+Under `stored_sender`, binding makes values move once, into the root, and
+then be used in place, so the moves come out at or below stdexec's in every
+row. The cost is in bytes: the stored sender keeps every level's data for
+the whole operation, so nothing a later phase could reuse is moved out of
+it. That's why `overlapped_layout` saves nothing there: `just`'s value stays
+in the stored sender rather than in the first phase. A bound operation
+doesn't store a pointer to its sender either: it asks its receiver, whose
+parent knows which of its child senders each phase binds (`bound_sender()`),
+and the root's receiver points at the stored sender. So the tree holds one
 pointer to a sender in all, at the root. That pointer, and under
 `connect_entry` the byte recording the live phase (an operation destroyed
 before it starts still holds its first phase), are what separate
@@ -219,6 +232,13 @@ receivers on each access to a sender's data. Receivers that are rebuilt from
 the child's address instead of stored (P3425, worded for C++26 by P3986 as
 `inlinable_receiver`) would turn that walk into constant offsets, and remove
 the receivers' own pointers too.
+
+`split_sender` trades the other way. Each operation moves in the data it
+uses, so a value moves once per level rather than once in all, but the data
+lives where its phase does: `overlapped_layout` saves bytes again, and
+`then(just(1), fn)` matches stdexec's 24. (296 bytes rather than 280 for
+overlapped `let_value` because the sender the demo's `fn` returns is a
+default `just`, connected through a root of its own.)
 
 `eager_teardown` costs one move of the results per algorithm that tears
 down. `overlapped_layout` trades a move for bytes where the received values
