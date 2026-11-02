@@ -167,11 +167,10 @@ namespace
       return ts::let_value<Ending, Layout, Entry>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
     }
 
-    template <class Layout = ts::carried_layout, class Sndr1, class Sndr2>
+    template <class Sndr1, class Sndr2>
     static auto sequence(Sndr1&& sndr1, Sndr2&& sndr2)
     {
-      return ts::sequence<Ending, Layout, Entry>(static_cast<Sndr1&&>(sndr1),
-                                                 static_cast<Sndr2&&>(sndr2));
+      return ts::sequence<Ending, Entry>(static_cast<Sndr1&&>(sndr1), static_cast<Sndr2&&>(sndr2));
     }
 
     template <class Sndr>
@@ -540,17 +539,6 @@ int main()
       [&]<class P>(P) { return P::sequence(P::then(P::just(big{}), drop), P::just(big{})); },
       []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
     cost_row(
-      "  ... overlapped_layout",
-      0,
-      "",
-      [&]<class P>(P)
-      {
-        return P::template sequence<ts::overlapped_layout>(P::then(P::just(big{}), drop),
-                                                           P::just(big{}));
-      },
-      []<class P>(P)
-      { return P::template sequence<ts::overlapped_layout>(P::just(), P::just(counted())); });
-    cost_row(
       "then(just(v), fn)",
       opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
       count(ex::just(counted()) | ex::then(then_fn)),
@@ -613,9 +601,9 @@ int main()
                 failure_points(forward(), ts::scoped_layout()),
                 failure_points(eager_start(), ts::scoped_layout()));
 
-    // Under start_entry, connect doesn't connect the child, so a child whose
-    // connect throws makes start complete with set_error instead of making
-    // connect throw.
+    // Under start_entry, connect doesn't enter the first phase, so a child
+    // whose connect throws makes start complete with set_error instead of
+    // making connect throw.
     auto where = []<class P>(P) -> char const *
     {
       bool failed = false;
@@ -638,9 +626,8 @@ int main()
 
   {
     section("11. Bound operations among stdexec senders");
-    // Under start_entry, typestate senders bind to the sender stored once at
-    // the root; a stdexec child, which can't bind, is moved into connect
-    // instead.
+    // Typestate senders bind to the sender stored once at the root; a stdexec
+    // child, which can't bind, is moved into connect instead.
     using bound = eager_start;
     auto [a]    = ex::sync_wait(bound::then(ex::just(20), [](int i) { return i + 1; })).value();
     auto [b]    = ex::sync_wait(bound::just(20) | ex::then([](int i) { return i + 2; })).value();
@@ -689,9 +676,9 @@ int main()
 #endif
 
     // Copies and moves over 100 iterations. stdexec's repeat_n reconnects
-    // a copy of its child every time; a bound repeat_n reads its child in
-    // place, so what the child only reads (here, a capture) is never copied.
-    // Values the child sends are copied each time either way.
+    // a copy of its child every time; repeat_n reads its child in place, so
+    // what the child only reads (here, a capture) is never copied. Values
+    // the child sends are copied each time either way.
     std::printf("\n    %-44s %10s %10s %10s %10s\n",
                 "moves (copies), 100 iterations",
                 "stdexec",
