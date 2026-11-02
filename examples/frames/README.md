@@ -66,11 +66,14 @@ to `outer`.
 
 ## Part two: operation states as sequences of phases
 
-`typestate.hpp` reimplements `just`, `then`, `let_value`, a binary
-`sequence` and `repeat_n` with operation states that hold one *phase* at a time. The aim
-is a standard way of expressing an operation's states and transitions, so
-that lifetimes are correct by construction, at no cost relative to the
-established approach.
+`just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp` and `repeat_n.hpp`
+reimplement `just`, `then`, `let_value`, a binary `sequence` and `repeat_n`
+with operation states that hold one *phase* at a time, written against the
+machinery in `typestate.hpp`. The aim is a standard way of expressing an
+operation's states and transitions, so that lifetimes are correct by
+construction, at no cost relative to the established approach. The machinery
+is where the complexity lives, in about 1100 lines; each algorithm takes 125
+to 185, about a fifth of them completion signatures.
 
 - **`phased<Ending, Layout, Entry, Rcvr, Carried, Phases...>`** holds the
   operation's receiver, a *carried* region that lives as long as the
@@ -243,12 +246,12 @@ as children.
 
 What else it taught:
 
-- **`let_value`'s function is carried**, not passed between phases: the
+- **`let_value`'s function stays put**, not passed between phases: the
   sender it returns may refer to its captures.
-- **Completion signatures are still most of the work.** About 175 of the
-  header's ~1400 lines compute them, and phases don't help with that; every
-  algorithm here except `just` conservatively declares
-  `set_error_t(std::exception_ptr)`.
+- **Completion signatures are still much of the work.** About 160 of
+  `typestate.hpp`'s lines, and 20 to 30 of each algorithm's, compute them,
+  and phases don't help with that; every algorithm here except `just`
+  conservatively declares `set_error_t(std::exception_ptr)`.
 
 ## Open questions
 
