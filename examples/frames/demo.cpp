@@ -14,7 +14,11 @@
  */
 
 #include "automatic_storage.hpp"
-#include "typestate.hpp"
+#include "just.hpp"
+#include "let_value.hpp"
+#include "repeat_n.hpp"
+#include "sequence.hpp"
+#include "then.hpp"
 
 #include <exec/repeat_n.hpp>
 #include <exec/sequence.hpp>
