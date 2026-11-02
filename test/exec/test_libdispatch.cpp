@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-#include "exec/libdispatch_queue.hpp"
-#include "stdexec/execution.hpp"
 #include "test_common/catch2.hpp"
+
+#include "stdexec/execution.hpp"
+
+#include "exec/libdispatch_queue.hpp"
 #include "test_common/type_helpers.hpp"
 
 #include <atomic>
@@ -196,7 +198,62 @@ namespace
     CHECK(indices == std::vector<int>{0, 1, 2, 3});
   }
 
+  TEST_CASE("libdispatch bulk accepts lvalue-only callbacks")
+  {
+    struct callback
+    {
+      std::atomic<int> *calls;
+
+      void operator()(int begin, int end) & noexcept
+      {
+        calls->fetch_add(end - begin);
+      }
+
+      void operator()(int, int) && = delete;
+    };
+
+    exec::libdispatch_queue queue;
+    auto                    check = [&](auto policy)
+    {
+      for (int shape: {0, 8})
+      {
+        std::atomic<int> calls{0};
+        auto             sender = STDEXEC::schedule(queue.get_scheduler())
+                    | STDEXEC::bulk_chunked(policy, shape, callback{&calls});
+        REQUIRE(STDEXEC::sync_wait(std::move(sender)).has_value());
+        CHECK(calls.load() == shape);
+      }
+    };
+
+    check(STDEXEC::par);
+    check(STDEXEC::seq);
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  TEST_CASE("libdispatch bulk catches exceptions from lvalue-qualified callbacks")
+  {
+    struct callback
+    {
+      void operator()(int, int) &
+      {
+        throw 42;
+      }
+
+      void operator()(int, int) && noexcept {}
+    };
+
+    exec::libdispatch_queue queue;
+    auto                    check = [&](auto policy)
+    {
+      auto sender = STDEXEC::schedule(queue.get_scheduler())
+                  | STDEXEC::bulk_chunked(policy, 8, callback{});
+      CHECK_THROWS_AS(STDEXEC::sync_wait(std::move(sender)), int);
+    };
+
+    check(STDEXEC::par);
+    check(STDEXEC::seq);
+  }
+
   TEST_CASE("libdispatch bulk should handle exceptions gracefully")
   {
     exec::libdispatch_queue queue;
