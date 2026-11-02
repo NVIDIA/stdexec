@@ -46,6 +46,20 @@
 #include <utility>
 #include <variant>
 
+#if defined(__SANITIZE_ADDRESS__)
+#  define FRAMES_ASAN 1
+#elif defined(__has_feature)
+#  if __has_feature(address_sanitizer)
+#    define FRAMES_ASAN 1
+#  endif
+#endif
+#if !defined(FRAMES_ASAN)
+#  define FRAMES_ASAN 0
+#endif
+#if FRAMES_ASAN
+#  include <sanitizer/asan_interface.h>
+#endif
+
 namespace frames::typestate
 {
   namespace ex = stdexec;
@@ -241,6 +255,39 @@ namespace frames::typestate
 
       using type = std::variant<std::monostate, typename tuple_of<Lists>::type...>;
     };
+    // Bytes that AddressSanitizer reports any access to until they're
+    // unpoisoned, and that are unpoisoned again when this is destroyed.
+    template <std::size_t Size, std::size_t Align>
+    struct guarded_bytes
+    {
+      guarded_bytes() noexcept
+      {
+        poison(Size);
+      }
+
+      guarded_bytes(guarded_bytes&&) = delete;
+
+      ~guarded_bytes()
+      {
+        unpoison(Size);
+      }
+
+      void poison([[maybe_unused]] std::size_t size) noexcept
+      {
+#if FRAMES_ASAN
+        __asan_poison_memory_region(bytes, size);
+#endif
+      }
+
+      void unpoison([[maybe_unused]] std::size_t size) noexcept
+      {
+#if FRAMES_ASAN
+        __asan_unpoison_memory_region(bytes, size);
+#endif
+      }
+
+      alignas(Align) std::byte bytes[Size];
+    };
   }  // namespace detail
 
   //////////////////////////////////////////////////////////////////////////////
@@ -268,6 +315,11 @@ namespace frames::typestate
   // An exception from any of these completes the operation with
   // set_error(std::current_exception()); under eager_teardown it ends the
   // live phase first.
+  //
+  // Under AddressSanitizer, storage no phase occupies is poisoned, so
+  // touching a phase after it has ended (a child that touches its own state
+  // after completing, say) is reported. Bytes the next phase reuses are
+  // live again, so this catches what eager teardown leaves dead.
 
   template <class Ending, class Rcvr, class Carried, class First, class... Rest>
   class phased
@@ -391,15 +443,17 @@ namespace frames::typestate
     template <class Phase>
     auto get() noexcept -> Phase&
     {
-      return *std::launder(reinterpret_cast<Phase*>(storage_));
+      return *std::launder(reinterpret_cast<Phase*>(storage_.bytes));
     }
 
     template <class Phase, class... Args>
     auto enter(Args&&... args) -> Phase&
     {
       static_assert(index_of<Phase> != none, "not one of this operation's phases");
-      Phase& phase = *::new (static_cast<void*>(storage_)) Phase(static_cast<Args&&>(args)...);
-      live_        = index_of<Phase>;
+      storage_.unpoison(sizeof(Phase));
+      Phase& phase = *::new (static_cast<void*>(storage_.bytes))
+                       Phase(static_cast<Args&&>(args)...);
+      live_ = index_of<Phase>;
       return phase;
     }
 
@@ -408,6 +462,7 @@ namespace frames::typestate
     {
       std::destroy_at(&get<Phase>());
       live_ = none;
+      storage_.poison(sizeof(Phase));
     }
 
     void destroy_live() noexcept
@@ -433,8 +488,8 @@ namespace frames::typestate
 
     Rcvr rcvr_;
     STDEXEC_ATTRIBUTE(no_unique_address) Carried carried_;
-    unsigned char live_ = none;
-    alignas(storage_align) std::byte storage_[storage_size];
+    unsigned char                                      live_ = none;
+    detail::guarded_bytes<storage_size, storage_align> storage_;
   };
 
   // phased<Ending, Rcvr, Carried, First, Next<Ts...>...>, one Next per

@@ -114,6 +114,7 @@ Two policies, chosen per algorithm instance:
 | 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
 | 9 | Sizes and moves against stdexec's own algorithms. |
 | 10 | Exceptions: from `then`'s function, and from every move of a value in turn, under both endings. |
+| 11 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 
 Costs (x86-64; GCC 13 and Clang 18 agree; `big` is 256 bytes; stdexec has
 no `sequence`, so its column is a `let_value` returning a captured sender):
@@ -138,6 +139,17 @@ So with `forward_results` and the default layout, the typestate versions
 cost no more than stdexec's in bytes or moves. `eager_teardown` costs one
 move of the results per algorithm that tears down; `overlapped_layout`
 trades a move for bytes.
+
+Under AddressSanitizer, `phased` poisons the storage no phase occupies.
+Touching a phase after it has ended then gets reported rather than silently
+reading or corrupting memory: section 11's child increments a counter after
+completing, inside a `then` with `eager_teardown`, and ASan reports a
+use-after-poison at that line. Two limits: bytes the next phase reuses are
+live again, so a transition only catches late accesses beyond the next
+phase's size; and under `forward_results` the last phase is still alive when
+a child returns from completing, so nothing is caught there. That makes
+eager teardown worth having at least in checked builds. The whole demo runs
+clean with poisoning on, including the stdexec senders used as children.
 
 What else it taught:
 
