@@ -346,4 +346,64 @@ namespace
     REQUIRE(record.streams[0] != nullptr);
     CHECK(record.streams[0] == record.streams[1]);
   }
+
+  TEST_CASE("continues_on to another priority switches streams",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    int least{};
+    int greatest{};
+    STDEXEC_TRY_CUDA_API(cudaDeviceGetStreamPriorityRange(&least, &greatest));
+    if (least == greatest)
+    {
+      SKIP("the device has a single stream priority");
+    }
+
+    nvexec::stream_context ctx;
+    stream_record          record;
+
+    record_streams_across(ctx.get_scheduler(nvexec::stream_priority::low),
+                          ctx.get_scheduler(nvexec::stream_priority::high),
+                          record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    REQUIRE(record.streams[1] != nullptr);
+    CHECK(record.streams[0] != record.streams[1]);
+
+    int first{};
+    int second{};
+    STDEXEC_TRY_CUDA_API(cudaStreamGetPriority(record.streams[0], &first));
+    STDEXEC_TRY_CUDA_API(cudaStreamGetPriority(record.streams[1], &second));
+    CHECK(first == least);
+    CHECK(second == greatest);
+  }
+
+  TEST_CASE("continues_on between two stream contexts waits for the earlier work",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx_0;
+    nvexec::stream_context ctx_1;
+
+    int* data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, sizeof(int)));
+    *data = 0;
+
+    // The first step is slow, so the second one would read 0 if it did not wait.
+    auto sndr = STDEXEC::schedule(ctx_0.get_scheduler())
+              | STDEXEC::then(
+                  [data]
+                  {
+                    int volatile spin = 0;
+                    for (int i = 0; i < (1 << 24); ++i)
+                    {
+                      spin = spin + 1;
+                    }
+                    *data = 42;
+                  })
+              | STDEXEC::continues_on(ctx_1.get_scheduler())
+              | STDEXEC::then([data] { return *data; });
+
+    auto [result] = STDEXEC::sync_wait(std::move(sndr)).value();
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    CHECK(result == 42);
+  }
 }  // namespace

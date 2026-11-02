@@ -57,40 +57,8 @@ namespace nv::execution::_strm
       }
 
       _strm::opstate_base<Receiver>& opstate_;
-      // Stream of the source context, or null when source and destination share a context.
+      // Set when the work before the transition runs on another scheduler.
       stream_provider* src_provider_{nullptr};
-
-      [[nodiscard]]
-      auto src_stream() const -> cudaStream_t
-      {
-        return src_provider_ ? src_provider_->own_stream_.value() : opstate_.get_stream();
-      }
-
-      // Make the destination stream wait for the work queued so far on the source stream.
-      auto wait_for_source() const noexcept -> cudaError_t
-      {
-        if (src_provider_ == nullptr)
-        {
-          return cudaSuccess;
-        }
-
-        cudaEvent_t event{};
-        cudaError_t status = STDEXEC_LOG_CUDA_API(
-          cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-        if (status != cudaSuccess)
-        {
-          return status;
-        }
-
-        status = STDEXEC_LOG_CUDA_API(cudaEventRecord(event, src_stream()));
-        if (status == cudaSuccess)
-        {
-          status = STDEXEC_LOG_CUDA_API(cudaStreamWaitEvent(opstate_.get_stream(), event, 0));
-        }
-
-        STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event));
-        return status;
-      }
 
       template <class Tag, class... Args>
       void complete(Tag, Args&&... args) noexcept
@@ -101,11 +69,6 @@ namespace nv::execution::_strm
         // storage, skip it and simply propagate the completion signal.
         if constexpr (sizeof...(Args) == 0)
         {
-          if (cudaError_t status = wait_for_source(); status != cudaSuccess)
-          {
-            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
-            return;
-          }
           opstate_.propagate_completion_signal(Tag());
         }
         else
@@ -152,8 +115,7 @@ namespace nv::execution::_strm
             return;
           }
 
-          // The values were produced on the source stream, so copy them out there.
-          cudaStream_t stream = src_stream();
+          cudaStream_t stream = opstate_.get_stream();
 
           if (concurrent_managed_access)
           {
@@ -177,12 +139,6 @@ namespace nv::execution::_strm
               complete_error(std::move(status));
               return;
             }
-          }
-
-          if (cudaError_t status = wait_for_source(); status != cudaSuccess)
-          {
-            complete_error(std::move(status));
-            return;
           }
 
           opstate_.defer_temp_storage_destruction(storage);
@@ -321,17 +277,16 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
       -> opstate_t<Self, Receiver>
     {
-      // Work before the transition must run on the source context's stream.
+      // Work before the transition keeps running on its own scheduler's stream.
       std::optional<context> src_ctx;
       if constexpr (stream_sender<Sender, env_of_t<Receiver>>
                     && stream_completing_sender<Sender, env_of_t<Receiver>>)
       {
-        context ctx = get_completion_scheduler<set_value_t>(STDEXEC::get_env(self.sndr_),
-                                                            STDEXEC::get_env(rcvr))
-                        .ctx_;
-        if (ctx.stream_pools_ != self.sched_.ctx_.stream_pools_)
+        auto src_sched = get_completion_scheduler<set_value_t>(STDEXEC::get_env(self.sndr_),
+                                                               STDEXEC::get_env(rcvr));
+        if (src_sched != self.sched_)
         {
-          src_ctx = ctx;
+          src_ctx = src_sched.ctx_;
         }
       }
 
