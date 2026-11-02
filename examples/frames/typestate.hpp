@@ -562,6 +562,10 @@ namespace frames::typestate
   //   part<M>()
   //       the part of the operation's sender that M points to.
   //
+  //   live<Phase>()
+  //       Phase, while it's live. A phase whose children see an environment
+  //       of its own (see phase_receiver) builds it from what this returns.
+  //
   //   connect_part<M>(rcvr, incoming...)
   //       from a phase's constructor: the phase's child, made from the part
   //       M points to. The phase names M as `connects`.
@@ -805,6 +809,14 @@ namespace frames::typestate
     auto receiver() noexcept -> Rcvr&
     {
       return rcvr_;
+    }
+
+    // Phase, while it's live: for its children's environments and its
+    // completions, which can only happen while it is.
+    template <class Phase>
+    auto live() noexcept -> Phase&
+    {
+      return get<Phase>();
     }
 
     // The values Phase received, from just before Phase is entered until
@@ -1291,10 +1303,44 @@ namespace frames::typestate
     using type = phased<Rcvr, Parts, Carried, First, typename apply<Lists>::type...>;
   };
 
-  // The receiver a phase's child completes through. `Tag` names the phase;
-  // `Child`, if not void, is the child sender the phase binds (const if it
-  // binds without consuming).
-  template <class Op, class Rcvr, class Tag, class Child = void>
+  // Env, with Query answered by a value of its own instead: what a phase
+  // gives its children to add or replace one query of the operation's
+  // environment.
+  template <class Query, class Value, class Env>
+  struct env_with
+  {
+    [[nodiscard]]
+    auto query(Query) const noexcept -> Value const &
+    {
+      return value;
+    }
+
+    template <class Q, class... As>
+      requires(!std::is_same_v<Q, Query>)
+           && requires(Env const & env, Q q, As&&... as) { env.query(q, static_cast<As&&>(as)...); }
+    [[nodiscard]]
+    auto query(Q q, As&&... as) const
+      noexcept(noexcept(std::declval<Env const &>().query(q, static_cast<As&&>(as)...)))
+        -> decltype(auto)
+    {
+      return env.query(q, static_cast<As&&>(as)...);
+    }
+
+    Value value;
+    Env   env;
+  };
+
+  // The receiver a phase's child completes through. `Tag` names the phase,
+  // or the child when a phase runs several; `Child`, if not void, is the
+  // child sender the phase binds (const if it binds without consuming).
+  //
+  // `Env`, if not void, is the environment the child sees instead of the
+  // operation's receiver's: the operation's env(Tag()) returns it, built
+  // from what the phase holds (its own stop source, say). Its type is named
+  // up front because the operation is incomplete while its phases' children
+  // are declared. It should carry over the receiver's environment, policies
+  // included, adding or replacing what it must; env_with does that.
+  template <class Op, class Rcvr, class Tag, class Child = void, class Env = void>
   struct phase_receiver
   {
     using receiver_concept = ex::receiver_t;
@@ -1316,10 +1362,19 @@ namespace frames::typestate
       op->complete(Tag(), ex::set_stopped);
     }
 
+    using env_t = std::conditional_t<std::is_void_v<Env>, ex::env_of_t<Rcvr>, Env>;
+
     [[nodiscard]]
-    auto get_env() const noexcept -> ex::env_of_t<Rcvr>
+    auto get_env() const noexcept -> env_t
     {
-      return ex::get_env(op->phases_.receiver());
+      if constexpr (std::is_void_v<Env>)
+      {
+        return ex::get_env(op->phases_.receiver());
+      }
+      else
+      {
+        return op->env(Tag());
+      }
     }
 
     // The child sender this phase binds, for a child that binds rather than

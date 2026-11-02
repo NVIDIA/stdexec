@@ -92,6 +92,14 @@ to 180, about a fifth of them completion signatures.
   second phase per value signature of its child, each with its own receiver
   type. `phased` also keeps one byte naming the live phase, for its
   destructor and exception paths.
+- **A phase's children may see an environment of their own**, built from
+  what the phase holds. `phase_receiver`'s last parameter names its type, and
+  the operation's `env(Tag)` builds it, from `live<Phase>()`; otherwise a
+  child sees the operation's receiver's environment. The type is named up
+  front because the operation is incomplete while its children's types are
+  worked out. Keyed by the tag, it can differ per child, as a fork of
+  automatic storage would need. `env_with<Query, Value, Env>` replaces one
+  query and carries over the rest, policies included.
 - **A transition** runs inside the live phase's completion. `prepare` sees
   the dying phase and the completion's arguments while they're alive; it may
   store into the carried region, and returns what the next phase's
