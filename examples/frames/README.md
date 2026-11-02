@@ -69,19 +69,26 @@ to `outer`.
 `typestate.hpp` reimplements `just`, `then`, `let_value` and a binary
 `sequence` with operation states that hold one *phase* at a time:
 
-- **`phased<Rcvr, Phases...>`** holds the operation's receiver and storage
-  sized for the largest phase. It doesn't record which phase is live.
+- **`phased<Rcvr, Carried, Phases...>`** holds the operation's receiver, a
+  *carried* region that lives as long as the operation (`then`'s and
+  `let_value`'s function), and storage sized for the largest phase.
+  Algorithms never construct or destroy phases themselves: they call
+  `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
+  `finish_with<Phase>(fn, ...)` from a phase's completion, and `phased`
+  does the destroying, constructing, starting and exception handling.
 - **`phase_receiver<Op, Rcvr, Tag>`** is the receiver a phase's child
   completes through. Its type names the phase, so each completion handler
   knows statically what the storage holds. `let_value` has one possible
   second phase per value signature of its child, each with its own receiver
   type.
-- **A transition** runs inside the live phase's completion: move what the
-  next phase needs onto the stack, destroy the live phase, then construct the
-  next phase in the same storage and start it.
+- **A transition** runs inside the live phase's completion. `prepare` sees
+  the dying phase and the completion's arguments while they're alive, and
+  returns what the next phase needs; then the live phase is destroyed and
+  the next one is constructed in the same storage and started.
 - **Eager teardown.** The last phase is destroyed the same way before the
   operation's own receiver is completed, with the results moved onto the
-  stack first. So the destructor needs one bit: was the operation started?
+  stack first. `phased` stores one byte saying which phase is live, which
+  its destructor and its exception paths use.
 
 | Section | Shows |
 |---|---|
@@ -95,26 +102,25 @@ Sizes (x86-64, GCC 13 and Clang 18 agree):
 
 | Pipeline | stdexec | typestate |
 |---|---|---|
-| `let_value(just(big), fn)`, `big` 256 bytes | 552 | 288 |
+| `let_value(just(big), fn)`, `big` 256 bytes | 552 | 280 |
 | `sequence(just(big), just(big))` (stdexec: `let_value` making the second) | 560 | 536 |
-| `then(just(1), fn)` | 24 | 32 |
+| `then(just(1), fn)` | 24 | 24 |
 
 `let_value` gains because its arguments live in the second phase, which
 reuses the first phase's bytes; stdexec keeps them alongside the shared
 storage. `sequence` gains nothing because the second sender waits in the
-first phase. `then` loses 8 bytes to the started bit and its padding.
+first phase.
 
 What it costs, and what it taught:
 
-- **Copies.** Everything crossing a phase boundary, or leaving the last
-  phase, is moved through the stack: `then`'s function and arguments,
-  `let_value`'s function (twice) and arguments, every final result.
-  stdexec's `then` passes its child's arguments straight to the function.
-- **`let_value`'s function must move into the second phase**, not die on
-  the stack: the sender it returns may refer to its captures.
-- **The transition is boilerplate.** `then`, `let_value` and `sequence`
-  each repeat the same "move out, leave, enter, start, or fail" sequence with
-  its own exception handling. It wants to be one helper on `phased`.
+- **Copies.** Arguments crossing into `let_value`'s second phase, and
+  every final result, are moved through the stack. stdexec's `then` passes
+  its child's arguments straight to the function.
+- **`let_value`'s function is carried**, not passed between phases: the
+  sender it returns may refer to its captures.
+- **No lifetime code in the algorithms.** Their bodies contain no
+  placement new, explicit destruction, liveness flags or `try`; `phased`
+  owns all of it.
 - **Completion signatures are still most of the work.** About 130 of the
   header's ~780 lines compute them, and phases don't help with that; every
   algorithm here conservatively declares `set_error_t(std::exception_ptr)`.
