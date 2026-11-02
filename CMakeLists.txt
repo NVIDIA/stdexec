@@ -131,30 +131,6 @@ if(STDEXEC_BUILD_TESTS)
     OPTIONS
     "CMAKE_CXX_STANDARD 20"
     "CATCH_CONFIG_NO_POSIX_SIGNALS ON")
-
-  # Add ICM
-  set(icm_VERSION 1.5.0)
-  # Always download it, don't attempt to do `find_package(ICM)` first
-  set(CPM_DOWNLOAD_icm TRUE)
-  rapids_cpm_find(
-    icm
-    ${icm_VERSION}
-    CPM_ARGS
-    GITHUB_REPOSITORY
-    iboB/icm
-    GIT_TAG
-    v${icm_VERSION}
-    VERSION
-    ${icm_VERSION}
-    PATCH_COMMAND
-    ${GIT_EXECUTABLE}
-    restore
-    --
-    .
-    &&
-    ${GIT_EXECUTABLE}
-    apply
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/cpm/patches/icm/regex-build-error.diff)
 endif()
 
 # Ensure that we link with the threading library

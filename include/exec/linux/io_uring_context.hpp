@@ -944,7 +944,10 @@ namespace experimental::execution
         {
           if (__op_->context().submit(this))
           {
-            __op_->context().wakeup();
+            if (auto __ec = __op_->context().try_wakeup())
+            {
+              std::terminate();  // TODO: handle error
+            }
           }
         }
       }

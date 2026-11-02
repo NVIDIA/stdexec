@@ -28,10 +28,11 @@
 #include "../../stdexec/__detail/__queries.hpp"
 #include "../../stdexec/__detail/__receivers.hpp"
 #include "../../stdexec/__detail/__storage.hpp"
-#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__tuple.hpp"
 #include "../../stdexec/__detail/__variant.hpp"  // IWYU pragma: keep
 #include "../../stdexec/stop_token.hpp"
+
+#include "../completion_signatures.hpp"
 
 #include <exception>
 #include <mutex>
@@ -448,14 +449,6 @@ namespace experimental::execution::__shared
     connect_result_t<_CvSender, __receiver_t>  __shared_op_;
   };
 
-  template <class _Cv, class _CvSender, class _Env>
-  using __make_completions_t = __transform_completion_signatures_of_t<
-    _CvSender,
-    __env_t<_Env>,
-    completion_signatures<set_error_t(__mcall1<_Cv, std::exception_ptr>), set_stopped_t()>,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_value_t>>>::template __f,
-    __mtransform<_Cv, __mcompose<__qq<completion_signatures>, __qf<set_error_t>>>::template __f>;
-
   // split completes with const T&. ensure_started completes with T&&.
   template <class _Tag>
   using __cvref_results_t =
@@ -464,14 +457,28 @@ namespace experimental::execution::__shared
   template <class _Tag>
   struct __impls : __sexpr_defaults
   {
+    using add_cvref_t  = __cvref_results_t<_Tag>;
+    using cvref_eptr_t = __mcall1<add_cvref_t, std::exception_ptr>;
+
+    template <class _SetTag>
+    static constexpr auto _transform_sig = []<class... Ts>() noexcept
+    {
+      return completion_signatures<_SetTag(__mcall1<add_cvref_t, Ts>...)>();
+    };
+
     template <class _CvChild, class _Env>
     static consteval auto __get_completion_signatures_impl()
     {
       // Use the senders decay-copyability as a proxy for whether it is
-      // lvalue-connectable. TODO: update this for constant evaluation
+      // lvalue-connectable.
       if constexpr (__decay_copyable<_CvChild>)
       {
-        return __make_completions_t<__cvref_results_t<_Tag>, _CvChild, _Env>();
+        return ::exec::transform_completion_signatures(
+          ::STDEXEC::get_completion_signatures<_CvChild, __env_t<_Env>>(),
+          _transform_sig<set_value_t>,
+          _transform_sig<set_error_t>,
+          {},
+          completion_signatures<set_error_t(cvref_eptr_t), set_stopped_t()>());
       }
       else
       {

@@ -88,16 +88,18 @@ namespace nv::execution
           , ctx_(ctx)
           , storage_(host_allocate<variant_t>(this->status_, ctx.pinned_resource_))
           , task_(task_ptr_t{host_allocate<task_t>(this->status_,
-                                                   ctx.pinned_resource_,
+                                                   this->get_stream_context().pinned_resource_,
                                                    receiver{*this},
                                                    storage_.get(),
                                                    this->get_stream(),
-                                                   ctx.pinned_resource_)
+                                                   this->get_stream_context().pinned_resource_)
                                .release()})
           , env_(host_allocate(this->status_, ctx_.pinned_resource_, this->make_env()))
-          , inner_op_{connect(
-              static_cast<Sender&&>(sndr),
-              enqueue_receiver_t{env_.get(), storage_.get(), task_.get(), ctx_.hub_->producer()})}
+          , inner_op_{connect(static_cast<Sender&&>(sndr),
+                              enqueue_receiver_t{env_.get(),
+                                                 storage_.get(),
+                                                 task_.get(),
+                                                 this->get_stream_context().hub_->producer()})}
         {
           if (this->status_ == cudaSuccess)
           {

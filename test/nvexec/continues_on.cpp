@@ -6,6 +6,8 @@
 
 #include <memory_resource>
 #include <new>
+#include <optional>
+#include <tuple>
 
 namespace
 {
@@ -233,5 +235,56 @@ namespace
 
     REQUIRE_THROWS(STDEXEC::sync_wait(std::move(sndr)));
     REQUIRE(destructions.all_set_once());
+  }
+
+  template <bool DestroySourceFirst>
+  auto continue_on_other_context() -> int
+  {
+    std::optional<nvexec::stream_context> first{std::in_place};
+    std::optional<nvexec::stream_context> second{std::in_place};
+    nvexec::stream_context&               src = DestroySourceFirst ? *first : *second;
+    nvexec::stream_context&               dst = DestroySourceFirst ? *second : *first;
+
+    auto sndr = STDEXEC::schedule(src.get_scheduler())
+              | STDEXEC::then([]() -> int { return nvexec::is_on_gpu() ? 1 : 0; })
+              | STDEXEC::continues_on(dst.get_scheduler())
+              | STDEXEC::then([](int val) -> int
+                              { return nvexec::is_on_gpu() && val == 1 ? 2 : 0; });
+
+    auto [result] = STDEXEC::sync_wait(std::move(sndr)).value();
+
+    first.reset();
+    second.reset();
+    return result;
+  }
+
+  TEST_CASE("continues_on between two stream contexts", "[cuda][stream][adaptors][continues_on]")
+  {
+    SECTION("source context destroyed first")
+    {
+      REQUIRE(continue_on_other_context<true>() == 2);
+    }
+
+    SECTION("destination context destroyed first")
+    {
+      REQUIRE(continue_on_other_context<false>() == 2);
+    }
+  }
+
+  TEST_CASE("continues_on between two stream contexts without values",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    bool on_gpu = false;
+    {
+      nvexec::stream_context src;
+      nvexec::stream_context dst;
+
+      auto sndr = STDEXEC::schedule(src.get_scheduler())
+                | STDEXEC::continues_on(dst.get_scheduler())
+                | STDEXEC::then([]() -> bool { return nvexec::is_on_gpu(); });
+
+      on_gpu = std::get<0>(STDEXEC::sync_wait(std::move(sndr)).value());
+    }
+    REQUIRE(on_gpu);
   }
 }  // namespace

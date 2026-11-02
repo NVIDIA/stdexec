@@ -104,28 +104,10 @@ if(STDEXEC_ENABLE_TBB)
 endif()
 
 # Test which parses a source file for an expected error message
-icm_add_build_failure_test(
-  NAME
-  test_repeat_until_fail
-  TARGET
-  test_repeat_until_fail
-  SOURCES
-  PARSE
-  test_repeat_until_fail.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+stdexec_add_build_failure_test(
+  NAME test_repeat_until_fail SOURCE test_repeat_until_fail.cpp
+  LIBRARIES stdexec)
 
-icm_add_build_failure_test(
-  NAME
-  test_repeat_n_fail
-  TARGET
-  test_repeat_n_fail
-  SOURCES
-  PARSE
-  test_repeat_n_fail.cpp
-  LIBRARIES
-  stdexec
-  FOLDER
-  test)
+stdexec_add_build_failure_test(
+  NAME test_repeat_n_fail SOURCE test_repeat_n_fail.cpp
+  LIBRARIES stdexec)
