@@ -19,6 +19,7 @@
 #include "repeat_n.hpp"
 #include "sequence.hpp"
 #include "then.hpp"
+#include "when_all.hpp"
 
 #include <exec/repeat_n.hpp>
 #include <exec/sequence.hpp>
@@ -552,6 +553,13 @@ int main()
       ts::carried_layout(),
       [&] { return ts::then(ts::just(1), plus_one); },
       [&] { return ts::then(ts::just(counted()), then_fn); });
+    cost_row(
+      "when_all of two just(v)",
+      opstate_size<decltype(ex::when_all(ex::just(big{}), ex::just(big{})))>,
+      count(ex::when_all(ex::just(counted()), ex::just(counted()))),
+      ts::carried_layout(),
+      [] { return ts::when_all(ts::just(big{}), ts::just(big{})); },
+      [] { return ts::when_all(ts::just(counted()), ts::just(counted())); });
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -752,5 +760,43 @@ int main()
     trace(forward(), ts::carried_layout(), "forward, carried:");
     trace(forward(), ts::overlapped_layout(), "forward, overlapped:");
     trace(forward(), ts::scoped_layout(), "forward, scoped:");
+  }
+
+  {
+    section("15. when_all stops its children together");
+    // when_all's phase holds a stop source of its own, and its children see
+    // its token in place of the receiver's, with the rest of the receiver's
+    // environment (the policies, say) carried over. A child's error stops
+    // the others, and so does a stop request from the receiver, which
+    // reaches the phase's source once when_all starts. Each child here
+    // reads its token as it starts.
+    auto child = [](char const * name)
+    {
+      return ex::read_env(ex::get_stop_token)
+           | ex::then(
+               [name](auto token)
+               { std::printf(" %s %s;", name, token.stop_requested() ? "stopped" : "running"); });
+    };
+    std::printf("    a child's error:      ");
+    ex::sync_wait(ts::when_all(child("first"), ex::just_error(1), child("third"))
+                  | ex::upon_error(
+                    []<class E>(E const & e)
+                    {
+                      if constexpr (std::is_same_v<E, int>)
+                      {
+                        std::printf(" error %d\n", e);
+                      }
+                      else
+                      {
+                        std::printf(" exception\n");
+                      }
+                    }));
+
+    ex::inplace_stop_source source;
+    source.request_stop();
+    std::printf("    the receiver's stop:  ");
+    ex::sync_wait(ex::write_env(ts::when_all(child("first"), child("second")),
+                                ex::prop{ex::get_stop_token, source.get_token()})
+                  | ex::then([] { std::printf(" values\n"); }));
   }
 }

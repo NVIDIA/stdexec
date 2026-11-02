@@ -27,7 +27,8 @@
  *     phase is destroyed with the operation state.
  *
  * This header holds that machinery; the algorithms written against it are
- * in just.hpp, then.hpp, let_value.hpp, sequence.hpp and repeat_n.hpp.
+ * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp and
+ * when_all.hpp.
  *
  * Prototype simplifications: senders are connected as rvalues only, every
  * algorithm except just conservatively declares
@@ -39,12 +40,14 @@
 #include <stdexec/execution.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <concepts>
 #include <cstddef>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <new>
+#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -1351,6 +1354,94 @@ namespace frames::typestate
     Value value;
     Env   env;
   };
+
+  // Children of one phase that run at once and stop together: a stop source
+  // of their own, which a stop request from the operation's environment
+  // also reaches, and a count of the children still running. The phase
+  // holds it before its children, whose environments carry token(), and
+  // opens it before starting them. Each child's completion arrives once:
+  // with arrive(), or with stop_and_arrive() to stop the others first. The
+  // one that returns true is the last; by then the operation's environment
+  // no longer reaches the scope, and nothing else will touch the phase, so
+  // the operation may end it.
+  //
+  // A stop request from the environment can make the last child complete
+  // inside this scope's request_stop, and so end the scope there;
+  // stdexec's inplace_stop_source allows its own callbacks to destroy it.
+  template <class Env>
+  class join_scope
+  {
+    struct forward_stop
+    {
+      ex::inplace_stop_source* source;
+
+      void operator()() const noexcept
+      {
+        source->request_stop();
+      }
+    };
+
+    using callback_t = ex::stop_callback_for_t<ex::stop_token_of_t<Env const &>, forward_stop>;
+
+   public:
+    explicit join_scope(std::size_t count) noexcept
+      : count_(count)
+    {}
+
+    join_scope(join_scope&&) = delete;
+
+    [[nodiscard]]
+    auto token() const noexcept -> ex::inplace_stop_token
+    {
+      return source_.get_token();
+    }
+
+    void open(Env const & env) noexcept
+    {
+      forward_.emplace(ex::get_stop_token(env), forward_stop{&source_});
+    }
+
+    // A child that arrives this way never ends the scope during its own
+    // request_stop: until it arrives, the count includes it.
+    [[nodiscard]]
+    auto stop_and_arrive() noexcept -> bool
+    {
+      source_.request_stop();
+      return arrive();
+    }
+
+    [[nodiscard]]
+    auto arrive() noexcept -> bool
+    {
+      if (count_.fetch_sub(1, std::memory_order_acq_rel) != 1)
+      {
+        return false;
+      }
+      // Waits for a forwarded request running on another thread.
+      forward_.reset();
+      return true;
+    }
+
+   private:
+    ex::inplace_stop_source   source_;
+    std::atomic<std::size_t>  count_;
+    std::optional<callback_t> forward_;
+  };
+
+  // Calls fn(), returning what it threw, if anything.
+  template <class Fn>
+  auto attempt(Fn fn) noexcept -> std::exception_ptr
+  {
+    STDEXEC_TRY
+    {
+      fn();
+      return nullptr;
+    }
+    STDEXEC_CATCH_ALL
+    {
+      return std::current_exception();
+    }
+  }
 
   // The receiver a phase's child completes through. `Tag` names the phase,
   // or the child when a phase runs several; `Child`, if not void, is the
