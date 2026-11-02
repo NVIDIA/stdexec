@@ -122,11 +122,70 @@ namespace
     }
   }
 
-  template <class... Sndrs>
-  void print_counts(char const * label, Sndrs... sndrs)
+  // The typestate algorithms under one ending and one entry.
+  template <class Ending, class Entry>
+  struct policy
+  {
+    template <class... Vs>
+    static auto just(Vs&&... vs)
+    {
+      return ts::just<Ending, Entry>(static_cast<Vs&&>(vs)...);
+    }
+
+    template <class Sndr, class Fn>
+    static auto then(Sndr&& sndr, Fn&& fn)
+    {
+      return ts::then<Ending, Entry>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
+    }
+
+    template <class Layout = ts::carried_layout, class Sndr, class Fn>
+    static auto let_value(Sndr&& sndr, Fn&& fn)
+    {
+      return ts::let_value<Ending, Layout, Entry>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
+    }
+
+    template <class Layout = ts::carried_layout, class Sndr1, class Sndr2>
+    static auto sequence(Sndr1&& sndr1, Sndr2&& sndr2)
+    {
+      return ts::sequence<Ending, Layout, Entry>(static_cast<Sndr1&&>(sndr1),
+                                                 static_cast<Sndr2&&>(sndr2));
+    }
+  };
+
+  using eager       = policy<ts::eager_teardown, ts::connect_entry>;
+  using forward     = policy<ts::forward_results, ts::connect_entry>;
+  using eager_start = policy<ts::eager_teardown, ts::start_entry>;
+
+  // A row of operation-state sizes; a stdexec size of 0 leaves its column
+  // blank.
+  template <class Make>
+  void size_row(char const * label, std::size_t stdexec_size, Make make)
   {
     std::printf("    %-34s", label);
-    ((std::printf(" %8s", count(std::move(sndrs)).c_str())), ...);
+    if (stdexec_size == 0)
+    {
+      std::printf(" %8s", "");
+    }
+    else
+    {
+      std::printf(" %8zu", stdexec_size);
+    }
+    [&]<class... Ps>(Ps...)
+    {
+      ((std::printf(" %8zu", opstate_size<decltype(make(Ps()))>)), ...);
+    }(eager(), forward(), eager_start());
+    std::printf("\n");
+  }
+
+  // A row of move counts.
+  template <class Make>
+  void count_row(char const * label, std::string const & stdexec_count, Make make)
+  {
+    std::printf("    %-34s %8s", label, stdexec_count.c_str());
+    [&]<class... Ps>(Ps...)
+    {
+      ((std::printf(" %8s", count(make(Ps())).c_str())), ...);
+    }(eager(), forward(), eager_start());
     std::printf("\n");
   }
 
@@ -148,6 +207,42 @@ namespace
     }
 
     std::unique_ptr<int> value = std::make_unique<int>(42);
+  };
+
+  // A sender whose connect throws.
+  struct throwing_connect
+  {
+    using sender_concept        = ex::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    struct opstate
+    {
+      void start() & noexcept {}
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr) && -> opstate
+    {
+      throw std::runtime_error("connect");
+    }
+  };
+
+  // Records whether it was completed with an error.
+  struct error_probe
+  {
+    using receiver_concept = ex::receiver_t;
+
+    void set_value() && noexcept {}
+
+    template <class E>
+    void set_error(E&&) && noexcept
+    {
+      *failed = true;
+    }
+
+    void set_stopped() && noexcept {}
+
+    bool* failed;
   };
 #endif
 
@@ -331,10 +426,8 @@ int main()
 
   {
     section("9. Costs against stdexec");
-    // Sizes of each pipeline's operation state, connected to a receiver that
-    // stores nothing. The typestate pipelines use one ending throughout.
-    using eager    = ts::eager_teardown;
-    using forward  = ts::forward_results;
+    // Each row builds one pipeline under every typestate policy (one ending
+    // and one entry throughout), next to stdexec's version.
     auto takes_big = [](big&)
     {
       return ex::just();
@@ -343,55 +436,52 @@ int main()
     {
       return ts::just();
     };
-    std::printf("    %-34s %8s %8s %8s\n", "operation-state bytes", "stdexec", "eager", "forward");
-    std::printf(
-      "    %-34s %8zu %8zu %8zu\n",
-      "let_value(just(big), fn)",
-      opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
-      opstate_size<decltype(ts::let_value<eager>(ts::just<eager>(big{}), takes_big_ts))>,
-      opstate_size<decltype(ts::let_value<forward>(ts::just<forward>(big{}), takes_big_ts))>);
-    std::printf(
-      "    %-34s %8s %8zu %8zu\n",
-      "  ... with overlapped_layout",
-      "",
-      opstate_size<decltype(ts::let_value<eager, ts::overlapped_layout>(ts::just<eager>(big{}),
-                                                                        takes_big_ts))>,
-      opstate_size<decltype(ts::let_value<forward, ts::overlapped_layout>(ts::just<forward>(big{}),
-                                                                          takes_big_ts))>);
+    auto plus_one = [](int i)
+    {
+      return i + 1;
+    };
+
+    std::printf("    %-34s %8s %8s %8s %8s\n",
+                "operation-state bytes",
+                "stdexec",
+                "eager",
+                "forward",
+                "eag+start");
+    size_row("let_value(just(big), fn)",
+             opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
+             [&]<class P>(P) { return P::let_value(P::just(big{}), takes_big_ts); });
+    size_row("  ... with overlapped_layout",
+             0,
+             [&]<class P>(P)
+             {
+               return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts);
+             });
     // stdexec has no sequence; compare let_value with a continuation that
     // returns a sender it captured.
     auto second_big = [s = ex::just(big{})](big&) mutable
     {
       return std::move(s);
     };
-    std::printf(
-      "    %-34s %8zu %8zu %8zu\n",
-      "sequence(just(big), just(big))",
-      opstate_size<decltype(ex::just(big{}) | ex::let_value(second_big))>,
-      opstate_size<decltype(ts::sequence<eager>(ts::just<eager>(big{}), ts::just<eager>(big{})))>,
-      opstate_size<decltype(ts::sequence<forward>(ts::just<forward>(big{}),
-                                                  ts::just<forward>(big{})))>);
-    std::printf(
-      "    %-34s %8s %8zu %8zu\n",
-      "  ... with overlapped_layout",
-      "",
-      opstate_size<decltype(ts::sequence<eager, ts::overlapped_layout>(ts::just<eager>(big{}),
-                                                                       ts::just<eager>(big{})))>,
-      opstate_size<decltype(ts::sequence<forward, ts::overlapped_layout>(ts::just<forward>(big{}),
-                                                                         ts::just<forward>(
-                                                                           big{})))>);
-    auto plus_one = [](int i)
-    {
-      return i + 1;
-    };
-    std::printf("    %-34s %8zu %8zu %8zu\n",
-                "then(just(1), fn)",
-                opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
-                opstate_size<decltype(ts::then<eager>(ts::just<eager>(1), plus_one))>,
-                opstate_size<decltype(ts::then<forward>(ts::just<forward>(1), plus_one))>);
+    size_row("sequence(just(big), just(big))",
+             opstate_size<decltype(ex::just(big{}) | ex::let_value(second_big))>,
+             []<class P>(P) { return P::sequence(P::just(big{}), P::just(big{})); });
+    size_row("  ... with overlapped_layout",
+             0,
+             []<class P>(P)
+             {
+               return P::template sequence<ts::overlapped_layout>(P::just(big{}), P::just(big{}));
+             });
+    size_row("then(just(1), fn)",
+             opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
+             [&]<class P>(P) { return P::then(P::just(1), plus_one); });
 
     // Copies and moves of a value from connect to sync_wait's result.
-    std::printf("\n    %-34s %8s %8s %8s\n", "moves (copies)", "stdexec", "eager", "forward");
+    std::printf("\n    %-34s %8s %8s %8s %8s\n",
+                "moves (copies)",
+                "stdexec",
+                "eager",
+                "forward",
+                "eag+start");
     auto let_fn = [](counted&)
     {
       return ex::just();
@@ -404,30 +494,28 @@ int main()
     {
       return c;
     };
-    print_counts("let_value(just(c), fn)",
-                 ex::just(counted()) | ex::let_value(let_fn),
-                 ts::let_value<eager>(ts::just<eager>(counted()), let_fn_ts),
-                 ts::let_value<forward>(ts::just<forward>(counted()), let_fn_ts));
-    print_counts("  ... with overlapped_layout",
-                 nullptr,
-                 ts::let_value<eager, ts::overlapped_layout>(ts::just<eager>(counted()), let_fn_ts),
-                 ts::let_value<forward, ts::overlapped_layout>(ts::just<forward>(counted()),
-                                                               let_fn_ts));
-    print_counts("then(just(c), pass-by-value fn)",
-                 ex::just(counted()) | ex::then(then_fn),
-                 ts::then<eager>(ts::just<eager>(counted()), then_fn),
-                 ts::then<forward>(ts::just<forward>(counted()), then_fn));
-    print_counts("sequence(just(), just(c))",
-                 ex::just()
-                   | ex::let_value([s = ex::just(counted())]() mutable { return std::move(s); }),
-                 ts::sequence<eager>(ts::just<eager>(), ts::just<eager>(counted())),
-                 ts::sequence<forward>(ts::just<forward>(), ts::just<forward>(counted())));
-    print_counts("  ... with overlapped_layout",
-                 nullptr,
-                 ts::sequence<eager, ts::overlapped_layout>(ts::just<eager>(),
-                                                            ts::just<eager>(counted())),
-                 ts::sequence<forward, ts::overlapped_layout>(ts::just<forward>(),
-                                                              ts::just<forward>(counted())));
+    count_row("let_value(just(c), fn)",
+              count(ex::just(counted()) | ex::let_value(let_fn)),
+              [&]<class P>(P) { return P::let_value(P::just(counted()), let_fn_ts); });
+    count_row("  ... with overlapped_layout",
+              "",
+              [&]<class P>(P)
+              {
+                return P::template let_value<ts::overlapped_layout>(P::just(counted()), let_fn_ts);
+              });
+    count_row("then(just(c), pass-by-value fn)",
+              count(ex::just(counted()) | ex::then(then_fn)),
+              [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
+    count_row("sequence(just(), just(c))",
+              count(ex::just()
+                    | ex::let_value([s = ex::just(counted())]() mutable { return std::move(s); })),
+              []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
+    count_row("  ... with overlapped_layout",
+              "",
+              []<class P>(P)
+              {
+                return P::template sequence<ts::overlapped_layout>(P::just(), P::just(counted()));
+              });
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -446,15 +534,14 @@ int main()
     // succeeds. Each failure lands somewhere different (connect, a
     // transition, a finish) and must end the live phase without leaking or
     // destroying anything twice; run it under ASan to check.
-    auto failure_points = []<class Ending>(Ending)
+    auto failure_points = []<class P>(P)
     {
       int failures = 0;
       for (int k = 1;; ++k)
       {
-        auto pipeline = ts::then<Ending>(
-          ts::let_value<Ending>(ts::just<Ending>(fragile()),
-                                [](fragile& f) { return ts::just<Ending>(std::move(f)); }),
-          [](fragile f) { return *f.value; });
+        auto pipeline      = P::then(P::let_value(P::just(fragile()),
+                                             [](fragile& f) { return P::just(std::move(f)); }),
+                                [](fragile f) { return *f.value; });
         fragile::countdown = k;
         try
         {
@@ -469,10 +556,33 @@ int main()
       fragile::countdown = 0;
       return failures;
     };
-    std::printf("    eager_teardown:  %2d failure points, each surfacing from sync_wait\n",
-                failure_points(ts::eager_teardown()));
-    std::printf("    forward_results: %2d failure points, each surfacing from sync_wait\n",
-                failure_points(ts::forward_results()));
+    std::printf("    eager:       %2d failure points, each surfacing from sync_wait\n",
+                failure_points(eager()));
+    std::printf("    forward:     %2d failure points, each surfacing from sync_wait\n",
+                failure_points(forward()));
+    std::printf("    eager+start: %2d failure points, each surfacing from sync_wait\n",
+                failure_points(eager_start()));
+
+    // Under start_entry, connect doesn't connect the child, so a child whose
+    // connect throws makes start complete with set_error instead of making
+    // connect throw.
+    auto where = []<class P>(P) -> char const *
+    {
+      bool failed = false;
+      try
+      {
+        auto op = ex::connect(P::then(throwing_connect(), [] {}), error_probe{&failed});
+        ex::start(op);
+      }
+      catch (std::runtime_error const &)
+      {
+        return "connect threw";
+      }
+      return failed ? "start completed with set_error" : "no error";
+    };
+    std::printf("    a throwing child connect: connect_entry: %s; start_entry: %s\n",
+                where(eager()),
+                where(eager_start()));
   }
 #endif
 
