@@ -442,6 +442,27 @@ namespace frames::typestate
       }
     }
 
+    // Whether `Connects`, what a phase names as `connects`, names the part
+    // M points to: Connects is one pointer to a member, or parts<Ms...>
+    // for a phase whose children connect several.
+    template <class Connects>
+    struct connects_of
+    {
+      template <auto M, auto C>
+      static constexpr bool names = same_member<M, C>();
+    };
+
+    template <auto... Ms>
+    struct connects_of<parts<Ms...>>
+    {
+      template <auto M, auto>
+      static constexpr bool names = (same_member<M, Ms>() || ...);
+    };
+
+    template <auto M, auto Connects>
+    inline constexpr bool connects_names =
+      connects_of<std::remove_cv_t<decltype(Connects)>>::template names<M, Connects>;
+
     struct no_parts
     {};
 
@@ -568,7 +589,8 @@ namespace frames::typestate
   //
   //   connect_part<M>(rcvr, incoming...)
   //       from a phase's constructor: the phase's child, made from the part
-  //       M points to. The phase names M as `connects`.
+  //       M points to. The phase names M as `connects`, or names parts<M,
+  //       ...> when it has a child for each of several parts.
   //
   //   begin(then, args...)
   //       from start: under start_entry, enters the first phase, constructed
@@ -636,8 +658,8 @@ namespace frames::typestate
   //   split_sender
   //       nowhere: connect hands the sender to phased, which moves into its
   //       own storage each of the parts the operation uses (Parts), for as
-  //       long as the operation, except the part a first phase connects as
-  //       it's entered by connect, which goes straight from the incoming
+  //       long as the operation, except the parts a first phase connects
+  //       as it's entered by connect, which go straight from the incoming
   //       sender into connect, as stdexec's algorithms do.
   //
   // Under AddressSanitizer, storage no phase occupies is poisoned, so
@@ -707,14 +729,14 @@ namespace frames::typestate
 
     static constexpr bool split = std::is_same_v<Data, split_sender>;
 
-    // Whether M is the part the first phase connects as it's entered by
+    // Whether M is a part the first phase connects as it's entered by
     // connect, straight from the incoming sender.
     template <auto M>
     static constexpr bool connected_on_entry = []
     {
       if constexpr (split && !start_entry && requires { First::connects; })
       {
-        return detail::same_member<M, First::connects>();
+        return detail::connects_names<M, First::connects>;
       }
       else
       {
