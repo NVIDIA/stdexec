@@ -587,7 +587,25 @@ int main()
 #endif
 
   {
-    section("11. Touching a phase after it has ended");
+    section("11. Bound operations among stdexec senders");
+    // Under start_entry, typestate senders bind to the sender stored once at
+    // the root; a stdexec child, which can't bind, is moved into connect
+    // instead.
+    using bound = eager_start;
+    auto [a]    = ex::sync_wait(bound::then(ex::just(20), [](int i) { return i + 1; })).value();
+    auto [b]    = ex::sync_wait(bound::just(20) | ex::then([](int i) { return i + 2; })).value();
+    std::printf("    bound then over stdexec just: %d; stdexec then over bound just: %d\n", a, b);
+
+    counting_resource mr;
+    auto [c] = run(bound::let_value(indirect(bound::just(1), "phase 1"),
+                                    [](int i) { return indirect(bound::just(i + 1), "phase 2"); }),
+                   mr)
+                 .value();
+    std::printf("    result: %d\n", c);
+  }
+
+  {
+    section("12. Touching a phase after it has ended");
 #if defined(FRAMES_SHOW_USE_AFTER_FINISH)
     // Under AddressSanitizer, eager teardown poisons the child's bytes before
     // then completes, so the child's late write is reported.

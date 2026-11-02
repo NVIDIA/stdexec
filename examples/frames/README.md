@@ -107,17 +107,25 @@ Three policies, chosen per algorithm instance:
   destination overlaps its source has to be somewhere else while the source
   is destroyed.
 - **Entry.** `connect_entry`, the default, enters the first phase in
-  `connect`, connecting the child there. `start_entry` keeps the first
-  phase's constructor arguments from `connect` until `start`, which enters
-  it. A child whose `connect` throws then makes `start` complete with
-  `set_error` instead of making `connect` throw.
+  `connect`, connecting the child there. Under `start_entry`, `connect`
+  moves the sender into a small `root` operation and does nothing else;
+  `start` enters the first phase. Every typestate sender then *binds*
+  rather than connects (`bind(rcvr) &`): its operation refers to the stored
+  sender, using its function in place and binding its children to its own
+  child senders, so the stored sender is the carried state of the whole
+  tree and nothing below the root copies it. A sender that can't bind (any
+  stdexec sender) is moved into `connect` when its phase begins. A child
+  whose `connect` throws then makes `start` complete with `set_error`
+  instead of making `connect` throw. Senders that `let_value`'s function
+  returns are created at run time, so their phase owns them.
 
 Each exception path knows statically which phase, if any, is live, so the
 byte recording the live phase serves only the destructor. With
 `eager_teardown` and `start_entry` together, no phase is ever live when the
 operation state is destroyed, so `phased` has no such byte at all and its
-destructor destroys only the receiver, the carried region and the first
-phase's arguments.
+destructor destroys only the receiver and the carried region. With
+binding, the root's destructor destroys the stored sender as well, which is
+every level's carried data at once.
 
 | Section | Shows |
 |---|---|
@@ -126,7 +134,8 @@ phase's arguments.
 | 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
 | 9 | Sizes and moves against stdexec's own algorithms. |
 | 10 | Exceptions: from `then`'s function; from every move of a value in turn, under three policies; and where a throwing child `connect` surfaces under each entry. |
-| 11 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
+| 11 | Bound operations mixed with stdexec senders, and bound phases reusing automatic storage. |
+| 12 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 
 Costs (x86-64; GCC 13 and Clang 18 agree; `big` is 256 bytes; stdexec has
 no `sequence`, so its column is a `let_value` returning a captured sender;
@@ -134,31 +143,36 @@ no `sequence`, so its column is a `let_value` returning a captured sender;
 
 | Operation-state bytes | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
-| `let_value(just(big), fn)` | 552 | 536 | 536 | 1048 |
-| ... `overlapped_layout` | | 280 | 280 | 792 |
-| `sequence(just(big), just(big))` | 816 | 544 | 544 | 1056 |
-| ... `overlapped_layout` | | 536 | 536 | 1304 |
-| `then(just(1), fn)` | 24 | 24 | 24 | 40 |
+| `let_value(just(big), fn)` | 552 | 536 | 536 | 560 |
+| ... `overlapped_layout` | | 280 | 280 | 552 |
+| `sequence(just(big), just(big))` | 816 | 544 | 544 | 552 |
+| ... `overlapped_layout` | | 536 | 536 | 552 |
+| `then(just(1), fn)` | 24 | 24 | 24 | 48 |
 
 | Moves of a value, connect to result | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
-| `let_value(just(c), fn)` | 6 | 7 | 6 | 9 |
-| ... `overlapped_layout` | | 9 | 8 | 11 |
-| `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 12 |
-| `sequence(just(), just(c))` | 10 | 10 | 8 | 11 |
-| ... `overlapped_layout` | | 11 | 9 | 13 |
+| `let_value(just(c), fn)` | 6 | 7 | 6 | 5 |
+| ... `overlapped_layout` | | 9 | 8 | 7 |
+| `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 8 |
+| `sequence(just(), just(c))` | 10 | 10 | 8 | 6 |
+| ... `overlapped_layout` | | 11 | 9 | 6 |
 
 So with `forward_results` and the defaults, the typestate versions cost no
 more than stdexec's in bytes or moves. `eager_teardown` costs one move of
 the results per algorithm that tears down; `overlapped_layout` trades a
 move for bytes.
 
-`start_entry` on its own roughly doubles the sizes, and adds moves, because
-the duplication compounds: each level keeps its child *sender* until
-`start`, and the child operation built from it keeps its own copy of its
-inputs too, beside the phase they move into. So a value is stored once per
-level it passes through. Removing that duplication needs the next step:
-operations that refer into the stored sender instead of copying from it.
+With `start_entry`, binding makes values move once, into the root, and
+then be used in place, so even with eager teardown the moves come out at
+or below stdexec's in every row. (Before binding, when each level kept its
+child sender until `start` and the child kept its own copy too, sizes
+roughly doubled: 1048 bytes for the first row.) What's left is a pointer
+per bound level from the operation to its sender, beside the receiver's
+pointer to its parent: 8 bytes that don't matter next to `big` but double
+`then(just(1), fn)`. Each operation could instead find its sender through
+its receiver (the parent knows which of its child senders each phase
+binds), trading those bytes for a pointer chase up the tree on every
+access.
 
 Under AddressSanitizer, `phased` poisons the storage no phase occupies.
 Touching a phase after it has ended then gets reported rather than silently
@@ -176,7 +190,7 @@ What else it taught:
 - **`let_value`'s function is carried**, not passed between phases: the
   sender it returns may refer to its captures.
 - **Completion signatures are still most of the work.** About 175 of the
-  header's ~990 lines compute them, and phases don't help with that; every
+  header's ~1400 lines compute them, and phases don't help with that; every
   algorithm here except `just` conservatively declares
   `set_error_t(std::exception_ptr)`.
 
