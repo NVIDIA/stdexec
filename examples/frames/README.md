@@ -66,14 +66,17 @@ to `outer`.
 
 ## Part two: operation states as sequences of phases
 
-`just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp` and `repeat_n.hpp`
-reimplement `just`, `then`, `let_value`, a binary `sequence` and `repeat_n`
-with operation states that hold one *phase* at a time, written against the
+`just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp`, `repeat_n.hpp` and
+`when_all.hpp` reimplement `just`, `then`, `let_value`, a binary `sequence`,
+`repeat_n` and `when_all` with operation states that hold one *phase* at a
+time, written against the
 machinery in `typestate.hpp`. The aim is a standard way of expressing an
 operation's states and transitions, so that lifetimes are correct by
 construction, at no cost relative to the established approach. The machinery
-is where the complexity lives, in about 1400 lines; each algorithm takes 125
-to 180, about a fifth of them completion signatures.
+is where the complexity lives, in about 1600 lines; each algorithm takes 125
+to 180, about a fifth of them completion signatures, except `when_all`,
+whose 395 include about 120 working out its completion signatures and the
+types it stores.
 
 - **`phased<Rcvr, Parts, Carried, Phases...>`** holds the operation's
   receiver, a *carried* region that lives as long as the operation, and
@@ -100,6 +103,15 @@ to 180, about a fifth of them completion signatures.
   worked out. Keyed by the tag, it can differ per child, as a fork of
   automatic storage would need. `env_with<Query, Value, Env>` replaces one
   query and carries over the rest, policies included.
+- **Children that run at once and stop together** share a `join_scope`: a
+  stop source whose token their environments carry, a callback that forwards
+  the receiver's stop requests to it from `open()` until the last child
+  arrives, and a count of the children still running. `when_all` holds one
+  in its single phase. A child that fails or stops arrives with
+  `stop_and_arrive()`, which requests stop before counting the child out, so
+  no child can end the scope during its own `request_stop`. The last to
+  arrive (`arrive()` returns `true`) drops the forwarding callback, waiting
+  for one running on another thread, before the operation finishes.
 - **A transition** runs inside the live phase's completion. `prepare` sees
   the dying phase and the completion's arguments while they're alive; it may
   store into the carried region, and returns what the next phase's
@@ -208,6 +220,7 @@ which is every level's carried data at once.
 | 12 | `repeat_n`: iteration counts, a failing iteration, and copies against `exec::repeat_n`. |
 | 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 | 14 | When `let_value`'s values are destroyed, under each layout and both endings. |
+| 15 | `when_all` giving its children its own stop token: a child's error, and the receiver's stop request, reaching the other children. |
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
@@ -232,6 +245,7 @@ let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568
   ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
 sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
 then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
+when_all of two just(v)     1072  14 (0)    1144  12 (0)    1144   8 (0)    1136  12 (0)    1136  16 (0)
 
 * stdexec moves 8 (0) with Clang
 ```
@@ -253,6 +267,14 @@ receivers on each access to a sender's data. Receivers that are rebuilt from
 the child's address instead of stored (P3425, worded for C++26 by P3986 as
 `inlinable_receiver`) would turn that walk into constant offsets, and remove
 the receivers' own pointers too.
+
+`when_all` keeps its children's values in its phase until the last child
+completes, as stdexec's does, and moves them less often except under
+`split_sender`. Its extra bytes are mostly an error slot, since like every
+algorithm here it declares `set_error_t(std::exception_ptr)` where stdexec's
+keeps no room for errors its children can't send (16 bytes), and the root's
+pointer and the bytes recording `when_all`'s and each `just`'s live phase,
+with their padding (32).
 
 `split_sender` trades the other way. Each operation moves in the data it
 uses, so a value moves once per level rather than once in all, but the data
@@ -296,6 +318,22 @@ What else it taught:
   typestate senders pays this once, at the root, since the operations below
   bind their children; under `split_sender`, each level connects its
   children through `connect`.
+- **Stop requests end operations from inside their own callbacks.** A
+  child that completes from its stop callback can make its parent change
+  phase (`let_value`'s second child then registers its callback with a
+  source that's in the middle of `request_stop`) or finish, and under
+  `eager_teardown` end the phase holding the child, its callback and, in
+  `when_all`, the stop source whose `request_stop` is running. That's
+  allowed: a stop callback may be destroyed from its own invocation, and
+  since #1889 stdexec's `inplace_stop_source` may be destroyed by one of its
+  own callbacks. What it asks of children is the usual rule, applied
+  strictly: since eager teardown ends a child's phase before the child's
+  `start` or stop callback returns, a child that writes to itself after
+  completing is caught every time, not only when its parent happens to
+  destroy the operation. A child that registers its stop callback with
+  `std::optional::emplace` and completes from the callback is one such: when
+  stop has already been requested, the callback runs inside `emplace`, which
+  sets its flag afterwards.
 - **Completion signatures are still much of the work.** About 160 of
   `typestate.hpp`'s lines, and 20 to 30 of each algorithm's, compute them,
   and phases don't help with that; every algorithm here except `just`
