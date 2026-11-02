@@ -87,6 +87,49 @@ namespace
     std::array<char, 256> bytes{};
   };
 
+  // Counts its copies and moves.
+  struct counted
+  {
+    inline static int copies = 0;
+    inline static int moves  = 0;
+
+    counted() = default;
+
+    counted(counted const &)
+    {
+      ++copies;
+    }
+
+    counted(counted&&) noexcept
+    {
+      ++moves;
+    }
+  };
+
+  // Moves and copies while running `sndr` under sync_wait, as "m (c)".
+  template <class Sndr>
+  auto count(Sndr sndr) -> std::string
+  {
+    if constexpr (std::is_null_pointer_v<Sndr>)
+    {
+      return "";
+    }
+    else
+    {
+      counted::copies = counted::moves = 0;
+      ex::sync_wait(std::move(sndr));
+      return std::to_string(counted::moves) + " (" + std::to_string(counted::copies) + ")";
+    }
+  }
+
+  template <class... Sndrs>
+  void print_counts(char const * label, Sndrs... sndrs)
+  {
+    std::printf("    %-34s", label);
+    ((std::printf(" %8s", count(std::move(sndrs)).c_str())), ...);
+    std::printf("\n");
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   // A value whose countdown-th move throws.
   struct fragile
@@ -258,10 +301,11 @@ int main()
   }
 
   {
-    section("9. Operation-state sizes: stdexec vs typestate");
-    // stdexec's let_value keeps the values it passes to fn apart from the
-    // storage it shares between its two children. The typestate version
-    // keeps them in the second phase, which reuses the first phase's bytes.
+    section("9. Costs against stdexec");
+    // Sizes of each pipeline's operation state, connected to a receiver that
+    // stores nothing. The typestate pipelines use one ending throughout.
+    using eager    = ts::eager_teardown;
+    using forward  = ts::forward_results;
     auto takes_big = [](big&)
     {
       return ex::just();
@@ -270,27 +314,91 @@ int main()
     {
       return ts::just();
     };
-    std::printf("    let_value(just(big), fn)       stdexec %4zu  typestate %4zu\n",
-                opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
-                opstate_size<decltype(ts::let_value(ts::just(big{}), takes_big_ts))>);
-
-    // stdexec has no sequence; compare let_value with a continuation that
-    // makes the second sender. No saving here: the typestate sequence holds
-    // the second sender, with its big value, in the first phase until it's
-    // needed, while stdexec's continuation makes it on demand.
+    std::printf("    %-34s %8s %8s %8s\n", "operation-state bytes", "stdexec", "eager", "forward");
     std::printf(
-      "    sequence(just(big), just(big)) stdexec %4zu  typestate %4zu\n",
-      opstate_size<decltype(ex::just(big{}) | ex::let_value([](big&) { return ex::just(big{}); }))>,
-      opstate_size<decltype(ts::sequence(ts::just(big{}), ts::just(big{})))>);
-
-    // Neither version needs more than the child's operation state and fn.
+      "    %-34s %8zu %8zu %8zu\n",
+      "let_value(just(big), fn)",
+      opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
+      opstate_size<decltype(ts::let_value<eager>(ts::just<eager>(big{}), takes_big_ts))>,
+      opstate_size<decltype(ts::let_value<forward>(ts::just<forward>(big{}), takes_big_ts))>);
+    std::printf(
+      "    %-34s %8s %8zu %8zu\n",
+      "  ... with overlapped_layout",
+      "",
+      opstate_size<decltype(ts::let_value<eager, ts::overlapped_layout>(ts::just<eager>(big{}),
+                                                                        takes_big_ts))>,
+      opstate_size<decltype(ts::let_value<forward, ts::overlapped_layout>(ts::just<forward>(big{}),
+                                                                          takes_big_ts))>);
+    // stdexec has no sequence; compare let_value with a continuation that
+    // returns a sender it captured.
+    auto second_big = [s = ex::just(big{})](big&) mutable
+    {
+      return std::move(s);
+    };
+    std::printf(
+      "    %-34s %8zu %8zu %8zu\n",
+      "sequence(just(big), just(big))",
+      opstate_size<decltype(ex::just(big{}) | ex::let_value(second_big))>,
+      opstate_size<decltype(ts::sequence<eager>(ts::just<eager>(big{}), ts::just<eager>(big{})))>,
+      opstate_size<decltype(ts::sequence<forward>(ts::just<forward>(big{}),
+                                                  ts::just<forward>(big{})))>);
+    std::printf(
+      "    %-34s %8s %8zu %8zu\n",
+      "  ... with overlapped_layout",
+      "",
+      opstate_size<decltype(ts::sequence<eager, ts::overlapped_layout>(ts::just<eager>(big{}),
+                                                                       ts::just<eager>(big{})))>,
+      opstate_size<decltype(ts::sequence<forward, ts::overlapped_layout>(ts::just<forward>(big{}),
+                                                                         ts::just<forward>(
+                                                                           big{})))>);
     auto plus_one = [](int i)
     {
       return i + 1;
     };
-    std::printf("    then(just(1), fn)              stdexec %4zu  typestate %4zu\n",
+    std::printf("    %-34s %8zu %8zu %8zu\n",
+                "then(just(1), fn)",
                 opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
-                opstate_size<decltype(ts::then(ts::just(1), plus_one))>);
+                opstate_size<decltype(ts::then<eager>(ts::just<eager>(1), plus_one))>,
+                opstate_size<decltype(ts::then<forward>(ts::just<forward>(1), plus_one))>);
+
+    // Copies and moves of a value from connect to sync_wait's result.
+    std::printf("\n    %-34s %8s %8s %8s\n", "moves (copies)", "stdexec", "eager", "forward");
+    auto let_fn = [](counted&)
+    {
+      return ex::just();
+    };
+    auto let_fn_ts = [](counted&)
+    {
+      return ts::just();
+    };
+    auto then_fn = [](counted c)
+    {
+      return c;
+    };
+    print_counts("let_value(just(c), fn)",
+                 ex::just(counted()) | ex::let_value(let_fn),
+                 ts::let_value<eager>(ts::just<eager>(counted()), let_fn_ts),
+                 ts::let_value<forward>(ts::just<forward>(counted()), let_fn_ts));
+    print_counts("  ... with overlapped_layout",
+                 nullptr,
+                 ts::let_value<eager, ts::overlapped_layout>(ts::just<eager>(counted()), let_fn_ts),
+                 ts::let_value<forward, ts::overlapped_layout>(ts::just<forward>(counted()),
+                                                               let_fn_ts));
+    print_counts("then(just(c), pass-by-value fn)",
+                 ex::just(counted()) | ex::then(then_fn),
+                 ts::then<eager>(ts::just<eager>(counted()), then_fn),
+                 ts::then<forward>(ts::just<forward>(counted()), then_fn));
+    print_counts("sequence(just(), just(c))",
+                 ex::just()
+                   | ex::let_value([s = ex::just(counted())]() mutable { return std::move(s); }),
+                 ts::sequence<eager>(ts::just<eager>(), ts::just<eager>(counted())),
+                 ts::sequence<forward>(ts::just<forward>(), ts::just<forward>(counted())));
+    print_counts("  ... with overlapped_layout",
+                 nullptr,
+                 ts::sequence<eager, ts::overlapped_layout>(ts::just<eager>(),
+                                                            ts::just<eager>(counted())),
+                 ts::sequence<forward, ts::overlapped_layout>(ts::just<forward>(),
+                                                              ts::just<forward>(counted())));
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -309,26 +417,33 @@ int main()
     // succeeds. Each failure lands somewhere different (connect, a
     // transition, a finish) and must end the live phase without leaking or
     // destroying anything twice; run it under ASan to check.
-    int failures = 0;
-    for (int k = 1;; ++k)
+    auto failure_points = []<class Ending>(Ending)
     {
-      auto pipeline      = ts::then(ts::let_value(ts::just(fragile()),
-                                             [](fragile& f) { return ts::just(std::move(f)); }),
-                               [](fragile f) { return *f.value; });
-      fragile::countdown = k;
-      try
+      int failures = 0;
+      for (int k = 1;; ++k)
       {
-        ex::sync_wait(std::move(pipeline));
-        break;
+        auto pipeline = ts::then<Ending>(
+          ts::let_value<Ending>(ts::just<Ending>(fragile()),
+                                [](fragile& f) { return ts::just<Ending>(std::move(f)); }),
+          [](fragile f) { return *f.value; });
+        fragile::countdown = k;
+        try
+        {
+          ex::sync_wait(std::move(pipeline));
+          break;
+        }
+        catch (std::runtime_error const &)
+        {
+          ++failures;
+        }
       }
-      catch (std::runtime_error const &)
-      {
-        ++failures;
-      }
-    }
-    fragile::countdown = 0;
-    std::printf("    %d failure points, each surfacing from sync_wait as the exception\n",
-                failures);
+      fragile::countdown = 0;
+      return failures;
+    };
+    std::printf("    eager_teardown:  %2d failure points, each surfacing from sync_wait\n",
+                failure_points(ts::eager_teardown()));
+    std::printf("    forward_results: %2d failure points, each surfacing from sync_wait\n",
+                failure_points(ts::forward_results()));
   }
 #endif
 }
