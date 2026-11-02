@@ -21,6 +21,7 @@
 
 #include <array>
 #include <cstdio>
+#include <memory>
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
@@ -85,6 +86,27 @@ namespace
   {
     std::array<char, 256> bytes{};
   };
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  // A value whose countdown-th move throws.
+  struct fragile
+  {
+    inline static int countdown = 0;
+
+    fragile() = default;
+
+    fragile(fragile&& other)
+      : value(std::move(other.value))
+    {
+      if (countdown > 0 && --countdown == 0)
+      {
+        throw std::runtime_error("move");
+      }
+    }
+
+    std::unique_ptr<int> value = std::make_unique<int>(42);
+  };
+#endif
 
   void section(char const * title)
   {
@@ -261,7 +283,7 @@ int main()
       opstate_size<decltype(ex::just(big{}) | ex::let_value([](big&) { return ex::just(big{}); }))>,
       opstate_size<decltype(ts::sequence(ts::just(big{}), ts::just(big{})))>);
 
-    // The typestate version pays for its one bit of state (was it started?).
+    // Neither version needs more than the child's operation state and fn.
     auto plus_one = [](int i)
     {
       return i + 1;
@@ -282,6 +304,31 @@ int main()
     {
       std::printf("    caught: %s\n", e.what());
     }
+
+    // Make the k-th move of a value throw, for every k until the pipeline
+    // succeeds. Each failure lands somewhere different (connect, a
+    // transition, a finish) and must end the live phase without leaking or
+    // destroying anything twice; run it under ASan to check.
+    int failures = 0;
+    for (int k = 1;; ++k)
+    {
+      auto pipeline      = ts::then(ts::let_value(ts::just(fragile()),
+                                             [](fragile& f) { return ts::just(std::move(f)); }),
+                               [](fragile f) { return *f.value; });
+      fragile::countdown = k;
+      try
+      {
+        ex::sync_wait(std::move(pipeline));
+        break;
+      }
+      catch (std::runtime_error const &)
+      {
+        ++failures;
+      }
+    }
+    fragile::countdown = 0;
+    std::printf("    %d failure points, each surfacing from sync_wait as the exception\n",
+                failures);
   }
 #endif
 }

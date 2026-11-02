@@ -2,13 +2,14 @@
  * Exploration: operation states as explicit sequences of phases.
  *
  * An algorithm's operation state holds one phase at a time in storage sized
- * for the largest phase. Which phase is live isn't stored anywhere: each
- * phase's child completes through a receiver whose *type* names the phase,
- * so every completion handler knows statically what its storage holds.
+ * for the largest phase. Each phase's child completes through a receiver
+ * whose *type* names the phase, so every completion handler knows statically
+ * what the storage holds. (One byte records the live phase too, for the
+ * destructor and for exception paths, which have no receiver to tell them.)
  *
  * A transition happens inside the live phase's completion:
  *
- *   1. move what the next phase needs onto the stack,
+ *   1. gather what the next phase needs while the live phase is still alive,
  *   2. destroy the live phase,
  *   3. construct the next phase in the same storage and start it.
  *
@@ -16,8 +17,7 @@
  * signalled completion, which stdexec's own let_value relies on too.
  *
  * The last phase is torn down the same way before the parent receiver is
- * completed ("eager teardown"), so the operation state's destructor only has
- * one thing to know: whether the operation was ever started.
+ * completed ("eager teardown").
  *
  * Prototype simplifications: senders are connected as rvalues only, every
  * algorithm conservatively declares set_error_t(std::exception_ptr), results
@@ -135,6 +135,20 @@ namespace frames::typestate
     struct type_list
     {};
 
+    template <class T, class... Ts>
+    consteval auto index_of() -> unsigned char
+    {
+      constexpr bool same[] = {std::is_same_v<T, Ts>...};
+      for (unsigned char i = 0; i < sizeof...(Ts); ++i)
+      {
+        if (same[i])
+        {
+          return i;
+        }
+      }
+      return 0xff;
+    }
+
     // type_list<type_list<decay_t<As>...>...>, one per set_value_t(As...).
     template <class Sigs>
     struct value_lists;
@@ -177,92 +191,66 @@ namespace frames::typestate
   }  // namespace detail
 
   //////////////////////////////////////////////////////////////////////////////
-  // phased: the receiver of the whole operation, plus storage for whichever
-  // phase is live.
+  // phased: an operation's receiver, a carried region that lives as long as
+  // the operation, and storage for whichever phase is live.
+  //
+  // Algorithms never construct or destroy phases themselves. They call:
+  //
+  //   transition<From, To>(prepare, extra...)
+  //       from inside From's completion. `prepare(From&)` runs while From and
+  //       the completion's arguments are still alive; it may store into the
+  //       carried region, and returns a tuple of what To's constructor needs.
+  //       Then From is destroyed, To is constructed from that tuple and
+  //       `extra...`, and To's `child` is started. `extra...` must not refer
+  //       into From.
+  //
+  //   finish<Phase>(tag, as...)
+  //       from inside Phase's completion: completes the operation with
+  //       tag(as...).
+  //
+  //   finish_with<Phase>(fn, as...)
+  //       from inside Phase's set_value: completes the operation with
+  //       set_value(fn(as...)), or set_value() if fn returns void.
+  //
+  // An exception from any of these ends the live phase and completes the
+  // operation with set_error(std::current_exception()).
+  //
+  // The last phase is destroyed before the operation completes ("eager
+  // teardown"), with the results moved onto the stack first, since they may
+  // refer into it.
 
-  template <class Rcvr, class First, class... Rest>
+  template <class Rcvr, class Carried, class First, class... Rest>
   class phased
   {
+    static constexpr unsigned char none = 0xff;
+
+    template <class Phase>
+    static constexpr unsigned char index_of = detail::index_of<Phase, First, Rest...>();
+
    public:
-    explicit phased(Rcvr rcvr) noexcept(std::is_nothrow_move_constructible_v<Rcvr>)
+    template <class CarriedInit, class... Args>
+    phased(Rcvr rcvr, CarriedInit&& carried, Args&&... first)
       : rcvr_(static_cast<Rcvr&&>(rcvr))
-    {}
+      , carried_(static_cast<CarriedInit&&>(carried))
+    {
+      enter<First>(static_cast<Args&&>(first)...);
+    }
 
     phased(phased&&) = delete;
 
-    // An operation that was started has torn down its last phase before
-    // completing; one that wasn't still holds its first.
     ~phased()
     {
-      if (unstarted_)
-      {
-        leave<First>();
-      }
+      destroy_live();
     }
 
-    template <class... Args>
-    auto enter_first(Args&&... args) -> First&
+    auto first() noexcept -> First&
     {
-      First& first = enter<First>(static_cast<Args&&>(args)...);
-      unstarted_   = true;
-      return first;
-    }
-
-    auto start() noexcept -> First&
-    {
-      unstarted_ = false;
       return get<First>();
     }
 
-    template <class Phase, class... Args>
-    auto enter(Args&&... args) -> Phase&
+    auto carried() noexcept -> Carried&
     {
-      static_assert((std::is_same_v<Phase, First> || ... || std::is_same_v<Phase, Rest>) );
-      return *::new (static_cast<void*>(storage_)) Phase(static_cast<Args&&>(args)...);
-    }
-
-    template <class Phase>
-    auto get() noexcept -> Phase&
-    {
-      return *std::launder(reinterpret_cast<Phase*>(storage_));
-    }
-
-    template <class Phase>
-    void leave() noexcept
-    {
-      std::destroy_at(&get<Phase>());
-    }
-
-    // Completes the operation from inside `Phase`'s completion: moves the
-    // results onto the stack (they may refer into the phase), destroys the
-    // phase, then completes the receiver.
-    template <class Phase, class Tag, class... As>
-    void finish(Tag, As&&... as) noexcept
-    {
-      [[maybe_unused]]
-      bool live = true;
-      STDEXEC_TRY
-      {
-        std::tuple<std::decay_t<As>...> results(static_cast<As&&>(as)...);
-        leave<Phase>();
-        live = false;
-        std::apply([this](auto&... rs) { Tag()(static_cast<Rcvr&&>(rcvr_), std::move(rs)...); },
-                   results);
-      }
-      STDEXEC_CATCH_ALL
-      {
-        if (live)
-        {
-          leave<Phase>();
-        }
-        fail();
-      }
-    }
-
-    // Completes with the current exception. No phase may be live.
-    void fail() noexcept
-    {
-      ex::set_error(static_cast<Rcvr&&>(rcvr_), std::current_exception());
+      return carried_;
     }
 
     auto receiver() noexcept -> Rcvr&
@@ -270,21 +258,119 @@ namespace frames::typestate
       return rcvr_;
     }
 
+    template <class From, class To, class Prepare, class... Extra>
+    void transition(Prepare prepare, Extra... extra) noexcept
+    {
+      STDEXEC_TRY
+      {
+        auto bundle = prepare(get<From>());
+        leave<From>();
+        To& to = std::apply([&](auto&... parts) -> To&
+                            { return enter<To>(std::move(parts)..., extra...); },
+                            bundle);
+        ex::start(to.child);
+      }
+      STDEXEC_CATCH_ALL
+      {
+        fail();
+      }
+    }
+
+    template <class Phase, class Tag, class... As>
+    void finish(Tag, As&&... as) noexcept
+    {
+      STDEXEC_TRY
+      {
+        std::tuple<std::decay_t<As>...> results(static_cast<As&&>(as)...);
+        leave<Phase>();
+        std::apply([this](auto&... rs) { Tag()(static_cast<Rcvr&&>(rcvr_), std::move(rs)...); },
+                   results);
+      }
+      STDEXEC_CATCH_ALL
+      {
+        fail();
+      }
+    }
+
+    template <class Phase, class Fn, class... As>
+    void finish_with(Fn& fn, As&&... as) noexcept
+    {
+      STDEXEC_TRY
+      {
+        std::tuple<std::decay_t<As>...> args(static_cast<As&&>(as)...);
+        leave<Phase>();
+        using result_t = decltype(std::apply(fn, std::move(args)));
+        if constexpr (std::is_void_v<result_t>)
+        {
+          std::apply(fn, std::move(args));
+          ex::set_value(static_cast<Rcvr&&>(rcvr_));
+        }
+        else
+        {
+          std::decay_t<result_t> result = std::apply(fn, std::move(args));
+          ex::set_value(static_cast<Rcvr&&>(rcvr_), std::move(result));
+        }
+      }
+      STDEXEC_CATCH_ALL
+      {
+        fail();
+      }
+    }
+
+   private:
+    template <class Phase>
+    auto get() noexcept -> Phase&
+    {
+      return *std::launder(reinterpret_cast<Phase*>(storage_));
+    }
+
+    template <class Phase, class... Args>
+    auto enter(Args&&... args) -> Phase&
+    {
+      static_assert(index_of<Phase> != none, "not one of this operation's phases");
+      Phase& phase = *::new (static_cast<void*>(storage_)) Phase(static_cast<Args&&>(args)...);
+      live_        = index_of<Phase>;
+      return phase;
+    }
+
+    template <class Phase>
+    void leave() noexcept
+    {
+      std::destroy_at(&get<Phase>());
+      live_ = none;
+    }
+
+    void destroy_live() noexcept
+    {
+      [this]<std::size_t... Is>(std::index_sequence<Is...>)
+      {
+        ((live_ == Is ? leave<std::tuple_element_t<Is, std::tuple<First, Rest...>>>() : void()),
+         ...);
+      }(std::index_sequence_for<First, Rest...>());
+    }
+
+    // Ends whichever phase is live and completes with the current exception.
+    void fail() noexcept
+    {
+      destroy_live();
+      ex::set_error(static_cast<Rcvr&&>(rcvr_), std::current_exception());
+    }
+
     static constexpr std::size_t storage_size  = std::max({sizeof(First), sizeof(Rest)...});
     static constexpr std::size_t storage_align = std::max({alignof(First), alignof(Rest)...});
 
-   private:
     Rcvr rcvr_;
-    bool unstarted_ = false;
+    STDEXEC_ATTRIBUTE(no_unique_address) Carried carried_;
+    unsigned char live_ = none;
     alignas(storage_align) std::byte storage_[storage_size];
   };
 
-  // phased<Rcvr, First, Next<Ts...>...>, one Next per type_list<Ts...>.
-  template <class Rcvr, class First, template <class...> class Next, class Lists>
+  // phased<Rcvr, Carried, First, Next<Ts...>...>, one Next per type_list<Ts...>.
+  template <class Rcvr, class Carried, class First, template <class...> class Next, class Lists>
   struct phased_with;
 
-  template <class Rcvr, class First, template <class...> class Next, class... Lists>
-  struct phased_with<Rcvr, First, Next, detail::type_list<Lists...>>
+  template <class Rcvr, class Carried, class First, template <class...> class Next, class... Lists>
+  struct phased_with<Rcvr, Carried, First, Next, detail::type_list<Lists...>>
   {
     template <class List>
     struct apply;
@@ -295,7 +381,7 @@ namespace frames::typestate
       using type = Next<Ts...>;
     };
 
-    using type = phased<Rcvr, First, typename apply<Lists>::type...>;
+    using type = phased<Rcvr, Carried, First, typename apply<Lists>::type...>;
   };
 
   // The receiver a phase's child completes through. `Tag` names the phase.
@@ -330,9 +416,12 @@ namespace frames::typestate
     Op* op;
   };
 
+  // Nothing to carry.
+  struct nothing
+  {};
+
   //////////////////////////////////////////////////////////////////////////////
-  // just(vs...): one phase, holding the values. Starting moves them onto the
-  // stack and ends the phase before completing.
+  // just(vs...): one phase, holding the values.
 
   template <class... Vs>
   struct just_sender
@@ -357,19 +446,17 @@ namespace frames::typestate
       };
 
       opstate(std::tuple<Vs...>&& vs, Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr))
-      {
-        phases_.enter_first(std::move(vs));
-      }
+        : phases_(static_cast<Rcvr&&>(rcvr), nothing(), std::move(vs))
+      {}
 
       void start() & noexcept
       {
         std::apply([this](Vs&... vs)
                    { phases_.template finish<ready>(ex::set_value, std::move(vs)...); },
-                   phases_.start().values);
+                   phases_.first().values);
       }
 
-      phased<Rcvr, ready> phases_;
+      phased<Rcvr, nothing, ready> phases_;
     };
 
     template <class Rcvr>
@@ -388,8 +475,7 @@ namespace frames::typestate
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // then(sndr, fn): one phase, running the child. On a value, fn and the
-  // values move onto the stack, the phase ends, and fn runs.
+  // then(sndr, fn): one phase, running the child; fn is carried.
 
   template <class Sndr, class Fn>
   struct then_sender
@@ -423,60 +509,36 @@ namespace frames::typestate
 
       using rcvr_t = phase_receiver<opstate, Rcvr, running_tag>;
 
+      struct carried
+      {
+        Fn fn;
+      };
+
       struct running
       {
-        running(Sndr&& sndr, Fn&& fn, opstate* op)
-          : fn(static_cast<Fn&&>(fn))
-          , child(ex::connect(static_cast<Sndr&&>(sndr), rcvr_t{op}))
+        running(Sndr&& sndr, opstate* op)
+          : child(ex::connect(static_cast<Sndr&&>(sndr), rcvr_t{op}))
         {}
 
-        Fn                                 fn;
         ex::connect_result_t<Sndr, rcvr_t> child;
       };
 
       opstate(Sndr&& sndr, Fn&& fn, Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr))
-      {
-        phases_.enter_first(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn), this);
-      }
+        : phases_(static_cast<Rcvr&&>(rcvr),
+                  carried{static_cast<Fn&&>(fn)},
+                  static_cast<Sndr&&>(sndr),
+                  this)
+      {}
 
       void start() & noexcept
       {
-        ex::start(phases_.start().child);
+        ex::start(phases_.first().child);
       }
 
       template <class... As>
       void complete(running_tag, ex::set_value_t, As&&... as) noexcept
       {
-        [[maybe_unused]]
-        bool live = true;
-        STDEXEC_TRY
-        {
-          Fn fn = static_cast<Fn&&>(phases_.template get<running>().fn);
-          std::tuple<std::decay_t<As>...> args(static_cast<As&&>(as)...);
-          phases_.template leave<running>();
-          live = false;
-
-          using result_t = std::invoke_result_t<Fn&, std::decay_t<As>...>;
-          if constexpr (std::is_void_v<result_t>)
-          {
-            std::apply(fn, std::move(args));
-            ex::set_value(static_cast<Rcvr&&>(phases_.receiver()));
-          }
-          else
-          {
-            std::decay_t<result_t> result = std::apply(fn, std::move(args));
-            ex::set_value(static_cast<Rcvr&&>(phases_.receiver()), std::move(result));
-          }
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if (live)
-          {
-            phases_.template leave<running>();
-          }
-          phases_.fail();
-        }
+        phases_.template finish_with<running>(phases_.carried().fn, static_cast<As&&>(as)...);
       }
 
       template <class Tag, class... As>
@@ -485,7 +547,7 @@ namespace frames::typestate
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
       }
 
-      phased<Rcvr, running> phases_;
+      phased<Rcvr, carried, running> phases_;
     };
 
     template <class Rcvr>
@@ -507,9 +569,10 @@ namespace frames::typestate
 
   //////////////////////////////////////////////////////////////////////////////
   // let_value(sndr, fn): a first phase running the child, then one possible
-  // second phase per value signature of the child, each holding fn, the
-  // values and the operation of the sender fn returns. Each second phase has
-  // its own receiver type, so its completion knows which one is live.
+  // second phase per value signature of the child, each holding the values
+  // and the operation of the sender fn returns. fn is carried: the sender it
+  // returns may refer to its captures. Each second phase has its own receiver
+  // type, so its completion knows which one is live.
 
   template <class Sndr, class Fn>
   struct let_value_sender
@@ -520,7 +583,8 @@ namespace frames::typestate
     struct values_fn
     {
       template <class... As>
-      using f = ex::completion_signatures_of_t<std::invoke_result_t<Fn&, As&...>, Env>;
+      using f =
+        ex::completion_signatures_of_t<std::invoke_result_t<Fn&, std::decay_t<As>&...>, Env>;
     };
 
     template <class Self, class... Env>
@@ -549,31 +613,31 @@ namespace frames::typestate
 
       using first_rcvr_t = phase_receiver<opstate, Rcvr, running_tag>;
 
+      struct carried
+      {
+        Fn fn;
+      };
+
       struct running
       {
-        running(Sndr&& sndr, Fn&& fn, opstate* op)
-          : fn(static_cast<Fn&&>(fn))
-          , child(ex::connect(static_cast<Sndr&&>(sndr), first_rcvr_t{op}))
+        running(Sndr&& sndr, opstate* op)
+          : child(ex::connect(static_cast<Sndr&&>(sndr), first_rcvr_t{op}))
         {}
 
-        Fn                                       fn;
         ex::connect_result_t<Sndr, first_rcvr_t> child;
       };
 
-      // fn moves here too: the sender it returns may refer to its captures.
       template <class... Ts>
       struct continuing
       {
         using rcvr_t = phase_receiver<opstate, Rcvr, continuing_tag<Ts...>>;
         using sndr_t = std::invoke_result_t<Fn&, Ts&...>;
 
-        continuing(Fn&& fn, std::tuple<Ts...>&& args, opstate* op)
-          : fn(static_cast<Fn&&>(fn))
-          , args(std::move(args))
-          , child(ex::connect(std::apply(this->fn, this->args), rcvr_t{op}))
+        continuing(std::tuple<Ts...>&& args, opstate* op)
+          : args(std::move(args))
+          , child(ex::connect(std::apply(op->phases_.carried().fn, this->args), rcvr_t{op}))
         {}
 
-        Fn                                   fn;
         std::tuple<Ts...>                    args;
         ex::connect_result_t<sndr_t, rcvr_t> child;
       };
@@ -582,41 +646,27 @@ namespace frames::typestate
         ex::completion_signatures_of_t<Sndr, ex::env_of_t<Rcvr>>>::type;
 
       opstate(Sndr&& sndr, Fn&& fn, Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr))
-      {
-        phases_.enter_first(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn), this);
-      }
+        : phases_(static_cast<Rcvr&&>(rcvr),
+                  carried{static_cast<Fn&&>(fn)},
+                  static_cast<Sndr&&>(sndr),
+                  this)
+      {}
 
       void start() & noexcept
       {
-        ex::start(phases_.start().child);
+        ex::start(phases_.first().child);
       }
 
       template <class... As>
       void complete(running_tag, ex::set_value_t, As&&... as) noexcept
       {
-        using next_t = continuing<std::decay_t<As>...>;
-
-        [[maybe_unused]]
-        bool live = true;
-        STDEXEC_TRY
-        {
-          Fn fn = static_cast<Fn&&>(phases_.template get<running>().fn);
-          std::tuple<std::decay_t<As>...> args(static_cast<As&&>(as)...);
-          phases_.template leave<running>();
-          live = false;
-
-          next_t& next = phases_.template enter<next_t>(std::move(fn), std::move(args), this);
-          ex::start(next.child);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if (live)
+        phases_.template transition<running, continuing<std::decay_t<As>...>>(
+          [&](running&)
           {
-            phases_.template leave<running>();
-          }
-          phases_.fail();
-        }
+            using args_t = std::tuple<std::decay_t<As>...>;
+            return std::tuple<args_t>(args_t(static_cast<As&&>(as)...));
+          },
+          this);
       }
 
       template <class Tag, class... As>
@@ -631,7 +681,7 @@ namespace frames::typestate
         phases_.template finish<continuing<Ts...>>(Tag(), static_cast<As&&>(as)...);
       }
 
-      typename phased_with<Rcvr, running, continuing, values_t>::type phases_;
+      typename phased_with<Rcvr, carried, running, continuing, values_t>::type phases_;
     };
 
     template <class Rcvr>
@@ -715,37 +765,24 @@ namespace frames::typestate
       };
 
       opstate(Sndr1&& sndr1, Sndr2&& sndr2, Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr))
-      {
-        phases_.enter_first(static_cast<Sndr1&&>(sndr1), static_cast<Sndr2&&>(sndr2), this);
-      }
+        : phases_(static_cast<Rcvr&&>(rcvr),
+                  nothing(),
+                  static_cast<Sndr1&&>(sndr1),
+                  static_cast<Sndr2&&>(sndr2),
+                  this)
+      {}
 
       void start() & noexcept
       {
-        ex::start(phases_.start().child);
+        ex::start(phases_.first().child);
       }
 
       template <class... As>
       void complete(first_tag, ex::set_value_t, As&&...) noexcept
       {
-        [[maybe_unused]]
-        bool live = true;
-        STDEXEC_TRY
-        {
-          Sndr2 next = static_cast<Sndr2&&>(phases_.template get<first>().next);
-          phases_.template leave<first>();
-          live = false;
-
-          ex::start(phases_.template enter<second>(std::move(next), this).child);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          if (live)
-          {
-            phases_.template leave<first>();
-          }
-          phases_.fail();
-        }
+        phases_.template transition<first, second>(
+          [](first& f) { return std::tuple<Sndr2>(static_cast<Sndr2&&>(f.next)); },
+          this);
       }
 
       template <class Tag, class... As>
@@ -760,7 +797,7 @@ namespace frames::typestate
         phases_.template finish<second>(Tag(), static_cast<As&&>(as)...);
       }
 
-      phased<Rcvr, first, second> phases_;
+      phased<Rcvr, nothing, first, second> phases_;
     };
 
     template <class Rcvr>
