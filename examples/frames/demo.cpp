@@ -16,6 +16,7 @@
 #include "automatic_storage.hpp"
 #include "typestate.hpp"
 
+#include <exec/sequence.hpp>
 #include <exec/variant_sender.hpp>
 #include <stdexec/execution.hpp>
 
@@ -161,7 +162,7 @@ namespace
   template <class Make>
   void size_row(char const * label, std::size_t stdexec_size, Make make)
   {
-    std::printf("    %-34s", label);
+    std::printf("    %-44s", label);
     if (stdexec_size == 0)
     {
       std::printf(" %8s", "");
@@ -181,7 +182,7 @@ namespace
   template <class Make>
   void count_row(char const * label, std::string const & stdexec_count, Make make)
   {
-    std::printf("    %-34s %8s", label, stdexec_count.c_str());
+    std::printf("    %-44s %8s", label, stdexec_count.c_str());
     [&]<class... Ps>(Ps...)
     {
       ((std::printf(" %8s", count(make(Ps())).c_str())), ...);
@@ -441,7 +442,7 @@ int main()
       return i + 1;
     };
 
-    std::printf("    %-34s %8s %8s %8s %8s\n",
+    std::printf("    %-44s %8s %8s %8s %8s\n",
                 "operation-state bytes",
                 "stdexec",
                 "eager",
@@ -456,27 +457,26 @@ int main()
              {
                return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts);
              });
-    // stdexec has no sequence; compare let_value with a continuation that
-    // returns a sender it captured.
-    auto second_big = [s = ex::just(big{})](big&) mutable
-    {
-      return std::move(s);
-    };
-    size_row("sequence(just(big), just(big))",
-             opstate_size<decltype(ex::just(big{}) | ex::let_value(second_big))>,
-             []<class P>(P) { return P::sequence(P::just(big{}), P::just(big{})); });
+    // exec::sequence requires every sender but the last to send no values,
+    // so the first sender holds the big value and drops it.
+    auto drop = [](big const &) {};
+    size_row(
+      "sequence(then(just(big), drop), just(big))",
+      opstate_size<decltype(exec::sequence(ex::just(big{}) | ex::then(drop), ex::just(big{})))>,
+      [&]<class P>(P) { return P::sequence(P::then(P::just(big{}), drop), P::just(big{})); });
     size_row("  ... with overlapped_layout",
              0,
-             []<class P>(P)
+             [&]<class P>(P)
              {
-               return P::template sequence<ts::overlapped_layout>(P::just(big{}), P::just(big{}));
+               return P::template sequence<ts::overlapped_layout>(P::then(P::just(big{}), drop),
+                                                                  P::just(big{}));
              });
     size_row("then(just(1), fn)",
              opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
              [&]<class P>(P) { return P::then(P::just(1), plus_one); });
 
     // Copies and moves of a value from connect to sync_wait's result.
-    std::printf("\n    %-34s %8s %8s %8s %8s\n",
+    std::printf("\n    %-44s %8s %8s %8s %8s\n",
                 "moves (copies)",
                 "stdexec",
                 "eager",
@@ -507,8 +507,7 @@ int main()
               count(ex::just(counted()) | ex::then(then_fn)),
               [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
     count_row("sequence(just(), just(c))",
-              count(ex::just()
-                    | ex::let_value([s = ex::just(counted())]() mutable { return std::move(s); })),
+              count(exec::sequence(ex::just(), ex::just(counted()))),
               []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
     count_row("  ... with overlapped_layout",
               "",
