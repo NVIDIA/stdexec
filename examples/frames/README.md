@@ -66,8 +66,8 @@ to `outer`.
 
 ## Part two: operation states as sequences of phases
 
-`typestate.hpp` reimplements `just`, `then`, `let_value` and a binary
-`sequence` with operation states that hold one *phase* at a time. The aim
+`typestate.hpp` reimplements `just`, `then`, `let_value`, a binary
+`sequence` and `repeat_n` with operation states that hold one *phase* at a time. The aim
 is a standard way of expressing an operation's states and transitions, so
 that lifetimes are correct by construction, at no cost relative to the
 established approach.
@@ -119,6 +119,36 @@ Three policies, chosen per algorithm instance:
   instead of making `connect` throw. Senders that `let_value`'s function
   returns are created at run time, so their phase owns them.
 
+Binding comes in two forms, like `connect` for rvalues and const lvalues,
+minus the move or copy. Through a non-const reference, `bind(rcvr) &`
+*consumes*: the operation may move from the stored sender (as `just` does
+when it hands over its values), which is then spent. Through a const
+reference, `bind(rcvr) const &` doesn't: the operation only reads the
+stored sender, so it's unchanged afterwards and can be bound again. `then`
+calls its function as `const`, `just` copies its values as it sends them,
+and `let_value` and `sequence` bind their children the same way, so the
+whole subtree is read-only. A sender without a member `bind` is connected
+as a const lvalue, which copies. One semantic difference from connecting a
+copy: a function is shared by every bind rather than copied, so it must be
+callable as `const`.
+
+`repeat_n(sndr, n)` uses the non-consuming form: one phase, re-entered for
+each iteration, binding the stored child every time. Over 100 iterations
+(eager+start is the bound column):
+
+| Moves (copies) | stdexec | eager | forward | eager+start |
+|---|---|---|---|---|
+| `repeat_n(then(just(), fn capturing c))` | 904 (100) (Clang: 804) | 404 (100) | 404 (100) | 3 (0) |
+| `repeat_n(then(just(c), drop))` | 1104 (100) (Clang: 1004) | 704 (100) | 504 (100) | 103 (100) |
+
+`exec::repeat_n` reconnects a copy of its child every iteration, captures
+included; a bound `repeat_n` never copies what its child only reads. Values
+the child sends are copied each time either way, since the receiver gets
+an rvalue. Without bound children (the first two typestate columns),
+`repeat_n` copies the child each time too. Unlike `exec::repeat_n`, it
+doesn't trampoline, so a child that completes inline makes each iteration
+a nested call.
+
 Each exception path knows statically which phase, if any, is live, so the
 byte recording the live phase serves only the destructor. With
 `eager_teardown` and `start_entry` together, no phase is ever live when the
@@ -135,7 +165,8 @@ every level's carried data at once.
 | 9 | Sizes and moves against stdexec's own algorithms. |
 | 10 | Exceptions: from `then`'s function; from every move of a value in turn, under three policies; and where a throwing child `connect` surfaces under each entry. |
 | 11 | Bound operations mixed with stdexec senders, and bound phases reusing automatic storage. |
-| 12 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
+| 12 | `repeat_n`: iteration counts, a failing iteration, and copies against `exec::repeat_n`. |
+| 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 
 Costs (x86-64; GCC 13 and Clang 18 agree except where noted; `big` is 256 bytes; stdexec's
 `sequence` is `exec::sequence`, which requires every sender but the last to
@@ -177,7 +208,7 @@ access.
 
 Under AddressSanitizer, `phased` poisons the storage no phase occupies.
 Touching a phase after it has ended then gets reported rather than silently
-reading or corrupting memory: section 11's child increments a counter after
+reading or corrupting memory: section 13's child increments a counter after
 completing, inside a `then` with `eager_teardown`, and ASan reports a
 use-after-poison at that line. Two limits: bytes the next phase reuses are
 live again, so a transition only catches late accesses beyond the next

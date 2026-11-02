@@ -331,6 +331,10 @@ namespace frames::typestate
   //       from inside Phase's completion: completes the operation with
   //       tag(as...).
   //
+  //   finish_copies<Phase>(tag, as...)
+  //       like finish, but sends copies of as..., which the operation may
+  //       only read (it was bound without consuming).
+  //
   //   finish_with<Phase>(fn, as...)
   //       from inside Phase's set_value: completes the operation with
   //       set_value(fn(as...)), or set_value() if fn returns void.
@@ -470,6 +474,28 @@ namespace frames::typestate
       else
       {
         Tag()(static_cast<Rcvr&&>(rcvr_), static_cast<As&&>(as)...);
+      }
+    }
+
+    template <class Phase, class Tag, class... As>
+    void finish_copies(Tag, As const &... as) noexcept
+    {
+      if constexpr (eager)
+      {
+        finish<Phase>(Tag(), as...);  // copies anyway
+      }
+      else
+      {
+        STDEXEC_TRY
+        {
+          std::tuple<As...> copies(as...);
+          std::apply([this](auto&... cs) { Tag()(static_cast<Rcvr&&>(rcvr_), std::move(cs)...); },
+                     copies);
+        }
+        STDEXEC_CATCH_ALL
+        {
+          fail();  // Phase stays live until the destructor
+        }
       }
     }
 
@@ -671,6 +697,16 @@ namespace frames::typestate
   struct nothing
   {};
 
+  // T, const if Const.
+  template <bool Const, class T>
+  using maybe_const = std::conditional_t<Const, T const, T>;
+
+  // How a sender's member is used when the sender is used as Self: as an
+  // rvalue, or as a const lvalue when Self is const (binding without
+  // consuming).
+  template <class Self, class T>
+  using member_t = std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, T const &, T>;
+
   // The empty stand-in for an unbound operation's pointer to its sender. A
   // type of its own, so it never has to have an address distinct from
   // another `nothing`.
@@ -686,8 +722,8 @@ namespace frames::typestate
   //////////////////////////////////////////////////////////////////////////////
   // bind: connects a sender that the caller keeps alive, unmoved, until the
   // operation is destroyed, so the operation may refer into it instead of
-  // copying from it. The operation may consume the sender's data (move from
-  // it), as connecting an rvalue may.
+  // copying from it. Through a non-const reference the operation may consume
+  // the sender's data (move from it), as connecting an rvalue may.
   //
   // A sender opts in with a member bind(rcvr) &; for any other sender, bind
   // moves it into connect.
@@ -705,6 +741,29 @@ namespace frames::typestate
     }
   }
 
+  // Binding through a const reference doesn't consume: the operation only
+  // reads the sender, which stays usable for another bind. A sender opts in
+  // with a member bind(rcvr) const &; any other sender is connected as a const
+  // lvalue, which copies what it needs, or else copied and moved into
+  // connect.
+  template <class Sndr, class Rcvr>
+  auto bind(Sndr const & sndr, Rcvr rcvr)
+  {
+    if constexpr (requires { sndr.bind(static_cast<Rcvr&&>(rcvr)); })
+    {
+      return sndr.bind(static_cast<Rcvr&&>(rcvr));
+    }
+    else if constexpr (requires { ex::connect(sndr, static_cast<Rcvr&&>(rcvr)); })
+    {
+      return ex::connect(sndr, static_cast<Rcvr&&>(rcvr));
+    }
+    else
+    {
+      return ex::connect(Sndr(sndr), static_cast<Rcvr&&>(rcvr));
+    }
+  }
+
+  // Sndr may be const, to name the non-consuming bind.
   template <class Sndr, class Rcvr>
   using bind_result_t = decltype(typestate::bind(std::declval<Sndr&>(), std::declval<Rcvr>()));
 
@@ -739,16 +798,29 @@ namespace frames::typestate
 
     static constexpr bool bound = std::is_same_v<Entry, start_entry>;
 
-    // Moving the values may throw if they cross the stack (eager_teardown).
-    static constexpr bool may_throw = std::is_same_v<Ending, eager_teardown>
-                                   && !(std::is_nothrow_move_constructible_v<Vs> && ...);
+    // Moving the values may throw if they cross the stack (eager_teardown);
+    // bound without consuming (a const Self), the values are copied.
+    template <class Self>
+    static constexpr bool may_throw = std::is_const_v<std::remove_reference_t<Self>>
+                                      ? !(std::is_nothrow_copy_constructible_v<Vs> && ...)
+                                      : std::is_same_v<Ending, eager_teardown>
+                                          && !(std::is_nothrow_move_constructible_v<Vs> && ...);
 
-    using completion_signatures = std::conditional_t<
-      may_throw,
-      ex::completion_signatures<ex::set_value_t(Vs...), ex::set_error_t(std::exception_ptr)>,
-      ex::completion_signatures<ex::set_value_t(Vs...)>>;
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (may_throw<Self>)
+      {
+        return ex::completion_signatures<ex::set_value_t(Vs...),
+                                         ex::set_error_t(std::exception_ptr)>();
+      }
+      else
+      {
+        return ex::completion_signatures<ex::set_value_t(Vs...)>();
+      }
+    }
 
-    template <class Rcvr>
+    template <class Rcvr, bool Const = false>
     struct opstate
     {
       struct owned_ready
@@ -772,7 +844,7 @@ namespace frames::typestate
         : phases_(static_cast<Rcvr&&>(rcvr), nothing(), std::move(vs))
       {}
 
-      opstate(just_sender* self, Rcvr rcvr)
+      opstate(maybe_const<Const, just_sender>* self, Rcvr rcvr)
         requires bound
         : self_(self)
         , phases_(static_cast<Rcvr&&>(rcvr), nothing())
@@ -783,14 +855,23 @@ namespace frames::typestate
         phases_.begin(
           [this](ready& r) noexcept
           {
-            std::apply([this](Vs&... vs)
-                       { phases_.template finish<ready>(ex::set_value, std::move(vs)...); },
-                       values(r));
+            if constexpr (Const)
+            {
+              std::apply([this](Vs const &... vs)
+                         { phases_.template finish_copies<ready>(ex::set_value, vs...); },
+                         values(r));
+            }
+            else
+            {
+              std::apply([this](Vs&... vs)
+                         { phases_.template finish<ready>(ex::set_value, std::move(vs)...); },
+                         values(r));
+            }
           },
           this);
       }
 
-      auto values(ready& r) noexcept -> std::tuple<Vs...>&
+      auto values(ready& r) noexcept -> maybe_const<Const, std::tuple<Vs...>>&
       {
         if constexpr (bound)
         {
@@ -802,8 +883,9 @@ namespace frames::typestate
         }
       }
 
-      STDEXEC_ATTRIBUTE(no_unique_address) std::conditional_t<bound, just_sender*, unbound> self_;
-      phased<Ending, Entry, Rcvr, nothing, ready> phases_;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      std::conditional_t<bound, maybe_const<Const, just_sender>*, unbound> self_;
+      phased<Ending, Entry, Rcvr, nothing, ready>                          phases_;
     };
 
     template <class Rcvr>
@@ -822,6 +904,13 @@ namespace frames::typestate
     template <class Rcvr>
       requires bound
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
+    {
+      return {this, static_cast<Rcvr&&>(rcvr)};
+    }
+
+    template <class Rcvr>
+      requires bound
+    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       return {this, static_cast<Rcvr&&>(rcvr)};
     }
@@ -847,12 +936,14 @@ namespace frames::typestate
     static constexpr bool bound = std::is_same_v<Entry, start_entry>;
 
     // After eager teardown, fn is called with rvalue copies of the values.
+    // Bound without consuming, fn is called as const.
+    template <class FnRef>
     struct values_fn
     {
       template <class... As>
       using result_t = typename std::conditional_t<std::is_same_v<Ending, eager_teardown>,
-                                                   std::invoke_result<Fn&, std::decay_t<As>...>,
-                                                   std::invoke_result<Fn&, As...>>::type;
+                                                   std::invoke_result<FnRef, std::decay_t<As>...>,
+                                                   std::invoke_result<FnRef, As...>>::type;
 
       template <class... As>
       using f = typename detail::value_of<result_t<As...>>::type;
@@ -867,21 +958,24 @@ namespace frames::typestate
       }
       else
       {
+        using fn_ref =
+          std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
         return detail::map_values_t<Ending,
-                                    ex::completion_signatures_of_t<Sndr, Env...>,
-                                    values_fn>();
+                                    ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
+                                    values_fn<fn_ref>>();
       }
     }
 
-    template <class Rcvr>
+    template <class Rcvr, bool Const = false>
     struct opstate
     {
       struct running_tag
       {};
 
-      using rcvr_t = phase_receiver<opstate, Rcvr, running_tag>;
-      using child_t =
-        std::conditional_t<bound, bind_result_t<Sndr, rcvr_t>, ex::connect_result_t<Sndr, rcvr_t>>;
+      using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag>;
+      using child_t = std::conditional_t<bound,
+                                         bind_result_t<maybe_const<Const, Sndr>, rcvr_t>,
+                                         ex::connect_result_t<Sndr, rcvr_t>>;
 
       struct carried
       {
@@ -911,7 +1005,7 @@ namespace frames::typestate
                   this)
       {}
 
-      opstate(then_sender* self, Rcvr rcvr)
+      opstate(maybe_const<Const, then_sender>* self, Rcvr rcvr)
         requires bound
         : self_(self)
         , phases_(static_cast<Rcvr&&>(rcvr), nothing())
@@ -922,7 +1016,7 @@ namespace frames::typestate
         phases_.begin(start_child, this);
       }
 
-      auto fn() noexcept -> Fn&
+      auto fn() noexcept -> maybe_const<Const, Fn>&
       {
         if constexpr (bound)
         {
@@ -946,8 +1040,9 @@ namespace frames::typestate
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
       }
 
-      STDEXEC_ATTRIBUTE(no_unique_address) std::conditional_t<bound, then_sender*, unbound> self_;
-      phased<Ending, Entry, Rcvr, carried_t, running> phases_;
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      std::conditional_t<bound, maybe_const<Const, then_sender>*, unbound> self_;
+      phased<Ending, Entry, Rcvr, carried_t, running>                      phases_;
     };
 
     template <class Rcvr>
@@ -968,6 +1063,13 @@ namespace frames::typestate
     template <class Rcvr>
       requires bound
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
+    {
+      return {this, static_cast<Rcvr&&>(rcvr)};
+    }
+
+    template <class Rcvr>
+      requires bound
+    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       return {this, static_cast<Rcvr&&>(rcvr)};
     }
@@ -1002,12 +1104,12 @@ namespace frames::typestate
     static constexpr bool overlapped = std::is_same_v<Layout, overlapped_layout>;
     static constexpr bool bound      = std::is_same_v<Entry, start_entry>;
 
-    template <class Env>
+    template <class FnRef, class Env>
     struct values_fn
     {
       template <class... As>
       using f =
-        ex::completion_signatures_of_t<std::invoke_result_t<Fn&, std::decay_t<As>&...>, Env>;
+        ex::completion_signatures_of_t<std::invoke_result_t<FnRef, std::decay_t<As>&...>, Env>;
     };
 
     template <class Self, class... Env>
@@ -1019,13 +1121,15 @@ namespace frames::typestate
       }
       else
       {
+        using fn_ref =
+          std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
         return detail::map_values_t<Ending,
-                                    ex::completion_signatures_of_t<Sndr, Env...>,
-                                    values_fn<Env...>>();
+                                    ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
+                                    values_fn<fn_ref, Env...>>();
       }
     }
 
-    template <class Rcvr>
+    template <class Rcvr, bool Const = false>
     struct opstate
     {
       struct running_tag
@@ -1037,10 +1141,11 @@ namespace frames::typestate
 
       using first_rcvr_t = phase_receiver<opstate, Rcvr, running_tag>;
       using child_t      = std::conditional_t<bound,
-                                              bind_result_t<Sndr, first_rcvr_t>,
+                                              bind_result_t<maybe_const<Const, Sndr>, first_rcvr_t>,
                                               ex::connect_result_t<Sndr, first_rcvr_t>>;
       using values_t     = typename detail::value_lists<
-            ex::completion_signatures_of_t<Sndr, ex::env_of_t<Rcvr>>>::type;
+            ex::completion_signatures_of_t<std::conditional_t<Const, Sndr const &, Sndr>,
+                                           ex::env_of_t<Rcvr>>>::type;
 
       struct carried
       {
@@ -1068,7 +1173,7 @@ namespace frames::typestate
         using rcvr_t   = phase_receiver<opstate, Rcvr, continuing_tag<Ts...>>;
         using args_t   = std::tuple<Ts...>;
         using stored_t = std::conditional_t<overlapped, args_t, nothing>;
-        using sndr_t   = std::invoke_result_t<Fn&, Ts&...>;
+        using sndr_t   = std::invoke_result_t<maybe_const<Const, Fn>&, Ts&...>;
 
         continuing(stored_t&& stored, opstate* op)
           : stored(std::move(stored))
@@ -1099,7 +1204,7 @@ namespace frames::typestate
                   this)
       {}
 
-      opstate(let_value_sender* self, Rcvr rcvr)
+      opstate(maybe_const<Const, let_value_sender>* self, Rcvr rcvr)
         requires bound
         : self_(self)
         , phases_(static_cast<Rcvr&&>(rcvr), carried{})
@@ -1110,7 +1215,7 @@ namespace frames::typestate
         phases_.begin(start_child, this);
       }
 
-      auto fn() noexcept -> Fn&
+      auto fn() noexcept -> maybe_const<Const, Fn>&
       {
         if constexpr (bound)
         {
@@ -1157,7 +1262,7 @@ namespace frames::typestate
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      std::conditional_t<bound, let_value_sender*, unbound> self_;
+      std::conditional_t<bound, maybe_const<Const, let_value_sender>*, unbound> self_;
       typename phased_with<Ending, Entry, Rcvr, carried, running, continuing, values_t>::type
         phases_;
     };
@@ -1180,6 +1285,13 @@ namespace frames::typestate
     template <class Rcvr>
       requires bound
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
+    {
+      return {this, static_cast<Rcvr&&>(rcvr)};
+    }
+
+    template <class Rcvr>
+      requires bound
+    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       return {this, static_cast<Rcvr&&>(rcvr)};
     }
@@ -1215,11 +1327,11 @@ namespace frames::typestate
     static constexpr bool bound      = std::is_same_v<Entry, start_entry>;
     static constexpr bool overlapped = !bound && std::is_same_v<Layout, overlapped_layout>;
 
-    template <class Env>
+    template <class Second, class Env>
     struct values_fn
     {
       template <class...>
-      using f = ex::completion_signatures_of_t<Sndr2, Env>;
+      using f = ex::completion_signatures_of_t<Second, Env>;
     };
 
     template <class Self, class... Env>
@@ -1232,12 +1344,12 @@ namespace frames::typestate
       else
       {
         return detail::map_values_t<Ending,
-                                    ex::completion_signatures_of_t<Sndr1, Env...>,
-                                    values_fn<Env...>>();
+                                    ex::completion_signatures_of_t<member_t<Self, Sndr1>, Env...>,
+                                    values_fn<member_t<Self, Sndr2>, Env...>>();
       }
     }
 
-    template <class Rcvr>
+    template <class Rcvr, bool Const = false>
     struct opstate
     {
       struct first_tag
@@ -1251,8 +1363,9 @@ namespace frames::typestate
       using next_t        = std::conditional_t<overlapped, Sndr2, nothing>;
 
       template <class Sndr, class R>
-      using child_t =
-        std::conditional_t<bound, bind_result_t<Sndr, R>, ex::connect_result_t<Sndr, R>>;
+      using child_t = std::conditional_t<bound,
+                                         bind_result_t<maybe_const<Const, Sndr>, R>,
+                                         ex::connect_result_t<Sndr, R>>;
 
       struct carried
       {
@@ -1309,7 +1422,7 @@ namespace frames::typestate
                   this)
       {}
 
-      opstate(sequence_sender* self, Rcvr rcvr)
+      opstate(maybe_const<Const, sequence_sender>* self, Rcvr rcvr)
         requires bound
         : self_(self)
         , phases_(static_cast<Rcvr&&>(rcvr), carried{})
@@ -1365,8 +1478,8 @@ namespace frames::typestate
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      std::conditional_t<bound, sequence_sender*, unbound> self_;
-      phased<Ending, Entry, Rcvr, carried, first, second>  phases_;
+      std::conditional_t<bound, maybe_const<Const, sequence_sender>*, unbound> self_;
+      phased<Ending, Entry, Rcvr, carried, first, second>                      phases_;
     };
 
     template <class Rcvr>
@@ -1391,6 +1504,13 @@ namespace frames::typestate
       return {this, static_cast<Rcvr&&>(rcvr)};
     }
 
+    template <class Rcvr>
+      requires bound
+    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
+    {
+      return {this, static_cast<Rcvr&&>(rcvr)};
+    }
+
     Sndr1 sndr1_;
     Sndr2 sndr2_;
   };
@@ -1405,5 +1525,169 @@ namespace frames::typestate
     return sequence_sender<Ending, Layout, Entry, std::decay_t<Sndr1>, std::decay_t<Sndr2>>{
       static_cast<Sndr1&&>(sndr1),
       static_cast<Sndr2&&>(sndr2)};
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // repeat_n(sndr, n): runs sndr n times in sequence, discarding its values,
+  // then completes with set_value(). One phase, re-entered for each
+  // iteration; each time, the phase binds the stored child sender without
+  // consuming it, so a child that can bind is never copied. (A child that
+  // can't, such as any stdexec sender, is connected as a const lvalue, which
+  // copies it, as exec::repeat_n does.) The child is stored in the carried
+  // region, or (when bound) in the stored sender.
+  //
+  // Prototype simplification: no trampoline, so a child that completes
+  // inline makes each iteration a nested call.
+
+  template <class Ending, class Entry, class Sndr>
+  struct repeat_n_sender
+  {
+    using sender_concept = ex::sender_t;
+
+    static constexpr bool bound = std::is_same_v<Entry, start_entry>;
+
+    struct values_fn
+    {
+      template <class...>
+      using f = ex::completion_signatures<ex::set_value_t()>;
+    };
+
+    template <class Self, class... Env>
+    static consteval auto get_completion_signatures()
+    {
+      if constexpr (sizeof...(Env) == 0)
+      {
+        return STDEXEC::__throw_dependent_sender_error<Self>();
+      }
+      else
+      {
+        return detail::join_t<
+          detail::sent_as<Ending>,
+          detail::map_values_t<Ending,
+                               ex::completion_signatures_of_t<Sndr const &, Env...>,
+                               values_fn>,
+          ex::completion_signatures<ex::set_value_t()>>();
+      }
+    }
+
+    template <class Rcvr, bool Const = false>
+    struct opstate
+    {
+      struct iteration_tag
+      {};
+
+      using rcvr_t  = phase_receiver<opstate, Rcvr, iteration_tag>;
+      using child_t = bind_result_t<Sndr const, rcvr_t>;
+
+      struct carried
+      {
+        STDEXEC_ATTRIBUTE(no_unique_address) std::conditional_t<bound, nothing, Sndr> sndr;
+        std::size_t remaining;
+      };
+
+      struct iteration
+      {
+        explicit iteration(opstate* op)
+          : child(typestate::bind(op->child_sender(), rcvr_t{op}))
+        {}
+
+        child_t child;
+      };
+
+      opstate(Sndr&& sndr, std::size_t count, Rcvr rcvr)
+        requires(!bound)
+        : phases_(static_cast<Rcvr&&>(rcvr), carried{static_cast<Sndr&&>(sndr), count}, this)
+      {}
+
+      opstate(maybe_const<Const, repeat_n_sender>* self, Rcvr rcvr)
+        requires bound
+        : self_(self)
+        , phases_(static_cast<Rcvr&&>(rcvr), carried{{}, self->count_})
+      {}
+
+      auto child_sender() noexcept -> Sndr const &
+      {
+        if constexpr (bound)
+        {
+          return self_->sndr_;
+        }
+        else
+        {
+          return phases_.carried().sndr;
+        }
+      }
+
+      void start() & noexcept
+      {
+        phases_.begin(
+          [this](iteration& it) noexcept
+          {
+            if (phases_.carried().remaining == 0)
+            {
+              phases_.template finish<iteration>(ex::set_value);
+            }
+            else
+            {
+              ex::start(it.child);
+            }
+          },
+          this);
+      }
+
+      template <class... As>
+      void complete(iteration_tag, ex::set_value_t, As&&...) noexcept
+      {
+        if (--phases_.carried().remaining == 0)
+        {
+          phases_.template finish<iteration>(ex::set_value);
+        }
+        else
+        {
+          phases_.template transition<iteration, iteration>([](iteration&) { return std::tuple(); },
+                                                            this);
+        }
+      }
+
+      template <class Tag, class... As>
+      void complete(iteration_tag, Tag, As&&... as) noexcept
+      {
+        phases_.template finish<iteration>(Tag(), static_cast<As&&>(as)...);
+      }
+
+      STDEXEC_ATTRIBUTE(no_unique_address)
+      std::conditional_t<bound, maybe_const<Const, repeat_n_sender>*, unbound> self_;
+      phased<Ending, Entry, Rcvr, carried, iteration>                          phases_;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) &&
+    {
+      if constexpr (bound)
+      {
+        return root<repeat_n_sender, Rcvr>(std::move(*this), static_cast<Rcvr&&>(rcvr));
+      }
+      else
+      {
+        return opstate<Rcvr>(static_cast<Sndr&&>(sndr_), count_, static_cast<Rcvr&&>(rcvr));
+      }
+    }
+
+    // repeat_n only ever reads its child sender, so binding it consumes
+    // nothing either way.
+    template <class Rcvr>
+      requires bound
+    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
+    {
+      return {this, static_cast<Rcvr&&>(rcvr)};
+    }
+
+    Sndr        sndr_;
+    std::size_t count_;
+  };
+
+  template <class Ending = eager_teardown, class Entry = connect_entry, class Sndr>
+  auto repeat_n(Sndr&& sndr, std::size_t count)
+  {
+    return repeat_n_sender<Ending, Entry, std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr), count};
   }
 }  // namespace frames::typestate

@@ -16,6 +16,7 @@
 #include "automatic_storage.hpp"
 #include "typestate.hpp"
 
+#include <exec/repeat_n.hpp>
 #include <exec/sequence.hpp>
 #include <exec/variant_sender.hpp>
 #include <stdexec/execution.hpp>
@@ -151,6 +152,12 @@ namespace
       return ts::sequence<Ending, Layout, Entry>(static_cast<Sndr1&&>(sndr1),
                                                  static_cast<Sndr2&&>(sndr2));
     }
+
+    template <class Sndr>
+    static auto repeat_n(Sndr&& sndr, std::size_t count)
+    {
+      return ts::repeat_n<Ending, Entry>(static_cast<Sndr&&>(sndr), count);
+    }
   };
 
   using eager       = policy<ts::eager_teardown, ts::connect_entry>;
@@ -182,10 +189,10 @@ namespace
   template <class Make>
   void count_row(char const * label, std::string const & stdexec_count, Make make)
   {
-    std::printf("    %-44s %8s", label, stdexec_count.c_str());
+    std::printf("    %-44s %10s", label, stdexec_count.c_str());
     [&]<class... Ps>(Ps...)
     {
-      ((std::printf(" %8s", count(make(Ps())).c_str())), ...);
+      ((std::printf(" %10s", count(make(Ps())).c_str())), ...);
     }(eager(), forward(), eager_start());
     std::printf("\n");
   }
@@ -476,7 +483,7 @@ int main()
              [&]<class P>(P) { return P::then(P::just(1), plus_one); });
 
     // Copies and moves of a value from connect to sync_wait's result.
-    std::printf("\n    %-44s %8s %8s %8s %8s\n",
+    std::printf("\n    %-44s %10s %10s %10s %10s\n",
                 "moves (copies)",
                 "stdexec",
                 "eager",
@@ -604,7 +611,60 @@ int main()
   }
 
   {
-    section("12. Touching a phase after it has ended");
+    section("12. repeat_n binds its stored child again without consuming it");
+    // Each iteration re-enters one phase, which binds the stored child.
+    int  runs       = 0;
+    auto count_runs = [p = &runs]
+    {
+      ++*p;
+    };
+    ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(), count_runs), 5));
+    ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(), count_runs), 0));
+    std::printf("    repeat_n(..., 5) then repeat_n(..., 0): %d runs\n", runs);
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+    runs = 0;
+    try
+    {
+      ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(),
+                                                            [p = &runs]
+                                                            {
+                                                              if (++*p == 3)
+                                                              {
+                                                                throw std::runtime_error("third");
+                                                              }
+                                                            }),
+                                          5));
+    }
+    catch (std::runtime_error const & e)
+    {
+      std::printf("    a failing third run ends the repeat: %d runs, then \"%s\"\n",
+                  runs,
+                  e.what());
+    }
+#endif
+
+    // Copies and moves over 100 iterations. stdexec's repeat_n reconnects
+    // a copy of its child every time; a bound repeat_n reads its child in
+    // place, so what the child only reads (here, a capture) is never copied.
+    // Values the child sends are copied each time either way.
+    std::printf("\n    %-44s %10s %10s %10s %10s\n",
+                "moves (copies), 100 iterations",
+                "stdexec",
+                "eager",
+                "forward",
+                "eag+start");
+    count_row("repeat_n(then(just(), fn capturing c))",
+              count(exec::repeat_n(ex::just() | ex::then([c = counted()] {}), 100)),
+              []<class P>(P) { return P::repeat_n(P::then(P::just(), [c = counted()] {}), 100); });
+    count_row("repeat_n(then(just(c), drop))",
+              count(exec::repeat_n(ex::just(counted()) | ex::then([](counted const &) {}), 100)),
+              []<class P>(P)
+              { return P::repeat_n(P::then(P::just(counted()), [](counted const &) {}), 100); });
+  }
+
+  {
+    section("13. Touching a phase after it has ended");
 #if defined(FRAMES_SHOW_USE_AFTER_FINISH)
     // Under AddressSanitizer, eager teardown poisons the child's bytes before
     // then completes, so the child's late write is reported.
