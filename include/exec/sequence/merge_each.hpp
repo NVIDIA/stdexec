@@ -20,6 +20,7 @@
 
 #include "../../stdexec/concepts.hpp"
 #include "../../stdexec/execution.hpp"
+#include "../completion_signatures.hpp"
 #include "../sequence_senders.hpp"
 
 #include "../../stdexec/__detail/__completion_signatures_of.hpp"
@@ -30,7 +31,6 @@
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__sender_introspection.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
-#include "../../stdexec/__detail/__transform_completion_signatures.hpp"
 #include "../../stdexec/__detail/__variant.hpp"
 #include "../detail/basic_sequence.hpp"
 #include "../sender_for.hpp"
@@ -153,9 +153,6 @@ namespace experimental::execution
       using env_t = decltype(__env_from(std::declval<__nested_stop*>(), __declval<__env_t>()));
     };
 
-    template <class... _Args>
-    using drop = __mlist<>;
-
     enum class __completion_t
     {
       __started,
@@ -253,24 +250,15 @@ namespace experimental::execution
       template <class _ErrorReceiver>
       using __error_op_t = __error_op<_ErrorReceiver, _ErrorStorage>;
 
-      template <class _Error>
-      using __error_signature_t = STDEXEC::set_error_t(_Error);
-
       template <class _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
         using __result_t =
-          STDEXEC::__mapply<STDEXEC::__mtransform<STDEXEC::__q<__error_signature_t>,
+          STDEXEC::__mapply<STDEXEC::__mtransform<STDEXEC::__qf<STDEXEC::set_error_t>,
                                                   STDEXEC::__qq<STDEXEC::completion_signatures>>,
                             _ErrorStorage>;
-        if constexpr (__ok<__result_t>)
-        {
-          return __result_t();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(__result_t());
-        }
+        static_assert(__ok<__result_t>);
+        return __result_t();
       }
 
       template <class _Self, receiver _ErrorReceiver>
@@ -649,21 +637,14 @@ namespace experimental::execution
         __nested_value_op_t<_NestedValueSender, _NestedValueReceiver, _ErrorStorage>;
 
       template <class _Self, class... _Env>
-      static consteval auto get_completion_signatures() noexcept
+      static consteval auto get_completion_signatures()
       {
-        using __result_t = STDEXEC::__transform_completion_signatures_t<
-          STDEXEC::__completion_signatures_of_t<_NestedValueSender, _Env...>,
-          STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>,
-          STDEXEC::__cmplsigs::__default_set_value,
-          drop>;
-        if constexpr (__ok<__result_t>)
-        {
-          return __result_t();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error(__result_t());
-        }
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_NestedValueSender, _Env...>(),
+          {},
+          exec::ignore_completion(),
+          {},
+          STDEXEC::completion_signatures<STDEXEC::set_stopped_t()>());
       }
 
       template <class _Self, receiver _NestedValueReceiver>
