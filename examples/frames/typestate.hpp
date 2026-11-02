@@ -1388,8 +1388,15 @@ namespace frames::typestate
         using scoped_t = std::conditional_t<scoped, args_t, void>;
         using sndr_t   = std::invoke_result_t<maybe_const<Const, Fn>&, Ts&...>;
 
-        continuing(stored_t&& stored, opstate* op)
-          : stored(std::move(stored))
+        continuing(nothing&&, opstate* op)
+          requires(!overlapped)
+          : child(ex::connect(std::apply(op->fn(), args(op)), rcvr_t{op}))
+        {}
+
+        // Each value moves once more, from prepare's copy on the stack.
+        continuing(Ts&&... ts, opstate* op)
+          requires overlapped
+          : stored(std::move(ts)...)
           , child(ex::connect(std::apply(op->fn(), args(op)), rcvr_t{op}))
         {}
 
@@ -1454,7 +1461,7 @@ namespace frames::typestate
           {
             if constexpr (overlapped)
             {
-              return std::tuple<args_t>(args_t(static_cast<As&&>(as)...));
+              return args_t(static_cast<As&&>(as)...);
             }
             else if constexpr (scoped)
             {
