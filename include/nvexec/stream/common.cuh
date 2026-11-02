@@ -697,6 +697,13 @@ namespace nv::execution
         return get_stream_provider()->own_stream_.value();
       }
 
+      // Owner of get_stream(); tasks using that stream must be queued on its hub.
+      [[nodiscard]]
+      auto get_stream_context() const -> context
+      {
+        return get_stream_provider()->context_;
+      }
+
       template <class Type>
       void defer_temp_storage_destruction(Type* ptr)
       {
@@ -850,18 +857,20 @@ namespace nv::execution
         : base_t(static_cast<OuterReceiver&&>(out_receiver), ctx)
         , storage_(host_allocate<variant_t>(this->stream_provider_.status_, ctx.pinned_resource_))
         , task_(host_allocate<task_t>(this->stream_provider_.status_,
-                                      ctx.pinned_resource_,
+                                      this->get_stream_context().pinned_resource_,
                                       receiver_provider(*this),
                                       storage_.get(),
                                       this->get_stream(),
-                                      ctx.pinned_resource_)
+                                      this->get_stream_context().pinned_resource_)
                   .release())
         , env_(host_allocate<env_t>(this->stream_provider_.status_,
                                     ctx.pinned_resource_,
                                     this->make_env()))
-        , inner_op_{connect(
-            static_cast<CvSender&&>(sender),
-            stream_enqueue_receiver_t{env_.get(), storage_.get(), task_, ctx.hub_->producer()})}
+        , inner_op_{connect(static_cast<CvSender&&>(sender),
+                            stream_enqueue_receiver_t{env_.get(),
+                                                      storage_.get(),
+                                                      task_,
+                                                      this->get_stream_context().hub_->producer()})}
       {
         if (this->stream_provider_.status_ == cudaSuccess)
         {
