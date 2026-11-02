@@ -67,63 +67,86 @@ to `outer`.
 ## Part two: operation states as sequences of phases
 
 `typestate.hpp` reimplements `just`, `then`, `let_value` and a binary
-`sequence` with operation states that hold one *phase* at a time:
+`sequence` with operation states that hold one *phase* at a time. The aim
+is a standard way of expressing an operation's states and transitions, so
+that lifetimes are correct by construction, at no cost relative to the
+established approach.
 
-- **`phased<Rcvr, Carried, Phases...>`** holds the operation's receiver, a
-  *carried* region that lives as long as the operation (`then`'s and
-  `let_value`'s function), and storage sized for the largest phase.
-  Algorithms never construct or destroy phases themselves: they call
+- **`phased<Ending, Rcvr, Carried, Phases...>`** holds the operation's
+  receiver, a *carried* region that lives as long as the operation, and
+  storage sized for the largest phase. Algorithms never construct or destroy
+  phases themselves: from a phase's completion they call
   `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
-  `finish_with<Phase>(fn, ...)` from a phase's completion, and `phased`
-  does the destroying, constructing, starting and exception handling.
+  `finish_with<Phase>(fn, ...)`, and `phased` does the destroying,
+  constructing, starting and exception handling. Their bodies contain no
+  placement new, explicit destruction, liveness flags or `try`.
 - **`phase_receiver<Op, Rcvr, Tag>`** is the receiver a phase's child
   completes through. Its type names the phase, so each completion handler
   knows statically what the storage holds. `let_value` has one possible
   second phase per value signature of its child, each with its own receiver
-  type.
+  type. `phased` also keeps one byte naming the live phase, for its
+  destructor and exception paths.
 - **A transition** runs inside the live phase's completion. `prepare` sees
-  the dying phase and the completion's arguments while they're alive, and
-  returns what the next phase needs; then the live phase is destroyed and
-  the next one is constructed in the same storage and started.
-- **Eager teardown.** The last phase is destroyed the same way before the
-  operation's own receiver is completed, with the results moved onto the
-  stack first. `phased` stores one byte saying which phase is live, which
-  its destructor and its exception paths use.
+  the dying phase and the completion's arguments while they're alive; it
+  may store into the carried region, and returns what the next phase's
+  constructor needs. Then the live phase is destroyed and the next one is
+  constructed in the same storage and started.
+
+Two policies, chosen per algorithm instance:
+
+- **Ending.** `eager_teardown` destroys the last phase before completing,
+  so a completed operation holds nothing live; results may refer into that
+  phase, so they're moved onto the stack first. `forward_results` completes
+  from inside the last phase, as stdexec's algorithms do, and leaves the
+  phase to the destructor.
+- **Layout** of state that crosses a transition (`let_value`'s values,
+  `sequence`'s second sender). `carried_layout`, the default, keeps it in
+  the carried region, as stdexec does, so it's constructed in place.
+  `overlapped_layout` keeps it in the phases, so it reuses the earlier
+  phase's bytes, at the price of a move through the stack: data whose
+  destination overlaps its source has to be somewhere else while the source
+  is destroyed.
 
 | Section | Shows |
 |---|---|
 | 6 | The four algorithms composed under `sync_wait`. |
 | 7 | `let_value` choosing between an `int` phase and a `string` phase by receiver type alone; errors and stopped passing through. |
 | 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
-| 9 | Operation-state sizes against stdexec's own algorithms. |
-| 10 | An exception thrown by `then`'s function ending the phase and completing with `set_error`. |
+| 9 | Sizes and moves against stdexec's own algorithms. |
+| 10 | Exceptions: from `then`'s function, and from every move of a value in turn, under both endings. |
 
-Sizes (x86-64, GCC 13 and Clang 18 agree):
+Costs (x86-64; GCC 13 and Clang 18 agree; `big` is 256 bytes; stdexec has
+no `sequence`, so its column is a `let_value` returning a captured sender):
 
-| Pipeline | stdexec | typestate |
-|---|---|---|
-| `let_value(just(big), fn)`, `big` 256 bytes | 552 | 280 |
-| `sequence(just(big), just(big))` (stdexec: `let_value` making the second) | 560 | 536 |
-| `then(just(1), fn)` | 24 | 24 |
+| Operation-state bytes | stdexec | eager | forward |
+|---|---|---|---|
+| `let_value(just(big), fn)` | 552 | 536 | 536 |
+| ... `overlapped_layout` | | 280 | 280 |
+| `sequence(just(big), just(big))` | 816 | 544 | 544 |
+| ... `overlapped_layout` | | 536 | 536 |
+| `then(just(1), fn)` | 24 | 24 | 24 |
 
-`let_value` gains because its arguments live in the second phase, which
-reuses the first phase's bytes; stdexec keeps them alongside the shared
-storage. `sequence` gains nothing because the second sender waits in the
-first phase.
+| Moves of a value, connect to result | stdexec | eager | forward |
+|---|---|---|---|
+| `let_value(just(c), fn)` | 6 | 7 | 6 |
+| ... `overlapped_layout` | | 9 | 8 |
+| `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 |
+| `sequence(just(), just(c))` | 10 | 10 | 8 |
+| ... `overlapped_layout` | | 11 | 9 |
 
-What it costs, and what it taught:
+So with `forward_results` and the default layout, the typestate versions
+cost no more than stdexec's in bytes or moves. `eager_teardown` costs one
+move of the results per algorithm that tears down; `overlapped_layout`
+trades a move for bytes.
 
-- **Copies.** Arguments crossing into `let_value`'s second phase, and
-  every final result, are moved through the stack. stdexec's `then` passes
-  its child's arguments straight to the function.
+What else it taught:
+
 - **`let_value`'s function is carried**, not passed between phases: the
   sender it returns may refer to its captures.
-- **No lifetime code in the algorithms.** Their bodies contain no
-  placement new, explicit destruction, liveness flags or `try`; `phased`
-  owns all of it.
-- **Completion signatures are still most of the work.** About 130 of the
-  header's ~780 lines compute them, and phases don't help with that; every
-  algorithm here conservatively declares `set_error_t(std::exception_ptr)`.
+- **Completion signatures are still most of the work.** About 175 of the
+  header's ~990 lines compute them, and phases don't help with that; every
+  algorithm here except `just` conservatively declares
+  `set_error_t(std::exception_ptr)`.
 
 ## Open questions
 
