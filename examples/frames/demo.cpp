@@ -151,6 +151,35 @@ namespace
   };
 #endif
 
+#if defined(FRAMES_SHOW_USE_AFTER_FINISH)
+  // A sender whose operation, wrongly, touches its own state after
+  // completing.
+  struct sloppy_sender
+  {
+    using sender_concept        = ex::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(int)>;
+
+    template <class Rcvr>
+    struct opstate
+    {
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr), 42);
+        ++completions;  // the bug: the parent may already have destroyed us
+      }
+
+      Rcvr rcvr;
+      int  completions = 0;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) && -> opstate<Rcvr>
+    {
+      return {std::move(rcvr)};
+    }
+  };
+#endif
+
   void section(char const * title)
   {
     std::printf("\n== %s\n", title);
@@ -446,4 +475,16 @@ int main()
                 failure_points(ts::forward_results()));
   }
 #endif
+
+  {
+    section("11. Touching a phase after it has ended");
+#if defined(FRAMES_SHOW_USE_AFTER_FINISH)
+    // Under AddressSanitizer, eager teardown poisons the child's bytes before
+    // then completes, so the child's late write is reported.
+    ex::sync_wait(ts::then<ts::eager_teardown>(sloppy_sender(), [](int i) { return i; }));
+#else
+    std::printf("    build with -fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH to see\n"
+                "    a child that touches its own state after completing reported\n");
+#endif
+  }
 }
