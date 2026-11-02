@@ -185,23 +185,43 @@ namespace
   using forward     = policy<ts::forward_results, ts::connect_entry>;
   using eager_start = policy<ts::eager_teardown, ts::start_entry>;
 
-  // A row of operation-state sizes; a stdexec size of 0 leaves its column
-  // blank.
-  template <class Make>
-  void size_row(char const * label, std::size_t stdexec_size, Make make)
+  // The heading of a table of costs: each policy over a pair of columns,
+  // operation-state bytes and moves (copies).
+  void cost_heading()
   {
-    std::printf("    %-44s", label);
+    std::printf("    %24s      stdexec          eager          forward        eager+start\n"
+                "    %24s   -------------   -------------   -------------   -------------\n"
+                "    %24s   bytes   moves   bytes   moves   bytes   moves   bytes   moves\n",
+                "",
+                "",
+                "");
+  }
+
+  // A row of costs: the size of the operation state that make_sized's
+  // pipeline connects to, and the moves (copies) of a value while running
+  // make_counted's. A stdexec size of 0 leaves stdexec's columns blank.
+  template <class MakeSized, class MakeCounted>
+  void cost_row(char const *        label,
+                std::size_t         stdexec_size,
+                std::string const & stdexec_count,
+                MakeSized           make_sized,
+                MakeCounted         make_counted)
+  {
+    std::printf("    %-24s", label);
     if (stdexec_size == 0)
     {
-      std::printf(" %8s", "");
+      std::printf("   %13s", "");
     }
     else
     {
-      std::printf(" %8zu", stdexec_size);
+      std::printf("   %5zu  %6s", stdexec_size, stdexec_count.c_str());
     }
     [&]<class... Ps>(Ps...)
     {
-      ((std::printf(" %8zu", opstate_size<decltype(make(Ps()))>)), ...);
+      ((std::printf("   %5zu  %6s",
+                    opstate_size<decltype(make_sized(Ps()))>,
+                    count(make_counted(Ps())).c_str())),
+       ...);
     }(eager(), forward(), eager_start());
     std::printf("\n");
   }
@@ -455,8 +475,6 @@ int main()
 
   {
     section("9. Costs against stdexec");
-    // Each row builds one pipeline under every typestate policy (one ending
-    // and one entry throughout), next to stdexec's version.
     auto takes_big = [](big&)
     {
       return ex::just();
@@ -470,50 +488,10 @@ int main()
       return i + 1;
     };
 
-    std::printf("    %-44s %8s %8s %8s %8s\n",
-                "operation-state bytes",
-                "stdexec",
-                "eager",
-                "forward",
-                "eag+start");
-    size_row("let_value(just(big), fn)",
-             opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
-             [&]<class P>(P) { return P::let_value(P::just(big{}), takes_big_ts); });
-    size_row("  ... with overlapped_layout",
-             0,
-             [&]<class P>(P)
-             {
-               return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts);
-             });
-    size_row("  ... with scoped_layout",
-             0,
-             [&]<class P>(P)
-             { return P::template let_value<ts::scoped_layout>(P::just(big{}), takes_big_ts); });
-    // exec::sequence requires every sender but the last to send no values,
-    // so the first sender holds the big value and drops it.
-    auto drop = [](big const &) {};
-    size_row(
-      "sequence(then(just(big), drop), just(big))",
-      opstate_size<decltype(exec::sequence(ex::just(big{}) | ex::then(drop), ex::just(big{})))>,
-      [&]<class P>(P) { return P::sequence(P::then(P::just(big{}), drop), P::just(big{})); });
-    size_row("  ... with overlapped_layout",
-             0,
-             [&]<class P>(P)
-             {
-               return P::template sequence<ts::overlapped_layout>(P::then(P::just(big{}), drop),
-                                                                  P::just(big{}));
-             });
-    size_row("then(just(1), fn)",
-             opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
-             [&]<class P>(P) { return P::then(P::just(1), plus_one); });
-
-    // Copies and moves of a value from connect to sync_wait's result.
-    std::printf("\n    %-44s %10s %10s %10s %10s\n",
-                "moves (copies)",
-                "stdexec",
-                "eager",
-                "forward",
-                "eag+start");
+    // Each row builds one pipeline under every typestate policy (one ending
+    // and one entry throughout), next to stdexec's version, twice: with a
+    // big value, to measure its operation state, and with a counted one, to
+    // count its moves and copies from connect to sync_wait's result.
     auto let_fn = [](counted&)
     {
       return ex::just();
@@ -526,31 +504,58 @@ int main()
     {
       return c;
     };
-    count_row("let_value(just(c), fn)",
-              count(ex::just(counted()) | ex::let_value(let_fn)),
-              [&]<class P>(P) { return P::let_value(P::just(counted()), let_fn_ts); });
-    count_row("  ... with overlapped_layout",
-              "",
-              [&]<class P>(P)
-              {
-                return P::template let_value<ts::overlapped_layout>(P::just(counted()), let_fn_ts);
-              });
-    count_row("  ... with scoped_layout",
-              "",
-              [&]<class P>(P)
-              { return P::template let_value<ts::scoped_layout>(P::just(counted()), let_fn_ts); });
-    count_row("then(just(c), pass-by-value fn)",
-              count(ex::just(counted()) | ex::then(then_fn)),
-              [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
-    count_row("sequence(just(), just(c))",
-              count(exec::sequence(ex::just(), ex::just(counted()))),
-              []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
-    count_row("  ... with overlapped_layout",
-              "",
-              []<class P>(P)
-              {
-                return P::template sequence<ts::overlapped_layout>(P::just(), P::just(counted()));
-              });
+    // exec::sequence requires every sender but the last to send no values,
+    // so to measure size, the first sender holds the big value and drops it.
+    auto drop = [](big const &) {};
+
+    std::printf("    v is big for bytes (an int for then), a counted value for moves;\n"
+                "    s is then(just(big), drop) for bytes, just() for moves\n\n");
+    cost_heading();
+    cost_row(
+      "let_value(just(v), fn)",
+      opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
+      count(ex::just(counted()) | ex::let_value(let_fn)),
+      [&]<class P>(P) { return P::let_value(P::just(big{}), takes_big_ts); },
+      [&]<class P>(P) { return P::let_value(P::just(counted()), let_fn_ts); });
+    cost_row(
+      "  ... overlapped_layout",
+      0,
+      "",
+      [&]<class P>(P)
+      { return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts); },
+      [&]<class P>(P)
+      { return P::template let_value<ts::overlapped_layout>(P::just(counted()), let_fn_ts); });
+    cost_row(
+      "  ... scoped_layout",
+      0,
+      "",
+      [&]<class P>(P)
+      { return P::template let_value<ts::scoped_layout>(P::just(big{}), takes_big_ts); },
+      [&]<class P>(P)
+      { return P::template let_value<ts::scoped_layout>(P::just(counted()), let_fn_ts); });
+    cost_row(
+      "sequence(s, just(v))",
+      opstate_size<decltype(exec::sequence(ex::just(big{}) | ex::then(drop), ex::just(big{})))>,
+      count(exec::sequence(ex::just(), ex::just(counted()))),
+      [&]<class P>(P) { return P::sequence(P::then(P::just(big{}), drop), P::just(big{})); },
+      []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
+    cost_row(
+      "  ... overlapped_layout",
+      0,
+      "",
+      [&]<class P>(P)
+      {
+        return P::template sequence<ts::overlapped_layout>(P::then(P::just(big{}), drop),
+                                                           P::just(big{}));
+      },
+      []<class P>(P)
+      { return P::template sequence<ts::overlapped_layout>(P::just(), P::just(counted())); });
+    cost_row(
+      "then(just(v), fn)",
+      opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
+      count(ex::just(counted()) | ex::then(then_fn)),
+      [&]<class P>(P) { return P::then(P::just(1), plus_one); },
+      [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()

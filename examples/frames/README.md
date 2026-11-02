@@ -178,28 +178,31 @@ every level's carried data at once.
 | 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 | 14 | When `let_value`'s values are destroyed, under each layout and both endings. |
 
-Costs (x86-64; GCC 13 and Clang 18 agree except where noted, with libstdc++
-unless noted; `big` is 256 bytes; stdexec's `sequence` is `exec::sequence`,
-which requires every sender but the last to send no values, hence `drop`;
-"eager+start" is `eager_teardown` with `start_entry`):
+Costs (x86-64; GCC 13 and Clang 18 agree, with libstdc++, except where
+noted; "eager+start" is `eager_teardown` with `start_entry`). Each policy
+heads two columns: the operation state's size in bytes, and how often a
+value moves between `connect` and the result, with copies in parentheses.
+The two are measured on slightly different pipelines. For bytes, `v` is a
+256-byte `big` (an `int` in the `then` row); for moves, it's a counted value
+`c`, which `then`'s `fn` takes by value. stdexec's `sequence` is
+`exec::sequence`, which requires every sender but the last to send no
+values, so `s` is `then(just(big), drop)` for bytes, making the first phase
+big too, and `just()` for moves.
 
-| Operation-state bytes | stdexec | eager | forward | eager+start |
-|---|---|---|---|---|
-| `let_value(just(big), fn)` | 552 | 536 (libc++: 544) | 536 (libc++: 544) | 560 |
-| ... `overlapped_layout` | | 280 | 280 | 544 |
-| ... `scoped_layout` | | 536 | 536 | 552 |
-| `sequence(then(just(big), drop), just(big))` | 560 | 552 | 552 | 560 |
-| ... `overlapped_layout` | | 552 | 552 | 560 |
-| `then(just(1), fn)` | 24 | 24 | 24 | 32 |
+```text
+                              stdexec            eager            forward         eager+start
+                          ---------------   ---------------   ---------------   ---------------
+                          bytes   moves     bytes   moves     bytes   moves     bytes   moves
+let_value(just(v), fn)     552    6 (0)      536*   7 (0)      536*   6 (0)      560    5 (0)
+  ... overlapped_layout                      280    8 (0)      280    7 (0)      544    6 (0)
+  ... scoped_layout                          536    7 (0)      536    6 (0)      552    5 (0)
+sequence(s, just(v))       560   10 (0)**    552   10 (0)      552    8 (0)      560    6 (0)
+  ... overlapped_layout                      552   11 (0)      552    9 (0)      560    6 (0)
+then(just(v), fn)           24    8 (0)       24   10 (0)       24    8 (0)       32    8 (0)
 
-| Moves of a value, connect to result | stdexec | eager | forward | eager+start |
-|---|---|---|---|---|
-| `let_value(just(c), fn)` | 6 | 7 | 6 | 5 |
-| ... `overlapped_layout` | | 8 | 7 | 6 |
-| ... `scoped_layout` | | 7 | 6 | 5 |
-| `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 8 |
-| `sequence(just(), just(c))` | 10 (Clang: 9) | 10 | 8 | 6 |
-| ... `overlapped_layout` | | 11 | 9 | 6 |
+*  544 with libc++
+** 9 (0) with Clang
+```
 
 So with `forward_results` and the defaults, the typestate versions cost no
 more than stdexec's in bytes or moves. `eager_teardown` costs one move of
