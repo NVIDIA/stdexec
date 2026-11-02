@@ -13,7 +13,7 @@ namespace frames::typestate
 {
   // then(sndr, fn): one phase, running the child. fn is used in place.
 
-  template <class Ending, class Entry, class Data, class Sndr, class Fn>
+  template <class Sndr, class Fn>
   struct then_sender
   {
     using sender_concept = ex::sender_t;
@@ -23,7 +23,7 @@ namespace frames::typestate
 
     // After eager teardown, fn is called with rvalue copies of the values.
     // Bound without consuming, fn is called as const.
-    template <class FnRef>
+    template <class Ending, class FnRef>
     struct values_fn
     {
       template <class... As>
@@ -46,9 +46,10 @@ namespace frames::typestate
       {
         using fn_ref =
           std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
-        return detail::map_values_t<Ending,
+        using ending = ending_of_t<Env...>;
+        return detail::map_values_t<ending,
                                     ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
-                                    values_fn<fn_ref>>();
+                                    values_fn<ending, fn_ref>>();
       }
     }
 
@@ -60,7 +61,7 @@ namespace frames::typestate
 
       using parts_t = parts<&then_sender::sndr_, &then_sender::fn_>;
       using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag, maybe_const<Const, Sndr>>;
-      using child_t = part_child_t<Data, maybe_const<Const, Sndr>, rcvr_t>;
+      using child_t = part_child_t<maybe_const<Const, Sndr>, rcvr_t>;
 
       struct running
       {
@@ -109,17 +110,17 @@ namespace frames::typestate
         return phases_.template part<&then_sender::sndr_>();
       }
 
-      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, nothing, running> phases_;
+      phased<Rcvr, parts_t, nothing, running> phases_;
     };
 
     template <class Rcvr>
     auto connect(Rcvr rcvr) &&
     {
-      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
+      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     template <class Rcvr>
-      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
+      requires binds_stored<Rcvr>
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -127,7 +128,7 @@ namespace frames::typestate
     }
 
     template <class Rcvr>
-      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
+      requires binds_stored<Rcvr>
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -135,15 +136,10 @@ namespace frames::typestate
     }
   };
 
-  template <class Ending = eager_teardown,
-            class Entry  = connect_entry,
-            class Data   = stored_sender,
-            class Sndr,
-            class Fn>
+  template <class Sndr, class Fn>
   auto then(Sndr&& sndr, Fn&& fn)
   {
-    return then_sender<Ending, Entry, Data, std::decay_t<Sndr>, std::decay_t<Fn>>{
-      static_cast<Sndr&&>(sndr),
-      static_cast<Fn&&>(fn)};
+    return then_sender<std::decay_t<Sndr>, std::decay_t<Fn>>{static_cast<Sndr&&>(sndr),
+                                                             static_cast<Fn&&>(fn)};
   }
 }  // namespace frames::typestate

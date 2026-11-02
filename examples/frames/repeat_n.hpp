@@ -23,7 +23,7 @@ namespace frames::typestate
   // Prototype simplification: no trampoline, so a child that completes
   // inline makes each iteration a nested call.
 
-  template <class Ending, class Entry, class Data, class Sndr>
+  template <class Sndr>
   struct repeat_n_sender
   {
     using sender_concept = ex::sender_t;
@@ -47,8 +47,8 @@ namespace frames::typestate
       else
       {
         return detail::join_t<
-          detail::sent_as<Ending>,
-          detail::map_values_t<Ending,
+          detail::sent_as<ending_of_t<Env...>>,
+          detail::map_values_t<ending_of_t<Env...>,
                                ex::completion_signatures_of_t<Sndr const &, Env...>,
                                values_fn>,
           ex::completion_signatures<ex::set_value_t()>>();
@@ -141,19 +141,19 @@ namespace frames::typestate
         return child_sender();
       }
 
-      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, carried, iteration> phases_;
+      phased<Rcvr, parts_t, carried, iteration> phases_;
     };
 
     template <class Rcvr>
     auto connect(Rcvr rcvr) &&
     {
-      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
+      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     // repeat_n only ever reads its child sender, so binding it consumes
     // nothing either way.
     template <class Rcvr>
-      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
+      requires binds_stored<Rcvr>
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -161,13 +161,9 @@ namespace frames::typestate
     }
   };
 
-  template <class Ending = eager_teardown,
-            class Entry  = connect_entry,
-            class Data   = stored_sender,
-            class Sndr>
+  template <class Sndr>
   auto repeat_n(Sndr&& sndr, std::size_t count)
   {
-    return repeat_n_sender<Ending, Entry, Data, std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr),
-                                                                    count};
+    return repeat_n_sender<std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr), count};
   }
 }  // namespace frames::typestate

@@ -73,16 +73,16 @@ machinery in `typestate.hpp`. The aim is a standard way of expressing an
 operation's states and transitions, so that lifetimes are correct by
 construction, at no cost relative to the established approach. The machinery
 is where the complexity lives, in about 1400 lines; each algorithm takes 125
-to 190, about a fifth of them completion signatures.
+to 180, about a fifth of them completion signatures.
 
-- **`phased<Ending, Layout, Entry, Data, Rcvr, Parts, Carried, Phases...>`**
-  holds the operation's receiver, a *carried* region that lives as long as
-  the operation, and storage sized for the largest phase. A phase may also
-  *receive* values from the phase before it, built from that phase's results
-  while it's still alive, since they may refer into it. Where those live is
-  the layout policy's choice, made inside `phased`. Algorithms never
-  construct or destroy phases themselves: from a phase's completion they
-  call `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
+- **`phased<Rcvr, Parts, Carried, Phases...>`** holds the operation's
+  receiver, a *carried* region that lives as long as the operation, and
+  storage sized for the largest phase. A phase may also *receive* values
+  from the phase before it, built from that phase's results while it's still
+  alive, since they may refer into it. Where those live is the layout
+  policy's choice, made inside `phased`. Algorithms never construct or
+  destroy phases themselves: from a phase's completion they call
+  `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
   `finish_with<Phase>(fn, ...)`, and `phased` does the destroying,
   constructing, starting and exception handling. Their bodies contain no
   placement new, explicit destruction, liveness flags or `try`.
@@ -99,7 +99,18 @@ to 190, about a fifth of them completion signatures.
   phase is destroyed and the next one is constructed in the same storage and
   started.
 
-Four policies, chosen per algorithm instance:
+Four policies, chosen together, as `policies<Ending, Layout, Entry, Data>`,
+for a whole tree of operations. The algorithms take none of them as
+parameters: `phased` asks its receiver's environment for them with the
+forwarding query `get_policies`, so every operation in a tree sees the
+policies asked for at its top, including operations connected at run time
+(the sender `let_value`'s function returns), and stdexec's algorithms pass
+the query through to their children. An environment that doesn't answer it
+gets `default_policies`, the first of each below. `with_policies<P>(sndr)`
+asks for `P` with `write_env`; connecting to a receiver whose environment
+answers the query does the same without an adaptor.
+
+The four:
 
 - **Ending.** `eager_teardown` destroys the last phase before completing,
   so a completed operation holds nothing live; results may refer into that
@@ -192,27 +203,29 @@ which is every level's carried data at once.
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
-"eager+split" is `eager_teardown` with `split_sender`). Each policy
-heads two columns: the operation state's size in bytes, and how often a
-value moves between `connect` and the result, with copies in parentheses.
-The two are measured on slightly different pipelines. For bytes, `v` is a
-256-byte `big` (an `int` in the `then` row); for moves, it's a counted value
-`c`, which `then`'s `fn` takes by value. stdexec's `sequence` is
-`exec::sequence`, which requires every sender but the last to send no
-values, so `s` is `then(just(big), drop)` for bytes, making the first phase
-big too, and `just()` for moves.
+"eager+split" is `eager_teardown` with `split_sender`). Each policy heads
+two columns: the operation state's size in bytes, and how often a value
+moves between `connect` and the receiver, with copies in parentheses. Both
+connect the pipeline to a receiver whose environment asks for the column's
+policies; for moves, it's then started, and completes inline. The two are
+measured on slightly different pipelines. For bytes, `v` is a 256-byte `big`
+(an `int` in the `then` row); for moves, it's a counted value `c`, which
+`then`'s `fn` takes by value. stdexec's `sequence` is `exec::sequence`,
+which requires every sender but the last to send no values, so `s` is
+`then(just(big), drop)` for bytes, making the first phase big too, and
+`just()` for moves.
 
 ```text
                               stdexec          eager          forward        eager+start      eager+split
                            -------------   -------------   -------------   -------------   -------------
                            bytes   moves   bytes   moves   bytes   moves   bytes   moves   bytes   moves
 let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568   5 (0)     536   7 (0)
-  ... overlapped_layout                      568   6 (0)     568   5 (0)     560   6 (0)     296   8 (0)
+  ... overlapped_layout                      568   6 (0)     568   5 (0)     560   6 (0)     280   8 (0)
   ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
-sequence(s, just(v))*        560  10 (0)     568   6 (0)     568   4 (0)     552   6 (0)     552   9 (0)
-then(just(v), fn)             24   8 (0)      40   8 (0)      40   6 (0)      32   8 (0)      24  10 (0)
+sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
+then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
 
-* stdexec moves 9 (0) with Clang
+* stdexec moves 8 (0) with Clang
 ```
 
 Under `stored_sender`, binding makes values move once, into the root, and
@@ -236,9 +249,7 @@ the receivers' own pointers too.
 `split_sender` trades the other way. Each operation moves in the data it
 uses, so a value moves once per level rather than once in all, but the data
 lives where its phase does: `overlapped_layout` saves bytes again, and
-`then(just(1), fn)` matches stdexec's 24. (296 bytes rather than 280 for
-overlapped `let_value` because the sender the demo's `fn` returns is a
-default `just`, connected through a root of its own.)
+`then(just(1), fn)` matches stdexec's 24.
 
 `eager_teardown` costs one move of the results per algorithm that tears
 down. `overlapped_layout` trades a move for bytes where the received values
@@ -268,6 +279,15 @@ What else it taught:
 
 - **`let_value`'s function stays put**, not passed between phases: the
   sender it returns may refer to its captures.
+- **Every layer of `connect` moves the sender's data again** in stdexec at
+  this commit, apparently because `connect` passes the sender through
+  `transform_sender`, which can return it by value. Wrapping a typestate
+  sender in `with_policies` (or any other adaptor) costs two more moves of
+  its values, which is why the demo counts moves by connecting to a receiver
+  that asks for the policies instead. Under `stored_sender`, a tree of
+  typestate senders pays this once, at the root, since the operations below
+  bind their children; under `split_sender`, each level connects its
+  children through `connect`.
 - **Completion signatures are still much of the work.** About 160 of
   `typestate.hpp`'s lines, and 20 to 30 of each algorithm's, compute them,
   and phases don't help with that; every algorithm here except `just`
