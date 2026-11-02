@@ -11,13 +11,15 @@
 
 namespace frames::typestate
 {
-  // then(sndr, fn): one phase, running the child. fn is used in place in the
-  // stored sender.
+  // then(sndr, fn): one phase, running the child. fn is used in place.
 
-  template <class Ending, class Entry, class Sndr, class Fn>
+  template <class Ending, class Entry, class Data, class Sndr, class Fn>
   struct then_sender
   {
     using sender_concept = ex::sender_t;
+
+    Sndr sndr_;
+    Fn   fn_;
 
     // After eager teardown, fn is called with rvalue copies of the values.
     // Bound without consuming, fn is called as const.
@@ -56,22 +58,27 @@ namespace frames::typestate
       struct running_tag
       {};
 
+      using parts_t = parts<&then_sender::sndr_, &then_sender::fn_>;
       using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag, maybe_const<Const, Sndr>>;
-      using child_t = bind_result_t<maybe_const<Const, Sndr>, rcvr_t>;
+      using child_t = part_child_t<Data, maybe_const<Const, Sndr>, rcvr_t>;
 
       struct running
       {
-        explicit running(opstate* op)
-          : child(typestate::bind(op->self().sndr_, rcvr_t{op}))
+        static constexpr auto connects = &then_sender::sndr_;
+
+        template <class... Incoming>
+        explicit running(opstate* op, Incoming&... incoming)
+          : child(op->phases_.template connect_part<connects>(rcvr_t{op}, incoming...))
         {}
 
         child_t child;
       };
 
-      explicit opstate(Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr), nothing())
+      template <class... Incoming>
+      explicit opstate(Rcvr rcvr, Incoming&... incoming)
+        : phases_(static_cast<Rcvr&&>(rcvr), nothing(), incoming...)
       {
-        phases_.on_connect(this);
+        phases_.on_connect(this, incoming...);
       }
 
       void start() & noexcept
@@ -81,7 +88,7 @@ namespace frames::typestate
 
       auto fn() noexcept -> maybe_const<Const, Fn>&
       {
-        return self().fn_;
+        return phases_.template part<&then_sender::fn_>();
       }
 
       template <class... As>
@@ -99,27 +106,20 @@ namespace frames::typestate
       // Which child sender a phase binds.
       auto bound_sender(running_tag) noexcept -> maybe_const<Const, Sndr>&
       {
-        return self().sndr_;
+        return phases_.template part<&then_sender::sndr_>();
       }
 
-      // The sender this operation is bound to, found through the receiver
-      // rather than stored.
-      auto self() noexcept -> maybe_const<Const, then_sender>&
-      {
-        return phases_.receiver().bound_sender();
-      }
-
-      phased<Ending, carried_layout, Entry, Rcvr, nothing, running> phases_;
+      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, nothing, running> phases_;
     };
 
     template <class Rcvr>
-    auto connect(Rcvr rcvr) && -> root<then_sender, Rcvr>
+    auto connect(Rcvr rcvr) &&
     {
-      return root<then_sender, Rcvr>(std::move(*this), static_cast<Rcvr&&>(rcvr));
+      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     template <class Rcvr>
-      requires requires(Rcvr const & r) { r.bound_sender(); }
+      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -127,22 +127,23 @@ namespace frames::typestate
     }
 
     template <class Rcvr>
-      requires requires(Rcvr const & r) { r.bound_sender(); }
+      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
       return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
     }
-
-    Sndr sndr_;
-    Fn   fn_;
   };
 
-  template <class Ending = eager_teardown, class Entry = connect_entry, class Sndr, class Fn>
+  template <class Ending = eager_teardown,
+            class Entry  = connect_entry,
+            class Data   = stored_sender,
+            class Sndr,
+            class Fn>
   auto then(Sndr&& sndr, Fn&& fn)
   {
-    return then_sender<Ending, Entry, std::decay_t<Sndr>, std::decay_t<Fn>>{static_cast<Sndr&&>(
-                                                                              sndr),
-                                                                            static_cast<Fn&&>(fn)};
+    return then_sender<Ending, Entry, Data, std::decay_t<Sndr>, std::decay_t<Fn>>{
+      static_cast<Sndr&&>(sndr),
+      static_cast<Fn&&>(fn)};
   }
 }  // namespace frames::typestate

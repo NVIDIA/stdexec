@@ -13,12 +13,14 @@
 
 namespace frames::typestate
 {
-  // just(vs...): one phase, referring to the stored sender's values.
+  // just(vs...): one phase, sending the sender's values.
 
-  template <class Ending, class Entry, class... Vs>
+  template <class Ending, class Entry, class Data, class... Vs>
   struct just_sender
   {
     using sender_concept = ex::sender_t;
+
+    std::tuple<Vs...> values_;
 
     // Moving the values may throw if they cross the stack (eager_teardown);
     // bound without consuming (a const Self), the values are copied.
@@ -45,15 +47,18 @@ namespace frames::typestate
     template <class Rcvr, bool Const = false>
     struct opstate
     {
+      using parts_t = parts<&just_sender::values_>;
+
       struct ready
       {
         explicit ready(opstate*) noexcept {}
       };
 
-      explicit opstate(Rcvr rcvr)
-        : phases_(static_cast<Rcvr&&>(rcvr), nothing())
+      template <class... Incoming>
+      explicit opstate(Rcvr rcvr, Incoming&... incoming)
+        : phases_(static_cast<Rcvr&&>(rcvr), nothing(), incoming...)
       {
-        phases_.on_connect(this);
+        phases_.on_connect(this, incoming...);
       }
 
       void start() & noexcept
@@ -79,27 +84,20 @@ namespace frames::typestate
 
       auto values(ready&) noexcept -> maybe_const<Const, std::tuple<Vs...>>&
       {
-        return self().values_;
+        return phases_.template part<&just_sender::values_>();
       }
 
-      // The sender this operation is bound to, found through the receiver
-      // rather than stored.
-      auto self() noexcept -> maybe_const<Const, just_sender>&
-      {
-        return phases_.receiver().bound_sender();
-      }
-
-      phased<Ending, carried_layout, Entry, Rcvr, nothing, ready> phases_;
+      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, nothing, ready> phases_;
     };
 
     template <class Rcvr>
-    auto connect(Rcvr rcvr) && -> root<just_sender, Rcvr>
+    auto connect(Rcvr rcvr) &&
     {
-      return root<just_sender, Rcvr>(std::move(*this), static_cast<Rcvr&&>(rcvr));
+      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     template <class Rcvr>
-      requires requires(Rcvr const & r) { r.bound_sender(); }
+      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -107,19 +105,20 @@ namespace frames::typestate
     }
 
     template <class Rcvr>
-      requires requires(Rcvr const & r) { r.bound_sender(); }
+      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
       return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
     }
-
-    std::tuple<Vs...> values_;
   };
 
-  template <class Ending = eager_teardown, class Entry = connect_entry, class... Vs>
+  template <class Ending = eager_teardown,
+            class Entry  = connect_entry,
+            class Data   = stored_sender,
+            class... Vs>
   auto just(Vs&&... vs)
   {
-    return just_sender<Ending, Entry, std::decay_t<Vs>...>{{static_cast<Vs&&>(vs)...}};
+    return just_sender<Ending, Entry, Data, std::decay_t<Vs>...>{{static_cast<Vs&&>(vs)...}};
   }
 }  // namespace frames::typestate
