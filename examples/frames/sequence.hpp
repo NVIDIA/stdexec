@@ -16,7 +16,7 @@ namespace frames::typestate
   // second. Each phase connects its own sender, so nothing crosses the
   // transition.
 
-  template <class Ending, class Entry, class Data, class Sndr1, class Sndr2>
+  template <class Sndr1, class Sndr2>
   struct sequence_sender
   {
     using sender_concept = ex::sender_t;
@@ -40,7 +40,7 @@ namespace frames::typestate
       }
       else
       {
-        return detail::map_values_t<Ending,
+        return detail::map_values_t<ending_of_t<Env...>,
                                     ex::completion_signatures_of_t<member_t<Self, Sndr1>, Env...>,
                                     values_fn<member_t<Self, Sndr2>, Env...>>();
       }
@@ -59,7 +59,7 @@ namespace frames::typestate
       using second_rcvr_t = phase_receiver<opstate, Rcvr, second_tag, maybe_const<Const, Sndr2>>;
 
       template <class Sndr, class R>
-      using child_t = part_child_t<Data, maybe_const<Const, Sndr>, R>;
+      using child_t = part_child_t<maybe_const<Const, Sndr>, R>;
 
       struct first
       {
@@ -127,17 +127,17 @@ namespace frames::typestate
 
       using parts_t = parts<&sequence_sender::sndr1_, &sequence_sender::sndr2_>;
 
-      phased<Ending, carried_layout, Entry, Data, Rcvr, parts_t, nothing, first, second> phases_;
+      phased<Rcvr, parts_t, nothing, first, second> phases_;
     };
 
     template <class Rcvr>
     auto connect(Rcvr rcvr) &&
     {
-      return connect_sender<Data>(*this, static_cast<Rcvr&&>(rcvr));
+      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
     }
 
     template <class Rcvr>
-      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
+      requires binds_stored<Rcvr>
     auto bind(Rcvr rcvr) & -> opstate<Rcvr>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -145,7 +145,7 @@ namespace frames::typestate
     }
 
     template <class Rcvr>
-      requires std::is_same_v<Data, stored_sender> && requires(Rcvr const & r) { r.bound_sender(); }
+      requires binds_stored<Rcvr>
     auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
     {
       STDEXEC_ASSERT(&rcvr.bound_sender() == this);
@@ -153,15 +153,10 @@ namespace frames::typestate
     }
   };
 
-  template <class Ending = eager_teardown,
-            class Entry  = connect_entry,
-            class Data   = stored_sender,
-            class Sndr1,
-            class Sndr2>
+  template <class Sndr1, class Sndr2>
   auto sequence(Sndr1&& sndr1, Sndr2&& sndr2)
   {
-    return sequence_sender<Ending, Entry, Data, std::decay_t<Sndr1>, std::decay_t<Sndr2>>{
-      static_cast<Sndr1&&>(sndr1),
-      static_cast<Sndr2&&>(sndr2)};
+    return sequence_sender<std::decay_t<Sndr1>, std::decay_t<Sndr2>>{static_cast<Sndr1&&>(sndr1),
+                                                                     static_cast<Sndr2&&>(sndr2)};
   }
 }  // namespace frames::typestate

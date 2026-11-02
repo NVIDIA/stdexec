@@ -67,27 +67,31 @@ namespace
     }
   };
 
-  // A receiver that ignores its completions, for measuring operation states.
-  // It's only ever named in unevaluated contexts.
+  // A receiver that ignores its completions, with Env as its environment,
+  // for measuring operation states and counting moves.
+  template <class Env = ex::env<>>
   struct sink
   {
     using receiver_concept = ex::receiver_t;
 
+    auto get_env() const noexcept -> Env
+    {
+      return {};
+    }
+
     template <class... As>
-    [[maybe_unused]]
     void set_value(As&&...) && noexcept
     {}
 
     template <class E>
-    [[maybe_unused]]
     void set_error(E&&) && noexcept
     {}
 
     void set_stopped() && noexcept {}
   };
 
-  template <class Sndr>
-  constexpr auto opstate_size = sizeof(ex::connect_result_t<Sndr, sink>);
+  template <class Sndr, class Env = ex::env<>>
+  constexpr auto opstate_size = sizeof(ex::connect_result_t<Sndr, sink<Env>>);
 
   struct big
   {
@@ -133,8 +137,12 @@ namespace
     bool live = true;
   };
 
-  // Moves and copies while running `sndr` under sync_wait, as "m (c)".
-  template <class Sndr>
+  // Moves and copies while connecting `sndr` to a sink whose environment is
+  // Env and starting it, as "m (c)". Every pipeline counted here completes
+  // inline, so it has finished when start returns. (A sender adaptor that
+  // sets the environment instead, such as write_env, would add a layer of
+  // connect, which moves the sender's data again.)
+  template <class Env = ex::env<>, class Sndr>
   auto count(Sndr sndr) -> std::string
   {
     if constexpr (std::is_null_pointer_v<Sndr>)
@@ -144,53 +152,25 @@ namespace
     else
     {
       counted::copies = counted::moves = 0;
-      ex::sync_wait(std::move(sndr));
+      auto op                          = ex::connect(std::move(sndr), sink<Env>());
+      ex::start(op);
       return std::to_string(counted::moves) + " (" + std::to_string(counted::copies) + ")";
     }
   }
 
-  // The typestate algorithms under one ending, one entry and one way of
-  // keeping the sender's data.
+  // A column of the cost tables: one ending, one entry and one way of keeping
+  // the sender's data, with whichever layout the row asks for.
   template <class Ending, class Entry, class Data = ts::stored_sender>
-  struct policy
+  struct column
   {
-    template <class... Vs>
-    static auto just(Vs&&... vs)
-    {
-      return ts::just<Ending, Entry, Data>(static_cast<Vs&&>(vs)...);
-    }
-
-    template <class Sndr, class Fn>
-    static auto then(Sndr&& sndr, Fn&& fn)
-    {
-      return ts::then<Ending, Entry, Data>(static_cast<Sndr&&>(sndr), static_cast<Fn&&>(fn));
-    }
-
-    template <class Layout = ts::carried_layout, class Sndr, class Fn>
-    static auto let_value(Sndr&& sndr, Fn&& fn)
-    {
-      return ts::let_value<Ending, Layout, Entry, Data>(static_cast<Sndr&&>(sndr),
-                                                        static_cast<Fn&&>(fn));
-    }
-
-    template <class Sndr1, class Sndr2>
-    static auto sequence(Sndr1&& sndr1, Sndr2&& sndr2)
-    {
-      return ts::sequence<Ending, Entry, Data>(static_cast<Sndr1&&>(sndr1),
-                                               static_cast<Sndr2&&>(sndr2));
-    }
-
-    template <class Sndr>
-    static auto repeat_n(Sndr&& sndr, std::size_t count)
-    {
-      return ts::repeat_n<Ending, Entry, Data>(static_cast<Sndr&&>(sndr), count);
-    }
+    template <class Layout = ts::carried_layout>
+    using policies = ts::policies<Ending, Layout, Entry, Data>;
   };
 
-  using eager       = policy<ts::eager_teardown, ts::connect_entry>;
-  using forward     = policy<ts::forward_results, ts::connect_entry>;
-  using eager_start = policy<ts::eager_teardown, ts::start_entry>;
-  using eager_split = policy<ts::eager_teardown, ts::connect_entry, ts::split_sender>;
+  using eager       = column<ts::eager_teardown, ts::connect_entry>;
+  using forward     = column<ts::forward_results, ts::connect_entry>;
+  using eager_start = column<ts::eager_teardown, ts::start_entry>;
+  using eager_split = column<ts::eager_teardown, ts::connect_entry, ts::split_sender>;
 
   // The heading of a table of costs: each policy over a pair of columns,
   // operation-state bytes and moves (copies).
@@ -207,15 +187,17 @@ namespace
                 "");
   }
 
-  // A row of costs: the size of the operation state that make_sized's
-  // pipeline connects to, and the moves (copies) of a value while running
-  // make_counted's. A stdexec size of 0 leaves stdexec's columns blank.
-  template <class MakeSized, class MakeCounted>
+  // A row of costs, under each column's policies with Layout: the size of
+  // the operation state that make_sized's pipeline connects to, and the
+  // moves (copies) of a value while running make_counted's. A stdexec size of
+  // 0 leaves stdexec's columns blank.
+  template <class Layout, class MakeSized, class MakeCounted>
   void cost_row(char const *        label,
                 std::size_t         stdexec_size,
                 std::string const & stdexec_count,
-                MakeSized           make_sized,
-                MakeCounted         make_counted)
+                Layout,
+                MakeSized   make_sized,
+                MakeCounted make_counted)
   {
     std::printf("    %-24s", label);
     if (stdexec_size == 0)
@@ -226,24 +208,30 @@ namespace
     {
       std::printf("   %5zu  %6s", stdexec_size, stdexec_count.c_str());
     }
-    [&]<class... Ps>(Ps...)
+    [&]<class... Columns>(Columns...)
     {
       ((std::printf("   %5zu  %6s",
-                    opstate_size<decltype(make_sized(Ps()))>,
-                    count(make_counted(Ps())).c_str())),
+                    opstate_size<decltype(make_sized()),
+                                 ts::policies_env<typename Columns::template policies<Layout>>>,
+                    count<ts::policies_env<typename Columns::template policies<Layout>>>(
+                      make_counted())
+                      .c_str())),
        ...);
     }(eager(), forward(), eager_start(), eager_split());
     std::printf("\n");
   }
 
-  // A row of move counts.
+  // A row of move counts, under each column's policies.
   template <class Make>
   void count_row(char const * label, std::string const & stdexec_count, Make make)
   {
     std::printf("    %-44s %10s", label, stdexec_count.c_str());
-    [&]<class... Ps>(Ps...)
+    [&]<class... Columns>(Columns...)
     {
-      ((std::printf(" %10s", count(make(Ps())).c_str())), ...);
+      ((std::printf(
+         " %10s",
+         count<ts::policies_env<typename Columns::template policies<>>>(make()).c_str())),
+       ...);
     }(eager(), forward(), eager_start(), eager_split());
     std::printf("\n");
   }
@@ -286,12 +274,20 @@ namespace
     }
   };
 
-  // Records whether it was completed with an error.
+  // Records whether it was completed with an error; Env is its environment.
+  template <class Env = ex::env<>>
   struct error_probe
   {
     using receiver_concept = ex::receiver_t;
 
-    void set_value() && noexcept {}
+    auto get_env() const noexcept -> Env
+    {
+      return {};
+    }
+
+    template <class... As>
+    void set_value(As&&...) && noexcept
+    {}
 
     template <class E>
     void set_error(E&&) && noexcept
@@ -525,36 +521,37 @@ int main()
       "let_value(just(v), fn)",
       opstate_size<decltype(ex::just(big{}) | ex::let_value(takes_big))>,
       count(ex::just(counted()) | ex::let_value(let_fn)),
-      [&]<class P>(P) { return P::let_value(P::just(big{}), takes_big_ts); },
-      [&]<class P>(P) { return P::let_value(P::just(counted()), let_fn_ts); });
+      ts::carried_layout(),
+      [&] { return ts::let_value(ts::just(big{}), takes_big_ts); },
+      [&] { return ts::let_value(ts::just(counted()), let_fn_ts); });
     cost_row(
       "  ... overlapped_layout",
       0,
       "",
-      [&]<class P>(P)
-      { return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts); },
-      [&]<class P>(P)
-      { return P::template let_value<ts::overlapped_layout>(P::just(counted()), let_fn_ts); });
+      ts::overlapped_layout(),
+      [&] { return ts::let_value(ts::just(big{}), takes_big_ts); },
+      [&] { return ts::let_value(ts::just(counted()), let_fn_ts); });
     cost_row(
       "  ... scoped_layout",
       0,
       "",
-      [&]<class P>(P)
-      { return P::template let_value<ts::scoped_layout>(P::just(big{}), takes_big_ts); },
-      [&]<class P>(P)
-      { return P::template let_value<ts::scoped_layout>(P::just(counted()), let_fn_ts); });
+      ts::scoped_layout(),
+      [&] { return ts::let_value(ts::just(big{}), takes_big_ts); },
+      [&] { return ts::let_value(ts::just(counted()), let_fn_ts); });
     cost_row(
       "sequence(s, just(v))",
       opstate_size<decltype(exec::sequence(ex::just(big{}) | ex::then(drop), ex::just(big{})))>,
       count(exec::sequence(ex::just(), ex::just(counted()))),
-      [&]<class P>(P) { return P::sequence(P::then(P::just(big{}), drop), P::just(big{})); },
-      []<class P>(P) { return P::sequence(P::just(), P::just(counted())); });
+      ts::carried_layout(),
+      [&] { return ts::sequence(ts::then(ts::just(big{}), drop), ts::just(big{})); },
+      [] { return ts::sequence(ts::just(), ts::just(counted())); });
     cost_row(
       "then(just(v), fn)",
       opstate_size<decltype(ex::just(1) | ex::then(plus_one))>,
       count(ex::just(counted()) | ex::then(then_fn)),
-      [&]<class P>(P) { return P::then(P::just(1), plus_one); },
-      [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
+      ts::carried_layout(),
+      [&] { return ts::then(ts::just(1), plus_one); },
+      [&] { return ts::then(ts::just(counted()), then_fn); });
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -573,36 +570,42 @@ int main()
     // succeeds. Each failure lands somewhere different (connect, a
     // transition, a finish) and must end the live phase without leaking or
     // destroying anything twice; run it under ASan to check.
-    auto failure_points = []<class P, class Layout = ts::carried_layout>(P, Layout = {})
+    auto failure_points = []<class C, class Layout = ts::carried_layout>(C, Layout = {})
     {
       int failures = 0;
       for (int k = 1;; ++k)
       {
-        auto pipeline      = P::then(P::template let_value<Layout>(P::just(fragile()),
-                                                              [](fragile& f)
-                                                              { return P::just(std::move(f)); }),
-                                [](fragile f) { return *f.value; });
+        using env_t        = ts::policies_env<typename C::template policies<Layout>>;
+        auto pipeline      = ts::then(ts::let_value(ts::just(fragile()),
+                                               [](fragile& f) { return ts::just(std::move(f)); }),
+                                 [](fragile f) { return *f.value; });
         fragile::countdown = k;
+        bool failed        = false;
         try
         {
-          ex::sync_wait(std::move(pipeline));
-          break;
+          auto op = ex::connect(std::move(pipeline), error_probe<env_t>{&failed});
+          ex::start(op);
         }
         catch (std::runtime_error const &)
         {
-          ++failures;
+          failed = true;
         }
+        if (!failed)
+        {
+          break;
+        }
+        ++failures;
       }
       fragile::countdown = 0;
       return failures;
     };
-    std::printf("    eager:       %2d failure points, each surfacing from sync_wait\n",
+    std::printf("    eager:       %2d failure points, each an exception or set_error\n",
                 failure_points(eager()));
-    std::printf("    forward:     %2d failure points, each surfacing from sync_wait\n",
+    std::printf("    forward:     %2d failure points, each an exception or set_error\n",
                 failure_points(forward()));
-    std::printf("    eager+start: %2d failure points, each surfacing from sync_wait\n",
+    std::printf("    eager+start: %2d failure points, each an exception or set_error\n",
                 failure_points(eager_start()));
-    std::printf("    eager+split: %2d failure points, each surfacing from sync_wait\n",
+    std::printf("    eager+split: %2d failure points, each an exception or set_error\n",
                 failure_points(eager_split()));
     // The same, with let_value's values kept under the other layouts.
     std::printf("    with overlapped_layout: %2d, %2d and %2d failure points\n",
@@ -617,12 +620,14 @@ int main()
     // Under start_entry, connect doesn't enter the first phase, so a child
     // whose connect throws makes start complete with set_error instead of
     // making connect throw.
-    auto where = []<class P>(P) -> char const *
+    auto where = []<class C>(C) -> char const *
     {
       bool failed = false;
       try
       {
-        auto op = ex::connect(P::then(throwing_connect(), [] {}), error_probe{&failed});
+        auto op = ex::connect(ts::then(throwing_connect(), [] {}),
+                              error_probe<ts::policies_env<typename C::template policies<>>>{
+                                &failed});
         ex::start(op);
       }
       catch (std::runtime_error const &)
@@ -641,14 +646,19 @@ int main()
     section("11. Bound operations among stdexec senders");
     // Typestate senders bind to the sender stored once at the root; a stdexec
     // child, which can't bind, is moved into connect instead.
-    using bound = eager_start;
-    auto [a]    = ex::sync_wait(bound::then(ex::just(20), [](int i) { return i + 1; })).value();
-    auto [b]    = ex::sync_wait(bound::just(20) | ex::then([](int i) { return i + 2; })).value();
+    using bound = eager_start::policies<>;
+    auto [a]    = ex::sync_wait(
+                 ts::with_policies<bound>(ts::then(ex::just(20), [](int i) { return i + 1; })))
+                 .value();
+    auto [b] = ex::sync_wait(ts::with_policies<bound>(ts::just(20))
+                             | ex::then([](int i) { return i + 2; }))
+                 .value();
     std::printf("    bound then over stdexec just: %d; stdexec then over bound just: %d\n", a, b);
 
     counting_resource mr;
-    auto [c] = run(bound::let_value(indirect(bound::just(1), "phase 1"),
-                                    [](int i) { return indirect(bound::just(i + 1), "phase 2"); }),
+    auto [c] = run(ts::with_policies<bound>(
+                     ts::let_value(indirect(ts::just(1), "phase 1"),
+                                   [](int i) { return indirect(ts::just(i + 1), "phase 2"); })),
                    mr)
                  .value();
     std::printf("    result: %d\n", c);
@@ -657,28 +667,30 @@ int main()
   {
     section("12. repeat_n binds its stored child again without consuming it");
     // Each iteration re-enters one phase, which binds the stored child.
+    using bound     = eager_start::policies<>;
     int  runs       = 0;
     auto count_runs = [p = &runs]
     {
       ++*p;
     };
-    ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(), count_runs), 5));
-    ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(), count_runs), 0));
+    ex::sync_wait(ts::with_policies<bound>(ts::repeat_n(ts::then(ts::just(), count_runs), 5)));
+    ex::sync_wait(ts::with_policies<bound>(ts::repeat_n(ts::then(ts::just(), count_runs), 0)));
     std::printf("    repeat_n(..., 5) then repeat_n(..., 0): %d runs\n", runs);
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
     runs = 0;
     try
     {
-      ex::sync_wait(eager_start::repeat_n(eager_start::then(eager_start::just(),
-                                                            [p = &runs]
-                                                            {
-                                                              if (++*p == 3)
-                                                              {
-                                                                throw std::runtime_error("third");
-                                                              }
-                                                            }),
-                                          5));
+      ex::sync_wait(ts::with_policies<bound>(ts::repeat_n(ts::then(ts::just(),
+                                                                   [p = &runs]
+                                                                   {
+                                                                     if (++*p == 3)
+                                                                     {
+                                                                       throw std::runtime_error(
+                                                                         "third");
+                                                                     }
+                                                                   }),
+                                                          5)));
     }
     catch (std::runtime_error const & e)
     {
@@ -701,11 +713,11 @@ int main()
                 "eag+split");
     count_row("repeat_n(then(just(), fn capturing c))",
               count(exec::repeat_n(ex::just() | ex::then([c = counted()] {}), 100)),
-              []<class P>(P) { return P::repeat_n(P::then(P::just(), [c = counted()] {}), 100); });
+              [] { return ts::repeat_n(ts::then(ts::just(), [c = counted()] {}), 100); });
     count_row("repeat_n(then(just(c), drop))",
               count(exec::repeat_n(ex::just(counted()) | ex::then([](counted const &) {}), 100)),
-              []<class P>(P)
-              { return P::repeat_n(P::then(P::just(counted()), [](counted const &) {}), 100); });
+              []
+              { return ts::repeat_n(ts::then(ts::just(counted()), [](counted const &) {}), 100); });
   }
 
   {
@@ -713,7 +725,7 @@ int main()
 #if defined(FRAMES_SHOW_USE_AFTER_FINISH)
     // Under AddressSanitizer, eager teardown poisons the child's bytes before
     // then completes, so the child's late write is reported.
-    ex::sync_wait(ts::then<ts::eager_teardown>(sloppy_sender(), [](int i) { return i; }));
+    ex::sync_wait(ts::then(sloppy_sender(), [](int i) { return i; }));
 #else
     std::printf("    build with -fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH to see\n"
                 "    a child that touches its own state after completing reported\n");
@@ -726,12 +738,12 @@ int main()
     // scoped, they're part of the second phase, so they end with it: before
     // the operation completes under eager teardown, with the operation state
     // otherwise.
-    auto trace = []<class P, class Layout>(P, Layout, char const * label)
+    auto trace = []<class C, class Layout>(C, Layout, char const * label)
     {
       std::printf("    %-20s", label);
-      ex::sync_wait(
-        P::template let_value<Layout>(P::just(traced()), [](traced&) { return P::just(); })
-        | ex::then([] { std::printf(" completed;"); }));
+      ex::sync_wait(ts::with_policies<typename C::template policies<Layout>>(
+                      ts::let_value(ts::just(traced()), [](traced&) { return ts::just(); }))
+                    | ex::then([] { std::printf(" completed;"); }));
       std::printf(" sync_wait returned\n");
     };
     trace(eager(), ts::carried_layout(), "eager, carried:");

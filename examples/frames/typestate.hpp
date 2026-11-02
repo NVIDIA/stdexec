@@ -39,6 +39,7 @@
 #include <stdexec/execution.hpp>
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <exception>
 #include <functional>
@@ -105,6 +106,78 @@ namespace frames::typestate
   template <auto... Members>
   struct parts
   {};
+
+  // The four policies, chosen together for a tree of operations.
+  template <class Ending, class Layout, class Entry, class Data>
+  struct policies
+  {
+    using ending = Ending;
+    using layout = Layout;
+    using entry  = Entry;
+    using data   = Data;
+  };
+
+  using default_policies = policies<eager_teardown, carried_layout, connect_entry, stored_sender>;
+
+  // What an operation asks its receiver's environment for its policies. It's
+  // a forwarding query, so the operations in a tree all see the policies
+  // asked for at its top, unless something in between asks for others.
+  struct get_policies_t
+  {
+    template <class Env>
+      requires requires(Env const & env, get_policies_t const & tag) { env.query(tag); }
+    constexpr auto operator()(Env const & env) const noexcept
+    {
+      return env.query(*this);
+    }
+
+    static constexpr auto query(ex::forwarding_query_t) noexcept -> bool
+    {
+      return true;
+    }
+  };
+
+  inline constexpr get_policies_t get_policies{};
+
+  // The policies Env asks for, or default_policies.
+  template <class Env>
+  struct policies_of
+  {
+    using type = default_policies;
+  };
+
+  template <class Env>
+    requires std::invocable<get_policies_t const &, Env const &>
+  struct policies_of<Env>
+  {
+    using type = std::decay_t<std::invoke_result_t<get_policies_t const &, Env const &>>;
+  };
+
+  template <class Env>
+  using policies_of_t = typename policies_of<Env>::type;
+
+  template <class... Env>
+  struct ending_of;
+
+  template <class Env>
+  struct ending_of<Env>
+  {
+    using type = typename policies_of_t<Env>::ending;
+  };
+
+  // The Ending policy Env asks for, for completion signatures.
+  template <class... Env>
+  using ending_of_t = typename ending_of<Env...>::type;
+
+  // An environment asking for the policies P.
+  template <class P>
+  struct policies_env
+  {
+    constexpr auto query(get_policies_t) const noexcept -> P
+    {
+      return {};
+    }
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   // Completion-signature bookkeeping.
@@ -474,7 +547,9 @@ namespace frames::typestate
 
   //////////////////////////////////////////////////////////////////////////////
   // phased: an operation's receiver, a carried region that lives as long as
-  // the operation, and storage for whichever phase is live.
+  // the operation, and storage for whichever phase is live. Its policies are
+  // whatever its receiver's environment asks for (get_policies), or
+  // default_policies.
   //
   // Algorithms never construct or destroy phases themselves. They call:
   //
@@ -583,21 +658,28 @@ namespace frames::typestate
   };
 
   // The type of a child that connect_part makes from a part of type Sndr
-  // (const if the part is only read).
-  template <class Data, class Sndr, class Rcvr>
-  using part_child_t = typename part_child<Data, Sndr, Rcvr>::type;
+  // (const if the part is only read), completing to Rcvr.
+  template <class Sndr, class Rcvr>
+  using part_child_t =
+    typename part_child<typename policies_of_t<ex::env_of_t<Rcvr>>::data, Sndr, Rcvr>::type;
 
-  template <class Ending,
-            class Layout,
-            class Entry,
-            class Data,
-            class Rcvr,
-            class Parts,
-            class Carried,
-            class First,
-            class... Rest>
+  // Whether an operation connected with Rcvr binds to a stored sender:
+  // Rcvr's environment asks for stored_sender, and Rcvr leads to the
+  // sender.
+  template <class Rcvr>
+  concept binds_stored =
+    std::is_same_v<typename policies_of_t<ex::env_of_t<Rcvr>>::data, stored_sender>
+    && requires(Rcvr const & r) { r.bound_sender(); };
+
+  template <class Rcvr, class Parts, class Carried, class First, class... Rest>
   class phased
   {
+    using policies_t = policies_of_t<ex::env_of_t<Rcvr>>;
+    using Ending     = typename policies_t::ending;
+    using Layout     = typename policies_t::layout;
+    using Entry      = typename policies_t::entry;
+    using Data       = typename policies_t::data;
+
     static constexpr unsigned char none             = 0xff;
     static constexpr bool          eager            = std::is_same_v<Ending, eager_teardown>;
     static constexpr bool          start_entry      = std::is_same_v<Entry, typestate::start_entry>;
@@ -1179,13 +1261,9 @@ namespace frames::typestate
     }
   };
 
-  // phased<Ending, Layout, Entry, Data, Rcvr, Parts, Carried, First,
-  // Next<Ts...>...>, one Next per type_list<Ts...>.
-  template <class Ending,
-            class Layout,
-            class Entry,
-            class Data,
-            class Rcvr,
+  // phased<Rcvr, Parts, Carried, First, Next<Ts...>...>, one Next per
+  // type_list<Ts...>.
+  template <class Rcvr,
             class Parts,
             class Carried,
             class First,
@@ -1193,26 +1271,13 @@ namespace frames::typestate
             class Lists>
   struct phased_with;
 
-  template <class Ending,
-            class Layout,
-            class Entry,
-            class Data,
-            class Rcvr,
+  template <class Rcvr,
             class Parts,
             class Carried,
             class First,
             template <class...> class Next,
             class... Lists>
-  struct phased_with<Ending,
-                     Layout,
-                     Entry,
-                     Data,
-                     Rcvr,
-                     Parts,
-                     Carried,
-                     First,
-                     Next,
-                     detail::type_list<Lists...>>
+  struct phased_with<Rcvr, Parts, Carried, First, Next, detail::type_list<Lists...>>
   {
     template <class List>
     struct apply;
@@ -1223,15 +1288,7 @@ namespace frames::typestate
       using type = Next<Ts...>;
     };
 
-    using type = phased<Ending,
-                        Layout,
-                        Entry,
-                        Data,
-                        Rcvr,
-                        Parts,
-                        Carried,
-                        First,
-                        typename apply<Lists>::type...>;
+    using type = phased<Rcvr, Parts, Carried, First, typename apply<Lists>::type...>;
   };
 
   // The receiver a phase's child completes through. `Tag` names the phase;
@@ -1344,10 +1401,10 @@ namespace frames::typestate
   // What a phase-based sender's connect returns: under stored_sender, a root
   // storing the sender; under split_sender, the operation itself, which
   // moves the sender's parts out of it.
-  template <class Data, class Sndr, class Rcvr>
+  template <class Sndr, class Rcvr>
   auto connect_sender(Sndr& sndr, Rcvr rcvr)
   {
-    if constexpr (std::is_same_v<Data, split_sender>)
+    if constexpr (std::is_same_v<typename policies_of_t<ex::env_of_t<Rcvr>>::data, split_sender>)
     {
       return typename Sndr::template opstate<Rcvr>(static_cast<Rcvr&&>(rcvr), sndr);
     }
@@ -1372,4 +1429,12 @@ namespace frames::typestate
     }
   }
 
+  // sndr, with its operations asking for the policies P. Like any adaptor,
+  // it adds a layer of connect, which moves sndr's data again; connecting
+  // with a receiver whose environment asks for P costs nothing.
+  template <class P, class Sndr>
+  auto with_policies(Sndr&& sndr)
+  {
+    return ex::write_env(static_cast<Sndr&&>(sndr), policies_env<P>());
+  }
 }  // namespace frames::typestate
