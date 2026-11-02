@@ -195,7 +195,7 @@ which requires every sender but the last to send no values, hence `drop`;
 | Moves of a value, connect to result | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
 | `let_value(just(c), fn)` | 6 | 7 | 6 | 5 |
-| ... `overlapped_layout` | | 9 | 8 | 7 |
+| ... `overlapped_layout` | | 8 | 7 | 6 |
 | ... `scoped_layout` | | 7 | 6 | 5 |
 | `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 8 |
 | `sequence(just(), just(c))` | 10 (Clang: 9) | 10 | 8 | 6 |
