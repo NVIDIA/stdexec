@@ -137,16 +137,17 @@ every level's carried data at once.
 | 11 | Bound operations mixed with stdexec senders, and bound phases reusing automatic storage. |
 | 12 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 
-Costs (x86-64; GCC 13 and Clang 18 agree; `big` is 256 bytes; stdexec has
-no `sequence`, so its column is a `let_value` returning a captured sender;
-"eager+start" is `eager_teardown` with `start_entry`):
+Costs (x86-64; GCC 13 and Clang 18 agree except where noted; `big` is 256 bytes; stdexec's
+`sequence` is `exec::sequence`, which requires every sender but the last to
+send no values, hence `drop`; "eager+start" is `eager_teardown` with
+`start_entry`):
 
 | Operation-state bytes | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
 | `let_value(just(big), fn)` | 552 | 536 | 536 | 560 |
 | ... `overlapped_layout` | | 280 | 280 | 552 |
-| `sequence(just(big), just(big))` | 816 | 544 | 544 | 552 |
-| ... `overlapped_layout` | | 536 | 536 | 552 |
+| `sequence(then(just(big), drop), just(big))` | 560 | 552 | 552 | 576 |
+| ... `overlapped_layout` | | 552 | 552 | 576 |
 | `then(just(1), fn)` | 24 | 24 | 24 | 48 |
 
 | Moves of a value, connect to result | stdexec | eager | forward | eager+start |
@@ -154,7 +155,7 @@ no `sequence`, so its column is a `let_value` returning a captured sender;
 | `let_value(just(c), fn)` | 6 | 7 | 6 | 5 |
 | ... `overlapped_layout` | | 9 | 8 | 7 |
 | `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 8 |
-| `sequence(just(), just(c))` | 10 | 10 | 8 | 6 |
+| `sequence(just(), just(c))` | 10 (Clang: 9) | 10 | 8 | 6 |
 | ... `overlapped_layout` | | 11 | 9 | 6 |
 
 So with `forward_results` and the defaults, the typestate versions cost no
