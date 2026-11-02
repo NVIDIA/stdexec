@@ -86,6 +86,9 @@ namespace frames::typestate
   struct overlapped_layout  // in the phases, moving across on the stack
   {};
 
+  struct scoped_layout  // beside the phases, for as long as the phase that uses it
+  {};
+
   //////////////////////////////////////////////////////////////////////////////
   // Completion-signature bookkeeping.
 
@@ -305,7 +308,50 @@ namespace frames::typestate
 
       alignas(Align) std::byte bytes[Size];
     };
+
+    struct no_scoped_state
+    {};
+
+    // A phase's scoped state: Phase::scoped_t if it names one other than
+    // void, otherwise void.
+    template <class Phase>
+    struct scoped_of
+    {
+      using type = void;
+    };
+
+    template <class Phase>
+      requires requires { typename Phase::scoped_t; }
+    struct scoped_of<Phase>
+    {
+      using type = typename Phase::scoped_t;
+    };
+
+    template <class T>
+    inline constexpr std::size_t size_of = sizeof(T);
+
+    template <>
+    inline constexpr std::size_t size_of<void> = 0;
+
+    template <class T>
+    inline constexpr std::size_t align_of = alignof(T);
+
+    template <>
+    inline constexpr std::size_t align_of<void> = 1;
   }  // namespace detail
+
+  // What prepare returns when the phase it prepares has scoped state: the
+  // arguments for that state, which may refer into the dying phase, and the
+  // arguments for the phase itself.
+  template <class ScopedArgs, class Args>
+  struct with_scoped
+  {
+    ScopedArgs scoped;
+    Args       args;
+  };
+
+  template <class ScopedArgs, class Args>
+  with_scoped(ScopedArgs, Args) -> with_scoped<ScopedArgs, Args>;
 
   //////////////////////////////////////////////////////////////////////////////
   // phased: an operation's receiver, a carried region that lives as long as
@@ -325,7 +371,9 @@ namespace frames::typestate
   //       carried region, and returns a tuple of what To's constructor needs.
   //       Then From is destroyed, To is constructed from that tuple and
   //       `extra...`, and To's `child` is started. `extra...` must not refer
-  //       into From.
+  //       into From. If To has scoped state (below), prepare returns a
+  //       with_scoped instead, and the scoped state is constructed from its
+  //       first tuple before From is destroyed.
   //
   //   finish<Phase>(tag, as...)
   //       from inside Phase's completion: completes the operation with
@@ -350,10 +398,19 @@ namespace frames::typestate
   // destructor destroys only the receiver and the carried region. Otherwise
   // one byte records the live phase for the destructor.
   //
+  // A phase may own state that has to be constructed while the phase before
+  // it is still alive, because it's built from that phase's results (which
+  // may refer into it): let_value's values under scoped_layout. The phase
+  // names its type as `scoped_t`. That state can't share the phases' bytes,
+  // so it lives in a second region beside them, entered just before the
+  // phase and ended just after it. One region holds one phase's scoped
+  // state at a time, so two consecutive phases can't both have any.
+  //
   // Under AddressSanitizer, storage no phase occupies is poisoned, so
   // touching a phase after it has ended (a child that touches its own state
   // after completing, say) is reported. Bytes the next phase reuses are
-  // live again, so this catches what eager teardown leaves dead.
+  // live again, so this catches what eager teardown leaves dead. The same
+  // goes for the scoped region.
 
   template <class Ending, class Entry, class Rcvr, class Carried, class First, class... Rest>
   class phased
@@ -365,6 +422,15 @@ namespace frames::typestate
 
     template <class Phase>
     static constexpr unsigned char index_of = detail::index_of<Phase, First, Rest...>();
+
+    template <class Phase>
+    using scoped_t = typename detail::scoped_of<Phase>::type;
+
+    template <class Phase>
+    static constexpr bool has_scoped = !std::is_void_v<scoped_t<Phase>>;
+
+    static_assert(!has_scoped<First>,
+                  "a first phase follows no phase, so it can hold its own state");
 
     using live_t = std::conditional_t<track_live, unsigned char, detail::empty>;
 
@@ -406,6 +472,15 @@ namespace frames::typestate
       return rcvr_;
     }
 
+    // Phase's scoped state, from just before Phase is entered until just
+    // after it ends.
+    template <class Phase>
+      requires has_scoped<Phase>
+    auto scoped() noexcept -> scoped_t<Phase>&
+    {
+      return *std::launder(reinterpret_cast<scoped_t<Phase>*>(scoped_.bytes));
+    }
+
     template <class Then, class... Args>
     void begin(Then then, [[maybe_unused]] Args&&... args) noexcept
     {
@@ -430,25 +505,46 @@ namespace frames::typestate
     template <class From, class To, class Prepare, class... Extra>
     void transition(Prepare prepare, Extra... extra) noexcept
     {
+      static_assert(!(has_scoped<From> && has_scoped<To>),
+                    "consecutive phases can't both have scoped state");
       STDEXEC_TRY
       {
         auto bundle = prepare(get<From>());
+        if constexpr (has_scoped<To>)
+        {
+          enter_scoped<To>(bundle.scoped);
+        }
         leave<From>();
         STDEXEC_TRY
         {
+          auto& args = [&]() -> auto&
+          {
+            if constexpr (has_scoped<To>)
+            {
+              return bundle.args;
+            }
+            else
+            {
+              return bundle;
+            }
+          }();
           To& to = std::apply([&](auto&... parts) -> To&
                               { return enter<To>(std::move(parts)..., extra...); },
-                              bundle);
+                              args);
           ex::start(to.child);
         }
         STDEXEC_CATCH_ALL
         {
+          if constexpr (has_scoped<To>)
+          {
+            leave_scoped<To>();  // To's constructor threw
+          }
           fail();  // no phase is live
         }
       }
       STDEXEC_CATCH_ALL
       {
-        end<From>();  // prepare threw: From is live
+        end<From>();  // prepare or To's scoped state threw: From is live
         fail();
       }
     }
@@ -581,6 +677,38 @@ namespace frames::typestate
         live_ = none;
       }
       storage_.poison(sizeof(Phase));
+      if constexpr (has_scoped<Phase>)
+      {
+        leave_scoped<Phase>();
+      }
+    }
+
+    template <class Phase, class Args>
+    void enter_scoped(Args& args)
+    {
+      using state_t = scoped_t<Phase>;
+      scoped_.unpoison(sizeof(state_t));
+      STDEXEC_TRY
+      {
+        std::apply(
+          [this](auto&&... as)
+          {
+            ::new (static_cast<void*>(scoped_.bytes)) state_t(static_cast<decltype(as)&&>(as)...);
+          },
+          std::move(args));
+      }
+      STDEXEC_CATCH_ALL
+      {
+        scoped_.poison(sizeof(state_t));
+        STDEXEC_THROW();
+      }
+    }
+
+    template <class Phase>
+    void leave_scoped() noexcept
+    {
+      std::destroy_at(&scoped<Phase>());
+      scoped_.poison(sizeof(scoped_t<Phase>));
     }
 
     // On a failure inside Phase: eager teardown ends it now; otherwise the
@@ -611,9 +739,20 @@ namespace frames::typestate
     static constexpr std::size_t storage_size  = std::max({sizeof(First), sizeof(Rest)...});
     static constexpr std::size_t storage_align = std::max({alignof(First), alignof(Rest)...});
 
+    static constexpr std::size_t scoped_size = std::max(
+      {detail::size_of<scoped_t<Rest>>..., std::size_t(0)});
+    static constexpr std::size_t scoped_align = std::max(
+      {detail::align_of<scoped_t<Rest>>..., std::size_t(1)});
+
+    // Not detail::empty: two empty members of one type can't share an address.
+    using scoped_storage_t = std::conditional_t<scoped_size == 0,
+                                                detail::no_scoped_state,
+                                                detail::guarded_bytes<scoped_size, scoped_align>>;
+
     Rcvr rcvr_;
     STDEXEC_ATTRIBUTE(no_unique_address) Carried carried_;
     STDEXEC_ATTRIBUTE(no_unique_address) live_t live_ { none_or_empty() };
+    STDEXEC_ATTRIBUTE(no_unique_address) scoped_storage_t scoped_;
     detail::guarded_bytes<storage_size, storage_align> storage_;
 
     static constexpr auto none_or_empty() noexcept -> live_t
@@ -1159,9 +1298,11 @@ namespace frames::typestate
   // returns. fn is carried, or (when bound) used in place in the sender: the
   // sender it returns may refer to its captures. The values fn is called with
   // are carried too (carried_layout), or live in the second phase, reusing
-  // the first phase's bytes (overlapped_layout). Each second phase has its
-  // own receiver type, so its completion knows which one is live. The sender
-  // fn returns is created at run time, so its phase owns it.
+  // the first phase's bytes (overlapped_layout), or are the second phase's
+  // scoped state, beside the phases but ending with that phase
+  // (scoped_layout). Each second phase has its own receiver type, so its
+  // completion knows which one is live. The sender fn returns is created at
+  // run time, so its phase owns it.
 
   template <class Ending, class Layout, class Entry, class Sndr, class Fn>
   struct let_value_sender
@@ -1169,6 +1310,7 @@ namespace frames::typestate
     using sender_concept = ex::sender_t;
 
     static constexpr bool overlapped = std::is_same_v<Layout, overlapped_layout>;
+    static constexpr bool scoped     = std::is_same_v<Layout, scoped_layout>;
     static constexpr bool bound      = std::is_same_v<Entry, start_entry>;
 
     template <class FnRef, class Env>
@@ -1218,7 +1360,10 @@ namespace frames::typestate
       {
         STDEXEC_ATTRIBUTE(no_unique_address) std::conditional_t<bound, nothing, Fn> fn;
         STDEXEC_ATTRIBUTE(no_unique_address)
-        std::conditional_t<overlapped, nothing, typename detail::args_variant<values_t>::type> args;
+        std::conditional_t<overlapped || scoped,
+                           nothing,
+                           typename detail::args_variant<values_t>::type>
+          args;
       };
 
       struct running
@@ -1240,6 +1385,7 @@ namespace frames::typestate
         using rcvr_t   = phase_receiver<opstate, Rcvr, continuing_tag<Ts...>>;
         using args_t   = std::tuple<Ts...>;
         using stored_t = std::conditional_t<overlapped, args_t, nothing>;
+        using scoped_t = std::conditional_t<scoped, args_t, void>;
         using sndr_t   = std::invoke_result_t<maybe_const<Const, Fn>&, Ts&...>;
 
         continuing(stored_t&& stored, opstate* op)
@@ -1252,6 +1398,10 @@ namespace frames::typestate
           if constexpr (overlapped)
           {
             return stored;
+          }
+          else if constexpr (scoped)
+          {
+            return op->phases_.template scoped<continuing>();
           }
           else
           {
@@ -1305,6 +1455,11 @@ namespace frames::typestate
             if constexpr (overlapped)
             {
               return std::tuple<args_t>(args_t(static_cast<As&&>(as)...));
+            }
+            else if constexpr (scoped)
+            {
+              return with_scoped{std::forward_as_tuple(static_cast<As&&>(as)...),
+                                 std::tuple<nothing>()};
             }
             else
             {
@@ -1395,8 +1550,10 @@ namespace frames::typestate
   // sequence(first, second): runs first, discards its values, then runs
   // second. The second sender is carried until it's connected
   // (carried_layout), or waits in the first phase and crosses to the second
-  // on the stack (overlapped_layout). When bound, both senders stay in the
-  // stored sender and each phase binds to its own; the layout doesn't apply.
+  // on the stack (overlapped_layout). It exists from connect, before any
+  // phase that could own it, so scoped_layout carries it too. When bound,
+  // both senders stay in the stored sender and each phase binds to its own;
+  // the layout doesn't apply.
 
   template <class Ending, class Layout, class Entry, class Sndr1, class Sndr2>
   struct sequence_sender

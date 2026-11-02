@@ -74,8 +74,11 @@ established approach.
 
 - **`phased<Ending, Rcvr, Carried, Phases...>`** holds the operation's
   receiver, a *carried* region that lives as long as the operation, and
-  storage sized for the largest phase. Algorithms never construct or destroy
-  phases themselves: from a phase's completion they call
+  storage sized for the largest phase. A phase may also own *scoped* state:
+  state built from the previous phase's results, which may refer into that
+  phase, so it can't share its bytes. That goes in a second region, entered
+  just before its phase and ended just after it. Algorithms never construct
+  or destroy phases themselves: from a phase's completion they call
   `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
   `finish_with<Phase>(fn, ...)`, and `phased` does the destroying,
   constructing, starting and exception handling. Their bodies contain no
@@ -105,7 +108,13 @@ Three policies, chosen per algorithm instance:
   `overlapped_layout` keeps it in the phases, so it reuses the earlier
   phase's bytes, at the price of a move through the stack: data whose
   destination overlaps its source has to be somewhere else while the source
-  is destroyed.
+  is destroyed. `scoped_layout` makes `let_value`'s values the second
+  phase's scoped state: constructed in place as with `carried_layout`, but
+  destroyed with the phase that uses them rather than with the operation
+  state, and with no `std::variant` index, since the live phase already
+  says which values are there. `sequence`'s second sender exists from
+  `connect`, before any phase that could own it, so `scoped_layout` carries
+  it.
 - **Entry.** `connect_entry`, the default, enters the first phase in
   `connect`, connecting the child there. Under `start_entry`, `connect`
   moves the sender into a small `root` operation and does nothing else;
@@ -163,20 +172,22 @@ every level's carried data at once.
 | 7 | `let_value` choosing between an `int` phase and a `string` phase by receiver type alone; errors and stopped passing through. |
 | 8 | Both of `let_value`'s phases pushing frames at the same automatic-storage address. |
 | 9 | Sizes and moves against stdexec's own algorithms. |
-| 10 | Exceptions: from `then`'s function; from every move of a value in turn, under three policies; and where a throwing child `connect` surfaces under each entry. |
+| 10 | Exceptions: from `then`'s function; from every move of a value in turn, under three policies and again under each other layout; and where a throwing child `connect` surfaces under each entry. |
 | 11 | Bound operations mixed with stdexec senders, and bound phases reusing automatic storage. |
 | 12 | `repeat_n`: iteration counts, a failing iteration, and copies against `exec::repeat_n`. |
 | 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
+| 14 | When `let_value`'s values are destroyed, under each layout and both endings. |
 
-Costs (x86-64; GCC 13 and Clang 18 agree except where noted; `big` is 256 bytes; stdexec's
-`sequence` is `exec::sequence`, which requires every sender but the last to
-send no values, hence `drop`; "eager+start" is `eager_teardown` with
-`start_entry`):
+Costs (x86-64; GCC 13 and Clang 18 agree except where noted, with libstdc++
+unless noted; `big` is 256 bytes; stdexec's `sequence` is `exec::sequence`,
+which requires every sender but the last to send no values, hence `drop`;
+"eager+start" is `eager_teardown` with `start_entry`):
 
 | Operation-state bytes | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
-| `let_value(just(big), fn)` | 552 | 536 | 536 | 560 |
+| `let_value(just(big), fn)` | 552 | 536 (libc++: 544) | 536 (libc++: 544) | 560 |
 | ... `overlapped_layout` | | 280 | 280 | 544 |
+| ... `scoped_layout` | | 536 | 536 | 552 |
 | `sequence(then(just(big), drop), just(big))` | 560 | 552 | 552 | 560 |
 | ... `overlapped_layout` | | 552 | 552 | 560 |
 | `then(just(1), fn)` | 24 | 24 | 24 | 32 |
@@ -185,6 +196,7 @@ send no values, hence `drop`; "eager+start" is `eager_teardown` with
 |---|---|---|---|---|
 | `let_value(just(c), fn)` | 6 | 7 | 6 | 5 |
 | ... `overlapped_layout` | | 9 | 8 | 7 |
+| ... `scoped_layout` | | 7 | 6 | 5 |
 | `then(just(c), fn)`, `fn` by value | 8 | 10 | 8 | 8 |
 | `sequence(just(), just(c))` | 10 (Clang: 9) | 10 | 8 | 6 |
 | ... `overlapped_layout` | | 11 | 9 | 6 |
@@ -192,7 +204,12 @@ send no values, hence `drop`; "eager+start" is `eager_teardown` with
 So with `forward_results` and the defaults, the typestate versions cost no
 more than stdexec's in bytes or moves. `eager_teardown` costs one move of
 the results per algorithm that tears down; `overlapped_layout` trades a
-move for bytes.
+move for bytes. `scoped_layout` costs what `carried_layout` does, less the
+variant's index where alignment doesn't absorb it (libc++'s index is four
+bytes); what it changes is how long the values live. Under
+`eager_teardown` they're destroyed before the operation completes, as they
+are with `overlapped_layout`, rather than with the operation state
+(section 14).
 
 With `start_entry`, binding makes values move once, into the root, and
 then be used in place, so even with eager teardown the moves come out at
@@ -216,7 +233,10 @@ completing, inside a `then` with `eager_teardown`, and ASan reports a
 use-after-poison at that line. Two limits: bytes the next phase reuses are
 live again, so a transition only catches late accesses beyond the next
 phase's size; and under `forward_results` the last phase is still alive when
-a child returns from completing, so nothing is caught there. That makes
+a child returns from completing, so nothing is caught there. The scoped
+region is poisoned the same way, so under `scoped_layout` with eager
+teardown, a child that reads `let_value`'s values after completing is
+reported too; with `carried_layout` they're still alive then. That makes
 eager teardown worth having at least in checked builds. The whole demo runs
 clean with poisoning on, including the stdexec senders used as children.
 

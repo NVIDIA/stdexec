@@ -27,6 +27,7 @@
 #include <memory_resource>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace ex = stdexec;
 namespace ts = frames::typestate;
@@ -106,6 +107,26 @@ namespace
     {
       ++moves;
     }
+  };
+
+  // Says when the last object holding its value is destroyed.
+  struct traced
+  {
+    traced() = default;
+
+    traced(traced&& other) noexcept
+      : live(std::exchange(other.live, false))
+    {}
+
+    ~traced()
+    {
+      if (live)
+      {
+        std::printf(" values destroyed;");
+      }
+    }
+
+    bool live = true;
   };
 
   // Moves and copies while running `sndr` under sync_wait, as "m (c)".
@@ -464,6 +485,10 @@ int main()
              {
                return P::template let_value<ts::overlapped_layout>(P::just(big{}), takes_big_ts);
              });
+    size_row("  ... with scoped_layout",
+             0,
+             [&]<class P>(P)
+             { return P::template let_value<ts::scoped_layout>(P::just(big{}), takes_big_ts); });
     // exec::sequence requires every sender but the last to send no values,
     // so the first sender holds the big value and drops it.
     auto drop = [](big const &) {};
@@ -510,6 +535,10 @@ int main()
               {
                 return P::template let_value<ts::overlapped_layout>(P::just(counted()), let_fn_ts);
               });
+    count_row("  ... with scoped_layout",
+              "",
+              [&]<class P>(P)
+              { return P::template let_value<ts::scoped_layout>(P::just(counted()), let_fn_ts); });
     count_row("then(just(c), pass-by-value fn)",
               count(ex::just(counted()) | ex::then(then_fn)),
               [&]<class P>(P) { return P::then(P::just(counted()), then_fn); });
@@ -540,13 +569,14 @@ int main()
     // succeeds. Each failure lands somewhere different (connect, a
     // transition, a finish) and must end the live phase without leaking or
     // destroying anything twice; run it under ASan to check.
-    auto failure_points = []<class P>(P)
+    auto failure_points = []<class P, class Layout = ts::carried_layout>(P, Layout = {})
     {
       int failures = 0;
       for (int k = 1;; ++k)
       {
-        auto pipeline      = P::then(P::let_value(P::just(fragile()),
-                                             [](fragile& f) { return P::just(std::move(f)); }),
+        auto pipeline      = P::then(P::template let_value<Layout>(P::just(fragile()),
+                                                              [](fragile& f)
+                                                              { return P::just(std::move(f)); }),
                                 [](fragile f) { return *f.value; });
         fragile::countdown = k;
         try
@@ -568,6 +598,15 @@ int main()
                 failure_points(forward()));
     std::printf("    eager+start: %2d failure points, each surfacing from sync_wait\n",
                 failure_points(eager_start()));
+    // The same, with let_value's values kept under the other layouts.
+    std::printf("    with overlapped_layout: %2d, %2d and %2d failure points\n",
+                failure_points(eager(), ts::overlapped_layout()),
+                failure_points(forward(), ts::overlapped_layout()),
+                failure_points(eager_start(), ts::overlapped_layout()));
+    std::printf("    with scoped_layout:     %2d, %2d and %2d failure points\n",
+                failure_points(eager(), ts::scoped_layout()),
+                failure_points(forward(), ts::scoped_layout()),
+                failure_points(eager_start(), ts::scoped_layout()));
 
     // Under start_entry, connect doesn't connect the child, so a child whose
     // connect throws makes start complete with set_error instead of making
@@ -673,5 +712,27 @@ int main()
     std::printf("    build with -fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH to see\n"
                 "    a child that touches its own state after completing reported\n");
 #endif
+  }
+
+  {
+    section("14. How long let_value's values live");
+    // Carried values live as long as the operation state. Overlapped or
+    // scoped, they're part of the second phase, so they end with it: before
+    // the operation completes under eager teardown, with the operation state
+    // otherwise.
+    auto trace = []<class P, class Layout>(P, Layout, char const * label)
+    {
+      std::printf("    %-20s", label);
+      ex::sync_wait(
+        P::template let_value<Layout>(P::just(traced()), [](traced&) { return P::just(); })
+        | ex::then([] { std::printf(" completed;"); }));
+      std::printf(" sync_wait returned\n");
+    };
+    trace(eager(), ts::carried_layout(), "eager, carried:");
+    trace(eager(), ts::overlapped_layout(), "eager, overlapped:");
+    trace(eager(), ts::scoped_layout(), "eager, scoped:");
+    trace(forward(), ts::carried_layout(), "forward, carried:");
+    trace(forward(), ts::overlapped_layout(), "forward, overlapped:");
+    trace(forward(), ts::scoped_layout(), "forward, scoped:");
   }
 }
