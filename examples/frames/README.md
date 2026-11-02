@@ -72,14 +72,14 @@ is a standard way of expressing an operation's states and transitions, so
 that lifetimes are correct by construction, at no cost relative to the
 established approach.
 
-- **`phased<Ending, Rcvr, Carried, Phases...>`** holds the operation's
-  receiver, a *carried* region that lives as long as the operation, and
-  storage sized for the largest phase. A phase may also own *scoped* state:
-  state built from the previous phase's results, which may refer into that
-  phase, so it can't share its bytes. That goes in a second region, entered
-  just before its phase and ended just after it. Algorithms never construct
-  or destroy phases themselves: from a phase's completion they call
-  `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
+- **`phased<Ending, Layout, Entry, Rcvr, Carried, Phases...>`** holds the
+  operation's receiver, a *carried* region that lives as long as the
+  operation, and storage sized for the largest phase. A phase may also
+  *receive* values from the phase before it, built from that phase's results
+  while it's still alive, since they may refer into it. Where those live is
+  the layout policy's choice, made inside `phased`. Algorithms never
+  construct or destroy phases themselves: from a phase's completion they
+  call `transition<From, To>(prepare, ...)`, `finish<Phase>(tag, ...)` or
   `finish_with<Phase>(fn, ...)`, and `phased` does the destroying,
   constructing, starting and exception handling. Their bodies contain no
   placement new, explicit destruction, liveness flags or `try`.
@@ -90,10 +90,11 @@ established approach.
   type. `phased` also keeps one byte naming the live phase, for its
   destructor and exception paths.
 - **A transition** runs inside the live phase's completion. `prepare` sees
-  the dying phase and the completion's arguments while they're alive; it
-  may store into the carried region, and returns what the next phase's
-  constructor needs. Then the live phase is destroyed and the next one is
-  constructed in the same storage and started.
+  the dying phase and the completion's arguments while they're alive; it may
+  store into the carried region, and returns what the next phase's
+  constructor needs, or `hand_over(vs...)` to hand it values. Then the live
+  phase is destroyed and the next one is constructed in the same storage and
+  started.
 
 Three policies, chosen per algorithm instance:
 
@@ -102,19 +103,20 @@ Three policies, chosen per algorithm instance:
   phase, so they're moved onto the stack first. `forward_results` completes
   from inside the last phase, as stdexec's algorithms do, and leaves the
   phase to the destructor.
-- **Layout** of state that crosses a transition (`let_value`'s values,
-  `sequence`'s second sender). `carried_layout`, the default, keeps it in
-  the carried region, as stdexec does, so it's constructed in place.
-  `overlapped_layout` keeps it in the phases, so it reuses the earlier
-  phase's bytes, at the price of a move through the stack: data whose
-  destination overlaps its source has to be somewhere else while the source
-  is destroyed. `scoped_layout` makes `let_value`'s values the second
-  phase's scoped state: constructed in place as with `carried_layout`, but
-  destroyed with the phase that uses them rather than with the operation
-  state, and with no `std::variant` index, since the live phase already
-  says which values are there. `sequence`'s second sender exists from
-  `connect`, before any phase that could own it, so `scoped_layout` carries
-  it.
+- **Layout** of values a phase receives (`let_value`'s values). The
+  algorithm only says what it hands over; `phased` places it.
+  `carried_layout`, the default, keeps the values beside the phases for as
+  long as the operation, as stdexec does, so they're constructed in place.
+  `overlapped_layout` keeps them in the phases' bytes, just before the phase
+  that receives them, so they reuse the earlier phase's bytes, at the price
+  of a move through the stack: data whose destination overlaps its source
+  has to be somewhere else while the source is destroyed. `scoped_layout`
+  keeps them beside the phases, constructed in place, but only for as long
+  as the phase that receives them, and with no `std::variant` index, since
+  the live phase already says which values are there. `sequence`'s second
+  sender exists from `connect`, before any phase that could receive it, so
+  `sequence` places it itself: carried, or under `overlapped_layout` in its
+  first phase.
 - **Entry.** `connect_entry`, the default, enters the first phase in
   `connect`, connecting the child there. Under `start_entry`, `connect`
   moves the sender into a small `root` operation and does nothing else;
@@ -178,8 +180,8 @@ every level's carried data at once.
 | 13 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 | 14 | When `let_value`'s values are destroyed, under each layout and both endings. |
 
-Costs (x86-64; GCC 13 and Clang 18 agree, with libstdc++, except where
-noted; "eager+start" is `eager_teardown` with `start_entry`). Each policy
+Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
+where noted; "eager+start" is `eager_teardown` with `start_entry`). Each policy
 heads two columns: the operation state's size in bytes, and how often a
 value moves between `connect` and the result, with copies in parentheses.
 The two are measured on slightly different pipelines. For bytes, `v` is a
@@ -193,26 +195,24 @@ big too, and `just()` for moves.
                               stdexec            eager            forward         eager+start
                           ---------------   ---------------   ---------------   ---------------
                           bytes   moves     bytes   moves     bytes   moves     bytes   moves
-let_value(just(v), fn)     552    6 (0)      536*   7 (0)      536*   6 (0)      560    5 (0)
+let_value(just(v), fn)     552    6 (0)      536    7 (0)      536    6 (0)      552    5 (0)
   ... overlapped_layout                      280    8 (0)      280    7 (0)      544    6 (0)
-  ... scoped_layout                          536    7 (0)      536    6 (0)      552    5 (0)
-sequence(s, just(v))       560   10 (0)**    552   10 (0)      552    8 (0)      560    6 (0)
+  ... scoped_layout                          536    7 (0)      536    6 (0)      544    5 (0)
+sequence(s, just(v))       560   10 (0)*     552   10 (0)      552    8 (0)      560    6 (0)
   ... overlapped_layout                      552   11 (0)      552    9 (0)      560    6 (0)
 then(just(v), fn)           24    8 (0)       24   10 (0)       24    8 (0)       32    8 (0)
 
-*  544 with libc++
-** 9 (0) with Clang
+* 9 (0) with Clang
 ```
 
 So with `forward_results` and the defaults, the typestate versions cost no
 more than stdexec's in bytes or moves. `eager_teardown` costs one move of
-the results per algorithm that tears down; `overlapped_layout` trades a
-move for bytes. `scoped_layout` costs what `carried_layout` does, less the
-variant's index where alignment doesn't absorb it (libc++'s index is four
-bytes); what it changes is how long the values live. Under
-`eager_teardown` they're destroyed before the operation completes, as they
-are with `overlapped_layout`, rather than with the operation state
-(section 14).
+the results per algorithm that tears down; `overlapped_layout` trades a move
+for bytes. `scoped_layout` costs what `carried_layout` does, less the
+variant's index where alignment doesn't absorb it; what it changes is how
+long the values live. Under `eager_teardown` they're destroyed before the
+operation completes, as they are with `overlapped_layout`, rather than with
+the operation state (section 14).
 
 With `start_entry`, binding makes values move once, into the root, and
 then be used in place, so even with eager teardown the moves come out at
@@ -236,12 +236,13 @@ completing, inside a `then` with `eager_teardown`, and ASan reports a
 use-after-poison at that line. Two limits: bytes the next phase reuses are
 live again, so a transition only catches late accesses beyond the next
 phase's size; and under `forward_results` the last phase is still alive when
-a child returns from completing, so nothing is caught there. The scoped
-region is poisoned the same way, so under `scoped_layout` with eager
-teardown, a child that reads `let_value`'s values after completing is
-reported too; with `carried_layout` they're still alive then. That makes
-eager teardown worth having at least in checked builds. The whole demo runs
-clean with poisoning on, including the stdexec senders used as children.
+a child returns from completing, so nothing is caught there. Received values
+are poisoned the same way once they end, so under `overlapped_layout` or
+`scoped_layout` with eager teardown, a child that reads `let_value`'s values
+after completing is reported too; with `carried_layout` they're still alive
+then. That makes eager teardown worth having at least in checked builds. The
+whole demo runs clean with poisoning on, including the stdexec senders used
+as children.
 
 What else it taught:
 
