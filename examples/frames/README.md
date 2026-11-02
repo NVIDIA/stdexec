@@ -176,10 +176,10 @@ send no values, hence `drop`; "eager+start" is `eager_teardown` with
 | Operation-state bytes | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
 | `let_value(just(big), fn)` | 552 | 536 | 536 | 560 |
-| ... `overlapped_layout` | | 280 | 280 | 552 |
-| `sequence(then(just(big), drop), just(big))` | 560 | 552 | 552 | 576 |
-| ... `overlapped_layout` | | 552 | 552 | 576 |
-| `then(just(1), fn)` | 24 | 24 | 24 | 48 |
+| ... `overlapped_layout` | | 280 | 280 | 544 |
+| `sequence(then(just(big), drop), just(big))` | 560 | 552 | 552 | 560 |
+| ... `overlapped_layout` | | 552 | 552 | 560 |
+| `then(just(1), fn)` | 24 | 24 | 24 | 32 |
 
 | Moves of a value, connect to result | stdexec | eager | forward | eager+start |
 |---|---|---|---|---|
@@ -198,13 +198,16 @@ With `start_entry`, binding makes values move once, into the root, and
 then be used in place, so even with eager teardown the moves come out at
 or below stdexec's in every row. (Before binding, when each level kept its
 child sender until `start` and the child kept its own copy too, sizes
-roughly doubled: 1048 bytes for the first row.) What's left is a pointer
-per bound level from the operation to its sender, beside the receiver's
-pointer to its parent: 8 bytes that don't matter next to `big` but double
-`then(just(1), fn)`. Each operation could instead find its sender through
-its receiver (the parent knows which of its child senders each phase
-binds), trading those bytes for a pointer chase up the tree on every
-access.
+roughly doubled: 1048 bytes for the first row.) A bound operation doesn't
+store a pointer to its sender either: it asks its receiver, whose parent
+knows which of its child senders each phase binds (`bound_sender()`), and
+the root's receiver points at the stored sender. So the tree holds one
+pointer to a sender in all, at the root, which is what still separates
+`then(just(1), fn)` from stdexec's 24 bytes. The price is a walk up the
+receivers on each access to a sender's data. Receivers that are rebuilt
+from the child's address instead of stored (P3425, worded for C++26 by
+P3986 as `inlinable_receiver`) would turn that walk into constant offsets,
+and remove the receivers' own pointers too.
 
 Under AddressSanitizer, `phased` poisons the storage no phase occupies.
 Touching a phase after it has ended then gets reported rather than silently
