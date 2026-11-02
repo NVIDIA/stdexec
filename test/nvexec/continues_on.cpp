@@ -287,4 +287,63 @@ namespace
     }
     REQUIRE(on_gpu);
   }
+
+  // Records the stream each step ran on, readable from host and device.
+  struct stream_record
+  {
+    cudaStream_t* streams{};
+
+    stream_record()
+    {
+      STDEXEC_TRY_CUDA_API(cudaMallocManaged(&streams, 2 * sizeof(cudaStream_t)));
+      streams[0] = nullptr;
+      streams[1] = nullptr;
+    }
+
+    stream_record(stream_record const &)                    = delete;
+    auto operator=(stream_record const &) -> stream_record& = delete;
+
+    ~stream_record()
+    {
+      STDEXEC_ASSERT_CUDA_API(cudaFree(streams));
+    }
+  };
+
+  template <class FirstSched, class SecondSched>
+  void record_streams_across(FirstSched first, SecondSched second, cudaStream_t* streams)
+  {
+    auto sndr = STDEXEC::schedule(first) | STDEXEC::let_value([] { return nvexec::get_stream(); })
+              | STDEXEC::then([streams](cudaStream_t stream) { streams[0] = stream; })
+              | STDEXEC::continues_on(second)
+              | STDEXEC::let_value([] { return nvexec::get_stream(); })
+              | STDEXEC::then([streams](cudaStream_t stream) { streams[1] = stream; });
+
+    STDEXEC::sync_wait(std::move(sndr));
+  }
+
+  TEST_CASE("continues_on between two stream contexts switches streams",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx_0;
+    nvexec::stream_context ctx_1;
+    stream_record          record;
+
+    record_streams_across(ctx_0.get_scheduler(), ctx_1.get_scheduler(), record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    REQUIRE(record.streams[1] != nullptr);
+    CHECK(record.streams[0] != record.streams[1]);
+  }
+
+  TEST_CASE("continues_on within one stream context keeps the stream",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx;
+    stream_record          record;
+
+    record_streams_across(ctx.get_scheduler(), ctx.get_scheduler(), record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    CHECK(record.streams[0] == record.streams[1]);
+  }
 }  // namespace

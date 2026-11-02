@@ -26,6 +26,8 @@
 #include <cuda/std/tuple>
 
 #include <cstddef>
+#include <memory>
+#include <optional>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -46,7 +48,7 @@ namespace nv::execution::_strm
     template <class CvSender, class Receiver>
     struct receiver : stream_receiver_base
     {
-      using env_t     = _strm::opstate_base<Receiver>::env_t;
+      using env_t     = terminal_stream_env_t<env_of_t<Receiver>>;
       using storage_t = variant_storage_t<CvSender, env_t>;
 
       static constexpr std::size_t memory_allocation_size() noexcept
@@ -55,6 +57,40 @@ namespace nv::execution::_strm
       }
 
       _strm::opstate_base<Receiver>& opstate_;
+      // Stream of the source context, or null when source and destination share a context.
+      stream_provider* src_provider_{nullptr};
+
+      [[nodiscard]]
+      auto src_stream() const -> cudaStream_t
+      {
+        return src_provider_ ? src_provider_->own_stream_.value() : opstate_.get_stream();
+      }
+
+      // Make the destination stream wait for the work queued so far on the source stream.
+      auto wait_for_source() const noexcept -> cudaError_t
+      {
+        if (src_provider_ == nullptr)
+        {
+          return cudaSuccess;
+        }
+
+        cudaEvent_t event{};
+        cudaError_t status = STDEXEC_LOG_CUDA_API(
+          cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+        if (status != cudaSuccess)
+        {
+          return status;
+        }
+
+        status = STDEXEC_LOG_CUDA_API(cudaEventRecord(event, src_stream()));
+        if (status == cudaSuccess)
+        {
+          status = STDEXEC_LOG_CUDA_API(cudaStreamWaitEvent(opstate_.get_stream(), event, 0));
+        }
+
+        STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event));
+        return status;
+      }
 
       template <class Tag, class... Args>
       void complete(Tag, Args&&... args) noexcept
@@ -65,6 +101,11 @@ namespace nv::execution::_strm
         // storage, skip it and simply propagate the completion signal.
         if constexpr (sizeof...(Args) == 0)
         {
+          if (cudaError_t status = wait_for_source(); status != cudaSuccess)
+          {
+            opstate_.propagate_completion_signal(STDEXEC::set_error, std::move(status));
+            return;
+          }
           opstate_.propagate_completion_signal(Tag());
         }
         else
@@ -111,7 +152,8 @@ namespace nv::execution::_strm
             return;
           }
 
-          cudaStream_t stream = opstate_.get_stream();
+          // The values were produced on the source stream, so copy them out there.
+          cudaStream_t stream = src_stream();
 
           if (concurrent_managed_access)
           {
@@ -135,6 +177,12 @@ namespace nv::execution::_strm
               complete_error(std::move(status));
               return;
             }
+          }
+
+          if (cudaError_t status = wait_for_source(); status != cudaSuccess)
+          {
+            complete_error(std::move(status));
+            return;
           }
 
           opstate_.defer_temp_storage_destruction(storage);
@@ -174,8 +222,45 @@ namespace nv::execution::_strm
       [[nodiscard]]
       auto get_env() const noexcept -> env_t
       {
-        return opstate_.make_env();
+        return make_terminal_stream_env(STDEXEC::get_env(opstate_.rcvr_),
+                                        src_provider_ ? src_provider_
+                                                      : opstate_.get_stream_provider());
       }
+    };
+
+    template <class CvSourceSender, class Receiver>
+    struct opstate
+    {
+      using operation_state_concept = STDEXEC::operation_state_tag;
+      using receiver_t              = receiver<CvSourceSender, Receiver>;
+      using inner_opstate_t         = stream_opstate_t<CvSourceSender, receiver_t, Receiver>;
+
+      opstate(CvSourceSender&& sndr, Receiver rcvr, context dst_ctx, std::optional<context> src_ctx)
+        : src_provider_(src_ctx ? std::make_unique<stream_provider>(*src_ctx) : nullptr)
+        , inner_(_strm::stream_opstate(
+            static_cast<CvSourceSender&&>(sndr),
+            static_cast<Receiver&&>(rcvr),
+            [this](_strm::opstate_base<Receiver>& op) -> receiver_t
+            { return receiver_t{{}, op, src_provider_.get()}; },
+            dst_ctx))
+      {}
+
+      STDEXEC_IMMOVABLE(opstate);
+
+      void start() & noexcept
+      {
+        if (src_provider_ && src_provider_->status_ != cudaSuccess)
+        {
+          inner_.propagate_completion_signal(STDEXEC::set_error,
+                                             cudaError_t(src_provider_->status_));
+          return;
+        }
+        STDEXEC::start(inner_);
+      }
+
+     private:
+      std::unique_ptr<stream_provider> src_provider_;
+      inner_opstate_t                  inner_;
     };
 
     template <class Sender>
@@ -223,31 +308,37 @@ namespace nv::execution::_strm
   {
     using source_sender_t = _trnsfr::source_sender<Sender>;
 
-    template <class Self, class Receiver>
-    using receiver_t = _trnsfr::receiver<__copy_cvref_t<Self, Sender>, Receiver>;
-
     explicit continues_on_sender(Scheduler sched, Sender sndr)
       : sched_(sched)
       , sndr_{static_cast<Sender&&>(sndr)}
     {}
 
+    template <class Self, class Receiver>
+    using opstate_t = _trnsfr::opstate<__copy_cvref_t<Self, source_sender_t>, Receiver>;
+
     template <__decays_to<continues_on_sender> Self, receiver Receiver>
       requires sender_to<__copy_cvref_t<Self, source_sender_t>, Receiver>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
-      -> stream_opstate_t<__copy_cvref_t<Self, source_sender_t>,
-                          receiver_t<Self, Receiver>,
-                          Receiver>
+      -> opstate_t<Self, Receiver>
     {
-      auto receiver_factory =
-        [&](_strm::opstate_base<Receiver>& stream_provider) -> receiver_t<Self, Receiver>
+      // Work before the transition must run on the source context's stream.
+      std::optional<context> src_ctx;
+      if constexpr (stream_sender<Sender, env_of_t<Receiver>>
+                    && stream_completing_sender<Sender, env_of_t<Receiver>>)
       {
-        return receiver_t<Self, Receiver>{{}, stream_provider};
-      };
+        context ctx = get_completion_scheduler<set_value_t>(STDEXEC::get_env(self.sndr_),
+                                                            STDEXEC::get_env(rcvr))
+                        .ctx_;
+        if (ctx.stream_pools_ != self.sched_.ctx_.stream_pools_)
+        {
+          src_ctx = ctx;
+        }
+      }
 
-      return _strm::stream_opstate(static_cast<Self&&>(self).sndr_,
-                                   static_cast<Receiver&&>(rcvr),
-                                   receiver_factory,
-                                   self.sched_.ctx_);
+      return opstate_t<Self, Receiver>{static_cast<Self&&>(self).sndr_,
+                                       static_cast<Receiver&&>(rcvr),
+                                       self.sched_.ctx_,
+                                       src_ctx};
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
