@@ -50,7 +50,6 @@ namespace STDEXEC
   // [exec.on]
   struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_;
   struct _ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_;
-  struct _USE_CONTINUES_ON_TO_TRANSFER_TO_THE_SCHEDULER_;
 
   namespace __on
   {
@@ -61,7 +60,6 @@ namespace STDEXEC
       __mexception<_WHAT_(_INVALID_EXPRESSION_),
                    _WHERE_(_IN_ALGORITHM_, on_t),
                    _WHY_(_ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_),
-                   _TO_FIX_THIS_ERROR_(_USE_CONTINUES_ON_TO_TRANSFER_TO_THE_SCHEDULER_),
                    _WITH_SCHEDULER_(_Scheduler)>;
 
     // If __is_root_env<_Env> is true, then this sender has no parent, so there

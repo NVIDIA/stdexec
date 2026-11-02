@@ -230,18 +230,9 @@ if(NOT STDEXEC_BUILD_MODULES)
     NAME test_then_fail1 SOURCE stdexec/algos/adaptors/test_then_fail1.cpp
     LIBRARIES stdexec)
 
-  icm_add_build_failure_test(
-    NAME
-    test_on_fail1
-    TARGET
-    test_on_fail1
-    SOURCES
-    PARSE
-    stdexec/algos/adaptors/test_on_fail1.cpp
-    LIBRARIES
-    stdexec
-    FOLDER
-    test)
+  stdexec_add_build_failure_test(
+    NAME test_on_fail1 SOURCE stdexec/algos/adaptors/test_on_fail1.cpp
+    LIBRARIES stdexec)
 
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)

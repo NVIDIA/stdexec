@@ -20,6 +20,6 @@ namespace ex = STDEXEC;
 
 auto main() -> int
 {
-  // build error: _ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_.*_USE_CONTINUES_ON_TO_TRANSFER_TO_THE_SCHEDULER_
+  // build error: _ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_
   ex::sender auto snd = ex::just(42) | ex::on(ex::inline_scheduler{});
 }
