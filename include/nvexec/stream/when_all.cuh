@@ -20,15 +20,16 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+#include "../detail/event.cuh"
+#include "../detail/throw_on_cuda_error.cuh"
+#include "common.cuh"
+
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <optional>
 #include <utility>
-
-#include "../detail/event.cuh"
-#include "../detail/throw_on_cuda_error.cuh"
-#include "common.cuh"
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_EDG(cuda_compile)

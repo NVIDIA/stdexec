@@ -20,12 +20,13 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include <cstddef>
 #include <ranges>
 
-#include <cuda/std/type_traits>
-
 #include <cub/device/device_reduce.cuh>
+#include <cuda/std/type_traits>
 
 #include "common.cuh"
 
@@ -98,17 +99,7 @@ namespace nv::execution::_strm::__algo_range_init_fun
     using receiver_t =
       __minvoke_q<__mfirst, DerivedSender, Receiver>::template receiver_t<Receiver>;
 
-    template <class Range>
-    using _set_value_t = __minvoke_q<__mfirst, DerivedSender, Range>::template _set_value_t<Range>;
-
-    template <class Self, class... Env>
-    using _completions_t = STDEXEC::__transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      completion_signatures<set_error_t(cudaError_t)>,
-      __mtry_q<_set_value_t>::template __f>;
-
     template <__decays_to_derived_from<sender> Self, STDEXEC::receiver Receiver>
-      requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
@@ -125,9 +116,14 @@ namespace nv::execution::_strm::__algo_range_init_fun
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to_derived_from<sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> _completions_t<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        DerivedSender::_value_cmplsigs_transform(),
+        {},
+        {},
+        STDEXEC::completion_signatures<set_error_t(cudaError_t)>());
     }
 
     auto get_env() const noexcept -> env_of_t<Sender const &>

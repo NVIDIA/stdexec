@@ -19,6 +19,9 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+
+#include "../../exec/completion_signatures.hpp"
+
 #include <memory>
 #include <utility>
 
@@ -137,26 +140,12 @@ namespace nv::execution
       template <class Self, class Receiver>
       using opstate_t = _schfr::opstate<__copy_cvref_t<Self, Sender>, Receiver>;
 
-      template <class... Ts>
-      using _set_value_t = completion_signatures<set_value_t(__decay_t<Ts>...)>;
-
-      template <class Ty>
-      using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
-
-      template <class Self, class... Env>
-      using _completions_t = __transform_completion_signatures_t<
-        __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-        completion_signatures<set_stopped_t(), set_error_t(cudaError_t)>,
-        _set_value_t,
-        _set_error_t>;
-
-      schedule_from_sender(context ctx, Sender sndr)
+      explicit schedule_from_sender(context ctx, Sender sndr)
         : ctx_(ctx)
         , sndr_{static_cast<Sender&&>(sndr)}
       {}
 
       template <__decays_to<schedule_from_sender> Self, STDEXEC::receiver Receiver>
-        requires receiver_of<Receiver, _completions_t<Self, env_of_t<Receiver>>>
       STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
         -> opstate_t<Self, Receiver>
       {
@@ -167,10 +156,15 @@ namespace nv::execution
       STDEXEC_EXPLICIT_THIS_END(connect)
 
       template <__decays_to<schedule_from_sender> Self, class... Env>
-      static consteval auto get_completion_signatures()  //
-        -> _completions_t<Self, Env...>
+      static consteval auto get_completion_signatures()
       {
-        return {};
+        return exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+          exec::decay_arguments<STDEXEC::set_value_t, STDEXEC::schedule_from_t>(),
+          exec::decay_arguments<STDEXEC::set_error_t, STDEXEC::schedule_from_t>(),
+          exec::keep_completion<STDEXEC::set_stopped_t>(),
+          STDEXEC::completion_signatures<STDEXEC::set_stopped_t(),
+                                         STDEXEC::set_error_t(cudaError_t)>());
       }
 
       auto get_env() const noexcept -> STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Sender>>

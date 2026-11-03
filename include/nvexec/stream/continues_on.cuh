@@ -20,7 +20,10 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include "../detail/variant.cuh"
+
 #include "common.cuh"
 
 #include <cuda/std/tuple>
@@ -210,12 +213,6 @@ namespace nv::execution::_strm
      private:
       Sender sndr_;
     };
-
-    template <class... Ty>
-    using value_completions_t = completion_signatures<set_value_t(__decay_t<Ty>...)>;
-
-    template <class Ty>
-    using error_completions_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
   }  // namespace _trnsfr
 
   template <class Scheduler, class Sender>
@@ -232,7 +229,6 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<continues_on_sender> Self, receiver Receiver>
-      requires sender_to<__copy_cvref_t<Self, source_sender_t>, Receiver>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)  //
       -> stream_opstate_t<__copy_cvref_t<Self, source_sender_t>,
                           receiver_t<Self, Receiver>,
@@ -252,13 +248,14 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<continues_on_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      completion_signatures<set_error_t(cudaError_t)>,
-      _trnsfr::value_completions_t,
-      _trnsfr::error_completions_t>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        exec::decay_arguments<set_value_t, continues_on_t>(),
+        exec::decay_arguments<set_error_t, continues_on_t>(),
+        {},
+        completion_signatures<set_error_t(cudaError_t)>());
     }
 
     [[nodiscard]]

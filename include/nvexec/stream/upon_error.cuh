@@ -20,6 +20,8 @@
 
 #include "../../stdexec/execution.hpp"
 
+#include "../../exec/completion_signatures.hpp"
+
 #include "common.cuh"
 
 #include <concepts>
@@ -147,16 +149,6 @@ namespace nv::execution::_strm
     template <class Receiver>
     using receiver_t = _upon_error::receiver<max_result_size<Receiver>::value, Receiver, Fun>;
 
-    template <class Error>
-    using _set_error_t = __set_value_from_t<Fun, Error>;
-
-    template <class Self, class... Env>
-    using completion_signatures = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      completion_signatures<set_error_t(cudaError_t)>,
-      __cmplsigs::__default_set_value,
-      _set_error_t>;
-
     explicit upon_error_sender(Sender sndr, Fun fun)
       noexcept(__nothrow_move_constructible<Sender, Fun>)
       : sndr_(static_cast<Sender&&>(sndr))
@@ -164,7 +156,6 @@ namespace nv::execution::_strm
     {}
 
     template <__decays_to<upon_error_sender> Self, receiver Receiver>
-      requires receiver_of<Receiver, completion_signatures<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
@@ -177,9 +168,14 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<upon_error_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> completion_signatures<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        {},
+        STDEXEC::__transform_upon_completion<Fun, upon_error_t>(),
+        {},
+        _cuda_error_completion_t());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>

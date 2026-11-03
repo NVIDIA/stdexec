@@ -128,10 +128,15 @@ namespace nv::execution
         template <class Receiver>
         using receiver_t = reduce_::receiver<Sender, Receiver, InitT, Fun>;
 
-        template <class Range>
-        using _set_value_t = completion_signatures<set_value_t(
-          ::std::add_lvalue_reference_t<
-            __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>;
+        static consteval auto _value_cmplsigs_transform() noexcept
+        {
+          return []<class Range>()
+          {
+            return completion_signatures<set_value_t(
+              ::std::add_lvalue_reference_t<
+                __algo_range_init_fun::binary_invoke_result_t<Range, InitT, Fun>>)>();
+          };
+        }
       };
     }  // namespace reduce_
 

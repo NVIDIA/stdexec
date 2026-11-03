@@ -403,6 +403,29 @@ namespace STDEXEC
     }
   };
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Fun, class AlgoTag>
+  struct __transform_upon_completion
+  {
+    template <class... _Args>
+    constexpr auto operator()() const
+    {
+      if constexpr (__nothrow_invocable<_Fun, _Args...>)
+      {
+        return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>>();
+      }
+      else if constexpr (__invocable<_Fun, _Args...>)
+      {
+        return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>,
+                                     set_error_t(std::exception_ptr)>();
+      }
+      else
+      {
+        return STDEXEC::__throw_compile_time_error(__callable_error_t<AlgoTag, _Fun, _Args...>());
+      }
+    }
+  };
+
   //! @brief Transforms completion signatures using provided transformation
   //! functions.
   //!
