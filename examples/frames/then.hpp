@@ -21,18 +21,12 @@ namespace frames::typestate
     Sndr sndr_;
     Fn   fn_;
 
-    // After eager teardown, fn is called with rvalue copies of the values.
     // Bound without consuming, fn is called as const.
-    template <class Ending, class FnRef>
+    template <class FnRef>
     struct values_fn
     {
       template <class... As>
-      using result_t = typename std::conditional_t<std::is_same_v<Ending, eager_teardown>,
-                                                   std::invoke_result<FnRef, std::decay_t<As>...>,
-                                                   std::invoke_result<FnRef, As...>>::type;
-
-      template <class... As>
-      using f = typename detail::value_of<result_t<As...>>::type;
+      using f = typename detail::value_of<std::invoke_result_t<FnRef, As...>>::type;
     };
 
     template <class Self, class... Env>
@@ -46,10 +40,9 @@ namespace frames::typestate
       {
         using fn_ref =
           std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
-        using ending = ending_of_t<Env...>;
-        return detail::map_values_t<ending,
+        return detail::map_values_t<ending_of_t<Env...>,
                                     ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
-                                    values_fn<ending, fn_ref>>();
+                                    values_fn<fn_ref>>();
       }
     }
 
