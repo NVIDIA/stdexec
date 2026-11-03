@@ -146,10 +146,10 @@ namespace frames::typestate
   struct when_all_sender;
 
   template <std::size_t... Is, class... Sndrs>
-  struct when_all_sender<std::index_sequence<Is...>, Sndrs...> : when_all_slot<Is, Sndrs>...
+  struct when_all_sender<std::index_sequence<Is...>, Sndrs...>
+    : phased_sender<when_all_sender<std::index_sequence<Is...>, Sndrs...>>
+    , when_all_slot<Is, Sndrs>...
   {
-    using sender_concept = ex::sender_t;
-
     template <std::size_t I>
     using sndr_t = std::tuple_element_t<I, std::tuple<Sndrs...>>;
 
@@ -185,8 +185,7 @@ namespace frames::typestate
       using env_t = when_all_env_t<ex::env_of_t<Rcvr>>;
 
       template <std::size_t I>
-      using rcvr_t =
-        phase_receiver<opstate, Rcvr, child_tag<I>, maybe_const<Const, sndr_t<I>>, env_t>;
+      using rcvr_t = phase_receiver<opstate, Rcvr, child_tag<I>, member<I>, env_t>;
 
       template <std::size_t I>
       using child_t = part_child_t<maybe_const<Const, sndr_t<I>>, rcvr_t<I>>;
@@ -302,13 +301,6 @@ namespace frames::typestate
         done(phase.scope.stop_and_arrive());
       }
 
-      // Which child sender each child binds.
-      template <std::size_t I>
-      auto bound_sender(child_tag<I>) noexcept -> maybe_const<Const, sndr_t<I>>&
-      {
-        return phases_.template part<member<I>>();
-      }
-
       // The first error wins, and outranks stopped.
       template <class E>
       void fail(running& phase, E&& e) noexcept
@@ -362,34 +354,13 @@ namespace frames::typestate
 
       phased<Rcvr, parts<member<Is>...>, nothing, running> phases_;
     };
-
-    template <class Rcvr>
-    auto connect(Rcvr rcvr) &&
-    {
-      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) & -> opstate<Rcvr>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr>(static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
-    }
   };
 
   template <class... Sndrs>
   auto when_all(Sndrs&&... sndrs)
   {
     return when_all_sender<std::index_sequence_for<Sndrs...>, std::decay_t<Sndrs>...>{
+      {},
       {static_cast<Sndrs&&>(sndrs)}...};
   }
 }  // namespace frames::typestate

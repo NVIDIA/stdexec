@@ -428,9 +428,27 @@ namespace frames::typestate
       using type = T;
     };
 
+    // No member: what phase_receiver's Part is for a child made at run time.
+    template <>
+    struct member_of<std::nullptr_t>
+    {
+      using type = void;
+    };
+
     // The type of the member M points to.
     template <auto M>
     using member_type_t = typename member_of<decltype(M)>::type;
+
+    // Whether an operation was bound through a const reference: every
+    // phase-based operation is Sndr::opstate<Rcvr, Const> (see
+    // phased_sender). Op may be incomplete.
+    template <class Op>
+    struct bound_const : std::false_type
+    {};
+
+    template <template <class, bool> class Op, class Rcvr, bool Const>
+    struct bound_const<Op<Rcvr, Const>> : std::bool_constant<Const>
+    {};
 
     template <auto A, auto B>
     consteval auto same_member() -> bool
@@ -1453,8 +1471,9 @@ namespace frames::typestate
   }
 
   // The receiver a phase's child completes through. `Tag` names the phase,
-  // or the child when a phase runs several; `Child`, if not void, is the
-  // child sender the phase binds (const if it binds without consuming).
+  // or the child when a phase runs several; `Part`, if not null, points to
+  // the part of the operation's sender the child is made from, which the
+  // child binds to under stored_sender.
   //
   // `Env`, if not void, is the environment the child sees instead of the
   // operation's receiver's: the operation's env(Tag()) returns it, built
@@ -1462,7 +1481,7 @@ namespace frames::typestate
   // up front because the operation is incomplete while its phases' children
   // are declared. It should carry over the receiver's environment, policies
   // included, adding or replacing what it must; env_with does that.
-  template <class Op, class Rcvr, class Tag, class Child = void, class Env = void>
+  template <class Op, class Rcvr, class Tag, auto Part = nullptr, class Env = void>
   struct phase_receiver
   {
     using receiver_concept = ex::receiver_t;
@@ -1500,12 +1519,14 @@ namespace frames::typestate
     }
 
     // The child sender this phase binds, for a child that binds rather than
-    // connects: the parent knows which of its child senders each phase uses.
+    // connects: const if the operation was bound without consuming, so the
+    // child is bound the same way.
     [[nodiscard]]
-    auto bound_sender() const noexcept -> std::add_lvalue_reference_t<Child>
-      requires(!std::is_void_v<Child>)
+    auto bound_sender() const noexcept -> std::add_lvalue_reference_t<
+      maybe_const<detail::bound_const<Op>::value, detail::member_type_t<Part>>>
+      requires(!std::is_null_pointer_v<decltype(Part)>)
     {
-      return op->bound_sender(Tag());
+      return op->phases_.template part<Part>();
     }
 
     Op* op;
@@ -1590,6 +1611,48 @@ namespace frames::typestate
       return root<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
     }
   }
+
+  // How a phase-based sender's stored sender may be bound: may_consume binds
+  // through a non-const reference when it can, so the operation may move
+  // from the sender, as connecting an rvalue may; read_only always binds
+  // through a const reference, so the stored sender can be bound again.
+  struct may_consume
+  {};
+
+  struct read_only
+  {};
+
+  // The base of every phase-based sender, Derived, whose operations are
+  // Derived::opstate<Rcvr, Const>: Const when bound through a const
+  // reference. It connects, under either Data policy, and binds to a stored
+  // sender. The base comes first, so Derived is initialized as {{}, ...}.
+  template <class Derived, class Binding = may_consume>
+  struct phased_sender
+  {
+    using sender_concept = ex::sender_t;
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) &&
+    {
+      return connect_sender(static_cast<Derived&>(*this), static_cast<Rcvr&&>(rcvr));
+    }
+
+    template <class Rcvr>
+      requires binds_stored<Rcvr> && std::is_same_v<Binding, may_consume>
+    auto bind(Rcvr rcvr) &
+    {
+      STDEXEC_ASSERT(&rcvr.bound_sender() == static_cast<Derived*>(this));
+      return typename Derived::template opstate<Rcvr>(static_cast<Rcvr&&>(rcvr));
+    }
+
+    template <class Rcvr>
+      requires binds_stored<Rcvr>
+    auto bind(Rcvr rcvr) const &
+    {
+      STDEXEC_ASSERT(&rcvr.bound_sender() == static_cast<Derived const *>(this));
+      return typename Derived::template opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
+    }
+  };
 
   // From an operation's constructor: the part M points to of the sender
   // being connected, under split_sender, or else of the stored sender.

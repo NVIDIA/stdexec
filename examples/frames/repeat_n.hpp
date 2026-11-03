@@ -23,11 +23,11 @@ namespace frames::typestate
   // Prototype simplification: no trampoline, so a child that completes
   // inline makes each iteration a nested call.
 
+  // repeat_n only ever reads its child sender, so it binds without consuming
+  // either way.
   template <class Sndr>
-  struct repeat_n_sender
+  struct repeat_n_sender : phased_sender<repeat_n_sender<Sndr>, read_only>
   {
-    using sender_concept = ex::sender_t;
-
     Sndr        sndr_;
     std::size_t count_;
 
@@ -62,7 +62,7 @@ namespace frames::typestate
       {};
 
       using parts_t = parts<&repeat_n_sender::sndr_>;
-      using rcvr_t  = phase_receiver<opstate, Rcvr, iteration_tag, Sndr const>;
+      using rcvr_t  = phase_receiver<opstate, Rcvr, iteration_tag, &repeat_n_sender::sndr_>;
       using child_t = bind_result_t<Sndr const, rcvr_t>;
 
       struct carried
@@ -135,35 +135,13 @@ namespace frames::typestate
         phases_.template finish<iteration>(Tag(), static_cast<As&&>(as)...);
       }
 
-      // The child sender each iteration binds.
-      auto bound_sender(iteration_tag) noexcept -> Sndr const &
-      {
-        return child_sender();
-      }
-
       phased<Rcvr, parts_t, carried, iteration> phases_;
     };
-
-    template <class Rcvr>
-    auto connect(Rcvr rcvr) &&
-    {
-      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
-    }
-
-    // repeat_n only ever reads its child sender, so binding it consumes
-    // nothing either way.
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
-    }
   };
 
   template <class Sndr>
   auto repeat_n(Sndr&& sndr, std::size_t count)
   {
-    return repeat_n_sender<std::decay_t<Sndr>>{static_cast<Sndr&&>(sndr), count};
+    return repeat_n_sender<std::decay_t<Sndr>>{{}, static_cast<Sndr&&>(sndr), count};
   }
 }  // namespace frames::typestate

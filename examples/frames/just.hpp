@@ -16,10 +16,8 @@ namespace frames::typestate
   // just(vs...): one phase, sending the sender's values.
 
   template <class... Vs>
-  struct just_sender
+  struct just_sender : phased_sender<just_sender<Vs...>>
   {
-    using sender_concept = ex::sender_t;
-
     std::tuple<Vs...> values_;
 
     // Moving the values may throw if they cross the stack (eager_teardown);
@@ -93,33 +91,11 @@ namespace frames::typestate
 
       phased<Rcvr, parts_t, nothing, ready> phases_;
     };
-
-    template <class Rcvr>
-    auto connect(Rcvr rcvr) &&
-    {
-      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) & -> opstate<Rcvr>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr>(static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
-    }
   };
 
   template <class... Vs>
   auto just(Vs&&... vs)
   {
-    return just_sender<std::decay_t<Vs>...>{{static_cast<Vs&&>(vs)...}};
+    return just_sender<std::decay_t<Vs>...>{{}, {static_cast<Vs&&>(vs)...}};
   }
 }  // namespace frames::typestate
