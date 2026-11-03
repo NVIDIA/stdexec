@@ -25,6 +25,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace ex = stdexec;
@@ -265,6 +266,46 @@ namespace
     bool* failed;
   };
 #endif
+
+  // A sender whose operation sends an lvalue referring to a string it holds.
+  struct lvalue_sender
+  {
+    using sender_concept        = ex::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t(std::string&)>;
+
+    template <class Rcvr>
+    struct opstate
+    {
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr), text);
+      }
+
+      Rcvr        rcvr;
+      std::string text = "a string the child holds";
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) const -> opstate<Rcvr>
+    {
+      return {std::move(rcvr)};
+    }
+  };
+
+  // Says which overload ran: a view of the string an lvalue refers to, or
+  // that it was given an rvalue.
+  struct which_overload
+  {
+    auto operator()(std::string& s) const -> std::string_view
+    {
+      return s;
+    }
+
+    auto operator()(std::string&&) const -> std::string_view
+    {
+      return "an rvalue";
+    }
+  };
 
 #if defined(FRAMES_SHOW_USE_AFTER_FINISH)
   // A sender whose operation, wrongly, touches its own state after
@@ -662,5 +703,25 @@ int main()
     ex::sync_wait(ex::write_env(ts::when_all(child("first"), child("second")),
                                 ex::prop{ex::get_stop_token, source.get_token()})
                   | ex::then([] { std::printf(" values\n"); }));
+  }
+
+  {
+    section("10. then's function sees values as its child sent them");
+    // Under eager teardown, then calls its function after the child's phase
+    // has ended, with copies of the values on the stack, passed as the child
+    // sent them. So the same overload runs under every ending, and a view of
+    // an argument stays valid while the operation completes.
+    auto run = []<class C>(C, char const * label)
+    {
+      std::printf("    %-13s", label);
+      ex::sync_wait(
+        ts::with_policies<typename C::template policies<>>(
+          ts::then(lvalue_sender(), which_overload()))
+        | ex::then([](std::string_view v) { std::printf(" %.*s\n", int(v.size()), v.data()); }));
+    };
+    run(eager(), "eager:");
+    run(forward(), "forward:");
+    run(eager_start(), "eager+start:");
+    run(eager_split(), "eager+split:");
   }
 }
