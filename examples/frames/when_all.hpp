@@ -229,9 +229,23 @@ namespace frames::typestate
         {}
       };
 
+      struct running;
+
+      // While the operation runs, its receiver's stop requests reach the
+      // phase's scope.
+      struct listening
+      {
+        listening(running& phase, ex::env_of_t<Rcvr> const & env) noexcept
+          : forward(phase.scope, env)
+        {}
+
+        join_scope::forwarding<ex::env_of_t<Rcvr>> forward;
+      };
+
       struct running
       {
         static constexpr parts<member<Is>...> connects{};
+        using active_t = listening;
 
         template <class... Incoming>
         explicit running(opstate* op, Incoming&... incoming)
@@ -239,11 +253,11 @@ namespace frames::typestate
         {}
 
         // Before the children, whose environments carry its token.
-        join_scope<ex::env_of_t<Rcvr>> scope{sizeof...(Sndrs)};
-        std::atomic<outcome>           state{outcome::values};
-        values_t                       values;
-        errors_t                       error;
-        children_t                     children;
+        join_scope           scope{sizeof...(Sndrs)};
+        std::atomic<outcome> state{outcome::values};
+        values_t             values;
+        errors_t             error;
+        children_t           children;
       };
 
       template <class... Incoming>
@@ -255,13 +269,9 @@ namespace frames::typestate
 
       void start() & noexcept
       {
-        phases_.begin(
-          [this](running& phase) noexcept
-          {
-            phase.scope.open(ex::get_env(phases_.receiver()));
-            (ex::start(static_cast<child_slot<Is>&>(phase.children).child), ...);
-          },
-          this);
+        phases_.begin([](running& phase) noexcept
+                      { (ex::start(static_cast<child_slot<Is>&>(phase.children).child), ...); },
+                      this);
       }
 
       template <std::size_t I>

@@ -392,6 +392,9 @@ namespace frames::typestate
     struct no_scoped_region
     {};
 
+    struct no_active_region
+    {};
+
     // What a phase receives: Phase::received_t if it names one, otherwise
     // void.
     template <class Phase>
@@ -405,6 +408,21 @@ namespace frames::typestate
     struct received_of<Phase>
     {
       using type = typename Phase::received_t;
+    };
+
+    // What a phase holds only while it runs: Phase::active_t if it names
+    // one, otherwise void.
+    template <class Phase>
+    struct active_of
+    {
+      using type = void;
+    };
+
+    template <class Phase>
+      requires requires { typename Phase::active_t; }
+    struct active_of<Phase>
+    {
+      using type = typename Phase::active_t;
     };
 
     template <class T>
@@ -643,6 +661,17 @@ namespace frames::typestate
   //       as... in the value categories they arrived in, so the same
   //       overload of fn runs under either ending.
   //
+  // A phase may hold something only while it runs, nested inside it: it
+  // names its type as `active_t`, constructible without throwing from the
+  // phase and the receiver's environment. phased enters it just before the
+  // phase starts, by begin or by a transition, and ends it first thing in
+  // whichever of transition, finish, finish_copies or finish_with the phase
+  // ends with, under either Ending: a completed operation is never running,
+  // whatever it still holds. when_all's stop forwarding is one: a callback
+  // on the receiver's stop token, which must not outlive the operation's
+  // run. An operation is never destroyed while it runs, so nothing records
+  // whether one is live.
+  //
   // An exception from any of these completes the operation with
   // set_error(std::current_exception()); under eager_teardown it ends the
   // live phase first. Each exception path knows statically which phase, if
@@ -746,6 +775,9 @@ namespace frames::typestate
 
     template <class Phase>
     static constexpr bool receives = !std::is_void_v<received_t<Phase>>;
+
+    template <class Phase>
+    using active_t = typename detail::active_of<Phase>::type;
 
     static_assert(!receives<First>, "a first phase follows no phase, so it receives nothing");
 
@@ -947,6 +979,7 @@ namespace frames::typestate
         STDEXEC_TRY
         {
           First& first = enter<First>(static_cast<Args&&>(args)...);
+          activate<First>();
           then(first);
         }
         STDEXEC_CATCH_ALL
@@ -956,6 +989,7 @@ namespace frames::typestate
       }
       else
       {
+        activate<First>();
         then(get<First>());
       }
     }
@@ -965,6 +999,7 @@ namespace frames::typestate
     {
       static_assert(!(scoped && receives<From> && receives<To>),
                     "under scoped_layout, consecutive phases can't both receive values");
+      deactivate<From>();
       STDEXEC_TRY
       {
         auto bundle = prepare(get<From>());
@@ -979,6 +1014,7 @@ namespace frames::typestate
             place<To>(staged);
             placed = true;
             To& to = enter<To>(extra...);
+            activate<To>();
             ex::start(to.child);
           }
           STDEXEC_CATCH_ALL
@@ -998,6 +1034,7 @@ namespace frames::typestate
             To& to = std::apply([&](auto&... parts) -> To&
                                 { return enter<To>(std::move(parts)..., extra...); },
                                 bundle);
+            activate<To>();
             ex::start(to.child);
           }
           STDEXEC_CATCH_ALL
@@ -1016,6 +1053,7 @@ namespace frames::typestate
     template <class Phase, class Tag, class... As>
     void finish(Tag, As&&... as) noexcept
     {
+      deactivate<Phase>();
       if constexpr (eager)
       {
         STDEXEC_TRY
@@ -1046,6 +1084,7 @@ namespace frames::typestate
       }
       else
       {
+        deactivate<Phase>();
         STDEXEC_TRY
         {
           std::tuple<As...> copies(as...);
@@ -1062,6 +1101,7 @@ namespace frames::typestate
     template <class Phase, class Fn, class... As>
     void finish_with(Fn& fn, As&&... as) noexcept
     {
+      deactivate<Phase>();
       if constexpr (eager)
       {
         STDEXEC_TRY
@@ -1166,6 +1206,29 @@ namespace frames::typestate
         leave_received<Phase>();
       }
       storage_.poison(offset_of<Phase> + sizeof(Phase));
+    }
+
+    // Enters what Phase holds while it runs, if anything.
+    template <class Phase>
+    void activate() noexcept
+    {
+      if constexpr (!std::is_void_v<active_t<Phase>>)
+      {
+        static_assert(std::is_nothrow_constructible_v<active_t<Phase>, Phase&, env_t const &>,
+                      "what a phase holds while it runs is entered without throwing");
+        active_.unpoison(sizeof(active_t<Phase>));
+        ::new (static_cast<void*>(active_.bytes)) active_t<Phase>(get<Phase>(), ex::get_env(rcvr_));
+      }
+    }
+
+    template <class Phase>
+    void deactivate() noexcept
+    {
+      if constexpr (!std::is_void_v<active_t<Phase>>)
+      {
+        std::destroy_at(std::launder(reinterpret_cast<active_t<Phase>*>(active_.bytes)));
+        active_.poison(sizeof(active_t<Phase>));
+      }
     }
 
     // While the dying phase is alive: constructs the values Phase receives in
@@ -1304,12 +1367,24 @@ namespace frames::typestate
                                                detail::guarded_bytes<scoped_size, scoped_align>,
                                                detail::no_scoped_region>;
 
+    using env_t = ex::env_of_t<Rcvr>;
+
+    static constexpr std::size_t active_size = std::max(
+      {detail::size_of<active_t<First>>, detail::size_of<active_t<Rest>>...});
+    static constexpr std::size_t active_align = std::max(
+      {detail::align_of<active_t<First>>, detail::align_of<active_t<Rest>>...});
+
+    using active_region_t = std::conditional_t<active_size != 0,
+                                               detail::guarded_bytes<active_size, active_align>,
+                                               detail::no_active_region>;
+
     Rcvr rcvr_;
     STDEXEC_ATTRIBUTE(no_unique_address) Carried carried_;
     STDEXEC_ATTRIBUTE(no_unique_address) parts_storage_t parts_;
     STDEXEC_ATTRIBUTE(no_unique_address) live_t live_ { none_or_empty() };
     STDEXEC_ATTRIBUTE(no_unique_address) carried_values_t received_;
     STDEXEC_ATTRIBUTE(no_unique_address) scoped_region_t scoped_;
+    STDEXEC_ATTRIBUTE(no_unique_address) active_region_t active_;
     detail::guarded_bytes<storage_size, storage_align> storage_;
 
     static constexpr auto none_or_empty() noexcept -> live_t
@@ -1383,19 +1458,20 @@ namespace frames::typestate
   };
 
   // Children of one phase that run at once and stop together: a stop source
-  // of their own, which a stop request from the operation's environment
-  // also reaches, and a count of the children still running. The phase
-  // holds it before its children, whose environments carry token(), and
-  // opens it before starting them. Each child's completion arrives once:
-  // with arrive(), or with stop_and_arrive() to stop the others first. The
-  // one that returns true is the last; by then the operation's environment
-  // no longer reaches the scope, and nothing else will touch the phase, so
-  // the operation may end it.
+  // of their own, and a count of the children still running. The phase
+  // holds it before its children, whose environments carry token(). Each
+  // child's completion arrives once: with arrive(), or with
+  // stop_and_arrive() to stop the others first. The one that returns true
+  // is the last; nothing else will touch the phase, so the operation may
+  // end it.
   //
-  // A stop request from the environment can make the last child complete
-  // inside this scope's request_stop, and so end the scope there;
-  // stdexec's inplace_stop_source allows its own callbacks to destroy it.
-  template <class Env>
+  // While the phase runs, its active_t holds a forwarding<Env> (see
+  // phased), so that stop requests from the operation's environment reach
+  // the scope too; phased ends it before the operation completes, waiting
+  // for a request being forwarded on another thread. A stop request from
+  // the environment can make the last child complete inside this scope's
+  // request_stop, and so end the scope there; stdexec's inplace_stop_source
+  // allows its own callbacks to destroy it.
   class join_scope
   {
     struct forward_stop
@@ -1408,9 +1484,22 @@ namespace frames::typestate
       }
     };
 
-    using callback_t = ex::stop_callback_for_t<ex::stop_token_of_t<Env const &>, forward_stop>;
-
    public:
+    // Forwards Env's stop requests to a scope for as long as it lives.
+    template <class Env>
+    class forwarding
+    {
+      using callback_t = ex::stop_callback_for_t<ex::stop_token_of_t<Env const &>, forward_stop>;
+
+     public:
+      forwarding(join_scope& scope, Env const & env) noexcept
+        : callback_(ex::get_stop_token(env), forward_stop{&scope.source_})
+      {}
+
+     private:
+      callback_t callback_;
+    };
+
     explicit join_scope(std::size_t count) noexcept
       : count_(count)
     {}
@@ -1421,11 +1510,6 @@ namespace frames::typestate
     auto token() const noexcept -> ex::inplace_stop_token
     {
       return source_.get_token();
-    }
-
-    void open(Env const & env) noexcept
-    {
-      forward_.emplace(ex::get_stop_token(env), forward_stop{&source_});
     }
 
     // A child that arrives this way never ends the scope during its own
@@ -1440,19 +1524,12 @@ namespace frames::typestate
     [[nodiscard]]
     auto arrive() noexcept -> bool
     {
-      if (count_.fetch_sub(1, std::memory_order_acq_rel) != 1)
-      {
-        return false;
-      }
-      // Waits for a forwarded request running on another thread.
-      forward_.reset();
-      return true;
+      return count_.fetch_sub(1, std::memory_order_acq_rel) == 1;
     }
 
    private:
-    ex::inplace_stop_source   source_;
-    std::atomic<std::size_t>  count_;
-    std::optional<callback_t> forward_;
+    ex::inplace_stop_source  source_;
+    std::atomic<std::size_t> count_;
   };
 
   // Calls fn(), returning what it threw, if anything.

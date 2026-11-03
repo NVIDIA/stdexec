@@ -36,15 +36,23 @@ working out its completion signatures and the types it stores.
   worked out. Keyed by the tag, it can differ per child, as a fork of
   automatic storage would need. `env_with<Query, Value, Env>` replaces one
   query and carries over the rest, policies included.
+- **A phase may hold something only while it runs**, nested inside it: it
+  names the type as `active_t`, and `phased` enters it just before the phase
+  starts and ends it first thing in whichever transition or finish the phase
+  ends with, under either Ending, so a completed operation never holds one.
+  An operation is never destroyed while it runs, so nothing records whether
+  one is live. It has a region of its own beside the phases, poisoned under
+  AddressSanitizer while no phase runs.
 - **Children that run at once and stop together** share a `join_scope`: a
-  stop source whose token their environments carry, a callback that forwards
-  the receiver's stop requests to it from `open()` until the last child
-  arrives, and a count of the children still running. `when_all` holds one
-  in its single phase. A child that fails or stops arrives with
+  stop source whose token their environments carry, and a count of the
+  children still running. `when_all` holds one in its single phase, and as
+  that phase's `active_t`, a `join_scope::forwarding`: a callback forwarding
+  the receiver's stop requests to the scope, which can only reach the scope
+  while the phase runs; ending it waits for a request being forwarded on
+  another thread. A child that fails or stops arrives with
   `stop_and_arrive()`, which requests stop before counting the child out, so
   no child can end the scope during its own `request_stop`. The last to
-  arrive (`arrive()` returns `true`) drops the forwarding callback, waiting
-  for one running on another thread, before the operation finishes.
+  arrive (`arrive()` returns `true`) finishes the operation.
 - **A transition** runs inside the live phase's completion. `prepare` sees
   the dying phase and the completion's arguments while they're alive; it may
   store into the carried region, and returns what the next phase's
@@ -180,7 +188,7 @@ let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568
   ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
 sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
 then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
-when_all of two just(v)     1072  14 (0)    1144  12 (0)    1144   8 (0)    1136  12 (0)    1136  16 (0)
+when_all of two just(v)     1072  14 (0)    1136  12 (0)    1136   8 (0)    1136  12 (0)    1128  16 (0)
 
 * stdexec moves 8 (0) with Clang
 ```
