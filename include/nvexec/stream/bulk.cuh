@@ -19,6 +19,9 @@
 #pragma once
 
 #include "../../stdexec/execution.hpp"
+
+#include "../../exec/completion_signatures.hpp"
+
 #include <concepts>
 #include <memory>
 #include <utility>
@@ -42,11 +45,11 @@ namespace nv::execution::_strm
     __global__ void _bulk_kernel(Shape shape, Fun fn, Args... args)
     {
       static_assert(trivially_copyable<Shape, Fun, Args...>);
-      int const tid = static_cast<int>(threadIdx.x + blockIdx.x * blockDim.x);
+      Shape const tid = static_cast<Shape>(threadIdx.x + blockIdx.x * blockDim.x);
 
-      if (tid < static_cast<int>(shape))
+      if (tid < shape)
       {
-        ::cuda::std::move(fn)(tid, static_cast<Args&&>(args)...);
+        ::cuda::std::move(fn)(Shape(tid), static_cast<Args&&>(args)...);
       }
     }
 
@@ -57,18 +60,18 @@ namespace nv::execution::_strm
       using env_t = _strm::opstate_base<Receiver>::env_t;
 
       Shape                          shape_;
-      Fun                            f_;
+      Fun                            fun_;
       _strm::opstate_base<Receiver>& opstate_;
 
      public:
       explicit receiver(Shape shape, Fun fun, _strm::opstate_base<Receiver>& opstate)
         : shape_(shape)
-        , f_(static_cast<Fun&&>(fun))
+        , fun_(static_cast<Fun&&>(fun))
         , opstate_(opstate)
       {}
 
       template <class... Args>
-        requires __callable<Fun, Shape&, Args&...>
+        requires __callable<Fun, Shape, Args&...>
       void set_value(Args&&... args) noexcept
       {
         _strm::opstate_base<Receiver>& opstate = opstate_;
@@ -79,7 +82,7 @@ namespace nv::execution::_strm
           constexpr int block_threads = 256;
           int const grid_blocks = (static_cast<int>(shape_) + block_threads - 1) / block_threads;
           _bulk_kernel<block_threads, Args&...>
-            <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(f_), args...);
+            <<<grid_blocks, block_threads, 0, stream>>>(shape_, std::move(fun_), args...);
         }
 
         if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError()); status == cudaSuccess)
@@ -109,27 +112,35 @@ namespace nv::execution::_strm
         return opstate_.make_env();
       }
     };
+
+    template <class Fun, std::integral Shape>
+    inline constexpr auto value_cmplsigs_transform()
+    {
+      return []<class... Args>()
+      {
+        if constexpr (__callable<Fun, Shape, Args&...>)
+        {
+          return completion_signatures<set_value_t(Args...), set_error_t(cudaError_t)>();
+        }
+        else
+        {
+          return exec::throw_compile_time_error<
+            _WHAT_(_FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_),
+            _WHERE_(_IN_ALGORITHM_, bulk_t),
+            _WITH_FUNCTION_(Fun),
+            _WITH_ARGUMENTS_(Shape, Args & ...)>();
+        }
+      };
+    }
   }  // namespace _bulk
 
   template <class Sender, std::integral Shape, class Fun>
   struct bulk_sender : stream_sender_base
   {
-    using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
-
     template <class Receiver>
     using receiver_t = _bulk::receiver<Receiver, Shape, Fun>;
 
-    template <class... Tys>
-    using _set_value_t = completion_signatures<set_value_t(Tys...)>;
-
-    template <class Self, class... Env>
-    using _completion_signatures_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      _set_error_t,
-      _set_value_t>;
-
     template <__decays_to<bulk_sender> Self, receiver Receiver>
-      requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver rcvr)
       -> stream_opstate_t<__copy_cvref_t<Self, Sender>, receiver_t<Receiver>, Receiver>
     {
@@ -144,9 +155,11 @@ namespace nv::execution::_strm
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<bulk_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> _completion_signatures_t<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        _bulk::value_cmplsigs_transform<Fun, Shape>());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>
@@ -182,7 +195,7 @@ namespace nv::execution::_strm
     {
       explicit receiver(Shape shape, Fun fun, opstate<CvSender, Receiver, Shape, Fun>& opstate)
         : shape_(shape)
-        , f_(static_cast<Fun&&>(fun))
+        , fun_(static_cast<Fun&&>(fun))
         , opstate_(opstate)
       {}
 
@@ -212,7 +225,7 @@ namespace nv::execution::_strm
                 cudaSetDevice(dev);
                 cudaStreamWaitEvent(stream, opstate_.ready_to_launch_, 0);
                 _multi_bulk_kernel<block_threads, Args&...>
-                  <<<grid_blocks, block_threads, 0, stream>>>(begin, end, f_, args...);
+                  <<<grid_blocks, block_threads, 0, stream>>>(begin, end, fun_, args...);
                 cudaEventRecord(opstate_.ready_to_complete_[dev], opstate_.streams_[dev]);
               }
             }
@@ -228,7 +241,7 @@ namespace nv::execution::_strm
             if (begin < end)
             {
               _multi_bulk_kernel<block_threads, Args&...>
-                <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, f_, args...);
+                <<<grid_blocks, block_threads, 0, baseline_stream>>>(begin, end, fun_, args...);
             }
           }
 
@@ -285,7 +298,7 @@ namespace nv::execution::_strm
       }
 
       Shape                                    shape_;
-      Fun                                      f_;
+      Fun                                      fun_;
       opstate<CvSender, Receiver, Shape, Fun>& opstate_;
     };
 
@@ -295,17 +308,17 @@ namespace nv::execution::_strm
     template <class CvSender, class Receiver, class Shape, class Fun>
     struct opstate : opstate_base_t<CvSender, Receiver, Shape, Fun>
     {
-      opstate(int        num_devices,
-              CvSender&& __sndr,
-              Receiver   __rcvr,
-              Shape      shape,
-              Fun        fun,
-              context    ctx)
+      explicit opstate(int        num_devices,
+                       CvSender&& sndr,
+                       Receiver   rcvr,
+                       Shape      shape,
+                       Fun        fun,
+                       context    ctx)
         : opstate_base_t<CvSender, Receiver, Shape, Fun>(
-            static_cast<CvSender&&>(__sndr),
-            static_cast<Receiver&&>(__rcvr),
+            static_cast<CvSender&&>(sndr),
+            static_cast<Receiver&&>(rcvr),
             [&](_strm::opstate_base<Receiver>&) -> receiver<CvSender, Receiver, Shape, Fun>
-            { return receiver<CvSender, Receiver, Shape, Fun>(shape, fun, *this); },
+            { return receiver<CvSender, Receiver, Shape, Fun>(shape, std::move(fun), *this); },
             ctx)
         , num_devices_(num_devices)
         , streams_(new cudaStream_t[num_devices_])
@@ -352,19 +365,7 @@ namespace nv::execution::_strm
     static_assert(std::integral<Shape>);
     using sender_concept = STDEXEC::sender_tag;
 
-    using _set_error_t = completion_signatures<set_error_t(cudaError_t)>;
-
-    template <class... Tys>
-    using _set_value_t = completion_signatures<set_value_t(Tys...)>;
-
-    template <class Self, class... Env>
-    using _completion_signatures_t = __transform_completion_signatures_t<
-      __completion_signatures_of_t<__copy_cvref_t<Self, Sender>, Env...>,
-      _set_error_t,
-      _set_value_t>;
-
     template <__decays_to<multi_gpu_bulk_sender> Self, receiver Receiver>
-      requires receiver_of<Receiver, _completion_signatures_t<Self, env_of_t<Receiver>>>
     STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this Self&& self, Receiver&& rcvr)
       -> multi_gpu_bulk::opstate<__copy_cvref_t<Self, Sender>, Receiver, Shape, Fun>
     {
@@ -376,15 +377,17 @@ namespace nv::execution::_strm
         static_cast<Self&&>(self).sndr_,
         static_cast<Receiver&&>(rcvr),
         self.shape_,
-        self.fun_,
+        static_cast<Self&&>(self).fun_,
         ctx);
     }
     STDEXEC_EXPLICIT_THIS_END(connect)
 
     template <__decays_to<multi_gpu_bulk_sender> Self, class... Env>
-    static consteval auto get_completion_signatures() -> _completion_signatures_t<Self, Env...>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
+        _bulk::value_cmplsigs_transform<Fun, Shape>());
     }
 
     auto get_env() const noexcept -> stream_sender_attrs<Sender>

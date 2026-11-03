@@ -127,15 +127,6 @@ namespace nv::execution::_strm
       Fun                            fun_;
       _strm::opstate_base<Receiver>& opstate_;
     };
-
-    template <class Fun>
-    consteval auto _get_completions_fun() noexcept
-    {
-      return []() noexcept
-      {
-        return __set_value_from_t<Fun>();
-      };
-    }
   }  // namespace _upon_stopped
 
   template <class Sender, class Fun>
@@ -171,7 +162,7 @@ namespace nv::execution::_strm
         STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
         {},
         {},
-        _upon_stopped::_get_completions_fun<Fun>(),
+        STDEXEC::__transform_upon_completion<Fun, STDEXEC::upon_stopped_t>(),
         _cuda_error_completion_t());
     }
 

@@ -21,6 +21,7 @@
 #include "../../stdexec/execution.hpp"
 
 // include these after execution.hpp
+#include "../../exec/completion_signatures.hpp"
 #include "../../exec/env.hpp"
 #include "../../exec/split.hpp"
 #include "../detail/cuda_atomic.cuh"  // IWYU pragma: keep
@@ -353,6 +354,9 @@ namespace nv::execution::_strm
         }
       }
     };
+
+    template <class Ty>
+    using _decayed_cref_t = __decay_t<Ty> const &;
   }  // namespace _split
 
   template <class Sender>
@@ -364,22 +368,10 @@ namespace nv::execution::_strm
     template <class Receiver>
     using opstate_t = _split::opstate<Sender, Receiver>;
 
-    template <class... Tys>
-    using _set_value_t = completion_signatures<set_value_t(__decay_t<Tys> const &...)>;
-
-    template <class Ty>
-    using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty> const &)>;
-
-    template <class>
-    static consteval auto get_completion_signatures()
-    {
-      return STDEXEC::__transform_completion_signatures_of_t<
-        Sender,
-        STDEXEC::prop<get_stop_token_t, inplace_stop_token>,
-        STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>,
-        _set_value_t,
-        _set_error_t>();
-    }
+    explicit split_sender(context ctx, Sender sndr)
+      : sndr_(static_cast<Sender&&>(sndr))
+      , sh_state_{std::make_shared<sh_state_t>(sndr_, ctx)}
+    {}
 
     template <receiver Receiver>
     auto connect(Receiver rcvr) const & noexcept -> opstate_t<Receiver>
@@ -387,15 +379,22 @@ namespace nv::execution::_strm
       return opstate_t<Receiver>{static_cast<Receiver&&>(rcvr), sh_state_};
     }
 
+    template <class>
+    static consteval auto get_completion_signatures()
+    {
+      using env_t = STDEXEC::prop<get_stop_token_t, inplace_stop_token>;
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<Sender, env_t>(),
+        exec::transform_arguments<STDEXEC::set_value_t, _split::_decayed_cref_t, exec::split_t>(),
+        exec::transform_arguments<STDEXEC::set_error_t, _split::_decayed_cref_t, exec::split_t>(),
+        exec::keep_completion<STDEXEC::set_stopped_t>(),
+        STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>());
+    }
+
     auto get_env() const noexcept -> stream_sender_attrs<Sender>
     {
       return {&sndr_};
     }
-
-    explicit split_sender(context ctx, Sender sndr)
-      : sndr_(static_cast<Sender&&>(sndr))
-      , sh_state_{std::make_shared<sh_state_t>(sndr_, ctx)}
-    {}
 
    private:
     Sender                      sndr_;

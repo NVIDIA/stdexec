@@ -50,28 +50,6 @@ namespace STDEXEC
         return __sync_attrs{__child};
       };
 
-      template <class _Fun>
-      static consteval auto __transform_value_completion() noexcept
-      {
-        return []<class... _Args>()
-        {
-          if constexpr (__nothrow_invocable<_Fun, _Args...>)
-          {
-            return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>>();
-          }
-          else if constexpr (__invocable<_Fun, _Args...>)
-          {
-            return completion_signatures<__single_value_sig_t<__invoke_result_t<_Fun, _Args...>>,
-                                         set_error_t(std::exception_ptr)>();
-          }
-          else
-          {
-            return STDEXEC::__throw_compile_time_error(
-              __callable_error_t<then_t, _Fun, _Args...>());
-          }
-        };
-      }
-
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {
@@ -79,7 +57,7 @@ namespace STDEXEC
         using __fn_t = __decay_t<__data_of<_Sender>>;
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
-          __transform_value_completion<__fn_t>());
+          __transform_upon_completion<__fn_t, then_t>());
       }
 
       struct __complete_fn

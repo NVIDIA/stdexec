@@ -21,6 +21,7 @@
 #include "../../stdexec/execution.hpp"
 
 // include these after execution.hpp
+#include "../../exec/completion_signatures.hpp"
 #include "../../exec/ensure_started.hpp"
 #include "../../exec/env.hpp"
 #include "../detail/throw_on_cuda_error.cuh"
@@ -404,21 +405,15 @@ namespace nv::execution::_strm
       return {&sndr_};
     }
 
-    template <class... Tys>
-    using _set_value_t = completion_signatures<set_value_t(__decay_t<Tys>...)>;
-
-    template <class Ty>
-    using _set_error_t = completion_signatures<set_error_t(__decay_t<Ty>)>;
-
     template <class Self, class... Env>
-    static consteval auto get_completion_signatures() -> __transform_completion_signatures_of_t<
-      Sender,
-      _ensure_started::env_t,
-      completion_signatures<set_error_t(cudaError_t), set_stopped_t()>,
-      _set_value_t,
-      _set_error_t>
+    static consteval auto get_completion_signatures()
     {
-      return {};
+      return exec::transform_completion_signatures(
+        STDEXEC::get_completion_signatures<Sender, _ensure_started::env_t>(),
+        exec::decay_arguments<set_value_t, ensure_started_t>(),
+        exec::decay_arguments<set_error_t, ensure_started_t>(),
+        {},
+        completion_signatures<set_error_t(cudaError_t), set_stopped_t()>());
     }
 
     Sender                      sndr_;
