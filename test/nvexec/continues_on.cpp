@@ -287,4 +287,123 @@ namespace
     }
     REQUIRE(on_gpu);
   }
+
+  // Records the stream each step ran on, readable from host and device.
+  struct stream_record
+  {
+    cudaStream_t* streams{};
+
+    stream_record()
+    {
+      STDEXEC_TRY_CUDA_API(cudaMallocManaged(&streams, 2 * sizeof(cudaStream_t)));
+      streams[0] = nullptr;
+      streams[1] = nullptr;
+    }
+
+    stream_record(stream_record const &)                    = delete;
+    auto operator=(stream_record const &) -> stream_record& = delete;
+
+    ~stream_record()
+    {
+      STDEXEC_ASSERT_CUDA_API(cudaFree(streams));
+    }
+  };
+
+  template <class FirstSched, class SecondSched>
+  void record_streams_across(FirstSched first, SecondSched second, cudaStream_t* streams)
+  {
+    auto sndr = STDEXEC::schedule(first) | STDEXEC::let_value([] { return nvexec::get_stream(); })
+              | STDEXEC::then([streams](cudaStream_t stream) { streams[0] = stream; })
+              | STDEXEC::continues_on(second)
+              | STDEXEC::let_value([] { return nvexec::get_stream(); })
+              | STDEXEC::then([streams](cudaStream_t stream) { streams[1] = stream; });
+
+    STDEXEC::sync_wait(std::move(sndr));
+  }
+
+  TEST_CASE("continues_on between two stream contexts switches streams",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx_0;
+    nvexec::stream_context ctx_1;
+    stream_record          record;
+
+    record_streams_across(ctx_0.get_scheduler(), ctx_1.get_scheduler(), record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    REQUIRE(record.streams[1] != nullptr);
+    CHECK(record.streams[0] != record.streams[1]);
+  }
+
+  TEST_CASE("continues_on within one stream context keeps the stream",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx;
+    stream_record          record;
+
+    record_streams_across(ctx.get_scheduler(), ctx.get_scheduler(), record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    CHECK(record.streams[0] == record.streams[1]);
+  }
+
+  TEST_CASE("continues_on to another priority switches streams",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    int least{};
+    int greatest{};
+    STDEXEC_TRY_CUDA_API(cudaDeviceGetStreamPriorityRange(&least, &greatest));
+    if (least == greatest)
+    {
+      SKIP("the device has a single stream priority");
+    }
+
+    nvexec::stream_context ctx;
+    stream_record          record;
+
+    record_streams_across(ctx.get_scheduler(nvexec::stream_priority::low),
+                          ctx.get_scheduler(nvexec::stream_priority::high),
+                          record.streams);
+
+    REQUIRE(record.streams[0] != nullptr);
+    REQUIRE(record.streams[1] != nullptr);
+    CHECK(record.streams[0] != record.streams[1]);
+
+    int first{};
+    int second{};
+    STDEXEC_TRY_CUDA_API(cudaStreamGetPriority(record.streams[0], &first));
+    STDEXEC_TRY_CUDA_API(cudaStreamGetPriority(record.streams[1], &second));
+    CHECK(first == least);
+    CHECK(second == greatest);
+  }
+
+  TEST_CASE("continues_on between two stream contexts waits for the earlier work",
+            "[cuda][stream][adaptors][continues_on]")
+  {
+    nvexec::stream_context ctx_0;
+    nvexec::stream_context ctx_1;
+
+    int* data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, sizeof(int)));
+    *data = 0;
+
+    // The first step is slow, so the second one would read 0 if it did not wait.
+    auto sndr = STDEXEC::schedule(ctx_0.get_scheduler())
+              | STDEXEC::then(
+                  [data]
+                  {
+                    int volatile spin = 0;
+                    for (int i = 0; i < (1 << 24); ++i)
+                    {
+                      spin = spin + 1;
+                    }
+                    *data = 42;
+                  })
+              | STDEXEC::continues_on(ctx_1.get_scheduler())
+              | STDEXEC::then([data] { return *data; });
+
+    auto [result] = STDEXEC::sync_wait(std::move(sndr)).value();
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    CHECK(result == 42);
+  }
 }  // namespace
