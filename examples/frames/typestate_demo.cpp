@@ -8,6 +8,7 @@
  * receiver's environment.
  */
 
+#include "finally.hpp"
 #include "just.hpp"
 #include "let_value.hpp"
 #include "repeat_n.hpp"
@@ -15,8 +16,10 @@
 #include "then.hpp"
 #include "when_all.hpp"
 
+#include <exec/finally.hpp>
 #include <exec/repeat_n.hpp>
 #include <exec/sequence.hpp>
+#include <exec/single_thread_context.hpp>
 #include <exec/variant_sender.hpp>
 #include <stdexec/execution.hpp>
 
@@ -267,6 +270,69 @@ namespace
   };
 #endif
 
+  // Owns the operation it's connected to, and destroys it from inside its
+  // own completion, after copying what it was sent: what stdexec's
+  // receivers may do, and what a parent's eager teardown does.
+  template <class Env>
+  struct destroying_receiver
+  {
+    using receiver_concept = ex::receiver_t;
+
+    struct state
+    {
+      std::string                            result;
+      std::unique_ptr<void, void (*)(void*)> op{nullptr, [](void*) {}};
+    };
+
+    auto get_env() const noexcept -> Env
+    {
+      return {};
+    }
+
+    void set_value(std::string&& s) && noexcept
+    {
+      done("value " + s);
+    }
+
+    void set_error(int e) && noexcept
+    {
+      done("error " + std::to_string(e));
+    }
+
+    void set_error(std::exception_ptr) && noexcept
+    {
+      done("exception");
+    }
+
+    void set_stopped() && noexcept
+    {
+      done("stopped");
+    }
+
+    void done(std::string result) noexcept
+    {
+      state* s  = self;
+      s->result = std::move(result);
+      s->op.reset();  // destroys this receiver too
+    }
+
+    state* self;
+  };
+
+  // Connects sndr to a destroying_receiver on the heap, starts it, and
+  // returns what it completed with; the operation has destroyed itself.
+  template <class Env, class Sndr>
+  auto run_destroying(Sndr&& sndr) -> std::string
+  {
+    using rcvr_t = destroying_receiver<Env>;
+    using op_t   = ex::connect_result_t<Sndr, rcvr_t>;
+    typename rcvr_t::state state;
+    auto*                  op = new op_t(ex::connect(static_cast<Sndr&&>(sndr), rcvr_t{&state}));
+    state.op                  = {op, [](void* p) { delete static_cast<op_t*>(p); }};
+    ex::start(*op);
+    return state.result;
+  }
+
   // A sender whose operation sends an lvalue referring to a string it holds.
   struct lvalue_sender
   {
@@ -335,6 +401,33 @@ namespace
     }
   };
 #endif
+
+  // A sender that says when it's connected, and completes with set_value().
+  struct announced
+  {
+    using sender_concept        = ex::sender_t;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    template <class Rcvr>
+    struct opstate
+    {
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr));
+      }
+
+      Rcvr rcvr;
+    };
+
+    template <class Rcvr>
+    auto connect(Rcvr rcvr) && -> opstate<Rcvr>
+    {
+      std::printf(" %s connected;", name);
+      return {std::move(rcvr)};
+    }
+
+    char const * name;
+  };
 
   void section(char const * title)
   {
@@ -473,6 +566,20 @@ int main()
       ts::carried_layout(),
       [] { return ts::when_all(ts::just(big{}), ts::just(big{})); },
       [] { return ts::when_all(ts::just(counted()), ts::just(counted())); });
+    cost_row(
+      "finally(just(v), just())",
+      opstate_size<decltype(exec::finally(ex::just(big{}), ex::just()))>,
+      count(exec::finally(ex::just(counted()), ex::just())),
+      ts::carried_layout(),
+      [] { return ts::finally(ts::just(big{}), ts::just()); },
+      [] { return ts::finally(ts::just(counted()), ts::just()); });
+    cost_row(
+      "  ... overlapped_layout",
+      0,
+      "",
+      ts::overlapped_layout(),
+      [] { return ts::finally(ts::just(big{}), ts::just()); },
+      [] { return ts::finally(ts::just(counted()), ts::just()); });
   }
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -723,5 +830,98 @@ int main()
     run(forward(), "forward:");
     run(eager_start(), "eager+start:");
     run(eager_split(), "eager+split:");
+  }
+
+  {
+    section("11. finally runs final, then completes as initial did");
+    // finally's second phase receives initial's completion, whichever it
+    // was, runs final, and replays it if final succeeds. Here the receiver
+    // destroys the operation from inside that completion, under every
+    // policy and layout: nothing touches the operation once it completes.
+    auto show = []<class C, class Layout>(C, Layout, char const * label)
+    {
+      using env_t = ts::policies_env<typename C::template policies<Layout>>;
+      auto final  = []
+      {
+        return ts::just();
+      };
+      std::printf(
+        "    %-22s %s; %s; %s; %s\n",
+        label,
+        run_destroying<env_t>(ts::finally(ts::just(std::string("initial")), final())).c_str(),
+        run_destroying<env_t>(
+          ts::finally(ex::just_error(42) | ex::then([] { return std::string(); }), final()))
+          .c_str(),
+        run_destroying<env_t>(
+          ts::finally(ex::just_stopped() | ex::then([] { return std::string(); }), final()))
+          .c_str(),
+        run_destroying<env_t>(ts::finally(ts::just(std::string("initial")), ex::just_error(7)))
+          .c_str());
+    };
+    show(eager(), ts::carried_layout(), "eager:");
+    show(eager(), ts::overlapped_layout(), "eager, overlapped:");
+    show(eager(), ts::scoped_layout(), "eager, scoped:");
+    show(forward(), ts::carried_layout(), "forward:");
+    show(forward(), ts::overlapped_layout(), "forward, overlapped:");
+    show(forward(), ts::scoped_layout(), "forward, scoped:");
+    show(eager_start(), ts::carried_layout(), "eager+start:");
+    show(eager_split(), ts::carried_layout(), "eager+split:");
+
+    // final is connected with initial, just before it, as the first phase is
+    // entered: by connect or by start.
+    auto order = []<class C>(C, char const * label)
+    {
+      std::printf("    %-13s", label);
+      auto op = ex::connect(ts::finally(announced{"initial"}, announced{"final"}),
+                            sink<ts::policies_env<typename C::template policies<>>>());
+      std::printf(" connect returned;");
+      ex::start(op);
+      std::printf(" started\n");
+    };
+    order(eager(), "eager:");
+    order(eager_start(), "eager+start:");
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+    // So if final can't be connected, initial isn't either, and neither runs.
+    auto failed_final = []<class C>(C) -> char const *
+    {
+      bool failed = false;
+      try
+      {
+        auto op = ex::connect(ts::finally(announced{"initial"}, throwing_connect()),
+                              error_probe<ts::policies_env<typename C::template policies<>>>{
+                                &failed});
+        ex::start(op);
+      }
+      catch (std::runtime_error const &)
+      {
+        return "connect threw";
+      }
+      return failed ? "start completed with set_error" : "no error";
+    };
+    std::printf("    a throwing final connect: connect_entry: %s;", failed_final(eager()));
+    std::printf(" start_entry: %s\n", failed_final(eager_start()));
+#endif
+
+    // final starts where initial completed, and its environment says so.
+    exec::single_thread_context context;
+    auto                        where_final_starts = [&](auto sndr)
+    {
+      ex::sync_wait(std::move(sndr));
+    };
+    auto says = [sch = context.get_scheduler()](char const * label)
+    {
+      return ex::read_env(ex::get_start_scheduler)
+           | ex::then(
+               [sch, label](auto start)
+               {
+                 std::printf("    %s final's start scheduler is %s\n",
+                             label,
+                             start == sch ? "initial's completion scheduler" : "another");
+               });
+    };
+    where_final_starts(ts::finally(ex::schedule(context.get_scheduler()), says("finally:     ")));
+    where_final_starts(
+      exec::finally(ex::schedule(context.get_scheduler()), says("exec::finally:")));
   }
 }
