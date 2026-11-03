@@ -230,6 +230,10 @@ if(NOT STDEXEC_BUILD_MODULES)
     NAME test_then_fail1 SOURCE stdexec/algos/adaptors/test_then_fail1.cpp
     LIBRARIES stdexec)
 
+  stdexec_add_build_failure_test(
+    NAME test_on_fail1 SOURCE stdexec/algos/adaptors/test_on_fail1.cpp
+    LIBRARIES stdexec)
+
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)
   endif()

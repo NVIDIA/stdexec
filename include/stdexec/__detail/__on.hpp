@@ -49,9 +49,19 @@ namespace STDEXEC
   //////////////////////////////////////////////////////////////////////////////
   // [exec.on]
   struct _CANNOT_RESTORE_EXECUTION_CONTEXT_AFTER_ON_;
+  struct _ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_;
 
   namespace __on
   {
+    // The error for `sndr | on(sch)`: `on` has no form that takes only a
+    // scheduler.
+    template <class _Scheduler>
+    using __scheduler_only_error_t =
+      __mexception<_WHAT_(_INVALID_EXPRESSION_),
+                   _WHERE_(_IN_ALGORITHM_, on_t),
+                   _WHY_(_ON_NEEDS_A_SENDER_OR_A_SENDER_ADAPTOR_CLOSURE_),
+                   _WITH_SCHEDULER_(_Scheduler)>;
+
     // If __is_root_env<_Env> is true, then this sender has no parent, so there
     // is no need to restore the execution context. We can use the inline
     // scheduler as the scheduler if __env does not have one.
@@ -348,6 +358,12 @@ namespace STDEXEC
     {
       return __closure(*this, static_cast<_Scheduler&&>(__sched), static_cast<_Closure&&>(__clsur));
     }
+
+    // For issuing a meaningful diagnostic for the erroneous `sndr | on(sch)`.
+    // The constraint is never satisfied, so this overload is never selected.
+    template <scheduler _Scheduler>
+      requires __ok<__on::__scheduler_only_error_t<_Scheduler>>
+    auto operator()(_Scheduler&&) const;
 
     template <__decay_copyable _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
