@@ -224,13 +224,7 @@ namespace
 
     CHECK(counter::copy_constructions == 0);
     CHECK(counter::copy_assignments == 0);
-#if STDEXEC_MSVC()
-    // TODO: MSVC drops the initialization entirely, even though there is an observable side effect (atomic increment).
-    //       See https://github.com/NVIDIA/stdexec/pull/2302#issuecomment-6110273094.
-    CHECK(counter::move_constructions == 0);
-#else
     CHECK(counter::move_constructions == 1);
-#endif
     CHECK(counter::move_assignments == 0);
 
     CHECK(witness == 2);

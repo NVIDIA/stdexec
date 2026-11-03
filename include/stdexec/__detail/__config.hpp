@@ -345,11 +345,14 @@ namespace STDEXEC::__std
 #define STDEXEC_ATTRIBUTE_CASE_DEFAULT(...)              [[__VA_ARGS__]]
 
 // [[no_unique_address]]
-#if (STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 2305)                                              \
-  || (STDEXEC_MSVC() && STDEXEC_MSVC_VERSION < 1943)                                               \
+// MSVCBUG https://developercommunity.visualstudio.com/t/Incorrect-codegen-when-using-msvc::no_/10452874
+// [[msvc::no_unique_address]] still miscompiles on current MSVC, overrunning stack objects
+// and corrupting data (see https://github.com/NVIDIA/stdexec/issues/2099), so it is disabled
+// for all MSVC versions until a fixed compiler can be gated on.
+#if (STDEXEC_NVHPC() && STDEXEC_NVHPC_VERSION < 2305) || STDEXEC_MSVC()                            \
   || (STDEXEC_CLANG_CL() && STDEXEC_CLANG_VERSION < 1801)
 #  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS
-#elif STDEXEC_CLANG_CL() || STDEXEC_MSVC()
+#elif STDEXEC_CLANG_CL()
 #  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS       [[msvc::no_unique_address]]
 #else
 #  define STDEXEC_ATTRIBUTE_CASE_NO_UNIQUE_ADDRESS       [[no_unique_address]]
