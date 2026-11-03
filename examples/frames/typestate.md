@@ -3,14 +3,13 @@
 `just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp`, `repeat_n.hpp` and
 `when_all.hpp` reimplement `just`, `then`, `let_value`, a binary `sequence`,
 `repeat_n` and `when_all` with operation states that hold one *phase* at a
-time, written against the
-machinery in `typestate.hpp`. The aim is a standard way of expressing an
-operation's states and transitions, so that lifetimes are correct by
-construction, at no cost relative to the established approach. The machinery
-is where the complexity lives, in about 1600 lines; each algorithm takes 125
-to 180, about a fifth of them completion signatures, except `when_all`,
-whose 395 include about 120 working out its completion signatures and the
-types it stores.
+time, written against the machinery in `typestate.hpp`. The aim is a
+standard way of expressing an operation's states and transitions, so that
+lifetimes are correct by construction, at no cost relative to the
+established approach. The machinery is where the complexity lives, in about
+1700 lines; each algorithm takes 100 to 150, about a quarter of them
+completion signatures, except `when_all`, whose 365 include about 120
+working out its completion signatures and the types it stores.
 
 - **`phased<Rcvr, Parts, Carried, Phases...>`** holds the operation's
   receiver, a *carried* region that lives as long as the operation, and
@@ -101,22 +100,24 @@ The four:
   &S::fn_>`) and each phase the part its child is made from (`connects`); it
   reads a part with `part<M>()` and makes a child with
   `connect_part<M>(rcvr)`, which binds under one policy and connects under
-  the other, so the algorithm doesn't depend on which. Senders that
-  `let_value`'s function returns are created at run time, so their phase
-  owns them either way.
+  the other, so the algorithm doesn't depend on which. Each sender derives
+  from `phased_sender<S>`, which supplies `connect` under either policy and
+  `bind` under `stored_sender`. Senders that `let_value`'s function returns
+  are created at run time, so their phase owns them either way.
 
-Under `stored_sender`, binding comes in two forms, like `connect` for rvalues and const lvalues,
-minus the move or copy. Through a non-const reference, `bind(rcvr) &`
-*consumes*: the operation may move from the stored sender (as `just` does
-when it hands over its values), which is then spent. Through a const
-reference, `bind(rcvr) const &` doesn't: the operation only reads the
-stored sender, so it's unchanged afterwards and can be bound again. `then`
-calls its function as `const`, `just` copies its values as it sends them,
-and `let_value` and `sequence` bind their children the same way, so the
-whole subtree is read-only. A sender without a member `bind` is connected
-as a const lvalue, which copies. One semantic difference from connecting a
-copy: a function is shared by every bind rather than copied, so it must be
-callable as `const`.
+Under `stored_sender`, binding comes in two forms, like `connect` for
+rvalues and const lvalues, minus the move or copy. Through a non-const
+reference, `bind(rcvr) &` *consumes*: the operation may move from the stored
+sender (as `just` does when it hands over its values), which is then spent.
+Through a const reference, `bind(rcvr) const &` doesn't: the operation only
+reads the stored sender, so it's unchanged afterwards and can be bound
+again. `then` calls its function as `const`, `just` copies its values as it
+sends them, and `let_value` and `sequence` bind their children the same way,
+so the whole subtree is read-only. `phased_sender<S, read_only>` offers only
+the second form. A sender without a member `bind` is connected as a const
+lvalue, which copies. One semantic difference from connecting a copy: a
+function is shared by every bind rather than copied, so it must be callable
+as `const`.
 
 `repeat_n(sndr, n)` uses the non-consuming form: one phase, re-entered for
 each iteration, binding the stored child every time. Over 100 iterations
@@ -190,12 +191,12 @@ row. The cost is in bytes: the stored sender keeps every level's data for
 the whole operation, so nothing a later phase could reuse is moved out of
 it. That's why `overlapped_layout` saves nothing there: `just`'s value stays
 in the stored sender rather than in the first phase. A bound operation
-doesn't store a pointer to its sender either: it asks its receiver, whose
-parent knows which of its child senders each phase binds (`bound_sender()`),
-and the root's receiver points at the stored sender. So the tree holds one
-pointer to a sender in all, at the root. That pointer, and under
-`connect_entry` the byte recording the live phase (an operation destroyed
-before it starts still holds its first phase), are what separate
+doesn't store a pointer to its sender either: it asks its receiver
+(`bound_sender()`), whose type names the part of the parent's sender the
+child is made from, and the root's receiver points at the stored sender. So
+the tree holds one pointer to a sender in all, at the root. That pointer,
+and under `connect_entry` the byte recording the live phase (an operation
+destroyed before it starts still holds its first phase), are what separate
 `then(just(1), fn)` from stdexec's 24 bytes. The price is a walk up the
 receivers on each access to a sender's data. Receivers that are rebuilt from
 the child's address instead of stored (P3425, worded for C++26 by P3986 as

@@ -14,10 +14,8 @@ namespace frames::typestate
   // then(sndr, fn): one phase, running the child. fn is used in place.
 
   template <class Sndr, class Fn>
-  struct then_sender
+  struct then_sender : phased_sender<then_sender<Sndr, Fn>>
   {
-    using sender_concept = ex::sender_t;
-
     Sndr sndr_;
     Fn   fn_;
 
@@ -53,7 +51,7 @@ namespace frames::typestate
       {};
 
       using parts_t = parts<&then_sender::sndr_, &then_sender::fn_>;
-      using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag, maybe_const<Const, Sndr>>;
+      using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag, &then_sender::sndr_>;
       using child_t = part_child_t<maybe_const<Const, Sndr>, rcvr_t>;
 
       struct running
@@ -97,42 +95,15 @@ namespace frames::typestate
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
       }
 
-      // Which child sender a phase binds.
-      auto bound_sender(running_tag) noexcept -> maybe_const<Const, Sndr>&
-      {
-        return phases_.template part<&then_sender::sndr_>();
-      }
-
       phased<Rcvr, parts_t, nothing, running> phases_;
     };
-
-    template <class Rcvr>
-    auto connect(Rcvr rcvr) &&
-    {
-      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) & -> opstate<Rcvr>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr>(static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
-    }
   };
 
   template <class Sndr, class Fn>
   auto then(Sndr&& sndr, Fn&& fn)
   {
-    return then_sender<std::decay_t<Sndr>, std::decay_t<Fn>>{static_cast<Sndr&&>(sndr),
+    return then_sender<std::decay_t<Sndr>, std::decay_t<Fn>>{{},
+                                                             static_cast<Sndr&&>(sndr),
                                                              static_cast<Fn&&>(fn)};
   }
 }  // namespace frames::typestate

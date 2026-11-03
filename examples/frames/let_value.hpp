@@ -22,10 +22,8 @@ namespace frames::typestate
   // phase owns it.
 
   template <class Sndr, class Fn>
-  struct let_value_sender
+  struct let_value_sender : phased_sender<let_value_sender<Sndr, Fn>>
   {
-    using sender_concept = ex::sender_t;
-
     Sndr sndr_;
     Fn   fn_;
 
@@ -64,7 +62,7 @@ namespace frames::typestate
       struct continuing_tag
       {};
 
-      using first_rcvr_t = phase_receiver<opstate, Rcvr, running_tag, maybe_const<Const, Sndr>>;
+      using first_rcvr_t = phase_receiver<opstate, Rcvr, running_tag, &let_value_sender::sndr_>;
       using child_t      = part_child_t<maybe_const<Const, Sndr>, first_rcvr_t>;
       using values_t     = typename detail::value_lists<
             ex::completion_signatures_of_t<std::conditional_t<Const, Sndr const &, Sndr>,
@@ -134,12 +132,6 @@ namespace frames::typestate
         phases_.template finish<continuing<Ts...>>(Tag(), static_cast<As&&>(as)...);
       }
 
-      // Which child sender a phase binds.
-      auto bound_sender(running_tag) noexcept -> maybe_const<Const, Sndr>&
-      {
-        return phases_.template part<&let_value_sender::sndr_>();
-      }
-
       typename phased_with<Rcvr,
                            parts<&let_value_sender::sndr_, &let_value_sender::fn_>,
                            nothing,
@@ -147,34 +139,13 @@ namespace frames::typestate
                            continuing,
                            values_t>::type phases_;
     };
-
-    template <class Rcvr>
-    auto connect(Rcvr rcvr) &&
-    {
-      return connect_sender(*this, static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) & -> opstate<Rcvr>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr>(static_cast<Rcvr&&>(rcvr));
-    }
-
-    template <class Rcvr>
-      requires binds_stored<Rcvr>
-    auto bind(Rcvr rcvr) const & -> opstate<Rcvr, true>
-    {
-      STDEXEC_ASSERT(&rcvr.bound_sender() == this);
-      return opstate<Rcvr, true>(static_cast<Rcvr&&>(rcvr));
-    }
   };
 
   template <class Sndr, class Fn>
   auto let_value(Sndr&& sndr, Fn&& fn)
   {
-    return let_value_sender<std::decay_t<Sndr>, std::decay_t<Fn>>{static_cast<Sndr&&>(sndr),
+    return let_value_sender<std::decay_t<Sndr>, std::decay_t<Fn>>{{},
+                                                                  static_cast<Sndr&&>(sndr),
                                                                   static_cast<Fn&&>(fn)};
   }
 }  // namespace frames::typestate
