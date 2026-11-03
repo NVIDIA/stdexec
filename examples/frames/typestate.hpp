@@ -620,7 +620,10 @@ namespace frames::typestate
   //
   //   finish_with<Phase>(fn, as...)
   //       from inside Phase's set_value: completes the operation with
-  //       set_value(fn(as...)), or set_value() if fn returns void.
+  //       set_value(fn(as...)), or set_value() if fn returns void. Under
+  //       eager_teardown, fn is called after Phase ends, with copies of
+  //       as... in the value categories they arrived in, so the same
+  //       overload of fn runs under either ending.
   //
   // An exception from any of these completes the operation with
   // set_error(std::current_exception()); under eager_teardown it ends the
@@ -1049,7 +1052,13 @@ namespace frames::typestate
           leave<Phase>();
           STDEXEC_TRY
           {
-            complete_with([&]() -> decltype(auto) { return std::apply(fn, std::move(args)); });
+            complete_with(
+              [&]() -> decltype(auto)
+              {
+                return std::apply([&](std::decay_t<As>&... copies) -> decltype(auto)
+                                  { return fn(static_cast<As&&>(copies)...); },
+                                  args);
+              });
           }
           STDEXEC_CATCH_ALL
           {
