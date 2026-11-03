@@ -1,15 +1,18 @@
 # Operation states as sequences of phases
 
-`just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp`, `repeat_n.hpp` and
-`when_all.hpp` reimplement `just`, `then`, `let_value`, a binary `sequence`,
-`repeat_n` and `when_all` with operation states that hold one *phase* at a
-time, written against the machinery in `typestate.hpp`. The aim is a
-standard way of expressing an operation's states and transitions, so that
-lifetimes are correct by construction, at no cost relative to the
-established approach. The machinery is where the complexity lives, in about
-1700 lines; each algorithm takes 100 to 150, about a quarter of them
-completion signatures, except `when_all`, whose 365 include about 120
-working out its completion signatures and the types it stores.
+`just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp`, `repeat_n.hpp`,
+`when_all.hpp` and `finally.hpp` reimplement `just`, `then`, `let_value`, a
+binary `sequence`, `repeat_n`, `when_all` and `finally` with operation
+states that hold one *phase* at a time, written against the machinery in
+`typestate.hpp`. The aim is a standard way of expressing an operation's
+states and transitions, so that lifetimes are correct by construction, at no
+cost relative to the established approach. The machinery is where the
+complexity lives, in about 1950 lines; each algorithm takes 100 to 150,
+about a quarter of them completion signatures, except `when_all`, whose 375
+include about 120 working out its completion signatures and the types it
+stores, and `finally`, whose 290 include about 100 working out its
+completion signatures, the completions it keeps and its final sender's
+environment.
 
 - **`phased<Rcvr, Parts, Carried, Phases...>`** holds the operation's
   receiver, a *carried* region that lives as long as the operation, and
@@ -43,6 +46,20 @@ working out its completion signatures and the types it stores.
   An operation is never destroyed while it runs, so nothing records whether
   one is live. It has a region of its own beside the phases, poisoned under
   AddressSanitizer while no phase runs.
+- **A first phase may name a slot**, `slot_t`: something set up as the
+  operation is entered and kept until it completes, whichever phase is live
+  then. `phased` enters it just before the first phase and ends it as the
+  operation completes, under either Ending, so a completed operation never
+  holds one: a third party waiting on something in the slot isn't left
+  waiting until the operation is destroyed. One byte records whether it's
+  live, since an operation destroyed before it starts still holds it under
+  `connect_entry`, and a failure can come before or after it's entered.
+  `finally` keeps its final sender's operation
+  there. A child the slot holds completes without saying which phase is
+  live, so `visit_live(fn)` calls `fn` with whichever it is, read from the
+  byte recording the live phase, which `phased` keeps whenever there's a
+  slot. What must last until the operation is destroyed belongs in the
+  carried region instead.
 - **Children that run at once and stop together** share a `join_scope`: a
   stop source whose token their environments carry, and a count of the
   children still running. `when_all` holds one in its single phase, and as
@@ -155,9 +172,9 @@ the operation completed from; under the other two, they hold nothing.
 every failure (`settle`), copying what the receiver gets out of the phase
 first when that state won't hold it. Each exception path knows statically
 which phase, if any, is live, so the byte recording the live phase serves
-only the destructor, and only when one of the two states holds a phase. With
-`eager_teardown` and `start_entry` together, neither does, so `phased` has
-no such byte at all and its destructor destroys only the receiver and the
+only the destructor, and only when one of the two states holds a phase, or
+`visit_live`, when there's a slot. With `eager_teardown` and `start_entry`
+together and no slot, neither is needed, so `phased` has no such byte at all and its destructor destroys only the receiver and the
 carried region. Under `stored_sender`, the root's destructor destroys the
 stored sender as well, which is every level's carried data at once.
 
@@ -173,6 +190,7 @@ stored sender as well, which is every level's carried data at once.
 | 8 | When `let_value`'s values are destroyed, under each layout and both endings. |
 | 9 | `when_all` giving its children its own stop token: a child's error, and the receiver's stop request, reaching the other children. |
 | 10 | `then`'s function called as its child sent the values, under every ending. |
+| 11 | `finally` replaying its initial sender's value, error or stopped after its final sender, or completing as a failing final sender did, while its receiver destroys the operation from inside the completion; connecting its final sender just before its initial sender, by `connect` or by `start`, so that a final sender whose `connect` throws stops the initial sender from being connected; its final sender starting on its initial sender's completion scheduler, as `exec::finally`'s does. |
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
@@ -198,8 +216,12 @@ let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568
 sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
 then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
 when_all of two just(v)     1072  14 (0)    1136  12 (0)    1136   8 (0)    1136  12 (0)    1128  16 (0)
+finally(just(v), just())†    576   8 (0)     568   6 (0)     568   4 (0)     568   6 (0)     552   8 (0)
+  ... overlapped_layout                      560   7 (0)     560   5 (0)     560   7 (0)     296   9 (0)
 
 * stdexec moves 8 (0) with Clang
+† stdexec moves 7 (0) with Clang; with libc++, finally takes 560 bytes under
+  eager+split
 ```
 
 Under `stored_sender`, binding makes values move once, into the root, and
@@ -227,6 +249,35 @@ algorithm here it declares `set_error_t(std::exception_ptr)` where stdexec's
 keeps no room for errors its children can't send (16 bytes), and the root's
 pointer and the bytes recording `when_all`'s and each `just`'s live phase,
 with their padding (32).
+
+`finally` treats its final sender like a destructor. It connects it with
+its initial sender, just before it, as `exec::finally` does: in `connect`,
+or under `start_entry` in `start`, which then reports a `connect` that
+throws with `set_error`. Either way, a failure to connect means neither
+sender runs. The final sender's operation is the first phase's slot, so it
+lasts until `finally` completes. The first phase runs the initial sender;
+then, as with `let_value`, there's one possible second phase per completion
+signature of the initial sender, receiving that completion's arguments,
+starting the final sender, and replaying the completion if the final sender
+succeeds. The final sender's operation was connected before anyone knew
+which second phase would start it, so its receiver can't say which is live;
+`visit_live` asks the byte that records the live phase, which `phased` keeps
+whenever there's a slot, and calls the completion handler with that phase.
+That byte does the job of the index in `exec::finally`'s variant of stored
+completions. stdexec's `finally` replays the completion by hand, and
+once destroyed its stored result after completing with it, by which time
+the receiver could already have destroyed the operation
+([326a1180](https://github.com/NVIDIA/stdexec/commit/326a1180)). Here the
+kept completion is a phase's received values, which live where the Layout
+puts them, and replaying it is a `finish` like any other, so nothing touches
+the operation once it completes, under any policy; section 11's receiver
+destroys the operation from inside the completion. The final sender sees
+the receiver's environment plus, as with `exec::finally`, the initial
+sender's completion scheduler when it has exactly one kind of completion,
+built with stdexec's own helper. Both children's operations are alive at
+once, so the final sender's operation can't reuse the initial sender's
+bytes, even under `overlapped_layout`; under `stored_sender`, `finally`
+still comes out 8 bytes smaller than `exec::finally`, and moves less.
 
 `split_sender` trades the other way. Each operation moves in the data it
 uses, so a value moves once per level rather than once in all, but the data

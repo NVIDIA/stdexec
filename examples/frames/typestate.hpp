@@ -27,8 +27,8 @@
  *     phase is destroyed with the operation state.
  *
  * This header holds that machinery; the algorithms written against it are
- * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp and
- * when_all.hpp.
+ * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp,
+ * when_all.hpp and finally.hpp.
  *
  * Prototype simplifications: senders are connected as rvalues only, every
  * algorithm except just conservatively declares
@@ -395,6 +395,12 @@ namespace frames::typestate
     struct no_active_region
     {};
 
+    struct no_slot_region
+    {};
+
+    struct no_slot_flag
+    {};
+
     // What a phase receives: Phase::received_t if it names one, otherwise
     // void.
     template <class Phase>
@@ -423,6 +429,21 @@ namespace frames::typestate
     struct active_of<Phase>
     {
       using type = typename Phase::active_t;
+    };
+
+    // What a first phase enters just before itself and keeps until the
+    // operation completes: Phase::slot_t if it names one, otherwise void.
+    template <class Phase>
+    struct slot_of
+    {
+      using type = void;
+    };
+
+    template <class Phase>
+      requires requires { typename Phase::slot_t; }
+    struct slot_of<Phase>
+    {
+      using type = typename Phase::slot_t;
     };
 
     template <class T>
@@ -661,6 +682,21 @@ namespace frames::typestate
   //       as... in the value categories they arrived in, so the same
   //       overload of fn runs under either ending.
   //
+  //   finish_from_slot<Phase>(tag, as...)
+  //       like finish, from inside the completion of a child the slot holds
+  //       (below), while Phase is live: as... may refer into the slot, which
+  //       ends before the receiver is completed, so the operation completes
+  //       with rvalue copies, made first.
+  //
+  //   slot()
+  //       the slot, while it's live.
+  //
+  //   visit_live(fn)
+  //       calls fn(Phase&) with the live phase, which must be one fn
+  //       accepts: for a completion that doesn't say which phase is live,
+  //       such as that of a child the slot holds, connected before anyone
+  //       knew which phase would start it.
+  //
   // A phase may hold something only while it runs, nested inside it: it
   // names its type as `active_t`, constructible without throwing from the
   // phase and the receiver's environment. phased enters it just before the
@@ -671,6 +707,23 @@ namespace frames::typestate
   // on the receiver's stop token, which must not outlive the operation's
   // run. An operation is never destroyed while it runs, so nothing records
   // whether one is live.
+  //
+  // A first phase may also name a `slot_t`: something set up as the
+  // operation is entered and kept until it completes, whichever phase is
+  // live then, such as the operation of a child connected up front but
+  // started by a later phase. phased enters it just before the first phase,
+  // constructed from what that phase is, and ends it as the operation
+  // completes, under either Ending, after ending the phase if that goes too:
+  // a completed operation never holds one, so a third party waiting on
+  // something the slot holds isn't left waiting on the operation's
+  // destruction. Something that must last until the operation is destroyed
+  // belongs in the carried region instead. One byte records whether the
+  // slot is live, for the destructor (under connect_entry, an operation
+  // destroyed before it starts still holds it) and for failures, which can
+  // come before or after it's entered. A child the slot holds completes
+  // through a receiver chosen when the slot was entered, so it doesn't know
+  // which phase is live then; the byte recording the live phase does, so
+  // phased keeps it whenever there's a slot.
   //
   // An exception from any of these completes the operation with
   // set_error(std::current_exception()); under eager_teardown it ends the
@@ -686,10 +739,10 @@ namespace frames::typestate
   // forward_results, being completed holds the phase the operation
   // completed from; under eager_teardown, nothing, so whatever the receiver
   // gets is copied out of that phase before it ends. When neither state
-  // holds a phase (eager_teardown with start_entry), phased keeps no record
-  // of the live phase and its destructor destroys only the receiver and the
-  // carried region. Otherwise one byte records the live phase for the
-  // destructor.
+  // holds a phase (eager_teardown with start_entry) and there's no slot
+  // (below), phased keeps no record of the live phase and its destructor
+  // destroys only the receiver and the carried region. Otherwise one byte
+  // records the live phase, for the destructor and for visit_live.
   //
   // A phase may receive values from the phase before it, built from that
   // phase's results while it's still alive, since they may refer into it:
@@ -772,10 +825,12 @@ namespace frames::typestate
     // What the connected and completed states hold (see above).
     static constexpr bool connected_holds_phase = std::is_same_v<Entry, connect_entry>;
     static constexpr bool completed_holds_phase = std::is_same_v<Ending, forward_results>;
-    static constexpr bool track_live            = connected_holds_phase || completed_holds_phase;
-    static constexpr bool overlapped            = std::is_same_v<Layout, overlapped_layout>;
-    static constexpr bool scoped                = std::is_same_v<Layout, scoped_layout>;
-    static constexpr bool carried_received      = !overlapped && !scoped;
+    // A slot's child may complete whichever phase is live (see visit_live).
+    static constexpr bool track_live = connected_holds_phase || completed_holds_phase
+                                    || !std::is_void_v<typename detail::slot_of<First>::type>;
+    static constexpr bool overlapped       = std::is_same_v<Layout, overlapped_layout>;
+    static constexpr bool scoped           = std::is_same_v<Layout, scoped_layout>;
+    static constexpr bool carried_received = !overlapped && !scoped;
 
     template <class Phase>
     static constexpr unsigned char index_of = detail::index_of<Phase, First, Rest...>();
@@ -795,14 +850,33 @@ namespace frames::typestate
 
     static constexpr bool split = std::is_same_v<Data, split_sender>;
 
-    // Whether M is a part the first phase connects as it's entered by
-    // connect, straight from the incoming sender.
+    // What the first phase enters just before itself, if anything.
+    using slot_t = typename detail::slot_of<First>::type;
+
+    static constexpr bool has_slot = !std::is_void_v<slot_t>;
+
+    // Whether T, the first phase or its slot, names M as a part it connects.
+    template <class T, auto M>
+    static constexpr bool connects_on_entry = []
+    {
+      if constexpr (requires { T::connects; })
+      {
+        return detail::connects_names<M, T::connects>;
+      }
+      else
+      {
+        return false;
+      }
+    }();
+
+    // Whether M is a part the first phase or its slot connects as they're
+    // entered by connect, straight from the incoming sender.
     template <auto M>
     static constexpr bool connected_on_entry = []
     {
-      if constexpr (split && connected_holds_phase && requires { First::connects; })
+      if constexpr (split && connected_holds_phase)
       {
-        return detail::connects_names<M, First::connects>;
+        return connects_on_entry<First, M> || connects_on_entry<slot_t, M>;
       }
       else
       {
@@ -887,6 +961,7 @@ namespace frames::typestate
       {
         destroy_live();
       }
+      end_slot();
     }
 
     auto carried() noexcept -> Carried&
@@ -905,6 +980,27 @@ namespace frames::typestate
     auto live() noexcept -> Phase&
     {
       return get<Phase>();
+    }
+
+    template <class Slot = slot_t>
+      requires has_slot
+    auto slot() noexcept -> Slot&
+    {
+      return *std::launder(reinterpret_cast<Slot*>(slot_.bytes));
+    }
+
+    // Nothing may touch the operation once fn has returned, if fn finished
+    // it, so live_ isn't read again after fn is called.
+    template <class Fn>
+      requires track_live
+    void visit_live(Fn fn) noexcept
+    {
+      bool const visited = [&]<std::size_t... Is>(std::index_sequence<Is...>)
+      {
+        return (visit_if<std::tuple_element_t<Is, std::tuple<First, Rest...>>>(fn) || ...);
+      }(std::index_sequence_for<First, Rest...>());
+      STDEXEC_ASSERT(visited);
+      (void) visited;
     }
 
     // The values Phase received, from just before Phase is entered until
@@ -936,6 +1032,14 @@ namespace frames::typestate
     {
       if constexpr (connected_holds_phase)
       {
+        if constexpr (requires { slot_t::connects; })
+        {
+          enter_slot(op, incoming...);
+        }
+        else
+        {
+          enter_slot(op);
+        }
         if constexpr (requires { First::connects; })
         {
           enter<First>(op, incoming...);
@@ -995,13 +1099,14 @@ namespace frames::typestate
       {
         STDEXEC_TRY
         {
+          enter_slot(args...);
           First& first = enter<First>(static_cast<Args&&>(args)...);
           activate<First>();
           then(first);
         }
         STDEXEC_CATCH_ALL
         {
-          fail();  // no phase was entered
+          fail();  // no phase was entered; fail ends the slot if it was
         }
       }
     }
@@ -1089,6 +1194,16 @@ namespace frames::typestate
         static_cast<As&&>(as)...);
     }
 
+    template <class Phase, class Tag, class... As>
+      requires has_slot
+    void finish_from_slot(Tag, As&&... as) noexcept
+    {
+      complete<Phase, true>(
+        [this](auto&&... cs)
+        { Tag()(static_cast<Rcvr&&>(rcvr_), static_cast<decltype(cs)&&>(cs)...); },
+        static_cast<As&&>(as)...);
+    }
+
    private:
     template <class Call>
     void complete_with(Call call)
@@ -1153,6 +1268,54 @@ namespace frames::typestate
         leave_received<Phase>();
       }
       storage_.poison(offset_of<Phase> + sizeof(Phase));
+    }
+
+    template <class Phase, class Fn>
+    auto visit_if(Fn& fn) noexcept -> bool
+    {
+      if constexpr (std::is_invocable_v<Fn&, Phase&>)
+      {
+        if (live_ == index_of<Phase>)
+        {
+          fn(get<Phase>());
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Enters the first phase's slot, if it names one.
+    template <class... Args>
+    void enter_slot([[maybe_unused]] Args&... args)
+    {
+      if constexpr (has_slot)
+      {
+        slot_.unpoison(sizeof(slot_t));
+        STDEXEC_TRY
+        {
+          ::new (static_cast<void*>(slot_.bytes)) slot_t(args...);
+        }
+        STDEXEC_CATCH_ALL
+        {
+          slot_.poison(sizeof(slot_t));
+          STDEXEC_THROW();
+        }
+        slot_live_ = true;
+      }
+    }
+
+    // Ends the slot, if it's live.
+    void end_slot() noexcept
+    {
+      if constexpr (has_slot)
+      {
+        if (slot_live_)
+        {
+          slot_live_ = false;
+          std::destroy_at(&slot());
+          slot_.poison(sizeof(slot_t));
+        }
+      }
     }
 
     // Enters what Phase holds while it runs, if anything.
@@ -1276,7 +1439,8 @@ namespace frames::typestate
     }
 
     // From inside Phase's completion, completes the operation: Phase stops
-    // running, the operation settles, and deliver completes the receiver.
+    // running, the operation settles, the slot ends, and deliver completes
+    // the receiver.
     // If Phase ends as the operation settles, or Copy asks for copies,
     // deliver gets rvalue copies of as..., made while Phase is alive;
     // otherwise as... themselves. Whatever deliver throws completes the
@@ -1291,6 +1455,7 @@ namespace frames::typestate
         {
           std::tuple<std::decay_t<As>...> copies(static_cast<As&&>(as)...);
           settle<Phase>();
+          end_slot();
           deliver_or_fail(deliver, std::move(copies));
         }
         STDEXEC_CATCH_ALL
@@ -1301,6 +1466,7 @@ namespace frames::typestate
       }
       else
       {
+        end_slot();
         deliver_or_fail(deliver, std::forward_as_tuple(static_cast<As&&>(as)...));
       }
     }
@@ -1327,8 +1493,11 @@ namespace frames::typestate
       }(std::index_sequence_for<First, Rest...>());
     }
 
+    // Completes the operation with the exception being handled. The live
+    // phase, if any, has ended or settled already.
     void fail() noexcept
     {
+      end_slot();
       ex::set_error(static_cast<Rcvr&&>(rcvr_), std::current_exception());
     }
 
@@ -1368,13 +1537,21 @@ namespace frames::typestate
                                                detail::guarded_bytes<active_size, active_align>,
                                                detail::no_active_region>;
 
+    using slot_region_t =
+      std::conditional_t<has_slot,
+                         detail::guarded_bytes<detail::size_of<slot_t>, detail::align_of<slot_t>>,
+                         detail::no_slot_region>;
+    using slot_flag_t = std::conditional_t<has_slot, bool, detail::no_slot_flag>;
+
     Rcvr rcvr_;
     STDEXEC_ATTRIBUTE(no_unique_address) Carried carried_;
     STDEXEC_ATTRIBUTE(no_unique_address) parts_storage_t parts_;
     STDEXEC_ATTRIBUTE(no_unique_address) live_t live_ { none_or_empty() };
+    STDEXEC_ATTRIBUTE(no_unique_address) slot_flag_t slot_live_ {};
     STDEXEC_ATTRIBUTE(no_unique_address) carried_values_t received_;
     STDEXEC_ATTRIBUTE(no_unique_address) scoped_region_t scoped_;
     STDEXEC_ATTRIBUTE(no_unique_address) active_region_t active_;
+    STDEXEC_ATTRIBUTE(no_unique_address) slot_region_t slot_;
     detail::guarded_bytes<storage_size, storage_align> storage_;
 
     static constexpr auto none_or_empty() noexcept -> live_t
