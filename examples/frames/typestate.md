@@ -144,13 +144,22 @@ the receiver gets an rvalue; under `eager_teardown` each copy is moved once
 more onto the stack. Unlike `exec::repeat_n`, it doesn't trampoline, so a
 child that completes inline makes each iteration a nested call.
 
-Each exception path knows statically which phase, if any, is live, so the
-byte recording the live phase serves only the destructor. With
-`eager_teardown` and `start_entry` together, no phase is ever live when the
-operation state is destroyed, so `phased` has no such byte at all and its
-destructor destroys only the receiver and the carried region. Under
-`stored_sender`, the root's destructor destroys the stored sender as well,
-which is every level's carried data at once.
+An operation is in one of three states: *connected*, from `connect` until
+`start`; *running*, one phase at a time, until its receiver is completed;
+and *completed*, until it's destroyed, which it can only be when connected
+or completed. Entry and Ending are choices of what those two states hold:
+under `connect_entry`, being connected holds the first phase, entered but
+not started, and under `forward_results`, being completed holds the phase
+the operation completed from; under the other two, they hold nothing.
+`phased` enters the completed state the same way from every completion and
+every failure (`settle`), copying what the receiver gets out of the phase
+first when that state won't hold it. Each exception path knows statically
+which phase, if any, is live, so the byte recording the live phase serves
+only the destructor, and only when one of the two states holds a phase. With
+`eager_teardown` and `start_entry` together, neither does, so `phased` has
+no such byte at all and its destructor destroys only the receiver and the
+carried region. Under `stored_sender`, the root's destructor destroys the
+stored sender as well, which is every level's carried data at once.
 
 | Section of `typestate_demo.cpp` | Shows |
 |---|---|
