@@ -480,10 +480,10 @@ namespace frames::typestate
 
     // Whether an operation was bound through a const reference: every
     // phase-based operation is Sndr::opstate<Rcvr, Const> (see
-    // phased_sender). Op may be incomplete.
+    // phased_sender). Op may be incomplete. Any other Op is a mistake, so
+    // there's no answer for it.
     template <class Op>
-    struct bound_const : std::false_type
-    {};
+    struct bound_const;
 
     template <template <class, bool> class Op, class Rcvr, bool Const>
     struct bound_const<Op<Rcvr, Const>> : std::bool_constant<Const>
