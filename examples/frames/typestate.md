@@ -154,6 +154,7 @@ which is every level's carried data at once.
 | 7 | With `-fsanitize=address -DFRAMES_SHOW_USE_AFTER_FINISH`: a child that touches its own state after completing, reported by AddressSanitizer. |
 | 8 | When `let_value`'s values are destroyed, under each layout and both endings. |
 | 9 | `when_all` giving its children its own stop token: a child's error, and the receiver's stop request, reaching the other children. |
+| 10 | `then`'s function called as its child sent the values, under every ending. |
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
