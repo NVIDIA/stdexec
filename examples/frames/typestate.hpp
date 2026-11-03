@@ -677,11 +677,19 @@ namespace frames::typestate
   // live phase first. Each exception path knows statically which phase, if
   // any, is live.
   //
-  // Under start_entry the first phase is entered by start. Combined with
-  // eager_teardown, no phase is ever live when the operation state is
-  // destroyed, so phased keeps no record of the live phase and its
-  // destructor destroys only the receiver and the carried region. Otherwise
-  // one byte records the live phase for the destructor.
+  // An operation is in one of three states: connected, from connect until
+  // start; running, one phase at a time, from start until its receiver is
+  // completed; and completed, until it's destroyed. It's destroyed only
+  // when connected or completed, and two policies say what those states
+  // hold. Under connect_entry, being connected holds the first phase,
+  // entered but not yet started; under start_entry, nothing. Under
+  // forward_results, being completed holds the phase the operation
+  // completed from; under eager_teardown, nothing, so whatever the receiver
+  // gets is copied out of that phase before it ends. When neither state
+  // holds a phase (eager_teardown with start_entry), phased keeps no record
+  // of the live phase and its destructor destroys only the receiver and the
+  // carried region. Otherwise one byte records the live phase for the
+  // destructor.
   //
   // A phase may receive values from the phase before it, built from that
   // phase's results while it's still alive, since they may refer into it:
@@ -759,13 +767,15 @@ namespace frames::typestate
     using Entry      = typename policies_t::entry;
     using Data       = typename policies_t::data;
 
-    static constexpr unsigned char none             = 0xff;
-    static constexpr bool          eager            = std::is_same_v<Ending, eager_teardown>;
-    static constexpr bool          start_entry      = std::is_same_v<Entry, typestate::start_entry>;
-    static constexpr bool          track_live       = !(eager && start_entry);
-    static constexpr bool          overlapped       = std::is_same_v<Layout, overlapped_layout>;
-    static constexpr bool          scoped           = std::is_same_v<Layout, scoped_layout>;
-    static constexpr bool          carried_received = !overlapped && !scoped;
+    static constexpr unsigned char none = 0xff;
+
+    // What the connected and completed states hold (see above).
+    static constexpr bool connected_holds_phase = std::is_same_v<Entry, connect_entry>;
+    static constexpr bool completed_holds_phase = std::is_same_v<Ending, forward_results>;
+    static constexpr bool track_live            = connected_holds_phase || completed_holds_phase;
+    static constexpr bool overlapped            = std::is_same_v<Layout, overlapped_layout>;
+    static constexpr bool scoped                = std::is_same_v<Layout, scoped_layout>;
+    static constexpr bool carried_received      = !overlapped && !scoped;
 
     template <class Phase>
     static constexpr unsigned char index_of = detail::index_of<Phase, First, Rest...>();
@@ -790,7 +800,7 @@ namespace frames::typestate
     template <auto M>
     static constexpr bool connected_on_entry = []
     {
-      if constexpr (split && !start_entry && requires { First::connects; })
+      if constexpr (split && connected_holds_phase && requires { First::connects; })
       {
         return detail::connects_names<M, First::connects>;
       }
@@ -924,7 +934,7 @@ namespace frames::typestate
     template <class Op, class... Incoming>
     void on_connect([[maybe_unused]] Op* op, [[maybe_unused]] Incoming&... incoming)
     {
-      if constexpr (!start_entry)
+      if constexpr (connected_holds_phase)
       {
         if constexpr (requires { First::connects; })
         {
@@ -971,10 +981,17 @@ namespace frames::typestate
       }
     }
 
+    // Leaves the connected state for the running one: the first phase,
+    // entered now unless being connected holds it, starts.
     template <class Then, class... Args>
     void begin(Then then, [[maybe_unused]] Args&&... args) noexcept
     {
-      if constexpr (start_entry)
+      if constexpr (connected_holds_phase)
+      {
+        activate<First>();
+        then(get<First>());
+      }
+      else
       {
         STDEXEC_TRY
         {
@@ -986,11 +1003,6 @@ namespace frames::typestate
         {
           fail();  // no phase was entered
         }
-      }
-      else
-      {
-        activate<First>();
-        then(get<First>());
       }
     }
 
@@ -1045,7 +1057,7 @@ namespace frames::typestate
       }
       STDEXEC_CATCH_ALL
       {
-        end<From>();  // prepare or staging the values threw: From is live
+        settle<From>();  // prepare or staging the values threw: From is live
         fail();
       }
     }
@@ -1053,93 +1065,28 @@ namespace frames::typestate
     template <class Phase, class Tag, class... As>
     void finish(Tag, As&&... as) noexcept
     {
-      deactivate<Phase>();
-      if constexpr (eager)
-      {
-        STDEXEC_TRY
-        {
-          std::tuple<std::decay_t<As>...> results(static_cast<As&&>(as)...);
-          leave<Phase>();
-          std::apply([this](auto&... rs) { Tag()(static_cast<Rcvr&&>(rcvr_), std::move(rs)...); },
-                     results);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          leave<Phase>();  // only copying the results can throw
-          fail();
-        }
-      }
-      else
-      {
-        Tag()(static_cast<Rcvr&&>(rcvr_), static_cast<As&&>(as)...);
-      }
+      complete<Phase, false>(
+        [this](auto&&... rs)
+        { Tag()(static_cast<Rcvr&&>(rcvr_), static_cast<decltype(rs)&&>(rs)...); },
+        static_cast<As&&>(as)...);
     }
 
     template <class Phase, class Tag, class... As>
     void finish_copies(Tag, As const &... as) noexcept
     {
-      if constexpr (eager)
-      {
-        finish<Phase>(Tag(), as...);  // copies anyway
-      }
-      else
-      {
-        deactivate<Phase>();
-        STDEXEC_TRY
-        {
-          std::tuple<As...> copies(as...);
-          std::apply([this](auto&... cs) { Tag()(static_cast<Rcvr&&>(rcvr_), std::move(cs)...); },
-                     copies);
-        }
-        STDEXEC_CATCH_ALL
-        {
-          fail();  // Phase stays live until the destructor
-        }
-      }
+      complete<Phase, true>(
+        [this](auto&&... cs)
+        { Tag()(static_cast<Rcvr&&>(rcvr_), static_cast<decltype(cs)&&>(cs)...); },
+        as...);
     }
 
     template <class Phase, class Fn, class... As>
     void finish_with(Fn& fn, As&&... as) noexcept
     {
-      deactivate<Phase>();
-      if constexpr (eager)
-      {
-        STDEXEC_TRY
-        {
-          std::tuple<std::decay_t<As>...> args(static_cast<As&&>(as)...);
-          leave<Phase>();
-          STDEXEC_TRY
-          {
-            complete_with(
-              [&]() -> decltype(auto)
-              {
-                return std::apply([&](std::decay_t<As>&... copies) -> decltype(auto)
-                                  { return fn(static_cast<As&&>(copies)...); },
-                                  args);
-              });
-          }
-          STDEXEC_CATCH_ALL
-          {
-            fail();  // no phase is live
-          }
-        }
-        STDEXEC_CATCH_ALL
-        {
-          leave<Phase>();  // copying the arguments threw: Phase is live
-          fail();
-        }
-      }
-      else
-      {
-        STDEXEC_TRY
-        {
-          complete_with([&]() -> decltype(auto) { return fn(static_cast<As&&>(as)...); });
-        }
-        STDEXEC_CATCH_ALL
-        {
-          fail();  // Phase stays live until the destructor
-        }
-      }
+      complete<Phase, false>(
+        [&](auto&&... args)
+        { complete_with([&]() -> decltype(auto) { return fn(static_cast<As&&>(args)...); }); },
+        static_cast<As&&>(as)...);
     }
 
    private:
@@ -1317,14 +1264,57 @@ namespace frames::typestate
     struct nothing_staged
     {};
 
-    // On a failure inside Phase: eager teardown ends it now; otherwise the
-    // destructor will.
+    // Enters the completed state from Phase: ends Phase, unless being
+    // completed holds it, in which case the destructor will.
     template <class Phase>
-    void end() noexcept
+    void settle() noexcept
     {
-      if constexpr (eager)
+      if constexpr (!completed_holds_phase)
       {
         leave<Phase>();
+      }
+    }
+
+    // From inside Phase's completion, completes the operation: Phase stops
+    // running, the operation settles, and deliver completes the receiver.
+    // If Phase ends as the operation settles, or Copy asks for copies,
+    // deliver gets rvalue copies of as..., made while Phase is alive;
+    // otherwise as... themselves. Whatever deliver throws completes the
+    // receiver with set_error.
+    template <class Phase, bool Copy, class Deliver, class... As>
+    void complete(Deliver deliver, As&&... as) noexcept
+    {
+      deactivate<Phase>();
+      if constexpr (Copy || !completed_holds_phase)
+      {
+        STDEXEC_TRY
+        {
+          std::tuple<std::decay_t<As>...> copies(static_cast<As&&>(as)...);
+          settle<Phase>();
+          deliver_or_fail(deliver, std::move(copies));
+        }
+        STDEXEC_CATCH_ALL
+        {
+          settle<Phase>();  // only copying can throw here: Phase is live
+          fail();
+        }
+      }
+      else
+      {
+        deliver_or_fail(deliver, std::forward_as_tuple(static_cast<As&&>(as)...));
+      }
+    }
+
+    template <class Deliver, class Args>
+    void deliver_or_fail(Deliver& deliver, Args&& args) noexcept
+    {
+      STDEXEC_TRY
+      {
+        std::apply(deliver, static_cast<Args&&>(args));
+      }
+      STDEXEC_CATCH_ALL
+      {
+        fail();
       }
     }
 
