@@ -133,11 +133,17 @@ namespace STDEXEC
     struct __common_t
     {
       template <__behavior... _CSs>
-        requires(sizeof...(_CSs) > 0)
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
       constexpr auto operator()(__constant_t<_CSs>... __cbs) const noexcept
       {
-        return (__cbs | ...);
+        if constexpr (sizeof...(_CSs) == 0)
+        {
+          return __completion_behavior::__unknown;
+        }
+        else
+        {
+          return (__cbs | ...);
+        }
       }
     };
 
