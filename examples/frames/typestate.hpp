@@ -28,7 +28,7 @@
  *
  * This header holds that machinery; the algorithms written against it are
  * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp,
- * when_all.hpp and finally.hpp.
+ * when_all.hpp, finally.hpp and associate.hpp.
  *
  * Prototype simplifications: senders are connected as rvalues only, every
  * algorithm except just conservatively declares
@@ -634,11 +634,13 @@ namespace frames::typestate
   //
   // Algorithms never construct or destroy phases themselves. They call:
   //
-  //   on_connect(op, incoming...)
-  //       from the operation's constructor: under connect_entry, enters the
-  //       first phase, constructed from op, and from the incoming sender
-  //       too if the phase connects a part (below); under start_entry, does
-  //       nothing.
+  //   on_connect<Phase = First>(op, incoming...)
+  //       from the operation's constructor: under connect_entry, enters
+  //       Phase, constructed from op, and from the incoming sender too if
+  //       the phase connects a part (below); under start_entry, does
+  //       nothing. An operation whose first step depends on what it learns
+  //       at connect enters another of its phases first (associate, refused
+  //       by its scope, enters one that has no child).
   //
   //   part<M>()
   //       the part of the operation's sender that M points to.
@@ -652,11 +654,11 @@ namespace frames::typestate
   //       M points to. The phase names M as `connects`, or names parts<M,
   //       ...> when it has a child for each of several parts.
   //
-  //   begin(then, args...)
-  //       from start: under start_entry, enters the first phase, constructed
-  //       from args...; then calls then(first phase), e.g. start_child.
-  //       Under connect_entry the first phase was entered by on_connect and
-  //       args... are ignored.
+  //   begin<Phase = First>(then, args...)
+  //       from start: under start_entry, enters Phase, constructed from
+  //       args...; then calls then(Phase&), e.g. start_child. Under
+  //       connect_entry Phase was entered by on_connect<Phase> and args...
+  //       are ignored.
   //
   //   transition<From, To>(prepare, extra...)
   //       from inside From's completion. `prepare(From&)` runs while From and
@@ -844,7 +846,46 @@ namespace frames::typestate
     template <class Phase>
     using active_t = typename detail::active_of<Phase>::type;
 
-    static_assert(!receives<First>, "a first phase follows no phase, so it receives nothing");
+    // Whether Phase may be entered first: it receives nothing, since no
+    // phase came before it, and only First has a slot. Under split_sender,
+    // the parts First connects on entry go straight from the incoming
+    // sender into connect, so any other phase entered first must not
+    // connect any of them.
+    template <auto... Ms>
+    static consteval auto any_connected_on_entry(parts<Ms...>) -> bool
+    {
+      return (connected_on_entry<Ms> || ...);
+    }
+
+    template <class Phase>
+    static consteval auto connects_entry_part() -> bool
+    {
+      if constexpr (!requires { Phase::connects; })
+      {
+        return false;
+      }
+      else if constexpr (requires { any_connected_on_entry(Phase::connects); })
+      {
+        return any_connected_on_entry(Phase::connects);
+      }
+      else
+      {
+        return connected_on_entry<Phase::connects>;
+      }
+    }
+
+    template <class Phase>
+    static consteval auto check_entry() -> bool
+    {
+      static_assert(index_of<Phase> != none, "not one of this operation's phases");
+      static_assert(!receives<Phase>,
+                    "a phase entered first follows no phase, so it receives nothing");
+      static_assert(std::is_same_v<Phase, First> || !has_slot,
+                    "an operation whose first phase has a slot always enters that phase first");
+      static_assert(std::is_same_v<Phase, First> || !connects_entry_part<Phase>(),
+                    "a part the first phase connects on entry isn't kept for another phase");
+      return true;
+    }
 
     using live_t = std::conditional_t<track_live, unsigned char, detail::empty>;
 
@@ -1027,9 +1068,10 @@ namespace frames::typestate
     // Called from the operation's constructor body rather than from this
     // constructor, so that the first phase's children, which find their
     // senders through the operation, see a fully constructed phased.
-    template <class Op, class... Incoming>
+    template <class Phase = First, class Op, class... Incoming>
     void on_connect([[maybe_unused]] Op* op, [[maybe_unused]] Incoming&... incoming)
     {
+      static_assert(check_entry<Phase>());
       if constexpr (connected_holds_phase)
       {
         if constexpr (requires { slot_t::connects; })
@@ -1040,13 +1082,13 @@ namespace frames::typestate
         {
           enter_slot(op);
         }
-        if constexpr (requires { First::connects; })
+        if constexpr (requires { Phase::connects; })
         {
-          enter<First>(op, incoming...);
+          enter<Phase>(op, incoming...);
         }
         else
         {
-          enter<First>(op);
+          enter<Phase>(op);
         }
       }
     }
@@ -1085,24 +1127,25 @@ namespace frames::typestate
       }
     }
 
-    // Leaves the connected state for the running one: the first phase,
-    // entered now unless being connected holds it, starts.
-    template <class Then, class... Args>
+    // Leaves the connected state for the running one: Phase, entered now
+    // unless being connected holds it, starts.
+    template <class Phase = First, class Then, class... Args>
     void begin(Then then, [[maybe_unused]] Args&&... args) noexcept
     {
+      static_assert(check_entry<Phase>());
       if constexpr (connected_holds_phase)
       {
-        activate<First>();
-        then(get<First>());
+        activate<Phase>();
+        then(get<Phase>());
       }
       else
       {
         STDEXEC_TRY
         {
           enter_slot(args...);
-          First& first = enter<First>(static_cast<Args&&>(args)...);
-          activate<First>();
-          then(first);
+          Phase& phase = enter<Phase>(static_cast<Args&&>(args)...);
+          activate<Phase>();
+          then(phase);
         }
         STDEXEC_CATCH_ALL
         {
