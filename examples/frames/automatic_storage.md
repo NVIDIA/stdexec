@@ -50,10 +50,9 @@ to `outer`.
    second phase repeats the nesting at the same addresses without allocating
    another slab.
 3. **Concurrency needs a fork.** `when_all` forwards its environment to its
-   children, so two children pushing from the same storage *overlap*. Build
-   with `-DFRAMES_SHOW_OVERLAP` to see both frames land at one address and the
-   result come out as `2 2` instead of `1 2` (undefined behaviour). Wrapping
-   each child in `strand` gives each its own chain.
+   children, so two children pushing from the same storage would *overlap*:
+   both frames would land at one address, the second constructed over the
+   first. Wrapping each child in `strand` gives each its own chain.
 4. **Inline room first.** `reserve_async_stack<128>` takes the first two
    frames in its own buffer; the third falls back to the strand's slab.
 5. **No storage, no change.** Without a root, `indirect` uses the heap.

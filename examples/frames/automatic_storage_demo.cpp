@@ -109,21 +109,16 @@ int main()
   {
     section("3. when_all needs a fork: each child gets its own strand");
     // when_all forwards its environment to both children. If both pushed
-    // from the same storage they would overlap while running concurrently
-    // (build with -DFRAMES_SHOW_OVERLAP to see the addresses collide).
+    // from the same storage they would overlap while running concurrently:
+    // the second child's frame would be constructed over the first's.
     // `strand` gives its child a new chain from the same slab source, so the
     // children's frames are disjoint; one child could also keep the parent's
     // storage, as an optimization.
+    auto children = ex::when_all(strand(indirect(ex::just(1), "left")),
+                                 strand(indirect(ex::just(2), "right")));
+
     counting_resource mr;
-#if defined(FRAMES_SHOW_OVERLAP)
-    // Undefined behaviour: the second frame is constructed over the first.
-    auto r = run(ex::when_all(indirect(ex::just(1), "left"), indirect(ex::just(2), "right")), mr);
-#else
-    auto r = run(ex::when_all(strand(indirect(ex::just(1), "left")),
-                              strand(indirect(ex::just(2), "right"))),
-                 mr);
-#endif
-    auto [a, b] = r.value();
+    auto [a, b] = run(std::move(children), mr).value();
     std::printf("    result: %d %d\n", a, b);
   }
 
