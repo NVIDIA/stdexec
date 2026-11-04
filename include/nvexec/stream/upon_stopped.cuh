@@ -44,12 +44,12 @@ namespace nv::execution::_strm
       ::cuda::std::move(fn)();
     }
 
-    template <class Fun, class ResultT>
+    template <class ResultT, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _upon_stopped_kernel_with_result(Fun fn, ResultT* result)
+    __global__ void _upon_stopped_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result)
     {
       static_assert(trivially_copyable<Fun>);
-      new (result) ResultT(::cuda::std::move(fn)());
+      _store_result<ResultT>(result, ::cuda::std::move(fn));
     }
 
     template <class Receiver, class Fun>
@@ -61,7 +61,7 @@ namespace nv::execution::_strm
 
       static constexpr std::size_t memory_allocation_size() noexcept
       {
-        return _sizeof_v<_result_t>;
+        return _sizeof_v<_stored_result_t<_result_t>>;
       }
 
       explicit receiver(Fun fun, _strm::opstate_base<Receiver>& opstate)
@@ -101,14 +101,19 @@ namespace nv::execution::_strm
         }
         else
         {
-          using decayed_result_t = __decay_t<_result_t>;
-          auto* d_result         = static_cast<decayed_result_t*>(opstate_.temp_storage_);
-          _upon_stopped_kernel_with_result<<<1, 1, 0, stream>>>(std::move(fun_), d_result);
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
+          auto* d_result = static_cast<_stored_result_t<_result_t>*>(opstate_.temp_storage_);
+          _upon_stopped_kernel_with_result<_result_t>
+            <<<1, 1, 0, stream>>>(std::move(fun_), d_result);
+          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+          if (status == cudaSuccess)
+          {
+            status = _wait_for_result<_result_t>(stream);
+          }
+          if (status == cudaSuccess)
           {
             opstate_.defer_temp_storage_destruction(d_result);
-            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
+            opstate_.propagate_completion_signal(STDEXEC::set_value,
+                                                 _load_result<_result_t>(d_result));
           }
           else
           {

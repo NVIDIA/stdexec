@@ -125,4 +125,22 @@ namespace
 
     REQUIRE(result.value() == 42);
   }
+
+  TEST_CASE("nvexec upon_stopped can return a reference", "[cuda][stream][adaptors][upon_stopped]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    int *data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, sizeof(int)));
+    *data = 0;
+
+    auto snd = ex::just_stopped() | ex::continues_on(stream_ctx.get_scheduler())
+             | ex::upon_stopped([data]() -> int & { return *data; })
+             | ex::then([](int &ref) { ref = 11; });
+    STDEXEC::sync_wait(std::move(snd));
+
+    int const result = *data;
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    REQUIRE(result == 11);
+  }
 }  // namespace
