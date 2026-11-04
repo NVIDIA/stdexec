@@ -328,6 +328,32 @@ namespace STDEXEC
       }
     };
 
+    struct __fold_right_t
+    {
+      template <__std::move_constructible _Init>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto operator()(__ignore, _Init&& __init) const
+        noexcept(__nothrow_move_constructible<_Init>) -> _Init
+      {
+        return static_cast<_Init&&>(__init);
+      }
+
+      template <class _Fn, class _Init, class _Head, class... _Tail>
+        requires __callable<_Fn&, _Init, _Head>
+              && __callable<__fold_right_t, _Fn&, __call_result_t<_Fn&, _Init, _Head>, _Tail...>
+      STDEXEC_ATTRIBUTE(always_inline, host, device)
+      constexpr auto
+      operator()(_Fn&& __fn, _Init&& __init, _Head&& __head, _Tail&&... __tail) const  //
+        noexcept(
+          __nothrow_callable<_Fn&, _Init, _Head>
+          && __nothrow_callable<__fold_right_t, _Fn&, __call_result_t<_Fn&, _Init, _Head>, _Tail...>)
+      {
+        return (*this)(__fn,
+                       __fn(static_cast<_Init&&>(__init), static_cast<_Head&&>(__head)),
+                       static_cast<_Tail&&>(__tail)...);
+      }
+    };
+
 #  undef STDEXEC_TUPLE_GET
   }  // namespace __tup
 

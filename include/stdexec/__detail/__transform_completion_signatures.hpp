@@ -372,11 +372,14 @@ namespace STDEXEC
     template <class... _Args>
     consteval auto operator()() const noexcept
     {
-      if constexpr (__decay_copyable<_Args...>)
+      if constexpr (__nothrow_decay_copyable<_Args...>)
       {
-        return __concat_completion_signatures(
-          completion_signatures<_SetTag(__decay_t<_Args>...)>(),
-          __eptr_completion_unless_t<__nothrow_decay_copyable_t<_Args...>>());
+        return completion_signatures<_SetTag(__decay_t<_Args>...)>();
+      }
+      else if constexpr (__decay_copyable<_Args...>)
+      {
+        return completion_signatures<_SetTag(__decay_t<_Args>...),
+                                     set_error_t(std::exception_ptr)>();
       }
       else
       {

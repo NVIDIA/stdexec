@@ -112,9 +112,6 @@ namespace STDEXEC
     template <class _Tag, class _Indices>
     struct __connect;
 
-    template <class _Sexpr>
-    using __connect_t = __connect<tag_of_t<_Sexpr>, __child_indices_t<_Sexpr>>;
-
     template <class _Tag, std::size_t... _Idx>
     struct __connect<_Tag, __indices<_Idx...>>
     {
@@ -129,9 +126,13 @@ namespace STDEXEC
       }
     };
 
+    template <class _Sexpr>
+    using __connect_t = __connect<tag_of_t<_Sexpr>, __child_indices_t<_Sexpr>>;
+
     template <class _Sexpr, class _Receiver>
     concept __connectable_to =
-      __applicable<__connect_t<_Sexpr>, _Sexpr, __state_type_t<_Sexpr, _Receiver>&>;
+      sender_in<_Sexpr, env_of_t<_Receiver>>
+      && __applicable<__connect_t<_Sexpr>, _Sexpr, __state_type_t<_Sexpr, _Receiver>&>;
 
     STDEXEC_MODULE_EXPORT_AUTHORING
     struct __defaults
@@ -283,8 +284,8 @@ namespace STDEXEC
   struct __opstate
   {
     using __tag_t       = __decay_t<_Sexpr>::__tag_t;
+    using __connect_t   = __detail::__connect_t<_Sexpr>;
     using __state_t     = __detail::__state_type_t<_Sexpr, _Receiver>;
-    using __connect_t   = __detail::__connect<__tag_t, __detail::__child_indices_t<_Sexpr>>;
     using __child_ops_t = __apply_result_t<__connect_t, _Sexpr, __state_t&>;
 
     constexpr explicit __opstate(_Sexpr&& __sndr, _Receiver __rcvr)

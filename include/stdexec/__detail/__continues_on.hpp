@@ -332,7 +332,6 @@ namespace STDEXEC
           __nothrow_constructible_from<__state_for_t<_Sender, _Receiver>,
                                        __data_of<_Sender>&,
                                        _Receiver>) -> __state_for_t<_Sender, _Receiver>
-        requires sender_in<__child_of<_Sender>, __fwd_env_t<env_of_t<_Receiver>>>
       {
         static_assert(__sender_for<_Sender, continues_on_t>);
         auto& [__tag, __sched, __child] = __sndr;
