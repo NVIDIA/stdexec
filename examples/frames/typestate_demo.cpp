@@ -8,6 +8,7 @@
  * receiver's environment.
  */
 
+#include "associate.hpp"
 #include "finally.hpp"
 #include "just.hpp"
 #include "let_value.hpp"
@@ -427,6 +428,114 @@ namespace
     }
 
     char const * name;
+  };
+
+  // An async scope that counts the associations it has given out, and
+  // refuses new ones once closed.
+  struct counting_scope
+  {
+    class association
+    {
+     public:
+      association() = default;
+
+      explicit association(counting_scope* scope) noexcept
+        : scope_(scope)
+      {
+        if (scope_ != nullptr)
+        {
+          ++scope_->live;
+        }
+      }
+
+      association(association&& other) noexcept
+        : scope_(std::exchange(other.scope_, nullptr))
+      {}
+
+      auto operator=(association other) noexcept -> association&
+      {
+        std::swap(scope_, other.scope_);
+        return *this;
+      }
+
+      ~association()
+      {
+        if (scope_ != nullptr)
+        {
+          --scope_->live;
+        }
+      }
+
+      explicit operator bool() const noexcept
+      {
+        return scope_ != nullptr;
+      }
+
+      [[nodiscard]]
+      auto try_associate() const noexcept -> association
+      {
+        return association(scope_ != nullptr && !scope_->closed ? scope_ : nullptr);
+      }
+
+     private:
+      counting_scope* scope_ = nullptr;
+    };
+
+    struct token
+    {
+      [[nodiscard]]
+      auto try_associate() const noexcept -> association
+      {
+        return association(scope->closed ? nullptr : scope);
+      }
+
+      template <class Sndr>
+      auto wrap(Sndr&& sndr) const noexcept -> Sndr&&
+      {
+        return static_cast<Sndr&&>(sndr);
+      }
+
+      counting_scope* scope;
+    };
+
+    auto get_token() noexcept -> token
+    {
+      return {this};
+    }
+
+    int  live   = 0;
+    bool closed = false;
+  };
+
+  // Says how many associations its scope has given out when it's
+  // completed, and how; Env is its environment.
+  template <class Env>
+  struct association_probe
+  {
+    using receiver_concept = ex::receiver_t;
+
+    auto get_env() const noexcept -> Env
+    {
+      return {};
+    }
+
+    void set_value() && noexcept
+    {
+      std::printf(" completed with %d;", scope->live);
+    }
+
+    void set_stopped() && noexcept
+    {
+      std::printf(" stopped with %d;", scope->live);
+    }
+
+    template <class E>
+    void set_error(E&&) && noexcept
+    {
+      std::printf(" error;");
+    }
+
+    counting_scope* scope;
   };
 
   void section(char const * title)
@@ -923,5 +1032,47 @@ int main()
     where_final_starts(ts::finally(ex::schedule(context.get_scheduler()), says("finally:     ")));
     where_final_starts(
       exec::finally(ex::schedule(context.get_scheduler()), says("exec::finally:")));
+  }
+
+  {
+    section("12. associate holds its association until the operation is destroyed");
+    // [exec.associate] keeps the association in the operation state, and
+    // nothing releases it when the operation completes, so a scope can't
+    // finish joining until the operation is destroyed. associate keeps it in
+    // the carried region, so it ends there under every policy, as it does
+    // with stdexec::associate. Each line counts the scope's associations as
+    // the sender is made, connected, completed and destroyed.
+    counting_scope scope;
+    auto           show = [&]<class Env>(char const * label, auto make, Env)
+    {
+      std::printf("    %-17s", label);
+      {
+        auto sndr = make(scope.get_token());
+        std::printf(" made with %d;", scope.live);
+        auto op = ex::connect(std::move(sndr), association_probe<Env>{&scope});
+        std::printf(" connected with %d;", scope.live);
+        ex::start(op);
+      }
+      std::printf(" destroyed with %d\n", scope.live);
+    };
+    auto ours = [](auto token)
+    {
+      return ts::associate(ts::just(), std::move(token));
+    };
+    auto theirs = [](auto token)
+    {
+      return ex::associate(ex::just(), std::move(token));
+    };
+    show("eager:", ours, ts::policies_env<eager::policies<>>());
+    show("forward:", ours, ts::policies_env<forward::policies<>>());
+    show("eager+start:", ours, ts::policies_env<eager_start::policies<>>());
+    show("eager+split:", ours, ts::policies_env<eager_split::policies<>>());
+    show("stdexec:", theirs, ex::env<>());
+
+    // A closed scope refuses the association, and the operation completes
+    // with set_stopped() without connecting the sender.
+    scope.closed = true;
+    show("closed, eager:", ours, ts::policies_env<eager::policies<>>());
+    show("closed, stdexec:", theirs, ex::env<>());
   }
 }

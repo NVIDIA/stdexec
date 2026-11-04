@@ -1,9 +1,9 @@
 # Operation states as sequences of phases
 
 `just.hpp`, `then.hpp`, `let_value.hpp`, `sequence.hpp`, `repeat_n.hpp`,
-`when_all.hpp` and `finally.hpp` reimplement `just`, `then`, `let_value`, a
-binary `sequence`, `repeat_n`, `when_all` and `finally` with operation
-states that hold one *phase* at a time, written against the machinery in
+`when_all.hpp`, `finally.hpp` and `associate.hpp` reimplement `just`,
+`then`, `let_value`, a binary `sequence`, `repeat_n`, `when_all`, `finally`
+and `associate` with operation states that hold one *phase* at a time, written against the machinery in
 `typestate.hpp`. The aim is a standard way of expressing an operation's
 states and transitions, so that lifetimes are correct by construction, at no
 cost relative to the established approach. The machinery is where the
@@ -168,9 +168,14 @@ or completed. Entry and Ending are choices of what those two states hold:
 under `connect_entry`, being connected holds the first phase, entered but
 not started, and under `forward_results`, being completed holds the phase
 the operation completed from; under the other two, they hold nothing.
-`phased` enters the completed state the same way from every completion and
-every failure (`settle`), copying what the receiver gets out of the phase
-first when that state won't hold it. Each exception path knows statically
+The phase entered first is the first phase unless the operation says
+otherwise (`on_connect<Phase>` and `begin<Phase>`), for an operation whose
+first step depends on what it learns at `connect`: `associate`, refused by
+its scope, enters a phase with no child that completes with
+`set_stopped()`, as `just`'s completes with its values. `phased` enters the
+completed state the same way from every completion and every failure
+(`settle`), copying what the receiver gets out of the phase first when that
+state won't hold it. Each exception path knows statically
 which phase, if any, is live, so the byte recording the live phase serves
 only the destructor, and only when one of the two states holds a phase, or
 `visit_live`, when there's a slot. With `eager_teardown` and `start_entry`
@@ -191,6 +196,7 @@ stored sender as well, which is every level's carried data at once.
 | 9 | `when_all` giving its children its own stop token: a child's error, and the receiver's stop request, reaching the other children. |
 | 10 | `then`'s function called as its child sent the values, under every ending. |
 | 11 | `finally` replaying its initial sender's value, error or stopped after its final sender, or completing as a failing final sender did, while its receiver destroys the operation from inside the completion; connecting its final sender just before its initial sender, by `connect` or by `start`, so that a final sender whose `connect` throws stops the initial sender from being connected; its final sender starting on its initial sender's completion scheduler, as `exec::finally`'s does. |
+| 12 | `associate` keeping its scope's association until its operation is destroyed, under every policy, as `stdexec::associate` does, and completing with `set_stopped()` when its scope refuses one. |
 
 Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
@@ -278,6 +284,30 @@ built with stdexec's own helper. Both children's operations are alive at
 once, so the final sender's operation can't reuse the initial sender's
 bytes, even under `overlapped_layout`; under `stored_sender`, `finally`
 still comes out 8 bytes smaller than `exec::finally`, and moves less.
+
+`associate` is the C++26 algorithm whose lifetimes fit phases least
+well: the association it takes from its scope must already exist at
+`connect`, since it decides whether the sender is connected at all, and
+[exec.associate] keeps it in the operation state, so it lasts until the
+operation is destroyed, after it has completed. That's neither a phase nor
+a slot, both of which end by completion under `eager_teardown`; it's the
+carried region. The association travels with the wrapped sender, as in
+[exec.associate]'s associate-data, because the wrapped sender may refer to
+what the scope keeps alive: it's destroyed while the association is held,
+or, if the scope refuses one, as soon as `associate` is called. So
+`associate` initializes its carried region by moving both out of the sender
+(or, bound without consuming, by copying them, which asks the scope for
+another association, as copying the sender does), and connects the wrapped
+sender it now owns, under either Data policy. Under every policy, then, a
+scope can't finish
+joining until whoever owns the operation destroys it, as with
+`stdexec::associate`: `when_all(associate(sndr, token), scope.join())`
+completes neither child, since `when_all` destroys its children only after
+both have completed. One level down, the policies differ:
+`when_all(then(associate(sndr, token), fn), scope.join())` hangs under
+`forward_results`, as it does with stdexec's algorithms, but completes under
+`eager_teardown`, where `then` ends its phase, and with it `associate`'s
+operation and the association, before it completes.
 
 `split_sender` trades the other way. Each operation moves in the data it
 uses, so a value moves once per level rather than once in all, but the data
