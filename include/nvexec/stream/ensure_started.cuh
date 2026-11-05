@@ -24,11 +24,11 @@
 #include "../../exec/completion_signatures.hpp"
 #include "../../exec/ensure_started.hpp"
 #include "../../exec/env.hpp"
+#include "../../exec/stoppable_base.hpp"
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
 #include <atomic>
-#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -268,12 +268,15 @@ namespace nv::execution::_strm
     struct opstate
       : public opstate_base
       , public _strm::opstate_base<Receiver>
+      , public exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>,
+                                          opstate<Sender, Receiver>>
     {
-      using on_stop_t = std::optional<
-        stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>>, __forward_stop_request<>>>;
-
-      on_stop_t                         on_stop_{};
       __intrusive_ptr<sh_state<Sender>> shared_state_;
+
+      void on_stop_requested() noexcept
+      {
+        shared_state_->stop_source_.request_stop();
+      }
 
      public:
       opstate(Receiver rcvr, __intrusive_ptr<sh_state<Sender>> shared_state) noexcept
@@ -284,6 +287,10 @@ namespace nv::execution::_strm
 
       ~opstate()
       {
+        // The stopped path in start() completes without deregistering, and the
+        // base outlives shared_state_, which on_stop_requested() uses.
+        this->deregister_stoppable();
+
         // Check to see if this operation was ever started. If not,
         // detach the (potentially still running) operation:
         if (nullptr == shared_state_->opstate1_.load(std::memory_order_acquire))
@@ -297,7 +304,7 @@ namespace nv::execution::_strm
       static void notify(opstate_base* self) noexcept
       {
         auto* op = static_cast<opstate*>(self);
-        op->on_stop_.reset();
+        op->deregister_stoppable();
 
         cudaError_t& status = op->shared_state_->stream_provider_.status_;
 
@@ -338,8 +345,7 @@ namespace nv::execution::_strm
         else
         {
           // register stop callback:
-          on_stop_.emplace(get_stop_token(STDEXEC::get_env(this->rcvr_)),
-                           __forward_stop_request{shared_state->stop_source_});
+          this->register_stoppable(get_stop_token(STDEXEC::get_env(this->rcvr_)));
           // Check if the stop_source has requested cancellation
           if (shared_state->stop_source_.stop_requested())
           {
