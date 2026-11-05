@@ -33,6 +33,7 @@
 #  include "./safe_file_descriptor.hpp"
 
 #  include "../scope.hpp"
+#  include "../stoppable_base.hpp"
 
 #  if !__has_include(<linux/version.h>)
 #    error "linux/version.h not found. Do you use Linux?"
@@ -929,8 +930,7 @@ namespace experimental::execution
       {
         if (__op_->__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1)
         {
-          __op_->__on_context_stop_.reset();
-          __op_->__on_receiver_stop_.reset();
+          __op_->__deregister_stop_callbacks_();
           STDEXEC::set_stopped((static_cast<_Base&&>(*__op_)).receiver());
         }
       }
@@ -991,26 +991,31 @@ namespace experimental::execution
       __base.submit_stop(__sqe);
     };
 
+    struct __context_stop_tag
+    {};
+
+    struct __receiver_stop_tag
+    {};
+
+    // Stop requests on either the context's or the receiver's token start
+    // __stop_operation_.
     template <__stoppable_task _Base>
-    struct __stoppable_task_facade : __impl_base<_Base, __has_submit_stop<_Base>>
+    struct __stoppable_task_facade
+      : __impl_base<_Base, __has_submit_stop<_Base>>
+      , private inplace_stoppable_base<__stoppable_task_facade<_Base>, __context_stop_tag>
+      , private stoppable_base_for_t<
+          STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_of_t<_Base>>>,
+          __stoppable_task_facade<_Base>,
+          __receiver_stop_tag>
     {
       using __receiver_t = __receiver_of_t<_Base>;
       using __base_t     = __impl_base<_Base, __has_submit_stop<_Base>>;
-
-      struct __stop_callback
-      {
-        __stoppable_task_facade* __self_;
-
-        void operator()() noexcept
-        {
-          __self_->__stop_operation_.start();
-        }
-      };
-
-      using __on_context_stop_t  = std::optional<STDEXEC::inplace_stop_callback<__stop_callback>>;
-      using __on_receiver_stop_t = std::optional<
-        STDEXEC::stop_callback_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_t>>,
-                                     __stop_callback>>;
+      using __context_stop_base_t =
+        inplace_stoppable_base<__stoppable_task_facade, __context_stop_tag>;
+      using __receiver_stop_base_t =
+        stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<__receiver_t>>,
+                             __stoppable_task_facade,
+                             __receiver_stop_tag>;
 
       template <class... _Args>
         requires STDEXEC::__std::constructible_from<_Base, _Args...>
@@ -1048,9 +1053,9 @@ namespace experimental::execution
         STDEXEC_ASSERT(prev == 0);
         __context&    __context_ = this->__base_.context();
         __receiver_t& __receiver = this->__base_.receiver();
-        __on_context_stop_.emplace(__context_.get_stop_token(), __stop_callback{this});
-        __on_receiver_stop_.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(__receiver)),
-                                    __stop_callback{this});
+        __context_stop_base_t::register_stoppable(__context_.get_stop_token());
+        __receiver_stop_base_t::register_stoppable(
+          STDEXEC::get_stop_token(STDEXEC::get_env(__receiver)));
         this->__base_.submit(__sqe);
       }
 
@@ -1058,8 +1063,7 @@ namespace experimental::execution
       {
         if (__n_ops_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed) == 1)
         {
-          __on_context_stop_.reset();
-          __on_receiver_stop_.reset();
+          __deregister_stop_callbacks_();
           __receiver_t& __receiver = this->__base_.receiver();
           __context&    __context_ = this->__base_.context();
           auto          token      = STDEXEC::get_stop_token(STDEXEC::get_env(__receiver));
@@ -1074,10 +1078,28 @@ namespace experimental::execution
         }
       }
 
+      void __deregister_stop_callbacks_() noexcept
+      {
+        __context_stop_base_t::deregister_stoppable();
+        __receiver_stop_base_t::deregister_stoppable();
+      }
+
       __stop_operation<__stoppable_task_facade> __stop_operation_;
       STDEXEC::__std::atomic<int>               __n_ops_{0};
-      __on_context_stop_t                       __on_context_stop_{};
-      __on_receiver_stop_t                      __on_receiver_stop_{};
+
+     private:
+      void on_stop_requested(__context_stop_tag) noexcept
+      {
+        __stop_operation_.start();
+      }
+
+      void on_stop_requested(__receiver_stop_tag) noexcept
+      {
+        __stop_operation_.start();
+      }
+
+      friend __context_stop_base_t;
+      friend __receiver_stop_base_t;
     };
 
     template <class _Base>
