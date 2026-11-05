@@ -587,14 +587,13 @@ namespace STDEXEC
           STDEXEC_IF_OK(__state)
           {
             static_assert(_State::__count(set_value) <= 1);
-            auto __item2 = STDEXEC::__transform_completion_signatures(
-              __item,
-              __ignore_completion(),
-              __decay_arguments<set_error_t, when_all_t>());
-            auto __state2 = STDEXEC::__transform_completion_signatures(
-              __state,
-              __ignore_completion(),
-              __decay_arguments<set_error_t, when_all_t>());
+            auto __ignore = __ignore_completion();
+            auto __vdecay = __decay_arguments<set_value_t, when_all_t>();
+            auto __edecay = __decay_arguments<set_error_t, when_all_t>();
+
+            auto __item2  = STDEXEC::__transform_completion_signatures(__item, __vdecay, __edecay);
+            auto __item3  = STDEXEC::__transform_completion_signatures(__item2, __ignore);
+            auto __state2 = STDEXEC::__transform_completion_signatures(__state, __ignore);
 
             if constexpr (_Item::__count(set_value) > 1)
             {
@@ -606,22 +605,18 @@ namespace STDEXEC
             }
             else if constexpr (_Item::__count(set_value) == 0 || _State::__count(set_value) == 0)
             {
-              return STDEXEC::__concat_completion_signatures(__state2, __item2);
+              return STDEXEC::__concat_completion_signatures(__state2, __item3);
             }
             else
             {
-              using __decay_values_fn = __mtransform<__q1<__decay_t>, __qq<__mlist>>;
-              using __item_values_t   = __value_types_t<_Item, __decay_values_fn, __q<__msingle>>;
-              using __state_values_t  = __value_types_t<_State, __qq<__mlist>, __q<__msingle>>;
-              using __values_sig_t =
-                __mcall<__mconcat<__qf<set_value_t>>, __state_values_t, __item_values_t>;
-              using __is_nothrow_t = STDEXEC::__nothrow_decay_copyable_results_t<_Item>;
+              using __vdecay_fn  = __mtransform<__q1<__decay_t>, __qq<__mlist>>;
+              using __mk_vsig_fn = __mconcat<__qf<set_value_t>>;
+              using __ivalues_t  = __value_types_t<_Item, __vdecay_fn, __q<__msingle>>;
+              using __svalues_t  = __value_types_t<_State, __qq<__mlist>, __q<__msingle>>;
+              using __vsig_t     = __mcall<__mk_vsig_fn, __svalues_t, __ivalues_t>;
 
-              return STDEXEC::__concat_completion_signatures(
-                completion_signatures<__values_sig_t>(),
-                __eptr_completion_unless_t<__is_nothrow_t>(),
-                __state2,
-                __item2);
+              auto __values = completion_signatures<__vsig_t>();
+              return STDEXEC::__concat_completion_signatures(__values, __state2, __item3);
             }
           }
         };
