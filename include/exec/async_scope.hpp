@@ -21,6 +21,7 @@
 #include "../stdexec/stop_token.hpp"
 #include "completion_signatures.hpp"
 #include "env.hpp"
+#include "stoppable_base.hpp"
 
 #include "../stdexec/__detail/__atomic.hpp"
 #include <mutex>
@@ -366,19 +367,25 @@ namespace experimental::execution
       void (*__delete_)(_Ty*);
     };
 
+    // Forwards stop requests on the scope's token to __stop_source_.
     template <class _Completions, class _Env>
     struct __future_state_base
+      : private inplace_stoppable_base<__future_state_base<_Completions, _Env>>
     {
       constexpr __future_state_base(_Env __env, __impl const * __scope)
-        : __forward_scope_{std::in_place,
-                           __scope->__stop_source_.get_token(),
-                           __forward_stopped{&__stop_source_}}
-        , __env_(make_env(static_cast<_Env&&>(__env),
+        : __env_(make_env(static_cast<_Env&&>(__env),
                           STDEXEC::prop{get_stop_token, __scope->__stop_source_.get_token()}))
-      {}
+      {
+        // Not in the initializer list: if the scope has already been stopped,
+        // this calls on_stop_requested(), which needs __stop_source_.
+        this->register_stoppable(__scope->__stop_source_.get_token());
+      }
 
       ~__future_state_base()
       {
+        // The base is destroyed after __stop_source_, so stop forwarding first.
+        this->deregister_stoppable();
+
         [[maybe_unused]]
         std::unique_lock __guard{__mutex_};
         if (__step_ == __future_step::__created)
@@ -404,14 +411,25 @@ namespace experimental::execution
         STDEXEC_ASSERT(actual == __from);
       }
 
-      inplace_stop_source                                           __stop_source_;
-      STDEXEC::__optional<inplace_stop_callback<__forward_stopped>> __forward_scope_;
-      std::mutex                                                    __mutex_;
-      __future_step __step_ = __future_step::__created;
+      void __stop_forwarding_scope_() noexcept
+      {
+        this->deregister_stoppable();
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
+      }
+
+      inplace_stop_source __stop_source_;
+      std::mutex          __mutex_;
+      __future_step       __step_ = __future_step::__created;
       std::unique_ptr<__future_state_base, __dynamic_delete<__future_state_base>> __no_future_;
       __completions_as_variant_t<_Completions>                                    __data_;
       __intrusive_queue<&__subscription::__next_>                                 __subscribers_;
       __env_t<_Env>                                                               __env_;
+
+      friend inplace_stoppable_base<__future_state_base>;
     };
 
     template <class _Completions, class _Env>
@@ -423,7 +441,7 @@ namespace experimental::execution
       {
         auto& __state             = *__state_;
         auto  __local_subscribers = std::move(__state.__subscribers_);
-        __state.__forward_scope_.reset();
+        __state.__stop_forwarding_scope_();
         if (__state.__no_future_.get() != nullptr)
         {
           // nobody is waiting for the results
