@@ -25,6 +25,7 @@
 
 #include <chrono>
 #include <concepts>
+#include <future>
 #include <optional>
 #include <thread>
 #include <utility>
@@ -409,5 +410,66 @@ namespace
     auto duration = t1 - t0;
     CHECK(duration > std::chrono::milliseconds(100));
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  enum class completion
+  {
+    value,
+    stopped
+  };
+
+  struct std_stop_token_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    void set_value() && noexcept
+    {
+      done_->set_value(completion::value);
+    }
+
+    void set_stopped() && noexcept
+    {
+      done_->set_value(completion::stopped);
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return STDEXEC::prop{STDEXEC::get_stop_token, token_};
+    }
+
+    std::promise<completion> *done_;
+    std::stop_token           token_;
+  };
+
+  TEST_CASE("timed_thread_scheduler - schedule_after with a std::stop_token receiver",
+            "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    std::stop_source             source;
+    std::promise<completion>     done;
+    auto op = STDEXEC::connect(exec::schedule_after(scheduler, std::chrono::milliseconds(10)),
+                               std_stop_token_receiver{&done, source.get_token()});
+    STDEXEC::start(op);
+    CHECK(done.get_future().get() == completion::value);
+  }
+
+  TEST_CASE("timed_thread_scheduler - schedule_after stops through a std::stop_token",
+            "[timed_thread_scheduler][schedule_at]")
+  {
+    exec::timed_thread_context   context;
+    exec::timed_thread_scheduler scheduler = context.get_scheduler();
+    std::stop_source             source;
+    std::promise<completion>     done;
+    auto                         future = done.get_future();
+    auto op = STDEXEC::connect(exec::schedule_after(scheduler, std::chrono::hours(1)),
+                               std_stop_token_receiver{&done, source.get_token()});
+    STDEXEC::start(op);
+    source.request_stop();
+    REQUIRE(future.wait_for(std::chrono::seconds(10)) == std::future_status::ready);
+    CHECK(future.get() == completion::stopped);
+  }
+#  endif
 }  // namespace
 #endif

@@ -25,6 +25,7 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__schedulers.hpp"
 #include "../stdexec/__detail/__spin_loop_pause.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -374,7 +375,8 @@ namespace experimental::execution
       };
 
       using callback_type =
-        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
+        STDEXEC::stop_callback_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>,
+                                     on_stopped_t>;
 
       constexpr void request_stop() noexcept
       {
