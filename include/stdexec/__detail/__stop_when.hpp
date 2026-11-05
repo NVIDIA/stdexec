@@ -35,7 +35,6 @@ import stdexec;
 #  include "__stop_token.hpp"
 
 #  if !STDEXEC_USE_MODULES()
-#    include <functional>
 #    include <utility>
 #  endif
 
@@ -81,7 +80,7 @@ namespace STDEXEC
     template <class _Token1, class _Token2>
     struct __fused_token
     {
-      friend constexpr bool operator==(__fused_token const &, __fused_token const &) = default;
+      friend bool operator==(__fused_token const &, __fused_token const &) = default;
 
       [[nodiscard]]
       bool stop_requested() const noexcept
@@ -103,8 +102,8 @@ namespace STDEXEC
         explicit callback_type(_FusedToken&& __ftkn, _Cb&& __fn)
           noexcept(__nothrow_constructible_from<_Fn, _Cb>)
           : __fn_(static_cast<_Cb&&>(__fn))
-          , __cb1_(static_cast<_FusedToken&&>(__ftkn).__tkn1_, __cb_t(*this))
-          , __cb2_(static_cast<_FusedToken&&>(__ftkn).__tkn2_, __cb_t(*this))
+          , __cb1_(static_cast<_FusedToken&&>(__ftkn).__tkn1_, __cb_t{this})
+          , __cb2_(static_cast<_FusedToken&&>(__ftkn).__tkn2_, __cb_t{this})
         {}
 
         void operator()() noexcept
@@ -116,9 +115,18 @@ namespace STDEXEC
         }
 
        private:
-        using __cb_t  = std::reference_wrapper<callback_type>;
-        using __cb1_t = _Token1::template callback_type<__cb_t>;
-        using __cb2_t = _Token2::template callback_type<__cb_t>;
+        struct __cb_t
+        {
+          void operator()() const noexcept
+          {
+            (*__self_)();
+          }
+
+          callback_type* __self_;
+        };
+
+        using __cb1_t = stop_callback_for_t<_Token1, __cb_t>;
+        using __cb2_t = stop_callback_for_t<_Token2, __cb_t>;
 
         // __called_ must be initialized before the callbacks: a callback
         // registered with an already-stopped token runs its function as part
