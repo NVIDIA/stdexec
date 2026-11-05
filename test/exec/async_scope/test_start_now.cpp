@@ -83,4 +83,42 @@ namespace
     REQUIRE(executedB);
   }
 
+  TEST_CASE("start_now request_stop stops the senders", "[async_scope][start_now]")
+  {
+    bool         executed{false};
+    bool         stopped{false};
+    async_scope  scope;
+    ex::run_loop loop;
+
+    auto stg = start_now(scope,
+                         ex::schedule(loop.get_scheduler())
+                           | ex::then([&]() noexcept { executed = true; })
+                           | ex::upon_stopped([&]() noexcept { stopped = true; }));
+    REQUIRE(stg.request_stop());
+    loop.finish();
+    loop.run();
+    REQUIRE(stopped);
+    REQUIRE_FALSE(executed);
+    REQUIRE(sync_wait(stg.async_wait()).has_value());
+  }
+
+  TEST_CASE("start_now senders still stop with the scope", "[async_scope][start_now]")
+  {
+    bool         executed{false};
+    bool         stopped{false};
+    async_scope  scope;
+    ex::run_loop loop;
+
+    auto stg = start_now(scope,
+                         ex::schedule(loop.get_scheduler())
+                           | ex::then([&]() noexcept { executed = true; })
+                           | ex::upon_stopped([&]() noexcept { stopped = true; }));
+    REQUIRE(scope.request_stop());
+    loop.finish();
+    loop.run();
+    REQUIRE(stopped);
+    REQUIRE_FALSE(executed);
+    REQUIRE(sync_wait(stg.async_wait()).has_value());
+  }
+
 }  // namespace
