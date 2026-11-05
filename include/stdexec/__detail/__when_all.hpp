@@ -55,6 +55,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
@@ -652,26 +653,12 @@ namespace STDEXEC
         return __tup::__fold_right_t()(__mk_accumulate_sigs_fn(), __init, __cmplsigs...);
       }
 
-      template <class _CpCvref>
-      static constexpr auto __mk_fold_cmplsigs_fn() noexcept
+      template <class... _Env>
+      static constexpr auto __fold_cmplsigs_fn = []<class... _Child>(__mlist_ptr<_Child...>)
       {
-        return []<class... _Child>(__sexpr<when_all_t, __, _Child...> const *)
-        {
-          return __fold_cmplsigs(
-            STDEXEC::get_completion_signatures<__mcall1<_CpCvref, _Child>>()...);
-        };
-      }
-
-      template <class _CpCvref, class _Env>
-      static constexpr auto __mk_fold_cmplsigs_fn() noexcept
-      {
-        return []<class... _Child>(__sexpr<when_all_t, __, _Child...> const *)
-        {
-          using __env_t = __when_all::__env_t<_Env, __mcall1<_CpCvref, _Child>...>;
-          return __fold_cmplsigs(
-            STDEXEC::get_completion_signatures<__mcall1<_CpCvref, _Child>, __env_t>()...);
-        };
-      }
+        static_assert(sizeof...(_Env) == 0);  // __fold_cmplsigs_fn<_Env> is specialized below
+        return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child>()...);
+      };
 
       static constexpr auto __get_attrs =
         []<class... _Child>(__ignore, __ignore, _Child const &...) noexcept
@@ -683,8 +670,7 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, when_all_t>);
-        return __mk_fold_cmplsigs_fn<__copy_cvref_fn<_Self>, _Env...>()(
-          std::add_pointer_t<_Self>());
+        return __fold_cmplsigs_fn<_Env...>(__children_of<_Self, __qq<__mlist_ptr>>());
       }
 
       static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
@@ -839,6 +825,14 @@ namespace STDEXEC
 
         __state.__arrive();
       };
+    };
+
+    template <class _Env>
+    constexpr auto __when_all_impl::__fold_cmplsigs_fn<_Env> =
+      []<class... _Child>(__mlist_ptr<_Child...>)
+    {
+      using __env_t = __when_all::__env_t<_Env, _Child...>;
+      return __fold_cmplsigs(STDEXEC::get_completion_signatures<_Child, __env_t>()...);
     };
 
     struct __when_all_with_variant_impl : __sexpr_defaults
