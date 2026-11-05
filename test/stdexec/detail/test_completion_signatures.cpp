@@ -135,8 +135,10 @@ namespace
   void expect_val_types()
   {
     using expected_t = ex::__mmake_set<Expected...>;
-    using actual_t =
-      ex::__gather_completions_t<ex::set_value_t, CS, ex::__q<ex::__mlist>, ex::__q<ex::__mset>>;
+    using actual_t   = ex::__gather_completion_signatures_t<ex::set_value_t,
+                                                            CS,
+                                                            ex::__q<ex::__mlist>,
+                                                            ex::__q<ex::__mset>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 
@@ -144,8 +146,10 @@ namespace
   void expect_err_types()
   {
     using expected_t = ex::__mmake_set<Expected...>;
-    using actual_t =
-      ex::__gather_completions_t<ex::set_error_t, CS, ex::__q<ex::__midentity>, ex::__q<ex::__mset>>;
+    using actual_t   = ex::__gather_completion_signatures_t<ex::set_error_t,
+                                                            CS,
+                                                            ex::__q<ex::__midentity>,
+                                                            ex::__q<ex::__mset>>;
     static_assert(ex::__mset_eq<actual_t, expected_t>);
   }
 

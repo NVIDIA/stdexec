@@ -57,7 +57,7 @@ namespace experimental::execution
       auto operator()(Ts &&...ts) const noexcept -> _error_t<Ts...>;
 
       template <class... Ts>
-        requires STDEXEC::__cmplsigs::__is_compl_sig<_set_tag_t(Ts...)>
+        requires STDEXEC::__completion_signature<_set_tag_t(Ts...)>
       auto operator()(Ts &&...) const noexcept -> STDEXEC::completion_signatures<_set_tag_t(Ts...)>
       {
         return {};

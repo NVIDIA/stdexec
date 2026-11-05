@@ -28,6 +28,7 @@
 #include "../../stdexec/__detail/__config.hpp"
 #include "../../stdexec/__detail/__diagnostics.hpp"
 #include "../../stdexec/__detail/__execution_fwd.hpp"
+#include "../../stdexec/__detail/__gather_completion_signatures.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__sender_introspection.hpp"
 #include "../../stdexec/__detail/__stop_token.hpp"
@@ -833,7 +834,7 @@ namespace experimental::execution
       struct __gather_sequences_t
       {
         template <class _Completions>
-        using __f = STDEXEC::__gather_completions_t<
+        using __f = STDEXEC::__gather_completion_signatures_t<
           STDEXEC::set_value_t,
           _Completions,
           __arg_of_t<_Sequence, _Sender, _Env...>,

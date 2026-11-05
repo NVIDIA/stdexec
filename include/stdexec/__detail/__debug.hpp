@@ -29,6 +29,7 @@ import stdexec;
 #  include "__concepts.hpp"
 #  include "__env.hpp"  // IWYU pragma: keep for env<>
 #  include "__meta.hpp"
+#  include "__normalize_completion_signature.hpp"
 #  include "__query.hpp"
 #  include "__sender_concepts.hpp"
 
@@ -130,7 +131,7 @@ namespace STDEXEC
 
     template <class _CvSender, class _Env, class _Sigs>
     using __receiver_t = __mapply<
-      __mtransform<__mcompose<__q1<std::remove_pointer_t>, __q1<__cmplsigs::__normalize_sig_t>>,
+      __mtransform<__mcompose<__q1<std::remove_pointer_t>, __q1<__cmplsigs::__normalize_t>>,
                    __mbind_front_q<__receiver, _CvSender, _Env>>,
       _Sigs>;
 

@@ -302,14 +302,13 @@ namespace nv::execution::_strm
         exit_opstate_t<__copy_cvref_t<_when_all_sender_t, Sender>, receiver<CvReceiver, Index>>;
 
       // tuple<tuple<Vs1...>, tuple<Vs2...>, ...>
-      using _child_values_t =
-        __if_c<STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0,
-               __minvoke<__qq<__tuple>,
-                         __value_types_of_t<Senders,
-                                            _when_all::env_t<_env_t>,
-                                            __qq<__decayed_tuple>,
-                                            __msingle_or<void>>...>,
-               __>;
+      using _child_values_t = __if_c<_completions_t::__count(set_value_t()) != 0,
+                                     __minvoke<__qq<__tuple>,
+                                               __value_types_of_t<Senders,
+                                                                  _when_all::env_t<_env_t>,
+                                                                  __qq<__decayed_tuple>,
+                                                                  __msingle_or<void>>...>,
+                                     __>;
 
       using _errors_t =
         error_types_of_t<when_all_sender, _when_all::env_t<_env_t>, __uniqued_variant>;
@@ -389,7 +388,7 @@ namespace nv::execution::_strm
           switch (state_.load(std::memory_order_relaxed))
           {
           case _when_all::started:
-            if constexpr (STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0)
+            if constexpr (_completions_t::__count(set_value_t()) != 0)
             {
               // All child operations completed successfully:
               STDEXEC::__apply(
@@ -457,7 +456,7 @@ namespace nv::execution::_strm
       template <std::size_t Index, class... Args>
       void _set_value(Args&&... args) noexcept
       {
-        if constexpr (STDEXEC::__detail::__count_of<set_value_t, _completions_t> != 0)
+        if constexpr (_completions_t::__count(set_value_t()) != 0)
         {
           // We only need to bother recording the completion values
           // if we're not already in the "error" or "stopped" state.

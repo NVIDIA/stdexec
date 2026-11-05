@@ -29,6 +29,7 @@ import stdexec;
 #  include "__basic_sender.hpp"
 #  include "__diagnostics.hpp"
 #  include "__env.hpp"
+#  include "__gather_completion_signatures.hpp"
 #  include "__meta.hpp"
 #  include "__schedulers.hpp"
 #  include "__sender_adaptor_closure.hpp"
@@ -157,7 +158,7 @@ namespace STDEXEC
     };
 
     template <class _SetTag, class _Child, class _Fn, class _Env>
-    using __has_nothrow_completions_t = __gather_completions_t<
+    using __has_nothrow_completions_t = __gather_completion_signatures_t<
       completion_signatures_of_t<_Child, _Env>,
       _SetTag,
       __has_nothrow_completions_fn<_Fn, __result_env_t<_SetTag, _Child, _Env>>,
@@ -418,7 +419,7 @@ namespace STDEXEC
     //   if constexpr (sender_in<_Sndr, _Env...>)
     //   {
     //     using __domain_transform_fn = __let::__domain_transform_fn<_SetTag, _Fun, _Sndr, _Env...>;
-    //     return __minvoke_or_q<__gather_completions_t,
+    //     return __minvoke_or_q<__gather_completion_signatures_t,
     //                           indeterminate_domain<>,
     //                           __t<_LetTag>,
     //                           __completion_signatures_of_t<_Sndr, _Env...>,
@@ -493,7 +494,7 @@ namespace STDEXEC
 
     //       constexpr auto __pred_behavior =
     //         STDEXEC::__get_completion_behavior<__set_tag_t, _Sndr, __fwd_env_t<_Env>...>();
-    //       constexpr auto __result_behaviors = __gather_completions_t<
+    //       constexpr auto __result_behaviors = __gather_completion_signatures_t<
     //         __set_tag_t,
     //         __completions_t,
     //         __transform_fn,

@@ -28,6 +28,7 @@ import stdexec;
 
 // include these after __execution_fwd.hpp
 #  include "__meta.hpp"
+#  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
 #  if !STDEXEC_USE_MODULES()
 #    include <exception>  // IWYU pragma: keep for std::exception
@@ -35,6 +36,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct sender_tag;
@@ -316,11 +318,121 @@ namespace STDEXEC
 
     constexpr auto schedule() noexcept
     {
-      return __not_a_sender<_What...>{};
+      return __not_a_sender<_What...>();
     }
 
     constexpr bool operator==(__not_a_scheduler const &) const noexcept = default;
   };
+
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class, class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+  template <class... _What, class... _Values>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
+  {
+    return {};
+  }
+
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+  // C++26, https://wg21.link/p3068
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Return, class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
+  {
+    if constexpr (__same_as<_What, dependent_sender_error>)
+    {
+      throw __mexception<dependent_sender_error, _More...>();
+    }
+    else if constexpr (sizeof...(_Values) == 1)
+    {
+      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
+    }
+    else
+    {
+      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
+    }
+  }
+
+  template <class _What, class... _More, class... _Values>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_compile_time_error(_Values... __values) -> completion_signatures<>
+  {
+    (void) STDEXEC::__throw_compile_time_error_r<completion_signatures<>, _What, _More...>(
+      static_cast<_Values>(__values)...);
+  }
+
+#  endif  // ^^^ constexpr exceptions ^^^
+
+  template <class _Return, class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
+  }
+
+  template <class... _What>
+  [[nodiscard]]
+  consteval auto __throw_compile_time_error(__mexception<_What...>)
+  {
+    return STDEXEC::__throw_compile_time_error<_What...>();
+  }
+
+  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used
+  // to check that an expression's type is not an __mexception type.
+
+#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
+
+#    define STDEXEC_IF_OK(_ID)                      \
+    if constexpr (STDEXEC::__merror<decltype(_ID)>) \
+    {                                               \
+      return _ID;                                   \
+    } else
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class, class _Sndr>
+  [[nodiscard]]
+  consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
+    return {};
+  }
+
+  template <class _Sndr>
+  [[nodiscard]]
+  consteval auto __throw_dependent_sender_error() noexcept -> __dependent_sender_error_t<_Sndr>
+  {
+    return {};
+  }
+
+#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
+
+#    define STDEXEC_IF_OK(_ID)
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  template <class _Result, class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_dependent_sender_error_r() -> _Result
+  {
+    throw __dependent_sender_error_t<_Sndr>();
+  }
+
+  template <class _Sndr>
+  [[noreturn, nodiscard]]
+  consteval auto __throw_dependent_sender_error() -> completion_signatures<>
+  {
+    throw __dependent_sender_error_t<_Sndr>();
+  }
+
+#  endif  // ^^^ constexpr exceptions ^^^
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"
