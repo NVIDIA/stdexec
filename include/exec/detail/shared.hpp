@@ -160,6 +160,16 @@ namespace experimental::execution::__shared
 
     static_assert(__one_of<_Tag, split_t, ensure_started_t>);
 
+    struct __on_stop_request
+    {
+      constexpr void operator()() const noexcept
+      {
+        (*__self_)();
+      }
+
+      __local_state* __self_;
+    };
+
     constexpr explicit __local_state(__sh_state_ptr_t __sh_state, _Receiver __rcvr) noexcept
       : __local_state::__local_state_base{}
       , __rcvr_(static_cast<_Receiver&&>(__rcvr))
@@ -188,7 +198,7 @@ namespace experimental::execution::__shared
       // decrement the shared state's ref count until after *this has been added
       // to the waiters list.
       auto const __stok = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
-      __on_stop_.emplace(__stok, *this);
+      __on_stop_.emplace(__stok, __on_stop_request{this});
 
       // We haven't put __state in the waiters list yet and we are holding a ref
       // count to __sh_state_, so nothing can happen to the __sh_state_ here.
@@ -256,9 +266,9 @@ namespace experimental::execution::__shared
       static_cast<__cv_variant_t&&>(__sh_state_->__results_).__complete(__rcvr_);
     }
 
-    _Receiver                                                 __rcvr_;
-    __optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
-    __sh_state_ptr_t                                          __sh_state_;
+    _Receiver                                                    __rcvr_;
+    __optional<stop_callback_for_t<__stok_t, __on_stop_request>> __on_stop_{};
+    __sh_state_ptr_t                                             __sh_state_;
   };
 
   //////////////////////////////////////////////////////////////////////////////

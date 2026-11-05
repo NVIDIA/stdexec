@@ -372,4 +372,62 @@ namespace
     (void) snd2;
   }
 
+#if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  struct std_stop_token_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value(int value) && noexcept
+    {
+      *value_ = value;
+    }
+
+    void set_error(std::exception_ptr) && noexcept
+    {
+      FAIL("unexpected error");
+    }
+
+    void set_stopped() && noexcept
+    {
+      *stopped_ = true;
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return ex::prop{ex::get_stop_token, token_};
+    }
+
+    int*            value_;
+    bool*           stopped_;
+    std::stop_token token_;
+  };
+
+  TEST_CASE("ensure_started works with a std::stop_token receiver", "[adaptors][ensure_started]")
+  {
+    std::stop_source source;
+    int              value   = 0;
+    bool             stopped = false;
+    auto             op      = ex::connect(exec::ensure_started(ex::just(42)),
+                          std_stop_token_receiver{&value, &stopped, source.get_token()});
+    ex::start(op);
+    REQUIRE(value == 42);
+    REQUIRE(!stopped);
+  }
+
+  TEST_CASE("ensure_started with a std::stop_token receiver stops if stop was requested",
+            "[adaptors][ensure_started]")
+  {
+    std::stop_source source;
+    source.request_stop();
+    int  value   = 0;
+    bool stopped = false;
+    auto op      = ex::connect(exec::ensure_started(ex::just(42)),
+                          std_stop_token_receiver{&value, &stopped, source.get_token()});
+    ex::start(op);
+    REQUIRE(value == 0);
+    REQUIRE(stopped);
+  }
+#endif
+
 }  // namespace
