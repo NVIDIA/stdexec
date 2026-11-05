@@ -29,6 +29,8 @@
 
 #  include <test_common/catch2.hpp>
 
+#  include <coroutine>
+#  include <exception>
 #  include <string>
 
 namespace ex = STDEXEC;
@@ -408,6 +410,91 @@ namespace
     REQUIRE(op_state);
     CHECK(ran);
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  // A minimal coroutine whose environment provides a std::stop_token, for
+  // awaiting a task from a parent whose token is not inplace_stop_token.
+  struct std_stop_token_parent
+  {
+    struct promise_type
+    {
+      std::stop_token token_;
+
+      auto get_return_object() noexcept -> std_stop_token_parent
+      {
+        return {std::coroutine_handle<promise_type>::from_promise(*this)};
+      }
+
+      auto initial_suspend() noexcept -> std::suspend_always
+      {
+        return {};
+      }
+
+      auto final_suspend() noexcept -> std::suspend_always
+      {
+        return {};
+      }
+
+      void return_void() noexcept {}
+
+      void unhandled_exception() noexcept
+      {
+        std::terminate();
+      }
+
+      auto unhandled_stopped() noexcept -> std::coroutine_handle<>
+      {
+        std::terminate();
+      }
+
+      template <class Awaitable>
+      auto await_transform(Awaitable&& awaitable)
+      {
+        return ex::as_awaitable(static_cast<Awaitable&&>(awaitable), *this);
+      }
+
+      [[nodiscard]]
+      auto get_env() const noexcept
+      {
+        return ex::env{
+          ex::prop{     ex::get_stop_token,                 token_},
+          ex::prop{ex::get_start_scheduler, ex::inline_scheduler{}}
+        };
+      }
+    };
+
+    std::coroutine_handle<promise_type> handle_;
+  };
+
+  auto record_stop_requested(bool& stop_requested) -> exec::task<void>
+  {
+    auto token     = co_await ex::get_stop_token();
+    stop_requested = token.stop_requested();
+  }
+
+  auto await_task(bool& stop_requested) -> std_stop_token_parent
+  {
+    co_await record_stop_requested(stop_requested);
+  }
+
+  TEST_CASE("task - stop token is forwarded from a std::stop_token parent", "[types][task]")
+  {
+    for (bool request_stop: {false, true})
+    {
+      std::stop_source source;
+      bool             stop_requested = !request_stop;
+      auto             parent         = await_task(stop_requested);
+      parent.handle_.promise().token_ = source.get_token();
+      if (request_stop)
+        source.request_stop();
+
+      parent.handle_.resume();
+      CHECK(parent.handle_.done());
+      CHECK(stop_requested == request_stop);
+      parent.handle_.destroy();
+    }
+  }
+#  endif
 }  // namespace
 
 #endif
