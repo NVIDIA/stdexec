@@ -40,10 +40,7 @@ namespace ex = STDEXEC;
 namespace
 {
   template <class Sch>
-  concept has_scheduler_concept = requires {
-    typename Sch::scheduler_concept;
-    requires std::derived_from<typename Sch::scheduler_concept, ex::scheduler_tag>;
-  };
+  concept has_scheduler_concept = ex::__has_scheduler_concept<Sch>;
 
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   class inline_test_thread_pool : public exec::thread_pool_base<inline_test_thread_pool>

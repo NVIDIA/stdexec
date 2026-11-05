@@ -137,6 +137,8 @@ namespace
 
   struct custom_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct sender
     {
       using sender_concept        = ex::sender_tag;
