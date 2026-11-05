@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "../../exec/stoppable_base.hpp"
 #include "../../stdexec/execution.hpp"
 
 #include "../../exec/completion_signatures.hpp"
@@ -28,7 +29,6 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
-#include <optional>
 #include <utility>
 
 STDEXEC_PRAGMA_PUSH()
@@ -242,11 +242,22 @@ namespace nv::execution::_strm
     };
 
     template <class CvReceiver>
-    struct opstate : stream_opstate_base
+    struct opstate
+      : stream_opstate_base
+      , private ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<__decay_t<CvReceiver>>>,
+                                             opstate<CvReceiver>>
     {
      private:
       using _when_all_sender_t = __copy_cvref_t<CvReceiver, when_all_sender>;
       using _receiver_t        = __decay_t<CvReceiver>;
+      using _stop_base_t =
+        ::exec::stoppable_base_for_t<stop_token_of_t<env_of_t<_receiver_t>>, opstate>;
+      friend _stop_base_t;
+
+      void on_stop_requested() noexcept
+      {
+        stop_source_.request_stop();
+      }
 
      public:
       opstate(_when_all_sender_t&& sndr, _receiver_t rcvr)
@@ -268,8 +279,7 @@ namespace nv::execution::_strm
       void start() & noexcept
       {
         // register stop callback:
-        auto tok = STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_));
-        on_stop_.emplace(std::move(tok), __forward_stop_request{stop_source_});
+        this->register_stoppable(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
         if (stop_source_.stop_requested())
         {
           // Stop has already been requested. Don't bother starting
@@ -294,8 +304,6 @@ namespace nv::execution::_strm
       using _completions_t      = when_all_sender::_completions_t<CvReceiver, _env_t>;
       using _indices_t          = __indices_for<Senders...>;
       using _stream_providers_t = std::array<stream_provider, sizeof...(Senders)>;
-      using _stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_receiver_t>>, __forward_stop_request<>>;
 
       template <class Sender, std::size_t Index>
       using _child_opstate_t =
@@ -345,8 +353,8 @@ namespace nv::execution::_strm
 
       void _complete() noexcept
       {
-        // Stop callback is no longer needed. Destroy it.
-        on_stop_.reset();
+        // Stop callback is no longer needed. Deregister it.
+        this->deregister_stoppable();
 
         // See if any child operations completed with an error status:
         for (auto status: statuses_)
@@ -516,8 +524,6 @@ namespace nv::execution::_strm
       _errors_t           errors_{__no_init};
       _child_values_t*    values_{};
       inplace_stop_source stop_source_{};
-
-      std::optional<_stop_callback_t> on_stop_{};
     };
 
     attrs                        attrs_;

@@ -27,6 +27,7 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__concepts.hpp"
+#  include "__optional.hpp"
 
 #  if !STDEXEC_USE_MODULES()
 #    if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
@@ -78,6 +79,71 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   STDEXEC_MODULE_EXPORT template <class _Token, class _Callback>
   using stop_callback_for_t = STDEXEC::__mcall1<__stop_callback_for<_Token>, _Callback>;
 
+  template <class _Token, class _Stoppable, class _Tag>
+  class __stoppable_base_impl
+  {
+    struct __cb
+    {
+      void operator()() const noexcept
+      {
+        __self_->__on_stop_();
+      }
+
+      __stoppable_base_impl* __self_;
+    };
+
+    using __callback_t = stop_callback_for_t<_Token, __cb>;
+
+   protected:
+    __stoppable_base_impl()                        = default;
+    __stoppable_base_impl(__stoppable_base_impl&&) = delete;
+
+    void register_stoppable(_Token __token)
+      noexcept(STDEXEC::__nothrow_constructible_from<__callback_t, _Token, __cb>)
+    {
+      STDEXEC_ASSERT(!__cb_.has_value());
+      __cb_.emplace(static_cast<_Token&&>(__token), __cb{this});
+    }
+
+    void deregister_stoppable() noexcept
+    {
+      __cb_.reset();
+    }
+
+   private:
+    void __on_stop_() noexcept
+    {
+      if constexpr (STDEXEC::__same_as<_Tag, void>)
+        static_cast<_Stoppable*>(this)->on_stop_requested();
+      else
+        static_cast<_Stoppable*>(this)->on_stop_requested(_Tag{});
+    }
+
+    STDEXEC::__optional<__callback_t> __cb_;
+  };
+
+  template <class _Token, class _Stoppable, class _Tag>
+  class __unstoppable_base
+  {
+   protected:
+    __unstoppable_base() = default;
+
+    void register_stoppable(_Token) noexcept {}
+
+    void deregister_stoppable() noexcept {}
+  };
+
+  STDEXEC_MODULE_EXPORT template <class _Token>
+  struct __stoppable_base_for
+  {
+    template <class _Stoppable, class _Tag>
+    using __f = __stoppable_base_impl<_Token, _Stoppable, _Tag>;
+  };
+
+  STDEXEC_MODULE_EXPORT template <class _Token, class _Stoppable, class _Tag = void>
+  using __stoppable_base_for_t =
+    typename __stoppable_base_for<_Token>::template __f<_Stoppable, _Tag>;
+
   STDEXEC_MODULE_EXPORT template <class _Token>
   concept stoppable_token =
     requires(_Token const __token) {
@@ -95,6 +161,13 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
       { _Token::stop_possible() } -> STDEXEC::__boolean_testable_;
     } //
     && (!_Token::stop_possible());
+
+  template <unstoppable_token _Token>
+  struct __stoppable_base_for<_Token>
+  {
+    template <class _Stoppable, class _Tag>
+    using __f = __unstoppable_base<_Token, _Stoppable, _Tag>;
+  };
 
   // [stoptoken.never], class never_stop_token
   STDEXEC_MODULE_EXPORT struct never_stop_token

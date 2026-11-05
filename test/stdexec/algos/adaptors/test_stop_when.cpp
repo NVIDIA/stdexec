@@ -182,5 +182,47 @@ namespace
                      2);
     }
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  TEST_CASE("stop-when fuses its token with a std::stop_token", "[adaptors][stop-when]")
+  {
+    int  invokeCount = 0;
+    auto snd         = make_stop_callback([&invokeCount]() noexcept { invokeCount++; });
+
+    // Stop requested through the receiver's std::stop_token.
+    {
+      std::stop_source        outer;
+      ex::inplace_stop_source inner;
+
+      wait_for_value(ex::__stop_when(snd, inner.get_token())
+                       | ex::then(
+                         [&](auto&& optCallback) noexcept
+                         {
+                           outer.request_stop();
+                           optCallback.reset();
+                           return invokeCount;
+                         })
+                       | ex::write_env(ex::prop(ex::get_stop_token, outer.get_token())),
+                     1);
+    }
+
+    // Stop requested through stop-when's own token.
+    {
+      std::stop_source        outer;
+      ex::inplace_stop_source inner;
+
+      wait_for_value(ex::__stop_when(snd, inner.get_token())
+                       | ex::then(
+                         [&](auto&& optCallback) noexcept
+                         {
+                           inner.request_stop();
+                           optCallback.reset();
+                           return invokeCount;
+                         })
+                       | ex::write_env(ex::prop(ex::get_stop_token, outer.get_token())),
+                     2);
+    }
+  }
+#  endif
 #endif
 }  // namespace

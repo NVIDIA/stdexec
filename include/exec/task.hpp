@@ -243,7 +243,7 @@ namespace experimental::execution
     struct __default_awaiter_context<_ParentPromise>
     {
       using __stop_token_t    = stop_token_of_t<env_of_t<_ParentPromise>>;
-      using __stop_callback_t = __stop_token_t::template callback_type<__forward_stop_request<>>;
+      using __stop_callback_t = stop_callback_for_t<__stop_token_t, __forward_stop_request<>>;
 
       template <__scheduler_affinity _Affinity>
       constexpr explicit __default_awaiter_context(__default_task_context_impl<_Affinity>& __self,

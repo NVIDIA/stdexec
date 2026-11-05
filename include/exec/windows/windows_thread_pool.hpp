@@ -763,7 +763,7 @@ namespace experimental::execution::__win32
     PTP_TIMER                              timer_;
     TP_CALLBACK_ENVIRON                    environ_;
     STDEXEC::__std::atomic<std::uint32_t> *state_{nullptr};
-    STDEXEC::__manual_lifetime<typename StopToken::template callback_type<stop_requested_callback>>
+    STDEXEC::__manual_lifetime<STDEXEC::stop_callback_for_t<StopToken, stop_requested_callback>>
       stopCallback_;
   };
 

@@ -22,6 +22,7 @@
 #include "../../stdexec/execution.hpp"
 #include "../completion_signatures.hpp"
 #include "../sequence_senders.hpp"
+#include "../stoppable_base.hpp"
 
 #include "../../stdexec/__detail/__completion_signatures_of.hpp"
 #include "../../stdexec/__detail/__concepts.hpp"
@@ -75,44 +76,29 @@ namespace experimental::execution
 
     template <class _Receiver>
     struct __nested_stop
+      : stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, __nested_stop<_Receiver>>
     {
-      struct __on_stop_request
-      {
-        inplace_stop_source& __stop_source_;
+      using __env_t        = env_of_t<_Receiver>;
+      using __env_result_t = __env_with_inplace_stop_token_result_t<__env_t>;
+      using __stop_token_t = stop_token_of_t<__env_t>;
 
-        void operator()() noexcept
-        {
-          __stop_source_.request_stop();
-        }
-      };
-      using __env_t           = env_of_t<_Receiver>;
-      using __env_result_t    = __env_with_inplace_stop_token_result_t<__env_t>;
-      using __stop_token_t    = stop_token_of_t<__env_t>;
-      using __stop_callback_t = stop_callback_for_t<__stop_token_t, __on_stop_request>;
-      struct no_callback
-      {};
-      using __callback_t =
-        __if_c<unstoppable_token<__stop_token_t>, no_callback, __optional<__stop_callback_t>>;
+      __nested_stop() = default;
 
       inplace_stop_source __stop_source_{};
-      __callback_t        __on_stop_{};
 
       void register_token(_Receiver& __receiver) noexcept
       {
-        if constexpr (!unstoppable_token<__stop_token_t>)
-        {
-          // register stop callback:
-          __on_stop_.emplace(get_stop_token(STDEXEC::get_env(__receiver)),
-                             __on_stop_request{__stop_source_});
-        }
+        this->register_stoppable(get_stop_token(STDEXEC::get_env(__receiver)));
       }
 
       void unregister_token() noexcept
       {
-        if constexpr (!unstoppable_token<__stop_token_t>)
-        {
-          __on_stop_.reset();
-        }
+        this->deregister_stoppable();
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
       }
 
       bool stop_requested() const noexcept

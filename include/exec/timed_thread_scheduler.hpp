@@ -18,6 +18,7 @@
 #pragma once
 
 #include "detail/intrusive_heap.hpp"
+#include "stoppable_base.hpp"
 #include "timed_scheduler.hpp"  // IWYU pragma: keep for schedule_at and schedule_after
 
 #include "../stdexec/__detail/__atomic.hpp"
@@ -25,12 +26,12 @@
 #include "../stdexec/__detail/__receivers.hpp"
 #include "../stdexec/__detail/__schedulers.hpp"
 #include "../stdexec/__detail/__spin_loop_pause.hpp"
+#include "../stdexec/__detail/__stop_token.hpp"
 
 #include <chrono>
 #include <condition_variable>
 #include <limits>
 #include <mutex>
-#include <optional>
 #include <utility>
 
 namespace experimental::execution
@@ -226,9 +227,10 @@ namespace experimental::execution
     void schedule(command_type* op)
     {
       // A stop requested on the context thread completes inline only if it finds the operation
-      // in the heap (see request_stop()), so on this thread insert straight into the heap
-      // rather than queueing a schedule command. run() rereads heap_.front() after every
-      // completion, so the operation is still seen before the thread next waits.
+      // in the heap (see timed_thread_schedule_at_op::on_stop_requested()), so on this thread
+      // insert straight into the heap rather than queueing a schedule command. run() rereads
+      // heap_.front() after every completion, so the operation is still seen before the thread
+      // next waits.
       if (op->command_ == command_type::command_type::schedule && is_running_thread())
       {
         auto* task = static_cast<task_type*>(op);
@@ -295,8 +297,16 @@ namespace experimental::execution
   namespace _time_thrd_sched
   {
     template <class Receiver>
-    class timed_thread_schedule_at_op : _time_thrd_sched::timed_thread_schedule_operation_base
+    class timed_thread_schedule_at_op
+      : _time_thrd_sched::timed_thread_schedule_operation_base
+      , stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>,
+                             timed_thread_schedule_at_op<Receiver>>
     {
+      using stop_base_t =
+        stoppable_base_for_t<STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>,
+                             timed_thread_schedule_at_op>;
+      friend stop_base_t;
+
      public:
       constexpr explicit timed_thread_schedule_at_op(
         timed_thread_context&                 context,
@@ -310,7 +320,7 @@ namespace experimental::execution
               int   counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1)
               {
-                self->stop_callback_.reset();
+                self->deregister_stoppable();
                 STDEXEC::set_stopped(std::move(self->rcvr_));
               }
             },
@@ -320,7 +330,7 @@ namespace experimental::execution
               int   counter = self->ref_count_.fetch_sub(1, STDEXEC::__std::memory_order_relaxed);
               if (counter == 1)
               {
-                self->stop_callback_.reset();
+                self->deregister_stoppable();
                 STDEXEC::set_value(std::move(self->rcvr_));
               }
             }}
@@ -334,7 +344,7 @@ namespace experimental::execution
                                                               STDEXEC::__std::memory_order_relaxed);
                      if (counter == 1)
                      {
-                       self->stop_callback_.reset();
+                       self->deregister_stoppable();
                        STDEXEC::set_stopped(std::move(self->rcvr_));
                      }
                    },
@@ -343,8 +353,7 @@ namespace experimental::execution
 
       constexpr void start() & noexcept
       {
-        stop_callback_.emplace(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)),
-                               on_stopped_t{*this});
+        this->register_stoppable(STDEXEC::get_stop_token(STDEXEC::get_env(rcvr_)));
         int expected = 0;
         if (ref_count_.compare_exchange_strong(expected, 1, STDEXEC::__std::memory_order_relaxed))
         {
@@ -352,7 +361,7 @@ namespace experimental::execution
         }
         else
         {
-          stop_callback_.reset();
+          this->deregister_stoppable();
           STDEXEC::set_stopped(std::move(rcvr_));
         }
       }
@@ -363,20 +372,7 @@ namespace experimental::execution
         context_.schedule(this);
       }
 
-      struct on_stopped_t
-      {
-        timed_thread_schedule_at_op& self_;
-
-        constexpr void operator()() const noexcept
-        {
-          self_.request_stop();
-        }
-      };
-
-      using callback_type =
-        STDEXEC::stop_token_of_t<STDEXEC::env_of_t<Receiver>>::template callback_type<on_stopped_t>;
-
-      constexpr void request_stop() noexcept
+      constexpr void on_stop_requested() noexcept
       {
         // On the context thread, an operation still waiting in the heap (ref_count_ == 1:
         // started, no stop in flight) is removed and completed with set_stopped() inline.
@@ -387,7 +383,7 @@ namespace experimental::execution
             && context_.heap_.erase(this))
         {
           ref_count_.store(0, STDEXEC::__std::memory_order_relaxed);
-          stop_callback_.reset();
+          this->deregister_stoppable();
           STDEXEC::set_stopped(std::move(rcvr_));
         }
         else if (ref_count_.fetch_add(1, STDEXEC::__std::memory_order_relaxed) == 1)
@@ -399,7 +395,6 @@ namespace experimental::execution
       timed_thread_context&                         context_;
       Receiver                                      rcvr_;
       _time_thrd_sched::timed_thread_stop_operation stop_op_;
-      std::optional<callback_type>                  stop_callback_;
       STDEXEC::__std::atomic<int>                   ref_count_{0};
     };
   }  // namespace _time_thrd_sched

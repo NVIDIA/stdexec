@@ -24,7 +24,6 @@
 #include "../../stdexec/__detail/__intrusive_slist.hpp"
 #include "../../stdexec/__detail/__memory.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
-#include "../../stdexec/__detail/__optional.hpp"
 #include "../../stdexec/__detail/__queries.hpp"
 #include "../../stdexec/__detail/__receivers.hpp"
 #include "../../stdexec/__detail/__storage.hpp"
@@ -33,6 +32,7 @@
 #include "../../stdexec/stop_token.hpp"
 
 #include "../completion_signatures.hpp"
+#include "../stoppable_base.hpp"
 
 #include <exception>
 #include <mutex>
@@ -152,9 +152,11 @@ namespace experimental::execution::__shared
   // split-sender's `connect` fn returns. It holds a ref count to the shared
   // state.
   template <class _Tag, class _CvChild, class _Env, class _Receiver>
-  struct __local_state final : __local_state_base
+  struct __local_state final
+    : __local_state_base
+    , stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>,
+                           __local_state<_Tag, _CvChild, _Env, _Receiver>>
   {
-    using __stok_t         = stop_token_of_t<env_of_t<_Receiver>>;
     using __sh_state_t     = __shared_state<_CvChild, _Env>;
     using __sh_state_ptr_t = std::shared_ptr<__sh_state_t>;
 
@@ -181,14 +183,14 @@ namespace experimental::execution::__shared
       // Scenario: there are no more split senders, this is the only operation
       // state, the underlying operation has not yet been started, and the
       // receiver's stop token is already in the "stop requested" state. Then
-      // registering the stop callback will call __local_state::operator() on
-      // *this synchronously. It may also be called asynchronously at any point
-      // after the callback is registered. Beware. We are guaranteed, however,
-      // that __local_state::operator() will not complete the operation or
-      // decrement the shared state's ref count until after *this has been added
-      // to the waiters list.
+      // registering the stop callback will call on_stop_requested() on *this
+      // synchronously. It may also be called asynchronously at any point after
+      // the callback is registered. Beware. We are guaranteed, however, that
+      // on_stop_requested() will not complete the operation or decrement the
+      // shared state's ref count until after *this has been added to the
+      // waiters list.
       auto const __stok = STDEXEC::get_stop_token(STDEXEC::get_env(__rcvr_));
-      __on_stop_.emplace(__stok, *this);
+      this->register_stoppable(__stok);
 
       // We haven't put __state in the waiters list yet and we are holding a ref
       // count to __sh_state_, so nothing can happen to the __sh_state_ here.
@@ -207,13 +209,13 @@ namespace experimental::execution::__shared
 
       // Otherwise, failed to add the waiter because of a stop-request.
       // Complete synchronously with set_stopped().
-      __on_stop_.reset();
+      this->deregister_stoppable();
       std::exchange(__sh_state_, {})->__detach();
       STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
     }
 
     // Stop request callback:
-    constexpr void operator()() noexcept
+    void on_stop_requested() noexcept
     {
       // We reach here when a split/ensure_started sender has received a stop
       // request from the receiver to which it is connected.
@@ -244,7 +246,7 @@ namespace experimental::execution::__shared
     // This is called from __shared_state::__notify_waiters when the input async
     // operation completes; or, if it has already completed when start is
     // called, it is called from start: __notify cannot race with
-    // __local_state::operator(). See comment in __local_state::operator().
+    // on_stop_requested(). See comment in on_stop_requested().
     constexpr void __notify() noexcept final
     {
       // The split algorithm sends by T const&. ensure_started sends by T&&.
@@ -252,13 +254,12 @@ namespace experimental::execution::__shared
       using __variant_t         = decltype(__sh_state_->__results_);
       using __cv_variant_t      = __if_c<__is_split, __variant_t const &, __variant_t>;
 
-      __on_stop_.reset();
+      this->deregister_stoppable();
       static_cast<__cv_variant_t&&>(__sh_state_->__results_).__complete(__rcvr_);
     }
 
-    _Receiver                                                 __rcvr_;
-    __optional<stop_callback_for_t<__stok_t, __local_state&>> __on_stop_{};
-    __sh_state_ptr_t                                          __sh_state_;
+    _Receiver        __rcvr_;
+    __sh_state_ptr_t __sh_state_;
   };
 
   //////////////////////////////////////////////////////////////////////////////

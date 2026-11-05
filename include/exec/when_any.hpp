@@ -19,6 +19,7 @@
 #include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
+#include "stoppable_base.hpp"
 
 #include <exception>
 
@@ -73,8 +74,11 @@ namespace experimental::execution
     using __results_storage_t =
       __mapply_q<__results_storage, __minvoke<__completions_fn<_Env>, _CvSenders...>>;
 
+    // Forwards stop requests on the receiver's token to __stop_source_.
     template <class _Receiver, class _ResultVariant>
     struct __opstate_base
+      : stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>&>,
+                             __opstate_base<_Receiver, _ResultVariant>>
     {
       explicit __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
         : __count_{__n_senders}
@@ -83,11 +87,12 @@ namespace experimental::execution
 
       STDEXEC_IMMOVABLE(__opstate_base);
 
-      using __on_stop =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>&>, __forward_stop_request<>>;
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
+      }
 
-      inplace_stop_source      __stop_source_{};
-      std::optional<__on_stop> __on_stop_{};
+      inplace_stop_source __stop_source_{};
 
       // If this hits true, we store the result
       __std::atomic<bool> __emplaced_{false};
@@ -135,7 +140,7 @@ namespace experimental::execution
         // most once
         if (__count_.fetch_sub(1, __std::memory_order_acq_rel) == 1)
         {
-          __on_stop_.reset();
+          this->deregister_stoppable();
           auto stop_token = get_stop_token(get_env(__rcvr_));
 
           if (stop_token.stop_requested())
@@ -211,8 +216,7 @@ namespace experimental::execution
         // Only forward the request to the children. The callback can still be
         // running on another thread after the last child has arrived, so it
         // must not arrive itself.
-        this->__on_stop_.emplace(get_stop_token(get_env(this->__rcvr_)),
-                                 __forward_stop_request{this->__stop_source_});
+        this->register_stoppable(get_stop_token(get_env(this->__rcvr_)));
         if (this->__stop_source_.stop_requested())
         {
           STDEXEC::set_stopped(static_cast<_Receiver&&>(this->__rcvr_));

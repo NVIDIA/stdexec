@@ -30,6 +30,10 @@
 
 #  include "test_common/catch2.hpp"
 
+#  include <exception>
+#  include <future>
+#  include <stop_token>
+
 using namespace STDEXEC;
 using namespace exec;
 using namespace std::chrono_literals;
@@ -372,6 +376,62 @@ namespace
     CHECK(sync_wait(exec::when_any(schedule(scheduler), context.run())));
     CHECK(!sync_wait(exec::when_any(schedule(scheduler), context.run())));
   }
+
+#  if defined(__cpp_lib_jthread) && __cpp_lib_jthread >= 201911L
+  enum class completion
+  {
+    value,
+    stopped
+  };
+
+  struct std_stop_token_receiver
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    void set_value() && noexcept
+    {
+      done_->set_value(completion::value);
+    }
+
+    void set_error(std::exception_ptr) && noexcept
+    {
+      std::terminate();
+    }
+
+    void set_stopped() && noexcept
+    {
+      done_->set_value(completion::stopped);
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept
+    {
+      return prop{get_stop_token, token_};
+    }
+
+    std::promise<completion>* done_;
+    std::stop_token           token_;
+  };
+
+  TEST_CASE("io_uring_context schedule_after stops through a std::stop_token",
+            "[types][io_uring][schedulers]")
+  {
+    io_uring_context   context;
+    io_uring_scheduler scheduler = context.get_scheduler();
+    jthread            io_thread{[&] { context.run_until_stopped(); }};
+    scope_guard        guard{[&]() noexcept { context.request_stop(); }};
+
+    std::stop_source         source;
+    std::promise<completion> done;
+    auto                     future = done.get_future();
+    auto                     op     = connect(schedule_after(scheduler, 1h),
+                      std_stop_token_receiver{&done, source.get_token()});
+    start(op);
+    source.request_stop();
+    REQUIRE(future.wait_for(10s) == std::future_status::ready);
+    CHECK(future.get() == completion::stopped);
+  }
+#  endif
 }  // namespace
 
 #endif
