@@ -161,13 +161,13 @@ namespace STDEXEC
     //! @pre `decltype(__sched.schedule())` must satisfy the
     //!      @c stdexec::sender concept (statically checked).
     template <class _Scheduler>
-      requires(__has_schedule_member<_Scheduler> && __has_scheduler_concept<__decay_t<_Scheduler>>)
+      requires __has_schedule_member<_Scheduler> && __has_scheduler_concept<__decay_t<_Scheduler>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     auto operator()(_Scheduler &&__sched) const
       STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
 
     template <class _Scheduler>
-      requires(__has_schedule_member<_Scheduler> && !__has_scheduler_concept<__decay_t<_Scheduler>>)
+      requires __has_schedule_member<_Scheduler>
     [[deprecated("The scheduler must define the schedule_concept tag.")]]
     STDEXEC_ATTRIBUTE(host, device, always_inline) auto operator()(_Scheduler &&__sched) const
       STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
