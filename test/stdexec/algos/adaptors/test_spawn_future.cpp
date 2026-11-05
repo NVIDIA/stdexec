@@ -76,6 +76,9 @@ namespace
     constexpr auto checkEquivalence = [](ex::sender auto const & sender)
     {
       CHECK(ex::sync_wait(sender) == ex::sync_wait(ex::spawn_future(sender, null_token{})));
+
+      null_token lvalue_token{};
+      CHECK(ex::sync_wait(sender) == ex::sync_wait(ex::spawn_future(sender, lvalue_token)));
     };
 
     checkEquivalence(ex::just());

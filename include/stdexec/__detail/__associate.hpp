@@ -160,10 +160,9 @@ namespace STDEXEC
     struct associate_t
     {
       template <sender _Sender, scope_token _Token>
-      auto operator()(_Sender&& __sndr, _Token&& __token) const noexcept(
-        __nothrow_constructible_from<__associate_data<std::remove_cvref_t<_Token>, _Sender>,
-                                     _Token,
-                                     _Sender>) -> __well_formed_sender auto
+      auto operator()(_Sender&& __sndr, _Token __token) const
+        noexcept(__nothrow_constructible_from<__associate_data<_Token, _Sender>, _Token, _Sender>)
+          -> __well_formed_sender auto
       {
         return __sexpr{associate_t(),
                        __associate_data(static_cast<_Token&&>(__token),
@@ -172,7 +171,7 @@ namespace STDEXEC
 
       template <scope_token _Token>
       STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Token&& __token) const noexcept
+      auto operator()(_Token __token) const noexcept
       {
         return __closure(*this, static_cast<_Token&&>(__token));
       }

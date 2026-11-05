@@ -215,6 +215,11 @@ namespace
     wait_for_value(ex::just(true) | ex::associate(expired_token{})
                      | ex::upon_stopped([]() noexcept { return false; }),
                    false);
+
+    expired_token lvalue_token{};
+    wait_for_value(ex::just(true) | ex::associate(lvalue_token)
+                     | ex::upon_stopped([]() noexcept { return false; }),
+                   false);
   }
 
   struct scope

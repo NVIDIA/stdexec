@@ -861,7 +861,7 @@ namespace STDEXEC
     //!          or stopped), or with @c set_stopped if association with
     //!          the scope failed.
     template <sender _Sender, scope_token _Token>
-    auto operator()(_Sender&& __sndr, _Token&& __tkn) const -> __well_formed_sender auto
+    auto operator()(_Sender&& __sndr, _Token __tkn) const -> __well_formed_sender auto
     {
       return (*this)(static_cast<_Sender&&>(__sndr), static_cast<_Token&&>(__tkn), env<>{});
     }
@@ -882,8 +882,7 @@ namespace STDEXEC
     //! @returns A sender observing the spawned operation's completion
     //!          (or @c set_stopped if scope-association failed).
     template <sender _Sender, scope_token _Token, class _Env>
-    auto
-    operator()(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const -> __well_formed_sender auto
+    auto operator()(_Sender&& __sndr, _Token __tkn, _Env&& __env) const -> __well_formed_sender auto
     {
       return __impl(__tkn.wrap(static_cast<_Sender&&>(__sndr)),
                     static_cast<_Token&&>(__tkn),
@@ -892,7 +891,7 @@ namespace STDEXEC
 
    private:
     template <sender _Sender, scope_token _Token, class _Env>
-    auto __impl(_Sender&& __sndr, _Token&& __tkn, _Env&& __env) const
+    auto __impl(_Sender&& __sndr, _Token __tkn, _Env&& __env) const
     {
       using __alloc_t = decltype(__spawn_common::__choose_alloc(__env, STDEXEC::get_env(__sndr)));
       using __senv_t  = decltype(__spawn_common::__choose_senv(__env, STDEXEC::get_env(__sndr)));
@@ -903,10 +902,7 @@ namespace STDEXEC
       }
 
       using __spawn_future_state_t =
-        __spawn_future::__spawn_future_state<__alloc_t,
-                                             std::remove_cvref_t<_Token>,
-                                             _Sender,
-                                             __senv_t>;
+        __spawn_future::__spawn_future_state<__alloc_t, _Token, _Sender, __senv_t>;
 
       using __traits =
         std::allocator_traits<__alloc_t>::template rebind_traits<__spawn_future_state_t>;
