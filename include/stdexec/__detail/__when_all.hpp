@@ -455,19 +455,44 @@ namespace STDEXEC
         static_cast<_ValuesTuple&&>(__values));
     }
 
+    template <class _Receiver, class _State, bool _UsesStopSource>
+    using __when_all_stop_base_t =
+      __if_c<_UsesStopSource,
+             __stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, _State>,
+             __empty>;
+
     template <class _ErrorsVariant,
               class _ValuesTuple,
               class _Receiver,
               bool _SendsStopped,
               bool _UsesStopSource>
     struct __state
+      : __when_all_stop_base_t<
+          _Receiver,
+          __state<_ErrorsVariant, _ValuesTuple, _Receiver, _SendsStopped, _UsesStopSource>,
+          _UsesStopSource>
     {
       using __receiver_t                       = _Receiver;
       static constexpr bool __uses_stop_source = _UsesStopSource;
-      using __stop_callback_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stop_request<>>;
       using __stop_source_t = __if_c<_UsesStopSource, inplace_stop_source, __empty>;
-      using __on_stop_t     = __if_c<_UsesStopSource, __optional<__stop_callback_t>, __empty>;
+
+      constexpr explicit __state(_Receiver&& __rcvr, std::size_t __count) noexcept
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __count_(__count)
+      {}
+
+      constexpr void __register_stop_callback() noexcept
+      {
+        // Only forward the request to the children. The callback can still be
+        // running on another thread after the last child has arrived, so it
+        // must not arrive or change __state_ itself.
+        this->register_stoppable(get_stop_token(STDEXEC::get_env(__rcvr_)));
+      }
+
+      void on_stop_requested() noexcept
+      {
+        __stop_source_.request_stop();
+      }
 
       constexpr void __arrive() noexcept
       {
@@ -479,10 +504,10 @@ namespace STDEXEC
 
       constexpr void __complete() noexcept
       {
-        // Stop callback is no longer needed. Destroy it.
+        // Stop callback is no longer needed. Deregister it.
         if constexpr (_UsesStopSource)
         {
-          __on_stop_.reset();
+          this->deregister_stoppable();
         }
         // All child operations have completed and arrived at the barrier.
         switch (__state_.load(__std::memory_order_relaxed))
@@ -528,8 +553,6 @@ namespace STDEXEC
       _ErrorsVariant           __errors_{__no_init};
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _ValuesTuple             __values_{};
-      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      __on_stop_t              __on_stop_{};
     };
 
     template <class... _Senders>
@@ -719,11 +742,7 @@ namespace STDEXEC
       {
         if constexpr (_State::__uses_stop_source)
         {
-          // Only forward the request to the children. The callback can still
-          // be running on another thread after the last child has arrived, so
-          // it must not arrive or change __state_ itself.
-          __state.__on_stop_.emplace(get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
-                                     __forward_stop_request{__state.__stop_source_});
+          __state.__register_stop_callback();
         }
 
         // Start all the child operations:
