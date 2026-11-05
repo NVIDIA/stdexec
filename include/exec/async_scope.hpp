@@ -16,7 +16,6 @@
 #pragma once
 
 #include "../stdexec/__detail/__intrusive_queue.hpp"
-#include "../stdexec/__detail/__optional.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
 #include "completion_signatures.hpp"
@@ -282,16 +281,6 @@ namespace experimental::execution
       __deleted
     };
 
-    struct __forward_stopped
-    {
-      inplace_stop_source* __stop_source_;
-
-      void operator()() noexcept
-      {
-        __stop_source_->request_stop();
-      }
-    };
-
     struct __subscription : __immovable
     {
       constexpr void __complete() noexcept
@@ -548,17 +537,26 @@ namespace experimental::execution
     // latter's members, and its member functions are only instantiated where
     // __future::connect is instantiated, which is below.
     template <class _Sender, class _Env, class _Receiver>
-    struct __future_opstate : __subscription
+    struct __future_opstate
+      : __subscription
+      , private stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>,
+                                     __future_opstate<_Sender, _Env, _Receiver>>
     {
      private:
-      using __forward_consumer_t =
-        stop_callback_for_t<stop_token_of_t<env_of_t<_Receiver>>, __forward_stopped>;
+      using __stop_base_t =
+        stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>>, __future_opstate>;
+      friend __stop_base_t;
+
+      void on_stop_requested() noexcept
+      {
+        __state_->__stop_source_.request_stop();
+      }
 
       constexpr void __complete_() noexcept
       {
         STDEXEC_TRY
         {
-          __forward_consumer_.reset();
+          this->deregister_stoppable();
           auto __state = std::move(__state_);
           STDEXEC_ASSERT(__state != nullptr);
           std::unique_lock __guard{__state->__mutex_};
@@ -607,8 +605,6 @@ namespace experimental::execution
 
       STDEXEC_ATTRIBUTE(no_unique_address) _Receiver __rcvr_;
       std::unique_ptr<__future_state<_Sender, _Env>> __state_;
-      STDEXEC_ATTRIBUTE(no_unique_address)
-      STDEXEC::__optional<__forward_consumer_t> __forward_consumer_;
 
      public:
       template <class _Receiver2>
@@ -619,13 +615,14 @@ namespace experimental::execution
                          { static_cast<__future_opstate*>(__self)->__complete_(); }}
         , __rcvr_(static_cast<_Receiver2&&>(__rcvr))
         , __state_(std::move(__state))
-        , __forward_consumer_(std::in_place,
-                              get_stop_token(get_env(__rcvr_)),
-                              __forward_stopped{&__state_->__stop_source_})
-      {}
+      {
+        this->register_stoppable(get_stop_token(get_env(__rcvr_)));
+      }
 
       constexpr ~__future_opstate() noexcept
       {
+        // on_stop_requested() uses __state_, which is moved below.
+        this->deregister_stoppable();
         if (__state_ != nullptr)
         {
           auto             __raw_state = __state_.get();
