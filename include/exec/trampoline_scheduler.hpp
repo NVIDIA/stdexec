@@ -177,6 +177,13 @@ namespace experimental::execution
             {
               // Exceeded recursion limit.
 
+              // GCC may warn that this stores the address of a local operation
+              // state into thread-local storage. That is a false positive: an
+              // enclosing origin schedule frame owns the state and drains the
+              // queue before this operation state's lifetime ends.
+              STDEXEC_PRAGMA_PUSH()
+              STDEXEC_PRAGMA_IGNORE_GNU("-Wdangling-pointer")
+
               // push this recursive schedule to list tail
               __prev_ = std::exchange(__current_state->__tail_, static_cast<__opstate_base*>(this));
               if (__prev_ != nullptr)
@@ -189,6 +196,8 @@ namespace experimental::execution
                 // was empty
                 __current_state->__head_ = static_cast<__opstate_base*>(this);
               }
+
+              STDEXEC_PRAGMA_POP()
             }
           }
         }
