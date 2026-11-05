@@ -47,12 +47,13 @@ namespace nv::execution::_strm
       ::cuda::std::move(fn)(static_cast<Args&&>(args)...);
     }
 
-    template <class... Args, class Fun, class ResultT>
+    template <class ResultT, class... Args, class Fun>
     STDEXEC_ATTRIBUTE(launch_bounds(1))
-    __global__ void _then_kernel_with_result(Fun fn, ResultT* result, Args... args)
+    __global__
+      void _then_kernel_with_result(Fun fn, _stored_result_t<ResultT>* result, Args... args)
     {
       static_assert(trivially_copyable<Fun, Args...>);
-      new (result) ResultT(::cuda::std::move(fn)(static_cast<Args&&>(args)...));
+      _store_result<ResultT>(result, ::cuda::std::move(fn), static_cast<Args&&>(args)...);
     }
 
     template <std::size_t MemoryAllocationSize, class Receiver, class Fun>
@@ -70,10 +71,10 @@ namespace nv::execution::_strm
       {}
 
       template <class... Args>
-        requires std::invocable<Fun, __decay_t<Args>...>
+        requires std::invocable<Fun, Args...>
       void set_value(Args&&... args) noexcept
       {
-        using result_t                         = std::invoke_result_t<Fun, __decay_t<Args>...>;
+        using result_t                         = std::invoke_result_t<Fun, Args...>;
         constexpr bool does_not_return_a_value = std::is_same_v<void, result_t>;
         cudaStream_t   stream                  = opstate_.get_stream();
 
@@ -93,16 +94,20 @@ namespace nv::execution::_strm
         }
         else
         {
-          using decayed_result_t = __decay_t<result_t>;
-          auto* d_result         = static_cast<decayed_result_t*>(opstate_.temp_storage_);
-          _then_kernel_with_result<Args&&...>
+          auto* d_result = static_cast<_stored_result_t<result_t>*>(opstate_.temp_storage_);
+          _then_kernel_with_result<result_t, Args&&...>
             <<<1, 1, 0, stream>>>(std::move(f_), d_result, static_cast<Args&&>(args)...);
           opstate_.defer_temp_storage_destruction(d_result);
 
-          if (cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
-              status == cudaSuccess)
+          cudaError_t status = STDEXEC_LOG_CUDA_API(cudaPeekAtLastError());
+          if (status == cudaSuccess)
           {
-            opstate_.propagate_completion_signal(STDEXEC::set_value, std::move(*d_result));
+            status = _wait_for_result<result_t>(stream);
+          }
+          if (status == cudaSuccess)
+          {
+            opstate_.propagate_completion_signal(STDEXEC::set_value,
+                                                 _load_result<result_t>(d_result));
           }
           else
           {

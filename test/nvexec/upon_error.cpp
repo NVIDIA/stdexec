@@ -125,4 +125,25 @@ namespace
 
     REQUIRE(flags_storage.all_set_once());
   }
+
+  TEST_CASE("nvexec upon_error can return a reference", "[cuda][stream][adaptors][upon_error]")
+  {
+    nvexec::stream_context stream_ctx{};
+
+    int *data{};
+    STDEXEC_TRY_CUDA_API(cudaMallocManaged(&data, 2 * sizeof(int)));
+    data[0] = 0;
+    data[1] = 0;
+
+    auto snd = ex::just_error(1) | ex::continues_on(stream_ctx.get_scheduler())
+             | ex::upon_error([data](int i) -> int & { return data[i]; })
+             | ex::then([](int &ref) { ref = 9; });
+    STDEXEC::sync_wait(std::move(snd));
+
+    int const first  = data[0];
+    int const second = data[1];
+    STDEXEC_ASSERT_CUDA_API(cudaFree(data));
+    REQUIRE(first == 0);
+    REQUIRE(second == 9);
+  }
 }  // namespace

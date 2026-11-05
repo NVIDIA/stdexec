@@ -1023,10 +1023,62 @@ namespace nv::execution
     using __f = STDEXEC::__msize_t<STDEXEC::__umax({std::size_t(0), Sizes::value...})>;
   };
 
+  // How a callable's result is kept in temporary storage: a reference result is
+  // kept as a pointer to the referenced object, anything else as a decayed value.
+  template <class Ty>
+  using _stored_result_t =
+    STDEXEC::__if_c<std::is_reference_v<Ty>, std::add_pointer_t<Ty>, STDEXEC::__decay_t<Ty>>;
+
+  template <class ResultT, class Fun, class... Args>
+  STDEXEC_ATTRIBUTE(host, device)
+  void _store_result(_stored_result_t<ResultT>* storage, Fun&& fun, Args&&... args)
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      new (storage) _stored_result_t<ResultT>(
+        __builtin_addressof(static_cast<Fun&&>(fun)(static_cast<Args&&>(args)...)));
+    }
+    else
+    {
+      new (storage)
+        _stored_result_t<ResultT>(static_cast<Fun&&>(fun)(static_cast<Args&&>(args)...));
+    }
+  }
+
+  // A referenced object's address is only known once the kernel has run, so a
+  // reference result needs the stream to finish before it can be passed on.
+  template <class ResultT>
+  auto _wait_for_result(cudaStream_t stream) noexcept -> cudaError_t
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      return STDEXEC_LOG_CUDA_API(cudaStreamSynchronize(stream));
+    }
+    else
+    {
+      return cudaSuccess;
+    }
+  }
+
+  // The stored result as it is passed to the next receiver.
+  template <class ResultT>
+  auto _load_result(_stored_result_t<ResultT>* storage) noexcept -> decltype(auto)
+  {
+    if constexpr (std::is_reference_v<ResultT>)
+    {
+      return static_cast<ResultT>(**storage);
+    }
+    else
+    {
+      return std::move(*storage);
+    }
+  }
+
   struct result_size_for
   {
     template <class Fun, class... Args>
-    using __f = STDEXEC::__msize_t<_sizeof_v<STDEXEC::__call_result_t<Fun, Args...>>>;
+    using __f =
+      STDEXEC::__msize_t<_sizeof_v<_stored_result_t<STDEXEC::__call_result_t<Fun, Args...>>>>;
   };
 
   using _cuda_error_completion_t =
