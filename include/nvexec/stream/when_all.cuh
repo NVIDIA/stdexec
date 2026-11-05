@@ -39,6 +39,9 @@ namespace nv::execution::_strm
 {
   namespace _when_all
   {
+    using STDEXEC::__when_all::_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_;
+    using STDEXEC::__when_all::_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_;
+
     enum disposition : std::uint32_t
     {
       started,
@@ -75,14 +78,11 @@ namespace nv::execution::_strm
       requires(too_many_completions_sender<Senders, Env...> || ...)
     struct completions<__mlist<Env...>, Senders...>
     {
-      static constexpr auto position_of() noexcept -> std::size_t
-      {
-        constexpr bool which[] = {too_many_completions_sender<Senders, Env...>...};
-        return __pos_of(which, which + sizeof...(Senders));
-      }
-
-      using invalid_arg_t = __m_at_c<position_of(), Senders...>;
-      using __t = STDEXEC::__when_all::__too_many_value_completions_error_t<invalid_arg_t, Env...>;
+      using __t =
+        __mexception<_WHAT_(_INVALID_ARGUMENT_),
+                     _WHERE_(_IN_ALGORITHM_, when_all_t),
+                     _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                     _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>;
     };
 
     template <class... Env, class... Senders>

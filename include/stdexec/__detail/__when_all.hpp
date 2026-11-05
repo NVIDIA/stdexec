@@ -428,96 +428,20 @@ namespace STDEXEC
     using __stoppable_env_t = decltype(__when_all::__mk_env(__declval<_Env>(),
                                                             __declval<inplace_stop_source&>()));
 
-    template <class _Sender, class _Env>
-    concept __max1_sender =
-      sender_in<_Sender, _Env>
-      && __minvocable_q<__value_types_of_t, _Sender, _Env, __mconst<int>, __msingle_or<void>>;
+    struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_;
+    struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_;
 
-    struct _THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_
-    {};
-    struct _USE_WHEN_ALL_WITH_VARIANT_INSTEAD_
-    {};
+    template <class _CmplSigs>
+    concept __can_fail = _CmplSigs::__count(set_error) != 0    //
+                      || _CmplSigs::__count(set_stopped) != 0  //
+                      || !__nothrow_decay_copyable_results_t<_CmplSigs>();
 
-    template <class _Sender, class... _Env>
-    using __too_many_value_completions_error_t =
-      __mexception<_WHAT_(_INVALID_ARGUMENT_),
-                   _WHERE_(_IN_ALGORITHM_, when_all_t),
-                   _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
-                   _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_),
-                   _WITH_SENDER_<_Sender>,
-                   __fn_t<_WITH_ENVIRONMENT_, _Env>...>;
+    template <class _Env, class... _CvSenders>
+    using __uses_stop_source_t =
+      __mbool<(__can_fail<completion_signatures_of_t<_CvSenders, _Env>> || ...)>;
 
-    template <class _Error>
-    using __set_error_t = completion_signatures<set_error_t(__decay_t<_Error>)>;
-
-    template <class _Sender, class... _Env>
-    using __nothrow_decay_copyable_results_t =
-      STDEXEC::__nothrow_decay_copyable_results_t<__completion_signatures_of_t<_Sender, _Env...>>;
-
-    template <class _Sender, class _Env>
-    inline constexpr bool __can_fail = !__never_sends<set_error_t, _Sender, _Env>
-                                    || sends_stopped<_Sender, _Env>
-                                    || !__nothrow_decay_copyable_results_t<_Sender, _Env>::value;
-
-    template <class _Env, class... _Senders>
-    inline constexpr bool __uses_stop_source = (__can_fail<_Senders, _Env> || ...);
-
-    template <class _Env, class... _Senders>
-    using __env_t = __if_c<__uses_stop_source<_Env, _Senders...>, __stoppable_env_t<_Env>, _Env>;
-
-    template <class... _Env>
-    struct __completions
-    {
-      // TODO(ericniebler): check that all senders have a common completion domain
-      template <class... _Senders>
-      using __all_nothrow_decay_copyable_results_t =
-        __mand<__nothrow_decay_copyable_results_t<_Senders, _Env...>...>;
-
-      template <class _Sender, class _ValueTuple, class... _Rest>
-      using __value_tuple_t = __minvoke<__if_c<(0 == sizeof...(_Rest)),
-                                               __mconst<_ValueTuple>,
-                                               __q<__too_many_value_completions_error_t>>,
-                                        _Sender,
-                                        _Env...>;
-
-      template <class _Sender>
-      using __single_values_of_t = __value_types_t<__completion_signatures_of_t<_Sender, _Env...>,
-                                                   __mtransform<__q<__decay_t>, __q<__mlist>>,
-                                                   __mbind_front_q<__value_tuple_t, _Sender>>;
-
-      template <class... _Senders>
-      using __set_values_sig_t =
-        __minvoke_q<completion_signatures,
-                    __minvoke<__mconcat<__qf<set_value_t>>, __single_values_of_t<_Senders>...>>;
-
-      template <class... _Senders>
-      using __f = __minvoke_q<
-        __concat_completion_signatures_t,
-        __minvoke_q<__eptr_completion_unless_t, __all_nothrow_decay_copyable_results_t<_Senders...>>,
-        __minvoke<__mwith_default<__qq<__set_values_sig_t>, completion_signatures<>>, _Senders...>,
-        __transform_reduce_completion_signatures_t<__completion_signatures_of_t<_Senders, _Env...>,
-                                                   __mconst<completion_signatures<>>::__f,
-                                                   __set_error_t,
-                                                   completion_signatures<set_stopped_t()>,
-                                                   __concat_completion_signatures_t>...>;
-    };
-
-    template <class... _Env>
-    struct __completions_for;
-
-    template <>
-    struct __completions_for<>
-    {
-      template <class... _Senders>
-      using __f = __completions<>::template __f<_Senders...>;
-    };
-
-    template <class _Env>
-    struct __completions_for<_Env>
-    {
-      template <class... _Senders>
-      using __f = __completions<__env_t<_Env, _Senders...>>::template __f<_Senders...>;
-    };
+    template <class _Env, class... _CvSenders>
+    using __env_t = __if<__uses_stop_source_t<_Env, _CvSenders...>, __stoppable_env_t<_Env>, _Env>;
 
     template <class _Receiver, class _ValuesTuple>
     constexpr void __set_values(_Receiver& __rcvr, _ValuesTuple& __values) noexcept
@@ -530,38 +454,6 @@ namespace STDEXEC
         },
         static_cast<_ValuesTuple&&>(__values));
     }
-
-    template <class _ChildEnv, class _Sender>
-    using __values_opt_tuple_t = value_types_of_t<_Sender, _ChildEnv, __decayed_tuple, __optional>;
-
-    template <class _Env, class... _Senders>
-      requires(__max1_sender<_Senders, __env_t<_Env, _Senders...>> && ...)
-    struct __traits
-    {
-      using __child_env = __env_t<_Env, _Senders...>;
-
-      // tuple<optional<tuple<Vs1...>>, optional<tuple<Vs2...>>, ...>
-      using __values_tuple =
-        __minvoke<__mwith_default<
-                    __mtransform<__mbind_front_q<__values_opt_tuple_t, __child_env>, __q<__tuple>>,
-                    __ignore>,
-                  _Senders...>;
-
-      using __collect_errors = __mbind_front_q<__mset_insert, __mset<>>;
-
-      using __errors_list =
-        __minvoke<__mconcat<>,
-                  __if<__mand<__nothrow_decay_copyable_results_t<_Senders, __child_env>...>,
-                       __mlist<>,
-                       __mlist<std::exception_ptr>>,
-                  __error_types_of_t<_Senders, __child_env, __q<__mlist>>...>;
-
-      using __errors_variant                   = __mapply<__q<__uniqued_variant>, __errors_list>;
-      static constexpr bool __uses_stop_source = __when_all::__uses_stop_source<_Env, _Senders...>;
-    };
-
-    struct _INVALID_ARGUMENTS_TO_WHEN_ALL_
-    {};
 
     template <class _ErrorsVariant,
               class _ValuesTuple,
@@ -685,35 +577,78 @@ namespace STDEXEC
       }
     };
 
-    template <class _Receiver>
-#  if !STDEXEC_USE_MODULES()
-    static
-#  endif
-      constexpr auto __mk_state_fn(_Receiver&& __rcvr) noexcept
-    {
-      return [&]<class... _Child>(__ignore, __ignore, _Child&&...) noexcept
-        requires(__max1_sender<_Child, __env_t<env_of_t<_Receiver>, _Child...>> && ...)
-      {
-        using _Traits        = __traits<env_of_t<_Receiver>, _Child...>;
-        using _ErrorsVariant = _Traits::__errors_variant;
-        using _ValuesTuple   = _Traits::__values_tuple;
-        using _ChildEnv      = _Traits::__child_env;
-        using _State         = __state<_ErrorsVariant,
-                                       _ValuesTuple,
-                                       _Receiver,
-                                       (sends_stopped<_Child, _ChildEnv> || ...),
-                                       _Traits::__uses_stop_source>;
-        return _State{static_cast<_Receiver&&>(__rcvr), sizeof...(_Child)};
-      };
-    }
-
-    template <class _Receiver>
-    using __mk_state_fn_t = decltype(__when_all::__mk_state_fn(__declval<_Receiver>()));
-
     struct __when_all_impl : __sexpr_defaults
     {
-      template <class _Self, class... _Env>
-      using __completions_t = __children_of<_Self, __when_all::__completions_for<_Env...>>;
+      static constexpr auto __mk_accumulate_sigs_fn() noexcept
+      {
+        return []<class _State, class _Item>(_State __state, _Item __item)
+        {
+          STDEXEC_IF_OK(__item)
+          STDEXEC_IF_OK(__state)
+          {
+            static_assert(_State::__count(set_value) <= 1);
+            auto __ignore = __ignore_completion();
+            auto __vdecay = __decay_arguments<set_value_t, when_all_t>();
+            auto __edecay = __decay_arguments<set_error_t, when_all_t>();
+
+            auto __item2  = STDEXEC::__transform_completion_signatures(__item, __vdecay, __edecay);
+            auto __item3  = STDEXEC::__transform_completion_signatures(__item2, __ignore);
+            auto __state2 = STDEXEC::__transform_completion_signatures(__state, __ignore);
+
+            if constexpr (_Item::__count(set_value) > 1)
+            {
+              return STDEXEC::__throw_compile_time_error<
+                _WHAT_(_INVALID_ARGUMENT_),
+                _WHERE_(_IN_ALGORITHM_, when_all_t),
+                _WHY_(_THE_GIVEN_SENDER_CAN_COMPLETE_SUCCESSFULLY_IN_MORE_THAN_ONE_WAY_),
+                _TO_FIX_THIS_ERROR_(_USE_WHEN_ALL_WITH_VARIANT_INSTEAD_)>();
+            }
+            else if constexpr (_Item::__count(set_value) == 0 || _State::__count(set_value) == 0)
+            {
+              return STDEXEC::__concat_completion_signatures(__state2, __item3);
+            }
+            else
+            {
+              using __vdecay_fn  = __mtransform<__q1<__decay_t>, __qq<__mlist>>;
+              using __mk_vsig_fn = __mconcat<__qf<set_value_t>>;
+              using __ivalues_t  = __value_types_t<_Item, __vdecay_fn, __q<__msingle>>;
+              using __svalues_t  = __value_types_t<_State, __qq<__mlist>, __q<__msingle>>;
+              using __vsig_t     = __mcall<__mk_vsig_fn, __svalues_t, __ivalues_t>;
+
+              auto __values = completion_signatures<__vsig_t>();
+              return STDEXEC::__concat_completion_signatures(__values, __state2, __item3);
+            }
+          }
+        };
+      }
+
+      template <class... _CmplSigs>
+      static constexpr auto __fold_cmplsigs(_CmplSigs... __cmplsigs)
+      {
+        auto __init = completion_signatures<set_value_t()>();
+        return __tup::__fold_right_t()(__mk_accumulate_sigs_fn(), __init, __cmplsigs...);
+      }
+
+      template <class _CpCvref>
+      static constexpr auto __mk_fold_cmplsigs_fn() noexcept
+      {
+        return []<class... _Child>(__sexpr<when_all_t, __, _Child...> const *)
+        {
+          return __fold_cmplsigs(
+            STDEXEC::get_completion_signatures<__mcall1<_CpCvref, _Child>>()...);
+        };
+      }
+
+      template <class _CpCvref, class _Env>
+      static constexpr auto __mk_fold_cmplsigs_fn() noexcept
+      {
+        return []<class... _Child>(__sexpr<when_all_t, __, _Child...> const *)
+        {
+          using __env_t = __when_all::__env_t<_Env, __mcall1<_CpCvref, _Child>...>;
+          return __fold_cmplsigs(
+            STDEXEC::get_completion_signatures<__mcall1<_CpCvref, _Child>, __env_t>()...);
+        };
+      }
 
       static constexpr auto __get_attrs =
         []<class... _Child>(__ignore, __ignore, _Child const &...) noexcept
@@ -725,21 +660,8 @@ namespace STDEXEC
       static consteval auto __get_completion_signatures()
       {
         static_assert(__sender_for<_Self, when_all_t>);
-        if constexpr (__minvocable_q<__completions_t, _Self, _Env...>)
-        {
-          // TODO: update this to use constant evaluation:
-          return __completions_t<_Self, _Env...>{};
-        }
-        else if constexpr (sizeof...(_Env) == 0)
-        {
-          return STDEXEC::__throw_dependent_sender_error<_Self>();
-        }
-        else
-        {
-          return STDEXEC::__throw_compile_time_error<_INVALID_ARGUMENTS_TO_WHEN_ALL_,
-                                                     __children_of<_Self, __qq<_WITH_SENDERS_>>,
-                                                     __fn_t<_WITH_ENVIRONMENT_, _Env>...>();
-        }
+        return __mk_fold_cmplsigs_fn<__copy_cvref_fn<_Self>, _Env...>()(
+          std::add_pointer_t<_Self>());
       }
 
       static constexpr auto __get_env = []<class _State>(__ignore, _State const & __state) noexcept
@@ -757,12 +679,38 @@ namespace STDEXEC
         }
       };
 
+      template <class _ChildEnv, class _CvSender>
+      using __values_opt_tuple_t =
+        value_types_of_t<_CvSender, _ChildEnv, __decayed_tuple, __optional>;
+
       static constexpr auto __get_state =
-        []<class _Self, class _Receiver>(_Self&& __self, _Receiver&& __rcvr) noexcept
-        -> __apply_result_t<__mk_state_fn_t<_Receiver>, _Self>
+        []<class _Self, class _Receiver>(_Self&&, _Receiver&& __rcvr) noexcept
       {
-        return __apply(__when_all::__mk_state_fn(static_cast<_Receiver&&>(__rcvr)),
-                       static_cast<_Self&&>(__self));
+        using __env_t       = env_of_t<_Receiver>;
+        using __env_fn      = __mbind_front_q<__when_all::__env_t, __env_t>;
+        using __cmplsigs_t  = completion_signatures_of_t<_Self, __env_t>;
+        using __child_env_t = __children_of<_Self, __env_fn>;
+
+        using __values_tuple_t =  //
+          __children_of<
+            _Self,
+            __mwith_default<
+              __mtransform<__mbind_front_q<__values_opt_tuple_t, __child_env_t>, __q<__tuple>>,
+              __ignore>>;
+
+        using __errors_variant_t = __error_types_t<__cmplsigs_t, __q<__uniqued_variant>>;
+
+        using __uses_stop_source_fn       = __mbind_front_q<__uses_stop_source_t, __env_t>;
+        constexpr bool __uses_stop_source = __children_of<_Self, __uses_stop_source_fn>();
+        constexpr bool __sends_stopped    = __cmplsigs_t::__count(set_stopped) != 0;
+
+        using __state_t = __state<__errors_variant_t,
+                                  __values_tuple_t,
+                                  _Receiver,
+                                  __sends_stopped,
+                                  __uses_stop_source>;
+
+        return __state_t{static_cast<_Receiver&&>(__rcvr), __nbr_children_of<_Self>};
       };
 
       static constexpr auto __start =
@@ -777,6 +725,8 @@ namespace STDEXEC
           __state.__on_stop_.emplace(get_stop_token(STDEXEC::get_env(__state.__rcvr_)),
                                      __forward_stop_request{__state.__stop_source_});
         }
+
+        // Start all the child operations:
         (STDEXEC::start(__child_ops), ...);
       };
 
@@ -841,8 +791,8 @@ namespace STDEXEC
         }
         else if constexpr (!__same_as<_ValuesTuple, __ignore>)
         {
-          // We only need to bother recording the completion values if we're
-          // not already in the "error" or "stopped" state.
+          // We only need to bother recording the completion values if we're not
+          // already in the "error" or "stopped" state.
           if (__state.__state_.load() == __started)
           {
             auto& __opt_values = STDEXEC::__get<_Index::value>(__state.__values_);
@@ -850,19 +800,19 @@ namespace STDEXEC
             static_assert(__same_as<decltype(*__opt_values), _Tuple&>,
                           "One of the senders in this when_all() is fibbing about what types it "
                           "sends");
-            if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+            STDEXEC_TRY
             {
               __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
             }
-            else
+            STDEXEC_CATCH_ALL
             {
-              STDEXEC_TRY
-              {
-                __opt_values.emplace(_Tuple{static_cast<_Args&&>(__args)...});
-              }
-              STDEXEC_CATCH_ALL
+              if constexpr (!__nothrow_decay_copyable<_Args...>)
               {
                 __set_error(__state, std::current_exception());
+              }
+              else
+              {
+                __std::unreachable();
               }
             }
           }
