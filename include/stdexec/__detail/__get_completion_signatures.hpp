@@ -31,6 +31,7 @@ import stdexec;
 #  include "__connect_awaitable.hpp"
 #  include "__diagnostics.hpp"
 #  include "__env.hpp"
+#  include "__gather_completion_signatures.hpp"
 #  include "__meta.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
@@ -438,10 +439,10 @@ namespace STDEXEC
 
   template <class _WantedTag, class _Sender, class _Env, class _Tuple, class _Variant>
   using __gather_completions_of_t =
-    __gather_completions_t<_WantedTag,
-                           __completion_signatures_of_t<_Sender, _Env>,
-                           _Tuple,
-                           _Variant>;
+    __gather_completion_signatures_t<_WantedTag,
+                                     __completion_signatures_of_t<_Sender, _Env>,
+                                     _Tuple,
+                                     _Variant>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sender,
@@ -480,8 +481,7 @@ namespace STDEXEC
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tag, class _Sender, class... _Env>
-  using __count_of =
-    __msize_t<__detail::__count_of<_Tag, __completion_signatures_of_t<_Sender, _Env...>>>;
+  using __count_of = __msize_t<__completion_signatures_of_t<_Sender, _Env...>::__count(_Tag())>;
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

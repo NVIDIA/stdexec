@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 NVIDIA Corporation
+ * Copyright (c) 2026 NVIDIA Corporation
  *
  * Licensed under the Apache License Version 2.0 with LLVM Exceptions
  * (the "License"); you may not use this file except in compliance with
@@ -26,10 +26,11 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#  include "__concat_completion_signatures.hpp"
 #  include "__concepts.hpp"
-#  include "__diagnostics.hpp"
+#  include "__diagnostics.hpp"  // IWYU pragma: export
 #  include "__meta.hpp"
-#  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
+#  include "__partition_completion_signatures.hpp"
 #  include "__utility.hpp"
 
 #  if !STDEXEC_USE_MODULES()
@@ -39,6 +40,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////
@@ -47,208 +49,18 @@ namespace STDEXEC
   {
     STDEXEC_MODULE_EXPORT_AUTHORING
     template <class _Sig>
-    inline constexpr bool __is_compl_sig = false;
+    inline constexpr bool __is_valid_cmplsig = false;
     template <class... _Args>
-    inline constexpr bool __is_compl_sig<set_value_t(_Args...)> = true;
+    inline constexpr bool __is_valid_cmplsig<set_value_t(_Args...)> = true;
     template <class _Error>
-    inline constexpr bool __is_compl_sig<set_error_t(_Error)> = true;
+    inline constexpr bool __is_valid_cmplsig<set_error_t(_Error)> = true;
     template <>
-    inline constexpr bool __is_compl_sig<set_stopped_t()> = true;
+    inline constexpr bool __is_valid_cmplsig<set_stopped_t()> = true;
   }  // namespace __cmplsigs
 
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sig>
-  concept __completion_signature = __cmplsigs::__is_compl_sig<_Sig>;
-
-  namespace __cmplsigs
-  {
-    // The following code is used to normalize completion signatures.
-    // "Normalization" means that that rvalue-references are stripped from the
-    // types in the completion signatures. For example, the completion signature
-    // `set_value_t(int &&)` would be normalized to `set_value_t(int)`, but
-    // `set_value_t(int)` and `set_value_t(int &)` would remain unchanged.
-    template <class _Tag, class... _Args>
-    constexpr auto __normalize_sig_impl(_Args&&...) -> _Tag (*)(_Args...);
-
-    template <class _Tag, class... _Args>
-    constexpr auto __normalize_sig(_Tag (*)(_Args...))
-      -> decltype(__cmplsigs::__normalize_sig_impl<_Tag>(__declval<_Args>()...));
-
-    template <class... _Sigs>
-    constexpr auto __repack_completions(_Sigs*...) -> completion_signatures<_Sigs...>;
-
-    template <class... _Sigs>
-    constexpr auto __normalize_completions(completion_signatures<_Sigs...>*)
-      -> decltype(__cmplsigs::__repack_completions(
-        __cmplsigs::__normalize_sig(static_cast<_Sigs*>(nullptr))...));
-
-    template <class _Completions>
-    using __normalize_completions_t = decltype(__cmplsigs::__normalize_completions(
-      static_cast<_Completions*>(nullptr)));
-
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    template <class _Sig>
-    using __normalize_sig_t = decltype(__cmplsigs::__normalize_sig(static_cast<_Sig*>(nullptr)));
-  }  // namespace __cmplsigs
-
-  template <class... _SigPtrs>
-  using __completion_signature_ptrs_t = decltype(__cmplsigs::__repack_completions(
-    static_cast<_SigPtrs>(nullptr)...));
-
-  namespace __cmplsigs
-  {
-    // __partitions is a cache of completion signatures for fast access. The
-    // completion_signatures<Sigs...>::__partitioned nested struct contains an
-    // alias to a __partitions specialization. If the cache is never accessed,
-    // it is never instantiated.
-    template <class _ValueTuplesList = __mlist<>,
-              class _ErrorsList      = __mlist<>,
-              class _StoppedList     = __mlist<>>
-    struct __partitions;
-
-    template <class... _ValueTuples, class... _Errors, class... _Stopped>
-    struct __partitions<__mlist<_ValueTuples...>, __mlist<_Errors...>, __mlist<_Stopped...>>
-    {
-      template <class _Tuple, class _Variant>
-      using __value_types = _Variant::template __f<__mapply<_Tuple, _ValueTuples>...>;
-
-      template <class _Variant, class _Transform = __q1<__midentity>>
-      using __error_types = _Variant::template __f<typename _Transform::template __f<_Errors>...>;
-
-      template <class _Variant, class _Type = set_stopped_t()>
-      using __stopped_types = _Variant::template __f<__msecond<_Stopped, _Type>...>;
-
-      using __count_values  = __msize_t<sizeof...(_ValueTuples)>;
-      using __count_errors  = __msize_t<sizeof...(_Errors)>;
-      using __count_stopped = __msize_t<sizeof...(_Stopped)>;
-
-      struct __decay_copyable
-      {
-        // These aliases are placed in a separate struct to avoid computing them
-        // if they are not needed.
-        struct __values
-        {
-          static constexpr bool value = (__mapply_q<__decay_copyable_t, _ValueTuples>::value
-                                         && ...);
-        };
-        struct __errors
-        {
-          static constexpr bool value = STDEXEC::__decay_copyable<_Errors...>;
-        };
-        struct __all : __mand_t<__values, __errors>
-        {};
-      };
-
-      struct __nothrow_decay_copyable
-      {
-        // These aliases are placed in a separate struct to avoid computing them
-        // if they are not needed.
-        struct __values
-        {
-          static constexpr bool value = (__mapply_q<__nothrow_decay_copyable_t, _ValueTuples>::value
-                                         && ...);
-        };
-        struct __errors
-        {
-          static constexpr bool value = STDEXEC::__nothrow_decay_copyable<_Errors...>;
-        };
-        struct __all : __mand_t<__values, __errors>
-        {};
-      };
-    };
-
-    template <class _Sig, class _PartitionsDeclFn>
-    extern __undefined<_Sig, _PartitionsDeclFn> __partition_declfn;
-
-    template <class... _Args, class... _Values, class _Errors, class _Stopped>
-    extern __declfn_t<__partitions<__mlist<_Values..., __mlist<_Args...>>, _Errors, _Stopped>>
-      __partition_declfn<set_value_t(_Args...),
-                         __declfn_t<__partitions<__mlist<_Values...>, _Errors, _Stopped>>>;
-
-    template <class _Error, class _Values, class... _Errors, class _Stopped>
-    extern __declfn_t<__partitions<_Values, __mlist<_Errors..., _Error>, _Stopped>>
-      __partition_declfn<set_error_t(_Error),
-                         __declfn_t<__partitions<_Values, __mlist<_Errors...>, _Stopped>>>;
-
-    template <class _Values, class _Errors, class _Stopped>
-    extern __declfn_t<__partitions<_Values, _Errors, __mlist<__mlist<>>>>
-      __partition_declfn<set_stopped_t(), __declfn_t<__partitions<_Values, _Errors, _Stopped>>>;
-
-    template <class _PartitionsDeclFn, class _Sig>
-    using __partitions_declfn_t = decltype(__partition_declfn<_Sig, _PartitionsDeclFn>);
-
-    template <class... _Sigs>
-    using __partition_completion_signatures_t = __call_result_t<
-      __mcall<__mfold_left<__declfn_t<__partitions<>>, __q2<__partitions_declfn_t>>, _Sigs...>>;
-
-    template <class _Completions>
-    using __partitions_of_t = _Completions::__partitioned::__t;
-  }  // namespace __cmplsigs
-
-  //////////////////////////////////////////////////////////////////////////////
-  // completion signatures type traits
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sigs,
-            class _Tuple   = __qq<__decayed_std_tuple>,
-            class _Variant = __qq<__std_variant>>
-  using __value_types_t =
-    __cmplsigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
-
-  template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
-  using __error_types_t =
-    __cmplsigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
-
-  template <class _Sigs, class _Variant, class _Type = __fn_t<set_stopped_t>>
-  using __stopped_types_t =
-    __cmplsigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
-
-  template <__valid_completion_signatures _Sigs>
-  inline constexpr bool __sends_stopped =
-    __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value != 0;
-
-  // set_value_t() when _Type is void; otherwise, set_value_t(_Type)
-  template <class _Type>
-  using __single_value_sig_t = __mcall1<__mremove<void, __qf<set_value_t>>, _Type>;
-
-  STDEXEC_PRAGMA_PUSH()
-  STDEXEC_PRAGMA_IGNORE_EDG(expr_has_no_effect)
-  STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
-
-  //////////////////////////////////////////////////////////////////////////////
-  // concat_completion_signatures
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class... _Sigs>
-  using __concat_completion_signatures_t =
-    __mcall<__mconcat<__munique<__qq<completion_signatures>>>, _Sigs...>;
-
-  namespace __detail
-  {
-    STDEXEC_MODULE_EXPORT_AUTHORING
-    struct __concat_completion_signatures_fn
-    {
-      template <STDEXEC::__valid_completion_signatures... Sigs>
-      [[nodiscard]]
-      consteval auto operator()(Sigs...) const noexcept
-      {
-        return __concat_completion_signatures_t<Sigs...>{};
-      }
-
-      template <class... Errors>
-      [[nodiscard]]
-      consteval auto operator()(Errors...) const noexcept
-      {
-        // NB: this uses an overloaded comma operator on the _ERROR_ type to
-        // find an error in a pack of types.
-        using __error_t = decltype(+(Errors{}, ...));
-        static_assert(__merror<__error_t>);
-        return STDEXEC::__throw_compile_time_error(__error_t());
-      }
-    };
-  }  // namespace __detail
-
-  inline constexpr __detail::__concat_completion_signatures_fn __concat_completion_signatures{};
-
-  STDEXEC_PRAGMA_POP()
+  concept __completion_signature = __cmplsigs::__is_valid_cmplsig<_Sig>;
 
   namespace __detail
   {
@@ -320,11 +132,11 @@ namespace STDEXEC
     [[nodiscard]]
     static consteval auto __count(_Tag) noexcept -> std::size_t
     {
-      if constexpr (_Tag{} == set_value)
+      if constexpr (_Tag() == set_value)
       {
         return __partitioned::__t::__count_values::value;
       }
-      else if constexpr (_Tag{} == set_error)
+      else if constexpr (_Tag() == set_error)
       {
         return __partitioned::__t::__count_errors::value;
       }
@@ -389,21 +201,22 @@ namespace STDEXEC
     [[nodiscard]]
     static consteval auto __select(_Tag) noexcept
     {
-      if constexpr (_Tag{} == set_value)
+      if constexpr (_Tag() == set_value)
       {
         return __value_types_t<completion_signatures,
                                __qf<set_value_t>,
-                               __qq<STDEXEC::completion_signatures>>{};
+                               __qq<STDEXEC::completion_signatures>>();
       }
-      else if constexpr (_Tag{} == set_error)
+      else if constexpr (_Tag() == set_error)
       {
         return __error_types_t<completion_signatures,
                                __qq<STDEXEC::completion_signatures>,
-                               __qf<set_error_t>>{};
+                               __qf<set_error_t>>();
       }
       else
       {
-        return __stopped_types_t<completion_signatures, __qq<STDEXEC::completion_signatures>>{};
+        return __stopped_types_t<completion_signatures,  //
+                                 __qq<STDEXEC::completion_signatures>>();
       }
     }
 
@@ -437,167 +250,6 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _NoExcept>
   using __eptr_completion_unless_t = __if<_NoExcept, completion_signatures<>, __eptr_completion_t>;
-
-#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class, class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(_Values...) -> __mexception<_What...>
-  {
-    return {};
-  }
-
-  template <class... _What, class... _Values>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error(_Values...) -> __mexception<_What...>
-  {
-    return {};
-  }
-
-#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
-
-  // C++26, https://wg21.link/p3068
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Return, class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto __throw_compile_time_error_r([[maybe_unused]] _Values... __values) -> _Return
-  {
-    if constexpr (__same_as<_What, dependent_sender_error>)
-    {
-      throw __mexception<dependent_sender_error, _More...>();
-    }
-    else if constexpr (sizeof...(_Values) == 1)
-    {
-      throw __sender_type_check_failure<_Values..., _What, _More...>(__values...);
-    }
-    else
-    {
-      throw __sender_type_check_failure<__tuple<_Values...>, _What, _More...>(__tuple{__values...});
-    }
-  }
-
-  template <class _What, class... _More, class... _Values>
-  [[noreturn, nodiscard]]
-  consteval auto __throw_compile_time_error(_Values... __values) -> completion_signatures<>
-  {
-    (void) STDEXEC::__throw_compile_time_error_r<completion_signatures<>, _What, _More...>(
-      static_cast<_Values>(__values)...);
-  }
-
-#  endif  // ^^^ constexpr exceptions ^^^
-
-  template <class _Return, class... _What>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error_r(__mexception<_What...>)
-  {
-    return STDEXEC::__throw_compile_time_error_r<_Return, _What...>();
-  }
-
-  template <class... _What>
-  [[nodiscard]]
-  consteval auto __throw_compile_time_error(__mexception<_What...>)
-  {
-    return STDEXEC::__throw_compile_time_error<_What...>();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // __gather_completions_t
-  namespace __detail
-  {
-    template <class _WantedTag>
-    struct __gather_sigs_fn;
-
-    template <>
-    struct __gather_sigs_fn<set_value_t>
-    {
-      template <class _Sigs, class _Tuple, class _Variant>
-      using __f = __value_types_t<_Sigs, _Tuple, _Variant>;
-    };
-
-    template <>
-    struct __gather_sigs_fn<set_error_t>
-    {
-      template <class _Sigs, class _Tuple, class _Variant>
-      using __f = __error_types_t<_Sigs, _Variant, _Tuple>;
-    };
-
-    template <>
-    struct __gather_sigs_fn<set_stopped_t>
-    {
-      template <class _Sigs, class _Tuple, class _Variant>
-      using __f = __stopped_types_t<_Sigs, _Variant, __minvoke<_Tuple>>;
-    };
-  }  // namespace __detail
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _WantedTag, class _Sigs, class _Tuple, class _Variant>
-  using __gather_completions_t =
-    __detail::__gather_sigs_fn<_WantedTag>::template __f<_Sigs, _Tuple, _Variant>;
-
-  namespace __detail
-  {
-    template <class _Tag, class _Sigs>
-    inline constexpr std::size_t __count_of = 0;
-
-    template <class _Sigs>
-    inline constexpr std::size_t __count_of<set_value_t, _Sigs> =
-      __cmplsigs::__partitions_of_t<_Sigs>::__count_values::value;
-
-    template <class _Sigs>
-    inline constexpr std::size_t __count_of<set_error_t, _Sigs> =
-      __cmplsigs::__partitions_of_t<_Sigs>::__count_errors::value;
-    template <class _Sigs>
-    inline constexpr std::size_t __count_of<set_stopped_t, _Sigs> =
-      __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value;
-  }  // namespace __detail
-
-  // Below is the definition of the STDEXEC_IF_OK portability macro. It is used
-  // to check that an expression's type is not an __mexception type.
-
-#  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
-
-#    define STDEXEC_IF_OK(_ID)                      \
-    if constexpr (STDEXEC::__merror<decltype(_ID)>) \
-    {                                               \
-      return _ID;                                   \
-    } else
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class, class _Sndr>
-  [[nodiscard]]
-  consteval auto __throw_dependent_sender_error_r() noexcept -> __dependent_sender_error_t<_Sndr>
-  {
-    return {};
-  }
-
-  template <class _Sndr>
-  [[nodiscard]]
-  consteval auto __throw_dependent_sender_error() noexcept -> __dependent_sender_error_t<_Sndr>
-  {
-    return {};
-  }
-
-#  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
-
-#    define STDEXEC_IF_OK(_ID)
-
-  STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Result, class _Sndr>
-  [[noreturn, nodiscard]]
-  consteval auto __throw_dependent_sender_error_r() -> _Result
-  {
-    throw __dependent_sender_error_t<_Sndr>{};
-  }
-
-  template <class _Sndr>
-  [[noreturn, nodiscard]]
-  consteval auto __throw_dependent_sender_error() -> completion_signatures<>
-  {
-    throw __dependent_sender_error_t<_Sndr>{};
-  }
-
-#  endif  // ^^^ constexpr exceptions ^^^
 }  // namespace STDEXEC
 
 #  include "__epilogue.hpp"

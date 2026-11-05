@@ -31,6 +31,7 @@ import stdexec;
 #  include "../stdexec/__detail/__env.hpp"
 #  include "../stdexec/__detail/__just.hpp"
 #  include "../stdexec/__detail/__meta.hpp"
+#  include "../stdexec/__detail/__normalize_completion_signature.hpp"
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
@@ -1315,12 +1316,12 @@ namespace experimental::execution
     };
 
     template <class _CvSequence, class _Env, class _Items, class _Sigs>
-    using __sequence_receiver_t = STDEXEC::__mapply<
-      STDEXEC::__mtransform<
-        STDEXEC::__mcompose<STDEXEC::__q1<std::remove_pointer_t>,
-                            STDEXEC::__q1<STDEXEC::__cmplsigs::__normalize_sig_t>>,
-        STDEXEC::__mbind_front_q<__sequence_receiver, _CvSequence, _Env, _Items>>,
-      _Sigs>;
+    using __sequence_receiver_t =
+      STDEXEC::__mapply<STDEXEC::__mtransform<
+                          STDEXEC::__mcompose<STDEXEC::__q1<std::remove_pointer_t>,
+                                              STDEXEC::__q1<STDEXEC::__cmplsigs::__normalize_t>>,
+                          STDEXEC::__mbind_front_q<__sequence_receiver, _CvSequence, _Env, _Items>>,
+                        _Sigs>;
 
     template <class _CvSequence, class _Env>
     constexpr void __debug_sequence_sender(_CvSequence&& __sequence, _Env const &)

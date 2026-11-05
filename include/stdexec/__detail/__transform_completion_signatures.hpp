@@ -31,6 +31,7 @@ import stdexec;
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__debug.hpp"  // IWYU pragma: keep
+#  include "__gather_completion_signatures.hpp"
 #  include "__get_completion_signatures.hpp"
 #  include "__meta.hpp"
 
@@ -563,10 +564,11 @@ namespace STDEXEC
 
   template <class _Catch, class _Tag, class _Fun, class _Sender, class... _Env>
   using __with_error_invoke_t =
-    __if<__gather_completions_t<_Tag,
-                                __completion_signatures_of_t<_Sender, _Env...>,
-                                __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>,
-                                __qq<__mand>>,
+    __if<__gather_completion_signatures_t<
+           _Tag,
+           __completion_signatures_of_t<_Sender, _Env...>,
+           __mbind_front<__mtry_catch_q<__nothrow_invocable_t, _Catch>, _Fun>,
+           __qq<__mand>>,
          completion_signatures<>,
          __eptr_completion_t>;
 
