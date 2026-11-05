@@ -84,7 +84,7 @@ namespace nv::execution::_strm
             cudaStream_t stream   = shared_state_->stream_provider_.own_stream_.value();
             shared_state_->index_ = __mapply<__mfind_i<tuple_t>, variant_t>::value;
             copy_kernel<Tag, Args&&...>
-              <<<1, 1, 0, stream>>>(shared_state_->data_, static_cast<Args&&>(args)...);
+              <<<1, 1, 0, stream>>>(shared_state_->data_.get(), static_cast<Args&&>(args)...);
             shared_state_->completion_copy_started_ = true;
             shared_state_->stream_provider_.status_ = STDEXEC_LOG_CUDA_API(
               cudaEventRecord(shared_state_->event_, stream));
@@ -133,24 +133,6 @@ namespace nv::execution::_strm
       notify_fn_t* notify_{};
     };
 
-    template <class Type>
-    auto malloc_managed(cudaError_t& status) -> Type*
-    {
-      Type* ptr{};
-
-      if (status == cudaSuccess)
-      {
-        status = STDEXEC_LOG_CUDA_API(cudaMallocManaged(&ptr, sizeof(Type)));
-        if (status == cudaSuccess)
-        {
-          new (ptr) Type();
-          return ptr;
-        }
-      }
-
-      return nullptr;
-    }
-
     template <class Sender>
     struct sh_state : __enable_intrusive_from_this<sh_state<Sender>>
     {
@@ -172,7 +154,10 @@ namespace nv::execution::_strm
         requires(stream_sender<Sender, env_t>)
         : ctx_(ctx)
         , stream_provider_(false, ctx)
-        , data_(malloc_managed<variant_t>(stream_provider_.status_))
+        // Pinned rather than managed: the continuation task reads it on the host
+        // while kernels may be running, which managed memory only allows on
+        // devices with concurrent managed access.
+        , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
         , opstate1_{nullptr}
         , opstate2_(connect(static_cast<Sender&&>(sndr), inner_receiver_t{*this}))
       {
@@ -189,17 +174,18 @@ namespace nv::execution::_strm
       explicit sh_state(Sender& sndr, context ctx)
         : ctx_(ctx)
         , stream_provider_(false, ctx)
-        , data_(malloc_managed<variant_t>(stream_provider_.status_))
+        , data_(host_allocate<variant_t>(stream_provider_.status_, ctx.pinned_resource_))
         , task_(host_allocate<task_t>(stream_provider_.status_,
                                       ctx.pinned_resource_,
                                       inner_receiver_t{*this},
-                                      data_,
+                                      data_.get(),
                                       stream_provider_.own_stream_.value(),
                                       ctx.pinned_resource_)
                   .release())
         , env_(host_allocate(this->stream_provider_.status_, ctx_.pinned_resource_, make_env()))
-        , opstate2_(connect(static_cast<Sender&&>(sndr),
-                            enqueue_receiver_t{env_.get(), data_, task_, ctx.hub_->producer()}))
+        , opstate2_(
+            connect(static_cast<Sender&&>(sndr),
+                    enqueue_receiver_t{env_.get(), data_.get(), task_, ctx.hub_->producer()}))
       {
         STDEXEC::start(opstate2_);
       }
@@ -224,12 +210,6 @@ namespace nv::execution::_strm
           {
             STDEXEC_ASSERT_CUDA_API(cudaEventDestroy(event_));
           }
-        }
-
-        if (data_)
-        {
-          data_->~variant_t();
-          STDEXEC_ASSERT_CUDA_API(cudaFree(data_));
         }
       }
 
@@ -256,7 +236,7 @@ namespace nv::execution::_strm
       bool                         event_recorded_{false};
       bool                         completion_copy_started_{false};
       unsigned int                 index_{0};
-      variant_t*                   data_{nullptr};
+      host_ptr_t<variant_t>        data_{};
       task_t*                      task_{nullptr};
       inplace_stop_source          stop_source_{};
       host_ptr_t<__decay_t<env_t>> env_{};
