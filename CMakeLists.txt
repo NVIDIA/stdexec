@@ -292,13 +292,20 @@ if(STDEXEC_BUILD_TESTS)
   endif()
 
   # These headers are Linux-only.
-  if(WIN32)
+  if(NOT LINUX)
     set_source_files_properties(
       include/exec/linux/io_uring_context.hpp
       include/exec/linux/memory_mapped_region.hpp
       include/exec/linux/detail/memory_mapped_region.hpp
       include/exec/linux/safe_file_descriptor.hpp
       include/exec/linux/detail/safe_file_descriptor.hpp
+      PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are macOS-only.
+  if(NOT APPLE)
+    set_source_files_properties(
+      include/exec/libdispatch_queue.hpp
       PROPERTIES SKIP_LINTING ON)
   endif()
 endif()
