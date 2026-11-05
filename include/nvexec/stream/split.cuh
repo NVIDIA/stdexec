@@ -24,13 +24,13 @@
 #include "../../exec/completion_signatures.hpp"
 #include "../../exec/env.hpp"
 #include "../../exec/split.hpp"
+#include "../../exec/stoppable_base.hpp"
 #include "../detail/cuda_atomic.cuh"  // IWYU pragma: keep
 #include "../detail/throw_on_cuda_error.cuh"
 #include "common.cuh"
 
 #include <atomic>
 #include <memory>
-#include <optional>
 #include <type_traits>
 
 #include <cuda/std/tuple>
@@ -262,12 +262,15 @@ namespace nv::execution::_strm
     struct opstate
       : public opstate_base
       , public _strm::opstate_base<Receiver>
+      , public exec::stoppable_base_for_t<stop_token_of_t<env_of_t<Receiver>>,
+                                          opstate<Sender, Receiver>>
     {
-      using on_stop_t = std::optional<
-        stop_callback_for_t<stop_token_of_t<env_of_t<Receiver>>, __forward_stop_request<>>>;
-
-      on_stop_t                         on_stop_{};
       std::shared_ptr<sh_state<Sender>> sh_state_;
+
+      void on_stop_requested() noexcept
+      {
+        sh_state_->stop_source_.request_stop();
+      }
 
      public:
       opstate(Receiver&& rcvr, std::shared_ptr<sh_state<Sender>> sh_state)
@@ -282,7 +285,7 @@ namespace nv::execution::_strm
       static void notify(opstate_base* self) noexcept
       {
         auto* op = static_cast<opstate*>(self);
-        op->on_stop_.reset();
+        op->deregister_stoppable();
 
         cudaError_t& status = op->sh_state_->stream_provider_.status_;
         if (status == cudaSuccess)
@@ -318,8 +321,7 @@ namespace nv::execution::_strm
 
         if (old != completion_state)
         {
-          on_stop_.emplace(get_stop_token(STDEXEC::get_env(this->rcvr_)),
-                           __forward_stop_request{sh_state->stop_source_});
+          this->register_stoppable(get_stop_token(STDEXEC::get_env(this->rcvr_)));
         }
 
         do
