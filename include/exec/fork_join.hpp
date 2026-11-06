@@ -25,17 +25,55 @@ namespace experimental::execution
 {
   struct fork_join_t;
 
+  // taken from __let.hpp
+  template <class _Receiver, class _Env2>
+  struct __rcvr_env
+  {
+    using receiver_concept = STDEXEC::receiver_tag;
+
+    _Receiver __rcvr_;
+    _Env2     __env_;
+
+    template <class... _As>
+    constexpr void set_value(_As&&... __as) noexcept
+    {
+      STDEXEC::set_value(static_cast<_Receiver&&>(__rcvr_), static_cast<_As&&>(__as)...);
+    }
+
+    template <class _Error>
+    constexpr void set_error(_Error&& __err) noexcept
+    {
+      STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), static_cast<_Error&&>(__err));
+    }
+
+    constexpr void set_stopped() noexcept
+    {
+      STDEXEC::set_stopped(static_cast<_Receiver&&>(__rcvr_));
+    }
+
+    [[nodiscard]]
+    constexpr auto get_env() const noexcept  //
+      -> decltype(STDEXEC::__env::__join(__env_, STDEXEC::get_env(__rcvr_)))
+    {
+      return STDEXEC::__env::__join(__env_, STDEXEC::get_env(__rcvr_));
+    }
+  };
+
   struct INVALID_ARGUMENTS_TO_FORK_JOIN;
 
   namespace _fork_join
   {
+    template <bool _Affine>
     struct _mk_when_all_fn
     {
       template <class CacheSndr, class... Closures>
       STDEXEC_ATTRIBUTE(always_inline, host, device)
       constexpr auto operator()(CacheSndr sndr, Closures&&... closures) const
       {
-        return STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...);
+        if constexpr (_Affine)
+          return STDEXEC::affine(STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...));
+        else
+          return STDEXEC::when_all(static_cast<Closures&&>(closures)(sndr)...);
       }
     };
 
@@ -124,9 +162,9 @@ namespace experimental::execution
       Variant const * _results_;
     };
 
-    template <class Completions, class Closures, class Domain>
+    template <class Completions, class Closures, class Domain, bool _Affine>
     using _when_all_sndr_t =
-      STDEXEC::__apply_result_t<_mk_when_all_fn,
+      STDEXEC::__apply_result_t<_mk_when_all_fn<_Affine>,
                                 Closures,
                                 _cache_sndr_t<_variant_t<Completions>, Domain>>;
 
@@ -137,21 +175,51 @@ namespace experimental::execution
       using _env_t                  = STDEXEC::__fwd_env_t<STDEXEC::env_of_t<Rcvr>>;
       using _child_completions_t    = STDEXEC::__completion_signatures_of_t<Sndr, _env_t>;
       using _domain_t = STDEXEC::__completion_domain_of_t<STDEXEC::set_value_t, Sndr, _env_t>;
-      using _when_all_sndr_t =
-        _fork_join::_when_all_sndr_t<_child_completions_t, Closures, _domain_t>;
+      using __come_back_sched_t =
+        STDEXEC::__call_result_or_t<STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>,
+                                    STDEXEC::__not_a_scheduler<>,
+                                    STDEXEC::env_of_t<Sndr>,
+                                    _env_t>;
+
+      static constexpr bool __honors_completion_sched =
+        !STDEXEC::__same_as<__come_back_sched_t, STDEXEC::__not_a_scheduler<>>;
+
+      using _when_all_sndr_t = _fork_join::_when_all_sndr_t<_child_completions_t,
+                                                            Closures,
+                                                            _domain_t,
+                                                            __honors_completion_sched>;
       using _child_opstate_t =
         STDEXEC::connect_result_t<Sndr, STDEXEC::__receiver_ref<_opstate_t, _env_t>>;
-      using _fork_opstate_t =
-        STDEXEC::connect_result_t<_when_all_sndr_t, STDEXEC::__receiver_ref<Rcvr>>;
+
+      using with_env_rcvr_t = std::conditional_t<
+        __honors_completion_sched,
+        __rcvr_env<STDEXEC::__receiver_ref<Rcvr>,
+                   STDEXEC::prop<STDEXEC::get_start_scheduler_t, __come_back_sched_t>>,
+        STDEXEC::__receiver_ref<Rcvr>>;
+
+      using _fork_opstate_t = STDEXEC::connect_result_t<_when_all_sndr_t, with_env_rcvr_t>;
       using _cache_sndr_t = _fork_join::_cache_sndr_t<_variant_t<_child_completions_t>, _domain_t>;
 
       STDEXEC_ATTRIBUTE(host, device)
       constexpr explicit _opstate_t(Sndr&& sndr, Closures&& closures, Rcvr rcvr) noexcept
         : _rcvr_(static_cast<Rcvr&&>(rcvr))
-        , _fork_opstate_(STDEXEC::connect(STDEXEC::__apply(_mk_when_all_fn{},
-                                                           static_cast<Closures&&>(closures),
-                                                           _cache_sndr_t{&_cache_}),
-                                          STDEXEC::__receiver_ref(_rcvr_)))
+        , _fork_opstate_(STDEXEC::connect(
+            STDEXEC::__apply(
+              _mk_when_all_fn<__honors_completion_sched>{
+      },
+              static_cast<Closures&&>(closures),
+              _cache_sndr_t{&_cache_}),
+              [&](){
+            if constexpr (__honors_completion_sched) {
+              return with_env_rcvr_t{STDEXEC::__receiver_ref(_rcvr_),
+                            STDEXEC::prop<STDEXEC::get_start_scheduler_t, __come_back_sched_t>{
+                              STDEXEC::get_start_scheduler_t{},
+                              STDEXEC::get_completion_scheduler<STDEXEC::set_value_t>(
+                                STDEXEC::get_env(sndr),
+                                STDEXEC::get_env(_rcvr_))}};
+    } else {
+      return STDEXEC::__receiver_ref(_rcvr_);
+    }}()))
       {
         _child_opstate_.__construct_from(STDEXEC::connect,
                                          static_cast<Sndr&&>(sndr),
@@ -264,8 +332,18 @@ namespace experimental::execution
           }
           else
           {
-            using _sndr_t =
-              _fork_join::_when_all_sndr_t<_child_completions_t, _closures_t, _domain_t>;
+            using __come_back_sched_t =
+              STDEXEC::__call_result_or_t<STDEXEC::get_completion_scheduler_t<STDEXEC::set_value_t>,
+                                          STDEXEC::__not_a_scheduler<>,
+                                          STDEXEC::env_of_t<_child_sndr_t>,
+                                          Env...>;
+            static constexpr bool __honors_completion_sched =
+              !STDEXEC::__same_as<__come_back_sched_t, STDEXEC::__not_a_scheduler<>>;
+
+            using _sndr_t = _fork_join::_when_all_sndr_t<_child_completions_t,
+                                                         _closures_t,
+                                                         _domain_t,
+                                                         __honors_completion_sched>;
             return __completion_signatures_of_t<_sndr_t, __fwd_env_t<Env>...>{};
           }
         }
