@@ -42,7 +42,6 @@ import stdexec;
 #  include "__detail/__inline_scheduler.hpp"
 #  include "__detail/__into_variant.hpp"
 #  include "__detail/__intrusive_ptr.hpp"
-#  include "__detail/__intrusive_slist.hpp"
 #  include "__detail/__just.hpp"
 #  include "__detail/__let.hpp"
 #  include "__detail/__meta.hpp"

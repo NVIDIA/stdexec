@@ -21,7 +21,6 @@
 #include "../../stdexec/__detail/__atomic.hpp"
 #include "../../stdexec/__detail/__basic_sender.hpp"
 #include "../../stdexec/__detail/__env.hpp"
-#include "../../stdexec/__detail/__intrusive_slist.hpp"
 #include "../../stdexec/__detail/__memory.hpp"
 #include "../../stdexec/__detail/__meta.hpp"
 #include "../../stdexec/__detail/__queries.hpp"
@@ -33,6 +32,7 @@
 
 #include "../completion_signatures.hpp"
 #include "../stoppable_base.hpp"
+#include "intrusive_slist.hpp"
 
 #include <exception>
 #include <mutex>
@@ -268,7 +268,7 @@ namespace experimental::execution::__shared
   template <class _Env, class _Variant>
   struct __shared_state_base : __local_state_base
   {
-    using __waiters_list_t = __intrusive_slist<&__local_state_base::__next_>;
+    using __waiters_list_t = detail::intrusive_slist<&__local_state_base::__next_>;
 
     constexpr explicit __shared_state_base(_Env __env)
       : __env_(__env::__join(prop{get_stop_token, __stop_source_.get_token()},
