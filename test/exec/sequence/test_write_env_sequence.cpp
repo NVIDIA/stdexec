@@ -58,6 +58,7 @@ namespace
     };
 
     template <STDEXEC::receiver Rcvr>
+    [[nodiscard]]
     auto subscribe(Rcvr rcvr) const -> op<Rcvr>
     {
       return op<Rcvr>{static_cast<Rcvr&&>(rcvr)};
@@ -185,6 +186,7 @@ namespace
       value = poisoned_value;
     }
 
+    [[nodiscard]]
     auto query(read_env_query) const noexcept -> int
     {
       return value;
@@ -207,6 +209,7 @@ namespace
       value = poisoned_value;
     }
 
+    [[nodiscard]]
     auto query(read_env_query) const noexcept -> int
     {
       return value;
@@ -239,6 +242,7 @@ namespace
     };
 
     template <STDEXEC::receiver Rcvr>
+    [[nodiscard]]
     auto subscribe(Rcvr rcvr) const -> op<Rcvr>
     {
       return op<Rcvr>{static_cast<Rcvr&&>(rcvr), observed_};
@@ -265,6 +269,7 @@ namespace
     void set_error(Error&&) noexcept
     {}
 
+    [[nodiscard]]
     auto get_env() const noexcept
     {
       return STDEXEC::prop(STDEXEC::get_stop_token, STDEXEC::inplace_stop_token{});

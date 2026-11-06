@@ -266,11 +266,13 @@ namespace
       return values_ + 3;
     }
 
+    [[nodiscard]]
     int const * begin() const noexcept
     {
       return values_;
     }
 
+    [[nodiscard]]
     int const * end() const noexcept
     {
       return values_ + 3;
@@ -301,11 +303,13 @@ namespace
       return values_.end();
     }
 
+    [[nodiscard]]
     auto begin() const noexcept
     {
       return values_.begin();
     }
 
+    [[nodiscard]]
     auto end() const noexcept
     {
       return values_.end();

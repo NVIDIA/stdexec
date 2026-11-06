@@ -32,6 +32,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 #  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()

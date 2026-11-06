@@ -101,6 +101,7 @@ namespace
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
       return {static_cast<Receiver &&>(rcvr), --*counter_};
@@ -521,7 +522,8 @@ namespace
       struct Error_with_throw_copy
       {
         Error_with_throw_copy() noexcept = default;
-        Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {};
+        // NOLINTNEXTLINE(modernize-use-equals-default)
+        Error_with_throw_copy(Error_with_throw_copy const &) noexcept(false) {}
       };
       ex::sender auto snd     = ex::just_error(Error_with_throw_copy{}) | exec::repeat_until();
       using expected_errors_t = ex::__std_variant<Error_with_throw_copy, std::exception_ptr>;

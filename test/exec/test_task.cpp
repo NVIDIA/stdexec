@@ -416,10 +416,25 @@ namespace
   // awaiting a task from a parent whose token is not inplace_stop_token.
   struct std_stop_token_parent
   {
+    struct env
+    {
+      [[nodiscard]]
+      auto query(ex::get_stop_token_t) const noexcept -> std::stop_token
+      {
+        return token_;
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_start_scheduler_t) const noexcept -> ex::inline_scheduler
+      {
+        return ex::inline_scheduler{};
+      }
+
+      std::stop_token token_;
+    };
+
     struct promise_type
     {
-      std::stop_token token_;
-
       auto get_return_object() noexcept -> std_stop_token_parent
       {
         return {std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -454,13 +469,12 @@ namespace
       }
 
       [[nodiscard]]
-      auto get_env() const noexcept
+      auto get_env() const noexcept -> env
       {
-        return ex::env{
-          ex::prop{     ex::get_stop_token,                 token_},
-          ex::prop{ex::get_start_scheduler, ex::inline_scheduler{}}
-        };
+        return env{token_};
       }
+
+      std::stop_token token_;
     };
 
     std::coroutine_handle<promise_type> handle_;

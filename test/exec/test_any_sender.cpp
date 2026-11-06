@@ -740,6 +740,7 @@ namespace
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <ex::receiver R>
+      [[nodiscard]]
       auto connect(R r) const -> operation<R>
       {
         return {{}, static_cast<R &&>(r)};

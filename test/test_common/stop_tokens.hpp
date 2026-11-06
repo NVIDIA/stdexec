@@ -96,7 +96,7 @@ namespace
     [[nodiscard]]
     auto destructor_waited() -> bool
     {
-      std::lock_guard lock{mutex_};
+      std::scoped_lock lock{mutex_};
       return destructor_waiting_;
     }
 

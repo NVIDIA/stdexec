@@ -31,9 +31,7 @@ namespace
       : should_throw_(&should_throw)
     {}
 
-    throwing_move_callable(throwing_move_callable const & other) noexcept
-      : should_throw_(other.should_throw_)
-    {}
+    throwing_move_callable(throwing_move_callable const & other) noexcept = default;
 
     throwing_move_callable(throwing_move_callable&& other) noexcept(false)
       : should_throw_(other.should_throw_)

@@ -32,6 +32,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct _CANNOT_MAKE_SENDER_AFFINE_TO_THE_STARTING_SCHEDULER_;

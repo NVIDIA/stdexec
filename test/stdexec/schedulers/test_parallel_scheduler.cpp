@@ -374,9 +374,9 @@ TEST_CASE("bulk_chunked on parallel_scheduler covers the entire range",
                                    });
   ex::sync_wait(std::move(bulk_snd));
 
-  for (size_t i = 0; i < num_tasks; ++i)
+  for (bool i: covered)
   {
-    REQUIRE(covered[i]);
+    REQUIRE(i);
   }
 }
 
@@ -564,12 +564,14 @@ struct tracked_value_sender
   {
     STDEXEC::parallel_scheduler sched_;
 
+    [[nodiscard]]
     auto query(ex::get_completion_scheduler_t<ex::set_value_t>, auto const &...) const noexcept
       -> STDEXEC::parallel_scheduler
     {
       return sched_;
     }
 
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>, auto const &...) const noexcept
     {
       return ex::get_completion_domain<ex::set_value_t>(sched_);
@@ -595,6 +597,7 @@ struct tracked_value_sender
     , value_(std::move(live))
   {}
 
+  [[nodiscard]]
   auto get_env() const noexcept -> env
   {
     return {sched_};

@@ -51,6 +51,7 @@ struct fail_some
   };
 
   template <class R>
+  [[nodiscard]]
   auto connect(R r) const -> op<R>
   {
     return {std::move(r)};

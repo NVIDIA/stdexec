@@ -170,7 +170,8 @@ namespace
   {
     std::atomic<bool> removed{false};
     auto              state = std::make_unique<slow_state>();
-    state->callback.emplace(state->source.get_token(), remove_and_sleep{state.get(), &removed});
+    state->callback.emplace(state->source.get_token(),
+                            remove_and_sleep{.state = state.get(), .removed = &removed});
 
     std::thread thread([source = &state->source] { source->request_stop(); });
     while (!removed.load())
@@ -206,7 +207,10 @@ namespace
     bool                                                              finished = false;
     ::STDEXEC::inplace_stop_source                                    source;
     std::optional<::STDEXEC::inplace_stop_callback<wait_then_finish>> callback;
-    callback.emplace(source.get_token(), wait_then_finish{&started, &destroying, &finished});
+    callback.emplace(source.get_token(),
+                     wait_then_finish{.started    = &started,
+                                      .destroying = &destroying,
+                                      .finished   = &finished});
 
     std::thread thread([&source] { source.request_stop(); });
     while (!started.load())

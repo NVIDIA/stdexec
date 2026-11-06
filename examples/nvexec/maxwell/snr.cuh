@@ -235,6 +235,7 @@ namespace _repeat_n
   };
 }  // namespace _repeat_n
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class Sender, class Closure>

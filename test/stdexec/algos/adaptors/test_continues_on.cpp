@@ -58,13 +58,14 @@ namespace
       };
 
       template <class Receiver>
-      [[maybe_unused]]
+      [[nodiscard, maybe_unused]]
       auto connect(Receiver receiver) const noexcept(false) -> opstate<Receiver>
       {
         return {static_cast<Receiver &&>(receiver)};
       }
     };
 
+    [[nodiscard]]
     auto schedule() const noexcept -> sender
     {
       return {};

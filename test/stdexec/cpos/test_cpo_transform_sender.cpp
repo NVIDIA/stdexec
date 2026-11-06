@@ -60,6 +60,7 @@ namespace
 
     void set_value(int) noexcept {}
 
+    [[nodiscard]]
     auto get_env() const noexcept
     {
       return ex::prop(ex::get_domain, then_to_just_domain<Nothrow>{});

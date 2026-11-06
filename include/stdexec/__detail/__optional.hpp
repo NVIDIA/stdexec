@@ -39,6 +39,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __opt
@@ -69,7 +70,7 @@ namespace STDEXEC
     {
       static_assert(__std::destructible<_Tp>);
 
-      constexpr __optional() noexcept {}
+      constexpr __optional() noexcept {}  // NOLINT(modernize-use-equals-default)
 
       constexpr __optional(__nullopt_t) noexcept {}
 
@@ -147,6 +148,7 @@ namespace STDEXEC
         return __value_.__get();
       }
 
+      [[nodiscard]]
       constexpr auto value() const & -> _Tp const &
       {
         if (!__has_value_)

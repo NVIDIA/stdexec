@@ -195,6 +195,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
   };
 STDEXEC_P2300_NAMESPACE_END()
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::stop_callback_for_t)

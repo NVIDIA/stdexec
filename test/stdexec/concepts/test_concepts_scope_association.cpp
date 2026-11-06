@@ -34,6 +34,7 @@ namespace
     }
 
     // this may throw, although it need not
+    [[nodiscard]]
     constexpr null_association try_associate() const noexcept
     {
       return {};
@@ -45,10 +46,15 @@ namespace
   template <class Derived>
   struct crtp_association : null_association
   {
+   private:
+    crtp_association() = default;
+   public:
+    [[nodiscard]]
     constexpr Derived try_associate() const noexcept
     {
       return {};
     }
+    friend Derived;
   };
 
   struct throwing_specials : crtp_association<throwing_specials>
@@ -85,6 +91,8 @@ namespace
 
   struct explicit_bool : crtp_association<explicit_bool>
   {
+    explicit_bool() = default;
+
     // the bool conversion may be explicit
     constexpr explicit operator bool() const noexcept
     {
@@ -94,7 +102,10 @@ namespace
 
   struct throwing_reassociate : crtp_association<throwing_reassociate>
   {
+    throwing_reassociate() = default;
+
     // try_associate may throw
+    [[nodiscard]]
     constexpr throwing_reassociate try_associate() const noexcept(false)
     {
       return {};

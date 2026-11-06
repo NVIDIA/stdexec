@@ -125,6 +125,7 @@ namespace
       called_.store(true);
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> _Env
     {
       return env_;
@@ -271,6 +272,7 @@ namespace
       FAIL_CHECK("set_error called on expect_value_receiver_ex");
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;
@@ -333,6 +335,7 @@ namespace
       FAIL_CHECK("set_error called on expect_stopped_receiver_ex");
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;
@@ -459,6 +462,7 @@ namespace
       *value_ = std::move(value);
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;

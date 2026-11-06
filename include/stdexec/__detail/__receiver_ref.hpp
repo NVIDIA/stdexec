@@ -30,6 +30,7 @@
 // which -Wunused-value reports. It is only there to make the call depend on _Item.
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-value")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __detail

@@ -84,6 +84,7 @@ namespace
       return static_cast<R&&>(o_->r_);
     }
 
+    [[nodiscard]]
     auto base() const & noexcept -> R const &
     {
       return o_->r_;
@@ -189,6 +190,7 @@ namespace
       return {static_cast<S&&>(s_), static_cast<R&&>(r)};
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> STDEXEC::env_of_t<S>
     {
       return STDEXEC::get_env(s_);

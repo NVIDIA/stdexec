@@ -86,6 +86,7 @@ namespace
   struct test_domain
   {
     template <exec::sender_for<ex::bulk_chunked_t> Sndr, class Env>
+    [[nodiscard]]
     auto transform_sender(ex::set_value_t, Sndr sndr, Env const &) const
     {
       return ex::then(opaque_sender{std::move(sndr)}, []() noexcept { g_called = true; });

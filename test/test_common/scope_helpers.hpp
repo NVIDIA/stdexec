@@ -78,7 +78,7 @@ namespace
 
     counting_resource(counting_resource&&) = delete;
 
-    ~counting_resource() = default;
+    ~counting_resource() override = default;
 
     [[nodiscard]]
     std::intmax_t allocated() const noexcept

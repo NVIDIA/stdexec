@@ -33,6 +33,7 @@ import stdexec;
 #  include "__prologue.hpp"
 
 #  if !STDEXEC_USE_MODULES()
+// NOLINTBEGIN(bugprone-std-namespace-modification)
 STDEXEC_NAMESPACE_STD_BEGIN
   struct monostate;
 
@@ -43,7 +44,9 @@ STDEXEC_NAMESPACE_STD_BEGIN
   class tuple;
 STDEXEC_NAMESPACE_STD_END
 #  endif
+// NOLINTEND(bugprone-std-namespace-modification)
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct __none_such;
@@ -484,6 +487,7 @@ namespace experimental::execution
 
 namespace exec = experimental::execution;
 
+// NOLINTBEGIN(bugprone-std-namespace-modification)
 STDEXEC_P2300_NAMESPACE_BEGIN()
   STDEXEC_MODULE_EXPORT
   struct forwarding_query_t;
@@ -525,9 +529,11 @@ STDEXEC_P2300_NAMESPACE_BEGIN(this_thread)
   STDEXEC_MODULE_EXPORT
   extern sync_wait_with_variant_t const sync_wait_with_variant;
 STDEXEC_P2300_NAMESPACE_END(this_thread)
+// NOLINTEND(bugprone-std-namespace-modification)
 
 // NOT TO SPEC: make sync_wait et. al. available in namespace STDEXEC (possibly
 // std::execution) as well:
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   STDEXEC_P2300_DEPRECATED_SYMBOL(std::forwarding_query_t)

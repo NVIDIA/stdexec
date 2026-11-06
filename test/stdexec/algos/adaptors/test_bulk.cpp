@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <algorithm>
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
@@ -290,9 +291,9 @@ namespace
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter2)
     {
-      CHECK(counter2[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -306,9 +307,9 @@ namespace
     auto            op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter3)
     {
-      CHECK(counter3[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -338,9 +339,9 @@ namespace
     auto            op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -354,9 +355,9 @@ namespace
     auto            op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -391,9 +392,9 @@ namespace
     auto op = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -406,9 +407,9 @@ namespace
     auto            op  = ex::connect(std::move(snd), expect_void_receiver{});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -493,9 +494,9 @@ namespace
     auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -518,9 +519,9 @@ namespace
     auto op = ex::connect(std::move(snd), expect_value_receiver{magic_number});
     ex::start(op);
 
-    for (int i = 0; i < n; i++)
+    for (int i: counter)
     {
-      CHECK(counter[i] == 1);
+      CHECK(i == 1);
     }
   }
 
@@ -633,26 +634,29 @@ namespace
     {
       // The index type matches.
       auto const [value] =
-        ex::sync_wait(ex::just(false) | ex::bulk(ex::par, int(1), CheckIndexType<int>{})).value();
+        ex::sync_wait(ex::just(false) | ex::bulk(ex::par, 1, CheckIndexType<int>{})).value();
       CHECK(value == true);
     }
     {
       // The index type does not match.
       auto const [value] =
-        ex::sync_wait(ex::just(true) | ex::bulk(ex::par, int(1), CheckIndexType<size_t>{})).value();
+        ex::sync_wait(ex::just(true) | ex::bulk(ex::par, 1, CheckIndexType<size_t>{})).value();
       CHECK(value == false);
     }
     {
       // The index type matches.
-      auto const [value] = ex::sync_wait(ex::just(false)
-                                         | ex::bulk(ex::par, size_t(1), CheckIndexType<size_t>{}))
+      auto const [value] = ex::sync_wait(
+                             ex::just(false)
+                             | ex::bulk(ex::par, static_cast<size_t>(1), CheckIndexType<size_t>{}))
                              .value();
       CHECK(value == true);
     }
     {
       // The index type does not match.
-      auto const [value] =
-        ex::sync_wait(ex::just(true) | ex::bulk(ex::par, size_t(1), CheckIndexType<int>{})).value();
+      auto const [value] = ex::sync_wait(
+                             ex::just(true)
+                             | ex::bulk(ex::par, static_cast<size_t>(1), CheckIndexType<int>{}))
+                             .value();
       CHECK(value == false);
     }
   }
@@ -1314,8 +1318,8 @@ namespace
     auto snd = ex::just() | ex::continues_on(sch) | ex::bulk(policy, tids.size(), fun);
     ex::sync_wait(std::move(snd));
 
-    std::sort(tids.begin(), tids.end());
-    return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
+    std::ranges::sort(tids);
+    return static_cast<int>(std::ranges::unique(tids).begin() - tids.begin());
   }
 
   TEST_CASE("static thread pool execute bulk work in accordance with the execution policy",
@@ -1356,8 +1360,8 @@ namespace
     auto snd = ex::just() | ex::continues_on(sch) | ex::bulk_chunked(policy, tids.size(), fun);
     ex::sync_wait(std::move(snd));
 
-    std::sort(tids.begin(), tids.end());
-    return static_cast<int>(std::unique(tids.begin(), tids.end()) - tids.begin());
+    std::ranges::sort(tids);
+    return static_cast<int>(std::ranges::unique(tids).begin() - tids.begin());
   }
 
   TEST_CASE("static thread pool execute bulk_chunked work in accordance with the execution policy",

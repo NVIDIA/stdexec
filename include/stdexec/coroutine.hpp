@@ -53,6 +53,7 @@ import stdexec;
 #      endif
 #    endif
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Tp, __one_of<_Tp, void> _Up>
@@ -183,6 +184,7 @@ namespace STDEXEC
     }
 
     [[nodiscard]]
+    // NOLINT(bugprone-derived-method-shadowing-base-method)
     constexpr auto handle() const noexcept -> __std::coroutine_handle<_Promise>
     {
       return STDEXEC::__coroutine_handle_cast<_Promise>(*this);

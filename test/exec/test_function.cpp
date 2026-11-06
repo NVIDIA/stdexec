@@ -45,6 +45,7 @@ namespace
       struct attrs
       {
         template <class... Env>
+        [[nodiscard]]
         constexpr Domain query(ex::get_completion_domain_t<Channel>, Env const &...) const noexcept
         {
           return {};
@@ -77,6 +78,7 @@ namespace
         return {};
       }
 
+      [[nodiscard]]
       constexpr attrs get_env() const noexcept
       {
         return {};
@@ -327,6 +329,7 @@ namespace
       std::pmr::get_default_resource()->deallocate(p, bytes, alignment);
     }
 
+    [[nodiscard]]
     bool do_is_equal(std::pmr::memory_resource const &other) const noexcept override
     {
       return &other == this;
@@ -536,6 +539,7 @@ namespace
 
     Env env_{};
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;
@@ -779,11 +783,13 @@ namespace
     {
       struct example
       {
+        [[nodiscard]]
         auto nothrow_get() const noexcept
         {
           return ex::just(42);
         }
 
+        [[nodiscard]]
         auto throwing_get() const
         {
           return ex::just(42);
@@ -1041,16 +1047,19 @@ namespace
 
   struct iface
   {
+    [[nodiscard]]
     virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
   struct iface2
   {
+    [[nodiscard]]
     exec::function<int() const & noexcept> get_i_from_base() const noexcept
     {
       return exec::function<int() const & noexcept>(*this, &iface2::get_i_virtually);
     }
 
+    [[nodiscard]]
     virtual exec::function<int() const & noexcept> get_i_virtually() const noexcept = 0;
   };
 
@@ -1062,6 +1071,7 @@ namespace
       : i_(i)
     {}
 
+    [[nodiscard]]
     auto just_i() const noexcept
     {
       return ex::just(i_);
@@ -1072,11 +1082,13 @@ namespace
       return self->just_i();
     }
 
+    [[nodiscard]]
     exec::function<int(impl const *) noexcept> get_i_with_pmfn() const noexcept
     {
       return exec::function<int(impl const *) noexcept>(this, &impl::just_i);
     }
 
+    [[nodiscard]]
     exec::function<int() const & noexcept> get_i_virtually() const noexcept override
     {
       return exec::function<int() const & noexcept>(*this, &impl::just_i);
@@ -1346,7 +1358,7 @@ namespace
 
     constexpr auto query2 = [](auto const &, int i)
     {
-      return (double) i;
+      return static_cast<double>(i);
     };
 
     using query1_t = decltype(query1);
@@ -1805,6 +1817,7 @@ namespace
       return ex::just(self.i);
     }
 
+    [[nodiscard]]
     auto just_i_memfn() const noexcept
     {
       return ex::just(i);
@@ -2024,13 +2037,10 @@ namespace
   //! because its assignment operators are user-provided.
   struct trivial_construction_only
   {
-    trivial_construction_only()                                  = default;
-    trivial_construction_only(trivial_construction_only const &) = default;
-    trivial_construction_only(trivial_construction_only &&)      = default;
-    trivial_construction_only &operator=(trivial_construction_only const &) noexcept
-    {
-      return *this;
-    }
+    trivial_construction_only()                                                      = default;
+    trivial_construction_only(trivial_construction_only const &)                     = default;
+    trivial_construction_only(trivial_construction_only &&)                          = default;
+    trivial_construction_only &operator=(trivial_construction_only const &) noexcept = default;
     trivial_construction_only &operator=(trivial_construction_only &&) noexcept
     {
       return *this;
@@ -2211,6 +2221,7 @@ namespace
     : mi_base1
     , mi_base2
   {
+    [[nodiscard]]
     auto get() const noexcept
     {
       return ex::just(i + j);
@@ -2224,6 +2235,7 @@ namespace
 
   struct virtual_inheritance : virtual vi_base
   {
+    [[nodiscard]]
     auto get() const noexcept
     {
       return ex::just(i);
@@ -2239,6 +2251,7 @@ namespace
   {
     int i = 4;
 
+    [[nodiscard]]
     auto get() const noexcept
     {
       return ex::just(i);
@@ -2253,6 +2266,7 @@ namespace
 
     using sigs = ex::completion_signatures<ex::set_value_t(std::string)>;
 
+    [[nodiscard]]
     auto copied() const -> exec::function<ex::sender_tag(curries_itself), sigs>
     {
       return exec::function<ex::sender_tag(curries_itself), sigs>(
@@ -2260,6 +2274,7 @@ namespace
         [](curries_itself self) noexcept { return ex::just(std::move(self.name)); });
     }
 
+    [[nodiscard]]
     auto borrowed_with(curries_itself other) const
       -> exec::function<ex::sender_tag(curries_itself) const &, sigs>
     {
@@ -2344,6 +2359,7 @@ namespace
   {
     struct example
     {
+      [[nodiscard]]
       exec::function<int() const &> get_int() const &
       {
         return exec::function<int() const &>(*this,
@@ -2353,7 +2369,7 @@ namespace
       exec::function<example &(int) &> set_int(int i) &
       {
         return exec::function<example &(int) &>(*this,
-                                                int(i),
+                                                i,
                                                 [](auto &self, int i)
                                                 {
                                                   return ex::just(i)
@@ -2393,6 +2409,7 @@ namespace
   {
     struct example
     {
+      [[nodiscard]]
       async_getter<int> get() const & noexcept
       {
         return async_getter<int>(*this, [](auto &self) noexcept { return ex::just(self.i_); });
@@ -2401,7 +2418,7 @@ namespace
       async_setter<example, int> set(int i) & noexcept
       {
         return async_setter<example, int>(*this,
-                                          int(i),
+                                          i,
                                           [](auto &self, int i) noexcept
                                           {
                                             return ex::just(i)

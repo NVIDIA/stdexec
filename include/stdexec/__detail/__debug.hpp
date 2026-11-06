@@ -25,7 +25,6 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
-#  include "__completion_signatures.hpp"
 #  include "__concepts.hpp"
 #  include "__env.hpp"  // IWYU pragma: keep for env<>
 #  include "__meta.hpp"
@@ -39,6 +38,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //////////////////////////////////////////////////////////////////////////////

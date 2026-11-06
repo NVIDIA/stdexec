@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-      printf("unrecognized argument: -> %.*s", (int) arg.size(), arg.data());
+      printf("unrecognized argument: -> %.*s", static_cast<int>(arg.size()), arg.data());
     }
   }
 
@@ -396,10 +396,9 @@ int main(int argc, char *argv[])
     fflush(stdout);
   };
 
-  for (int iv = 0; iv < 4; ++iv)
+  for (auto init_values: all_init_values)
   {
-    unsigned short const *init_values = all_init_values[iv];
-    find_one                          = false;
+    find_one = false;
     one_solve(init_values);
     find_one = true;
     one_solve(init_values);

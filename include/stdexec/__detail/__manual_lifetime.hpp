@@ -34,6 +34,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //! Holds storage for a `_Ty`, but allows clients to `__construct(...)`,
@@ -46,11 +47,11 @@ namespace STDEXEC
    public:
     //! Constructor does nothing: It's on you to call `__construct(...)` or
     //! `__construct_from(...)` if you want the `_Ty`'s lifetime to begin.
-    constexpr __manual_lifetime() noexcept = default;
+    constexpr __manual_lifetime() noexcept {}  // NOLINT(modernize-use-equals-default)
 
     //! Destructor does nothing: It's on you to call `__destroy()` if you mean
     //! to.
-    constexpr ~__manual_lifetime() {}
+    constexpr ~__manual_lifetime() {}  // NOLINT(modernize-use-equals-default)
 
     STDEXEC_IMMOVABLE(__manual_lifetime);
 
@@ -101,11 +102,13 @@ namespace STDEXEC
 
     //! Get access to the `_Ty`.
     //! @pre The lifetime has started.
+    [[nodiscard]]
     constexpr auto __get() const & noexcept -> _Ty const &
     {
       return *reinterpret_cast<_Ty const *>(__buffer_);
     }
 
+    [[nodiscard]]
     constexpr auto __get() const && noexcept -> _Ty const && = delete;
 
     constexpr auto operator->() noexcept -> _Ty*

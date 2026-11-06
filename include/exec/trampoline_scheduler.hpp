@@ -257,6 +257,7 @@ namespace experimental::execution
         }
 
         template <class _Receiver>
+        [[nodiscard]]
         constexpr auto connect(_Receiver __rcvr) const noexcept -> __opstate<_Receiver>
         {
           return __opstate<_Receiver>{static_cast<_Receiver&&>(__rcvr),

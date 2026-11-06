@@ -190,6 +190,7 @@ namespace
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {data_, static_cast<Receiver &&>(rcvr)};
@@ -220,6 +221,7 @@ namespace
   {
     using scheduler_concept = ex::scheduler_tag;
 
+    [[nodiscard]]
     auto schedule() const noexcept
     {
       return sender{};
@@ -227,6 +229,7 @@ namespace
 
     auto operator==(basic_inline_scheduler const &) const noexcept -> bool = default;
 
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept -> Domain
       requires(!std::same_as<Domain, void>)
     {
@@ -251,11 +254,13 @@ namespace
       using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {{}, static_cast<Receiver &&>(rcvr)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept
       {
         return sched_attrs(basic_inline_scheduler(), ex::set_value);
@@ -370,6 +375,7 @@ namespace
         return {{}, static_cast<Receiver &&>(rcvr), std::move(err_)};
       }
 
+      [[nodiscard]]
       auto get_env() const noexcept
       {
         return sched_attrs{error_scheduler(err_), ex::set_value, ex::set_error, ex::set_stopped};
@@ -428,6 +434,7 @@ namespace
         ex::completion_signatures<ex::set_value_t(), ex::set_stopped_t()>;
 
       template <class Receiver>
+      [[nodiscard]]
       auto connect(Receiver rcvr) const -> opstate<Receiver>
       {
         return {{}, static_cast<Receiver &&>(rcvr)};
@@ -448,6 +455,7 @@ namespace
     {
       constexpr auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept;
 
+      [[nodiscard]]
       constexpr auto query(ex::get_completion_domain_t<ex::set_value_t>) const noexcept
       {
         return Domain{};
@@ -483,6 +491,7 @@ namespace
       }
 
       template <class Rcvr>
+      [[nodiscard]]
       constexpr auto connect(Rcvr rcvr) const noexcept -> _opstate_t<Rcvr>
       {
         return _opstate_t<Rcvr>(static_cast<Rcvr &&>(rcvr));

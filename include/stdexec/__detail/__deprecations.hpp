@@ -20,6 +20,7 @@
 
 #include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   using execute_may_block_caller_t [[deprecated]] = __execute_may_block_caller_t;

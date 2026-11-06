@@ -122,7 +122,11 @@ target_compile_options(
     $<$<CXX_COMPILER_ID:GNU>:-Wno-maybe-uninitialized> # warnings being emitted
                                                        # from stdlib headers,
                                                        # why?
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-gnu-line-marker>)
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-unknown-warning-option
+                               -Wno-gnu-line-marker
+                               -Wno-unused-function
+                               -Wno-unused-template
+                               -Wno-c2y-extensions>)
 target_link_libraries(common_test_settings
                       INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 

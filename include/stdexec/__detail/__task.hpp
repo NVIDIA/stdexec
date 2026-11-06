@@ -42,6 +42,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wmismatched-new-delete")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
 #  if !STDEXEC_NO_STDCPP_COROUTINES()

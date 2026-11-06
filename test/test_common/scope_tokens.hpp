@@ -39,6 +39,7 @@ namespace
         return true;
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return {};
@@ -46,11 +47,13 @@ namespace
     };
 
     template <STDEXEC::sender Sender>
+    [[nodiscard]]
     constexpr Sender&& wrap(Sender&& sndr) const noexcept
     {
       return std::forward<Sender>(sndr);
     }
 
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept
     {
       return {};

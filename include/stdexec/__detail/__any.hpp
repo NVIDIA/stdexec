@@ -23,8 +23,9 @@ import stdexec;
 
 #else
 
+#  include "__execution_fwd.hpp"
+
 #  include "__concepts.hpp"
-#  include "__config.hpp"
 #  include "__memory.hpp"
 #  include "__scope.hpp"
 #  include "__type_traits.hpp"
@@ -53,10 +54,10 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 // NOLINTBEGIN(modernize-use-override)
 
 STDEXEC_MODULE_EXPORT_AUTHORING
-namespace STDEXEC::__any
+namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 {}
 
-namespace STDEXEC::__any
+namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 {
 
   //////////////////////////////////////////////////////////////////////////////
@@ -97,7 +98,7 @@ namespace STDEXEC::__any
   //!
   //!   A polymorphic wrapper around a root that is constructed by recursively
   //!   applying a given interface and its base interfaces to the root type. For
-  //!   example, given an interface @c Derived that __extends @c Base, the value
+  //!   example, given an interface @c Derived that extends @c Base, the value
   //!   proxy model is a type derived from
   //!   @c Derived<Base<__value_proxy_root<Derived>>>. Model types implement
   //!   their given interfaces in terms of the root type. There are 5 model
