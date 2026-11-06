@@ -67,12 +67,12 @@ namespace STDEXEC
       return __get_completion_behavior<_Tag, _Sender, _Env...>();
     }
 
-    template <class _Env2 = env_of_t<_Sender>, __forwarding_query _Query, class... _Args>
-      requires __queryable_with<_Env2, _Query, _Args...>
+    template <class _Attrs = env_of_t<_Sender>, __forwarding_query _Query, class... _Args>
+      requires __queryable_with<_Attrs, _Query, _Args...>
     [[nodiscard]]
     constexpr auto query(_Query, _Args &&...__args) const
-      noexcept(__nothrow_queryable_with<_Env2, _Query, _Args...>)
-        -> __query_result_t<_Env2, _Query, _Args...>
+      noexcept(__nothrow_queryable_with<_Attrs, _Query, _Args...>)
+        -> __query_result_t<_Attrs, _Query, _Args...>
     {
       return get_env(__sndr_).query(_Query(), static_cast<_Args &&>(__args)...);
     }
