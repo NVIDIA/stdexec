@@ -51,6 +51,12 @@ namespace STDEXEC
     static_cast<_Scheduler &&>(__sched).schedule();
   };
 
+  template <class _Scheduler>
+  concept __has_scheduler_concept = requires {
+    typename _Scheduler::scheduler_concept;
+    requires __std::derived_from<typename _Scheduler::scheduler_concept, scheduler_tag>;
+  };
+
   //! @brief A sender factory that obtains a sender from a scheduler.
   //!
   //! @c schedule is the bridge between a *scheduler* (a lightweight handle
@@ -128,6 +134,19 @@ namespace STDEXEC
   //!                               to the original context
   struct schedule_t
   {
+   private:
+    template <class _Scheduler>
+    STDEXEC_ATTRIBUTE(host, device, always_inline)
+    static auto __schedule(_Scheduler &&__sched)
+      noexcept(noexcept(static_cast<_Scheduler &&>(__sched).schedule()))
+        -> decltype(static_cast<_Scheduler &&>(__sched).schedule())
+    {
+      static_assert(sender<decltype(static_cast<_Scheduler &&>(__sched).schedule())>,
+                    "schedule() member functions must return a sender");
+      return static_cast<_Scheduler &&>(__sched).schedule();
+    }
+
+   public:
     //! @brief Obtain a schedule-sender by calling @c __sched.schedule().
     //!
     //! @tparam _Scheduler A type whose lvalue has a member function
@@ -142,16 +161,16 @@ namespace STDEXEC
     //! @pre `decltype(__sched.schedule())` must satisfy the
     //!      @c stdexec::sender concept (statically checked).
     template <class _Scheduler>
-      requires __has_schedule_member<_Scheduler>
+      requires __has_schedule_member<_Scheduler> && __has_scheduler_concept<__decay_t<_Scheduler>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     auto operator()(_Scheduler &&__sched) const
-      noexcept(noexcept(static_cast<_Scheduler &&>(__sched).schedule()))
-        -> decltype(static_cast<_Scheduler &&>(__sched).schedule())
-    {
-      static_assert(sender<decltype(static_cast<_Scheduler &&>(__sched).schedule())>,
-                    "schedule() member functions must return a sender");
-      return static_cast<_Scheduler &&>(__sched).schedule();
-    }
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
+
+    template <class _Scheduler>
+      requires __has_schedule_member<_Scheduler>
+    [[deprecated("The scheduler must define the schedule_concept tag.")]]
+    STDEXEC_ATTRIBUTE(host, device, always_inline) auto operator()(_Scheduler &&__sched) const
+      STDEXEC_AUTO_RETURN(__schedule(static_cast<_Scheduler &&>(__sched)));
   };
 
   //! @brief The customization point object for the @c schedule sender factory.

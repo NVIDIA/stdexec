@@ -698,6 +698,8 @@ namespace
   // A scheduler that counts how many instances are extant.
   struct counting_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     static int count;
 
     counting_scheduler() noexcept

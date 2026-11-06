@@ -277,6 +277,8 @@ namespace
 
   struct move_checking_inline_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     [[nodiscard]]
     auto schedule() const noexcept
     {

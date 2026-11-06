@@ -39,6 +39,8 @@ namespace
 
   struct my_scheduler
   {
+    using scheduler_concept = ex::scheduler_tag;
+
     [[nodiscard]]
     auto schedule() const noexcept -> my_sender
     {

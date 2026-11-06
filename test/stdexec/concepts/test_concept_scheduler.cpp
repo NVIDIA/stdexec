@@ -38,6 +38,8 @@ namespace
 
   struct my_scheduler
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct my_sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -79,8 +81,8 @@ namespace
 
   TEST_CASE("type with schedule CPO models scheduler", "[concepts][scheduler]")
   {
-    REQUIRE(ex::scheduler<my_scheduler>);
-    REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
+    STATIC_REQUIRE(ex::scheduler<my_scheduler>);
+    STATIC_REQUIRE(ex::sender<decltype(ex::schedule(my_scheduler{}))>);
   }
 
   struct no_schedule_cpo
@@ -93,6 +95,8 @@ namespace
 
   struct my_scheduler_except
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct my_sender
     {
       using sender_concept        = STDEXEC::sender_tag;
@@ -127,7 +131,7 @@ namespace
 
   TEST_CASE("type with schedule that throws is a scheduler", "[concepts][scheduler]")
   {
-    REQUIRE(ex::scheduler<my_scheduler_except>);
+    STATIC_REQUIRE(ex::scheduler<my_scheduler_except>);
   }
 
   struct noeq_sched
@@ -239,8 +243,11 @@ namespace
   TEST_CASE("foreign type returning a stdexec sender from schedule() models scheduler",
             "[concepts][scheduler]")
   {
-    REQUIRE(ex::scheduler<my_behavioral_scheduler>);
-    REQUIRE(ex::sender<decltype(ex::schedule(my_behavioral_scheduler{}))>);
+    STDEXEC_PRAGMA_PUSH()
+    STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declarations")
+    STATIC_REQUIRE(ex::scheduler<my_behavioral_scheduler>);
+    STATIC_REQUIRE(ex::sender<decltype(ex::schedule(my_behavioral_scheduler{}))>);
+    STDEXEC_PRAGMA_POP()
   }
 }  // namespace
 

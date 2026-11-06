@@ -77,6 +77,8 @@ namespace
   template <class CPO, class... CompletionSignals>
   struct cpo_test_scheduler_t
   {
+    using scheduler_concept = STDEXEC::scheduler_tag;
+
     struct sender_t
     {
       using sender_concept        = STDEXEC::sender_tag;
