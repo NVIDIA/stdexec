@@ -109,9 +109,7 @@ namespace
 
   // Moves and copies while connecting `sndr` to a sink whose environment is
   // Env and starting it, as "m (c)". Every pipeline counted here completes
-  // inline, so it has finished when start returns. (A sender adaptor that
-  // sets the environment instead, such as write_env, would add a layer of
-  // connect, which moves the sender's data again.)
+  // inline, so it has finished when start returns.
   template <class Env = ex::env<>, class Sndr>
   auto count(Sndr sndr) -> std::string
   {

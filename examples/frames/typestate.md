@@ -150,8 +150,8 @@ each iteration, binding the stored child every time. Over 100 iterations
 
 | Moves (copies) | stdexec | eager | forward | eager+start | eager+split |
 |---|---|---|---|---|---|
-| `repeat_n(then(just(), fn capturing c))` | 904 (100) (Clang: 804) | 3 (0) | 3 (0) | 3 (0) | 303 (100) |
-| `repeat_n(then(just(c), drop))` | 1104 (100) (Clang: 1004) | 103 (100) | 3 (100) | 103 (100) | 703 (100) |
+| `repeat_n(then(just(), fn capturing c))` | 402 (100) | 1 (0) | 1 (0) | 1 (0) | 101 (100) |
+| `repeat_n(then(just(c), drop))` | 402 (100) | 101 (100) | 1 (100) | 101 (100) | 301 (100) |
 
 `exec::repeat_n` reconnects a copy of its child every iteration, captures
 included; bound to a stored sender, `repeat_n` never copies what its child
@@ -198,7 +198,7 @@ stored sender as well, which is every level's carried data at once.
 | 11 | `finally` replaying its initial sender's value, error or stopped after its final sender, or completing as a failing final sender did, while its receiver destroys the operation from inside the completion; connecting its final sender just before its initial sender, by `connect` or by `start`, so that a final sender whose `connect` throws stops the initial sender from being connected; its final sender starting on its initial sender's completion scheduler, as `exec::finally`'s does. |
 | 12 | `associate` keeping its scope's association until its operation is destroyed, under every policy, as `stdexec::associate` does, and completing with `set_stopped()` when its scope refuses one. |
 
-Costs (x86-64; GCC 13 and Clang 18, with libstdc++ or libc++, agree except
+Costs (x86-64; GCC 14 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
 "eager+split" is `eager_teardown` with `split_sender`). Each policy heads
 two columns: the operation state's size in bytes, and how often a value
@@ -216,26 +216,27 @@ which requires every sender but the last to send no values, so `s` is
                               stdexec          eager          forward        eager+start      eager+split
                            -------------   -------------   -------------   -------------   -------------
                            bytes   moves   bytes   moves   bytes   moves   bytes   moves   bytes   moves
-let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568   5 (0)     536   7 (0)
-  ... overlapped_layout                      568   6 (0)     568   5 (0)     560   6 (0)     280   8 (0)
-  ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
-sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
-then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
-when_all of two just(v)     1072  14 (0)    1088  12 (0)    1088   8 (0)    1080  12 (0)    1080  16 (0)
-finally(just(v), just())†    576   8 (0)     568   6 (0)     568   4 (0)     568   6 (0)     552   8 (0)
-  ... overlapped_layout                      560   7 (0)     560   5 (0)     560   7 (0)     296   9 (0)
+let_value(just(v), fn)       552   2 (0)     568   3 (0)     568   2 (0)     568   3 (0)     536   3 (0)
+  ... overlapped_layout                      568   4 (0)     568   3 (0)     560   4 (0)     280   4 (0)
+  ... scoped_layout                          568   3 (0)     568   2 (0)     560   3 (0)     536   3 (0)
+sequence(s, just(v))         560   4 (0)     568   3 (0)     568   1 (0)     552   3 (0)     552   4 (0)
+then(just(v), fn)             24   3 (0)      40   5 (0)      40   3 (0)      32   5 (0)      24   5 (0)
+when_all of two just(v)     1072   6 (0)    1088   8 (0)    1088   4 (0)    1080   8 (0)    1080   8 (0)
+finally(just(v), just())*    576   3 (0)     568   4 (0)     568   2 (0)     568   4 (0)     552   4 (0)
+  ... overlapped_layout                      560   5 (0)     560   3 (0)     560   5 (0)     296   5 (0)
 
-* stdexec moves 8 (0) with Clang
-† stdexec moves 7 (0) with Clang; with libc++, finally takes 560 bytes under
-  eager+split
+* with libc++, finally takes 560 bytes under eager+split
 ```
 
 Under `stored_sender`, binding makes values move once, into the root, and
-then be used in place, so the moves come out at or below stdexec's in every
-row. The cost is in bytes: the stored sender keeps every level's data for
-the whole operation, so nothing a later phase could reuse is moved out of
-it. That's why `overlapped_layout` saves nothing there: `just`'s value stays
-in the stored sender rather than in the first phase. A bound operation
+then be used in place. `forward_results` comes out at or below stdexec in
+every row but `let_value`'s with `overlapped_layout`, whose extra move buys
+no bytes here (see below). `eager_teardown` pays one more move per algorithm
+that tears down, which puts it above stdexec in every row but `sequence`'s.
+The cost of binding is in bytes: the stored sender keeps every level's data
+for the whole operation, so nothing a later phase could reuse is moved out
+of it. That's why `overlapped_layout` saves nothing there: `just`'s value
+stays in the stored sender rather than in the first phase. A bound operation
 doesn't store a pointer to its sender either: it asks its receiver
 (`bound_sender()`), whose type names the part of the parent's sender the
 child is made from, and the root's receiver points at the stored sender. So
@@ -249,8 +250,8 @@ the child's address instead of stored (P3425, worded for C++26 by P3986 as
 the receivers' own pointers too.
 
 `when_all` keeps its children's values in its phase until the last child
-completes, as stdexec's does, and moves them less often except under
-`split_sender`. Like stdexec's, it keeps no room for errors its children
+completes, as stdexec's does, and moves them less often under
+`forward_results`. Like stdexec's, it keeps no room for errors its children
 can't send, nor for an exception when keeping their values can't throw, and
 when no child can fail it has no stop source of its own: its children see
 its receiver's environment. What's left is the root's pointer (8 bytes)
@@ -284,7 +285,8 @@ sender's completion scheduler when it has exactly one kind of completion,
 built with stdexec's own helper. Both children's operations are alive at
 once, so the final sender's operation can't reuse the initial sender's
 bytes, even under `overlapped_layout`; under `stored_sender`, `finally`
-still comes out 8 bytes smaller than `exec::finally`, and moves less.
+still comes out 8 bytes smaller than `exec::finally`, and under
+`forward_results` moves less.
 
 `associate` is the C++26 algorithm whose lifetimes fit phases least
 well: the association it takes from its scope must already exist at
@@ -343,15 +345,15 @@ What else it taught:
 
 - **`let_value`'s function stays put**, not passed between phases: the
   sender it returns may refer to its captures.
-- **Every layer of `connect` moves the sender's data again** in stdexec at
-  this commit, apparently because `connect` passes the sender through
-  `transform_sender`, which can return it by value. Wrapping a typestate
-  sender in `with_policies` (or any other adaptor) costs two more moves of
-  its values, which is why the demo counts moves by connecting to a receiver
-  that asks for the policies instead. Under `stored_sender`, a tree of
-  typestate senders pays this once, at the root, since the operations below
-  bind their children; under `split_sender`, each level connects its
-  children through `connect`.
+- **stdexec's `connect` moved the sender's data twice per layer.**
+  `connect` passes the sender through `transform_sender`, once for the
+  domain it completes in and once for the one it starts in, and
+  `default_domain::transform_sender` returned a sender it doesn't transform
+  by value, where [exec.domain.default] returns `std::forward<Sndr>(sndr)`,
+  so `then(then(then(just(c), f), f), f)` connected with nine moves of `c`
+  rather than one. The costs here are measured with that fixed
+  ([#2429](https://github.com/NVIDIA/stdexec/pull/2429) and
+  [#2430](https://github.com/NVIDIA/stdexec/pull/2430)).
 - **Stop requests end operations from inside their own callbacks.** A
   child that completes from its stop callback can make its parent change
   phase (`let_value`'s second child then registers its callback with a
@@ -382,6 +384,13 @@ What else it taught:
 
 ## Open questions
 
-- **Simplifications.** The typestate senders connect as rvalues only, and
-  `let_value` doesn't add a completion scheduler to its second phase's
-  environment.
+- **Simplifications.** Against [exec] (or `exec::`, for `sequence`,
+  `repeat_n` and `finally`), what's left out affects none of the costs
+  above, except `repeat_n`'s trampoline. The typestate senders connect as
+  rvalues only. They have no tag a domain could recognize, so no domain can
+  transform them, and no attributes, so a parent can't ask them for a
+  completion scheduler or domain; `let_value` doesn't add one to its second
+  phase's environment either. Children see their parent's whole
+  environment, not only its forwarding queries. Whether a child's `connect`
+  can throw isn't worked out (see above). `repeat_n` doesn't trampoline,
+  which `exec::repeat_n` pays for in bytes and moves.

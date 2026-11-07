@@ -2020,9 +2020,7 @@ namespace frames::typestate
     }
   }
 
-  // sndr, with its operations asking for the policies P. Like any adaptor,
-  // it adds a layer of connect, which moves sndr's data again; connecting
-  // with a receiver whose environment asks for P costs nothing.
+  // sndr, with its operations asking for the policies P.
   template <class P, class Sndr>
   auto with_policies(Sndr&& sndr)
   {
