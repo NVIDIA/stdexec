@@ -1721,13 +1721,34 @@ namespace frames::typestate
     Env   env;
   };
 
-  // Children of one phase that run at once and stop together: a stop source
-  // of their own, and a count of the children still running. The phase is
-  // one, as a base, so it's set up before its children, whose environments
-  // carry token(). Each child's completion arrives once: with arrive(), or
-  // with stop_and_arrive() to stop the others first. The one that returns
-  // true is the last; nothing else will touch the phase, so the operation
-  // may end it.
+  // Children of one phase that run at once: a count of those still
+  // running. The phase is one, as a base. Each child's completion arrives
+  // once, with arrive(); the one that returns true is the last, and nothing
+  // else will touch the phase, so the operation may end it.
+  class join_count
+  {
+   public:
+    explicit join_count(std::size_t count) noexcept
+      : count_(count)
+    {}
+
+    join_count(join_count&&) = delete;
+
+    [[nodiscard]]
+    auto arrive() noexcept -> bool
+    {
+      return count_.fetch_sub(1, std::memory_order_acq_rel) == 1;
+    }
+
+   private:
+    std::atomic<std::size_t> count_;
+  };
+
+  // Children of one phase that run at once and stop together: a join_count
+  // and a stop source of their own. The phase is one, as a base, so it's set
+  // up before its children, whose environments carry token(). A child's
+  // completion may arrive with stop_and_arrive() instead, to stop the others
+  // first.
   //
   // The phase names forwarding<Env> as its active_t (see phased), so that
   // while it runs, stop requests from the operation's environment reach it
@@ -1736,7 +1757,7 @@ namespace frames::typestate
   // can make the last child complete inside this scope's request_stop, and so
   // end the scope there; stdexec's inplace_stop_source allows its own
   // callbacks to destroy it.
-  class join_scope
+  class join_scope : public join_count
   {
     struct forward_stop
     {
@@ -1764,11 +1785,7 @@ namespace frames::typestate
       callback_t callback_;
     };
 
-    explicit join_scope(std::size_t count) noexcept
-      : count_(count)
-    {}
-
-    join_scope(join_scope&&) = delete;
+    using join_count::join_count;
 
     [[nodiscard]]
     auto token() const noexcept -> ex::inplace_stop_token
@@ -1785,15 +1802,8 @@ namespace frames::typestate
       return arrive();
     }
 
-    [[nodiscard]]
-    auto arrive() noexcept -> bool
-    {
-      return count_.fetch_sub(1, std::memory_order_acq_rel) == 1;
-    }
-
    private:
-    ex::inplace_stop_source  source_;
-    std::atomic<std::size_t> count_;
+    ex::inplace_stop_source source_;
   };
 
   // Calls fn(), returning what it threw, if anything.

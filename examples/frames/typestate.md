@@ -221,7 +221,7 @@ let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568
   ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
 sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
 then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
-when_all of two just(v)     1072  14 (0)    1120  12 (0)    1120   8 (0)    1120  12 (0)    1112  16 (0)
+when_all of two just(v)     1072  14 (0)    1088  12 (0)    1088   8 (0)    1080  12 (0)    1080  16 (0)
 finally(just(v), just())†    576   8 (0)     568   6 (0)     568   4 (0)     568   6 (0)     552   8 (0)
   ... overlapped_layout                      560   7 (0)     560   5 (0)     560   7 (0)     296   9 (0)
 
@@ -251,7 +251,11 @@ the receivers' own pointers too.
 `when_all` keeps its children's values in its phase until the last child
 completes, as stdexec's does, and moves them less often except under
 `split_sender`. Like stdexec's, it keeps no room for errors its children
-can't send, nor for an exception when keeping their values can't throw.
+can't send, nor for an exception when keeping their values can't throw, and
+when no child can fail it has no stop source of its own: its children see
+its receiver's environment. What's left is the root's pointer (8 bytes)
+and, under `connect_entry`, the bytes recording `when_all`'s and each
+`just`'s live phase (8).
 
 `finally` treats its final sender like a destructor. It connects it with
 its initial sender, just before it, as `exec::finally` does: in `connect`,
