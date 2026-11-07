@@ -129,19 +129,23 @@ namespace STDEXEC
   using __value_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __value_types<_Tuple, _Variant>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs, class _Variant = __qq<__std_variant>, class _Transform = __q1<__midentity>>
   using __error_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __error_types<_Variant, _Transform>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Sigs, class _Variant, class _Type = __fn_t<set_stopped_t>>
   using __stopped_types_t =
     __cmplsigs::__partitions_of_t<_Sigs>::template __stopped_types<_Variant, _Type>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <__valid_completion_signatures _Sigs>
   inline constexpr bool __sends_stopped =
     __cmplsigs::__partitions_of_t<_Sigs>::__count_stopped::value != 0;
 
   // set_value_t() when _Type is void; otherwise, set_value_t(_Type)
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Type>
   using __single_value_sig_t = __mcall1<__mremove<void, __qf<set_value_t>>, _Type>;
 }  // namespace STDEXEC

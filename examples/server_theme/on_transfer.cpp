@@ -34,6 +34,7 @@
  */
 
 #include <array>
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <mutex>
@@ -97,7 +98,7 @@ auto main() -> int
   exec::static_thread_pool io_pool{1};
   ex::scheduler auto       io_sched = io_pool.get_scheduler();
 
-  std::array<std::byte, 16 * 1024> buffer;
+  std::array<std::byte, static_cast<size_t>(16 * 1024)> buffer;
 
   exec::async_scope scope;
 

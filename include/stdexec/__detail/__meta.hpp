@@ -37,6 +37,7 @@ import stdexec;
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   //! Convenience metafunction getting the dependent type `__t` out of `_Tp`.

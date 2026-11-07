@@ -63,6 +63,7 @@ namespace experimental::execution::__timed_scheduler_fallback
   };
 }  // namespace experimental::execution::__timed_scheduler_fallback
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <>

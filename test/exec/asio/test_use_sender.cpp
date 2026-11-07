@@ -96,6 +96,7 @@ namespace
 
     const struct
     {
+      [[nodiscard]]
       auto query(get_stop_token_t const &) const noexcept
       {
         return source_.get_token();

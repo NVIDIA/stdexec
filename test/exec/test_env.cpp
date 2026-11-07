@@ -40,12 +40,12 @@ namespace
 
     throwing_default(throwing_default const &) noexcept = default;
 
-    throwing_default(throwing_default&& other)
+    throwing_default(throwing_default&& other)  // NOLINT(bugprone-exception-escape)
       : throw_on_move_{other.throw_on_move_}
     {
       if (*throw_on_move_)
       {
-        throw default_move_error{};
+        throw default_move_error{};  // NOLINT(bugprone-std-exception-baseclass)
       }
     }
 
@@ -64,6 +64,7 @@ namespace
     void set_error(std::exception_ptr) noexcept {}
     void set_stopped() noexcept {}
 
+    [[nodiscard]]
     auto get_env() const noexcept -> STDEXEC::env<>
     {
       return {};
@@ -113,6 +114,7 @@ namespace
     throw_on_move      = true;
 
     STATIC_REQUIRE_FALSE(noexcept(std::move(sndr).connect(read_with_default_receiver{})));
+    // NOLINTNEXTLINE(bugprone-unused-return-value)
     CHECK_THROWS_AS(std::move(sndr).connect(read_with_default_receiver{}), default_move_error);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
@@ -133,21 +135,20 @@ namespace
         : throw_on_move_{throw_on_move}
       {}
 
-      throwing_env(throwing_env const & other) noexcept
-        : throw_on_move_{other.throw_on_move_}
-      {}
+      throwing_env(throwing_env const & other) noexcept = default;
 
-      throwing_env(throwing_env&& other)
+      throwing_env(throwing_env&& other)  // NOLINT(bugprone-exception-escape)
         : throw_on_move_{other.throw_on_move_}
       {
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
         if (*throw_on_move_)
         {
-          throw without_move_error{};
+          throw without_move_error{};  // NOLINT(bugprone-std-exception-baseclass)
         }
 #endif
       }
 
+      [[nodiscard]]
       int query(Foo) const noexcept
       {
         return 42;
@@ -186,7 +187,7 @@ namespace
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
         if (*throw_on_copy_)
         {
-          throw throwing_copy_error{};
+          throw throwing_copy_error{};  // NOLINT(bugprone-std-exception-baseclass)
         }
 #endif
       }

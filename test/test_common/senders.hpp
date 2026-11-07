@@ -166,6 +166,7 @@ namespace
       return {{}, std::move(values_), std::forward<Receiver>(rcvr)};
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> Env
     {
       return env_;
@@ -294,6 +295,7 @@ namespace
     };
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
       return {args_, counter_, std::forward<Receiver>(rcvr)};
@@ -321,6 +323,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const noexcept
     {
       return opstate<Receiver>{value_, static_cast<Receiver&&>(rcvr)};

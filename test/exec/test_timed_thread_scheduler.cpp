@@ -17,7 +17,7 @@
 
 #include <exec/timed_thread_scheduler.hpp>
 
-#include "test_common/catch2.hpp"
+#include "test_common/catch2.hpp"  // IWYU pragma: keep
 #include "test_common/receivers.hpp"
 
 #include <exec/async_scope.hpp>
@@ -87,6 +87,7 @@ namespace
     };
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver receiver) const -> operation<Receiver>
     {
       return {static_cast<Receiver &&>(receiver)};
@@ -137,6 +138,7 @@ namespace
     };
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver receiver) const -> operation<Receiver>
     {
       return {static_cast<Receiver &&>(receiver)};

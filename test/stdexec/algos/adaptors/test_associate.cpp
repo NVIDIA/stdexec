@@ -192,6 +192,7 @@ namespace
         return false;
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return {};
@@ -204,6 +205,7 @@ namespace
       return std::forward<Sender>(sndr);
     }
 
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept
     {
       return {};
@@ -233,6 +235,7 @@ namespace
         return !!scope_;
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return assoc{scope_ && scope_->open ? scope_ : nullptr};
@@ -249,6 +252,7 @@ namespace
         return std::forward<Sender>(sndr);
       }
 
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return assoc{scope_->open ? scope_ : nullptr};
@@ -257,6 +261,7 @@ namespace
       scope const *scope_;
     };
 
+    [[nodiscard]]
     constexpr token get_token() const noexcept
     {
       return token{this};

@@ -61,6 +61,7 @@ namespace repeat_receiver_lifetime_test
     };
 
     template <ex::receiver_of<completion_signatures> Receiver>
+    [[nodiscard]]
     auto connect(Receiver rcvr) const -> operation<Receiver>
     {
       return {static_cast<Receiver &&>(rcvr), completion_, invalidated_};

@@ -56,6 +56,7 @@ namespace
     };
 
     template <ex::receiver Receiver>
+    [[nodiscard]]
     auto connect(Receiver r) const noexcept -> operation_state_t<Receiver>
     {
       return operation_state_t<Receiver>{r};
@@ -86,6 +87,7 @@ namespace
                                                               ex::set_error_t(std::exception_ptr),
                                                               ex::set_stopped_t()>;
 
+      [[nodiscard]]
       auto get_env() const noexcept -> cpo_test_env_t<CPO, CompletionSignals...>
       {
         return {};
@@ -93,17 +95,20 @@ namespace
     };
 
     template <STDEXEC::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    [[nodiscard]]
     auto query(ex::get_completion_scheduler_t<Tag>) const noexcept -> cpo_test_scheduler_t
     {
       return {};
     }
 
     template <STDEXEC::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>) const noexcept -> cpo_scheduler_domain
     {
       return {};
     }
 
+    [[nodiscard]]
     auto schedule() const noexcept -> sender_t
     {
       return sender_t{};
@@ -116,6 +121,7 @@ namespace
   struct cpo_test_env_t
   {
     template <STDEXEC::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    [[nodiscard]]
     auto query(ex::get_completion_scheduler_t<Tag>) const noexcept
       -> cpo_test_scheduler_t<CPO, CompletionSignals...>
     {
@@ -123,6 +129,7 @@ namespace
     }
 
     template <STDEXEC::__one_of<ex::set_value_t, CompletionSignals...> Tag>
+    [[nodiscard]]
     auto query(ex::get_completion_domain_t<Tag>) const noexcept -> cpo_scheduler_domain
     {
       return {};

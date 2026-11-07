@@ -610,6 +610,7 @@ STDEXEC_P2300_NAMESPACE_BEGIN()
 
 STDEXEC_P2300_NAMESPACE_END()
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __stok

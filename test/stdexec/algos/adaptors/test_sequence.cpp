@@ -178,6 +178,7 @@ namespace
   {
     throwing_copy() = default;
 
+    // NOLINTNEXTLINE(modernize-use-equals-default)
     throwing_copy(throwing_copy const &) noexcept(false) {}
 
     throwing_copy(throwing_copy &&) noexcept = default;

@@ -23,14 +23,13 @@ import stdexec;
 
 #else
 
-#  include "__config.hpp"
-
 #  if !STDEXEC_USE_MODULES()
 #    include <ranges>
 #  endif
 
 #  include "__prologue.hpp"
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace [[deprecated("use std::ranges directly")]] ranges

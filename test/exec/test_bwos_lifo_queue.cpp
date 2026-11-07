@@ -20,6 +20,7 @@
 #include <atomic>
 #include <ranges>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <test_common/catch2.hpp>
@@ -143,7 +144,7 @@ TEST_CASE("exec::bwos::lifo_queue - round counter wraparound", "[bwos]")
   exec::bwos::lifo_queue<int> queue(numBlocks, blockSize);
   std::vector<int>            stolenItems;
 
-  for (int val = 1; val <= static_cast<int>(numItems); ++val)
+  for (int val = 1; std::cmp_less_equal(val, numItems); ++val)
   {
     if (!queue.push_back(val))
     {

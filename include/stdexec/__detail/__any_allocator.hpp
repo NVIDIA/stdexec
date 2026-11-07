@@ -35,6 +35,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Warray-bounds")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace __detail

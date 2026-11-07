@@ -32,6 +32,7 @@ namespace test_common
 
   struct non_completion_query_env
   {
+    [[nodiscard]]
     constexpr auto query(non_completion_query_t, int value) const noexcept -> int
     {
       return value + 1;
@@ -62,6 +63,7 @@ namespace test_common
       return {static_cast<Receiver&&>(receiver)};
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> non_completion_query_env
     {
       return {};

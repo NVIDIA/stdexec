@@ -307,6 +307,7 @@ namespace
       state_->stopped_ = true;
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> ex::env<>
     {
       return {};

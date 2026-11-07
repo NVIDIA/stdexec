@@ -134,7 +134,7 @@ namespace
     [[maybe_unused]]
     void set_value(As&&...) noexcept
     {
-      static_assert(sizeof...(As) == ~size_t(0));  // hard error always
+      static_assert(sizeof...(As) == ~static_cast<size_t>(0));  // hard error always
     }
   };
 

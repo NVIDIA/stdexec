@@ -77,6 +77,7 @@ import stdexec;
 #    define STDEXEC_PARALLEL_SCHEDULER_BULK_SCHEDULE_OP_ALIGN 8
 #  endif
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct CANNOT_DISPATCH_THE_BULK_ALGORITHM_TO_THE_PARALLEL_SCHEDULER;

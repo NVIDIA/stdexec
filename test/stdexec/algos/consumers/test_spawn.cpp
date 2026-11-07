@@ -139,6 +139,7 @@ namespace
     {
       counting_resource const * rsc;
 
+      [[nodiscard]]
       assoc try_associate() const
       {
         REQUIRE(rsc->allocated() > 0);
@@ -179,12 +180,14 @@ namespace
           return false;
         }
 
+        [[nodiscard]]
         constexpr assoc try_associate() const noexcept
         {
           return {};
         }
       };
 
+      [[nodiscard]]
       assoc try_associate() const
       {
         REQUIRE(rsc->allocated() > 0);

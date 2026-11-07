@@ -50,12 +50,14 @@ namespace
       }
 
       // this may throw, although it need not
+      [[nodiscard]]
       constexpr assoc try_associate() const noexcept
       {
         return {};
       }
     };
 
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept
     {
       return {};
@@ -71,6 +73,7 @@ namespace
 
   struct throwing_try_associate : null_token
   {
+    [[nodiscard]]
     constexpr assoc try_associate() const noexcept(false)
     {
       return {};

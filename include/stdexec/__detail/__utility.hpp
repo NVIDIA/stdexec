@@ -39,6 +39,7 @@ import stdexec;
 
 STDEXEC_PRAGMA_IGNORE_GNU("-Wduplicate-decl-specifier")
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   inline constexpr std::size_t __npos = ~0UL;

@@ -36,6 +36,7 @@ namespace
     };
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver receiver) const noexcept -> operation<Receiver>
     {
       return {error_, static_cast<Receiver&&>(receiver)};

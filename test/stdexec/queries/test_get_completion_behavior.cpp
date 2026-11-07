@@ -35,7 +35,7 @@ static_assert((cb::__inline_completion | cb::__inline_completion) == cb::__inlin
 
 static_assert((cb::__asynchronous | cb::__asynchronous_affine) == cb::__asynchronous);
 static_assert((cb::__asynchronous | cb::__inline_completion) == cb::__unknown);
-static_assert(int((cb::__asynchronous_affine | cb::__inline_completion).value)
+static_assert(static_cast<int>((cb::__asynchronous_affine | cb::__inline_completion).value)
               == (cb::__async_ | cb::__inline_));
 
 static_assert(!cb::__is_affine(cb::__asynchronous));

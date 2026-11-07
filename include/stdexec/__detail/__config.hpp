@@ -224,6 +224,7 @@ import std;
 #endif
 
 STDEXEC_NAMESPACE_STD_BEGIN
+  // NOLINTNEXTLINE(bugprone-std-namespace-modification)
   namespace execution
   {
     namespace parallel_scheduler_replacement
@@ -236,6 +237,7 @@ STDEXEC_NAMESPACE_STD_BEGIN
     }  // namespace system_context_replaceability
   }  // namespace execution
 
+  // NOLINTNEXTLINE(bugprone-std-namespace-modification)
   namespace this_thread
   {}
 STDEXEC_NAMESPACE_STD_END
@@ -291,6 +293,7 @@ STDEXEC_NAMESPACE_STD_END
 #    include <coroutine>  // IWYU pragma: keep
 #  endif
 #  define STDEXEC_NO_STDCPP_COROUTINES() 0
+// NOLINTNEXTLINE(bugprone-std-namespace-modification)
 namespace STDEXEC::__std
 {
   // NOLINTBEGIN(misc-unused-alias-decls)
@@ -575,6 +578,7 @@ namespace STDEXEC
 
 #  define STDEXEC_REMOVE_REFERENCE(...) STDEXEC::__unref_t<__VA_ARGS__>
 #elif STDEXEC_HAS_BUILTIN(__remove_reference_t)
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Ty>
@@ -586,6 +590,7 @@ namespace STDEXEC
 #  define STDEXEC_REMOVE_REFERENCE(...) ::std::remove_reference_t<__VA_ARGS__>
 #endif
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Ap, class _Bp>
@@ -824,6 +829,7 @@ namespace STDEXEC
 // clang-format on
 
 #if !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   // Used by the STDEXEC_CATCH macro to provide a stub initialization of the
@@ -867,6 +873,7 @@ namespace STDEXEC
   } while (false)
 #endif
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   struct __assertion_failure
@@ -875,6 +882,7 @@ namespace STDEXEC
   STDEXEC_ATTRIBUTE(noreturn, host, device)
   inline void __throw_assertion_failure()
   {
+    // NOLINTNEXTLINE(bugprone-std-exception-baseclass)
     STDEXEC_THROW(__assertion_failure{});
   }
 }  // namespace STDEXEC
@@ -1006,6 +1014,7 @@ namespace STDEXEC
 #define STDEXEC_MODULE_EXPORT_AUTHORING STDEXEC_MODULE_EXPORT
 
 #if !STDEXEC_USE_MODULES()
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   namespace parallel_scheduler_replacement

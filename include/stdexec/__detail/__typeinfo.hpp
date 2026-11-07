@@ -38,6 +38,7 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-private-field")
 ////////////////////////////////////////////////////////////////////////////////
 // __type_info, __mtypeid, and __msplice
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING

@@ -32,6 +32,7 @@ import stdexec;
 #    include <functional>
 #  endif
 
+// NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Fun0, class _Fun1>

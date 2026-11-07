@@ -60,7 +60,7 @@ struct RunThread
                                    auto prev = counter.fetch_sub(1);
                                    if (prev == 1)
                                    {
-                                     std::lock_guard lock{mut};
+                                     std::scoped_lock lock{mut};
                                      cv.notify_one();
                                    }
                                  }),

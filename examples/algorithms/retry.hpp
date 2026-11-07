@@ -62,6 +62,7 @@ struct _retry_receiver : exec::receiver_adaptor<_retry_receiver<S, R>>
     return static_cast<R&&>(o_->r_);
   }
 
+  [[nodiscard]]
   auto base() const & noexcept -> R const &
   {
     return o_->r_;
@@ -150,6 +151,7 @@ struct _retry_sender
     return {static_cast<S&&>(s_), static_cast<R&&>(r)};
   }
 
+  [[nodiscard]]
   auto get_env() const noexcept -> stdexec::env_of_t<S>
   {
     return stdexec::get_env(s_);

@@ -91,6 +91,7 @@ struct _then_sender
                             _then_receiver<R, F>{static_cast<R&&>(r), static_cast<F&&>(f_)});
   }
 
+  [[nodiscard]]
   auto get_env() const noexcept -> decltype(auto)
   {
     return stdexec::get_env(s_);

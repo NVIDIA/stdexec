@@ -102,6 +102,7 @@ namespace
       : awaitable_(&awaitable)
     {}
 
+    [[nodiscard]]
     constexpr auto await_ready() const noexcept(noexcept(awaitable_->await_ready()))
       requires requires(Awaitable& a) {
         { a.await_ready() };
@@ -111,6 +112,7 @@ namespace
     }
 
     template <class Promise>
+    [[nodiscard]]
     constexpr auto await_suspend(std::coroutine_handle<Promise> coro) const
       noexcept(noexcept(awaitable_->await_suspend(coro)))
       requires requires(Awaitable& a) {
@@ -120,6 +122,7 @@ namespace
       return awaitable_->await_suspend(coro);
     }
 
+    [[nodiscard]]
     constexpr decltype(auto) await_resume() const noexcept(noexcept(awaitable_->await_resume()))
       requires requires(Awaitable& a) {
         { a.await_resume() };

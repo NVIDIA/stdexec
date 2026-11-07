@@ -453,6 +453,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto
     connect(Receiver) const -> ::STDEXEC::connect_result_t<decltype(::STDEXEC::just()), Receiver>
     {
@@ -518,6 +519,7 @@ namespace
     }
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver r) const & noexcept
     {
       return ::STDEXEC::connect(::STDEXEC::just(), std::move(r));

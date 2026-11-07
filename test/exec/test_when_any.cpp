@@ -87,6 +87,7 @@ namespace
       *lvalue_error_ = false;
     }
 
+    [[nodiscard]]
     auto get_env() const noexcept -> ex::env<>
     {
       return {};
@@ -159,6 +160,7 @@ namespace
 
     void set_stopped() noexcept {}
 
+    [[nodiscard]]
     auto get_env() const noexcept -> ex::env<>
     {
       return {};
@@ -235,6 +237,7 @@ namespace
 
     void set_stopped() noexcept {}
 
+    [[nodiscard]]
     auto get_env() const noexcept -> ex::env<>
     {
       return {};
@@ -528,6 +531,7 @@ namespace
                                                                  set_error_t(std::exception_ptr&&)>;
 
     template <class Receiver>
+    [[nodiscard]]
     auto connect(Receiver rec) const noexcept -> dup_op<Receiver>
     {
       return {static_cast<Receiver&&>(rec)};
