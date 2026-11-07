@@ -28,6 +28,8 @@ STDEXEC_PRAGMA_IGNORE_GNU("-Wmissing-braces")
 
 namespace experimental::execution
 {
+  struct when_any_t;
+
   namespace __when_any
   {
     using namespace STDEXEC;
@@ -35,44 +37,21 @@ namespace experimental::execution
     template <class _Env>
     using __env_t = __join_env_t<prop<get_stop_token_t, inplace_stop_token>, _Env>;
 
-    template <class... Args>
-    using __as_rvalues = set_value_t (*)(__decay_t<Args>...);
-
-    template <class... E>
-    using __as_error = set_error_t (*)(__decay_t<E>...);
-
-    // Here we convert all set_value(Args...) and set_error(Args...) to use
-    // decayed arguments and unconditionally add set_stopped(). The indirection
-    // through the __completions_fn is to avoid a pack expansion bug in nvc++.
-    template <class... _Env>
-    struct __completions_fn
+    template <class... _Env, class... _CvSenders>
+    consteval auto __mk_completions(__mlist_ptr<_CvSenders...>)
     {
-      template <class _CvSender>
-      using __raw_completions_t = __completion_signatures_of_t<_CvSender, __env_t<_Env>...>;
-
-      template <class _CvSender>
-      using __decayed_completions_t =
-        __transform_reduce_completion_signatures_t<__raw_completions_t<_CvSender>,
-                                                   __as_rvalues,
-                                                   __as_error,
-                                                   set_stopped_t (*)(),
-                                                   __completion_signature_ptrs_t>;
-
-      template <class... _CvSenders>
-      using __all_nothrow_decay_copyable_results =
-        __mand<__nothrow_decay_copyable_results_t<__raw_completions_t<_CvSenders>>...,
-               __nothrow_decay_copyable_results_t<__decayed_completions_t<_CvSenders>>...>;
-
-      template <class... _CvSenders>
-      using __f = __mtry_q<__concat_completion_signatures_t>::__f<
-        __eptr_completion_unless_t<__all_nothrow_decay_copyable_results<_CvSenders...>>,
-        completion_signatures<set_stopped_t()>,
-        __decayed_completions_t<_CvSenders>...>;
-    };
+      return exec::concat_completion_signatures(
+        STDEXEC::completion_signatures<set_stopped_t()>(),
+        exec::transform_completion_signatures(
+          STDEXEC::get_completion_signatures<_CvSenders, __env_t<_Env>...>(),
+          exec::decay_arguments<set_value_t, when_any_t>(),
+          exec::decay_arguments<set_error_t, when_any_t>())...);
+    }
 
     template <class _Env, class... _CvSenders>
     using __results_storage_t =
-      __mapply_q<__results_storage, __minvoke<__completions_fn<_Env>, _CvSenders...>>;
+      __mapply_q<__results_storage,
+                 decltype(__when_any::__mk_completions<_Env>(__mlist_ptr<_CvSenders...>()))>;
 
     // Forwards stop requests on the receiver's token to __stop_source_.
     template <class _Receiver, class _ResultVariant>
@@ -80,7 +59,7 @@ namespace experimental::execution
       : stoppable_base_for_t<stop_token_of_t<env_of_t<_Receiver>&>,
                              __opstate_base<_Receiver, _ResultVariant>>
     {
-      explicit __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders)
+      explicit __opstate_base(_Receiver&& __rcvr, std::size_t __n_senders) noexcept
         : __count_{__n_senders}
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
@@ -91,16 +70,6 @@ namespace experimental::execution
       {
         __stop_source_.request_stop();
       }
-
-      inplace_stop_source __stop_source_{};
-
-      // If this hits true, we store the result
-      __std::atomic<bool> __emplaced_{false};
-      // If this hits zero, we forward any result to the receiver
-      __std::atomic<std::size_t> __count_{};
-
-      _Receiver      __rcvr_;
-      _ResultVariant __result_;
 
       template <class _Tag, class... _Args>
       void notify(_Tag, _Args&&... __args) noexcept
@@ -120,7 +89,7 @@ namespace experimental::execution
           }
           STDEXEC_CATCH_ALL
           {
-            if constexpr ((__nothrow_decay_copyable<_Args> && ...))
+            if constexpr (__nothrow_decay_copyable<_Args...>)
               __std::unreachable();
             else
               __result_.template emplace<__error_t>(set_error_t{}, std::current_exception());
@@ -152,6 +121,16 @@ namespace experimental::execution
           std::move(__result_).__complete(__rcvr_);
         }
       }
+
+      inplace_stop_source __stop_source_{};
+
+      // If this hits true, we store the result
+      __std::atomic<bool> __emplaced_{false};
+      // If this hits zero, we forward any result to the receiver
+      __std::atomic<std::size_t> __count_{};
+
+      _Receiver      __rcvr_;
+      _ResultVariant __result_;
     };
 
     template <class _Receiver, class _ResultVariant>
@@ -237,9 +216,6 @@ namespace experimental::execution
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<_Receiver, __copy_cvref_t<_Self, _Senders>...>;
 
-      template <class _Self, class... _Env>
-      using __completions_t =
-        __minvoke<__completions_fn<_Env...>, __copy_cvref_t<_Self, _Senders>...>;
      public:
       using sender_concept = STDEXEC::sender_tag;
 
@@ -265,7 +241,8 @@ namespace experimental::execution
       template <__decay_copyable _Self, class... _Env>
       static consteval auto get_completion_signatures()
       {
-        return __completions_t<_Self, _Env...>{};
+        return __when_any::__mk_completions<_Env...>(
+          __mlist_ptr<__copy_cvref_t<_Self, _Senders>...>());
       }
 
       template <class _Self, class... _Env>
@@ -278,26 +255,24 @@ namespace experimental::execution
      private:
       __tuple<_Senders...> __sndrs_;
     };
-
-    struct __when_any_t
-    {
-      template <class... _CvSenders>
-      using __sender_t = __sender<__decay_t<_CvSenders>...>;
-
-      auto operator()() const noexcept = delete;
-
-      template <sender... _CvSenders>
-      constexpr auto operator()(_CvSenders&&... __sndrs) const
-        noexcept((__nothrow_decay_copyable<_CvSenders> && ...)) -> __sender_t<_CvSenders...>
-      {
-        return __sender_t<_CvSenders...>(static_cast<_CvSenders&&>(__sndrs)...);
-      }
-    };
-
-    inline constexpr __when_any_t when_any{};
   }  // namespace __when_any
 
-  using __when_any::when_any;
+  struct when_any_t
+  {
+    template <class... _CvSenders>
+    using __sender_t = __when_any::__sender<STDEXEC::__decay_t<_CvSenders>...>;
+
+    auto operator()() const noexcept = delete;
+
+    template <STDEXEC::sender... _CvSenders>
+    constexpr auto operator()(_CvSenders&&... __sndrs) const
+      noexcept(STDEXEC::__nothrow_decay_copyable<_CvSenders...>) -> __sender_t<_CvSenders...>
+    {
+      return __sender_t<_CvSenders...>(static_cast<_CvSenders&&>(__sndrs)...);
+    }
+  };
+
+  inline constexpr auto when_any = when_any_t();
 }  // namespace experimental::execution
 
 namespace exec = experimental::execution;

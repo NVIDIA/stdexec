@@ -466,14 +466,14 @@ namespace
     CHECK(got_exception);
   }
 
-  TEST_CASE("when_any reports errors for potentially throwing value moves", "[adaptors][when_any]")
+  TEST_CASE("when_any is not fooled by value types with potentially throwing move ctors",
+            "[adaptors][when_any]")
   {
     copy_noexcept_move_throws value;
     auto                      snd = exec::when_any(just_ref{value});
-    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
-                                 completion_signatures<set_value_t(copy_noexcept_move_throws),
-                                                       set_stopped_t(),
-                                                       set_error_t(std::exception_ptr)>>);
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(snd)>,
+                  completion_signatures<set_value_t(copy_noexcept_move_throws), set_stopped_t()>>);
 
     bool got_value     = false;
     bool got_error     = false;
@@ -488,13 +488,13 @@ namespace
     CHECK_FALSE(got_exception);
   }
 
-  TEST_CASE("when_any reports errors for potentially throwing error moves", "[adaptors][when_any]")
+  TEST_CASE("when_any is not fooled by types with potentially throwing move ctors",
+            "[adaptors][when_any]")
   {
     auto snd = exec::when_any(throwing_move_error_sender{});
-    static_assert(set_equivalent<completion_signatures_of_t<decltype(snd)>,
-                                 completion_signatures<set_error_t(copy_noexcept_move_throws),
-                                                       set_error_t(std::exception_ptr),
-                                                       set_stopped_t()>>);
+    static_assert(set_equivalent<
+                  completion_signatures_of_t<decltype(snd)>,
+                  completion_signatures<set_error_t(copy_noexcept_move_throws), set_stopped_t()>>);
 
     bool got_value     = false;
     bool got_error     = false;
