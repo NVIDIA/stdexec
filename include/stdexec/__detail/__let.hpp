@@ -50,6 +50,8 @@ import stdexec;
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
+  struct _FUNCTION_DOES_NOT_RETURN_A_SENDER_;
+
   //////////////////////////////////////////////////////////////////////////////
   // [exec.let]
   namespace __let
@@ -95,39 +97,6 @@ namespace STDEXEC
         return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
       }
     };
-
-    struct _FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_;
-
-    template <class...>
-    struct _NESTED_ERROR_;
-
-    // BUGBUG: when get_completion_signatures is using constexpr exceptions,
-    // this __try_completion_signatures_of_t machinery hides the nested error
-    // from trying to compute the result senders.
-    template <class _Sender, class... _Env>
-    using __try_completion_signatures_of_t =
-      __minvoke_or_q<__completion_signatures_of_t,
-                     __unrecognized_sender_error_t<_Sender, _Env...>,
-                     _Sender,
-                     _Env...>;
-
-    template <class _Sender, class _LetTag, class... _JoinEnv2>
-    using __bad_result_sender_t = __mexception<
-      _WHAT_(_FUNCTION_MUST_RETURN_A_VALID_SENDER_IN_THE_CURRENT_ENVIRONMENT_),
-      _WHERE_(_IN_ALGORITHM_, _LetTag),
-      _WITH_SENDER_<_Sender>,
-      __fn_t<_WITH_ENVIRONMENT_, _JoinEnv2>...,
-      __mapply_q<_NESTED_ERROR_, __try_completion_signatures_of_t<_Sender, _JoinEnv2...>>>;
-
-    template <class _LetTag, class... _Args>
-    using __not_decay_copyable_error_t =
-      __mexception<_WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
-                   _WHERE_(_IN_ALGORITHM_, _LetTag),
-                   _WITH_ARGUMENTS_(_Args...)>;
-
-    template <class _Sender, class... _JoinEnv2>
-    concept __potentially_valid_sender_in = sender_in<_Sender, _JoinEnv2...>
-                                         || (sender<_Sender> && (sizeof...(_JoinEnv2) == 0));
 
     //! Metafunction creating the operation state needed to connect the result
     //! of calling the sender factory function, `_Fun`, and passing its result
@@ -525,7 +494,7 @@ namespace STDEXEC
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(_Fun __fn) const
       {
-        return __closure(*this, static_cast<_Fun&&>(__fn));
+        return __closure(_LetTag(), static_cast<_Fun&&>(__fn));
       }
 
      private:
@@ -544,10 +513,7 @@ namespace STDEXEC
       using __fn_t = __decay_t<__data_of<_CvSender>>;
 
       template <class _CvSender, class _Env>
-      using __env2_t = __let::__result_env_t<__set_t, _CvSender, _Env>;
-
-      template <class _CvSender, class _Env>
-      using __rcvr2_t = __receiver_archetype<__env2_t<_CvSender, _Env>>;
+      using __env2_t = __result_env_t<__set_t, _CvSender, _Env>;
 
       template <class _CvSender, class _Receiver>
       using __opstate_t = __gather_completions_of_t<
@@ -557,60 +523,65 @@ namespace STDEXEC
         __q<__decayed_tuple>,
         __mbind_front_q<__opstate, __set_t, __child_of<_CvSender>, __fn_t<_CvSender>, _Receiver>>;
 
-      template <class _Fun, class _Child, class... _Env>
-      static consteval auto __get_transform_fn()
+      template <class _Fun, class... _JoinEnv>
+      static consteval auto __get_cmplsig_transform_fn()
       {
         return []<class... _Args>()
         {
-          if constexpr (__decay_copyable<_Args...> && __invocable<_Fun, __decay_t<_Args>&...>)
+          if constexpr (!__decay_copyable<_Args...>)
           {
-            using __sndr2_t = __invoke_result_t<_Fun, __decay_t<_Args>&...>;
-            if constexpr (!__potentially_valid_sender_in<__sndr2_t, __env2_t<_Child, _Env>...>)
-            {
-              using __what_t = __bad_result_sender_t<__sndr2_t, _LetTag, __env2_t<_Child, _Env>...>;
-              return STDEXEC::__throw_compile_time_error(__what_t());
-            }
-            else if constexpr (__nothrow_decay_copyable<_Args...>
-                               && __nothrow_invocable<_Fun, __decay_t<_Args>&...>
-                               && sizeof...(_Env) == 0)
-            {
-              auto __completions =
-                STDEXEC::get_completion_signatures<__sndr2_t, __env2_t<_Child, _Env>...>();
-              STDEXEC_IF_OK(__completions)
-              {
-                if constexpr (__completions.template __contains<__eptr_sig_t>())
-                {
-                  return __completions;
-                }
-                else
-                {
-                  return STDEXEC::__throw_dependent_sender_error<__sndr2_t>();
-                }
-              }
-            }
-            else if constexpr (__nothrow_decay_copyable<_Args...>
-                               && __nothrow_invocable<_Fun, __decay_t<_Args>&...>
-                               && (__nothrow_connectable<__sndr2_t, __rcvr2_t<_Child, _Env>>
-                                   || ...))
-            {
-              return STDEXEC::get_completion_signatures<__sndr2_t, __env2_t<_Child, _Env>...>();
-            }
-            else
-            {
-              return STDEXEC::__concat_completion_signatures(
-                STDEXEC::get_completion_signatures<__sndr2_t, __env2_t<_Child, _Env>...>(),
-                __eptr_completion_t());
-            }
+            return STDEXEC::__throw_compile_time_error<  //
+              _WHAT_(_PREDECESSOR_RESULTS_ARE_NOT_DECAY_COPYABLE_),
+              _WHERE_(_IN_ALGORITHM_, _LetTag),
+              _WITH_ARGUMENTS_(_Args...)>();
           }
-          else if constexpr (__decay_copyable<_Args...>)
+          else if constexpr (!__invocable<_Fun, __decay_t<_Args>&...>)
           {
             using __what_t = __callable_error_t<_LetTag, _Fun, __decay_t<_Args>&...>;
             return STDEXEC::__throw_compile_time_error(__what_t());
           }
           else
           {
-            using __what_t = __not_decay_copyable_error_t<_LetTag, _Args...>;
-            return STDEXEC::__throw_compile_time_error(__what_t());
+            using __sndr2_t = __invoke_result_t<_Fun, __decay_t<_Args>&...>;
+
+            if constexpr (!sender<__sndr2_t>)
+            {
+              return STDEXEC::__throw_compile_time_error<  //
+                _WHAT_(_FUNCTION_DOES_NOT_RETURN_A_SENDER_),
+                _WHERE_(_IN_ALGORITHM_, _LetTag),
+                _WITH_FUNCTION_(_Fun),
+                _WITH_ARGUMENTS_(_Args...)>();
+            }
+            else
+            {
+              auto __completions = STDEXEC::get_completion_signatures<__sndr2_t, _JoinEnv...>();
+              STDEXEC_IF_OK(__completions)
+              {
+                constexpr bool __has_eptr_sig = __completions.template __contains<__eptr_sig_t>();
+                constexpr bool __is_nothrow =
+                  __nothrow_decay_copyable<_Args...>                  //
+                  && __nothrow_invocable<_Fun, __decay_t<_Args>&...>  //
+                  && (__nothrow_connectable<__sndr2_t, __receiver_archetype<_JoinEnv>> && ...);
+
+                // If we don't have an environment, we cannot ask whether
+                // connecting the secondary sender will throw. But if the
+                // completions of the secondary sender already include
+                // set_error(std::exception_ptr), then we don't need to ask.
+                if constexpr (sizeof...(_JoinEnv) == 0 && !__has_eptr_sig)
+                {
+                  return STDEXEC::__throw_dependent_sender_error<__sndr2_t>();
+                }
+                else if constexpr (__is_nothrow)
+                {
+                  return __completions;
+                }
+                else
+                {
+                  return STDEXEC::__concat_completion_signatures(__completions,
+                                                                 __eptr_completion_t());
+                }
+              }
+            }
           }
         };
       }
@@ -632,17 +603,18 @@ namespace STDEXEC
 
         STDEXEC_IF_OK(__completions)
         {
-          auto __transform = __get_transform_fn<__fn_t<_CvSender>, __child_t, _Env...>();
+          auto __transform =
+            __get_cmplsig_transform_fn<__fn_t<_CvSender>, __env2_t<__child_t, _Env>...>();
           if constexpr (!__decay_copyable<_CvSender>)
           {
             return STDEXEC::__throw_compile_time_error<_SENDER_TYPE_IS_NOT_DECAY_COPYABLE_,
                                                        _WITH_SENDER_<_CvSender>>();
           }
-          else if constexpr (__t<_LetTag>() == STDEXEC::set_value)
+          else if constexpr (__set_t() == STDEXEC::set_value)
           {
             return STDEXEC::__transform_completion_signatures(__completions, __transform);
           }
-          else if constexpr (__t<_LetTag>() == STDEXEC::set_error)
+          else if constexpr (__set_t() == STDEXEC::set_error)
           {
             return STDEXEC::__transform_completion_signatures(__completions, {}, __transform);
           }
