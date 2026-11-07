@@ -19,9 +19,13 @@
 #include "stdexec/execution.hpp"
 
 #include <array>
+#include <cstddef>
+#include <exception>
 #include <initializer_list>
+#include <iterator>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <test_common/catch2.hpp>
 #include <utility>
 #include <vector>
@@ -48,6 +52,79 @@ namespace
     }
 
     std::array<int, 1> values{0};
+  };
+
+  struct iterator_failure
+  {};
+
+  enum class iterator_failure_point
+  {
+    dereference,
+    increment,
+    comparison
+  };
+
+  struct throwing_forward_iterator
+  {
+    using iterator_concept = std::forward_iterator_tag;
+    using value_type       = int;
+    using difference_type  = std::ptrdiff_t;
+
+    int*                   current_{};
+    iterator_failure_point failure_point_{};
+
+    int& operator*() const
+    {
+      if (failure_point_ == iterator_failure_point::dereference)
+      {
+        throw iterator_failure{};
+      }
+      return *current_;
+    }
+
+    auto operator++() -> throwing_forward_iterator&
+    {
+      if (failure_point_ == iterator_failure_point::increment)
+      {
+        throw iterator_failure{};
+      }
+      ++current_;
+      return *this;
+    }
+
+    auto operator++(int) -> throwing_forward_iterator
+    {
+      auto previous = *this;
+      ++*this;
+      return previous;
+    }
+
+    friend auto operator==(throwing_forward_iterator const & left,
+                           throwing_forward_iterator const & right) -> bool
+    {
+      if (left.failure_point_ == iterator_failure_point::comparison
+          || right.failure_point_ == iterator_failure_point::comparison)
+      {
+        throw iterator_failure{};
+      }
+      return left.current_ == right.current_;
+    }
+  };
+
+  struct throwing_forward_range
+  {
+    int                    value_{42};
+    iterator_failure_point failure_point_;
+
+    auto begin() noexcept -> throwing_forward_iterator
+    {
+      return {&value_, failure_point_};
+    }
+
+    auto end() noexcept -> throwing_forward_iterator
+    {
+      return {&value_ + 1, failure_point_};
+    }
   };
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
@@ -128,6 +205,18 @@ namespace
       return env_;
     }
   };
+
+#if !STDEXEC_NO_STDCPP_EXCEPTIONS()
+  struct error_capture_receiver : sum_receiver<>
+  {
+    void set_error(std::exception_ptr error) noexcept
+    {
+      error_ = std::move(error);
+    }
+
+    std::exception_ptr& error_;
+  };
+#endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   struct move_only_sum_receiver : sum_receiver<>
   {
@@ -225,6 +314,26 @@ namespace
 
     STATIC_REQUIRE_FALSE(noexcept(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum})));
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
+  }
+
+  TEST_CASE("iterate - forwards iterator operation exceptions", "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_forward_range>);
+
+    for (auto failure_point: {iterator_failure_point::dereference,
+                              iterator_failure_point::increment,
+                              iterator_failure_point::comparison})
+    {
+      int                sum = 0;
+      std::exception_ptr error;
+      auto               sequence = exec::iterate(throwing_forward_range{42, failure_point});
+      auto op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+      STDEXEC::start(op);
+
+      REQUIRE(error);
+      CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+    }
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 

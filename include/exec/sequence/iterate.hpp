@@ -92,6 +92,13 @@ namespace experimental::execution
         }
       }
 
+      virtual void __set_error(std::exception_ptr) noexcept
+      {
+        std::terminate();
+      }
+
+      virtual ~__operation_base_base() = default;
+
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Range                                                                          __range_;
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -111,7 +118,7 @@ namespace experimental::execution
         , __rcvr_{static_cast<_Receiver&&>(__rcvr)}
       {}
 
-      virtual ~__operation_base()                    = default;
+      ~__operation_base() override                   = default;
       virtual constexpr void __start_next() noexcept = 0;
 
       _Receiver __rcvr_;
@@ -122,7 +129,14 @@ namespace experimental::execution
     {
       constexpr void start() noexcept
       {
-        STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+        STDEXEC_TRY
+        {
+          STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+        }
+        STDEXEC_CATCH_ALL
+        {
+          __parent_->__set_error(std::current_exception());
+        }
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
@@ -186,15 +200,21 @@ namespace experimental::execution
                                               static_cast<_Receiver&&>(__rcvr)}
       {}
 
+      void __set_error(std::exception_ptr __error) noexcept override
+      {
+        __op_.reset();
+        STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::move(__error));
+      }
+
       constexpr void __start_next() noexcept final
       {
-        if (this->__at_end())
+        STDEXEC_TRY
         {
-          STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
-        }
-        else
-        {
-          STDEXEC_TRY
+          if (this->__at_end())
+          {
+            STDEXEC::set_value(static_cast<_Receiver&&>(this->__rcvr_));
+          }
+          else
           {
             STDEXEC::start(__op_.__emplace_from(
               STDEXEC::connect,
@@ -203,10 +223,11 @@ namespace experimental::execution
                                             __sender<_Range>{this})),
               __next_receiver_t{this}));
           }
-          STDEXEC_CATCH_ALL
-          {
-            STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::current_exception());
-          }
+        }
+        STDEXEC_CATCH_ALL
+        {
+          __op_.reset();
+          STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::current_exception());
         }
       }
 
