@@ -292,13 +292,20 @@ if(STDEXEC_BUILD_TESTS)
   endif()
 
   # These headers are Linux-only.
-  if(WIN32)
+  if(NOT LINUX)
     set_source_files_properties(
       include/exec/linux/io_uring_context.hpp
       include/exec/linux/memory_mapped_region.hpp
       include/exec/linux/detail/memory_mapped_region.hpp
       include/exec/linux/safe_file_descriptor.hpp
       include/exec/linux/detail/safe_file_descriptor.hpp
+      PROPERTIES SKIP_LINTING ON)
+  endif()
+
+  # These headers are macOS-only.
+  if(NOT APPLE)
+    set_source_files_properties(
+      include/exec/libdispatch_queue.hpp
       PROPERTIES SKIP_LINTING ON)
   endif()
 endif()
@@ -342,6 +349,10 @@ set(STDEXEC_NAMESPACE
 if(NOT STDEXEC_NAMESPACE STREQUAL "stdexec")
   target_compile_definitions(stdexec
                              ${stdexec_scope} STDEXEC_NAMESPACE=${STDEXEC_NAMESPACE})
+endif()
+
+if (NOT STDEXEC_BUILD_PARALLEL_SCHEDULER)
+  target_compile_definitions(stdexec INTERFACE STDEXEC_PARALLEL_SCHEDULER_HEADER_ONLY)
 endif()
 
 option(STDEXEC_ENABLE_EXTRA_TYPE_CHECKING
@@ -575,12 +586,15 @@ if(STDEXEC_BUILD_PARALLEL_SCHEDULER)
                               /Zc:preprocessor /Zc:externConstexpr>)
   target_link_libraries(parallel_scheduler PUBLIC stdexec)
 
-  add_library(STDEXEC::parallel_scheduler ALIAS parallel_scheduler)
-  add_library(system_context ALIAS parallel_scheduler)
-  add_library(STDEXEC::system_context ALIAS parallel_scheduler)
-
   set(stdexec_export_targets ${stdexec_export_targets} parallel_scheduler)
+else()
+  add_library(parallel_scheduler INTERFACE)
+  target_link_libraries(parallel_scheduler INTERFACE stdexec)
 endif()
+
+add_library(STDEXEC::parallel_scheduler ALIAS parallel_scheduler)
+add_library(system_context ALIAS parallel_scheduler)
+add_library(STDEXEC::system_context ALIAS parallel_scheduler)
 
 option(STDEXEC_ENABLE_IO_URING
        "Enable the use of the io_uring scheduler on Linux" OFF)
