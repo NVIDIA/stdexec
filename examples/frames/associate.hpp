@@ -139,10 +139,10 @@ namespace frames::typestate
       }
       else
       {
-        return detail::join_t<
-          detail::sent_as<ending_of_t<Env...>>,
-          ex::completion_signatures_of_t<Sndr, Env...>,
-          ex::completion_signatures<ex::set_stopped_t(), ex::set_error_t(std::exception_ptr)>>();
+        return exec::concat_completion_signatures(sent_as<ending_of_t<Env...>>(
+                                                    ex::get_completion_signatures<Sndr, Env...>()),
+                                                  ex::completion_signatures<ex::set_stopped_t()>(),
+                                                  detail::eptr_completion());
       }
     }
 

@@ -367,10 +367,11 @@ What else it taught:
   `std::optional::emplace` and completes from the callback is one such: when
   stop has already been requested, the callback runs inside `emplace`, which
   sets its flag afterwards.
-- **Completion signatures are still much of the work.** About 160 of
-  `typestate.hpp`'s lines, and 20 to 30 of each algorithm's, compute them,
-  and phases don't help with that; every algorithm here except `just`
-  conservatively declares `set_error_t(std::exception_ptr)`.
+- **Completion signatures are still much of the work.** About 100 of
+  `typestate.hpp`'s lines, built on the helpers in
+  `<exec/completion_signatures.hpp>`, and 15 to 25 of each algorithm's,
+  compute them, and phases don't help with that; every algorithm here except
+  `just` conservatively declares `set_error_t(std::exception_ptr)`.
 
 ## Open questions
 

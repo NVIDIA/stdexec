@@ -19,14 +19,6 @@ namespace frames::typestate
     Sndr sndr_;
     Fn   fn_;
 
-    // Bound without consuming, fn is called as const.
-    template <class FnRef>
-    struct values_fn
-    {
-      template <class... As>
-      using f = typename detail::value_of<std::invoke_result_t<FnRef, As...>>::type;
-    };
-
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
     {
@@ -36,11 +28,14 @@ namespace frames::typestate
       }
       else
       {
+        // Bound without consuming, fn is called as const.
         using fn_ref =
           std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
-        return detail::map_values_t<ending_of_t<Env...>,
-                                    ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
-                                    values_fn<fn_ref>>();
+        return exec::concat_completion_signatures(
+          map_values<ending_of_t<Env...>>(
+            ex::get_completion_signatures<member_t<Self, Sndr>, Env...>(),
+            []<class... As>() { return detail::value_of<std::invoke_result_t<fn_ref, As...>>(); }),
+          detail::eptr_completion());
       }
     }
 

@@ -34,67 +34,11 @@ namespace frames::typestate
 
   namespace detail
   {
-    // type_list<Tag, decay_t<As>...> for each Tag(As...) in Sigs, once each.
-    template <class List, class... Sigs>
-    struct completion_lists_of
-    {
-      using type = List;
-    };
-
-    template <class List, class Tag, class... As, class... Rest>
-    struct completion_lists_of<List, Tag(As...), Rest...>
-      : completion_lists_of<typename add_type<List, type_list<Tag, std::decay_t<As>...>>::type,
-                            Rest...>
-    {};
-
-    template <class Sigs>
-    struct completion_lists;
-
-    template <class... Sigs>
-    struct completion_lists<ex::completion_signatures<Sigs...>>
-      : completion_lists_of<type_list<>, Sigs...>
-    {};
-
     template <class List, class T>
     inline constexpr bool in_list = false;
 
     template <class... Ts, class T>
     inline constexpr bool in_list<type_list<Ts...>, T> = (std::is_same_v<Ts, T> || ...);
-
-    template <class Sig>
-    struct sig_tag;
-
-    template <class Tag, class... As>
-    struct sig_tag<Tag(As...)>
-    {
-      using type = Tag;
-    };
-
-    // final's completions other than set_value().
-    template <class Sig>
-    struct unless_done
-    {
-      using type = ex::completion_signatures<Sig>;
-    };
-
-    template <>
-    struct unless_done<ex::set_value_t()>
-    {
-      using type = ex::completion_signatures<>;
-    };
-
-    template <class Ending, class Sigs>
-    struct final_completions;
-
-    template <class Ending, class... Sigs>
-    struct final_completions<Ending, ex::completion_signatures<Sigs...>>
-    {
-      static_assert((...
-                     && (!std::is_same_v<ex::set_value_t, typename sig_tag<Sigs>::type>
-                         || std::is_same_v<Sigs, ex::set_value_t()>) ),
-                    "finally's final sender must complete with set_value() and no other values");
-      using type = join_t<sent_as<Ending>, typename unless_done<Sigs>::type...>;
-    };
 
     // What final's environment adds to the receiver's, given initial,
     // used as CvInitial: as exec::finally does.
@@ -122,15 +66,22 @@ namespace frames::typestate
       }
       else
       {
-        return detail::join_t<
-          detail::sent_as<eager_teardown>,  // replayed from what the second phase received
-          ex::completion_signatures_of_t<member_t<Self, Initial>, Env...>,
-          typename detail::final_completions<
-            ending_of_t<Env...>,
-            ex::completion_signatures_of_t<
-              member_t<Self, Final>,
-              detail::final_env_t<member_t<Self, Initial>, Env>...>>::type,
-          ex::completion_signatures<ex::set_error_t(std::exception_ptr)>>();
+        // final's completions other than set_value().
+        auto final_failures = exec::transform_completion_signatures(
+          ex::get_completion_signatures<member_t<Self, Final>,
+                                        detail::final_env_t<member_t<Self, Initial>, Env>...>(),
+          []<class... As>()
+          {
+            static_assert(sizeof...(As) == 0,
+                          "finally's final sender must complete with set_value() and no other "
+                          "values");
+            return ex::completion_signatures<>();
+          });
+        return exec::concat_completion_signatures(
+          // replayed from what the second phase received
+          sent_as<eager_teardown>(ex::get_completion_signatures<member_t<Self, Initial>, Env...>()),
+          sent_as<ending_of_t<Env...>>(final_failures),
+          detail::eptr_completion());
       }
     }
 
@@ -155,9 +106,8 @@ namespace frames::typestate
 
       // What initial may complete with, decayed, once each, as
       // type_list<Tag, Ts...>.
-      using results_t = typename detail::completion_lists<
-        detail::join_t<detail::sent_as<forward_results>,
-                       ex::completion_signatures_of_t<cv_initial_t, ex::env_of_t<Rcvr>>>>::type;
+      using results_t = detail::completion_lists_t<
+        ex::completion_signatures_of_t<cv_initial_t, ex::env_of_t<Rcvr>>>;
 
       // final's operation.
       struct final_op

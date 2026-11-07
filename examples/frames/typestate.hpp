@@ -37,6 +37,7 @@
  */
 #pragma once
 
+#include <exec/completion_signatures.hpp>
 #include <stdexec/execution.hpp>
 
 #include <algorithm>
@@ -183,111 +184,11 @@ namespace frames::typestate
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  // Completion-signature bookkeeping.
+  // Completion signatures, computed with the helpers in
+  // <exec/completion_signatures.hpp>.
 
   namespace detail
   {
-    template <class Sig>
-    struct decay_sig;
-
-    template <class Tag, class... As>
-    struct decay_sig<Tag(As...)>
-    {
-      using type = Tag(std::decay_t<As>...);
-    };
-
-    // Completions an operation sends after eager teardown are decayed: it
-    // completes with copies on the stack.
-    template <class Ending>
-    struct sent_as
-    {
-      template <class Sig>
-      using f = typename decay_sig<Sig>::type;
-    };
-
-    template <>
-    struct sent_as<forward_results>
-    {
-      template <class Sig>
-      using f = Sig;
-    };
-
-    template <class Sigs, class Sig>
-    struct add_sig;
-
-    template <class... Sigs, class Sig>
-    struct add_sig<ex::completion_signatures<Sigs...>, Sig>
-    {
-      using type = std::conditional_t<(std::is_same_v<Sigs, Sig> || ...),
-                                      ex::completion_signatures<Sigs...>,
-                                      ex::completion_signatures<Sigs..., Sig>>;
-    };
-
-    template <class Sigs, class... More>
-    struct add_all
-    {
-      using type = Sigs;
-    };
-
-    template <class Sigs, class First, class... More>
-    struct add_all<Sigs, First, More...> : add_all<typename add_sig<Sigs, First>::type, More...>
-    {};
-
-    // The union of several signature sets, each signature passed through
-    // Xform::f.
-    template <class Xform, class... Sets>
-    struct join
-    {
-      using type = ex::completion_signatures<>;
-    };
-
-    template <class Xform, class... Sigs, class... Rest>
-    struct join<Xform, ex::completion_signatures<Sigs...>, Rest...>
-      : add_all<typename join<Xform, Rest...>::type, typename Xform::template f<Sigs>...>
-    {};
-
-    template <class Xform, class... Sets>
-    using join_t = typename join<Xform, Sets...>::type;
-
-    // Replaces each set_value_t(As...) in a set by Fn::f<As...>.
-    template <class Fn, class Sig>
-    struct map_one
-    {
-      using type = ex::completion_signatures<Sig>;
-    };
-
-    template <class Fn, class... As>
-    struct map_one<Fn, ex::set_value_t(As...)>
-    {
-      using type = typename Fn::template f<As...>;
-    };
-
-    template <class Ending, class Sigs, class Fn>
-    struct map_values;
-
-    template <class Ending, class... Sigs, class Fn>
-    struct map_values<Ending, ex::completion_signatures<Sigs...>, Fn>
-    {
-      using type = join_t<sent_as<Ending>,
-                          typename map_one<Fn, Sigs>::type...,
-                          ex::completion_signatures<ex::set_error_t(std::exception_ptr)>>;
-    };
-
-    template <class Ending, class Sigs, class Fn>
-    using map_values_t = typename map_values<Ending, Sigs, Fn>::type;
-
-    template <class R>
-    struct value_of
-    {
-      using type = ex::completion_signatures<ex::set_value_t(std::decay_t<R>)>;
-    };
-
-    template <>
-    struct value_of<void>
-    {
-      using type = ex::completion_signatures<ex::set_value_t()>;
-    };
-
     template <class... Ts>
     struct type_list
     {};
@@ -306,40 +207,102 @@ namespace frames::typestate
       return 0xff;
     }
 
-    template <class List, class T>
-    struct add_type;
+    using eptr_completion = ex::completion_signatures<ex::set_error_t(std::exception_ptr)>;
 
-    template <class... Ts, class T>
-    struct add_type<type_list<Ts...>, T>
+    // Passes Tag's completions through with their arguments decayed.
+    template <class Tag>
+    using decayed = exec::transform_arguments<Tag, std::decay_t>;
+
+    // type_list<As...>, and type_list<Tag, As...>, for a Tag(As...).
+    template <class Sig>
+    struct sig_lists;
+
+    template <class Tag, class... As>
+    struct sig_lists<Tag(As...)>
     {
-      using type =
-        std::conditional_t<(std::is_same_v<Ts, T> || ...), type_list<Ts...>, type_list<Ts..., T>>;
+      using args = type_list<As...>;
+      using all  = type_list<Tag, As...>;
     };
-
-    // type_list<type_list<decay_t<As>...>...>, one per distinct decayed
-    // set_value_t(As...).
-    template <class List, class... Sigs>
-    struct value_lists_of
-    {
-      using type = List;
-    };
-
-    template <class List, class Sig, class... Rest>
-    struct value_lists_of<List, Sig, Rest...> : value_lists_of<List, Rest...>
-    {};
-
-    template <class List, class... As, class... Rest>
-    struct value_lists_of<List, ex::set_value_t(As...), Rest...>
-      : value_lists_of<typename add_type<List, type_list<std::decay_t<As>...>>::type, Rest...>
-    {};
-
-    template <class Sigs>
-    struct value_lists;
 
     template <class... Sigs>
-    struct value_lists<ex::completion_signatures<Sigs...>> : value_lists_of<type_list<>, Sigs...>
-    {};
+    auto args_lists(ex::completion_signatures<Sigs...>)
+      -> type_list<typename sig_lists<Sigs>::args...>;
 
+    template <class... Sigs>
+    auto
+      all_lists(ex::completion_signatures<Sigs...>) -> type_list<typename sig_lists<Sigs>::all...>;
+
+    template <class... Es>
+    auto error_types(ex::completion_signatures<ex::set_error_t(Es)...>) -> type_list<Es...>;
+
+    // type_list<type_list<decay_t<As>...>...>, one per distinct decayed
+    // set_value_t(As...) in Sigs.
+    template <class Sigs>
+    using value_lists_t = decltype(args_lists(
+      exec::transform_completion_signatures(Sigs(),
+                                            decayed<ex::set_value_t>(),
+                                            exec::ignore_completion(),
+                                            exec::ignore_completion())));
+
+    // type_list<decay_t<Es>...>, one per distinct decayed set_error_t(E) in
+    // Sigs.
+    template <class Sigs>
+    using error_list_t = decltype(error_types(
+      exec::transform_completion_signatures(Sigs(),
+                                            exec::ignore_completion(),
+                                            decayed<ex::set_error_t>(),
+                                            exec::ignore_completion())));
+
+    // type_list<Tag, decay_t<As>...> for each Tag(As...) in Sigs, once each.
+    template <class Sigs>
+    using completion_lists_t = decltype(all_lists(
+      exec::transform_completion_signatures(Sigs(),
+                                            decayed<ex::set_value_t>(),
+                                            decayed<ex::set_error_t>())));
+
+    // set_value_t(decay_t<R>), or set_value_t() for void.
+    template <class R>
+    consteval auto value_of()
+    {
+      if constexpr (std::is_void_v<R>)
+      {
+        return ex::completion_signatures<ex::set_value_t()>();
+      }
+      else
+      {
+        return ex::completion_signatures<ex::set_value_t(std::decay_t<R>)>();
+      }
+    }
+  }  // namespace detail
+
+  // Sigs as an operation sends them when a phase finishes with them under
+  // Ending: as they came under forward_results; under eager_teardown, as
+  // decayed copies, made while the phase is still alive, which may throw.
+  template <class Ending, class Sigs>
+  consteval auto sent_as(Sigs sigs)
+  {
+    if constexpr (std::is_same_v<Ending, eager_teardown>)
+    {
+      return exec::transform_completion_signatures(sigs,
+                                                   exec::decay_arguments<ex::set_value_t>(),
+                                                   exec::decay_arguments<ex::set_error_t>());
+    }
+    else
+    {
+      return sigs;
+    }
+  }
+
+  // Sigs with each set_value_t(As...) replaced by what
+  // value_fn.template operator()<As...>() returns, as sent under Ending.
+  template <class Ending, class Sigs, class ValueFn>
+  consteval auto map_values(Sigs sigs, ValueFn value_fn)
+  {
+    return sent_as<Ending>(exec::transform_completion_signatures(sigs, value_fn));
+  }
+
+  namespace detail
+  {
     // Empty; constructible from anything, which it ignores.
     struct empty
     {

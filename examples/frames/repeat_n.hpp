@@ -31,12 +31,6 @@ namespace frames::typestate
     Sndr        sndr_;
     std::size_t count_;
 
-    struct values_fn
-    {
-      template <class...>
-      using f = ex::completion_signatures<ex::set_value_t()>;
-    };
-
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
     {
@@ -46,12 +40,11 @@ namespace frames::typestate
       }
       else
       {
-        return detail::join_t<
-          detail::sent_as<ending_of_t<Env...>>,
-          detail::map_values_t<ending_of_t<Env...>,
-                               ex::completion_signatures_of_t<Sndr const &, Env...>,
-                               values_fn>,
-          ex::completion_signatures<ex::set_value_t()>>();
+        return exec::concat_completion_signatures(
+          map_values<ending_of_t<Env...>>(ex::get_completion_signatures<Sndr const &, Env...>(),
+                                          exec::ignore_completion()),
+          ex::completion_signatures<ex::set_value_t()>(),
+          detail::eptr_completion());
       }
     }
 

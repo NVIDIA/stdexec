@@ -51,7 +51,7 @@ namespace frames::typestate
 
     // A child's values, as a tuple, or no_values.
     template <class Sigs>
-    using when_all_tuple_t = typename single_list<typename value_lists<Sigs>::type>::tuple;
+    using when_all_tuple_t = typename single_list<value_lists_t<Sigs>>::tuple;
 
     // set_value_t of every child's values in order, unless a child sends
     // none.
@@ -72,62 +72,20 @@ namespace frames::typestate
       : concat_values<std::tuple<As..., Bs...>, Rest...>
     {};
 
-    // A child's completions other than its values.
-    template <class Sig>
-    struct non_value
-    {
-      using type = ex::completion_signatures<Sig>;
-    };
-
-    template <class... As>
-    struct non_value<ex::set_value_t(As...)>
-    {
-      using type = ex::completion_signatures<>;
-    };
-
-    template <class Sigs>
-    struct non_values;
-
-    template <class... Sigs>
-    struct non_values<ex::completion_signatures<Sigs...>>
-    {
-      using type = join_t<sent_as<eager_teardown>, typename non_value<Sigs>::type...>;
-    };
-
-    // std::variant<std::monostate, E...>, one E per decayed error of Sigs.
-    template <class List, class... Sigs>
-    struct errors_of
-    {
-      using type = List;
-    };
-
-    template <class List, class Sig, class... Rest>
-    struct errors_of<List, Sig, Rest...> : errors_of<List, Rest...>
-    {};
-
-    template <class List, class E, class... Rest>
-    struct errors_of<List, ex::set_error_t(E), Rest...>
-      : errors_of<typename add_type<List, std::decay_t<E>>::type, Rest...>
-    {};
-
     template <class List>
-    struct variant_of;
+    struct errors_variant_of;
 
     template <class... Es>
-    struct variant_of<type_list<Es...>>
+    struct errors_variant_of<type_list<Es...>>
     {
       using type = std::variant<std::monostate, Es...>;
     };
 
+    // std::variant<std::monostate, std::exception_ptr, E...>, one E per
+    // decayed error of Sigs.
     template <class Sigs>
-    struct errors_variant;
-
-    template <class... Sigs>
-    struct errors_variant<ex::completion_signatures<Sigs...>>
-    {
-      using type =
-        typename variant_of<typename errors_of<type_list<std::exception_ptr>, Sigs...>::type>::type;
-    };
+    using errors_variant_t = typename errors_variant_of<
+      error_list_t<decltype(exec::concat_completion_signatures(eptr_completion(), Sigs()))>>::type;
   }  // namespace detail
 
   // One of when_all's senders, as a member an operation can point to.
@@ -165,13 +123,15 @@ namespace frames::typestate
       }
       else
       {
-        return detail::join_t<
-          detail::sent_as<eager_teardown>,
+        return exec::concat_completion_signatures(
           typename detail::concat_values<detail::when_all_tuple_t<
-            ex::completion_signatures_of_t<member_t<Self, Sndrs>, when_all_env_t<Env>...>>...>::type,
-          typename detail::non_values<
-            ex::completion_signatures_of_t<member_t<Self, Sndrs>, when_all_env_t<Env>...>>::type...,
-          ex::completion_signatures<ex::set_error_t(std::exception_ptr)>>();
+            ex::completion_signatures_of_t<member_t<Self, Sndrs>,
+                                           when_all_env_t<Env>...>>...>::type(),
+          exec::transform_completion_signatures(
+            ex::get_completion_signatures<member_t<Self, Sndrs>, when_all_env_t<Env>...>(),
+            exec::ignore_completion(),
+            detail::decayed<ex::set_error_t>())...,
+          detail::eptr_completion());
       }
     }
 
@@ -200,8 +160,8 @@ namespace frames::typestate
       // Otherwise the last child can't arrive with every child's values.
       static constexpr bool all_send_values =
         (!std::is_same_v<detail::when_all_tuple_t<sigs_t<Is>>, detail::no_values> && ...);
-      using errors_t = typename detail::errors_variant<
-        detail::join_t<detail::sent_as<forward_results>, sigs_t<Is>...>>::type;
+      using errors_t =
+        detail::errors_variant_t<decltype(exec::concat_completion_signatures(sigs_t<Is>()...))>;
 
       enum class outcome : unsigned char
       {

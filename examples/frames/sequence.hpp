@@ -22,13 +22,6 @@ namespace frames::typestate
     Sndr1 sndr1_;
     Sndr2 sndr2_;
 
-    template <class Second, class Env>
-    struct values_fn
-    {
-      template <class...>
-      using f = ex::completion_signatures_of_t<Second, Env>;
-    };
-
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
     {
@@ -38,9 +31,12 @@ namespace frames::typestate
       }
       else
       {
-        return detail::map_values_t<ending_of_t<Env...>,
-                                    ex::completion_signatures_of_t<member_t<Self, Sndr1>, Env...>,
-                                    values_fn<member_t<Self, Sndr2>, Env...>>();
+        return exec::concat_completion_signatures(
+          map_values<ending_of_t<Env...>>(
+            ex::get_completion_signatures<member_t<Self, Sndr1>, Env...>(),
+            []<class...>()
+            { return ex::get_completion_signatures<member_t<Self, Sndr2>, Env...>(); }),
+          detail::eptr_completion());
       }
     }
 

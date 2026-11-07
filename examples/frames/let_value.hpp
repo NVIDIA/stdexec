@@ -27,14 +27,6 @@ namespace frames::typestate
     Sndr sndr_;
     Fn   fn_;
 
-    template <class FnRef, class Env>
-    struct values_fn
-    {
-      template <class... As>
-      using f =
-        ex::completion_signatures_of_t<std::invoke_result_t<FnRef, std::decay_t<As>&...>, Env>;
-    };
-
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
     {
@@ -46,9 +38,16 @@ namespace frames::typestate
       {
         using fn_ref =
           std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
-        return detail::map_values_t<ending_of_t<Env...>,
-                                    ex::completion_signatures_of_t<member_t<Self, Sndr>, Env...>,
-                                    values_fn<fn_ref, Env...>>();
+        return exec::concat_completion_signatures(
+          map_values<ending_of_t<Env...>>(
+            ex::get_completion_signatures<member_t<Self, Sndr>, Env...>(),
+            []<class... As>()
+            {
+              return ex::get_completion_signatures<
+                std::invoke_result_t<fn_ref, std::decay_t<As>&...>,
+                Env...>();
+            }),
+          detail::eptr_completion());
       }
     }
 
@@ -64,9 +63,9 @@ namespace frames::typestate
 
       using first_rcvr_t = phase_receiver<opstate, Rcvr, running_tag, &let_value_sender::sndr_>;
       using child_t      = part_child_t<maybe_const<Const, Sndr>, first_rcvr_t>;
-      using values_t     = typename detail::value_lists<
+      using values_t     = detail::value_lists_t<
             ex::completion_signatures_of_t<std::conditional_t<Const, Sndr const &, Sndr>,
-                                           ex::env_of_t<Rcvr>>>::type;
+                                           ex::env_of_t<Rcvr>>>;
 
       struct running
       {
