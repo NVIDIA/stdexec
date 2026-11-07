@@ -82,12 +82,13 @@ set(stdexec_test_sources
     stdexec/queries/test_get_start_scheduler.cpp
     stdexec/schedulers/test_task_scheduler.cpp
     stdexec/types/test_counting_scopes.cpp
-    stdexec/types/test_task.cpp
-    )
+    stdexec/types/test_task.cpp)
 
 if(NOT STDEXEC_BUILD_MODULES)
   # these tests don't build in modules mode, yet
-  list(APPEND stdexec_test_sources
+  list(
+    APPEND
+    stdexec_test_sources
     stdexec/algos/adaptors/test_let_error.cpp
     stdexec/algos/adaptors/test_let_stopped.cpp
     stdexec/algos/adaptors/test_let_value.cpp
@@ -99,8 +100,7 @@ if(NOT STDEXEC_BUILD_MODULES)
     stdexec/cpos/test_cpo_bulk.cpp
     stdexec/cpos/test_cpo_upon_error.cpp
     stdexec/detail/test_any_allocator.cpp
-    stdexec/schedulers/test_parallel_scheduler.cpp
-    )
+    stdexec/schedulers/test_parallel_scheduler.cpp)
 endif()
 
 add_library(common_test_settings INTERFACE)
@@ -124,10 +124,10 @@ target_compile_options(
                                                        # from stdlib headers,
                                                        # why?
     $<$<CXX_COMPILER_ID:Clang>:-Wno-unknown-warning-option
-                               -Wno-gnu-line-marker
-                               -Wno-unused-function
-                               -Wno-unused-template
-                               -Wno-c2y-extensions>)
+    -Wno-gnu-line-marker
+    -Wno-unused-function
+    -Wno-unused-template
+    -Wno-c2y-extensions>)
 target_link_libraries(common_test_settings
                       INTERFACE $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
 
@@ -145,10 +145,21 @@ target_link_libraries(
 add_executable(test.stdexec ${stdexec_test_sources})
 
 if(STDEXEC_BUILD_MODULES)
-    set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
+  set_target_properties(test.stdexec PROPERTIES CXX_MODULE_STD ON)
 endif()
 
 add_compile_diagnostics(test.stdexec)
+
+# libstdc++'s allocator_traits::destroy calls the deprecated
+# pmr::polymorphic_allocator::destroy, and clang does not suppress that warning
+# even though it originates in a system header. Keep -Werror, but don't let this
+# one diagnostic be fatal.
+if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+  set_source_files_properties(
+    stdexec/algos/adaptors/test_spawn_future.cpp
+    stdexec/algos/consumers/test_spawn.cpp TARGET_DIRECTORY test.stdexec
+    PROPERTIES COMPILE_OPTIONS -Wno-error=deprecated-declarations)
+endif()
 target_link_libraries(
   test.stdexec
   PUBLIC STDEXEC::stdexec stdexec_executable_flags Catch2::Catch2WithMain
@@ -175,7 +186,7 @@ target_link_libraries(
   PRIVATE common_test_settings)
 
 if(STDEXEC_BUILD_MODULES)
-    set_target_properties(test.scratch PROPERTIES CXX_MODULE_STD ON)
+  set_target_properties(test.scratch PROPERTIES CXX_MODULE_STD ON)
 endif()
 
 # Discover the Catch2 test built by the application
@@ -199,22 +210,24 @@ endif()
 # automatic verification can't express. Compile it here instead, with that
 # precondition satisfied.
 #
-# This is a plain (non-EXCLUDE_FROM_ALL) OBJECT library rather than a
-# dependency hooked onto all_verify_interface_header_sets: CMake creates that
-# aggregate target itself only once the whole build has been configured
-# (confirmed directly - `if(TARGET all_verify_interface_header_sets)` is
-# still false at this point in test/CMakeLists.txt, even though the property
-# enabling it was set earlier in the root CMakeLists.txt), so there's no
-# handle to attach a dependency to from here. Building it unconditionally is
-# simpler and just as effective: it's one small translation unit, so the
-# added cost per build is negligible.
+# This is a plain (non-EXCLUDE_FROM_ALL) OBJECT library rather than a dependency
+# hooked onto all_verify_interface_header_sets: CMake creates that aggregate
+# target itself only once the whole build has been configured (confirmed
+# directly - `if(TARGET all_verify_interface_header_sets)` is still false at
+# this point in test/CMakeLists.txt, even though the property enabling it was
+# set earlier in the root CMakeLists.txt), so there's no handle to attach a
+# dependency to from here. Building it unconditionally is simpler and just as
+# effective: it's one small translation unit, so the added cost per build is
+# negligible.
 add_library(verify_parallel_scheduler_default_impl_entry OBJECT
             stdexec/detail/verify_parallel_scheduler_default_impl_entry.cpp)
 target_link_libraries(verify_parallel_scheduler_default_impl_entry
                       PRIVATE STDEXEC::stdexec)
 set_target_properties(
   verify_parallel_scheduler_default_impl_entry
-  PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+  PROPERTIES CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
 
 add_subdirectory(exec)
 
@@ -240,8 +253,8 @@ if(NOT STDEXEC_BUILD_MODULES)
     LIBRARIES stdexec)
 
   stdexec_add_build_failure_test(
-    NAME test_when_all_fail1 SOURCE stdexec/algos/adaptors/test_when_all_fail1.cpp
-    LIBRARIES stdexec)
+    NAME test_when_all_fail1 SOURCE
+    stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
 
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)

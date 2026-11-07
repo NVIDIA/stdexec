@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
 
+#include <test_common/catch2.hpp>
 #include <test_common/scope_helpers.hpp>
 #include <test_common/scope_tokens.hpp>
 
