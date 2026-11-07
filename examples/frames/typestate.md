@@ -221,7 +221,7 @@ let_value(just(v), fn)       552   6 (0)     568   5 (0)     568   4 (0)     568
   ... scoped_layout                          568   5 (0)     568   4 (0)     560   5 (0)     536   7 (0)
 sequence(s, just(v))*        560   9 (0)     568   5 (0)     568   3 (0)     552   5 (0)     552   8 (0)
 then(just(v), fn)             24   7 (0)      40   7 (0)      40   5 (0)      32   7 (0)      24   9 (0)
-when_all of two just(v)     1072  14 (0)    1136  12 (0)    1136   8 (0)    1136  12 (0)    1128  16 (0)
+when_all of two just(v)     1072  14 (0)    1120  12 (0)    1120   8 (0)    1120  12 (0)    1112  16 (0)
 finally(just(v), just())†    576   8 (0)     568   6 (0)     568   4 (0)     568   6 (0)     552   8 (0)
   ... overlapped_layout                      560   7 (0)     560   5 (0)     560   7 (0)     296   9 (0)
 
@@ -250,11 +250,8 @@ the receivers' own pointers too.
 
 `when_all` keeps its children's values in its phase until the last child
 completes, as stdexec's does, and moves them less often except under
-`split_sender`. Its extra bytes are mostly an error slot, since like every
-algorithm here it declares `set_error_t(std::exception_ptr)` where stdexec's
-keeps no room for errors its children can't send (16 bytes), and the root's
-pointer and the bytes recording `when_all`'s and each `just`'s live phase,
-with their padding (32).
+`split_sender`. Like stdexec's, it keeps no room for errors its children
+can't send, nor for an exception when keeping their values can't throw.
 
 `finally` treats its final sender like a destructor. It connects it with
 its initial sender, just before it, as `exec::finally` does: in `connect`,
@@ -370,8 +367,14 @@ What else it taught:
 - **Completion signatures are still much of the work.** About 100 of
   `typestate.hpp`'s lines, built on the helpers in
   `<exec/completion_signatures.hpp>`, and 15 to 25 of each algorithm's,
-  compute them, and phases don't help with that; every algorithm here except
-  `just` conservatively declares `set_error_t(std::exception_ptr)`.
+  compute them, and phases don't help with that. An algorithm declares
+  `set_error_t(std::exception_ptr)` only where something can throw: its
+  function, or copying a value, or a child's `connect` where the operation
+  reports it with `set_error`. Whether a `connect` can throw isn't worked
+  out, so that part is conservative: `let_value`, `sequence` and `repeat_n`
+  always declare it, since their later phases connect children as they're
+  entered, and under `start_entry` so does every algorithm whose first
+  phase connects one.
 
 ## Open questions
 

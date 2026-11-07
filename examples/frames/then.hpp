@@ -31,11 +31,28 @@ namespace frames::typestate
         // Bound without consuming, fn is called as const.
         using fn_ref =
           std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
-        return exec::concat_completion_signatures(
-          map_values<ending_of_t<Env...>>(
-            ex::get_completion_signatures<member_t<Self, Sndr>, Env...>(),
-            []<class... As>() { return detail::value_of<std::invoke_result_t<fn_ref, As...>>(); }),
-          detail::eptr_completion());
+        using ending_t = ending_of_t<Env...>;
+        // fn may throw, as may copying its arguments under eager_teardown,
+        // or its result if it returns a reference.
+        auto values = []<class... As>()
+        {
+          using result_t             = std::invoke_result_t<fn_ref, As...>;
+          constexpr bool copies_args = std::is_same_v<ending_t, eager_teardown>
+                                    && !(std::is_nothrow_constructible_v<std::decay_t<As>, As>
+                                         && ...);
+          constexpr bool copies_result =
+            !std::is_void_v<result_t>
+            && !std::is_nothrow_constructible_v<std::decay_t<result_t>, result_t>;
+          return exec::concat_completion_signatures(
+            detail::value_of<result_t>(),
+            eptr_if<!std::is_nothrow_invocable_v<fn_ref, As...> || copies_args || copies_result>());
+        };
+        return exec::transform_completion_signatures(
+          ex::get_completion_signatures<member_t<Self, Sndr>, Env...>(),
+          values,
+          sent_as_fn<ending_t, ex::set_error_t>(),
+          exec::keep_completion<ex::set_stopped_t>(),
+          eptr_if<start_enters<Env...>>());
       }
     }
 

@@ -72,20 +72,26 @@ namespace frames::typestate
       : concat_values<std::tuple<As..., Bs...>, Rest...>
     {};
 
-    template <class List>
-    struct errors_variant_of;
+    // No room for errors, for children that can't fail.
+    struct no_errors
+    {};
 
-    template <class... Es>
-    struct errors_variant_of<type_list<Es...>>
+    template <class List>
+    struct errors_variant_of
     {
-      using type = std::variant<std::monostate, Es...>;
+      using type = no_errors;
     };
 
-    // std::variant<std::monostate, std::exception_ptr, E...>, one E per
-    // decayed error of Sigs.
+    template <class E, class... Es>
+    struct errors_variant_of<type_list<E, Es...>>
+    {
+      using type = std::variant<std::monostate, E, Es...>;
+    };
+
+    // std::variant<std::monostate, E...>, one E per decayed error of Sigs,
+    // or no_errors if there are none.
     template <class Sigs>
-    using errors_variant_t = typename errors_variant_of<
-      error_list_t<decltype(exec::concat_completion_signatures(eptr_completion(), Sigs()))>>::type;
+    using errors_variant_t = typename errors_variant_of<error_list_t<Sigs>>::type;
   }  // namespace detail
 
   // One of when_all's senders, as a member an operation can point to.
@@ -123,15 +129,21 @@ namespace frames::typestate
       }
       else
       {
+        // The children's values and errors are kept as decayed copies,
+        // which may throw.
         return exec::concat_completion_signatures(
-          typename detail::concat_values<detail::when_all_tuple_t<
-            ex::completion_signatures_of_t<member_t<Self, Sndrs>,
-                                           when_all_env_t<Env>...>>...>::type(),
-          exec::transform_completion_signatures(
-            ex::get_completion_signatures<member_t<Self, Sndrs>, when_all_env_t<Env>...>(),
-            exec::ignore_completion(),
-            detail::decayed<ex::set_error_t>())...,
-          detail::eptr_completion());
+          sent_as<ending_of_t<Env...>>(exec::concat_completion_signatures(
+            typename detail::concat_values<detail::when_all_tuple_t<
+              ex::completion_signatures_of_t<member_t<Self, Sndrs>,
+                                             when_all_env_t<Env>...>>...>::type(),
+            exec::transform_completion_signatures(
+              ex::get_completion_signatures<member_t<Self, Sndrs>, when_all_env_t<Env>...>(),
+              exec::ignore_completion(),
+              detail::decayed<ex::set_error_t>())...)),
+          eptr_if<(any_copy_may_throw(
+                     ex::get_completion_signatures<member_t<Self, Sndrs>, when_all_env_t<Env>...>())
+                   || ...)
+                  || start_enters<Env...>>());
       }
     }
 
@@ -160,8 +172,18 @@ namespace frames::typestate
       // Otherwise the last child can't arrive with every child's values.
       static constexpr bool all_send_values =
         (!std::is_same_v<detail::when_all_tuple_t<sigs_t<Is>>, detail::no_values> && ...);
-      using errors_t =
-        detail::errors_variant_t<decltype(exec::concat_completion_signatures(sigs_t<Is>()...))>;
+
+      // Whether keeping a child's values or error may throw.
+      static constexpr bool keeping_may_throw = (any_copy_may_throw(sigs_t<Is>()) || ...);
+
+      // Room for the first error: a child's, or what keeping one threw.
+      using errors_sigs_t =
+        decltype(exec::concat_completion_signatures(sigs_t<Is>()..., eptr_if<keeping_may_throw>()));
+      using errors_t = detail::errors_variant_t<errors_sigs_t>;
+
+      // Whether errors_t has room for E.
+      template <class E>
+      static constexpr bool keeps = detail::in_list<detail::error_list_t<errors_sigs_t>, E>;
 
       enum class outcome : unsigned char
       {
@@ -205,8 +227,8 @@ namespace frames::typestate
 
         std::atomic<outcome> state{outcome::values};
         values_t             values;
-        errors_t             error;
-        children_t           children;
+        STDEXEC_ATTRIBUTE(no_unique_address) errors_t error;
+        children_t children;
       };
 
       template <class... Incoming>
@@ -235,11 +257,21 @@ namespace frames::typestate
         running& phase = phases_.template live<running>();
         if (phase.state.load(std::memory_order_relaxed) == outcome::values)
         {
-          if (std::exception_ptr e = attempt(
-                [&] { std::get<I>(phase.values).emplace(static_cast<As&&>(as)...); }))
+          auto keep = [&]
           {
-            fail(phase, std::move(e));
-            return;
+            std::get<I>(phase.values).emplace(static_cast<As&&>(as)...);
+          };
+          if constexpr (typestate::copy_may_throw<As...>)
+          {
+            if (std::exception_ptr e = attempt(keep))
+            {
+              fail(phase, std::move(e));
+              return;
+            }
+          }
+          else
+          {
+            keep();
           }
         }
         done(phase.arrive());
@@ -248,7 +280,17 @@ namespace frames::typestate
       template <std::size_t I, class E>
       void complete(child_tag<I>, ex::set_error_t, E&& e) noexcept
       {
-        fail(phases_.template live<running>(), static_cast<E&&>(e));
+        if constexpr (keeps<std::decay_t<E>>)
+        {
+          fail(phases_.template live<running>(), static_cast<E&&>(e));
+        }
+        else
+        {
+          // The children's completion signatures rule this out. It's named
+          // anyway by failure paths that can't be taken: every phase-based
+          // operation's failure paths name set_error(std::exception_ptr).
+          STDEXEC_UNREACHABLE();
+        }
       }
 
       template <std::size_t I>
@@ -266,10 +308,20 @@ namespace frames::typestate
       {
         if (phase.state.exchange(outcome::error) != outcome::error)
         {
-          if (std::exception_ptr thrown = attempt(
-                [&] { phase.error.template emplace<std::decay_t<E>>(static_cast<E&&>(e)); }))
+          auto keep = [&]
           {
-            phase.error.template emplace<std::exception_ptr>(std::move(thrown));
+            phase.error.template emplace<std::decay_t<E>>(static_cast<E&&>(e));
+          };
+          if constexpr (typestate::copy_may_throw<E>)
+          {
+            if (std::exception_ptr thrown = attempt(keep))
+            {
+              phase.error.template emplace<std::exception_ptr>(std::move(thrown));
+            }
+          }
+          else
+          {
+            keep();
           }
         }
         done(phase.stop_and_arrive());
@@ -295,15 +347,18 @@ namespace frames::typestate
           }
           break;
         case outcome::error:
-          std::visit(
-            [this]<class E>(E& e)
-            {
-              if constexpr (!std::is_same_v<E, std::monostate>)
+          if constexpr (!std::is_same_v<errors_t, detail::no_errors>)
+          {
+            std::visit(
+              [this]<class E>(E& e)
               {
-                phases_.template finish<running>(ex::set_error, std::move(e));
-              }
-            },
-            phase.error);
+                if constexpr (!std::is_same_v<E, std::monostate>)
+                {
+                  phases_.template finish<running>(ex::set_error, std::move(e));
+                }
+              },
+              phase.error);
+          }
           break;
         case outcome::stopped:
           phases_.template finish<running>(ex::set_stopped);

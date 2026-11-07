@@ -30,10 +30,11 @@
  * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp,
  * when_all.hpp, finally.hpp and associate.hpp.
  *
- * Prototype simplifications: senders are connected as rvalues only, every
- * algorithm except just conservatively declares
- * set_error_t(std::exception_ptr), and let_value doesn't add a completion
- * scheduler to its second phase's environment.
+ * Prototype simplifications: senders are connected as rvalues only; a
+ * child's connect is assumed to be able to throw, so an algorithm declares
+ * set_error_t(std::exception_ptr) wherever one would be reported that way
+ * (see start_enters); and let_value doesn't add a completion scheduler to
+ * its second phase's environment.
  */
 #pragma once
 
@@ -207,6 +208,13 @@ namespace frames::typestate
       return 0xff;
     }
 
+    // Whether T is one of List's types.
+    template <class List, class T>
+    inline constexpr bool in_list = false;
+
+    template <class... Ts, class T>
+    inline constexpr bool in_list<type_list<Ts...>, T> = (std::is_same_v<Ts, T> || ...);
+
     using eptr_completion = ex::completion_signatures<ex::set_error_t(std::exception_ptr)>;
 
     // Passes Tag's completions through with their arguments decayed.
@@ -275,17 +283,32 @@ namespace frames::typestate
     }
   }  // namespace detail
 
+  // Sigs as an operation sends copies of them, made while the phase they
+  // come from is still alive: decayed, and copying may throw.
+  template <class Sigs>
+  consteval auto sent_as_copies(Sigs sigs)
+  {
+    return exec::transform_completion_signatures(sigs,
+                                                 exec::decay_arguments<ex::set_value_t>(),
+                                                 exec::decay_arguments<ex::set_error_t>());
+  }
+
+  // How an operation sends a completion with Tag when a phase finishes with
+  // it under Ending, as a transform for exec::transform_completion_signatures:
+  // as it came under forward_results; under eager_teardown, as a copy.
+  template <class Ending, class Tag>
+  using sent_as_fn = std::conditional_t<std::is_same_v<Ending, eager_teardown>,
+                                        exec::decay_arguments<Tag>,
+                                        exec::keep_completion<Tag>>;
+
   // Sigs as an operation sends them when a phase finishes with them under
-  // Ending: as they came under forward_results; under eager_teardown, as
-  // decayed copies, made while the phase is still alive, which may throw.
+  // Ending.
   template <class Ending, class Sigs>
   consteval auto sent_as(Sigs sigs)
   {
     if constexpr (std::is_same_v<Ending, eager_teardown>)
     {
-      return exec::transform_completion_signatures(sigs,
-                                                   exec::decay_arguments<ex::set_value_t>(),
-                                                   exec::decay_arguments<ex::set_error_t>());
+      return sent_as_copies(sigs);
     }
     else
     {
@@ -299,6 +322,73 @@ namespace frames::typestate
   consteval auto map_values(Sigs sigs, ValueFn value_fn)
   {
     return sent_as<Ending>(exec::transform_completion_signatures(sigs, value_fn));
+  }
+
+  // set_error_t(std::exception_ptr) if May: how an operation reports a
+  // failure of its own.
+  template <bool May>
+  consteval auto eptr_if()
+  {
+    if constexpr (May)
+    {
+      return detail::eptr_completion();
+    }
+    else
+    {
+      return ex::completion_signatures<>();
+    }
+  }
+
+  // Whether start enters the first phase (start_entry), and so reports with
+  // set_error whatever entering it throws: connecting its children, say.
+  // Whether a child's connect can throw isn't worked out here, so an
+  // algorithm whose first phase connects one assumes it can, under
+  // start_entry; under connect_entry, connect throws it. The same goes for
+  // a phase entered by a transition that connects a child: the transition
+  // reports it.
+  template <class... Env>
+  inline constexpr bool start_enters =
+    (std::is_same_v<typename policies_of_t<Env>::entry, start_entry> || ...);
+
+  // Whether decayed copies of As... may throw.
+  template <class... As>
+  inline constexpr bool copy_may_throw = !(std::is_nothrow_constructible_v<std::decay_t<As>, As>
+                                           && ...);
+
+  // Whether handing As... to the next phase may throw: it receives decayed
+  // copies, which under overlapped_layout move once more.
+  template <class... As>
+  inline constexpr bool hand_over_may_throw =
+    copy_may_throw<As...> || !(std::is_nothrow_move_constructible_v<std::decay_t<As>> && ...);
+
+  namespace detail
+  {
+    template <template <class...> class Pred, class Sig>
+    struct sig_args_satisfy;
+
+    template <template <class...> class Pred, class Tag, class... As>
+    struct sig_args_satisfy<Pred, Tag(As...)> : Pred<As...>
+    {};
+
+    template <class... As>
+    using copy_may_throw_t = std::bool_constant<copy_may_throw<As...>>;
+
+    template <class... As>
+    using hand_over_may_throw_t = std::bool_constant<hand_over_may_throw<As...>>;
+  }  // namespace detail
+
+  // Whether copying, or handing the next phase, the arguments of a
+  // completion in Sigs may throw.
+  template <class... Sigs>
+  consteval auto any_copy_may_throw(ex::completion_signatures<Sigs...>) -> bool
+  {
+    return (detail::sig_args_satisfy<detail::copy_may_throw_t, Sigs>::value || ...);
+  }
+
+  template <class... Sigs>
+  consteval auto any_hand_over_may_throw(ex::completion_signatures<Sigs...>) -> bool
+  {
+    return (detail::sig_args_satisfy<detail::hand_over_may_throw_t, Sigs>::value || ...);
   }
 
   namespace detail

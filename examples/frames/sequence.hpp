@@ -36,6 +36,8 @@ namespace frames::typestate
             ex::get_completion_signatures<member_t<Self, Sndr1>, Env...>(),
             []<class...>()
             { return ex::get_completion_signatures<member_t<Self, Sndr2>, Env...>(); }),
+          // The second phase connects its sender as it's entered (see
+          // start_enters).
           detail::eptr_completion());
       }
     }

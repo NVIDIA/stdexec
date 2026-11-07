@@ -47,6 +47,8 @@ namespace frames::typestate
                 std::invoke_result_t<fn_ref, std::decay_t<As>&...>,
                 Env...>();
             }),
+          // The second phase calls fn and connects what it returns as it's
+          // entered (see start_enters).
           detail::eptr_completion());
       }
     }

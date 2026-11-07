@@ -142,7 +142,7 @@ namespace frames::typestate
         return exec::concat_completion_signatures(sent_as<ending_of_t<Env...>>(
                                                     ex::get_completion_signatures<Sndr, Env...>()),
                                                   ex::completion_signatures<ex::set_stopped_t()>(),
-                                                  detail::eptr_completion());
+                                                  eptr_if<start_enters<Env...>>());
       }
     }
 

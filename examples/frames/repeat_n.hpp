@@ -44,6 +44,8 @@ namespace frames::typestate
           map_values<ending_of_t<Env...>>(ex::get_completion_signatures<Sndr const &, Env...>(),
                                           exec::ignore_completion()),
           ex::completion_signatures<ex::set_value_t()>(),
+          // Each iteration binds the child as it's entered (see
+          // start_enters).
           detail::eptr_completion());
       }
     }

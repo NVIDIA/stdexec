@@ -20,14 +20,6 @@ namespace frames::typestate
   {
     std::tuple<Vs...> values_;
 
-    // Moving the values may throw if they cross the stack (eager_teardown);
-    // bound without consuming (a const Self), the values are copied.
-    template <class Self, class Ending>
-    static constexpr bool may_throw = std::is_const_v<std::remove_reference_t<Self>>
-                                      ? !(std::is_nothrow_copy_constructible_v<Vs> && ...)
-                                      : std::is_same_v<Ending, eager_teardown>
-                                          && !(std::is_nothrow_move_constructible_v<Vs> && ...);
-
     template <class Self, class... Env>
     static consteval auto get_completion_signatures()
     {
@@ -35,14 +27,14 @@ namespace frames::typestate
       {
         return STDEXEC::__throw_dependent_sender_error<Self>();
       }
-      else if constexpr (may_throw<Self, ending_of_t<Env...>>)
+      else if constexpr (std::is_const_v<std::remove_reference_t<Self>>)
       {
-        return ex::completion_signatures<ex::set_value_t(Vs...),
-                                         ex::set_error_t(std::exception_ptr)>();
+        // Bound without consuming: the values are copied.
+        return sent_as_copies(ex::completion_signatures<ex::set_value_t(Vs const &...)>());
       }
       else
       {
-        return ex::completion_signatures<ex::set_value_t(Vs...)>();
+        return sent_as<ending_of_t<Env...>>(ex::completion_signatures<ex::set_value_t(Vs...)>());
       }
     }
 
@@ -53,12 +45,12 @@ namespace frames::typestate
 
       struct ready
       {
-        explicit ready(opstate*) noexcept {}
+        explicit ready(opstate *) noexcept {}
       };
 
       template <class... Incoming>
-      explicit opstate(Rcvr rcvr, Incoming&... incoming)
-        : phases_(static_cast<Rcvr&&>(rcvr), nothing(), incoming...)
+      explicit opstate(Rcvr rcvr, Incoming &...incoming)
+        : phases_(static_cast<Rcvr &&>(rcvr), nothing(), incoming...)
       {
         phases_.on_connect(this, incoming...);
       }
@@ -66,17 +58,17 @@ namespace frames::typestate
       void start() & noexcept
       {
         phases_.begin(
-          [this](ready& r) noexcept
+          [this](ready &r) noexcept
           {
             if constexpr (Const)
             {
-              std::apply([this](Vs const &... vs)
+              std::apply([this](Vs const &...vs)
                          { phases_.template finish_copies<ready>(ex::set_value, vs...); },
                          values(r));
             }
             else
             {
-              std::apply([this](Vs&... vs)
+              std::apply([this](Vs &...vs)
                          { phases_.template finish<ready>(ex::set_value, std::move(vs)...); },
                          values(r));
             }
@@ -84,7 +76,7 @@ namespace frames::typestate
           this);
       }
 
-      auto values(ready&) noexcept -> maybe_const<Const, std::tuple<Vs...>>&
+      auto values(ready &) noexcept -> maybe_const<Const, std::tuple<Vs...>> &
       {
         return phases_.template part<&just_sender::values_>();
       }
@@ -94,8 +86,8 @@ namespace frames::typestate
   };
 
   template <class... Vs>
-  auto just(Vs&&... vs)
+  auto just(Vs &&...vs)
   {
-    return just_sender<std::decay_t<Vs>...>{{}, {static_cast<Vs&&>(vs)...}};
+    return just_sender<std::decay_t<Vs>...>{{}, {static_cast<Vs &&>(vs)...}};
   }
 }  // namespace frames::typestate

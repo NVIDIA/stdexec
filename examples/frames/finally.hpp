@@ -34,12 +34,6 @@ namespace frames::typestate
 
   namespace detail
   {
-    template <class List, class T>
-    inline constexpr bool in_list = false;
-
-    template <class... Ts, class T>
-    inline constexpr bool in_list<type_list<Ts...>, T> = (std::is_same_v<Ts, T> || ...);
-
     // What final's environment adds to the receiver's, given initial,
     // used as CvInitial: as exec::finally does.
     template <class CvInitial, class Env>
@@ -77,11 +71,17 @@ namespace frames::typestate
                           "values");
             return ex::completion_signatures<>();
           });
+        // initial's completions are replayed from the decayed copies a
+        // second phase receives, and final's failures are sent as copies
+        // made before its operation, the slot, ends.
+        auto initial_sigs = ex::get_completion_signatures<member_t<Self, Initial>, Env...>();
         return exec::concat_completion_signatures(
-          // replayed from what the second phase received
-          sent_as<eager_teardown>(ex::get_completion_signatures<member_t<Self, Initial>, Env...>()),
-          sent_as<ending_of_t<Env...>>(final_failures),
-          detail::eptr_completion());
+          sent_as<ending_of_t<Env...>>(
+            exec::transform_completion_signatures(initial_sigs,
+                                                  detail::decayed<ex::set_value_t>(),
+                                                  detail::decayed<ex::set_error_t>())),
+          sent_as_copies(final_failures),
+          eptr_if<any_hand_over_may_throw(initial_sigs) || start_enters<Env...>>());
       }
     }
 
