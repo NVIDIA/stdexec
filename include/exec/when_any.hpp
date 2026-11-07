@@ -19,6 +19,7 @@
 #include "../stdexec/__detail/__storage.hpp"
 #include "../stdexec/execution.hpp"
 #include "../stdexec/stop_token.hpp"
+#include "completion_signatures.hpp"
 #include "stoppable_base.hpp"
 
 #include <exception>
