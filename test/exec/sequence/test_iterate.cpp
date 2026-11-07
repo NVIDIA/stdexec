@@ -61,7 +61,8 @@ namespace
   {
     dereference,
     increment,
-    comparison
+    comparison,
+    comparison_after_first
   };
 
   struct throwing_forward_iterator
@@ -104,6 +105,12 @@ namespace
     {
       if (left.failure_point_ == iterator_failure_point::comparison
           || right.failure_point_ == iterator_failure_point::comparison)
+      {
+        throw iterator_failure{};
+      }
+      if (left.current_ == right.current_
+          && (left.failure_point_ == iterator_failure_point::comparison_after_first
+              || right.failure_point_ == iterator_failure_point::comparison_after_first))
       {
         throw iterator_failure{};
       }
@@ -322,17 +329,20 @@ namespace
 
     for (auto failure_point: {iterator_failure_point::dereference,
                               iterator_failure_point::increment,
-                              iterator_failure_point::comparison})
+                              iterator_failure_point::comparison,
+                              iterator_failure_point::comparison_after_first})
     {
       int                sum = 0;
       std::exception_ptr error;
       auto               sequence = exec::iterate(throwing_forward_range{42, failure_point});
+
       auto op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
 
       STDEXEC::start(op);
 
       REQUIRE(error);
       CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+      CHECK(sum == (failure_point == iterator_failure_point::comparison_after_first ? 42 : 0));
     }
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
