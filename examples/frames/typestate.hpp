@@ -699,16 +699,17 @@ namespace frames::typestate
   //       such as that of a child the slot holds, connected before anyone
   //       knew which phase would start it.
   //
-  // A phase may hold something only while it runs, nested inside it: it
-  // names its type as `active_t`, constructible without throwing from the
-  // phase and the receiver's environment. phased enters it just before the
-  // phase starts, by begin or by a transition, and ends it first thing in
-  // whichever of transition, finish, finish_copies or finish_with the phase
-  // ends with, under either Ending: a completed operation is never running,
-  // whatever it still holds. when_all's stop forwarding is one: a callback
-  // on the receiver's stop token, which must not outlive the operation's
-  // run. An operation is never destroyed while it runs, so nothing records
-  // whether one is live.
+  // A phase may hold something only while it runs, nested inside it: it names
+  // its type as `active_t`, constructible without throwing from the phase and
+  // the receiver's environment; a phase that is what active_t needs, as
+  // when_all's is a join_scope, hands it over as itself. phased enters it
+  // just before the phase starts, by begin or by a transition, and ends it
+  // first thing in whichever of transition, finish, finish_copies or
+  // finish_with the phase ends with, under either Ending: a completed
+  // operation is never running, whatever it still holds. when_all's stop
+  // forwarding is one: a callback on the receiver's stop token, which must
+  // not outlive the operation's run. An operation is never destroyed while it
+  // runs, so nothing records whether one is live.
   //
   // A first phase may also name a `slot_t`: something set up as the
   // operation is entered and kept until it completes, whichever phase is
@@ -1668,20 +1669,20 @@ namespace frames::typestate
   };
 
   // Children of one phase that run at once and stop together: a stop source
-  // of their own, and a count of the children still running. The phase
-  // holds it before its children, whose environments carry token(). Each
-  // child's completion arrives once: with arrive(), or with
-  // stop_and_arrive() to stop the others first. The one that returns true
-  // is the last; nothing else will touch the phase, so the operation may
-  // end it.
+  // of their own, and a count of the children still running. The phase is
+  // one, as a base, so it's set up before its children, whose environments
+  // carry token(). Each child's completion arrives once: with arrive(), or
+  // with stop_and_arrive() to stop the others first. The one that returns
+  // true is the last; nothing else will touch the phase, so the operation
+  // may end it.
   //
-  // While the phase runs, its active_t holds a forwarding<Env> (see
-  // phased), so that stop requests from the operation's environment reach
-  // the scope too; phased ends it before the operation completes, waiting
-  // for a request being forwarded on another thread. A stop request from
-  // the environment can make the last child complete inside this scope's
-  // request_stop, and so end the scope there; stdexec's inplace_stop_source
-  // allows its own callbacks to destroy it.
+  // The phase names forwarding<Env> as its active_t (see phased), so that
+  // while it runs, stop requests from the operation's environment reach it
+  // too; phased ends it before the operation completes, waiting for a request
+  // being forwarded on another thread. A stop request from the environment
+  // can make the last child complete inside this scope's request_stop, and so
+  // end the scope there; stdexec's inplace_stop_source allows its own
+  // callbacks to destroy it.
   class join_scope
   {
     struct forward_stop

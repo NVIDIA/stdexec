@@ -229,31 +229,20 @@ namespace frames::typestate
         {}
       };
 
-      struct running;
-
-      // While the operation runs, its receiver's stop requests reach the
-      // phase's scope.
-      struct listening
-      {
-        listening(running& phase, ex::env_of_t<Rcvr> const & env) noexcept
-          : forward(phase.scope, env)
-        {}
-
-        join_scope::forwarding<ex::env_of_t<Rcvr>> forward;
-      };
-
-      struct running
+      // The phase is its children's join scope, set up before them, since
+      // their environments carry its token. While it runs, its receiver's
+      // stop requests reach it.
+      struct running : join_scope
       {
         static constexpr parts<member<Is>...> connects{};
-        using active_t = listening;
+        using active_t = join_scope::forwarding<ex::env_of_t<Rcvr>>;
 
         template <class... Incoming>
         explicit running(opstate* op, Incoming&... incoming)
-          : children(op, incoming...)
+          : join_scope(sizeof...(Sndrs))
+          , children(op, incoming...)
         {}
 
-        // Before the children, whose environments carry its token.
-        join_scope           scope{sizeof...(Sndrs)};
         std::atomic<outcome> state{outcome::values};
         values_t             values;
         errors_t             error;
@@ -277,7 +266,7 @@ namespace frames::typestate
       template <std::size_t I>
       auto env(child_tag<I>) noexcept -> env_t
       {
-        return {phases_.template live<running>().scope.token(), ex::get_env(phases_.receiver())};
+        return {phases_.template live<running>().token(), ex::get_env(phases_.receiver())};
       }
 
       template <std::size_t I, class... As>
@@ -293,7 +282,7 @@ namespace frames::typestate
             return;
           }
         }
-        done(phase.scope.arrive());
+        done(phase.arrive());
       }
 
       template <std::size_t I, class E>
@@ -308,7 +297,7 @@ namespace frames::typestate
         running& phase    = phases_.template live<running>();
         outcome  expected = outcome::values;
         phase.state.compare_exchange_strong(expected, outcome::stopped);
-        done(phase.scope.stop_and_arrive());
+        done(phase.stop_and_arrive());
       }
 
       // The first error wins, and outranks stopped.
@@ -323,7 +312,7 @@ namespace frames::typestate
             phase.error.template emplace<std::exception_ptr>(std::move(thrown));
           }
         }
-        done(phase.scope.stop_and_arrive());
+        done(phase.stop_and_arrive());
       }
 
       void done(bool last) noexcept
