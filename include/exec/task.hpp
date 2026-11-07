@@ -346,12 +346,9 @@ namespace experimental::execution
     template <>
     struct __promise_base<void>
     {
-      struct __void
-      {};
-
       constexpr void return_void()
       {
-        __data_.template emplace<0>(__void{});
+        __data_.template emplace<0>(STDEXEC::__void{});
       }
 
       __variant<__void, std::exception_ptr> __data_{__no_init};

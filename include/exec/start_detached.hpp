@@ -135,7 +135,7 @@ namespace experimental::execution
       }
 
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
-      STDEXEC::submit_result<_Sender, __receiver<_Env>> __op_data_;
+      STDEXEC::__submit_result<_Sender, __receiver<_Env>> __op_data_;
     };
 
     template <class _Sender, class _Env>
@@ -277,8 +277,7 @@ namespace experimental::execution
       {
         // If submit(sndr, rcvr) returns void, then no state needs to be kept
         // alive for the operation. We can just call submit and return.
-        STDEXEC::__submit::__submit(static_cast<_CvSender&&>(__sndr),
-                                    __start_detached::__submit_receiver{});
+        STDEXEC::__submit(static_cast<_CvSender&&>(__sndr), __start_detached::__submit_receiver{});
       }
       else
 #endif
