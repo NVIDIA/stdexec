@@ -54,10 +54,6 @@ import std;
 #  include <utility>      // IWYU pragma: keep for std::unreachable
 #endif
 
-// When used with no arguments, these macros expand to 1 if the current compiler
-// corresponds to the macro name; 0, otherwise. When used with arguments, they
-// expand to the arguments if if the current compiler corresponds to the macro
-// name; nothing, otherwise.
 #if defined(__NVCC__)
 #  define STDEXEC_NVCC()       1
 #  define STDEXEC_NVCC_VERSION (__CUDACC_VER_MAJOR__ * 100 + __CUDACC_VER_MINOR__)
