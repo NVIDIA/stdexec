@@ -151,8 +151,8 @@ namespace experimental::execution
     template <class _Range>
     struct __sender
     {
-      using sender_concept = STDEXEC::sender_tag;
-      using __iterator_t  = std::ranges::iterator_t<_Range>;
+      using sender_concept        = STDEXEC::sender_tag;
+      using __iterator_t          = std::ranges::iterator_t<_Range>;
       using completion_signatures = STDEXEC::__concat_completion_signatures_t<
         STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<__iterator_t>)>,
         STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<__nothrow_item_access<_Range>>>>;
