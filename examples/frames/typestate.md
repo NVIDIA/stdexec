@@ -389,15 +389,66 @@ What else it taught:
   entered, and under `start_entry` so does every algorithm whose first
   phase connects one.
 
-## Open questions
+## Conformance
 
-- **Simplifications.** Against [exec] (or `exec::`, for `sequence`,
-  `repeat_n` and `finally`), what's left out affects none of the costs
-  above, except `repeat_n`'s trampoline. The typestate senders connect as
-  rvalues only. They have no tag a domain could recognize, so no domain can
-  transform them, and no attributes, so a parent can't ask them for a
-  completion scheduler or domain; `let_value` doesn't add one to its second
-  phase's environment either. Children see their parent's whole
-  environment, not only its forwarding queries. Whether a child's `connect`
-  can throw isn't worked out (see above). `repeat_n` doesn't trampoline,
-  which `exec::repeat_n` pays for in bytes and moves.
+Against the current working draft, for the algorithms [exec] specifies
+(`just`, `then`, `let_value`, `when_all` and `associate`), each policy either
+matches the wording or differs in a way a program can observe. In
+decreasing order of how directly: in the completion signatures, which
+[exec.snd.general] makes exactly those of the completions the default
+implementation can evaluate; in what the receiver is given; in when user
+objects are destroyed, which the wording fixes through the operation states
+it specifies; and in how often values move, which it fixes the same way,
+with no latitude like [algorithms.requirements]'s to copy function objects.
+
+| Policy | Matches [exec] | Differs observably |
+|---|---|---|
+| Ending | `forward_results`: [exec]'s operation states keep their children's operations until they're destroyed. | `eager_teardown` decays what it sends and declares `set_error_t(std::exception_ptr)` where copying can throw (`just` of a type whose move can throw gains one, where [exec.just] never sends an error); destroys its children's operations, and so releases `associate`'s association, before completing; and moves results once more per level. |
+| Layout | `carried_layout`: [exec.let]'s `args` is constructed while the first child's operation is alive and lasts until the operation state is destroyed. | `scoped_layout` and `overlapped_layout` destroy the values before completing with `set_error` when `let_value`'s function or the second `connect` throws; `overlapped_layout` also moves them once more. |
+| Entry | `connect_entry`: [exec]'s operation states connect their children in `connect`. | `start_entry` declares `set_error_t(std::exception_ptr)` wherever a first phase connects a child, reports a throwing `connect` with `set_error` from `start` rather than throwing from `connect`, and connects children in `start`. `just`, with no child, is the same under either. |
+| Data | `split_sender`: [exec] moves each level's data into that level's operation, and [exec.let] destroys the first child's operation, data included, before calling the function. | `stored_sender` keeps every level's data until the root is destroyed, so what `let_value`'s first child holds (a function `then` captured, say) is destroyed after the second child has run, not before the function is called; it also moves less. |
+
+So `policies<forward_results, carried_layout, connect_entry, split_sender>`
+is the one combination that matches, and `default_policies` doesn't, on
+Ending and Data. Transitions themselves match only because [exec.let]
+destroys the first child's operation before calling the function, as a
+transition does.
+
+That combination still differs, under every policy, where the example
+leaves things out or does them its own way:
+
+- `then` and `let_value` call their function as an lvalue, where [exec.then]
+  and [exec.let] move it, so a call operator qualified `&&` isn't accepted;
+  and `then` sends a decayed copy of a reference its function returns, where
+  [exec.then] sends the reference.
+- `let_value` declares `set_error_t(std::exception_ptr)` without working out
+  whether its function or the second `connect` can throw (see above), and
+  destroys the sender its function returns before starting its operation,
+  where [exec.let] keeps it until `start` returns.
+- `when_all` has no stop source of its own when no child can fail, like
+  stdexec's, so its children may see a different stop token type.
+- Neither Data policy constructs data with the receiver's allocator
+  ([exec.snd.expos]'s `allocator-aware-forward`), and `stored_sender`
+  couldn't without rebuilding the stored sender a member at a time.
+- Children see their parent's whole environment rather than its forwarding
+  queries, and `let_value` adds no scheduler or domain to its second child's
+  environment. The senders have no tag a domain could recognize and no
+  attributes, and connect as rvalues only.
+- Against `exec::repeat_n`, `repeat_n` doesn't trampoline, which
+  `exec::repeat_n` pays for in bytes and moves.
+
+Some of the policies' differences could be allowed without changing what
+any program sends or how it type checks: leaving the number of moves of a
+sender's data unspecified; letting `let_value` destroy `args` before
+reporting an exception; letting `when_all`, which already keeps copies of
+what it sends, destroy its children's operations before completing; and
+letting a child whose `connect` can't throw be connected in `start`. The
+rest change completion signatures or undo when [exec.let] has data
+destroyed. Allowing `start_entry`'s `exception_ptr` in general, for one,
+would make `spawn`, whose receiver accepts only `set_value()` and
+`set_stopped()`, reject `then(just(), fn)` even when `fn` can't throw.
+Releasing `associate`'s association when its operation completes rather
+than when it's destroyed meets `eager_teardown`'s cost: the wrapped
+sender's operation has to be destroyed first, while the association still
+covers it, and `associate` sends that operation's results as they come, so
+they'd have to be copied out, changing its completion signatures.
