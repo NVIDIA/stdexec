@@ -213,7 +213,7 @@ namespace experimental::execution
                                               static_cast<_Receiver&&>(__rcvr)}
       {}
 
-      void __set_error(std::exception_ptr __error) noexcept override
+      void __set_error(std::exception_ptr __error) noexcept final
       {
         if constexpr (!__nothrow_item_access<_Range>)
         {
