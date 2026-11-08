@@ -51,8 +51,8 @@ namespace experimental::execution
     using namespace STDEXEC;
 
     template <class _Range>
-    inline constexpr bool __nothrow_item_access =
-      noexcept(*std::declval<std::ranges::iterator_t<_Range>&>()++);
+    inline constexpr bool __nothrow_item_access = noexcept(
+      *std::declval<std::ranges::iterator_t<_Range>&>()++);
 
     // The operation state owns the range it iterates, mirroring what the
     // default `get-state` does for a sender's data: the range is copied out of
