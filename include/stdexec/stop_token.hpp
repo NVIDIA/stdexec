@@ -74,9 +74,9 @@ namespace STDEXEC::__stok
     using __execute_fn_t = void(__inplace_stop_callback_base*) noexcept;
 
     constexpr explicit __inplace_stop_callback_base(inplace_stop_source const * __source,
-                                                    __execute_fn_t*             __execute) noexcept
+                                                    __execute_fn_t*             __exec_fn) noexcept
       : __source_(__source)
-      , __execute_(__execute)
+      , __execute_(__exec_fn)
     {}
 
     constexpr ~__inplace_stop_callback_base()
@@ -85,13 +85,13 @@ namespace STDEXEC::__stok
         __destroy_execute_members_();
     }
 
-    void __initialize_callback_(__execute_fn_t* __execute) noexcept
+    void __initialize_callback_(__execute_fn_t* __exec_fn) noexcept
     {
       STDEXEC_ASSERT(__source_ == nullptr);
       if (__execute_ == nullptr)
       {
         __destroy_execute_members_();
-        __execute_ = __execute;
+        __execute_ = __exec_fn;
         std::construct_at(&__list_members_);
       }
     }

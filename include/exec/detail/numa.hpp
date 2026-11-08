@@ -354,14 +354,14 @@ namespace experimental::execution
       return mask;
     }
 
-    auto operator[](std::size_t nodemask) const noexcept -> bool
+    auto operator[](std::size_t node) const noexcept -> bool
     {
-      return mask_ && nodemask == 0;
+      return mask_ && node == 0;
     }
 
-    void set(std::size_t nodemask) noexcept
+    void set(std::size_t node) noexcept
     {
-      mask_ |= nodemask == 0;
+      mask_ |= node == 0;
     }
 
     friend auto operator==(nodemask const &lhs, nodemask const &rhs) noexcept -> bool
