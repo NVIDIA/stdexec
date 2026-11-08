@@ -133,6 +133,35 @@ namespace
       return {&value_ + 1, failure_point_};
     }
   };
+
+  struct throwing_comparison_sentinel
+  {
+    int* end_{};
+
+    friend bool operator==(int* current, throwing_comparison_sentinel sentinel)
+    {
+      if (current == sentinel.end_)
+      {
+        throw iterator_failure{};
+      }
+      return false;
+    }
+  };
+
+  struct throwing_comparison_range
+  {
+    int value_{42};
+
+    auto begin() noexcept -> int*
+    {
+      return &value_;
+    }
+
+    auto end() noexcept -> throwing_comparison_sentinel
+    {
+      return {&value_ + 1};
+    }
+  };
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
   template <class Receiver>
@@ -323,6 +352,20 @@ namespace
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
   }
 
+  TEST_CASE("iterate - item error signatures depend on iterator access", "[sequence_senders][iterate]")
+  {
+    using throwing_item      = exec::__iterate::__sender<throwing_forward_range>;
+    using nonthrowing_item   = exec::__iterate::__sender<std::array<int, 1>>;
+    using comparison_item    = exec::__iterate::__sender<throwing_comparison_range>;
+
+    STATIC_REQUIRE(throwing_item::completion_signatures::__contains<
+                   STDEXEC::set_error_t(std::exception_ptr)>());
+    STATIC_REQUIRE_FALSE(nonthrowing_item::completion_signatures::__contains<
+                         STDEXEC::set_error_t(std::exception_ptr)>());
+    STATIC_REQUIRE_FALSE(comparison_item::completion_signatures::__contains<
+                         STDEXEC::set_error_t(std::exception_ptr)>());
+  }
+
   TEST_CASE("iterate - forwards iterator operation exceptions", "[sequence_senders][iterate]")
   {
     STATIC_REQUIRE(std::ranges::forward_range<throwing_forward_range>);
@@ -344,6 +387,23 @@ namespace
       CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
       CHECK(sum == (failure_point == iterator_failure_point::comparison_after_first ? 42 : 0));
     }
+  }
+
+  TEST_CASE("iterate - forwards comparison error after nonthrowing item access",
+            "[sequence_senders][iterate]")
+  {
+    STATIC_REQUIRE(std::ranges::forward_range<throwing_comparison_range>);
+
+    int                sum = 0;
+    std::exception_ptr error;
+    auto               sequence = exec::iterate(throwing_comparison_range{});
+    auto               op = exec::subscribe(sequence, error_capture_receiver{{.sum_ = sum}, error});
+
+    STDEXEC::start(op);
+
+    REQUIRE(error);
+    CHECK_THROWS_AS(std::rethrow_exception(error), iterator_failure);
+    CHECK(sum == 42);
   }
 #endif  // !STDEXEC_NO_STDCPP_EXCEPTIONS()
 
