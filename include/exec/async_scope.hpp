@@ -530,7 +530,7 @@ namespace experimental::execution
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
+      __submit_result<_Sender, __future_receiver_t<_Sender, _Env>> __op_{};
     };
 
     // __future_opstate is defined after __future_state because it accesses the
@@ -820,7 +820,7 @@ namespace experimental::execution
       }
 
       STDEXEC_ATTRIBUTE(no_unique_address)
-      submit_result<_Sender, __spawn_receiver<_Env>> __data_;
+      __submit_result<_Sender, __spawn_receiver<_Env>> __data_;
     };
 
     ////////////////////////////////////////////////////////////////////////////

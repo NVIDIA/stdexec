@@ -91,8 +91,7 @@ namespace STDEXEC
       }
 
       [[nodiscard]]
-      constexpr auto get_env() const noexcept  //
-        -> decltype(__env::__join(__env_, STDEXEC::get_env(__rcvr_)))
+      constexpr auto get_env() const noexcept -> __join_env_t<_Env2 const &, env_of_t<_Receiver>>
       {
         return __env::__join(__env_, STDEXEC::get_env(__rcvr_));
       }
@@ -107,8 +106,8 @@ namespace STDEXEC
       // compute the result of calling submit with the result of executing _Fun
       // with _Args. if the result is void, substitute with __ignore.
       template <class... _Args>
-      using __f =
-        submit_result<__invoke_result_t<_Fun, __decay_t<_Args>&...>, __rcvr_env<_Receiver, _Env2>>;
+      using __f = __submit_result<__invoke_result_t<_Fun, __decay_t<_Args>&...>,
+                                  __rcvr_env<_Receiver, _Env2>>;
     };
 
     // A metafunction to check whether the predecessor's completion results are
@@ -163,7 +162,7 @@ namespace STDEXEC
         if constexpr (__same_as<_SetTag, _Tag>)
         {
           using __sender_t = __invoke_result_t<_Fun, __decay_t<_Args>&...>;
-          using __submit_t = submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
+          using __submit_t = __submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
 
           constexpr bool __nothrow_store  = (__nothrow_decay_copyable<_Args> && ...);
           constexpr bool __nothrow_invoke = __nothrow_invocable<_Fun, __decay_t<_Args>&...>;
@@ -247,7 +246,7 @@ namespace STDEXEC
     {
       decltype(auto) __sndr = STDEXEC::__apply(__mk_result_sndr, __tupl, __fn);
       using __sender_t      = decltype(__sndr);
-      using __submit_t      = submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
+      using __submit_t      = __submit_result<__sender_t, __rcvr_env<_Receiver, _Env2>>;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
       __second_rcvr_t __rcvr2{__rcvr, static_cast<_Env2&&>(__env2)};
 

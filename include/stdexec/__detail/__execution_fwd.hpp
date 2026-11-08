@@ -50,6 +50,8 @@ STDEXEC_NAMESPACE_STD_END
 namespace STDEXEC
 {
   struct __none_such;
+  struct __void
+  {};
 
   namespace __detail
   {
