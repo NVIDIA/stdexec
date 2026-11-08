@@ -352,18 +352,17 @@ namespace
     CHECK_THROWS_AS(exec::subscribe(iterate, sum_receiver<>{.sum_ = sum}), begin_error);
   }
 
-  TEST_CASE("iterate - item error signatures depend on iterator access", "[sequence_senders][iterate]")
+  TEST_CASE("iterate - item error signatures depend on iterator access",
+            "[sequence_senders][iterate]")
   {
-    using throwing_item      = exec::__iterate::__sender<throwing_forward_range>;
-    using nonthrowing_item   = exec::__iterate::__sender<std::array<int, 1>>;
-    using comparison_item    = exec::__iterate::__sender<throwing_comparison_range>;
+    using throwing_item     = exec::__iterate::__sender<throwing_forward_range>;
+    using nonthrowing_item  = exec::__iterate::__sender<std::array<int, 1>>;
+    using comparison_item   = exec::__iterate::__sender<throwing_comparison_range>;
+    using error_signature   = STDEXEC::set_error_t(std::exception_ptr);
 
-    STATIC_REQUIRE(throwing_item::completion_signatures::__contains<
-                   STDEXEC::set_error_t(std::exception_ptr)>());
-    STATIC_REQUIRE_FALSE(nonthrowing_item::completion_signatures::__contains<
-                         STDEXEC::set_error_t(std::exception_ptr)>());
-    STATIC_REQUIRE_FALSE(comparison_item::completion_signatures::__contains<
-                         STDEXEC::set_error_t(std::exception_ptr)>());
+    STATIC_REQUIRE(throwing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(nonthrowing_item::completion_signatures::__contains<error_signature>());
+    STATIC_REQUIRE_FALSE(comparison_item::completion_signatures::__contains<error_signature>());
   }
 
   TEST_CASE("iterate - forwards iterator operation exceptions", "[sequence_senders][iterate]")
