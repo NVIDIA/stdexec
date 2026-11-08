@@ -133,13 +133,20 @@ namespace experimental::execution
     {
       constexpr void start() noexcept
       {
-        STDEXEC_TRY
+        if constexpr (__nothrow_item_access<_Range>)
         {
           STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
         }
-        STDEXEC_CATCH_ALL
+        else
         {
-          __parent_->__set_error(std::current_exception());
+          STDEXEC_TRY
+          {
+            STDEXEC::set_value(static_cast<_ItemRcvr&&>(__rcvr_), *__parent_->__iterator_++);
+          }
+          STDEXEC_CATCH_ALL
+          {
+            __parent_->__set_error(std::current_exception());
+          }
         }
       }
 

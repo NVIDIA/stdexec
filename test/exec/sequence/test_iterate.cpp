@@ -61,6 +61,7 @@ namespace
   {
     dereference,
     increment,
+    postincrement,
     comparison,
     comparison_after_first
   };
@@ -95,6 +96,10 @@ namespace
 
     auto operator++(int) -> throwing_forward_iterator
     {
+      if (failure_point_ == iterator_failure_point::postincrement)
+      {
+        throw iterator_failure{};
+      }
       auto previous = *this;
       ++*this;
       return previous;
@@ -371,6 +376,7 @@ namespace
 
     for (auto failure_point: {iterator_failure_point::dereference,
                               iterator_failure_point::increment,
+                              iterator_failure_point::postincrement,
                               iterator_failure_point::comparison,
                               iterator_failure_point::comparison_after_first})
     {
