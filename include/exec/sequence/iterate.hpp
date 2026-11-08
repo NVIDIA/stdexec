@@ -50,6 +50,10 @@ namespace experimental::execution
   {
     using namespace STDEXEC;
 
+    template <class _Range>
+    inline constexpr bool __nothrow_item_access =
+      noexcept(*std::declval<std::ranges::iterator_t<_Range>&>()++);
+
     // The operation state owns the range it iterates, mirroring what the
     // default `get-state` does for a sender's data: the range is copied out of
     // an lvalue sender and moved out of an rvalue one. The range member is
@@ -147,9 +151,11 @@ namespace experimental::execution
     template <class _Range>
     struct __sender
     {
-      using sender_concept        = STDEXEC::sender_tag;
-      using completion_signatures = STDEXEC::completion_signatures<set_value_t(
-        std::iter_reference_t<std::ranges::iterator_t<_Range>>)>;
+      using sender_concept = STDEXEC::sender_tag;
+      using __iterator_t  = std::ranges::iterator_t<_Range>;
+      using completion_signatures = STDEXEC::__concat_completion_signatures_t<
+        STDEXEC::completion_signatures<set_value_t(std::iter_reference_t<__iterator_t>)>,
+        STDEXEC::__eptr_completion_unless_t<STDEXEC::__mbool<__nothrow_item_access<_Range>>>>;
 
       template <receiver_of<completion_signatures> _ItemRcvr>
       constexpr auto connect(_ItemRcvr __rcvr) const & noexcept(__nothrow_decay_copyable<_ItemRcvr>)
@@ -202,8 +208,15 @@ namespace experimental::execution
 
       void __set_error(std::exception_ptr __error) noexcept override
       {
-        __op_.reset();
-        STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::move(__error));
+        if constexpr (!__nothrow_item_access<_Range>)
+        {
+          __op_.reset();
+          STDEXEC::set_error(static_cast<_Receiver&&>(this->__rcvr_), std::move(__error));
+        }
+        else
+        {
+          std::terminate();
+        }
       }
 
       constexpr void __start_next() noexcept final
