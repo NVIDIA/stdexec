@@ -473,7 +473,8 @@ namespace experimental::execution
       template <class _Sequence, class _Env>
       constexpr auto operator()(_Sequence&&, _Env const &) const noexcept
       {
-        using __new_sequence_t = transform_sender_result_t<_Sequence, _Env>;
+        using __new_sequence_t =
+          STDEXEC::__remove_rvalue_reference_t<transform_sender_result_t<_Sequence, _Env>>;
         static_assert(!STDEXEC::__merror<__new_sequence_t>);
         return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
       }
@@ -493,7 +494,8 @@ namespace experimental::execution
   [[nodiscard]]
   consteval auto get_item_types()
   {
-    using __new_sequence_t = STDEXEC::transform_sender_result_t<_Sequence, _Env>;
+    using __new_sequence_t =
+      STDEXEC::__remove_rvalue_reference_t<STDEXEC::transform_sender_result_t<_Sequence, _Env>>;
     static_assert(!STDEXEC::__merror<__new_sequence_t>);
     return __sequence_sndr::__get_item_types_helper<__new_sequence_t, _Env>();
   }

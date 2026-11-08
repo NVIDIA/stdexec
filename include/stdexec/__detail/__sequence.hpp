@@ -453,7 +453,7 @@ namespace STDEXEC
       template <class _Self>
       static consteval auto __get_completion_signatures()
       {
-        using __sndr_t = transform_sender_result_t<_Self, env<>>;
+        using __sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Self, env<>>>;
         return STDEXEC::get_completion_signatures<__sndr_t>();
       }
     };

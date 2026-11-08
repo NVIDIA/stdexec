@@ -42,6 +42,36 @@ namespace STDEXEC
   // [exec.snd.transform]
   namespace __detail
   {
+    // A transformation step applied to the result of an earlier one returns a
+    // reference to its argument when it leaves the sender as it is. When the
+    // earlier step returned a new sender by value, that reference would
+    // outlive it, so the step's result is returned by value instead.
+    template <class _Arg, class _Result>
+    using __step_result_t = __if_c<std::is_reference_v<_Arg> || !std::is_reference_v<_Result>,
+                                   _Result,
+                                   __decay_t<_Result>>;
+
+    template <class _Arg, class _Result>
+    inline constexpr bool __nothrow_step_result = std::is_reference_v<_Arg>
+                                               || !std::is_reference_v<_Result>
+                                               || __nothrow_decay_copyable<_Result>;
+
+    template <class _Arg, auto _DeclFn>
+    STDEXEC_ATTRIBUTE(nodiscard, host, device)
+    consteval auto __step_declfn() noexcept
+    {
+      using __result_t = decltype(_DeclFn());
+      if constexpr (__merror<__result_t>)
+      {
+        return _DeclFn;
+      }
+      else
+      {
+        return __declfn<__step_result_t<_Arg, __result_t>,
+                        (noexcept(_DeclFn()) && __nothrow_step_result<_Arg, __result_t>)>();
+      }
+    }
+
     template <class _Domain, class _OpTag>
     struct __transform_sender
     {
@@ -63,21 +93,24 @@ namespace STDEXEC
         {
           return __declfn<__result_t>();
         }
-        else if constexpr (__same_as<__result_t, _Sndr>)
+        else if constexpr (__same_as<__decay_t<__result_t>, __decay_t<_Sndr>>)
         {
           return __declfn<__result_t, (_Nothrow && __is_nothrow)>();
         }
         else if constexpr (__same_as<_OpTag, start_t>)
         {
-          return __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>();
+          return __step_declfn<__result_t,
+                               __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>()>();
         }
         else
         {
           using __transform_recurse_t =
             __transform_sender<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
-          return __transform_recurse_t::template __get_declfn<__result_t,
-                                                              _Env,
-                                                              (_Nothrow && __is_nothrow)>();
+          return __step_declfn<
+            __result_t,
+            __transform_recurse_t::template __get_declfn<__result_t,
+                                                         _Env,
+                                                         (_Nothrow && __is_nothrow)>()>();
         }
       }
 
@@ -98,7 +131,7 @@ namespace STDEXEC
         using __domain_t = __domain_for_t<_Sndr, _Env>;
         using __result_t = __transform_sender_result_t<__domain_t, _OpTag, _Sndr, _Env>;
 
-        if constexpr (__same_as<__result_t, _Sndr>)
+        if constexpr (__same_as<__decay_t<__result_t>, __decay_t<_Sndr>>)
         {
           return __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env);
         }
@@ -128,10 +161,17 @@ namespace STDEXEC
     struct __compose
     {
       template <class _Sndr, class _Env>
+      using __first_t = __call_result_t<_Fn2, _Sndr, _Env const &>;
+
+      template <class _Sndr, class _Env>
+      using __second_t = __call_result_t<_Fn1, __first_t<_Sndr, _Env>, _Env const &>;
+
+      template <class _Sndr, class _Env>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
-      constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const
-        noexcept(noexcept(_Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env)))
-          -> decltype(_Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env))
+      constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const noexcept(
+        noexcept(_Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env))
+        && __detail::__nothrow_step_result<__first_t<_Sndr, _Env>, __second_t<_Sndr, _Env>>)
+        -> __detail::__step_result_t<__first_t<_Sndr, _Env>, __second_t<_Sndr, _Env>>
       {
         return _Fn1()(_Fn2()(static_cast<_Sndr&&>(__sndr), __env), __env);
       }

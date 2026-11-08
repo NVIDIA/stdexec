@@ -235,7 +235,7 @@ namespace STDEXEC
       template <class _Sender, class _Env>
       constexpr auto operator()(_Sender &&, _Env const &) const noexcept
       {
-        using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
+        using __new_sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Sender, _Env>>;
         static_assert(!__merror<__new_sndr_t>);
         return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
       }
@@ -338,7 +338,7 @@ namespace STDEXEC
   template <class _Sender, class _Env>
   consteval auto get_completion_signatures()
   {
-    using __new_sndr_t = transform_sender_result_t<_Sender, _Env>;
+    using __new_sndr_t = __remove_rvalue_reference_t<transform_sender_result_t<_Sender, _Env>>;
     return __cmplsigs::__get_completion_signatures_helper<__new_sndr_t, _Env>();
   }
 

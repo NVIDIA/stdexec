@@ -86,10 +86,10 @@ namespace STDEXEC
 
     template <class _OpTag, class _Sender, class _Env>
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &) const
-      noexcept(__nothrow_move_constructible<_Sender>) -> _Sender
+    constexpr auto transform_sender(_OpTag, _Sender &&__sndr, _Env const &) const noexcept
+      -> _Sender &&
     {
-      return static_cast<_Sender>(static_cast<_Sender &&>(__sndr));
+      return static_cast<_Sender &&>(__sndr);
     }
 
     template <class _Tag, class... _Args>
@@ -108,8 +108,9 @@ namespace STDEXEC
   template <class _Domain, class _OpTag, class _Sndr, class _Env>
   concept __default_domain_like =
     (!__detail::__has_transform_sender<_Domain, _OpTag, _Sndr, _Env>)
-    || __same_as<__detail::__transform_sender_result_t<_Domain, _OpTag, _Sndr, _Env>,
-                 __detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>;
+    || __same_as<
+      __decay_t<__detail::__transform_sender_result_t<_Domain, _OpTag, _Sndr, _Env>>,
+      __decay_t<__detail::__transform_sender_result_t<default_domain, _OpTag, _Sndr, _Env>>>;
 
   template <class... _Domains>
   struct indeterminate_domain

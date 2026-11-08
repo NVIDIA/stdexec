@@ -90,6 +90,75 @@ namespace
     }
   }
 
+  TEST_CASE("transform_sender returns a sender it doesn't transform by reference",
+            "[cpo][cpo_transform_sender]")
+  {
+    STATIC_REQUIRE(
+      std::same_as<decltype(ex::transform_sender(std::declval<just_sender_t>(), ex::env<>{})),
+                   just_sender_t &&>);
+    STATIC_REQUIRE(
+      std::same_as<decltype(ex::transform_sender(std::declval<just_sender_t &>(), ex::env<>{})),
+                   just_sender_t &>);
+    STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<just_sender_t>(), ex::env<>{})));
+
+    // A sender a domain transforms into a new one is returned by value, even
+    // when the new sender is then left as it is.
+    auto env = ex::prop(ex::get_domain, then_to_just_domain<true>{});
+    STATIC_REQUIRE(std::same_as<decltype(ex::transform_sender(std::declval<then_sender_t>(), env)),
+                                just_sender_t>);
+  }
+
+  //! A sender that counts how often it's moved.
+  struct counted_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    explicit counted_sender(int &moves) noexcept
+      : moves_(&moves)
+    {}
+
+    counted_sender(counted_sender &&other) noexcept
+      : moves_(other.moves_)
+    {
+      ++*moves_;
+    }
+
+    template <class Receiver>
+    struct operation
+    {
+      Receiver rcvr_;
+
+      void start() & noexcept
+      {
+        ex::set_value(std::move(rcvr_));
+      }
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) && noexcept -> operation<Receiver>
+    {
+      return {std::move(rcvr)};
+    }
+
+    int *moves_;
+  };
+
+  struct empty_receiver
+  {
+    using receiver_concept = ex::receiver_tag;
+
+    void set_value() noexcept {}
+  };
+
+  TEST_CASE("connect doesn't move a sender it doesn't transform", "[cpo][cpo_transform_sender]")
+  {
+    int  moves = 0;
+    auto op    = ex::connect(counted_sender(moves), empty_receiver{});
+    CHECK(moves == 0);
+    (void) op;
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by a transformation propagates out of connect",
             "[cpo][cpo_transform_sender]")
