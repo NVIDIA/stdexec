@@ -21,18 +21,27 @@ namespace frames::typestate
   // the wrapped sender.
   //
   // The wrapped sender and the association travel together, as
-  // [exec.associate]'s associate-data: from the sender into the operation's
-  // carried region, so under either ending they live until the operation
-  // state is destroyed, after the operation has completed. That's what
-  // [exec.associate] specifies: its op_state holds the association, and
-  // nothing releases it on completion. So a scope's join can't finish until
-  // whoever owns the operation destroys it. The wrapped sender is only ever
-  // destroyed while the association is held, or as soon as the scope
-  // refuses one, since what it refers to may only stay valid while it's
-  // associated.
+  // [exec.associate]'s associate-data, because the wrapped sender may refer
+  // to what the scope keeps alive: it's only ever destroyed while the
+  // association is held, or as soon as the scope refuses one. The operation
+  // takes the association into its carried region, so under either ending
+  // it lasts until the operation state is destroyed, after the operation
+  // has completed. That's what [exec.associate] specifies: its op_state
+  // holds the association, and nothing releases it on completion. So a
+  // scope's join can't finish until whoever owns the operation destroys it.
   //
-  // The operation owns its wrapped sender, so it connects it, under either
-  // Data policy, as let_value connects the sender its function returns.
+  // Where the wrapped sender goes depends on how the operation got it:
+  //
+  //   consuming it (connected, or bound through a non-const reference)
+  //       both move into the carried region, and the operation connects
+  //       the wrapped sender it now owns, as let_value connects the sender
+  //       its function returns;
+  //   bound without consuming
+  //       the stored sender keeps its own association, which covers its
+  //       wrapped sender until the stored sender is destroyed, after this
+  //       operation. So the operation asks the scope for an association of
+  //       its own, as copying the sender would, and binds the stored
+  //       wrapped sender in place rather than copying it.
 
   namespace detail
   {
@@ -40,7 +49,7 @@ namespace frames::typestate
     // refused: [exec.associate]'s associate-data. A copy associates again,
     // and copies the wrapped sender only if it got an association; a move
     // takes both, destroying what's left of the source's wrapped sender
-    // while the association is still held.
+    // while the association is still held, and so does release().
     template <class Sndr, class Assoc>
     class associate_data
     {
@@ -115,6 +124,18 @@ namespace frames::typestate
         return sndr_;
       }
 
+      auto sender() const noexcept -> Sndr const &
+      {
+        return sndr_;
+      }
+
+      // Another association with the same scope, as a copy would take.
+      [[nodiscard]]
+      auto reassociate() const -> Assoc
+      {
+        return assoc_.try_associate();
+      }
+
      private:
       union
       {
@@ -139,10 +160,11 @@ namespace frames::typestate
       }
       else
       {
-        return exec::concat_completion_signatures(sent_as<ending_of_t<Env...>>(
-                                                    ex::get_completion_signatures<Sndr, Env...>()),
-                                                  ex::completion_signatures<ex::set_stopped_t()>(),
-                                                  eptr_if<start_enters<Env...>>());
+        return exec::concat_completion_signatures(
+          sent_as<ending_of_t<Env...>>(
+            ex::get_completion_signatures<member_t<Self, Sndr>, Env...>()),
+          ex::completion_signatures<ex::set_stopped_t()>(),
+          eptr_if<start_enters<Env...>>());
       }
     }
 
@@ -152,13 +174,39 @@ namespace frames::typestate
       struct running_tag
       {};
 
-      using rcvr_t    = phase_receiver<opstate, Rcvr, running_tag>;
-      using child_t   = ex::connect_result_t<Sndr, rcvr_t>;
-      using carried_t = detail::associate_data<Sndr, Assoc>;
+      using data_t = detail::associate_data<Sndr, Assoc>;
+
+      // Bound without consuming, the wrapped sender's operation finds it in
+      // the stored sender through its receiver, as any bound operation does.
+      struct bound_rcvr : phase_receiver<opstate, Rcvr, running_tag>
+      {
+        [[nodiscard]]
+        auto bound_sender() const noexcept -> Sndr const &
+        {
+          return this->op->data().sender();
+        }
+      };
+
+      using rcvr_t =
+        std::conditional_t<Const, bound_rcvr, phase_receiver<opstate, Rcvr, running_tag>>;
+      using child_t = std::conditional_t<Const,
+                                         bind_result_t<Sndr const, rcvr_t>,
+                                         ex::connect_result_t<Sndr, rcvr_t>>;
+
+      // Bound without consuming, the operation carries only its own
+      // association; otherwise it carries the sender's associate-data.
+      using carried_t = std::conditional_t<Const, Assoc, data_t>;
 
       struct running
       {
+        template <class... Incoming>
+          requires Const
+        explicit running(opstate* op, Incoming&...)
+          : child(typestate::bind(op->data().sender(), rcvr_t{{op}}))
+        {}
+
         explicit running(opstate* op)
+          requires(!Const)
           : child(ex::connect(static_cast<Sndr&&>(op->phases_.carried().sender()), rcvr_t{op}))
         {}
 
@@ -172,20 +220,18 @@ namespace frames::typestate
         explicit refused(opstate*) noexcept {}
       };
 
-      // Takes the sender's associate-data: moves it out, or under a bind
-      // that doesn't consume, copies it, associating again.
+      // Takes the sender's associate-data, or, bound without consuming,
+      // an association of its own.
       template <class... Incoming>
       explicit opstate(Rcvr rcvr, Incoming&... incoming)
-        : opstate(std::move(peek<&associate_sender::data_>(rcvr, incoming...)),
-                  static_cast<Rcvr&&>(rcvr),
-                  incoming...)
+        : opstate(take(rcvr, incoming...), static_cast<Rcvr&&>(rcvr), incoming...)
       {}
 
       template <class... Incoming>
-      opstate(carried_t data, Rcvr&& rcvr, Incoming&... incoming)
-        : phases_(static_cast<Rcvr&&>(rcvr), static_cast<carried_t&&>(data), incoming...)
+      opstate(carried_t carried, Rcvr&& rcvr, Incoming&... incoming)
+        : phases_(static_cast<Rcvr&&>(rcvr), static_cast<carried_t&&>(carried), incoming...)
       {
-        if (associated())
+        if (runs())
         {
           phases_.template on_connect<running>(this, incoming...);
         }
@@ -195,15 +241,9 @@ namespace frames::typestate
         }
       }
 
-      [[nodiscard]]
-      auto associated() noexcept -> bool
-      {
-        return static_cast<bool>(phases_.carried());
-      }
-
       void start() & noexcept
       {
-        if (associated())
+        if (runs())
         {
           phases_.template begin<running>(start_child, this);
         }
@@ -219,6 +259,32 @@ namespace frames::typestate
       void complete(running_tag, Tag, As&&... as) noexcept
       {
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
+      }
+
+      template <class... Incoming>
+      static auto take(Rcvr const & rcvr, Incoming&... incoming) -> carried_t
+      {
+        if constexpr (Const)
+        {
+          return peek<&associate_sender::data_>(rcvr).reassociate();
+        }
+        else
+        {
+          return std::move(peek<&associate_sender::data_>(rcvr, incoming...));
+        }
+      }
+
+      // The stored sender's associate-data, bound without consuming.
+      auto data() noexcept -> data_t const &
+      {
+        return phases_.template part<&associate_sender::data_>();
+      }
+
+      // Whether the operation runs the wrapped sender rather than refusing.
+      [[nodiscard]]
+      auto runs() noexcept -> bool
+      {
+        return static_cast<bool>(phases_.carried());
       }
 
       phased<Rcvr, parts<>, carried_t, running, refused> phases_;

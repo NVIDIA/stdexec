@@ -299,11 +299,12 @@ carried region. The association travels with the wrapped sender, as in
 what the scope keeps alive: it's destroyed while the association is held,
 or, if the scope refuses one, as soon as `associate` is called. So
 `associate` initializes its carried region by moving both out of the sender
-(or, bound without consuming, by copying them, which asks the scope for
-another association, as copying the sender does), and connects the wrapped
-sender it now owns, under either Data policy. Under every policy, then, a
-scope can't finish
-joining until whoever owns the operation destroys it, as with
+and connects the wrapped sender it now owns, under either Data policy.
+Bound without consuming, it asks the scope for an association of its own,
+as copying the sender would, and binds the stored wrapped sender in place,
+which the stored sender's own association covers for longer than the
+operation lives. Under every policy, then, a scope can't finish joining
+until whoever owns the operation destroys it, as with
 `stdexec::associate`: `when_all(associate(sndr, token), scope.join())`
 completes neither child, since `when_all` destroys its children only after
 both have completed. One level down, the policies differ:
