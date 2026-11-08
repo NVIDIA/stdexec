@@ -159,6 +159,82 @@ namespace
     (void) op;
   }
 
+  template <class CompletionDomain = void>
+  struct marker_sender;
+
+  //! A domain that transforms a marker_sender into a counted_sender, returning
+  //! it by value.
+  template <class OpTag>
+  struct marker_to_counted_domain
+  {
+    template <class Sndr, class Env>
+      requires(!std::same_as<std::remove_cvref_t<Sndr>, counted_sender>)
+    auto transform_sender(OpTag, Sndr &&sndr, Env const &) const noexcept -> counted_sender
+    {
+      return counted_sender(*sndr.moves_);
+    }
+  };
+
+  //! A sender that's only ever transformed into a counted_sender, by
+  //! CompletionDomain if it's given, or else by the domain in the environment.
+  template <class CompletionDomain>
+  struct marker_sender
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+
+    struct attrs
+    {
+      template <class... Env>
+      [[nodiscard]]
+      constexpr auto
+      query(ex::get_completion_domain_t<ex::set_value_t>, Env const &...) const noexcept
+        -> CompletionDomain
+      {
+        return {};
+      }
+    };
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+      requires(!std::is_void_v<CompletionDomain>)
+    {
+      return {};
+    }
+
+    int *moves_;
+  };
+
+  TEST_CASE("transform_sender doesn't move a new sender it then leaves as it is",
+            "[cpo][cpo_transform_sender]")
+  {
+    SECTION("a new sender from the domain where the operation starts")
+    {
+      int  moves = 0;
+      auto env   = ex::prop(ex::get_domain, marker_to_counted_domain<ex::start_t>{});
+      STATIC_REQUIRE(
+        std::same_as<decltype(ex::transform_sender(std::declval<marker_sender<>>(), env)),
+                     counted_sender>);
+      STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<marker_sender<>>(), env)));
+      auto sndr = ex::transform_sender(marker_sender<>{&moves}, env);
+      CHECK(moves == 0);
+      (void) sndr;
+    }
+
+    SECTION("a new sender from the domain where the sender completes")
+    {
+      using marker_t = marker_sender<marker_to_counted_domain<ex::set_value_t>>;
+      int moves      = 0;
+      STATIC_REQUIRE(
+        std::same_as<decltype(ex::transform_sender(std::declval<marker_t>(), ex::env<>{})),
+                     counted_sender>);
+      STATIC_REQUIRE(noexcept(ex::transform_sender(std::declval<marker_t>(), ex::env<>{})));
+      auto sndr = ex::transform_sender(marker_t{&moves}, ex::env<>{});
+      CHECK(moves == 0);
+      (void) sndr;
+    }
+  }
+
 #if !STDEXEC_NO_STDCPP_EXCEPTIONS()
   TEST_CASE("an exception thrown by a transformation propagates out of connect",
             "[cpo][cpo_transform_sender]")
