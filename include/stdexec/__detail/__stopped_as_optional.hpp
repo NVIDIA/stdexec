@@ -32,6 +32,7 @@ import stdexec;
 #  include "__concepts.hpp"
 #  include "__diagnostics.hpp"
 #  include "__receivers.hpp"
+#  include "__remap_attrs.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
@@ -61,8 +62,49 @@ namespace STDEXEC
       _Receiver __rcvr_;
     };
 
+    // A stopped completion of the child becomes a value completion (an empty
+    // optional). Value completions stay value completions, but they can turn
+    // into an error completion if decay-copying the value into the optional
+    // throws.
+    struct __channel_map
+    {
+      template <class _Tag, class _From, class _Child, class... _Env>
+      [[nodiscard]]
+      static consteval auto __feeds() noexcept -> bool
+      {
+        if constexpr (__same_as<_From, set_stopped_t>)
+        {
+          return __same_as<_Tag, set_value_t>;
+        }
+        else if constexpr (__same_as<_From, set_value_t>)
+        {
+          if constexpr (__same_as<_Tag, set_error_t>)
+          {
+            return !STDEXEC::__all_completions_satisfy<set_value_t,
+                                                       _Child,
+                                                       __q<__nothrow_decay_copyable_t>,
+                                                       _Env...>();
+          }
+          else
+          {
+            return __same_as<_Tag, set_value_t>;
+          }
+        }
+        else
+        {
+          return __same_as<_Tag, _From>;
+        }
+      }
+    };
+
     struct __stopped_as_optional_impl : __sexpr_defaults
     {
+      static constexpr auto __get_attrs =
+        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+      {
+        return __remap_attrs<__channel_map, _Child>{__child};
+      };
+
       static consteval auto __get_value_transform_fn() noexcept
       {
         return []<class... _Ts>()
