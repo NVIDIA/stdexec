@@ -33,9 +33,10 @@ namespace frames::typestate
   // Where the wrapped sender goes depends on how the operation got it:
   //
   //   consuming it (connected, or bound through a non-const reference)
-  //       both move into the carried region, and the operation connects
-  //       the wrapped sender it now owns, as let_value connects the sender
-  //       its function returns;
+  //       as the phase that runs it is entered, the association moves into
+  //       the carried region and the wrapped sender straight into connect,
+  //       and what's left of it is destroyed while the association is held,
+  //       as [exec.associate]'s get-state does with release();
   //   bound without consuming
   //       the stored sender keeps its own association, which covers its
   //       wrapped sender until the stored sender is destroyed, after this
@@ -62,9 +63,10 @@ namespace frames::typestate
         }
       };
 
+     public:
+      // Owns what's left of a wrapped sender once it's been moved from.
       using guard_t = std::unique_ptr<Sndr, destroyer>;
 
-     public:
       template <class Token, class S>
       associate_data(Token const & token, S&& sndr)
         : sndr_(token.wrap(static_cast<S&&>(sndr)))
@@ -119,11 +121,6 @@ namespace frames::typestate
       }
 
       // The wrapped sender, if there's an association.
-      auto sender() noexcept -> Sndr&
-      {
-        return sndr_;
-      }
-
       auto sender() const noexcept -> Sndr const &
       {
         return sndr_;
@@ -134,6 +131,15 @@ namespace frames::typestate
       auto reassociate() const -> Assoc
       {
         return assoc_.try_associate();
+      }
+
+      // Hands over the association, and the wrapped sender if there is one,
+      // leaving this disengaged: the caller destroys the wrapped sender, by
+      // destroying the guard, before it releases the association.
+      auto release() && noexcept -> std::pair<Assoc, guard_t>
+      {
+        guard_t sndr(assoc_ ? std::addressof(sndr_) : nullptr);
+        return {static_cast<Assoc&&>(assoc_), static_cast<guard_t&&>(sndr)};
       }
 
      private:
@@ -193,21 +199,27 @@ namespace frames::typestate
                                          bind_result_t<Sndr const, rcvr_t>,
                                          ex::connect_result_t<Sndr, rcvr_t>>;
 
-      // Bound without consuming, the operation carries only its own
-      // association; otherwise it carries the sender's associate-data.
-      using carried_t = std::conditional_t<Const, Assoc, data_t>;
-
       struct running
       {
+        static constexpr auto connects = &associate_sender::data_;
+
         template <class... Incoming>
           requires Const
         explicit running(opstate* op, Incoming&...)
           : child(typestate::bind(op->data().sender(), rcvr_t{{op}}))
         {}
 
-        explicit running(opstate* op)
+        template <class... Incoming>
           requires(!Const)
-          : child(ex::connect(static_cast<Sndr&&>(op->phases_.carried().sender()), rcvr_t{op}))
+        explicit running(opstate* op, Incoming&... incoming)
+          : running(op, op->take(incoming...))
+        {}
+
+        // sndr destroys what's left of the wrapped sender once it's
+        // connected, or if connect throws, before the operation can release
+        // the association.
+        running(opstate* op, typename data_t::guard_t sndr)
+          : child(ex::connect(static_cast<Sndr&&>(*sndr), rcvr_t{op}))
         {}
 
         child_t child;
@@ -220,18 +232,18 @@ namespace frames::typestate
         explicit refused(opstate*) noexcept {}
       };
 
-      // Takes the sender's associate-data, or, bound without consuming,
-      // an association of its own.
+      // Bound without consuming, the operation takes its own association
+      // now; otherwise it has none until running is entered.
       template <class... Incoming>
       explicit opstate(Rcvr rcvr, Incoming&... incoming)
-        : opstate(take(rcvr, incoming...), static_cast<Rcvr&&>(rcvr), incoming...)
+        : opstate(own_association(rcvr), static_cast<Rcvr&&>(rcvr), incoming...)
       {}
 
       template <class... Incoming>
-      opstate(carried_t carried, Rcvr&& rcvr, Incoming&... incoming)
-        : phases_(static_cast<Rcvr&&>(rcvr), static_cast<carried_t&&>(carried), incoming...)
+      opstate(Assoc assoc, Rcvr&& rcvr, Incoming&... incoming)
+        : phases_(static_cast<Rcvr&&>(rcvr), static_cast<Assoc&&>(assoc), incoming...)
       {
-        if (runs())
+        if (runs_from_connect(incoming...))
         {
           phases_.template on_connect<running>(this, incoming...);
         }
@@ -243,7 +255,7 @@ namespace frames::typestate
 
       void start() & noexcept
       {
-        if (runs())
+        if (runs_from_start())
         {
           phases_.template begin<running>(start_child, this);
         }
@@ -261,8 +273,7 @@ namespace frames::typestate
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
       }
 
-      template <class... Incoming>
-      static auto take(Rcvr const & rcvr, Incoming&... incoming) -> carried_t
+      static auto own_association(Rcvr const & rcvr) -> Assoc
       {
         if constexpr (Const)
         {
@@ -270,24 +281,67 @@ namespace frames::typestate
         }
         else
         {
-          return std::move(peek<&associate_sender::data_>(rcvr, incoming...));
+          return Assoc();
         }
       }
 
-      // The stored sender's associate-data, bound without consuming.
-      auto data() noexcept -> data_t const &
+      // The sender's associate-data: the incoming sender's while connect
+      // runs under split_sender, or wherever phased keeps it.
+      template <class... Incoming>
+      auto data(Incoming&... incoming) noexcept -> decltype(auto)
       {
-        return phases_.template part<&associate_sender::data_>();
+        if constexpr (sizeof...(Incoming) == 1)
+        {
+          return ((incoming.data_), ...);
+        }
+        else
+        {
+          return phases_.template part<&associate_sender::data_>();
+        }
       }
 
-      // Whether the operation runs the wrapped sender rather than refusing.
-      [[nodiscard]]
-      auto runs() noexcept -> bool
+      static constexpr bool enters_on_connect =
+        std::is_same_v<typename policies_of_t<ex::env_of_t<Rcvr>>::entry, connect_entry>;
+
+      // Whether the operation runs the wrapped sender rather than refusing:
+      // whether it has its own association, or, until it takes one, whether
+      // the sender's associate-data has one.
+      template <class... Incoming>
+      auto runs_from_connect(Incoming&... incoming) noexcept -> bool
       {
-        return static_cast<bool>(phases_.carried());
+        if constexpr (Const)
+        {
+          return static_cast<bool>(phases_.carried());
+        }
+        else
+        {
+          return static_cast<bool>(data(incoming...));
+        }
       }
 
-      phased<Rcvr, parts<>, carried_t, running, refused> phases_;
+      auto runs_from_start() noexcept -> bool
+      {
+        if constexpr (Const || enters_on_connect)
+        {
+          return static_cast<bool>(phases_.carried());
+        }
+        else
+        {
+          return static_cast<bool>(data());
+        }
+      }
+
+      // Moves the association out of the sender's associate-data into the
+      // carried region, and returns what owns the wrapped sender.
+      template <class... Incoming>
+      auto take(Incoming&... incoming) noexcept -> typename data_t::guard_t
+      {
+        auto [assoc, sndr] = static_cast<data_t&&>(data(incoming...)).release();
+        phases_.carried()  = static_cast<Assoc&&>(assoc);
+        return static_cast<typename data_t::guard_t&&>(sndr);
+      }
+
+      phased<Rcvr, parts<&associate_sender::data_>, Assoc, running, refused> phases_;
     };
   };
 

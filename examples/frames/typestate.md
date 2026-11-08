@@ -297,14 +297,20 @@ a slot, both of which end by completion under `eager_teardown`; it's the
 carried region. The association travels with the wrapped sender, as in
 [exec.associate]'s associate-data, because the wrapped sender may refer to
 what the scope keeps alive: it's destroyed while the association is held,
-or, if the scope refuses one, as soon as `associate` is called. So
-`associate` initializes its carried region by moving both out of the sender
-and connects the wrapped sender it now owns, under either Data policy.
-Bound without consuming, it asks the scope for an association of its own,
-as copying the sender would, and binds the stored wrapped sender in place,
-which the stored sender's own association covers for longer than the
-operation lives. Under every policy, then, a scope can't finish joining
-until whoever owns the operation destroys it, as with
+or, if the scope refuses one, as soon as `associate` is called. An operation
+that consumes its sender takes both apart as the phase that runs the wrapped
+sender is entered, as [exec.associate]'s operation does at `connect`: the
+association moves into the carried region, the wrapped sender straight into
+`connect`, and what's left of the wrapped sender is destroyed before the
+association could be released. Bound without consuming, the operation asks
+the scope for an association of its own, as copying the sender would, and
+binds the stored wrapped sender in place, which the stored sender's own
+association covers for longer than the operation lives. Under
+`split_sender` with `start_entry`, nothing is left to take them from at
+`start` but the operation, so it keeps the sender's associate-data until
+then as well as the association it takes, which costs the association's
+size. Under every policy, then, a scope can't finish joining until whoever
+owns the operation destroys it, as with
 `stdexec::associate`: `when_all(associate(sndr, token), scope.join())`
 completes neither child, since `when_all` destroys its children only after
 both have completed. One level down, the policies differ:
