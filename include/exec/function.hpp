@@ -945,12 +945,12 @@ namespace experimental::execution
       constexpr auto connect(_Receiver __rcvr) && noexcept(__nothrow_connect<_Receiver>)  //
         -> __opstate_t<_Receiver>
       {
-        auto __factory = [this]<class _RcvrRef>(_RcvrRef __rcvr)
+        auto __factory = [this]<class _RcvrRef>(_RcvrRef __rcvr_ref)
         {
           return __apply(__make_opstate_,
                          static_cast<__tuple<_Args...> &&>(__args_),
                          __make_sender_,
-                         static_cast<_RcvrRef &&>(__rcvr));
+                         static_cast<_RcvrRef &&>(__rcvr_ref));
         };
         return __opstate_t<_Receiver>{static_cast<_Receiver &&>(__rcvr), __factory};
       }

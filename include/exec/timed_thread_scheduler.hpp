@@ -184,15 +184,15 @@ namespace experimental::execution
       while (true)
       {
         drain_commands();
-        time_point now = std::chrono::steady_clock::now();
-        task_type* op  = heap_.front();
-        while (op && op->time_point_ <= now)
+        time_point current_time = std::chrono::steady_clock::now();
+        task_type* op           = heap_.front();
+        while (op && op->time_point_ <= current_time)
         {
           heap_.pop_front();
           op->set_value_(op);
           op = heap_.front();
         }
-        time_point       deadline = op ? op->time_point_ : now + std::chrono::seconds(2);
+        time_point       deadline = op ? op->time_point_ : current_time + std::chrono::seconds(2);
         std::unique_lock lock{ready_mutex_};
         cv_.wait_until(lock, deadline, [this] { return ready_ || stop_requested_; });
         bool stop_requested = stop_requested_;
@@ -308,12 +308,11 @@ namespace experimental::execution
       friend stop_base_t;
 
      public:
-      constexpr explicit timed_thread_schedule_at_op(
-        timed_thread_context&                 context,
-        std::chrono::steady_clock::time_point time_point,
-        Receiver                              receiver) noexcept
+      constexpr explicit timed_thread_schedule_at_op(timed_thread_context&                 context,
+                                                     std::chrono::steady_clock::time_point tp,
+                                                     Receiver receiver) noexcept
         : _time_thrd_sched::timed_thread_schedule_operation_base{
-            time_point,
+            tp,
             [](_time_thrd_sched::timed_thread_operation_base* op) noexcept
             {
               auto* self    = static_cast<timed_thread_schedule_at_op*>(op);

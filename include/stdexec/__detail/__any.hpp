@@ -359,8 +359,8 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   //////////////////////////////////////////////////////////////////////////////
   enum class __root_kind
   {
-    __value,
-    __reference
+    __by_value,
+    __by_reference
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -369,7 +369,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   [[nodiscard]]
   constexpr bool __is_small(size_t __buffer_size) noexcept
   {
-    if constexpr (_Model::__root_kind == __root_kind::__reference)
+    if constexpr (_Model::__root_kind == __root_kind::__by_reference)
     {
       STDEXEC_ASSERT(sizeof(_Model) <= __buffer_size);
       return true;
@@ -600,7 +600,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   // may throw.
   template <class _Interface, class _Base, size_t _BufferSize>
   concept __nothrow_slice = (_Base::__box_kind != __box_kind::__abstract)
-                         && (_Base::__root_kind == __root_kind::__value)
+                         && (_Base::__root_kind == __root_kind::__by_value)
                          && (_Interface::__buffer_size >= _BufferSize);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -841,7 +841,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
                                                  : _Base::__buffer_alignment;
 
     static constexpr bool __can_slice = __extension_of<_Base, __imovable>
-                                     && (__has_root_kind<_Base, __root_kind::__value>
+                                     && (__has_root_kind<_Base, __root_kind::__by_value>
                                          || __extension_of<_Base, __icopyable>);
 
     static constexpr bool __nothrow_slice =
@@ -872,7 +872,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
       else
       {
         // Move from type-erased values, but not from type-erased references.
-        STDEXEC_CONSTEXPR_LOCAL bool __is_value = _Base::__root_kind == __root_kind::__value;
+        STDEXEC_CONSTEXPR_LOCAL bool __is_value = _Base::__root_kind == __root_kind::__by_value;
         __result.emplace(__value(STDEXEC::__maybe_move<__is_value>(*this)));  // could throw
       }
     }
@@ -913,7 +913,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   template <template <class> class _Interface, class _Value>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__object, __root_kind::__value>
+    , __box_root_kind<__box_kind::__object, __root_kind::__by_value>
     , __box<_Value>
   {
     using __value_type     = _Value;
@@ -979,7 +979,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   template <template <class> class _Interface>
   struct STDEXEC_ATTRIBUTE(empty_bases) __value_proxy_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__proxy, __root_kind::__value>
+    , __box_root_kind<__box_kind::__proxy, __root_kind::__by_value>
   {
     using __interface_type = __iabstract<_Interface>;
     using __iabstract<_Interface>::__buffer_size;
@@ -1254,7 +1254,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   template <template <class> class _Interface, class _Value>
   struct STDEXEC_ATTRIBUTE(empty_bases) __reference_root<_Interface, _Value>
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__object, __root_kind::__reference>
+    , __box_root_kind<__box_kind::__object, __root_kind::__by_reference>
   {
     using __value_type     = _Value;
     using __interface_type = __iabstract<_Interface>;
@@ -1420,7 +1420,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   template <template <class> class _Interface>
   struct STDEXEC_ATTRIBUTE(empty_bases) __reference_proxy_root
     : __iabstract<_Interface>
-    , __box_root_kind<__box_kind::__proxy, __root_kind::__reference>
+    , __box_root_kind<__box_kind::__proxy, __root_kind::__by_reference>
   {
     using __interface_type = __iabstract<_Interface>;
     using __reference_proxy_root::__box_root_kind::__box_kind;
@@ -1501,7 +1501,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
       using __extension_type = _CvModel::__interface_type;
       using __value_type     = _CvModel::__value_type;
       using __model_type     = __reference_model<_Interface, __value_type, __extension_type>;
-      if constexpr (_CvModel::__root_kind == __root_kind::__reference)
+      if constexpr (_CvModel::__root_kind == __root_kind::__by_reference)
       {
         STDEXEC::__any::__emplace_into<__model_type>(std::allocator<std::byte>{},  // not used
                                                      __storage_,
@@ -1660,7 +1660,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
     static constexpr bool __is_reference_(_CvProxy *__proxy_ptr) noexcept
     {
-      if constexpr (_CvProxy::__root_kind == __root_kind::__reference)
+      if constexpr (_CvProxy::__root_kind == __root_kind::__by_reference)
         return (*__proxy_ptr).__is_indirect_();
       else
         return false;
@@ -1738,7 +1738,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
       auto *__ptr = (*this)(std::addressof(__object));
       if (__ptr == nullptr)
         __throw_bad_any_cast();
-      if constexpr (_Base::__root_kind == __root_kind::__reference)
+      if constexpr (_Base::__root_kind == __root_kind::__by_reference)
         return *__ptr;
       else
         return std::move(*__ptr);
@@ -1845,7 +1845,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     static constexpr bool __as_large_as =
       (__iabstract<_Interface>::__buffer_size >= _Interface<_Other>::__buffer_size)
       && (_Interface<_Other>::__buffer_alignment % __iabstract<_Interface>::__buffer_alignment == 0)
-      && (_Other::__root_kind == __root_kind::__value);
+      && (_Other::__root_kind == __root_kind::__by_value);
 
    public:
     __any() = default;
@@ -1877,7 +1877,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     // Implicit derived-to-base conversion constructor
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
-            && (_Other::__root_kind == __root_kind::__value)
+            && (_Other::__root_kind == __root_kind::__by_value)
     constexpr __any(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
       (*this).__assign_from(std::move(__other));
@@ -1885,7 +1885,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __icopyable>
-            && (_Other::__root_kind == __root_kind::__reference)
+            && (_Other::__root_kind == __root_kind::__by_reference)
     constexpr __any(_Interface<_Other> const &__other)
     {
       _Interface<_Other> __tmp;
@@ -1904,7 +1904,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     // Implicit derived-to-base conversion constructor
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __imovable>
-            && (_Other::__root_kind == __root_kind::__value)
+            && (_Other::__root_kind == __root_kind::__by_value)
     constexpr __any &operator=(_Interface<_Other> __other) noexcept(__as_large_as<_Other>)
     {
       __reset(*this);
@@ -1914,7 +1914,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 
     template <class _Other>
       requires __extension_of<_Interface<_Other>, __icopyable>
-            && (_Other::__root_kind == __root_kind::__reference)
+            && (_Other::__root_kind == __root_kind::__by_reference)
     constexpr __any &operator=(_Interface<_Other> const &__other)
     {
       // Guard against self-assignment when __other is a reference to *this
@@ -1945,7 +1945,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     {
       using __root_t = __value_proxy_root<_Interface>;
       STDEXEC_CONSTEXPR_LOCAL
-      bool __is_value = _Other::__root_kind == __root_kind::__value;
+      bool __is_value = _Other::__root_kind == __root_kind::__by_value;
       STDEXEC_CONSTEXPR_LOCAL
       bool __ptr_convertible = std::derived_from<_Other, __iabstract<_Interface>>;
 
@@ -2066,7 +2066,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
 
     //! @param __other A pointer to a reference proxy model implementing _Interface.
     template <__extension_of<_Interface> _CvReferenceProxy>
-      requires(_CvReferenceProxy::__root_kind == __root_kind::__reference)
+      requires(_CvReferenceProxy::__root_kind == __root_kind::__by_reference)
     constexpr void __proxy_assign(_CvReferenceProxy *__proxy_ptr) noexcept
     {
       static_assert(_CvReferenceProxy::__box_kind == __box_kind::__proxy);

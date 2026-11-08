@@ -63,8 +63,8 @@ namespace STDEXEC
   {
     struct __try_cancelable
     {
-      explicit __try_cancelable(void (*__try_cancel)(__try_cancelable*) noexcept) noexcept
-        : __try_cancel_(__try_cancel)
+      explicit __try_cancelable(void (*__try_cancel_fn)(__try_cancelable*) noexcept) noexcept
+        : __try_cancel_(__try_cancel_fn)
       {}
 
       __try_cancelable(__try_cancelable&&) = delete;
@@ -146,10 +146,10 @@ namespace STDEXEC
       __variant_t __result_;
 
       explicit __spawn_future_state_base(
-        void (*__try_cancel)(__try_cancelable*) noexcept,
-        void (*__complete)(__spawn_future_state_base*) noexcept) noexcept
-        : __try_cancelable(__try_cancel)
-        , __complete_(__complete)
+        void (*__try_cancel_fn)(__try_cancelable*) noexcept,
+        void (*__complete_fn)(__spawn_future_state_base*) noexcept) noexcept
+        : __try_cancelable(__try_cancel_fn)
+        , __complete_(__complete_fn)
       {}
 
       __spawn_future_state_base(__spawn_future_state_base&&) = delete;
@@ -261,14 +261,14 @@ namespace STDEXEC
         // Write this before synchronizing with the producer, below.
         __callback_ = [](__spawn_future_state* __self, void* __ptr) noexcept
         {
-          auto& __rcvr = *static_cast<_Rcvr*>(__ptr);
+          auto& __registered_rcvr = *static_cast<_Rcvr*>(__ptr);
           if (__self != nullptr)
           {
-            __self->__do_consume(__rcvr);
+            __self->__do_consume(__registered_rcvr);
           }
           else
           {
-            STDEXEC::set_stopped(std::move(__rcvr));
+            STDEXEC::set_stopped(std::move(__registered_rcvr));
           }
         };
 

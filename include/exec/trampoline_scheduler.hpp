@@ -134,10 +134,10 @@ namespace experimental::execution
       {
         using __execute_fn = void(__opstate_base*) noexcept;
 
-        constexpr explicit __opstate_base(__execute_fn* __execute,
+        constexpr explicit __opstate_base(__execute_fn* __exec_fn,
                                           std::size_t   __max_size,
                                           std::size_t   __max_depth) noexcept
-          : __execute_(__execute)
+          : __execute_(__exec_fn)
           , __max_recursion_size_(__max_size)
           , __max_recursion_depth_(__max_depth)
         {}

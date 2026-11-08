@@ -52,8 +52,8 @@ namespace STDEXEC
   {
     struct __spawn_state_base
     {
-      explicit __spawn_state_base(void (*__complete)(__spawn_state_base*) noexcept) noexcept
-        : __complete_(__complete)
+      explicit __spawn_state_base(void (*__complete_fn)(__spawn_state_base*) noexcept) noexcept
+        : __complete_(__complete_fn)
       {}
 
       __spawn_state_base(__spawn_state_base&&) = delete;
@@ -247,14 +247,14 @@ namespace STDEXEC
     template <sender _Sender, scope_token _Token, class _Env>
     void operator()(_Sender&&, _Token, _Env&&) const
     {
-      using _spawn_sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
-      if constexpr (!sender_in<_spawn_sndr_t, _Env>)
+      using __sndr_t = spawn_t::_spawn_sndr_t<_Sender, _Token, _Env>;
+      if constexpr (!sender_in<__sndr_t, _Env>)
       {
-        __diagnose_sender_concept_failure<_spawn_sndr_t, _Env>();
+        __diagnose_sender_concept_failure<__sndr_t, _Env>();
       }
       else
       {
-        static_assert(__never_sends<STDEXEC::set_error_t, _spawn_sndr_t, _Env>,
+        static_assert(__never_sends<STDEXEC::set_error_t, __sndr_t, _Env>,
                       "spawn expects a sender that cannot fail");
       }
     }
