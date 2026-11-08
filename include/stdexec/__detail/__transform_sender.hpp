@@ -72,12 +72,25 @@ namespace STDEXEC
       }
     }
 
+    template <class _OpTag, class _Sndr, class _Env>
+    concept __has_tag_transform_sender = requires {
+      requires __has_transform_sender<tag_of_t<_Sndr>, _OpTag, _Sndr, _Env>;
+    };
+
     template <class _Domain, class _OpTag>
     struct __transform_sender
     {
       template <class _Sndr, class _Env>
       using __domain_for_t =
         __if_c<__has_transform_sender<_Domain, _OpTag, _Sndr, _Env>, _Domain, default_domain>;
+
+      // Whether this step is default_domain's, which returns the sender as it
+      // is. A caller holding a new sender an earlier step returned by value
+      // skips such a step, so that the sender can be returned without being
+      // moved.
+      template <class _Sndr, class _Env>
+      static constexpr bool __leaves_alone = __same_as<__domain_for_t<_Sndr, _Env>, default_domain>
+                                          && !__has_tag_transform_sender<_OpTag, _Sndr, _Env>;
 
       template <class _Sndr, class _Env, bool _Nothrow = true>
       STDEXEC_ATTRIBUTE(nodiscard, host, device)
@@ -99,18 +112,32 @@ namespace STDEXEC
         }
         else if constexpr (__same_as<_OpTag, start_t>)
         {
-          return __step_declfn<__result_t,
-                               __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>()>();
+          if constexpr (__leaves_alone<__result_t, _Env>)
+          {
+            return __declfn<__result_t, (_Nothrow && __is_nothrow)>();
+          }
+          else
+          {
+            return __step_declfn<__result_t,
+                                 __get_declfn<__result_t, _Env, (_Nothrow && __is_nothrow)>()>();
+          }
         }
         else
         {
           using __transform_recurse_t =
             __transform_sender<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
-          return __step_declfn<
-            __result_t,
-            __transform_recurse_t::template __get_declfn<__result_t,
-                                                         _Env,
-                                                         (_Nothrow && __is_nothrow)>()>();
+          if constexpr (__transform_recurse_t::template __leaves_alone<__result_t, _Env>)
+          {
+            return __declfn<__result_t, (_Nothrow && __is_nothrow)>();
+          }
+          else
+          {
+            return __step_declfn<
+              __result_t,
+              __transform_recurse_t::template __get_declfn<__result_t,
+                                                           _Env,
+                                                           (_Nothrow && __is_nothrow)>()>();
+          }
         }
       }
 
@@ -137,18 +164,31 @@ namespace STDEXEC
         }
         else if constexpr (__same_as<_OpTag, start_t>)
         {
-          return (
-            *this)(__domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env),
-                   __env);
+          if constexpr (__leaves_alone<__result_t, _Env>)
+          {
+            return __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env);
+          }
+          else
+          {
+            return (
+              *this)(__domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env),
+                     __env);
+          }
         }
         else
         {
           using __transform_recurse_t =
             __transform_sender<__completing_domain_t<void, __result_t, _Env>, set_value_t>;
-          return __transform_recurse_t()(__domain_t().transform_sender(_OpTag(),
-                                                                       static_cast<_Sndr&&>(__sndr),
-                                                                       __env),
-                                         __env);
+          if constexpr (__transform_recurse_t::template __leaves_alone<__result_t, _Env>)
+          {
+            return __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env);
+          }
+          else
+          {
+            return __transform_recurse_t()(
+              __domain_t().transform_sender(_OpTag(), static_cast<_Sndr&&>(__sndr), __env),
+              __env);
+          }
         }
       }
     };
@@ -165,6 +205,17 @@ namespace STDEXEC
 
       template <class _Sndr, class _Env>
       using __second_t = __call_result_t<_Fn1, __first_t<_Sndr, _Env>, _Env const &>;
+
+      // When the second step leaves alone what the first returns, it's skipped,
+      // so that a new sender the first returns by value isn't moved.
+      template <class _Sndr, class _Env>
+        requires(_Fn1::template __leaves_alone<__first_t<_Sndr, _Env>, _Env>)
+      STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
+      constexpr auto operator()(_Sndr&& __sndr, _Env const & __env) const
+        noexcept(__nothrow_callable<_Fn2, _Sndr, _Env const &>) -> __first_t<_Sndr, _Env>
+      {
+        return _Fn2()(static_cast<_Sndr&&>(__sndr), __env);
+      }
 
       template <class _Sndr, class _Env>
       STDEXEC_ATTRIBUTE(nodiscard, host, device, always_inline)
