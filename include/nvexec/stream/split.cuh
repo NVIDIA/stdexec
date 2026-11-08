@@ -381,9 +381,26 @@ namespace nv::execution::_strm
         STDEXEC::completion_signatures<set_error_t(cudaError_t const &), set_stopped_t()>());
     }
 
-    auto get_env() const noexcept -> stream_sender_attrs<Sender>
+    // Every completion of split_sender, including the set_error(cudaError_t) and
+    // set_stopped() completions it adds on its own, is delivered on the stream
+    // by propagate_completion_signal. Say so, rather than leaving the domains
+    // of the added channels for the child to (not) answer.
+    struct attrs : stream_sender_attrs<Sender>
     {
-      return {&sndr_};
+      using stream_sender_attrs<Sender>::query;
+
+      template <__one_of<set_value_t, set_error_t, set_stopped_t> Tag>
+      STDEXEC_ATTRIBUTE(nodiscard)
+      constexpr auto query(get_completion_domain_t<Tag>, __ignore = {}) const noexcept
+        -> stream_domain
+      {
+        return {};
+      }
+    };
+
+    auto get_env() const noexcept -> attrs
+    {
+      return {{&sndr_}};
     }
 
    private:
