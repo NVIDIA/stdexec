@@ -48,11 +48,12 @@
 #if STDEXEC_USE_MODULES()
 import std;
 #else
-#  include <cassert>
 #  include <cstdlib>
 #  include <type_traits>  // IWYU pragma: keep
 #  include <utility>      // IWYU pragma: keep for std::unreachable
 #endif
+
+#include <cassert>
 
 #if defined(__NVCC__)
 #  define STDEXEC_NVCC()       1

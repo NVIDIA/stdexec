@@ -20,6 +20,7 @@
 
 STDEXEC_PRAGMA_PUSH()
 STDEXEC_PRAGMA_IGNORE_GNU("-Wunused-parameter")
+STDEXEC_PRAGMA_IGNORE_GNU("-Wdeprecated-declaration")
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity)
 STDEXEC_PRAGMA_IGNORE_EDG(deprecated_entity_with_custom_message)
 
