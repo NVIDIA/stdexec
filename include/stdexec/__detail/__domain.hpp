@@ -81,7 +81,13 @@ namespace STDEXEC
       noexcept(__detail::__has_nothrow_transform_sender<tag_of_t<_Sender>, _OpTag, _Sender, _Env>)
         -> __detail::__transform_sender_result_t<tag_of_t<_Sender>, _OpTag, _Sender, _Env>
     {
-      return tag_of_t<_Sender>().transform_sender(_OpTag(), static_cast<_Sender &&>(__sndr), __env);
+      // The tag is named rather than a temporary, and cast rather than passed
+      // to std::move, because GCC before 14 moves the result of a static
+      // member function called through either of those
+      // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=110441).
+      tag_of_t<_Sender> __tag{};
+      return static_cast<tag_of_t<_Sender> &&>(__tag)
+        .transform_sender(_OpTag(), static_cast<_Sender &&>(__sndr), __env);
     }
 
     template <class _OpTag, class _Sender, class _Env>
@@ -98,7 +104,10 @@ namespace STDEXEC
     constexpr auto apply_sender(_Tag, _Args &&...__args) const
       -> __detail::__apply_sender_result_t<_Tag, _Args...>
     {
-      return _Tag().apply_sender(static_cast<_Args &&>(__args)...);
+      // Named and cast, not a temporary, for GCC before 14, as in
+      // transform_sender above.
+      _Tag __tag{};
+      return static_cast<_Tag &&>(__tag).apply_sender(static_cast<_Args &&>(__args)...);
     }
   };
 
