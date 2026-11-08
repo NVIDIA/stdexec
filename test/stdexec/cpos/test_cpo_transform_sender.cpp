@@ -243,4 +243,75 @@ namespace
     REQUIRE_THROWS_AS(ex::connect(std::move(sndr), receiver<false>{}), std::runtime_error);
   }
 #endif
+
+  //! A value that counts how often it's moved.
+  struct move_counter
+  {
+    explicit move_counter(int &moves) noexcept
+      : moves_(&moves)
+    {}
+
+    move_counter(move_counter &&other) noexcept
+      : moves_(other.moves_)
+    {
+      ++*moves_;
+    }
+
+    int *moves_;
+  };
+
+  //! A tag whose transform_sender and apply_sender are static member
+  //! functions, each returning a new move_counter by value.
+  struct static_tag
+  {
+    template <class Sndr, class Env>
+    static auto transform_sender(ex::set_value_t, Sndr &&sndr, Env const &) noexcept -> move_counter
+    {
+      auto &[tag, moves] = sndr;
+      return move_counter(*moves);
+    }
+
+    template <class Sndr>
+    static auto apply_sender(Sndr &&sndr) noexcept -> move_counter
+    {
+      auto &[tag, moves] = sndr;
+      return move_counter(*moves);
+    }
+  };
+
+  //! A sender whose tag is static_tag, holding where to count moves.
+  struct static_tag_sender : ex::__tuple<static_tag, int *>
+  {
+    using sender_concept        = ex::sender_tag;
+    using completion_signatures = ex::completion_signatures<ex::set_value_t()>;
+  };
+
+  TEST_CASE("default_domain doesn't move what a tag's static member function returns",
+            "[cpo][cpo_transform_sender]")
+  {
+    STATIC_REQUIRE(std::same_as<ex::tag_of_t<static_tag_sender>, static_tag>);
+
+    SECTION("transform_sender")
+    {
+      int  moves  = 0;
+      auto result = ex::default_domain().transform_sender(ex::set_value,
+                                                          static_tag_sender{
+                                                            {{}, &moves}
+      },
+                                                          ex::env<>{});
+      CHECK(moves == 0);
+      (void) result;
+    }
+
+    SECTION("apply_sender")
+    {
+      int  moves  = 0;
+      auto result = ex::default_domain().apply_sender(
+        static_tag{
+      },
+        static_tag_sender{{{}, &moves}});
+      CHECK(moves == 0);
+      (void) result;
+    }
+  }
 }  // namespace
