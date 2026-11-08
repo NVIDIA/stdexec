@@ -56,7 +56,7 @@ namespace frames::typestate
       struct iteration_tag
       {};
 
-      using parts_t = parts<&repeat_n_sender::sndr_>;
+      using parts_t = maybe_const<Const, parts<&repeat_n_sender::sndr_>>;
       using rcvr_t  = phase_receiver<opstate, Rcvr, iteration_tag, &repeat_n_sender::sndr_>;
       using child_t = bind_result_t<Sndr const, rcvr_t>;
 

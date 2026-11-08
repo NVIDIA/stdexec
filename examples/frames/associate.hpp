@@ -182,8 +182,10 @@ namespace frames::typestate
 
       using data_t = detail::associate_data<Sndr, Assoc>;
 
-      // Bound without consuming, the wrapped sender's operation finds it in
-      // the stored sender through its receiver, as any bound operation does.
+      // Reading its sender only, the operation binds the wrapped sender in
+      // place: under stored_sender, the wrapped sender's operation finds it
+      // in the stored sender through its receiver, as any bound operation
+      // does; under split_sender, it's connected from the operation's copy.
       struct bound_rcvr : phase_receiver<opstate, Rcvr, running_tag>
       {
         [[nodiscard]]
@@ -205,8 +207,8 @@ namespace frames::typestate
 
         template <class... Incoming>
           requires Const
-        explicit running(opstate* op, Incoming&...)
-          : child(typestate::bind(op->data().sender(), rcvr_t{{op}}))
+        explicit running(opstate* op, Incoming&... incoming)
+          : child(typestate::bind(op->data(incoming...).sender(), rcvr_t{{op}}))
         {}
 
         template <class... Incoming>
@@ -232,11 +234,12 @@ namespace frames::typestate
         explicit refused(opstate*) noexcept {}
       };
 
-      // Bound without consuming, the operation takes its own association
-      // now; otherwise it has none until running is entered.
+      // Reading its sender only (bound without consuming, or connected as
+      // an lvalue), the operation takes its own association now; otherwise
+      // it has none until running is entered.
       template <class... Incoming>
       explicit opstate(Rcvr rcvr, Incoming&... incoming)
-        : opstate(own_association(rcvr), static_cast<Rcvr&&>(rcvr), incoming...)
+        : opstate(own_association(rcvr, incoming...), static_cast<Rcvr&&>(rcvr), incoming...)
       {}
 
       template <class... Incoming>
@@ -273,11 +276,12 @@ namespace frames::typestate
         phases_.template finish<running>(Tag(), static_cast<As&&>(as)...);
       }
 
-      static auto own_association(Rcvr const & rcvr) -> Assoc
+      template <class... Incoming>
+      static auto own_association(Rcvr const & rcvr, Incoming&... incoming) -> Assoc
       {
         if constexpr (Const)
         {
-          return peek<&associate_sender::data_>(rcvr).reassociate();
+          return peek<&associate_sender::data_>(rcvr, incoming...).reassociate();
         }
         else
         {
@@ -341,7 +345,8 @@ namespace frames::typestate
         return static_cast<typename data_t::guard_t&&>(sndr);
       }
 
-      phased<Rcvr, parts<&associate_sender::data_>, Assoc, running, refused> phases_;
+      phased<Rcvr, maybe_const<Const, parts<&associate_sender::data_>>, Assoc, running, refused>
+        phases_;
     };
   };
 

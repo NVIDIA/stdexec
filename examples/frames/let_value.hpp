@@ -36,8 +36,7 @@ namespace frames::typestate
       }
       else
       {
-        using fn_ref =
-          std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
+        using fn_ref = std::conditional_t<reads_only<Self>, Fn const &, Fn&>;
         return exec::concat_completion_signatures(
           map_values<ending_of_t<Env...>>(
             ex::get_completion_signatures<member_t<Self, Sndr>, Env...>(),
@@ -133,12 +132,13 @@ namespace frames::typestate
         phases_.template finish<continuing<Ts...>>(Tag(), static_cast<As&&>(as)...);
       }
 
-      typename phased_with<Rcvr,
-                           parts<&let_value_sender::sndr_, &let_value_sender::fn_>,
-                           nothing,
-                           running,
-                           continuing,
-                           values_t>::type phases_;
+      typename phased_with<
+        Rcvr,
+        maybe_const<Const, parts<&let_value_sender::sndr_, &let_value_sender::fn_>>,
+        nothing,
+        running,
+        continuing,
+        values_t>::type phases_;
     };
   };
 

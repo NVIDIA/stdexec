@@ -144,21 +144,33 @@ lvalue, which copies. One semantic difference from connecting a copy: a
 function is shared by every bind rather than copied, so it must be callable
 as `const`.
 
+Connecting a sender as an lvalue works like the second form, under either
+Data policy: the operation copies what it uses of the sender and then only
+reads the copy. Under `stored_sender`, the root copies the whole sender and
+binds the copy through a const reference; under `split_sender`, the
+operation copies each part it uses, only reads them, and connects its
+children from them as const lvalues. The sender is unchanged, so it can be
+connected again (section 13). Reading the copy rather than consuming it
+costs a copy of each value an operation sends, where [exec]'s algorithms
+move from their copies (see Conformance).
+
 `repeat_n(sndr, n)` uses the non-consuming form: one phase, re-entered for
 each iteration, binding the stored child every time. Over 100 iterations
 (eager+split is `eager_teardown` with `split_sender`):
 
 | Moves (copies) | stdexec | eager | forward | eager+start | eager+split |
 |---|---|---|---|---|---|
-| `repeat_n(then(just(), fn capturing c))` | 402 (100) | 1 (0) | 1 (0) | 1 (0) | 101 (100) |
-| `repeat_n(then(just(c), drop))` | 402 (100) | 101 (100) | 1 (100) | 101 (100) | 301 (100) |
+| `repeat_n(then(just(), fn capturing c))` | 402 (100) | 1 (0) | 1 (0) | 1 (0) | 1 (100) |
+| `repeat_n(then(just(c), drop))` | 402 (100) | 101 (100) | 1 (100) | 101 (100) | 101 (200) |
 
 `exec::repeat_n` reconnects a copy of its child every iteration, captures
 included; bound to a stored sender, `repeat_n` never copies what its child
-only reads. Under `split_sender` it keeps its child and connects a copy each
-iteration too. Values the child sends are copied each time either way, since
-the receiver gets an rvalue; under `eager_teardown` each copy is moved once
-more onto the stack. Unlike `exec::repeat_n`, it doesn't trampoline, so a
+only reads. Under `split_sender` it keeps its child and connects it as a
+const lvalue each iteration, which copies what the child uses, captures
+included, and only reads the copy, so `just` copies its value once more as it
+sends it. Values the child sends are copied each time either way, since the
+receiver gets an rvalue; under `eager_teardown` each copy is moved once more
+onto the stack. Unlike `exec::repeat_n`, it doesn't trampoline, so a
 child that completes inline makes each iteration a nested call.
 
 An operation is in one of three states: *connected*, from `connect` until
@@ -197,6 +209,7 @@ stored sender as well, which is every level's carried data at once.
 | 10 | `then`'s function called as its child sent the values, under every ending. |
 | 11 | `finally` replaying its initial sender's value, error or stopped after its final sender, or completing as a failing final sender did, while its receiver destroys the operation from inside the completion; connecting its final sender just before its initial sender, by `connect` or by `start`, so that a final sender whose `connect` throws stops the initial sender from being connected; its final sender starting on its initial sender's completion scheduler, as `exec::finally`'s does. |
 | 12 | `associate` keeping its scope's association until its operation is destroyed, under every policy, as `stdexec::associate` does, and completing with `set_stopped()` when its scope refuses one. |
+| 13 | Connecting a sender as an lvalue, twice, and the copies that costs against stdexec's algorithms. |
 
 Costs (x86-64; GCC 14 and Clang 18, with libstdc++ or libc++, agree except
 where noted; "eager+start" is `eager_teardown` with `start_entry`, and
@@ -433,7 +446,12 @@ leaves things out or does them its own way:
 - Children see their parent's whole environment rather than its forwarding
   queries, and `let_value` adds no scheduler or domain to its second child's
   environment. The senders have no tag a domain could recognize and no
-  attributes, and connect as rvalues only.
+  attributes.
+- Connected as an lvalue, an operation only reads its copy of the sender,
+  where [exec]'s algorithms move from theirs: `then` calls its function as
+  `const`, `just` copies its values again as it sends them, and `associate`
+  takes an association for the operation besides its copy's, except under
+  `split_sender` with `connect_entry`, where it keeps no copy.
 - Against `exec::repeat_n`, `repeat_n` doesn't trampoline, which
   `exec::repeat_n` pays for in bytes and moves.
 

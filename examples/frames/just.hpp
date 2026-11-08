@@ -27,7 +27,7 @@ namespace frames::typestate
       {
         return STDEXEC::__throw_dependent_sender_error<Self>();
       }
-      else if constexpr (std::is_const_v<std::remove_reference_t<Self>>)
+      else if constexpr (reads_only<Self>)
       {
         // Bound without consuming: the values are copied.
         return sent_as_copies(ex::completion_signatures<ex::set_value_t(Vs const &...)>());
@@ -41,7 +41,7 @@ namespace frames::typestate
     template <class Rcvr, bool Const = false>
     struct opstate
     {
-      using parts_t = parts<&just_sender::values_>;
+      using parts_t = maybe_const<Const, parts<&just_sender::values_>>;
 
       struct ready
       {

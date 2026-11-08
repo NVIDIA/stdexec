@@ -419,7 +419,7 @@ namespace frames::typestate
         }
       }
 
-      phased<Rcvr, parts<member<Is>...>, nothing, running> phases_;
+      phased<Rcvr, maybe_const<Const, parts<member<Is>...>>, nothing, running> phases_;
     };
   };
 

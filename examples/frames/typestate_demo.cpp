@@ -126,6 +126,17 @@ namespace
     }
   }
 
+  // Moves and copies while connecting the lvalue `sndr`, which stays
+  // usable, to a sink whose environment is Env and starting it, as "m (c)".
+  template <class Env = ex::env<>, class Sndr>
+  auto count_lvalue(Sndr const & sndr) -> std::string
+  {
+    counted::copies = counted::moves = 0;
+    auto op                          = ex::connect(sndr, sink<Env>());
+    ex::start(op);
+    return std::to_string(counted::moves) + " (" + std::to_string(counted::copies) + ")";
+  }
+
   // A column of the cost tables: one ending, one entry and one way of keeping
   // the sender's data, with whichever layout the row asks for.
   template <class Ending, class Entry, class Data = ts::stored_sender>
@@ -184,6 +195,22 @@ namespace
                     count<ts::policies_env<typename Columns::template policies<Layout>>>(
                       make_counted())
                       .c_str())),
+       ...);
+    }(eager(), forward(), eager_start(), eager_split());
+    std::printf("\n");
+  }
+
+  // A row of move counts for connecting the lvalue sndr, under each
+  // column's policies.
+  template <class Sndr>
+  void lvalue_row(char const * label, std::string const & stdexec_count, Sndr const & sndr)
+  {
+    std::printf("    %-44s %10s", label, stdexec_count.c_str());
+    [&]<class... Columns>(Columns...)
+    {
+      ((std::printf(
+         " %10s",
+         count_lvalue<ts::policies_env<typename Columns::template policies<>>>(sndr).c_str())),
        ...);
     }(eager(), forward(), eager_start(), eager_split());
     std::printf("\n");
@@ -1072,5 +1099,43 @@ int main()
     scope.closed = true;
     show("closed, eager:", ours, ts::policies_env<eager::policies<>>());
     show("closed, stdexec:", theirs, ex::env<>());
+  }
+
+  {
+    section("13. Connecting an lvalue copies the sender, which stays usable");
+    // Connected as an lvalue, an operation copies what it uses of the
+    // sender, into the root under stored_sender or into itself under
+    // split_sender, and then only reads the copy, as when it's bound without
+    // consuming. The sender is unchanged, so it can be connected again.
+    auto greet = ts::then(ts::just(std::string("hello")),
+                          [](std::string const & s) { return s + ", again"; });
+    for (int i = 0; i != 2; ++i)
+    {
+      auto [s] = ex::sync_wait(greet).value();
+      std::printf("    connected %s: %s\n", i == 0 ? "once " : "twice", s.c_str());
+    }
+
+    // Copies are made once, as the operation copies the sender; a value
+    // the operation sends is then copied again, since the operation can't
+    // move from what it only reads.
+    auto drop = [](auto&&...) noexcept {};
+    auto c = counted();
+    std::printf("\n    %-44s %10s %10s %10s %10s %10s\n",
+                "moves (copies)",
+                "stdexec",
+                "eager",
+                "forward",
+                "eag+start",
+                "eag+split");
+    lvalue_row("then(just(c), drop)",
+               count_lvalue(ex::then(ex::just(c), drop)),
+               ts::then(ts::just(c), drop));
+    lvalue_row("then(just(), fn capturing c)",
+               count_lvalue(ex::then(ex::just(), [c]() noexcept {})),
+               ts::then(ts::just(), [c]() noexcept {}));
+    lvalue_row("let_value(just(c), fn)",
+               count_lvalue(
+                 ex::let_value(ex::just(c), [](counted&) noexcept { return ex::just(); })),
+               ts::let_value(ts::just(c), [](counted&) noexcept { return ts::just(); }));
   }
 }

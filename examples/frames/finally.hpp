@@ -221,12 +221,13 @@ namespace frames::typestate
           });
       }
 
-      typename phased_with<Rcvr,
-                           parts<&finally_sender::initial_, &finally_sender::final_>,
-                           env2_t,
-                           running,
-                           finalizing,
-                           results_t>::type phases_;
+      typename phased_with<
+        Rcvr,
+        maybe_const<Const, parts<&finally_sender::initial_, &finally_sender::final_>>,
+        env2_t,
+        running,
+        finalizing,
+        results_t>::type phases_;
     };
   };
   template <class Initial, class Final>

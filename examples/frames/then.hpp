@@ -29,8 +29,7 @@ namespace frames::typestate
       else
       {
         // Bound without consuming, fn is called as const.
-        using fn_ref =
-          std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, Fn const &, Fn&>;
+        using fn_ref   = std::conditional_t<reads_only<Self>, Fn const &, Fn&>;
         using ending_t = ending_of_t<Env...>;
         // fn may throw, as may copying its arguments under eager_teardown,
         // or its result if it returns a reference.
@@ -62,7 +61,7 @@ namespace frames::typestate
       struct running_tag
       {};
 
-      using parts_t = parts<&then_sender::sndr_, &then_sender::fn_>;
+      using parts_t = maybe_const<Const, parts<&then_sender::sndr_, &then_sender::fn_>>;
       using rcvr_t  = phase_receiver<opstate, Rcvr, running_tag, &then_sender::sndr_>;
       using child_t = part_child_t<maybe_const<Const, Sndr>, rcvr_t>;
 

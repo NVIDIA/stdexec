@@ -110,7 +110,7 @@ namespace frames::typestate
         phases_.template finish<second>(Tag(), static_cast<As&&>(as)...);
       }
 
-      using parts_t = parts<&sequence_sender::sndr1_, &sequence_sender::sndr2_>;
+      using parts_t = maybe_const<Const, parts<&sequence_sender::sndr1_, &sequence_sender::sndr2_>>;
 
       phased<Rcvr, parts_t, nothing, first, second> phases_;
     };

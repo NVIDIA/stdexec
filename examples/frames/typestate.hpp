@@ -30,8 +30,9 @@
  * in just.hpp, then.hpp, let_value.hpp, sequence.hpp, repeat_n.hpp,
  * when_all.hpp, finally.hpp and associate.hpp.
  *
- * Prototype simplifications: senders are connected as rvalues only; a
- * child's connect is assumed to be able to throw, so an algorithm declares
+ * Prototype simplifications: a sender connected as an lvalue is copied and
+ * then only read, as when it's bound without consuming; a child's connect
+ * is assumed to be able to throw, so an algorithm declares
  * set_error_t(std::exception_ptr) wherever one would be reported that way
  * (see start_enters); and let_value doesn't add a completion scheduler to
  * its second phase's environment.
@@ -619,11 +620,17 @@ namespace frames::typestate
   template <bool Const, class T>
   using maybe_const = std::conditional_t<Const, T const, T>;
 
+  // Whether an operation made from a sender used as Self only reads the
+  // sender: when it's bound without consuming (Self is const), or connected
+  // as an lvalue, which copies it and reads the copy.
+  template <class Self>
+  inline constexpr bool reads_only = std::is_lvalue_reference_v<Self>
+                                  || std::is_const_v<std::remove_reference_t<Self>>;
+
   // How a sender's member is used when the sender is used as Self: as an
-  // rvalue, or as a const lvalue when Self is const (binding without
-  // consuming).
+  // rvalue, or as a const lvalue when the operation only reads the sender.
   template <class Self, class T>
-  using member_t = std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, T const &, T>;
+  using member_t = std::conditional_t<reads_only<Self>, T const &, T>;
 
   // Starts a phase's child: what most algorithms do on entering a phase.
   inline constexpr auto start_child = [](auto& phase) noexcept
@@ -830,7 +837,10 @@ namespace frames::typestate
   //       own storage each of the parts the operation uses (Parts), for as
   //       long as the operation, except the parts a first phase connects
   //       as it's entered by connect, which go straight from the incoming
-  //       sender into connect, as stdexec's algorithms do.
+  //       sender into connect, as stdexec's algorithms do. An operation
+  //       that only reads its sender (Parts is const) copies the parts
+  //       instead, reads them only, and connects its children from them as
+  //       const lvalues.
   //
   // Under AddressSanitizer, storage no phase occupies is poisoned, so
   // touching a phase after it has ended (a child that touches its own state
@@ -850,7 +860,7 @@ namespace frames::typestate
   template <class Sndr, class Rcvr>
   struct part_child<split_sender, Sndr, Rcvr>
   {
-    using type = ex::connect_result_t<std::remove_const_t<Sndr>, Rcvr>;
+    using type = bind_result_t<Sndr, Rcvr>;
   };
 
   // The type of a child that connect_part makes from a part of type Sndr
@@ -945,6 +955,13 @@ namespace frames::typestate
 
     static constexpr bool split = std::is_same_v<Data, split_sender>;
 
+    // Whether the operation only reads its sender, so that under
+    // split_sender its parts are copied, and part<M>() gives them out as
+    // const. They're stored non-const all the same, so that what moves
+    // them (a compiler that doesn't elide the copy of make_parts' result
+    // into parts_, which is [[no_unique_address]]) can.
+    static constexpr bool read_only = std::is_const_v<Parts>;
+
     // What the first phase enters just before itself, if anything.
     using slot_t = typename detail::slot_of<First>::type;
 
@@ -1006,6 +1023,10 @@ namespace frames::typestate
         {
           return nothing();
         }
+        else if constexpr (read_only)
+        {
+          return (std::as_const(sndr.*M));
+        }
         else
         {
           return static_cast<detail::member_type_t<M>&&>(sndr.*M);
@@ -1019,9 +1040,11 @@ namespace frames::typestate
       }
     };
 
-    using parts_t = std::conditional_t<split, split_parts<Parts>, void>;
+    using parts_t = std::conditional_t<split, split_parts<std::remove_const_t<Parts>>, void>;
     using parts_storage_t =
-      std::conditional_t<split, typename split_parts<Parts>::type, detail::no_parts>;
+      std::conditional_t<split,
+                         typename split_parts<std::remove_const_t<Parts>>::type,
+                         detail::no_parts>;
 
     template <class... Incoming>
     static auto make_parts([[maybe_unused]] Incoming&... incoming) -> parts_storage_t
@@ -1040,7 +1063,8 @@ namespace frames::typestate
 
    public:
     // Under split_sender, `incoming` is the sender being connected; the
-    // parts the operation uses are moved out of it.
+    // parts the operation uses are moved out of it, or copied if the
+    // operation only reads it.
     template <class CarriedInit, class... Incoming>
     phased(Rcvr rcvr, CarriedInit&& carried, Incoming&... incoming)
       : rcvr_(static_cast<Rcvr&&>(rcvr))
@@ -1150,7 +1174,12 @@ namespace frames::typestate
     template <auto M>
     auto part() noexcept -> decltype(auto)
     {
-      if constexpr (split)
+      if constexpr (split && read_only)
+      {
+        static_assert(!connected_on_entry<M>, "the first phase connected this part on entry");
+        return std::as_const(std::get<parts_t::template index<M>>(parts_));
+      }
+      else if constexpr (split)
       {
         static_assert(!connected_on_entry<M>, "the first phase connected this part on entry");
         return (std::get<parts_t::template index<M>>(parts_));
@@ -1171,13 +1200,11 @@ namespace frames::typestate
       else if constexpr (connected_on_entry<M>)
       {
         static_assert(sizeof...(Incoming) == 1, "a part connected on entry comes from the sender");
-        return ex::connect(static_cast<detail::member_type_t<M>&&>(incoming.*M)...,
-                           static_cast<R&&>(rcvr));
+        return typestate::bind(incoming.*M..., static_cast<R&&>(rcvr));
       }
       else
       {
-        return ex::connect(static_cast<detail::member_type_t<M>&&>(part<M>()),
-                           static_cast<R&&>(rcvr));
+        return typestate::bind(part<M>(), static_cast<R&&>(rcvr));
       }
     }
 
@@ -1886,7 +1913,7 @@ namespace frames::typestate
   // The receiver the root binds its sender with: the caller's receiver, plus
   // where the stored sender is. It's the only pointer to a sender in the
   // tree; every bound operation below finds its own sender through its
-  // receiver.
+  // receiver. Sndr is const if the root binds it without consuming.
   template <class Sndr, class Rcvr>
   struct root_receiver
   {
@@ -1925,17 +1952,22 @@ namespace frames::typestate
     Sndr* sndr;
   };
 
-  // What every typestate sender's connect returns: the sender, stored once,
-  // and the operation bound to it. The stored sender is the operation's
-  // carried state, all the way down; nothing below it copies the data again.
-  template <class Sndr, class Rcvr>
+  // What every typestate sender's connect returns under stored_sender: the
+  // sender, stored once, and the operation bound to it. The stored sender is
+  // the operation's carried state, all the way down; nothing below it copies
+  // the data again. Connected as an rvalue, the sender is moved in and bound
+  // through a non-const reference, so the operation may consume it;
+  // connected as an lvalue, it's copied in and bound through a const one, so
+  // the operation only reads the copy (Const).
+  template <class Sndr, class Rcvr, bool Const = false>
   struct root
   {
-    using rcvr_t = root_receiver<Sndr, Rcvr>;
+    using rcvr_t = root_receiver<maybe_const<Const, Sndr>, Rcvr>;
 
-    root(Sndr&& sndr, Rcvr rcvr)
-      : stored(static_cast<Sndr&&>(sndr))
-      , op(stored.bind(rcvr_t{static_cast<Rcvr&&>(rcvr), &stored}))
+    template <class S>
+    root(S&& sndr, Rcvr rcvr)
+      : stored(static_cast<S&&>(sndr))
+      , op(stored_ref().bind(rcvr_t{static_cast<Rcvr&&>(rcvr), &stored_ref()}))
     {}
 
     void start() & noexcept
@@ -1943,23 +1975,35 @@ namespace frames::typestate
       ex::start(op);
     }
 
-    Sndr                                                         stored;
-    decltype(std::declval<Sndr&>().bind(std::declval<rcvr_t>())) op;
+    auto stored_ref() noexcept -> maybe_const<Const, Sndr>&
+    {
+      return stored;
+    }
+
+    Sndr                                                                             stored;
+    decltype(std::declval<maybe_const<Const, Sndr>&>().bind(std::declval<rcvr_t>())) op;
   };
 
   // What a phase-based sender's connect returns: under stored_sender, a root
   // storing the sender; under split_sender, the operation itself, which
-  // moves the sender's parts out of it.
+  // moves the sender's parts out of it, or copies them from a sender
+  // connected as an lvalue.
   template <class Sndr, class Rcvr>
   auto connect_sender(Sndr& sndr, Rcvr rcvr)
   {
+    using sndr_t          = std::remove_const_t<Sndr>;
+    constexpr bool lvalue = std::is_const_v<Sndr>;
     if constexpr (std::is_same_v<typename policies_of_t<ex::env_of_t<Rcvr>>::data, split_sender>)
     {
-      return typename Sndr::template opstate<Rcvr>(static_cast<Rcvr&&>(rcvr), sndr);
+      return typename sndr_t::template opstate<Rcvr, lvalue>(static_cast<Rcvr&&>(rcvr), sndr);
+    }
+    else if constexpr (lvalue)
+    {
+      return root<sndr_t, Rcvr, true>(sndr, static_cast<Rcvr&&>(rcvr));
     }
     else
     {
-      return root<Sndr, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
+      return root<sndr_t, Rcvr>(static_cast<Sndr&&>(sndr), static_cast<Rcvr&&>(rcvr));
     }
   }
 
@@ -1974,9 +2018,10 @@ namespace frames::typestate
   {};
 
   // The base of every phase-based sender, Derived, whose operations are
-  // Derived::opstate<Rcvr, Const>: Const when bound through a const
-  // reference. It connects, under either Data policy, and binds to a stored
-  // sender. The base comes first, so Derived is initialized as {{}, ...}.
+  // Derived::opstate<Rcvr, Const>: Const when the operation only reads its
+  // sender, bound through a const reference or connected as an lvalue. It
+  // connects, under either Data policy, and binds to a stored sender. The
+  // base comes first, so Derived is initialized as {{}, ...}.
   template <class Derived, class Binding = may_consume>
   struct phased_sender
   {
@@ -1986,6 +2031,15 @@ namespace frames::typestate
     auto connect(Rcvr rcvr) &&
     {
       return connect_sender(static_cast<Derived&>(*this), static_cast<Rcvr&&>(rcvr));
+    }
+
+    // Connected as an lvalue, the operation copies what it uses of the
+    // sender and only reads the copy, as when it's bound without consuming.
+    template <class Rcvr>
+      requires std::copy_constructible<Derived>
+    auto connect(Rcvr rcvr) const &
+    {
+      return connect_sender(static_cast<Derived const &>(*this), static_cast<Rcvr&&>(rcvr));
     }
 
     template <class Rcvr>
