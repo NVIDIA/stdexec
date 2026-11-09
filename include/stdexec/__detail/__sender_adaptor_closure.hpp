@@ -35,11 +35,13 @@ import stdexec;
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp>
   concept __sender_adaptor_closure =
     __std::derived_from<__decay_t<_Tp>, sender_adaptor_closure<__decay_t<_Tp>>>
     && __std::move_constructible<__decay_t<_Tp>> && __std::constructible_from<__decay_t<_Tp>, _Tp>;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _Tp, class _Sender>
   concept __sender_adaptor_closure_for = __sender_adaptor_closure<_Tp> && sender<__decay_t<_Sender>>
                                       && __callable<_Tp, __decay_t<_Sender>>
