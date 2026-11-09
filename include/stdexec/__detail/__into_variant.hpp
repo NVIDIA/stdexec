@@ -128,11 +128,13 @@ namespace STDEXEC
   //! any sender into the *single-value-completion* category that
   //! @c when_all and @c sync_wait require.
   //!
-  //! Both call syntaxes are supported (the second is the *pipeable* form):
+  //! Since it takes only one argument, @c into_variant is a sender adaptor
+  //! closure object ([exec.adapt.obj]/4), so it can be piped directly:
   //!
   //! @code{.cpp}
   //! auto s1 = stdexec::into_variant(sndr);    // direct invocation
-  //! auto s2 = sndr | stdexec::into_variant(); // pipe syntax (no args)
+  //! auto s2 = sndr | stdexec::into_variant;   // pipe syntax
+  //! auto s3 = sndr | stdexec::into_variant(); // also accepted
   //! @endcode
   //!
   //! **Completion signatures.**
@@ -189,7 +191,7 @@ namespace STDEXEC
   //! @see stdexec::sync_wait_with_variant — variant-aware top-level wait
   //! @see stdexec::sync_wait              — requires a single value-completion
   //!                                        shape
-  struct into_variant_t
+  struct into_variant_t : sender_adaptor_closure<into_variant_t>
   {
     //! @brief Construct a sender that value-completes with a
     //!        @c std::variant of the possible value-completion tuples of
@@ -207,18 +209,14 @@ namespace STDEXEC
       return __sexpr{into_variant_t(), __(), static_cast<_Sender&&>(__sndr)};
     }
 
-    //! @brief Construct a sender-adaptor closure that, when applied to a
-    //!        sender, produces `into_variant(sndr)`.
+    //! @brief Returns @c *this, so that the older spelling
+    //!        `sndr | into_variant()` keeps working.
     //!
-    //! This overload enables the pipe syntax:
-    //! `sndr | into_variant()` is equivalent to
-    //! `into_variant(sndr)`.
-    //!
-    //! @returns A sender-adaptor closure object.
+    //! @returns A copy of this sender adaptor closure object.
     STDEXEC_ATTRIBUTE(always_inline)
-    constexpr auto operator()() const noexcept
+    constexpr auto operator()() const noexcept -> into_variant_t
     {
-      return __closure(*this);
+      return *this;
     }
   };
 
