@@ -25,6 +25,7 @@ import stdexec;
 
 #  include "__execution_fwd.hpp"
 
+#  include "../functional.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__concepts.hpp"
 #  include "__tuple.hpp"
@@ -36,43 +37,25 @@ import stdexec;
 namespace STDEXEC
 {
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Tp>
+  template <class _Closure>
   concept __sender_adaptor_closure =
-    __std::derived_from<__decay_t<_Tp>, sender_adaptor_closure<__decay_t<_Tp>>>
-    && __std::move_constructible<__decay_t<_Tp>> && __std::constructible_from<__decay_t<_Tp>, _Tp>;
+    __std::derived_from<__decay_t<_Closure>, sender_adaptor_closure<__decay_t<_Closure>>>
+    && __movable_value<_Closure>;
 
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Tp, class _Sender>
-  concept __sender_adaptor_closure_for = __sender_adaptor_closure<_Tp> && sender<__decay_t<_Sender>>
-                                      && __callable<_Tp, __decay_t<_Sender>>
-                                      && sender<__call_result_t<_Tp, __decay_t<_Sender>>>;
+  template <class _Closure, class _Sender>
+  concept __sender_adaptor_closure_for = __sender_adaptor_closure<_Closure> && sender<_Sender>
+                                      && __callable<_Closure, _Sender>
+                                      && sender<__call_result_t<_Closure, _Sender>>;
 
   namespace __clsur
   {
-    template <class _T0, class _T1>
-    struct __compose : sender_adaptor_closure<__compose<_T0, _T1>>
-    {
-      template <sender _Sender>
-        requires __callable<_T0, _Sender> && __callable<_T1, __call_result_t<_T0, _Sender>>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Sender&& __sndr) && -> __call_result_t<_T1, __call_result_t<_T0, _Sender>>
-      {
-        return static_cast<_T1&&>(__t1_)(static_cast<_T0&&>(__t0_)(static_cast<_Sender&&>(__sndr)));
-      }
-
-      template <sender _Sender>
-        requires __callable<const _T0&, _Sender>
-              && __callable<const _T1&, __call_result_t<const _T0&, _Sender>>
-      STDEXEC_ATTRIBUTE(always_inline)
-      auto operator()(_Sender&& __sndr)
-        const & -> __call_result_t<const _T1&, __call_result_t<const _T0&, _Sender>>
-      {
-        return __t1_(__t0_(static_cast<_Sender&&>(__sndr)));
-      }
-
-      STDEXEC_ATTRIBUTE(no_unique_address) _T0 __t0_;
-      STDEXEC_ATTRIBUTE(no_unique_address) _T1 __t1_;
-    };
+    STDEXEC_MODULE_EXPORT_AUTHORING
+    template <class _Closure0, class _Closure1>
+    struct STDEXEC_ATTRIBUTE(empty_bases) __composed
+      : sender_adaptor_closure<__composed<_Closure0, _Closure1>>
+      , STDEXEC::__composed<_Closure0, _Closure1>
+    {};
 
     struct __sender_adaptor_closure_base
     {
@@ -87,9 +70,12 @@ namespace STDEXEC
       template <__sender_adaptor_closure _T0, __sender_adaptor_closure _T1>
       STDEXEC_ATTRIBUTE(always_inline)
       friend constexpr auto operator|(_T0&& __t0, _T1&& __t1)
-        noexcept(__nothrow_decay_copyable<_T0, _T1>) -> __compose<__decay_t<_T0>, __decay_t<_T1>>
+        noexcept(__nothrow_decay_copyable<_T0, _T1>) -> __composed<__decay_t<_T1>, __decay_t<_T0>>
       {
-        return {{}, static_cast<_T0&&>(__t0), static_cast<_T1&&>(__t1)};
+        return {
+          {},
+          {static_cast<_T1&&>(__t1), static_cast<_T0&&>(__t0)}
+        };
       }
     };
   }  // namespace __clsur
@@ -103,6 +89,8 @@ namespace STDEXEC
   template <class _Fn, class... _As>
   struct __closure : sender_adaptor_closure<__closure<_Fn, _As...>>
   {
+    static_assert(__decayed<_Fn, _As...>);
+
     template <__not_decays_to<__closure> _FnFwd = _Fn, class... _AsFwd>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr explicit __closure(_FnFwd&& __fn, _AsFwd&&... __as)
@@ -111,25 +99,18 @@ namespace STDEXEC
       , __args_{static_cast<_AsFwd&&>(__as)...}
     {}
 
-    template <sender _Sender>
-      requires __callable<_Fn, _Sender, _As...>
+    template <class _Self, sender _Sender>
+      requires __callable<__copy_cvref_t<_Self, _Fn>, _Sender, __copy_cvref_t<_Self, _As>...>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto
-    operator()(_Sender&& __sndr) && noexcept(__nothrow_callable<_Fn, _Sender, _As...>)
+    constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self&& __self, _Sender&& __sndr)
+      noexcept(
+        __nothrow_callable<__copy_cvref_t<_Self, _Fn>, _Sender, __copy_cvref_t<_Self, _As>...>)
     {
-      return STDEXEC::__apply(static_cast<_Fn&&>(__fn_),
-                              static_cast<__tuple<_As...>&&>(__args_),
+      return STDEXEC::__apply(static_cast<_Self&&>(__self).__fn_,
+                              static_cast<_Self&&>(__self).__args_,
                               static_cast<_Sender&&>(__sndr));
     }
-
-    template <sender _Sender>
-      requires __callable<_Fn const &, _Sender, _As const &...>
-    STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_Sender&& __sndr) const & noexcept(
-      __nothrow_callable<_Fn const &, _Sender, _As const &...>)
-    {
-      return STDEXEC::__apply(__fn_, __args_, static_cast<_Sender&&>(__sndr));
-    }
+    STDEXEC_EXPLICIT_THIS_END(operator())
 
    private:
     STDEXEC_ATTRIBUTE(no_unique_address) _Fn __fn_;

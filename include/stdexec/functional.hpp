@@ -36,31 +36,35 @@ import stdexec;
 namespace STDEXEC
 {
   template <class _Fun0, class _Fun1>
-  struct __composed
+  struct STDEXEC_ATTRIBUTE(empty_bases) __composed
+    : _Fun0
+    , _Fun1
   {
+    // clang-format off
     template <class _Self, class... _Ts>
       requires __callable<__copy_cvref_t<_Self, _Fun1>, _Ts...>
             && __callable<__copy_cvref_t<_Self, _Fun0>,
                           __call_result_t<__copy_cvref_t<_Self, _Fun1>, _Ts...>>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...__ts)
-      STDEXEC_AUTO_RETURN(  //
-        static_cast<_Self &&>(__self).__t0_(
-          static_cast<_Self &&>(__self).__t1_(static_cast<_Ts &&>(__ts)...)))  //
-      STDEXEC_EXPLICIT_THIS_END(operator())
-
-        STDEXEC_ATTRIBUTE(no_unique_address) _Fun0 __t0_;
-    STDEXEC_ATTRIBUTE(no_unique_address) _Fun1 __t1_;
+      STDEXEC_AUTO_RETURN(
+        static_cast<__copy_cvref_t<_Self, _Fun0> &&>(__self)(
+          static_cast<__copy_cvref_t<_Self, _Fun1> &&>(__self)(static_cast<_Ts &&>(__ts)...)))
+    STDEXEC_EXPLICIT_THIS_END(operator())
+    // clang-format on
   };
+
+  template <class _Fun0, class _Fun1>
+  STDEXEC_HOST_DEVICE_DEDUCTION_GUIDE __composed(_Fun0, _Fun1) -> __composed<_Fun0, _Fun1>;
 
   inline constexpr struct __compose_t
   {
     template <class _Fun0, class _Fun1>
     STDEXEC_ATTRIBUTE(host, device, always_inline)
-    constexpr auto operator()(_Fun0 __fun0, _Fun1 __fun1) const
-      noexcept(__nothrow_move_constructible<_Fun0, _Fun1>) -> __composed<_Fun0, _Fun1>
+    constexpr auto operator()(_Fun0 &&__fun0, _Fun1 &&__fun1) const
+      noexcept(__nothrow_decay_copyable<_Fun0, _Fun1>)
     {
-      return {static_cast<_Fun0 &&>(__fun0), static_cast<_Fun1 &&>(__fun1)};
+      return __composed{static_cast<_Fun0 &&>(__fun0), static_cast<_Fun1 &&>(__fun1)};
     }
   } __compose{};
 
