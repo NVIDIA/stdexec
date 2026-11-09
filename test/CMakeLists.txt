@@ -30,6 +30,7 @@ endfunction()
 
 set(stdexec_test_sources
     test_main.cpp
+    stdexec/algos/adaptors/test_affine.cpp
     stdexec/algos/adaptors/test_associate.cpp
     stdexec/algos/adaptors/test_bulk.cpp
     stdexec/algos/adaptors/test_continues_on.cpp

@@ -821,9 +821,10 @@ form.
     auto [v] = stdexec::sync_wait(std::move(single)).value();
     std::visit([](auto&& tup) { /* ... */ }, v);
 
-The pipe form ``sndr | into_variant()`` is equivalent. Note the *empty*
-parentheses — there are no other arguments to pass; the closure exists
-purely for the pipe syntax.
+The pipe form ``sndr | into_variant`` is equivalent. Since ``into_variant``
+takes no arguments besides the sender, it is itself a sender adaptor
+closure, so no parentheses are needed. The older spelling
+``sndr | into_variant()`` still works.
 
 Parallel-loop adaptors
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -928,7 +929,7 @@ predecessor's value (when it completes successfully) in a
 
 .. code-block:: cpp
 
-    auto sndr = stdexec::just(42) | stdexec::stopped_as_optional();
+    auto sndr = stdexec::just(42) | stdexec::stopped_as_optional;
     auto [opt] = stdexec::sync_wait(std::move(sndr)).value();
     // opt == std::optional<int>{42}
 
