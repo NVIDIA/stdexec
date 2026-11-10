@@ -34,6 +34,7 @@ import stdexec;
 #  include "../stdexec/__detail/__normalize_completion_signature.hpp"
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
+#  include "../stdexec/__detail/__sequence.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
 #  include "../stdexec/__detail/__transform_sender.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
@@ -328,6 +329,49 @@ namespace experimental::execution
     requires __transparent_sequence_adaptor<STDEXEC::__sexpr<_Tag, _Data, _Child...>>
   inline constexpr bool enable_sequence_sender<STDEXEC::__sexpr<_Tag, _Data, _Child...>> = true;
 
+  // A `__sequence` of two senders whose second sender is a sequence sender
+  // runs the first sender and then subscribes to the sequence, so it is a
+  // sequence sender too. `starts_on(sch, seq)` lowers itself to such a
+  // `__sequence` (see `starts_on_t::transform_sender`). See issue #2053.
+  template <class _Sender>
+  struct __seq_then_sequence_parts
+  {
+    static constexpr bool __value = false;
+  };
+
+  template <class _Sender1, class _Sequence>
+  struct __seq_then_sequence_parts<STDEXEC::__seq::__sndr<_Sender1, _Sequence>>
+  {
+    static constexpr bool __value = enable_sequence_sender<_Sequence>;
+    using __first_t               = _Sender1;
+    using __sequence_t            = _Sequence;
+  };
+
+  template <class _Sender>
+  concept __seq_then_sequence = __seq_then_sequence_parts<STDEXEC::__decay_t<_Sender>>::__value;
+
+  // The environment in which the sequence of a `__seq_then_sequence` is
+  // subscribed, given the environment of the receiver.
+  template <class _Sender, class _Env>
+  using __seq_then_sequence_env_t =
+    typename STDEXEC::__decay_t<_Sender>::template __env2_t<_Sender, _Env>;
+
+  template <class _Sender1, class _Sequence>
+    requires enable_sequence_sender<_Sequence>
+  inline constexpr bool enable_sequence_sender<STDEXEC::__seq::__sndr<_Sender1, _Sequence>> = true;
+
+  // `starts_on` over a sequence sender. See issue #2053.
+  template <class _Sender>
+  concept __starts_on_sequence =
+    STDEXEC::__minvocable_q<STDEXEC::tag_of_t, STDEXEC::__decay_t<_Sender>>
+    && STDEXEC::__same_as<STDEXEC::tag_of_t<STDEXEC::__decay_t<_Sender>>, STDEXEC::starts_on_t>
+    && enable_sequence_sender<STDEXEC::__decay_t<STDEXEC::__child_of<_Sender>>>;
+
+  template <class _Scheduler, class _Sequence>
+    requires enable_sequence_sender<_Sequence>
+  inline constexpr bool
+    enable_sequence_sender<STDEXEC::__sexpr<STDEXEC::starts_on_t, _Scheduler, _Sequence>> = true;
+
   STDEXEC_MODULE_EXPORT
   template <class... _Senders>
   struct item_types
@@ -443,6 +487,38 @@ namespace experimental::execution
         {
           return __get_item_types_helper<STDEXEC::__child_of<_Sequence>,
                                          __adaptor_child_env_t<__tag_t, _Env, __data_t>...>();
+        }
+      }
+      else if constexpr (__starts_on_sequence<_Sequence>)
+      {
+        // `starts_on` lowers itself to a `__sequence`; use the item types of
+        // that (see `__seq_then_sequence` above).
+        if constexpr (sizeof...(_Env) == 0)
+        {
+          return __get_item_types_helper<
+            STDEXEC::transform_sender_result_t<_Sequence, STDEXEC::env<>>>();
+        }
+        else
+        {
+          return __get_item_types_helper<STDEXEC::transform_sender_result_t<_Sequence, _Env...>,
+                                         _Env...>();
+        }
+      }
+      else if constexpr (__seq_then_sequence<_Sequence>)
+      {
+        // The items are those of the sequence, in the environment it is
+        // subscribed in.
+        using __parts_t = __seq_then_sequence_parts<STDEXEC::__decay_t<_Sequence>>;
+        using __child_t = STDEXEC::__copy_cvref_t<_Sequence, typename __parts_t::__sequence_t>;
+        if constexpr (sizeof...(_Env) == 0)
+        {
+          return __get_item_types_helper<__child_t,
+                                         __seq_then_sequence_env_t<_Sequence, STDEXEC::env<>>>();
+        }
+        else
+        {
+          return __get_item_types_helper<__child_t,
+                                         __seq_then_sequence_env_t<_Sequence, _Env>...>();
         }
       }
       else if constexpr (sender_in<_Sequence, _Env...>
@@ -943,6 +1019,15 @@ namespace experimental::execution
     concept __subscribable_with_static_member =
       __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
+    template <class _CvSender1, class _Sequence, class _Receiver>
+    struct __seq_then_opstate;
+
+    template <class _Sender, class _Receiver>
+    using __seq_then_opstate_t = __seq_then_opstate<
+      __copy_cvref_t<_Sender, typename __seq_then_sequence_parts<__decay_t<_Sender>>::__first_t>,
+      typename __seq_then_sequence_parts<__decay_t<_Sender>>::__sequence_t,
+      _Receiver>;
+
     struct subscribe_t
     {
      private:
@@ -1030,6 +1115,20 @@ namespace experimental::execution
           return __declfn<__result_t,
                           __nothrow_subscribe && __nothrow_child_env && __nothrow_tfx_seq>();
         }
+        else if constexpr (__seq_then_sequence<__tfx_seq_t>)
+        {
+          // Run the first sender, then subscribe to the sequence. See issue
+          // #2053.
+          using __parts_t  = __seq_then_sequence_parts<__decay_t<__tfx_seq_t>>;
+          using __result_t = __seq_then_opstate_t<__tfx_seq_t, _Receiver>;
+          __check_operation_state<__result_t>();
+          constexpr bool __nothrow_subscribe =
+            __nothrow_constructible_from<__result_t,
+                                         __copy_cvref_t<__tfx_seq_t, typename __parts_t::__first_t>,
+                                         typename __parts_t::__sequence_t,
+                                         _Receiver>;
+          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
+        }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {
           using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
@@ -1103,6 +1202,13 @@ namespace experimental::execution
                            __xform_t{}(static_cast<decltype(__env)&&>(__env),
                                        STDEXEC::__forward_like<__tfx_seq_t>(__data))});
         }
+        else if constexpr (__seq_then_sequence<__tfx_seq_t>)
+        {
+          return __seq_then_opstate_t<__tfx_seq_t, _Receiver>(
+            STDEXEC::__forward_like<__tfx_seq_t>(__tfx_seq.__sndr1_),
+            STDEXEC::__forward_like<__tfx_seq_t>(__tfx_seq.__sndr2_),
+            static_cast<_Receiver&&>(__rcvr));
+        }
         else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
         {  // NOLINT(bugprone-branch-clone)
           return __tfx_seq.__static_subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
@@ -1143,6 +1249,140 @@ namespace experimental::execution
 
     template <class _Sequence, class _Receiver>
     using subscribe_result_t = __call_result_t<subscribe_t, _Sequence, _Receiver>;
+
+    // The receiver connected to the first sender of a `__seq_then_sequence`.
+    template <class _Receiver, class _OpState>
+    struct __seq_then_rcvr1
+    {
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      void set_value() noexcept
+      {
+        __op_->__start_next();
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept
+      {
+        STDEXEC::set_error(static_cast<_Receiver&&>(__op_->__rcvr_),
+                           static_cast<_Error&&>(__error));
+      }
+
+      void set_stopped() noexcept
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
+      }
+
+      auto get_env() const noexcept -> __fwd_env_t<env_of_t<_Receiver>>
+      {
+        return __fwd_env(STDEXEC::get_env(__op_->__rcvr_));
+      }
+
+      _OpState* __op_;
+    };
+
+    // The receiver subscribed to the sequence of a `__seq_then_sequence`.
+    template <class _Receiver, class _Env2, class _OpState>
+    struct __seq_then_rcvr2
+    {
+      using receiver_concept = STDEXEC::receiver_tag;
+
+      template <class _Item>
+      auto set_next(_Item&& __item) & noexcept(__nothrow_callable<set_next_t, _Receiver&, _Item>)
+        -> next_sender_of_t<_Receiver, _Item>
+      {
+        return exec::set_next(__op_->__rcvr_, static_cast<_Item&&>(__item));
+      }
+
+      void set_value() noexcept
+      {
+        STDEXEC::set_value(static_cast<_Receiver&&>(__op_->__rcvr_));
+      }
+
+      template <class _Error>
+      void set_error(_Error&& __error) noexcept
+      {
+        STDEXEC::set_error(static_cast<_Receiver&&>(__op_->__rcvr_),
+                           static_cast<_Error&&>(__error));
+      }
+
+      void set_stopped() noexcept
+        requires __callable<set_stopped_t, _Receiver>
+      {
+        STDEXEC::set_stopped(static_cast<_Receiver&&>(__op_->__rcvr_));
+      }
+
+      auto get_env() const noexcept -> __join_env_t<_Env2 const &, __fwd_env_t<env_of_t<_Receiver>>>
+      {
+        return __env::__join(__op_->__env2_, __fwd_env(STDEXEC::get_env(__op_->__rcvr_)));
+      }
+
+      _OpState* __op_;
+    };
+
+    template <class _CvSender1, class _Sequence, class _Receiver>
+    struct __seq_then_opstate
+    {
+      using __env2_t  = STDEXEC::__seq::__env2_t<_CvSender1, env_of_t<_Receiver>>;
+      using __rcvr1_t = __seq_then_rcvr1<_Receiver, __seq_then_opstate>;
+      using __rcvr2_t = __seq_then_rcvr2<_Receiver, __env2_t, __seq_then_opstate>;
+      using __op1_t   = connect_result_t<_CvSender1, __rcvr1_t>;
+      using __op2_t   = subscribe_result_t<_Sequence, __rcvr2_t>;
+
+      static constexpr bool __nothrow_construct = __nothrow_move_constructible<_Sequence>
+                                               && __nothrow_connectable<_CvSender1, __rcvr1_t>;
+
+      explicit __seq_then_opstate(_CvSender1&& __sndr1, _Sequence __seq, _Receiver __rcvr)
+        noexcept(__nothrow_construct)
+        : __seq_then_opstate(__sndr1,
+                             __seq,
+                             __rcvr,
+                             STDEXEC::__seq::__mk_env2_t()(__sndr1, STDEXEC::get_env(__rcvr)))
+      {}
+
+      STDEXEC_IMMOVABLE(__seq_then_opstate);
+
+      void start() & noexcept
+      {
+        STDEXEC::start(__var::__get<0>(__op_));
+      }
+
+      void __start_next() noexcept
+      {
+        STDEXEC_TRY
+        {
+          auto& __op = __op_.__emplace_from(subscribe_t{},
+                                            static_cast<_Sequence&&>(__seq_),
+                                            __rcvr2_t{this});
+          STDEXEC::start(__op);
+        }
+        STDEXEC_CATCH_ALL
+        {
+          if constexpr (!__nothrow_callable<subscribe_t, _Sequence, __rcvr2_t>)
+          {
+            STDEXEC::set_error(static_cast<_Receiver&&>(__rcvr_), std::current_exception());
+          }
+        }
+      }
+
+      _Receiver                   __rcvr_;
+      STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
+      __env2_t const              __env2_;
+      _Sequence                   __seq_;
+      __variant<__op1_t, __op2_t> __op_{__no_init};
+
+     private:
+      explicit __seq_then_opstate(_CvSender1& __sndr1,
+                                  _Sequence&  __seq,
+                                  _Receiver&  __rcvr,
+                                  __env2_t    __env2) noexcept(__nothrow_construct)
+        : __rcvr_(static_cast<_Receiver&&>(__rcvr))
+        , __env2_(static_cast<__env2_t&&>(__env2))
+        , __seq_(static_cast<_Sequence&&>(__seq))
+      {
+        __op_.__emplace_from(STDEXEC::connect, static_cast<_CvSender1&&>(__sndr1), __rcvr1_t{this});
+      }
+    };
   }  // namespace __sequence_sndr
 
   using __sequence_sndr::__next_sender_completion_sigs_t;
