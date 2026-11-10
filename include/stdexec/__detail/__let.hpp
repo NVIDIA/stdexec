@@ -140,21 +140,22 @@ namespace STDEXEC
     {
       using __env2_t        = _Env2;
       using __second_rcvr_t = __rcvr_env<_Receiver, _Env2>;
+      using __start_next_t  = void (*)(__opstate_base&);
 
       template <class _Sender>
       constexpr explicit __opstate_base(_SetTag,
                                         _Sender const & __sndr,
                                         _Fun            __fn,
-                                        _Receiver&&     __rcvr) noexcept
+                                        _Receiver&&     __rcvr,
+                                        __start_next_t  __start_next) noexcept
         : __rcvr_(static_cast<_Receiver&&>(__rcvr))
         , __fn_(STDEXEC::__allocator_aware_forward(static_cast<_Fun&&>(__fn), __rcvr_))
         // TODO(ericniebler): this needs a fallback:
         , __env2_(__mk_secondary_env_t<_SetTag>()(__sndr, STDEXEC::get_env(__rcvr_)))
+        , __start_next_(__start_next)
       {}
 
       STDEXEC_IMMOVABLE(__opstate_base);
-
-      constexpr virtual void __start_next() = 0;
 
       template <class _Tag, class... _Args>
       constexpr void __impl(_Tag, _Args&&... __args) noexcept
@@ -172,7 +173,7 @@ namespace STDEXEC
           STDEXEC_TRY
           {
             __args_.__emplace_from(__mktuple, static_cast<_Args&&>(__args)...);
-            __start_next();
+            __start_next_(*this);
           }
           STDEXEC_CATCH_ALL
           {
@@ -196,6 +197,7 @@ namespace STDEXEC
       //! Variant to hold the child sender's results before passing them to the
       //! function:
       __variant<_Tuples...> __args_{__no_init};
+      __start_next_t        __start_next_;
     };
 
     template <class _SetTag, class _Fun, class _Receiver, class _Env2, class... _Tuples>
@@ -258,7 +260,7 @@ namespace STDEXEC
     //! The core of the operation state for `let_*`. This gets bundled up into a
     //! larger operation state (`__detail::__op_state<...>`).
     template <class _SetTag, class _CvChild, class _Fun, class _Receiver, class... _Tuples>
-    struct __opstate final
+    struct __opstate
       : __opstate_base<_SetTag,
                        _Fun,
                        _Receiver,
@@ -279,7 +281,8 @@ namespace STDEXEC
         : __opstate::__opstate_base(_SetTag(),
                                     __child,
                                     static_cast<_Fun&&>(__fn),
-                                    static_cast<_Receiver&&>(__rcvr))
+                                    static_cast<_Receiver&&>(__rcvr),
+                                    &__opstate::__start_next)
       {
         __storage_.__emplace_from(STDEXEC::connect,
                                   static_cast<_CvChild&&>(__child),
@@ -292,17 +295,18 @@ namespace STDEXEC
         STDEXEC::start(__var::__get<0>(__storage_));
       };
 
-      constexpr void __start_next() final
+      static constexpr void __start_next(typename __opstate::__opstate_base& __base)
       {
-        STDEXEC_ASSERT(__storage_.index() == 0);
+        auto& __self = static_cast<__opstate&>(__base);
+        STDEXEC_ASSERT(__self.__storage_.index() == 0);
         if constexpr (sizeof...(_Tuples) != 0)
         {
           STDEXEC::__visit(__start_next_fn,
-                           this->__args_,
-                           this->__fn_,
-                           this->__rcvr_,
-                           this->__env2_,
-                           __storage_);
+                           __self.__args_,
+                           __self.__fn_,
+                           __self.__rcvr_,
+                           __self.__env2_,
+                           __self.__storage_);
         }
       }
 
