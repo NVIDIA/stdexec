@@ -32,13 +32,17 @@ import stdexec;
 #    include <functional>
 #  endif
 
+#  if STDEXEC_CLANG() && STDEXEC_CLANG_VERSION < 1900
+#    define STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS
+#  else
+#    define STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS STDEXEC_ATTRIBUTE(no_unique_address)
+#  endif
+
 // NOLINTNEXTLINE(bugprone-std-namespace-modification, modernize-concat-nested-namespaces)
 namespace STDEXEC
 {
   template <class _Fun0, class _Fun1>
-  struct STDEXEC_ATTRIBUTE(empty_bases) __composed
-    : _Fun0
-    , _Fun1
+  struct __composed
   {
     // clang-format off
     template <class _Self, class... _Ts>
@@ -48,9 +52,12 @@ namespace STDEXEC
     STDEXEC_ATTRIBUTE(host, device, always_inline)
     constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto operator())(this _Self &&__self, _Ts &&...__ts)
       STDEXEC_AUTO_RETURN(
-        static_cast<__copy_cvref_t<_Self, _Fun0> &&>(__self)(
-          static_cast<__copy_cvref_t<_Self, _Fun1> &&>(__self)(static_cast<_Ts &&>(__ts)...)))
+        static_cast<_Self &&>(__self).__fun0_(
+          static_cast<_Self &&>(__self).__fun1_(static_cast<_Ts &&>(__ts)...)))
     STDEXEC_EXPLICIT_THIS_END(operator())
+
+    STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS _Fun0 __fun0_;
+    STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS _Fun1 __fun1_;
     // clang-format on
   };
 
@@ -490,5 +497,7 @@ namespace STDEXEC
     return __flipped{static_cast<_Fn &&>(__fn)};
   }
 }  // namespace STDEXEC
+
+#  undef STDEXEC_COMPOSED_NO_UNIQUE_ADDRESS
 
 #endif  // !STDEXEC_USE_MODULES() || defined(STDEXEC_IN_MODULE_PURVIEW)
