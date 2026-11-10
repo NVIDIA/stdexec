@@ -684,7 +684,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
                                    __storage_ref                      __storage,
                                    _Args &&...__args)
   {
-    static_assert(__decays_to<_Model, _Model>);
+    static_assert(__decayed<_Model>);
     STDEXEC_IF_CONSTEVAL
     {
       *__storage.__root_ptr_ptr = ::new _Model(static_cast<_Args &&>(__args)...);
@@ -1096,7 +1096,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     template <class _Value, class _Allocator, class... _Args>
     constexpr _Value &__emplace_(std::allocator_arg_t, _Allocator const &__alloc, _Args &&...__args)
     {
-      static_assert(__decays_to<_Value, _Value>, "Value must be an object type.");
+      static_assert(__decayed<_Value>, "Value must be an object type.");
       static_assert(__simple_allocator<_Allocator>);
       using __model_type = __value_model<_Interface, _Value, _Allocator>;
       auto &__model      =  //
@@ -1647,7 +1647,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     }
 
    private:
-    static_assert(__decays_to<_Value, _Value>, "Value must be a decayed type.");
+    static_assert(__decayed<_Value>, "Value must be a decayed type.");
 
     template <class _CvModel>
     STDEXEC_ATTRIBUTE(nodiscard, always_inline)
@@ -1779,7 +1779,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
     }
 
    private:
-    static_assert(__decays_to<_Value, _Value>);
+    static_assert(__decayed<_Value>);
     // The cast is either checked (dynamic) or unchecked (static)
     static constexpr _Cast<_Value> __cast{};
   };
@@ -1833,7 +1833,7 @@ namespace STDEXEC::__any  // NOLINT(bugprone-std-namespace-modification)
   //////////////////////////////////////////////////////////////////////////////
   // utils
   template <class _Value, template <class> class _Interface>
-  concept __model_of = __decays_to<_Value, _Value> && !std::derived_from<_Value, __iroot>;
+  concept __model_of = __decayed<_Value> && !std::derived_from<_Value, __iroot>;
 
   //////////////////////////////////////////////////////////////////////////////
   // any
