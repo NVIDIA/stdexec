@@ -14,12 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <exec/asio/asio_thread_pool.hpp>
 
 #include <catch2/catch_all.hpp>
 
 #include <stdexec/execution.hpp>
 
-#include <exec/asio/asio_thread_pool.hpp>
 #include <exec/asio/use_sender.hpp>
 #include <exec/inline_scheduler.hpp>
 #include <exec/static_thread_pool.hpp>

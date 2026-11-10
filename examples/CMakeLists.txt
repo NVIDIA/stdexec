@@ -135,4 +135,8 @@ if(STDEXEC_ENABLE_ASIO)
     example.benchmark.asio_thread_pool
     PRIVATE stdexec_example_settings STDEXEC::asioexec
             $<TARGET_NAME_IF_EXISTS:TBB::tbb>)
+  target_compile_definitions(
+    example.benchmark.asio_thread_pool
+    PRIVATE $<$<PLATFORM_ID:Windows>:NOMINMAX>
+  )
 endif()
