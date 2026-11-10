@@ -62,10 +62,10 @@ namespace experimental::execution
     struct bulk_shared_state;
 
     template <class Fun, class Shape, class... Args>
-      requires STDEXEC::__callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
-    using bulk_non_throwing_t =
-      STDEXEC::__mbool<STDEXEC::__nothrow_callable<Fun, Shape, Shape, STDEXEC::__decay_t<Args> &...>
-                       && STDEXEC::__nothrow_decay_copyable<Args...>>;
+      requires STDEXEC::__callable<Fun &, Shape, Shape, STDEXEC::__decay_t<Args> &...>
+    using bulk_non_throwing_t = STDEXEC::__mbool<
+      STDEXEC::__nothrow_callable<Fun &, Shape, Shape, STDEXEC::__decay_t<Args> &...>
+      && STDEXEC::__nothrow_decay_copyable<Args...>>;
 
     template <class CvSender, class Receiver, class Shape, class Fun, bool MayThrow>
     struct bulk_receiver;
