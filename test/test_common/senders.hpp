@@ -367,6 +367,84 @@ namespace
     Type& value_;
   };
 
+  //! A sender that can complete on any of the three channels, and that
+  //! advertises a (possibly different) completion scheduler for each of them.
+  //! Used to test how sender adaptors report completion schedulers.
+  template <class ValueSched, class ErrorSched, class StoppedSched>
+  struct per_channel_scheduler_sender
+  {
+    using sender_concept = ex::sender_tag;
+    using completion_signatures =
+      ex::completion_signatures<ex::set_value_t(int), ex::set_error_t(int), ex::set_stopped_t()>;
+
+    struct attrs
+    {
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_value_t>) const noexcept -> ValueSched
+      {
+        return value_sched_;
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_error_t>) const noexcept -> ErrorSched
+      {
+        return error_sched_;
+      }
+
+      [[nodiscard]]
+      auto query(ex::get_completion_scheduler_t<ex::set_stopped_t>) const noexcept -> StoppedSched
+      {
+        return stopped_sched_;
+      }
+
+      ValueSched   value_sched_;
+      ErrorSched   error_sched_;
+      StoppedSched stopped_sched_;
+    };
+
+    template <class Receiver>
+    struct operation
+    {
+      void start() & noexcept
+      {
+        ex::set_stopped(static_cast<Receiver&&>(rcvr_));
+      }
+
+      Receiver rcvr_;
+    };
+
+    template <class Receiver>
+    auto connect(Receiver rcvr) const -> operation<Receiver>
+    {
+      return {static_cast<Receiver&&>(rcvr)};
+    }
+
+    [[nodiscard]]
+    auto get_env() const noexcept -> attrs
+    {
+      return attrs_;
+    }
+
+    attrs attrs_;
+  };
+
+  template <class ValueSched, class ErrorSched, class StoppedSched>
+  auto make_per_channel_scheduler_sender(ValueSched   value_sched,
+                                         ErrorSched   error_sched,
+                                         StoppedSched stopped_sched)
+    -> per_channel_scheduler_sender<ValueSched, ErrorSched, StoppedSched>
+  {
+    return {
+      {value_sched, error_sched, stopped_sched}
+    };
+  }
+
+  template <class Tag, class Sender, class... Env>
+  inline constexpr bool has_completion_scheduler = requires(Sender const & sndr,
+                                                            Env const &... env) {
+    ex::get_completion_scheduler<Tag>(ex::get_env(sndr), env...);
+  };
+
 }  // namespace
 
 #include <stdexec/__detail/__epilogue.hpp>

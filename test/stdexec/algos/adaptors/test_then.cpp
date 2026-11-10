@@ -244,4 +244,40 @@ namespace
              | ex::write_env(ex::prop{ex::get_scheduler, inline_scheduler()});
     wait_for_value(std::move(snd), std::string{"ciao"});
   }
+
+  TEST_CASE("then reports the completion scheduler of the child channel that feeds each channel",
+            "[adaptors][then]")
+  {
+    ex::run_loop loop1, loop2, loop3;
+    auto         sch1 = loop1.get_scheduler();
+    auto         sch2 = loop2.get_scheduler();
+    auto         sch3 = loop3.get_scheduler();
+    auto         sndr = make_per_channel_scheduler_sender(sch1, sch2, sch3);
+
+    SECTION("with a function that does not throw")
+    {
+      auto snd = sndr | ex::then([](int) noexcept { return 0; });
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sch1);
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd)) == sch2);
+      CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sch3);
+    }
+
+    SECTION("with a function that may throw")
+    {
+      // An error can come from the child's error channel or from the function
+      // throwing on the child's value channel, so it is not known where an
+      // error completion happens.
+      auto snd = sndr | ex::then([](int) { return 0; });
+      CHECK(ex::get_completion_scheduler<ex::set_value_t>(ex::get_env(snd)) == sch1);
+      STATIC_REQUIRE(!has_completion_scheduler<ex::set_error_t, decltype(snd)>);
+      CHECK(ex::get_completion_scheduler<ex::set_stopped_t>(ex::get_env(snd)) == sch3);
+    }
+
+    SECTION("with a child that only completes with an error")
+    {
+      ex::prop env{ex::get_start_scheduler, sch1};
+      auto     snd = ex::just_error(42) | ex::then([]() { return 0; });
+      CHECK(ex::get_completion_scheduler<ex::set_error_t>(ex::get_env(snd), env) == sch1);
+    }
+  }
 }  // namespace

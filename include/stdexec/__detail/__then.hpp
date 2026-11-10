@@ -30,6 +30,7 @@ import stdexec;
 #  include "__diagnostics.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
+#  include "__remap_attrs.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
@@ -46,9 +47,9 @@ namespace STDEXEC
     struct __then_impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+        []<class _Fun, class _Child>(__ignore, _Fun const &, _Child const & __child) noexcept
       {
-        return __sync_attrs{__child};
+        return __remap_attrs<__upon_channel_map<set_value_t, _Fun>, _Child>{__child};
       };
 
       template <class _Sender, class... _Env>

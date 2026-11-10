@@ -28,6 +28,7 @@ import stdexec;
 #  include "__basic_sender.hpp"
 #  include "__completion_signatures_of.hpp"
 #  include "__meta.hpp"
+#  include "__remap_attrs.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
 #  include "__transform_completion_signatures.hpp"
@@ -43,6 +44,12 @@ namespace STDEXEC
   {
     struct __upon_stopped_impl : __sexpr_defaults
     {
+      static constexpr auto __get_attrs =
+        []<class _Fun, class _Child>(__ignore, _Fun const &, _Child const & __child) noexcept
+      {
+        return __remap_attrs<__upon_channel_map<set_stopped_t, _Fun>, _Child>{__child};
+      };
+
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
       {

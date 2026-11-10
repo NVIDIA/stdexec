@@ -30,6 +30,7 @@ import stdexec;
 #  include "__diagnostics.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
+#  include "__remap_attrs.hpp"
 #  include "__sender_adaptor_closure.hpp"
 #  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
 #  include "__transform_completion_signatures.hpp"
@@ -46,9 +47,9 @@ namespace STDEXEC
     struct __upon_error_impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
-        []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
+        []<class _Fun, class _Child>(__ignore, _Fun const &, _Child const & __child) noexcept
       {
-        return __sync_attrs{__child};
+        return __remap_attrs<__upon_channel_map<set_error_t, _Fun>, _Child>{__child};
       };
 
       template <class _Sender, class... _Env>
