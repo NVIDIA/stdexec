@@ -46,6 +46,20 @@ namespace STDEXEC
       __sndr().subscribe(__rcvr());
     };
 
+    template <class _Sender, class _Receiver>
+    consteval auto __nothrow_subscribe() noexcept -> bool
+    {
+      if constexpr (__has_static_memfn<_Sender, _Receiver>)
+      {
+        return noexcept(
+          __declval<_Sender>().__static_subscribe(__declval<_Sender>(), __declval<_Receiver>()));
+      }
+      else
+      {
+        return noexcept(__declval<_Sender>().subscribe(__declval<_Receiver>()));
+      }
+    }
+
     // The customization point behind exec::subscribe. A sender hooks it with a
     // static __static_subscribe(sndr, rcvr) member or a subscribe(rcvr) member
     // function, the static one taking precedence. Senders defined in stdexec can
@@ -53,24 +67,20 @@ namespace STDEXEC
     struct __subscribe_t
     {
       template <class _Sender, class _Receiver>
-        requires __has_static_memfn<_Sender, _Receiver>
+        requires __has_static_memfn<_Sender, _Receiver> || __has_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(_Sender&& __sndr, _Receiver __rcvr) const
-        noexcept(noexcept(__sndr.__static_subscribe(__declval<_Sender>(), __declval<_Receiver>())))
-          -> decltype(__sndr.__static_subscribe(__declval<_Sender>(), __declval<_Receiver>()))
+        noexcept(__nothrow_subscribe<_Sender, _Receiver>()) -> decltype(auto)
       {
-        return __sndr.__static_subscribe(static_cast<_Sender&&>(__sndr),
-                                         static_cast<_Receiver&&>(__rcvr));
-      }
-
-      template <class _Sender, class _Receiver>
-        requires(!__has_static_memfn<_Sender, _Receiver>) && __has_memfn<_Sender, _Receiver>
-      STDEXEC_ATTRIBUTE(always_inline)
-      constexpr auto operator()(_Sender&& __sndr, _Receiver __rcvr) const
-        noexcept(noexcept(__declval<_Sender>().subscribe(__declval<_Receiver>())))
-          -> decltype(__declval<_Sender>().subscribe(__declval<_Receiver>()))
-      {
-        return static_cast<_Sender&&>(__sndr).subscribe(static_cast<_Receiver&&>(__rcvr));
+        if constexpr (__has_static_memfn<_Sender, _Receiver>)
+        {
+          return __sndr.__static_subscribe(static_cast<_Sender&&>(__sndr),
+                                           static_cast<_Receiver&&>(__rcvr));
+        }
+        else
+        {
+          return static_cast<_Sender&&>(__sndr).subscribe(static_cast<_Receiver&&>(__rcvr));
+        }
       }
     };
   }  // namespace __subscribe_
