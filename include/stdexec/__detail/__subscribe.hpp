@@ -56,14 +56,11 @@ namespace STDEXEC
         requires __has_static_memfn<_Sender, _Receiver>
       STDEXEC_ATTRIBUTE(always_inline)
       constexpr auto operator()(_Sender&& __sndr, _Receiver __rcvr) const
-        noexcept(noexcept(STDEXEC_REMOVE_REFERENCE(
-          _Sender)::__static_subscribe(__declval<_Sender>(), __declval<_Receiver>())))
-          -> decltype(STDEXEC_REMOVE_REFERENCE(_Sender)::__static_subscribe(__declval<_Sender>(),
-                                                                            __declval<_Receiver>()))
+        noexcept(noexcept(__sndr.__static_subscribe(__declval<_Sender>(), __declval<_Receiver>())))
+          -> decltype(__sndr.__static_subscribe(__declval<_Sender>(), __declval<_Receiver>()))
       {
-        return STDEXEC_REMOVE_REFERENCE(
-          _Sender)::__static_subscribe(static_cast<_Sender&&>(__sndr),
-                                       static_cast<_Receiver&&>(__rcvr));
+        return __sndr.__static_subscribe(static_cast<_Sender&&>(__sndr),
+                                         static_cast<_Receiver&&>(__rcvr));
       }
 
       template <class _Sender, class _Receiver>
