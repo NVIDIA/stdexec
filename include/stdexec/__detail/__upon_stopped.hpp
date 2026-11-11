@@ -26,11 +26,11 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__basic_sender.hpp"
-#  include "__completion_signatures_of.hpp"
-#  include "__meta.hpp"
 #  include "__sender_adaptor_closure.hpp"
-#  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
+#  include "__sender_introspection.hpp"
+#  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
+#  include "__upon.hpp"
 
 #  include "__prologue.hpp"
 
@@ -41,7 +41,7 @@ namespace STDEXEC
   // [exec.then]
   namespace __upon_stopped
   {
-    struct __upon_stopped_impl : __sexpr_defaults
+    struct __impl : __sexpr_defaults
     {
       template <class _Sender, class... _Env>
       static consteval auto __get_completion_signatures()
@@ -52,27 +52,10 @@ namespace STDEXEC
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
           {},
           {},
-          __always{__set_value_from_t<__fn_t>()},
-          __eptr_completion_unless_t<__mbool<__nothrow_callable<__fn_t>>>());
+          __upon::__transform_completion<__fn_t, upon_stopped_t>());
       }
 
-      static constexpr auto __complete =
-        []<class _Tag, class _State, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        if constexpr (__same_as<_Tag, set_stopped_t>)
-        {
-          STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
-                                    static_cast<_State&&>(__state).__data_,
-                                    static_cast<_Args&&>(__args)...);
-        }
-        else
-        {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-        }
-      };
+      static constexpr auto __complete = __upon::__complete<set_stopped_t>;
     };
   }  // namespace __upon_stopped
 
@@ -215,7 +198,7 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__upon_stopped_impl
+  struct __sexpr_impl<upon_stopped_t> : __upon_stopped::__impl
   {};
 
   template <class _Fun, class _Sender>
