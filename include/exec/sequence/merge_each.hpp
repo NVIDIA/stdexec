@@ -1001,21 +1001,34 @@ namespace experimental::execution
           if constexpr (!__is_nothrow)
           {
             __op_->store_error(std::current_exception());
-            __op_->nested_sequence_break();
+            __next_seq_op_->nested_sequence_break();
           }
         }
       }
 
+      // The sender of a nested sequence completed without producing a nested
+      // sequence. The next receiver must still be completed, or else the input
+      // sequence would never learn that this item is finished.
       template <class _Error>
       void set_error(_Error&& __error) noexcept
       {
         __op_->store_error(static_cast<_Error&&>(__error));
-        __op_->nested_sequence_break();
+        __next_seq_op_->nested_sequence_break();
       }
 
       void set_stopped() noexcept
       {
-        __op_->nested_sequence_complete();
+        if (__op_->__nested_stop_.stop_requested())
+        {
+          // Stop has been requested, so ask the input sequence to stop
+          // producing nested sequences.
+          __next_seq_op_->nested_sequence_break();
+        }
+        else
+        {
+          // Only this sender was stopped; skip it and keep merging the rest.
+          __next_seq_op_->nested_sequence_complete();
+        }
       }
 
       using __env_t = typename _OperationBase::__nested_stop_env_t;
