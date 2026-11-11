@@ -26,13 +26,13 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__basic_sender.hpp"
-#  include "__completion_signatures_of.hpp"
-#  include "__diagnostics.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
+#  include "__sender_introspection.hpp"
 #  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
+#  include "__upon.hpp"
 
 #  include "__prologue.hpp"
 
@@ -43,7 +43,7 @@ namespace STDEXEC
   // [exec.then]
   namespace __then
   {
-    struct __then_impl : __sexpr_defaults
+    struct __impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
         []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
@@ -58,29 +58,10 @@ namespace STDEXEC
         using __fn_t = __decay_t<__data_of<_Sender>>;
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
-          __transform_upon_completion<__fn_t, then_t>());
+          __upon::__transform_completion<__fn_t, then_t>());
       }
 
-      struct __complete_fn
-      {
-        template <class _Tag, class _State, class... _Args>
-        STDEXEC_ATTRIBUTE(host, device)
-        constexpr void operator()(__ignore, _State& __state, _Tag, _Args&&... __args) const noexcept
-        {
-          if constexpr (__same_as<_Tag, set_value_t>)
-          {
-            STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
-                                      static_cast<_State&&>(__state).__data_,
-                                      static_cast<_Args&&>(__args)...);
-          }
-          else
-          {
-            _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-          }
-        }
-      };
-
-      static constexpr auto __complete = __complete_fn{};
+      static constexpr auto __complete = __upon::__complete<set_value_t>;
     };
   }  // namespace __then
 
@@ -225,7 +206,7 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<then_t> : __then::__then_impl
+  struct __sexpr_impl<then_t> : __then::__impl
   {};
 
   template <class _Fun, class _Sender>

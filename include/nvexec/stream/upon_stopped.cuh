@@ -167,7 +167,7 @@ namespace nv::execution::_strm
         STDEXEC::get_completion_signatures<__copy_cvref_t<Self, Sender>, Env...>(),
         {},
         {},
-        STDEXEC::__transform_upon_completion<Fun, STDEXEC::upon_stopped_t>(),
+        STDEXEC::__upon::__transform_completion<Fun, STDEXEC::upon_stopped_t>(),
         _cuda_error_completion_t());
     }
 

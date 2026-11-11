@@ -26,13 +26,13 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 #  include "__basic_sender.hpp"
-#  include "__completion_signatures_of.hpp"
-#  include "__diagnostics.hpp"
 #  include "__meta.hpp"
 #  include "__queries.hpp"
 #  include "__sender_adaptor_closure.hpp"
-#  include "__senders.hpp"  // IWYU pragma: keep for __well_formed_sender
+#  include "__sender_introspection.hpp"
+#  include "__senders.hpp"
 #  include "__transform_completion_signatures.hpp"
+#  include "__upon.hpp"
 
 #  include "__prologue.hpp"
 
@@ -43,7 +43,7 @@ namespace STDEXEC
   // [exec.then]
   namespace __upon_error
   {
-    struct __upon_error_impl : __sexpr_defaults
+    struct __impl : __sexpr_defaults
     {
       static constexpr auto __get_attrs =
         []<class _Child>(__ignore, __ignore, _Child const & __child) noexcept
@@ -59,26 +59,10 @@ namespace STDEXEC
         return STDEXEC::__transform_completion_signatures(
           STDEXEC::get_completion_signatures<__child_of<_Sender>, _Env...>(),
           {},
-          __transform_upon_completion<__fn_t, upon_error_t>());
+          __upon::__transform_completion<__fn_t, upon_error_t>());
       }
 
-      static constexpr auto __complete =
-        []<class _Tag, class _State, class... _Args>(__ignore,
-                                                     _State& __state,
-                                                     _Tag,
-                                                     _Args&&... __args) noexcept -> void
-      {
-        if constexpr (__same_as<_Tag, set_error_t>)
-        {
-          STDEXEC::__set_value_from(static_cast<_State&&>(__state).__rcvr_,
-                                    static_cast<_State&&>(__state).__data_,
-                                    static_cast<_Args&&>(__args)...);
-        }
-        else
-        {
-          _Tag()(static_cast<_State&&>(__state).__rcvr_, static_cast<_Args&&>(__args)...);
-        }
-      };
+      static constexpr auto __complete = __upon::__complete<set_error_t>;
     };
   }  // namespace __upon_error
 
@@ -225,7 +209,7 @@ namespace STDEXEC
   };
 
   template <>
-  struct __sexpr_impl<upon_error_t> : __upon_error::__upon_error_impl
+  struct __sexpr_impl<upon_error_t> : __upon_error::__impl
   {};
 
   template <class _Fun, class _Sender>
