@@ -257,6 +257,20 @@ if(NOT STDEXEC_BUILD_MODULES)
     NAME test_when_all_fail1 SOURCE
     stdexec/algos/adaptors/test_when_all_fail1.cpp LIBRARIES stdexec)
 
+  # With STDEXEC_ENABLE_EXTRA_TYPE_CHECKING, connect reports a sender that
+  # completes with a result it did not declare as a deprecation warning. The
+  # stdexec include directory is a SYSTEM one, so -Wsystem-headers is needed to
+  # see the warning.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    stdexec_add_build_failure_test(
+      NAME test_connect_fail1 SOURCE stdexec/cpos/test_connect_fail1.cpp
+      LIBRARIES stdexec)
+    target_compile_definitions(test_connect_fail1
+                               PRIVATE STDEXEC_ENABLE_EXTRA_TYPE_CHECKING)
+    target_compile_options(test_connect_fail1 PRIVATE -Wsystem-headers
+                           -Werror=deprecated-declarations)
+  endif()
+
   if(STDEXEC_BUILD_RELACY_TESTS)
     add_subdirectory(rrd)
   endif()

@@ -305,6 +305,16 @@ namespace STDEXEC
       decltype(auto) __new_sndr = transform_sender(static_cast<_Sender&&>(__sndr), get_env(__rcvr));
       using __new_sndr_t        = decltype(__new_sndr);
 
+#  if STDEXEC_ENABLE_EXTRA_TYPE_CHECKING()
+      if constexpr (sender_in<__new_sndr_t, env_of_t<_Receiver>>)
+      {
+        // Instantiate __debug_sender via completion_signatures_of_t to check that
+        // the actual completions match the declared completions.
+        using __checked_signatures
+          [[maybe_unused]] = completion_signatures_of_t<__new_sndr_t, env_of_t<_Receiver>>;
+      }
+#  endif
+
       if constexpr (__connect::__with_static_member<__new_sndr_t, _Receiver>)
       {
         return STDEXEC_REMOVE_REFERENCE(
