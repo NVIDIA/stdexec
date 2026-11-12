@@ -28,7 +28,6 @@ import stdexec;
 // include these after __execution_fwd.hpp
 #  include "__concat_completion_signatures.hpp"
 #  include "__concepts.hpp"
-#  include "__diagnostics.hpp"  // IWYU pragma: export
 #  include "__meta.hpp"
 #  include "__partition_completion_signatures.hpp"
 #  include "__utility.hpp"
