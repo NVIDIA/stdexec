@@ -27,6 +27,7 @@ import stdexec;
 #  include "__execution_fwd.hpp"
 
 // include these after __execution_fwd.hpp
+#  include "__completion_signatures.hpp"  // IWYU pragma: keep for completion_signatures<>
 #  include "__meta.hpp"
 #  include "__tuple.hpp"  // IWYU pragma: keep for __tuple
 
@@ -42,19 +43,15 @@ namespace STDEXEC
   struct sender_tag;
   struct scheduler_tag;
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHAT_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHERE_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WHY_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _IN_ALGORITHM_
   {};
 
@@ -92,15 +89,12 @@ namespace STDEXEC
   struct _WITH_COMPLETION_SIGNATURES_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_FUNCTION_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_ARGUMENTS_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _WITH_QUERY_
   {};
 
@@ -132,7 +126,6 @@ namespace STDEXEC
   struct _INVALID_ARGUMENT_
   {};
 
-  STDEXEC_MODULE_EXPORT_AUTHORING
   struct _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_
   {};
 
@@ -372,6 +365,7 @@ namespace STDEXEC
   {
     (void) STDEXEC::__throw_compile_time_error_r<completion_signatures<>, _What, _More...>(
       static_cast<_Values>(__values)...);
+    STDEXEC_UNREACHABLE();
   }
 
 #  endif  // ^^^ constexpr exceptions ^^^
