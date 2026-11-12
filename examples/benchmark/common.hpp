@@ -73,7 +73,7 @@ auto compute_perf(std::span<std::chrono::steady_clock::time_point const> start,
 {
   double average = 0.0;
   double max     = 0.0;
-  double min     = std::numeric_limits<double>::max();
+  double min     = (std::numeric_limits<double>::max)();
   for (std::size_t j = i0; j <= i; ++j)
   {
     auto stats = compute_perf(start[j], end[j], total_scheds);
