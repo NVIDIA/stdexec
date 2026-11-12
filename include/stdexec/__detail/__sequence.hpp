@@ -31,6 +31,7 @@ import stdexec;
 #  include "__just.hpp"
 #  include "__schedulers.hpp"
 #  include "__senders.hpp"
+#  include "__subscribe.hpp"
 #  include "__transform_completion_signatures.hpp"
 #  include "__variant.hpp"
 
@@ -237,6 +238,15 @@ namespace STDEXEC
         STDEXEC::set_stopped(static_cast<_Receiver &&>(__self_->__rcvr_));
       }
 
+      // Forwards the items of a sequence sender to the receiver.
+      template <class _Item, class _Rcvr = _Receiver>
+      constexpr auto set_next(_Item &&__item) & noexcept(
+        noexcept(__declval<_Rcvr &>().set_next(__declval<_Item>())))
+        -> decltype(__declval<_Rcvr &>().set_next(__declval<_Item>()))
+      {
+        return __self_->__rcvr_.set_next(static_cast<_Item &&>(__item));
+      }
+
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> __env_t
       {
@@ -276,7 +286,8 @@ namespace STDEXEC
       __state<_Receiver, _Env2> *__state_;
     };
 
-    template <class _CvSender1, class _Sender2, class _Receiver>
+    // _Connect2 is connect_t, or __subscribe_t when _Sender2 is a sequence sender.
+    template <class _CvSender1, class _Sender2, class _Receiver, class _Connect2 = connect_t>
     struct __opstate final : __state<_Receiver, __env2_t<_CvSender1, env_of_t<_Receiver>>>
     {
       constexpr explicit __opstate(_CvSender1 &&__sndr1, _Sender2 __sndr2, _Receiver __rcvr)
@@ -296,12 +307,12 @@ namespace STDEXEC
         STDEXEC_TRY
         {
           auto &__op =  //
-            __opstate_.__emplace_from(STDEXEC::connect, std::move(__sndr2_), __rcvr2_t{this});
+            __opstate_.__emplace_from(_Connect2(), std::move(__sndr2_), __rcvr2_t{this});
           STDEXEC::start(__op);
         }
         STDEXEC_CATCH_ALL
         {
-          if constexpr (!__nothrow_connectable<_Sender2, __rcvr2_t>)
+          if constexpr (!__nothrow_callable<_Connect2, _Sender2, __rcvr2_t>)
           {
             STDEXEC::set_error(std::move(this->__rcvr_), std::current_exception());
           }
@@ -313,7 +324,7 @@ namespace STDEXEC
       using __rcvr1_t    = __rcvr1<_Receiver, __env2_t>;
       using __rcvr2_t    = __rcvr2<_Receiver, __env2_t>;
       using __opstate1_t = connect_result_t<_CvSender1, __rcvr1_t>;
-      using __opstate2_t = connect_result_t<_Sender2, __rcvr2_t>;
+      using __opstate2_t = __call_result_t<_Connect2, _Sender2, __rcvr2_t>;
 
       static constexpr bool __nothrow_constructible = __nothrow_move_constructible<_Sender2>
                                                    && __nothrow_connectable<_CvSender1, __rcvr1_t>;
@@ -361,10 +372,20 @@ namespace STDEXEC
     template <class _Sender1, class _Sender2>
     struct __sndr<_Sender1, _Sender2>
     {
-      using sender_concept = sender_tag;
+      // If the last sender is a sequence sender, then so is this one.
+      using sender_concept =
+        __if_c<__sequence_sender_tagged<_Sender2>, __sequence_sender_tag, sender_tag>;
 
       template <class _Self, class _Receiver>
       using __opstate_t = __opstate<__copy_cvref_t<_Self, _Sender1>, _Sender2, _Receiver>;
+
+      template <class _Self, class _Receiver>
+      using __subscribe_opstate_t =
+        __opstate<__copy_cvref_t<_Self, _Sender1>, _Sender2, _Receiver, __subscribe_::__subscribe_t>;
+
+      template <class _Self, class _Receiver>
+      using __rcvr2_t =
+        __rcvr2<_Receiver, __seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, env_of_t<_Receiver>>>;
 
       template <class _Self, class _Env>
       using __env2_t = __join_env_t<__seq::__env2_t<__copy_cvref_t<_Self, _Sender1>, _Env> const &,
@@ -426,6 +447,26 @@ namespace STDEXEC
                                              static_cast<_Receiver &&>(__rcvr));
       }
       STDEXEC_EXPLICIT_THIS_END(connect)
+
+      // Runs _Sender1, then subscribes _Sender2 when it is a sequence sender.
+      template <class _Self, class _Receiver>
+        requires __sequence_sender_tagged<_Sender2>
+              && __subscribable<_Sender2, __rcvr2_t<_Self, _Receiver>>
+      static constexpr auto __static_subscribe(_Self &&__self, _Receiver __rcvr)
+        noexcept(__nothrow_constructible_from<__subscribe_opstate_t<_Self, _Receiver>,
+                                              __copy_cvref_t<_Self, _Sender1>,
+                                              _Sender2,
+                                              _Receiver>) -> __subscribe_opstate_t<_Self, _Receiver>
+      {
+        return __subscribe_opstate_t<_Self, _Receiver>(static_cast<_Self &&>(__self).__sndr1_,
+                                                       static_cast<_Self &&>(__self).__sndr2_,
+                                                       static_cast<_Receiver &&>(__rcvr));
+      }
+
+      // The items of this sequence are the items of _Sender2 in the
+      // environment it is subscribed with.
+      template <class _Self, class... _Env>
+      using __item_types_from_t = __mlist<_Sender2, __env2_t<_Self, _Env>...>;
 
       [[nodiscard]]
       constexpr auto get_env() const noexcept -> __attrs_t
