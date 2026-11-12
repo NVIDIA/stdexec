@@ -300,61 +300,59 @@ namespace STDEXEC
     template <class _Sender>
     concept __is_sender_adaptor_closure =
       __std::derived_from<__decay_t<_Sender>, sender_adaptor_closure<__decay_t<_Sender>>>;
-
-    template <class _SenderName, class _Sender, class... _Env>
-    constexpr auto __diagnose_sender_concept_failure() noexcept
-    {
-      if constexpr (!enable_sender<__decay_t<_Sender>> && __is_sender_adaptor_closure<_Sender>)
-      {
-        static_assert(enable_sender<_Sender>, STDEXEC_ERROR_SENDER_ADAPTOR_CLOSURE_IS_NOT_A_SENDER);
-      }
-      else if constexpr (!enable_sender<__decay_t<_Sender>>)
-      {
-        static_assert(enable_sender<_Sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
-      }
-      else if constexpr (!__std::move_constructible<__decay_t<_Sender>>)
-      {
-        static_assert(__std::move_constructible<__decay_t<_Sender>>,
-                      "The sender type is not move-constructible.");
-      }
-      else if constexpr (!__decay_copyable<_Sender>)
-      {
-        static_assert(__decay_copyable<_Sender>,
-                      "The sender cannot be decay-copied. Did you forget a std::move?");
-      }
-      else
-      {
-        using _Completions = __completion_signatures_of_t<_Sender, _Env...>;
-        if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_Sender, _Env...>>)
-        {
-          static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
-        }
-        else if constexpr (__merror<_Completions>)
-        {
-          static_assert(!__merror<_Completions>,
-                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
-        }
-        else
-        {
-          static_assert(__valid_completion_signatures<_Completions>,
-                        STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
-        }
-#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
-        // MSVC and NVHPC need more encouragement to print the type of the
-        // error.
-        _Completions __what = 0;
-#  endif
-      }
-    }
   }  // namespace __detail
 
   // Used to report a meaningful error message when the sender_in<Sndr, Env>
   // concept check fails.
   STDEXEC_MODULE_EXPORT_AUTHORING
-  template <class _Sender, class... _Env>
+  template <class _CvSender, class... _Env>
   constexpr auto __diagnose_sender_concept_failure() noexcept
   {
-    return __detail::__diagnose_sender_concept_failure<_WITH_SENDER_<_Sender>, _Sender, _Env...>();
+    using __decayed_sender = __decay_t<_CvSender>;
+    if constexpr (!enable_sender<__decayed_sender>)
+    {
+      if constexpr (__detail::__is_sender_adaptor_closure<__decayed_sender>)
+        static_assert(enable_sender<__decayed_sender>,
+                      STDEXEC_ERROR_SENDER_ADAPTOR_CLOSURE_IS_NOT_A_SENDER);
+      else
+        static_assert(enable_sender<__decayed_sender>, STDEXEC_ERROR_ENABLE_SENDER_IS_FALSE);
+    }
+    else if constexpr (!__std::move_constructible<__decayed_sender>)
+    {
+      static_assert(__std::move_constructible<__decayed_sender>,
+                    "The sender type is not move-constructible.");
+    }
+    else if constexpr (!__decay_copyable<_CvSender>)
+    {
+      static_assert(__decay_copyable<_CvSender>,
+                    "The sender cannot be decay-copied. Did you forget a std::move?");
+    }
+    else
+    {
+      // This is a hard error if get_completion_signatures throws:
+      constexpr auto __completions = STDEXEC::get_completion_signatures<_CvSender, _Env...>();
+      using _Completions           = __decay_t<decltype(__completions)>;
+
+      if constexpr (__same_as<_Completions, __unrecognized_sender_error_t<_CvSender, _Env...>>)
+      {
+        static_assert(__mnever<_Completions>, STDEXEC_ERROR_CANNOT_COMPUTE_COMPLETION_SIGNATURES);
+      }
+      else if constexpr (__merror<_Completions>)
+      {
+        static_assert(!__merror<_Completions>,
+                      STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_RETURNED_AN_ERROR);
+      }
+      else
+      {
+        static_assert(__valid_completion_signatures<_Completions>,
+                      STDEXEC_ERROR_GET_COMPLETION_SIGNATURES_HAS_INVALID_RETURN_TYPE);
+      }
+#  if STDEXEC_MSVC() || STDEXEC_NVHPC()
+      // MSVC and NVHPC need more encouragement to print the type of the
+      // error.
+      _Completions __what = 0;
+#  endif
+    }
   }
 }  // namespace STDEXEC
 

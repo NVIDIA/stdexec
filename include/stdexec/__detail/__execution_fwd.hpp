@@ -257,6 +257,30 @@ namespace STDEXEC
   STDEXEC_MODULE_EXPORT
   using __cmplsigs::get_completion_signatures_t;
 
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHAT_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHERE_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WHY_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _IN_ALGORITHM_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_FUNCTION_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_ARGUMENTS_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _WITH_QUERY_;
+
+  STDEXEC_MODULE_EXPORT_AUTHORING
+  struct _FUNCTION_IS_NOT_CALLABLE_WITH_THE_GIVEN_ARGUMENTS_;
+
 #  if STDEXEC_NO_STDCPP_CONSTEXPR_EXCEPTIONS()
 
   STDEXEC_MODULE_EXPORT_AUTHORING
@@ -267,6 +291,7 @@ namespace STDEXEC
 #  else  // ^^^ no constexpr exceptions ^^^ / vvv constexpr exceptions vvv
 
   // C++26, https://wg21.link/p3068
+  STDEXEC_MODULE_EXPORT_AUTHORING
   template <class _What, class... _More, class... _Values>
   [[noreturn, nodiscard]]
   consteval auto __throw_compile_time_error(_Values...) -> completion_signatures<>;
