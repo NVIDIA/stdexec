@@ -35,6 +35,7 @@ import stdexec;
 #  include "../stdexec/__detail/__receivers.hpp"
 #  include "../stdexec/__detail/__senders.hpp"
 #  include "../stdexec/__detail/__stop_token.hpp"
+#  include "../stdexec/__detail/__subscribe.hpp"
 #  include "../stdexec/__detail/__transform_sender.hpp"
 #  include "../stdexec/__detail/__type_traits.hpp"
 #  include "../stdexec/__detail/__utility.hpp"
@@ -880,18 +881,6 @@ namespace experimental::execution
       && sequence_receiver_of<_Receiver, item_types<STDEXEC::__decay_t<_Sender>>>
       && sender_to<next_sender_of_t<_Receiver, _Sender>, __stopped_means_break<_Receiver>>;
 
-    template <class _Sequence, class _Receiver>
-    using __subscribe_member_result_t = decltype(__declval<_Sequence>().subscribe(
-      __declval<_Receiver>()));
-
-    template <class _Sequence, class _Receiver>
-    concept __subscribable_with_member =
-      __minvocable_q<__subscribe_member_result_t, _Sequence, _Receiver>;
-
-    template <class _Sequence, class _Receiver>
-    using __subscribe_static_member_result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-      _Sequence)::__static_subscribe(__declval<_Sequence>(), __declval<_Receiver>()));
-
     // Receiver wrapper used to subscribe to the child of a transparent
     // sequence adaptor (see `__sequence_adaptor_traits` above): it forwards
     // all completions and `set_next` calls to the wrapped receiver, but
@@ -938,10 +927,6 @@ namespace experimental::execution
       STDEXEC_IMMOVABLE_NO_UNIQUE_ADDRESS
       _Env      __env_;
     };
-
-    template <class _Sequence, class _Receiver>
-    concept __subscribable_with_static_member =
-      __minvocable_q<__subscribe_static_member_result_t, _Sequence, _Receiver>;
 
     struct subscribe_t
     {
@@ -1030,21 +1015,12 @@ namespace experimental::execution
           return __declfn<__result_t,
                           __nothrow_subscribe && __nothrow_child_env && __nothrow_tfx_seq>();
         }
-        else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
+        else if constexpr (STDEXEC::__subscribable<__tfx_seq_t, _Receiver>)
         {
-          using __result_t = decltype(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
+          using __result_t = STDEXEC::__subscribe_result_t<__tfx_seq_t, _Receiver>;
           __check_operation_state<__result_t>();
-          constexpr bool __nothrow_subscribe = noexcept(STDEXEC_REMOVE_REFERENCE(
-            __tfx_seq_t)::__static_subscribe(__declval<__tfx_seq_t>(), __declval<_Receiver>()));
-          return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
-        }
-        else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
-        {
-          using __result_t = decltype(__declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
-          __check_operation_state<__result_t>();
-          constexpr bool __nothrow_subscribe = noexcept(
-            __declval<__tfx_seq_t>().subscribe(__declval<_Receiver>()));
+          constexpr bool __nothrow_subscribe =
+            __nothrow_callable<decltype(STDEXEC::__subscribe), __tfx_seq_t, _Receiver>;
           return __declfn<__result_t, __nothrow_subscribe && __nothrow_tfx_seq>();
         }
         else if constexpr (__is_debug_env<env_of_t<_Receiver>>)
@@ -1103,14 +1079,10 @@ namespace experimental::execution
                            __xform_t{}(static_cast<decltype(__env)&&>(__env),
                                        STDEXEC::__forward_like<__tfx_seq_t>(__data))});
         }
-        else if constexpr (__subscribable_with_static_member<__tfx_seq_t, _Receiver>)
-        {  // NOLINT(bugprone-branch-clone)
-          return __tfx_seq.__static_subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
-                                              static_cast<_Receiver&&>(__rcvr));
-        }
-        else if constexpr (__subscribable_with_member<__tfx_seq_t, _Receiver>)
+        else if constexpr (STDEXEC::__subscribable<__tfx_seq_t, _Receiver>)
         {
-          return static_cast<__tfx_seq_t&&>(__tfx_seq).subscribe(static_cast<_Receiver&&>(__rcvr));
+          return STDEXEC::__subscribe(static_cast<__tfx_seq_t&&>(__tfx_seq),
+                                      static_cast<_Receiver&&>(__rcvr));
         }
         else if constexpr (enable_sequence_sender<STDEXEC::__decay_t<__tfx_seq_t>>)
         {
