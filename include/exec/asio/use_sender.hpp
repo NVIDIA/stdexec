@@ -187,13 +187,13 @@ namespace ASIOEXEC_ASIO_NAMESPACE
   {
     template <typename Initiation, ::STDEXEC::__decay_copyable... Args>
     static constexpr auto
-    initiate(Initiation&& i, ::exec::asio::detail::use_sender::token<Mutex> const &, Args&&... args)
+    initiate(Initiation &&i, ::exec::asio::detail::use_sender::token<Mutex> const &, Args &&...args)
     {
       return ::exec::asio::detail::use_sender::sender(
         async_result<::exec::asio::detail::completion_token::token<Mutex>, Signatures...>::initiate(
-          static_cast<Initiation&&>(i),
+          static_cast<Initiation &&>(i),
           ::exec::asio::detail::completion_token::token<Mutex>{},
-          static_cast<Args&&>(args)...));
+          static_cast<Args &&>(args)...));
     }
   };
 }  // namespace ASIOEXEC_ASIO_NAMESPACE
