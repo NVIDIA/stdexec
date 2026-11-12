@@ -439,7 +439,7 @@ namespace STDEXEC
       constexpr STDEXEC_EXPLICIT_THIS_BEGIN(auto connect)(this _Self &&__self, _Receiver __rcvr)
         noexcept(__nothrow_constructible_from<__opstate_t<_Self, _Receiver>,
                                               __copy_cvref_t<_Self, _Sender1>,
-                                              _Sender2,
+                                              __copy_cvref_t<_Self, _Sender2>,
                                               _Receiver>)
       {
         return __opstate_t<_Self, _Receiver>(static_cast<_Self &&>(__self).__sndr1_,
@@ -455,7 +455,7 @@ namespace STDEXEC
       static constexpr auto __static_subscribe(_Self &&__self, _Receiver __rcvr)
         noexcept(__nothrow_constructible_from<__subscribe_opstate_t<_Self, _Receiver>,
                                               __copy_cvref_t<_Self, _Sender1>,
-                                              _Sender2,
+                                              __copy_cvref_t<_Self, _Sender2>,
                                               _Receiver>) -> __subscribe_opstate_t<_Self, _Receiver>
       {
         return __subscribe_opstate_t<_Self, _Receiver>(static_cast<_Self &&>(__self).__sndr1_,
